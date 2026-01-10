@@ -12,6 +12,21 @@
       "rateLimit": {
         "requestsPerMinute": 60,
         "tokensPerMinute": 100000
+      },
+      "cli": {
+        "name": "Claude Code",
+        "cliId": "claude-code",
+        "folderStructure": {
+          "configDir": ".claude",
+          "skillsDir": ".claude/skills",
+          "rulesDir": ".claude/rules",
+          "commandsDir": ".claude/commands",
+          "docsDir": ".claude/docs"
+        },
+        "rulesFile": "CLAUDE.md",
+        "promptStyle": "xml-tags",
+        "hotReload": true,
+        "features": ["skills", "rules", "commands", "hooks"]
       }
     },
     "openai": {
@@ -22,7 +37,8 @@
       "rateLimit": {
         "requestsPerMinute": 60,
         "tokensPerMinute": 90000
-      }
+      },
+      "cli": null
     },
     "google": {
       "name": "Google AI",
@@ -32,6 +48,21 @@
       "rateLimit": {
         "requestsPerMinute": 60,
         "tokensPerMinute": 100000
+      },
+      "cli": {
+        "name": "Gemini CLI",
+        "cliId": "gemini-cli",
+        "folderStructure": {
+          "configDir": ".gemini",
+          "skillsDir": ".gemini/skills",
+          "rulesDir": ".gemini/rules",
+          "commandsDir": ".gemini/commands",
+          "docsDir": ".gemini/docs"
+        },
+        "rulesFile": "GEMINI.md",
+        "promptStyle": "markdown",
+        "hotReload": false,
+        "features": ["skills", "rules"]
       }
     },
     "ollama": {
@@ -39,7 +70,8 @@
       "apiEndpoint": "http://localhost:11434/api",
       "apiKeyEnv": null,
       "supportedFeatures": ["streaming"],
-      "rateLimit": null
+      "rateLimit": null,
+      "cli": null
     }
   },
 
