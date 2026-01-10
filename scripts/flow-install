@@ -28,6 +28,7 @@ PLANNING_STYLE="feature-based"
 SKILLS=""
 ENABLE_HOOKS=false
 ENABLE_STORYBOOK=false
+CLI_TYPE="claude-code"
 STRICT_VERIFICATION=false
 STRICT_CORRECTIONS=false
 STRICT_REPORTS=false
@@ -84,6 +85,45 @@ ask_setup_type() {
             return 0
             ;;
     esac
+}
+
+# Question: CLI selection (first real question)
+ask_cli_type() {
+    echo -e "${BOLD}Which AI CLI are you using?${NC}"
+    echo ""
+    echo "   (1) Claude Code [Recommended]"
+    echo "       Anthropic's official CLI for Claude"
+    echo ""
+    echo "   (2) Gemini CLI"
+    echo "       Google's CLI for Gemini models"
+    echo ""
+    echo "   (3) OpenCode"
+    echo "       Open-source multi-model CLI"
+    echo ""
+    echo "   (4) Other / Manual"
+    echo "       Generic setup, configure CLI bridge later"
+    echo ""
+
+    read -p "   Choice [1]: " choice
+    case "$choice" in
+        2)
+            CLI_TYPE="gemini-cli"
+            echo -e "   ${GREEN}Selected:${NC} Gemini CLI"
+            ;;
+        3)
+            CLI_TYPE="opencode"
+            echo -e "   ${GREEN}Selected:${NC} OpenCode"
+            ;;
+        4)
+            CLI_TYPE="other"
+            echo -e "   ${GREEN}Selected:${NC} Other (manual configuration)"
+            ;;
+        *)
+            CLI_TYPE="claude-code"
+            echo -e "   ${GREEN}Selected:${NC} Claude Code"
+            ;;
+    esac
+    echo ""
 }
 
 # Import from existing profile
@@ -511,6 +551,7 @@ confirm_settings() {
     echo -e "${BOLD}                     Configuration Summary${NC}"
     echo -e "${BOLD}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
+    echo "   CLI:                 $CLI_TYPE"
     echo "   Project Name:        $PROJECT_NAME"
     if [ "$IS_EXISTING_PROJECT" = true ]; then
         echo "   Project Type:        Existing project"
@@ -590,6 +631,14 @@ generate_config() {
 {
   "version": "1.9",
   "projectName": "$PROJECT_NAME",
+
+  "cli": {
+    "type": "$CLI_TYPE",
+    "bridge": {
+      "autoSync": true,
+      "syncOnConfigChange": true
+    }
+  },
 
   "enforcement": {
     "strictMode": true,
@@ -1341,6 +1390,7 @@ main() {
     check_existing
     ask_setup_type
 
+    ask_cli_type
     ask_project_name
     ask_project_type
     ask_agent_structure
