@@ -43,7 +43,6 @@ function main() {
     { path: PATHS.appMap, name: '.workflow/state/app-map.md' },
     { path: PATHS.decisions, name: '.workflow/state/decisions.md' },
     { path: PATHS.progress, name: '.workflow/state/progress.md' },
-    { path: path.join(PROJECT_ROOT, 'CLAUDE.md'), name: 'CLAUDE.md' },
   ];
 
   for (const file of requiredFiles) {
@@ -53,6 +52,29 @@ function main() {
       console.log(`  ${color('red', '✗')} ${file.name} - MISSING`);
       issues++;
     }
+  }
+
+  // Check CLI-specific rules file
+  let cliType = 'claude-code'; // default
+  if (fileExists(PATHS.config)) {
+    try {
+      const config = require(PATHS.config);
+      cliType = config.cli?.type || 'claude-code';
+    } catch {}
+  }
+
+  const rulesFiles = {
+    'claude-code': { path: path.join(PROJECT_ROOT, 'CLAUDE.md'), name: 'CLAUDE.md' },
+    'gemini-cli': { path: path.join(PROJECT_ROOT, 'GEMINI.md'), name: 'GEMINI.md' },
+    'opencode': { path: path.join(PROJECT_ROOT, '.opencode', 'config.json'), name: '.opencode/config.json' }
+  };
+
+  const rulesFile = rulesFiles[cliType] || rulesFiles['claude-code'];
+  if (fileExists(rulesFile.path)) {
+    console.log(`  ${color('green', '✓')} ${rulesFile.name} (${cliType})`);
+  } else {
+    console.log(`  ${color('red', '✗')} ${rulesFile.name} - MISSING (${cliType})`);
+    issues++;
   }
 
   // Check required directories
@@ -74,6 +96,37 @@ function main() {
       console.log(`  ${color('green', '✓')} ${dir.name}/`);
     } else {
       console.log(`  ${color('red', '✗')} ${dir.name}/ - MISSING`);
+      issues++;
+    }
+  }
+
+  // Check universal structure directories (optional but recommended)
+  console.log('');
+  printSection('Checking universal structure...');
+
+  const universalDirs = [
+    { path: path.join(PROJECT_ROOT, '.workflow', 'models'), name: '.workflow/models' },
+    { path: path.join(PROJECT_ROOT, '.workflow', 'bridges'), name: '.workflow/bridges' },
+    { path: path.join(PROJECT_ROOT, '.workflow', 'templates'), name: '.workflow/templates' },
+  ];
+
+  for (const dir of universalDirs) {
+    if (dirExists(dir.path)) {
+      console.log(`  ${color('green', '✓')} ${dir.name}/`);
+    } else {
+      console.log(`  ${color('yellow', '○')} ${dir.name}/ - not found (run 'flow migrate' to add)`);
+      warnings++;
+    }
+  }
+
+  // Check model registry
+  const registryPath = path.join(PROJECT_ROOT, '.workflow', 'models', 'registry.json');
+  if (fileExists(registryPath)) {
+    const result = validateJson(registryPath);
+    if (result.valid) {
+      console.log(`  ${color('green', '✓')} Model registry valid`);
+    } else {
+      console.log(`  ${color('red', '✗')} Model registry invalid JSON`);
       issues++;
     }
   }
