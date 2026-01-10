@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getConfig, getProjectRoot, colors } = require('./flow-utils');
+const { FailureCategory, detectCategory } = require('../.workflow/lib/failure-categories');
 
 const PROJECT_ROOT = getProjectRoot();
 const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptive-learning.json');
@@ -26,94 +27,85 @@ const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptiv
 
 /**
  * Root cause categories for high-iteration tasks
+ *
+ * Uses centralized FailureCategory for patterns, adds suggestion/targetFile
+ * for workflow improvement recommendations.
  */
 const ROOT_CAUSE_CATEGORIES = {
   MISSING_CONTEXT: {
-    patterns: [
-      /context not loaded/i,
-      /file not found/i,
-      /component not in app-map/i,
-      /unknown component/i,
-      /missing import/i,
-      /cannot find module/i
-    ],
-    description: 'Task needed more context loading',
+    // Use centralized patterns
+    ...FailureCategory.MISSING_CONTEXT,
+    // Add loop-retry specific fields
     suggestion: 'Load more context files before implementation',
     targetFile: 'decisions.md'
   },
   VALIDATION_FAILURES: {
+    // Combines TYPE_ERROR and PATTERN_VIOLATION patterns
     patterns: [
-      /type error/i,
-      /typescript error/i,
-      /lint error/i,
-      /eslint/i,
-      /tsc.*error/i,
-      /is not assignable/i,
-      /property.*does not exist/i
+      ...FailureCategory.TYPE_ERROR.patterns,
+      ...FailureCategory.PATTERN_VIOLATION.patterns
     ],
     description: 'Repeated lint/type errors',
+    severity: FailureCategory.TYPE_ERROR.severity,
+    escalate: false,
+    strategy: 'type_fix',
     suggestion: 'Check type definitions before editing',
     targetFile: 'decisions.md'
   },
   INCOMPLETE_REQUIREMENTS: {
-    patterns: [
-      /acceptance criteria unclear/i,
-      /missing acceptance/i,
-      /requirements not defined/i,
-      /scope unclear/i,
-      /what should.*do/i
-    ],
-    description: 'Acceptance criteria were unclear',
+    ...FailureCategory.INCOMPLETE_REQUIREMENTS,
     suggestion: 'Decompose story into more specific criteria',
     targetFile: 'agents/story-writer.md'
   },
   COMPONENT_REUSE_MISS: {
-    patterns: [
-      /component already exists/i,
-      /duplicate component/i,
-      /use existing/i,
-      /similar component/i,
-      /app-map has/i
-    ],
-    description: 'Should have reused existing component',
+    ...FailureCategory.COMPONENT_REUSE_MISS,
     suggestion: 'Always check app-map.md before creating components',
     targetFile: 'decisions.md'
   },
   PATTERN_VIOLATION: {
-    patterns: [
-      /pattern violation/i,
-      /convention not followed/i,
-      /style mismatch/i,
-      /naming convention/i,
-      /project pattern/i
-    ],
-    description: 'Didn\'t follow project patterns',
+    ...FailureCategory.PATTERN_VIOLATION,
     suggestion: 'Check decisions.md for coding patterns',
     targetFile: 'decisions.md'
   },
   EXTERNAL_DEPENDENCY: {
+    // Combines EXTERNAL_DEPENDENCY, RATE_LIMIT, and API_ERROR
     patterns: [
-      /ci failed/i,
-      /test failed/i,
-      /waiting for/i,
-      /external api/i,
-      /timeout/i,
-      /rate limit/i
+      ...FailureCategory.EXTERNAL_DEPENDENCY.patterns,
+      ...FailureCategory.RATE_LIMIT.patterns,
+      ...FailureCategory.API_ERROR.patterns
     ],
     description: 'Waiting on CI/tests/external systems',
+    severity: FailureCategory.EXTERNAL_DEPENDENCY.severity,
+    escalate: false,
+    strategy: 'wait_retry',
     suggestion: 'Consider async suspension for external dependencies',
     targetFile: 'config.json'
   },
   SYNTAX_ISSUES: {
-    patterns: [
-      /syntax error/i,
-      /unexpected token/i,
-      /parsing error/i,
-      /unterminated/i
-    ],
-    description: 'Repeated syntax errors',
+    ...FailureCategory.SYNTAX_ERROR,
     suggestion: 'Validate code before saving',
     targetFile: 'decisions.md'
+  },
+  // Additional categories from centralized module
+  IMPORT_ERROR: {
+    ...FailureCategory.IMPORT_ERROR,
+    suggestion: 'Check import paths and available exports',
+    targetFile: 'decisions.md'
+  },
+  HALLUCINATION: {
+    ...FailureCategory.HALLUCINATION,
+    suggestion: 'Use only explicitly provided context',
+    targetFile: 'decisions.md'
+  },
+  CONTEXT_OVERFLOW: {
+    ...FailureCategory.CONTEXT_OVERFLOW,
+    suggestion: 'Use /wogi-compact before large tasks',
+    targetFile: 'config.json'
+  },
+  CAPABILITY_MISMATCH: {
+    ...FailureCategory.CAPABILITY_MISMATCH,
+    suggestion: 'Consider using a more capable model for complex tasks',
+    targetFile: 'config.json'
   }
 };
 
@@ -528,7 +520,11 @@ module.exports = {
   markLearningApplied,
 
   // Constants
-  ROOT_CAUSE_CATEGORIES
+  ROOT_CAUSE_CATEGORIES,
+
+  // Re-export centralized failure categories
+  FailureCategory,
+  detectCategory
 };
 
 // ============================================================================
