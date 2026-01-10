@@ -12,6 +12,15 @@ const path = require('path');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 
+// Late-loaded to avoid circular dependency
+let configSubstitution = null;
+function getConfigSubstitution() {
+  if (!configSubstitution) {
+    configSubstitution = require('../.workflow/lib/config-substitution');
+  }
+  return configSubstitution;
+}
+
 // ============================================================
 // Constants - Named values for magic numbers
 // ============================================================
@@ -618,6 +627,7 @@ function validateConfig(config, warnOnUnknown = true) {
 
 /**
  * Read workflow config (cached, invalidates on file change)
+ * Applies variable substitution ({env:VAR}, {file:path}) to config values
  */
 function getConfig() {
   const configPath = PATHS.config;
@@ -629,17 +639,52 @@ function getConfig() {
       return _configCache;
     }
 
-    _configCache = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const rawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     _configMtime = stat.mtimeMs;
 
     // Validate on first load (DEBUG mode or explicit request)
     if (process.env.DEBUG || process.env.VALIDATE_CONFIG) {
-      validateConfig(_configCache);
+      validateConfig(rawConfig);
+    }
+
+    // Apply variable substitution ({env:VAR}, {file:path})
+    try {
+      const { substituteConfig } = getConfigSubstitution();
+      const result = substituteConfig(rawConfig, {
+        logWarnings: true,
+        printWarnings: process.env.DEBUG || process.env.VERBOSE_CONFIG
+      });
+      _configCache = result.value;
+
+      // Log substitution warnings once per session (if DEBUG)
+      if (process.env.DEBUG && result.warnings.length > 0) {
+        console.warn(`[config] ${result.warnings.length} unresolved substitution(s)`);
+      }
+    } catch (substErr) {
+      // Fallback to raw config if substitution fails
+      console.warn(`Warning: Config substitution failed: ${substErr.message}`);
+      _configCache = rawConfig;
     }
 
     return _configCache;
   } catch (err) {
     // Log warning instead of silently returning empty config
+    console.warn(`Warning: Could not parse config.json: ${err.message}`);
+    return {};
+  }
+}
+
+/**
+ * Read raw workflow config WITHOUT substitution (for editing/writing)
+ * Use this when you need to read/modify config without resolving variables
+ */
+function getRawConfig() {
+  const configPath = PATHS.config;
+  if (!fs.existsSync(configPath)) return {};
+
+  try {
+    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  } catch (err) {
     console.warn(`Warning: Could not parse config.json: ${err.message}`);
     return {};
   }
@@ -1768,6 +1813,7 @@ module.exports = {
 
   // Config
   getConfig,
+  getRawConfig,         // Raw config without substitution (for editing)
   getConfigValue,
   setConfigValue,       // Async with locking
   setConfigValueSync,   // Sync without locking (use when already locked)
