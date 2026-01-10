@@ -207,6 +207,11 @@ show_help() {
     echo "  providers detect     Detect running local providers"
     echo "  providers test <t>   Test a provider connection"
     echo ""
+    echo "CLI Bridge:"
+    echo "  bridge sync          Sync .workflow/ to CLI-specific folder"
+    echo "  bridge status        Show bridge status"
+    echo "  bridge list          List available bridges"
+    echo ""
     echo "Declarative Workflows:"
     echo "  workflow list        List available workflows"
     echo "  workflow run <name>  Run a workflow"
@@ -644,6 +649,27 @@ case "${1:-}" in
         ;;
     providers)
         node "$SCRIPT_DIR/flow-providers.js" "${@:2}"
+        ;;
+    bridge)
+        case "${2:-status}" in
+            sync)
+                node "$SCRIPT_DIR/flow-bridge.js" sync "${@:3}"
+                ;;
+            status)
+                node "$SCRIPT_DIR/flow-bridge.js" status
+                ;;
+            list)
+                node "$SCRIPT_DIR/flow-bridge.js" list
+                ;;
+            *)
+                echo "Usage: flow bridge [sync|status|list]"
+                echo ""
+                echo "Commands:"
+                echo "  sync    Sync .workflow/ config to CLI-specific folder"
+                echo "  status  Show current bridge configuration"
+                echo "  list    List available CLI bridges"
+                ;;
+        esac
         ;;
     workflow)
         node "$SCRIPT_DIR/flow-workflow.js" "${@:2}"
