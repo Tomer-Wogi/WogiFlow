@@ -142,8 +142,23 @@ show_help() {
     echo "  team sync-init <id>  Initialize project-based sync"
     echo "  team proposals       View/vote on proposals"
     echo "  team status          Show team status"
+    echo "  team dashboard       Start observability web dashboard (Phase 6)"
     echo "  export-profile       Export workflow config for team"
     echo "  import-profile       Import team config"
+    echo ""
+    echo "Integrations (Phase 6):"
+    echo "  jira list            List assigned Jira issues"
+    echo "  jira sync            Import Jira issues to ready.json"
+    echo "  jira push            Push completed tasks to Jira"
+    echo "  jira config          Show Jira configuration"
+    echo "  linear list          List assigned Linear issues"
+    echo "  linear sync          Import Linear issues to ready.json"
+    echo "  linear push          Push completed tasks to Linear"
+    echo "  linear config        Show Linear configuration"
+    echo "  external-tasks       List tasks from all integrations"
+    echo "  sync-daemon start    Start background sync daemon"
+    echo "  sync-daemon stop     Stop background sync daemon"
+    echo "  sync-daemon status   Show daemon status"
     echo ""
     echo "PRD Management:"
     echo "  prd load <file>      Load PRD into memory"
@@ -876,6 +891,10 @@ case "${1:-}" in
         ;;
     team)
         case "${2:-status}" in
+            dashboard)
+                # Phase 6: Team Observability Dashboard
+                node "$SCRIPT_DIR/flow-team-dashboard.js" "${@:3}"
+                ;;
             sync-status)
                 node "$SCRIPT_DIR/flow-team-sync.js" status
                 ;;
@@ -900,6 +919,24 @@ case "${1:-}" in
         ;;
     prd)
         node "$SCRIPT_DIR/flow-prd-manager.js" "${@:2}"
+        ;;
+    jira)
+        # Phase 6: Jira Integration
+        node "$SCRIPT_DIR/flow-jira-integration.js" "${@:2}"
+        ;;
+    linear)
+        # Phase 6: Linear Integration
+        node "$SCRIPT_DIR/flow-linear-integration.js" "${@:2}"
+        ;;
+    external-tasks)
+        # Phase 6: List tasks from all integrations
+        echo "Fetching from configured integrations..."
+        node "$SCRIPT_DIR/flow-jira-integration.js" list 2>/dev/null || true
+        node "$SCRIPT_DIR/flow-linear-integration.js" list 2>/dev/null || true
+        ;;
+    sync-daemon)
+        # Phase 6: Background Sync Daemon
+        node "$SCRIPT_DIR/flow-sync-daemon.js" "${@:2}"
         ;;
     voice-input|voice)
         node "$SCRIPT_DIR/flow-voice-input.js" "${@:2}"
