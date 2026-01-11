@@ -11,8 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
-const http = require('http');
-const https = require('https');
+const { HttpClient } = require('./flow-http-client');
 const { getProjectRoot, colors, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -291,7 +290,7 @@ async function selectCloudModel(provider) {
 }
 
 /**
- * Test cloud provider connection
+ * Test cloud provider connection using shared HttpClient
  */
 async function testCloudConnection(provider, model) {
   console.log(`\n${symbols.info} Testing connection to ${provider.name}...`);
@@ -300,45 +299,39 @@ async function testCloudConnection(provider, model) {
   spinner.start();
 
   try {
-    // Simple test - just check we can reach the API
-    // Full test would require actual API call
-    await new Promise((resolve, reject) => {
-      const url = new URL(CLOUD_PROVIDERS[provider.id].testEndpoint);
+    const testEndpoint = CLOUD_PROVIDERS[provider.id].testEndpoint;
+    const url = new URL(testEndpoint);
 
-      // Add API key to URL for Google
-      if (provider.id === 'google' && provider.apiKey) {
-        url.searchParams.set('key', provider.apiKey);
-      }
+    // Build provider-specific headers
+    const headers = { 'Content-Type': 'application/json' };
+    if (provider.id === 'openai') {
+      headers['Authorization'] = `Bearer ${provider.apiKey}`;
+    } else if (provider.id === 'anthropic') {
+      headers['x-api-key'] = provider.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+    }
 
-      const req = https.request(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(provider.id === 'openai' && { 'Authorization': `Bearer ${provider.apiKey}` }),
-          ...(provider.id === 'anthropic' && {
-            'x-api-key': provider.apiKey,
-            'anthropic-version': '2023-06-01'
-          })
-        },
-        timeout: 10000
-      }, (res) => {
-        // For Anthropic, 401 means key is wrong, 405 means endpoint reached
-        if (provider.id === 'anthropic' && (res.statusCode === 405 || res.statusCode === 200)) {
-          resolve(true);
-        } else if (res.statusCode >= 200 && res.statusCode < 400) {
-          resolve(true);
-        } else if (res.statusCode === 401 || res.statusCode === 403) {
-          reject(new Error('Invalid API key'));
-        } else {
-          resolve(true); // Optimistic - endpoint reached
-        }
-      });
+    // Add API key to URL for Google
+    let path = url.pathname;
+    if (provider.id === 'google' && provider.apiKey) {
+      path += `?key=${provider.apiKey}`;
+    }
 
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-      req.end();
-    });
+    const client = new HttpClient(url.origin, { headers, timeout: 10000 });
+    const response = await client.get(path);
 
+    // For Anthropic, 405 means endpoint reached (method not allowed but accessible)
+    if (provider.id === 'anthropic' && (response.status === 405 || response.status === 200)) {
+      spinner.stop('API connection verified!', true);
+      return true;
+    } else if (response.status >= 200 && response.status < 400) {
+      spinner.stop('API connection verified!', true);
+      return true;
+    } else if (response.status === 401 || response.status === 403) {
+      throw new Error('Invalid API key');
+    }
+
+    // Optimistic - endpoint reached
     spinner.stop('API connection verified!', true);
     return true;
   } catch (err) {
@@ -478,29 +471,15 @@ async function testConnection(provider, model) {
   spinner.start();
 
   try {
-    await new Promise((resolve, reject) => {
-      const isOllama = provider.id === 'ollama';
-      const url = new URL(isOllama ? '/api/generate' : '/v1/chat/completions', provider.endpoint);
+    const isOllama = provider.id === 'ollama';
+    const client = new HttpClient(provider.endpoint, { timeout: 30000 });
 
-      const body = isOllama
-        ? JSON.stringify({ model: model.id, prompt: 'Say "OK"', stream: false })
-        : JSON.stringify({ model: model.id, messages: [{ role: 'user', content: 'Say "OK"' }], max_tokens: 10 });
+    const path = isOllama ? '/api/generate' : '/v1/chat/completions';
+    const body = isOllama
+      ? { model: model.id, prompt: 'Say "OK"', stream: false }
+      : { model: model.id, messages: [{ role: 'user', content: 'Say "OK"' }], max_tokens: 10 };
 
-      const req = http.request(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000
-      }, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => resolve(data));
-      });
-
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-      req.write(body);
-      req.end();
-    });
+    await client.post(path, body);
 
     spinner.stop('Connection successful!', true);
     return true;

@@ -110,7 +110,13 @@ class HttpClient {
       });
 
       if (body) {
-        req.write(typeof body === 'string' ? body : JSON.stringify(body));
+        if (Buffer.isBuffer(body)) {
+          req.write(body);
+        } else if (typeof body === 'string') {
+          req.write(body);
+        } else {
+          req.write(JSON.stringify(body));
+        }
       }
       req.end();
     });
@@ -160,6 +166,52 @@ class HttpClient {
 
   delete(path, options = {}) {
     return this.request('DELETE', path, null, options);
+  }
+
+  /**
+   * Post multipart form data (for file uploads)
+   * @param {string} path - URL path
+   * @param {Array<{name: string, value: string|Buffer, filename?: string, contentType?: string}>} parts - Form parts
+   * @param {object} options - Additional options
+   * @returns {Promise<{status: number, data: any, headers: object}>}
+   */
+  async postMultipart(path, parts, options = {}) {
+    const boundary = '----HttpClientBoundary' + Math.random().toString(36).substring(2);
+    const chunks = [];
+
+    for (const part of parts) {
+      chunks.push(Buffer.from(`--${boundary}\r\n`));
+
+      if (part.filename) {
+        // File part
+        chunks.push(Buffer.from(
+          `Content-Disposition: form-data; name="${part.name}"; filename="${part.filename}"\r\n`
+        ));
+        chunks.push(Buffer.from(
+          `Content-Type: ${part.contentType || 'application/octet-stream'}\r\n\r\n`
+        ));
+      } else {
+        // Regular field
+        chunks.push(Buffer.from(
+          `Content-Disposition: form-data; name="${part.name}"\r\n\r\n`
+        ));
+      }
+
+      chunks.push(Buffer.isBuffer(part.value) ? part.value : Buffer.from(String(part.value)));
+      chunks.push(Buffer.from('\r\n'));
+    }
+
+    chunks.push(Buffer.from(`--${boundary}--\r\n`));
+    const body = Buffer.concat(chunks);
+
+    return this.request('POST', path, body, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length
+      }
+    });
   }
 }
 

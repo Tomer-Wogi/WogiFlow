@@ -18,8 +18,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const { spawn, execSync } = require('child_process');
+const { HttpClient } = require('./flow-http-client');
 const readline = require('readline');
 const { getConfig, getProjectRoot, colors: c } = require('./flow-utils');
 
@@ -222,7 +222,7 @@ async function transcribeLocal(audioPath, options = {}) {
 }
 
 /**
- * Transcribe with OpenAI Whisper API
+ * Transcribe with OpenAI Whisper API using shared HttpClient
  */
 async function transcribeOpenAI(audioPath, options = {}) {
   const config = getVoiceConfig();
@@ -237,55 +237,25 @@ async function transcribeOpenAI(audioPath, options = {}) {
   }
 
   const audioData = fs.readFileSync(audioPath);
-  const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+  const client = new HttpClient('https://api.openai.com', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    timeout: 60000
+  });
 
-  // Build multipart form data
-  const formData = Buffer.concat([
-    Buffer.from(`--${boundary}\r\n`),
-    Buffer.from('Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n'),
-    Buffer.from('Content-Type: audio/wav\r\n\r\n'),
-    audioData,
-    Buffer.from(`\r\n--${boundary}\r\n`),
-    Buffer.from('Content-Disposition: form-data; name="model"\r\n\r\n'),
-    Buffer.from('whisper-1'),
-    Buffer.from(`\r\n--${boundary}--\r\n`)
+  const response = await client.postMultipart('/v1/audio/transcriptions', [
+    { name: 'file', value: audioData, filename: 'audio.wav', contentType: 'audio/wav' },
+    { name: 'model', value: 'whisper-1' }
   ]);
 
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.openai.com',
-      path: '/v1/audio/transcriptions',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        'Content-Length': formData.length
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.error) {
-            reject(new Error(json.error.message));
-          } else {
-            resolve({ text: json.text, provider: 'openai', model: 'whisper-1' });
-          }
-        } catch (err) {
-          reject(new Error(`Failed to parse response: ${data}`));
-        }
-      });
-    });
+  if (response.data?.error) {
+    throw new Error(response.data.error.message);
+  }
 
-    req.on('error', reject);
-    req.write(formData);
-    req.end();
-  });
+  return { text: response.data.text, provider: 'openai', model: 'whisper-1' };
 }
 
 /**
- * Transcribe with Groq API
+ * Transcribe with Groq API using shared HttpClient
  */
 async function transcribeGroq(audioPath, options = {}) {
   const config = getVoiceConfig();
@@ -301,50 +271,21 @@ async function transcribeGroq(audioPath, options = {}) {
   }
 
   const audioData = fs.readFileSync(audioPath);
-  const boundary = '----WebKitFormBoundary' + Math.random().toString(36).substring(2);
+  const client = new HttpClient('https://api.groq.com', {
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    timeout: 60000
+  });
 
-  const formData = Buffer.concat([
-    Buffer.from(`--${boundary}\r\n`),
-    Buffer.from('Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n'),
-    Buffer.from('Content-Type: audio/wav\r\n\r\n'),
-    audioData,
-    Buffer.from(`\r\n--${boundary}\r\n`),
-    Buffer.from('Content-Disposition: form-data; name="model"\r\n\r\n'),
-    Buffer.from('whisper-large-v3'),
-    Buffer.from(`\r\n--${boundary}--\r\n`)
+  const response = await client.postMultipart('/openai/v1/audio/transcriptions', [
+    { name: 'file', value: audioData, filename: 'audio.wav', contentType: 'audio/wav' },
+    { name: 'model', value: 'whisper-large-v3' }
   ]);
 
-  return new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.groq.com',
-      path: '/openai/v1/audio/transcriptions',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        'Content-Length': formData.length
-      }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.error) {
-            reject(new Error(json.error.message));
-          } else {
-            resolve({ text: json.text, provider: 'groq', model: 'whisper-large-v3' });
-          }
-        } catch (err) {
-          reject(new Error(`Failed to parse response: ${data}`));
-        }
-      });
-    });
+  if (response.data?.error) {
+    throw new Error(response.data.error.message);
+  }
 
-    req.on('error', reject);
-    req.write(formData);
-    req.end();
-  });
+  return { text: response.data.text, provider: 'groq', model: 'whisper-large-v3' };
 }
 
 /**
