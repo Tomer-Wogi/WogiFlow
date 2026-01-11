@@ -91,6 +91,11 @@ show_help() {
     echo "  skill-create --list  List existing skills"
     echo "  skill detect         Detect frameworks in project"
     echo "  skill list           List installed skills"
+    echo "  skill registry       List skills from registry"
+    echo "  skill add <name>     Install skill from registry"
+    echo "  skill remove <name>  Remove installed skill"
+    echo "  skill update [name]  Update skill(s)"
+    echo "  skill info <name>    Show skill details"
     echo "  correct              Capture a correction/learning"
     echo "  correct \"desc\"       Quick mode with description"
     echo "  correct list         List recent corrections"
@@ -214,6 +219,12 @@ show_help() {
     echo "  bridge sync          Sync .workflow/ to CLI-specific folder"
     echo "  bridge status        Show bridge status"
     echo "  bridge list          List available bridges"
+    echo ""
+    echo "Release Channels:"
+    echo "  channel show         Show current release channel"
+    echo "  channel set <name>   Set release channel (stable, beta, canary)"
+    echo "  channel list         List available channels"
+    echo "  channel check        Check for updates"
     echo ""
     echo "Declarative Workflows:"
     echo "  workflow list        List available workflows"
@@ -517,8 +528,40 @@ case "${1:-}" in
                     node "$SCRIPT_DIR/flow-skill-creator.js" create "$3"
                 fi
                 ;;
+            add)
+                # Install skill from registry
+                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['add', '$3', ...process.argv.slice(2)])" -- "${@:4}"
+                ;;
+            remove)
+                # Remove installed skill
+                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['remove', '$3'])"
+                ;;
+            update)
+                # Update skills
+                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['update', '$3'])"
+                ;;
+            info)
+                # Show skill info
+                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['info', '$3'])"
+                ;;
+            registry)
+                # List skills from registry
+                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['list'])"
+                ;;
             *)
-                echo "Usage: flow skill [detect|list|create <name>]"
+                echo "Usage: flow skill [detect|list|create|add|remove|update|info|registry]"
+                echo ""
+                echo "Local Skills:"
+                echo "  detect              Detect frameworks in project"
+                echo "  list                List installed skills"
+                echo "  create <name>       Create a new skill"
+                echo ""
+                echo "Registry Skills:"
+                echo "  registry            List available skills from registry"
+                echo "  add <name>          Install skill from registry"
+                echo "  remove <name>       Remove installed skill"
+                echo "  update [name]       Update skill(s)"
+                echo "  info <name>         Show skill details"
                 ;;
         esac
         ;;
@@ -705,6 +748,10 @@ case "${1:-}" in
                 echo "  list    List available CLI bridges"
                 ;;
         esac
+        ;;
+    channel)
+        # Release channel management
+        node -e "require('$PROJECT_ROOT/lib/release-channel').channel(process.argv.slice(2))" -- "${@:2}"
         ;;
     workflow)
         node "$SCRIPT_DIR/flow-workflow.js" "${@:2}"
