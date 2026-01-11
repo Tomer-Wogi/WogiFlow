@@ -590,6 +590,28 @@
       "customRules": []
     }
   },
+  "multiModel": {
+    "enabled": true,
+    "routingStrategy": "quality-first",
+    "strategies": {
+      "quality-first": "Select highest-capability model matching requirements",
+      "cost-optimized": "Select cheapest model with required capabilities",
+      "learned": "Use historical success rates to optimize selection"
+    },
+    "fallbackEnabled": true,
+    "maxEscalations": 2,
+    "promptFragments": {
+      "enabled": true,
+      "directory": ".workflow/prompts/fragments",
+      "autoCompose": true
+    },
+    "costBudget": {
+      "enabled": false,
+      "daily": 10.00,
+      "perTask": 0.50,
+      "warnAt": 0.8
+    }
+  },
   "voice": {
     "enabled": false,
     "provider": null,

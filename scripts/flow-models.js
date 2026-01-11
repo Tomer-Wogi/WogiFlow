@@ -27,11 +27,19 @@ const {
   color,
   error,
   info,
+  warn,
   getConfig,
   fileExists,
   dirExists,
-  safeJsonParse
+  safeJsonParse,
+  printHeader,
+  printSection
 } = require('./flow-utils');
+
+// Phase 2: Import task analyzer and model router
+const { analyzeTask } = require('./flow-task-analyzer');
+const { routeTask, ROUTING_STRATEGIES } = require('./flow-model-router');
+const { composePrompt } = require('./flow-prompt-composer');
 
 // Paths
 const MODELS_DIR = path.join(PROJECT_ROOT, '.workflow', 'models');
@@ -822,6 +830,80 @@ function formatCostAnalysis(analysis) {
   return output;
 }
 
+/**
+ * Format recommendation output (Phase 2)
+ * @param {string} taskDesc - Task description
+ * @param {Object} analysis - Task analysis result
+ * @param {Object} routing - Routing decision
+ * @param {Object|null} promptPreview - Optional prompt preview
+ */
+function formatRecommendation(taskDesc, analysis, routing, promptPreview) {
+  printHeader('MODEL RECOMMENDATION');
+
+  // Task
+  printSection('Task');
+  console.log(`  "${taskDesc}"`);
+
+  // Analysis
+  printSection('Analysis');
+  const complexityColor = {
+    low: 'green',
+    medium: 'yellow',
+    high: 'red'
+  }[analysis.complexity.level];
+  console.log(`  Complexity: ${color(complexityColor, analysis.complexity.level.toUpperCase())}`);
+  console.log(`  Domain: ${color('cyan', analysis.domains.primary)}`);
+  console.log(`  Language: ${analysis.languages.primary}`);
+  console.log(`  Capabilities: ${analysis.capabilities.join(', ')}`);
+  console.log(`  Est. tokens: ~${analysis.tokens.estimated.total.toLocaleString()}`);
+
+  // Routing
+  printSection('Routing');
+  console.log(`  Strategy: ${color('cyan', routing.strategy)}`);
+  if (ROUTING_STRATEGIES[routing.strategy]) {
+    console.log(`  (${ROUTING_STRATEGIES[routing.strategy]})`);
+  }
+
+  // Primary Model
+  if (routing.primary) {
+    printSection('Recommended Model');
+    console.log(`  ${color('green', routing.primary.displayName)}`);
+    console.log(`  Provider: ${routing.primary.provider}`);
+    console.log(`  Tier: ${routing.primary.costTier}`);
+    console.log(`  Score: ${routing.primary.scores.total.toFixed(1)}/100`);
+    for (const reason of routing.primary.reasons.slice(0, 2)) {
+      console.log(`    - ${reason}`);
+    }
+  }
+
+  // Fallback
+  if (routing.fallback) {
+    printSection('Fallback');
+    console.log(`  ${color('yellow', routing.fallback.displayName)} (${routing.fallback.provider})`);
+  }
+
+  // Escalation
+  if (routing.escalation) {
+    printSection('Escalation');
+    console.log(`  ${color('cyan', routing.escalation.displayName)} (${routing.escalation.costTier} tier)`);
+  }
+
+  // Prompt preview
+  if (promptPreview) {
+    printSection('Prompt');
+    console.log(`  Fragments: ${promptPreview.fragments}`);
+    console.log(`  Est. tokens: ~${promptPreview.tokenEstimate.toLocaleString()}`);
+  }
+
+  // Warning
+  if (routing.warning) {
+    console.log('');
+    console.log(warn(routing.warning));
+  }
+
+  console.log('');
+}
+
 function formatProviders(providers) {
   let output = '';
   output += headerString('Available Providers');
@@ -965,6 +1047,55 @@ function main() {
         outputJson(analysis);
       } else {
         console.log(formatCostAnalysis(analysis));
+      }
+      break;
+
+    case 'recommend':
+    case 'analyze':
+      // Phase 2: Full task analysis and model recommendation
+      const taskDesc = args.filter(a => !a.startsWith('--') && a !== 'recommend' && a !== 'analyze').join(' ');
+      if (!taskDesc) {
+        console.log(error('Please provide a task description.'));
+        console.log(info('Usage: flow models recommend "Add user authentication"'));
+        process.exit(1);
+      }
+
+      // Analyze task
+      const taskAnalysis = analyzeTask({
+        title: taskDesc,
+        type: flags.type || 'feature'
+      });
+
+      // Route to model
+      const routeDecision = routeTask({
+        analysis: taskAnalysis,
+        strategy: flags.strategy || 'quality-first'
+      });
+
+      // Compose prompt preview (optional)
+      let promptPreview = null;
+      if (flags['with-prompt']) {
+        const composed = composePrompt({
+          model: routeDecision.primary?.modelId,
+          domain: taskAnalysis.domains.primary,
+          taskType: taskAnalysis.taskType
+        });
+        promptPreview = {
+          fragments: composed.fragmentCount,
+          tokenEstimate: composed.tokenEstimate
+        };
+      }
+
+      if (flags.json) {
+        outputJson({
+          success: true,
+          task: taskDesc,
+          analysis: taskAnalysis,
+          routing: routeDecision,
+          promptPreview
+        });
+      } else {
+        formatRecommendation(taskDesc, taskAnalysis, routeDecision, promptPreview);
       }
       break;
 

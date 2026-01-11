@@ -359,7 +359,7 @@ function parseFlags(args) {
   const namedFlags = {};
 
   // Known flags that take values (--flag value style)
-  const valuedFlags = ['priority', 'from', 'severity', 'limit', 'format', 'output'];
+  const valuedFlags = ['priority', 'from', 'severity', 'limit', 'format', 'output', 'strategy', 'type', 'file', 'analysis', 'model', 'domain', 'task-type'];
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
