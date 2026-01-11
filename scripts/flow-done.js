@@ -68,7 +68,7 @@ function getModifiedFiles() {
     // Combine and dedupe
     const all = [...new Set([...staged, ...unstaged, ...untracked])];
     return all.filter(f => f && f.length > 0);
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -333,8 +333,8 @@ async function main() {
         console.log(color('dim', `Archived durable session: ${archived.metrics.stepsCompleted} steps completed`));
       }
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Durable session archive: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Durable session archive: ${err.message}`);
   }
 
   // v1.7.0: Track task completion in session state and memory blocks
@@ -345,8 +345,8 @@ async function main() {
     // Add completion as a key fact
     const taskTitle = result.task?.title || taskId;
     addKeyFact(`Completed: ${taskTitle}`);
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${err.message}`);
   }
 
   // v1.7.0: Auto-archive request log if threshold exceeded
@@ -355,8 +355,8 @@ async function main() {
     if (archiveResult && archiveResult.archived > 0) {
       success(`Archived ${archiveResult.archived} request log entries`);
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Auto-archive: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Auto-archive: ${err.message}`);
   }
 
   // v2.2: Run afterTask workflow steps
@@ -383,8 +383,8 @@ async function main() {
         process.exit(1);
       }
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] afterTask steps: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] afterTask steps: ${err.message}`);
   }
 
   // Auto-capture learnings from bug fixes
@@ -392,8 +392,8 @@ async function main() {
     try {
       const { captureFromBugFix } = require('./flow-auto-learn');
       captureFromBugFix(taskId, modifiedFiles, taskTitle);
-    } catch (e) {
-      if (process.env.DEBUG) console.error(`[DEBUG] auto-learn: ${e.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] auto-learn: ${err.message}`);
     }
   }
 
@@ -417,8 +417,8 @@ async function main() {
         process.exit(1);
       }
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] beforeCommit steps: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] beforeCommit steps: ${err.message}`);
   }
 
   // Commit if there are changes
@@ -437,8 +437,8 @@ async function main() {
       } else if (!regressionResult.success) {
         warn('Regression tests failed - consider reviewing');
       }
-    } catch (e) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Regression tests: ${e.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Regression tests: ${err.message}`);
     }
   }
 
@@ -455,8 +455,8 @@ async function main() {
         });
         console.log(color('dim', `   Run: /wogi-test-browser ${browserSuggestion.flows[0]}`));
       }
-    } catch (e) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Browser test suggestion: ${e.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Browser test suggestion: ${err.message}`);
     }
   }
 
@@ -472,8 +472,8 @@ async function main() {
       if (process.env.DEBUG) {
         console.log(color('dim', '   Component index updated'));
       }
-    } catch (e) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Component index refresh: ${e.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Component index refresh: ${err.message}`);
     }
   }
 

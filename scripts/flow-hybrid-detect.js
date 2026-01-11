@@ -48,7 +48,7 @@ async function fetchJSON(url, timeout = 3000) {
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
-        } catch (e) {
+        } catch (err) {
           reject(new Error('Invalid JSON response'));
         }
       });
@@ -77,13 +77,13 @@ async function checkProvider(providerId) {
       available: true,
       models
     };
-  } catch (e) {
+  } catch (err) {
     return {
       id: providerId,
       name: provider.name,
       endpoint: provider.defaultEndpoint,
       available: false,
-      error: e.message
+      error: err.message
     };
   }
 }
@@ -106,8 +106,8 @@ async function testConnection(endpoint, model) {
       const response = await fetchJSON(`${endpoint}/v1/models`);
       return { success: true, message: 'Connection successful', models: response.data?.length || 0 };
     }
-  } catch (e) {
-    return { success: false, error: e.message };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 
@@ -162,6 +162,6 @@ Commands:
 }
 
 main().catch(e => {
-  console.error(JSON.stringify({ error: e.message }));
+  console.error(JSON.stringify({ error: err.message }));
   process.exit(1);
 });

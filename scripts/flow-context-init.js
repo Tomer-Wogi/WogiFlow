@@ -164,7 +164,7 @@ function detectStack() {
           stack.dependencies[dep] = deps[dep].replace(/[\^~]/g, '');
         }
       }
-    } catch (e) {
+    } catch (err) {
       console.error(`${c.yellow}Warning: Could not parse package.json${c.reset}`);
     }
   }

@@ -121,7 +121,7 @@ function saveStructuredFailure(step, errorHistory, attempts, config) {
     errors: errorHistory.slice(-5).map(e => ({
       category: e.category,
       signature: e.signature,
-      message: e.message?.slice(0, 500) || ''
+      message: err.message?.slice(0, 500) || ''
     })),
     suggestion: generateFixSuggestion(errorHistory),
     lastErrorCategory: errorHistory[errorHistory.length - 1]?.category || 'unknown'
@@ -130,8 +130,8 @@ function saveStructuredFailure(step, errorHistory, attempts, config) {
   try {
     fs.writeFileSync(failurePath, JSON.stringify(failureInfo, null, 2));
     log('dim', `   📝 Failure context saved to ${failurePath}`);
-  } catch (e) {
-    log('dim', `   ⚠️ Could not save failure context: ${e.message}`);
+  } catch (err) {
+    log('dim', `   ⚠️ Could not save failure context: ${err.message}`);
   }
 
   return failureInfo;
@@ -308,8 +308,8 @@ class LocalLLM {
       // Priority 3: Model-specific defaults
       this.contextWindow = modelDefaults.contextWindow;
       log('dim', `   📊 Using model default context window: ${this.contextWindow.toLocaleString()} tokens`);
-    } catch (e) {
-      log('dim', `   ⚠️ Could not fetch model info: ${e.message}`);
+    } catch (err) {
+      log('dim', `   ⚠️ Could not fetch model info: ${err.message}`);
       // Priority 3/4: Model-specific defaults or conservative fallback
       this.contextWindow = modelDefaults.contextWindow;
       log('dim', `   📊 Using model default context window: ${this.contextWindow.toLocaleString()} tokens`);
@@ -344,7 +344,7 @@ class LocalLLM {
               parsed.parameters?.num_ctx ||
               parsed.details?.parameter_size && 4096; // fallback
             resolve({ contextLength: contextLength || 4096 });
-          } catch (e) {
+          } catch (err) {
             reject(new Error('Invalid response from Ollama /api/show'));
           }
         });
@@ -387,7 +387,7 @@ class LocalLLM {
             // LM Studio may include context_length in model object
             const contextLength = model?.context_length || model?.max_tokens || 4096;
             resolve({ contextLength });
-          } catch (e) {
+          } catch (err) {
             reject(new Error('Invalid response from /v1/models'));
           }
         });
@@ -441,7 +441,7 @@ class LocalLLM {
           try {
             const parsed = JSON.parse(data);
             resolve(parsed.response || '');
-          } catch (e) {
+          } catch (err) {
             reject(new Error('Invalid response from Ollama'));
           }
         });
@@ -484,7 +484,7 @@ class LocalLLM {
           try {
             const parsed = JSON.parse(data);
             resolve(parsed.choices?.[0]?.message?.content || '');
-          } catch (e) {
+          } catch (err) {
             reject(new Error('Invalid response from LLM'));
           }
         });
@@ -1139,7 +1139,7 @@ function getProjectContext() {
   try {
     const config = getConfig();
     return config.hybrid?.projectContext || {};
-  } catch (e) {
+  } catch (err) {
     return {};
   }
 }
@@ -1294,7 +1294,7 @@ function detectUIFramework(projectRoot = PROJECT_ROOT) {
     if (deps['tailwindcss']) return 'tailwind';
 
     return 'react'; // vanilla
-  } catch (e) {
+  } catch (err) {
     return 'react';
   }
 }
@@ -1359,8 +1359,8 @@ function scanComponentPaths(projectRoot = PROJECT_ROOT, componentDirs = ['src/co
       // Determine alias path (@/components or relative)
       const aliasPath = dir.startsWith('src/') ? `@/${dir.slice(4)}` : `@/${dir}`;
       scanDir(fullDir, aliasPath);
-    } catch (e) {
-      log('dim', `   ⚠️ Error scanning ${dir}: ${e.message}`);
+    } catch (err) {
+      log('dim', `   ⚠️ Error scanning ${dir}: ${err.message}`);
     }
   }
 
@@ -1505,8 +1505,8 @@ class ProjectContextGenerator {
       const dir = path.dirname(this.contextPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(this.contextPath, context);
-    } catch (e) {
-      log('yellow', `   ⚠️ Could not cache context: ${e.message}`);
+    } catch (err) {
+      log('yellow', `   ⚠️ Could not cache context: ${err.message}`);
     }
   }
 
@@ -1705,7 +1705,7 @@ class ProjectContextGenerator {
           };
         }
       }
-    } catch (e) {
+    } catch (err) {
       // Ignore scan errors
     }
 
@@ -2242,8 +2242,8 @@ function logTokenMetrics(plan, executionResult, complexity) {
   // Save metrics
   try {
     fs.writeFileSync(metricsPath, JSON.stringify(metrics, null, 2));
-  } catch (e) {
-    log('yellow', `   ⚠️ Could not save metrics: ${e.message}`);
+  } catch (err) {
+    log('yellow', `   ⚠️ Could not save metrics: ${err.message}`);
   }
 }
 
@@ -2846,8 +2846,8 @@ class Validator {
         stdio: ['pipe', 'pipe', 'pipe']
       });
       return { success: true, message: 'TypeScript check passed' };
-    } catch (e) {
-      const stderr = e.stderr || e.stdout || e.message;
+    } catch (err) {
+      const stderr = e.stderr || e.stdout || err.message;
 
       // Filter out help text (indicates no tsconfig found)
       if (stderr.includes('COMMON COMMANDS') || stderr.includes('tsc: The TypeScript Compiler')) {
@@ -2903,8 +2903,8 @@ class Validator {
         stdio: ['pipe', 'pipe', 'pipe']
       });
       return { success: true, message: 'ESLint check passed' };
-    } catch (e) {
-      const stderr = e.stderr || e.stdout || e.message;
+    } catch (err) {
+      const stderr = e.stderr || e.stdout || err.message;
       return {
         success: false,
         message: stderr.split('\n').slice(0, 10).join('\n')
@@ -3239,8 +3239,8 @@ ${step.description || ''}
             .map(([scope, importPath]) => `- In ${scope}: \`import type { X } from '${importPath}'\``)
             .join('\n');
         }
-      } catch (e) {
-        log('dim', `   ⚠️ Could not parse config.json: ${e.message}`);
+      } catch (err) {
+        log('dim', `   ⚠️ Could not parse config.json: ${err.message}`);
       }
     }
 
@@ -3322,8 +3322,8 @@ ${step.description || ''}
         if (screensMatch) {
           context.availableComponents += '\n\n' + screensMatch[0].trim();
         }
-      } catch (e) {
-        log('dim', `   ⚠️ Could not parse app-map.md: ${e.message}`);
+      } catch (err) {
+        log('dim', `   ⚠️ Could not parse app-map.md: ${err.message}`);
       }
     }
 
@@ -3569,9 +3569,9 @@ class Orchestrator {
     let prompt;
     try {
       prompt = this.templates.render(templateName, params);
-    } catch (e) {
-      result.errors.push(`Template error: ${e.message}`);
-      log('red', `   ❌ Template error: ${e.message}`);
+    } catch (err) {
+      result.errors.push(`Template error: ${err.message}`);
+      log('red', `   ❌ Template error: ${err.message}`);
       return result;
     }
 
@@ -3846,14 +3846,14 @@ class Orchestrator {
           prompt = refined.prompt;
           log('dim', `   📝 Applying ${refined.strategy} refinement strategy`);
         }
-      } catch (e) {
-        result.errors.push(e.message);
-        log('red', `   ❌ Error: ${e.message}`);
+      } catch (err) {
+        result.errors.push(err.message);
+        log('red', `   ❌ Error: ${err.message}`);
 
         // Smart retry: Track catch errors too
-        const errorSig = getErrorSignature(e.message);
-        const errorCat = categorizeError(e.message);
-        errorHistory.push({ message: e.message, signature: errorSig, category: errorCat });
+        const errorSig = getErrorSignature(err.message);
+        const errorCat = categorizeError(err.message);
+        errorHistory.push({ message: err.message, signature: errorSig, category: errorCat });
 
         if (errorSig === lastErrorSignature) {
           consecutiveSameError++;
@@ -3990,8 +3990,8 @@ Examples:
     orchestrator.printSummary(results);
 
     process.exit(results.success ? 0 : 1);
-  } catch (e) {
-    log('red', `\n❌ Orchestrator error: ${e.message}`);
+  } catch (err) {
+    log('red', `\n❌ Orchestrator error: ${err.message}`);
     process.exit(1);
   }
 }

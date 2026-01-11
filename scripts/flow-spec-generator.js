@@ -121,9 +121,9 @@ async function generateSpec(taskId, taskContext) {
           ? generateClarificationQuestions(assumptions)
           : []
       };
-    } catch (e) {
+    } catch (err) {
       // Assumption detector not available
-      spec.sections.assumptions = { detected: [], needingClarification: [], error: e.message };
+      spec.sections.assumptions = { detected: [], needingClarification: [], error: err.message };
     }
   }
 

@@ -295,10 +295,10 @@ class StdioServer {
         const request = JSON.parse(line);
         const response = await this.handleRequest(request);
         console.log(JSON.stringify(response));
-      } catch (e) {
+      } catch (err) {
         console.log(JSON.stringify({
           jsonrpc: '2.0',
-          error: { code: -32700, message: 'Parse error', data: e.message },
+          error: { code: -32700, message: 'Parse error', data: err.message },
           id: null
         }));
       }
@@ -355,10 +355,10 @@ class StdioServer {
 
       return { jsonrpc: '2.0', result, id };
 
-    } catch (e) {
+    } catch (err) {
       return {
         jsonrpc: '2.0',
-        error: { code: -32603, message: e.message },
+        error: { code: -32603, message: err.message },
         id
       };
     }
@@ -428,9 +428,9 @@ class HttpServer {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(response));
 
-        } catch (e) {
+        } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: e.message }));
+          res.end(JSON.stringify({ error: err.message }));
         }
       });
     });

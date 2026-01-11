@@ -111,7 +111,7 @@ function linearRequest(query, variables = {}) {
             return;
           }
           resolve(result.data);
-        } catch (e) {
+        } catch (err) {
           reject(new Error(`Parse error: ${data}`));
         }
       });
@@ -413,8 +413,8 @@ async function pushCompleted() {
       await updateIssueState(issueId, 'Done');
       await addComment(issueId, `Completed via Wogi Flow at ${task.completedAt}`);
       pushed.push(identifier);
-    } catch (e) {
-      warn(`Failed to update ${identifier}: ${e.message}`);
+    } catch (err) {
+      warn(`Failed to update ${identifier}: ${err.message}`);
     }
   }
 

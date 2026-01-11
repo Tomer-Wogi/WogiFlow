@@ -133,7 +133,7 @@ function extractExports(filePath) {
       result.defaultExport = defaultAtEnd[1];
     }
 
-  } catch (e) {
+  } catch (err) {
     // Ignore read errors
   }
 
@@ -285,7 +285,7 @@ function extractComponentDetails(filePath) {
       result.typeAliases[`_fcProps_${propsTypeName}`] = propsTypeName;
     }
 
-  } catch (e) {
+  } catch (err) {
     // Ignore read errors
   }
 
@@ -590,7 +590,7 @@ function scanDirectory(dirPath, baseImportPath, target, includeDetails = false) 
         target[entry.name] = result;
       }
     }
-  } catch (e) {
+  } catch (err) {
     // Ignore scan errors
   }
 }
@@ -630,7 +630,7 @@ function scanDirectoryFlat(dirPath, baseImportPath, target, typesOnly = false) {
         }
       }
     }
-  } catch (e) {
+  } catch (err) {
     // Ignore scan errors
   }
 }
@@ -669,8 +669,8 @@ function saveExportMapCache(exportMap) {
       fs.mkdirSync(stateDir, { recursive: true });
     }
     fs.writeFileSync(CACHE_PATH, JSON.stringify(exportMap, null, 2));
-  } catch (e) {
-    console.error(`Warning: Could not cache export map: ${e.message}`);
+  } catch (err) {
+    console.error(`Warning: Could not cache export map: ${err.message}`);
   }
 }
 
@@ -683,8 +683,8 @@ function clearCache() {
       fs.unlinkSync(CACHE_PATH);
       console.log('✓ Cleared export map cache');
     }
-  } catch (e) {
-    console.error(`Warning: Could not clear cache: ${e.message}`);
+  } catch (err) {
+    console.error(`Warning: Could not clear cache: ${err.message}`);
   }
 }
 

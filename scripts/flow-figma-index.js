@@ -431,7 +431,7 @@ class ComponentScanner {
 
       return component;
 
-    } catch (e) {
+    } catch (err) {
       console.log(`   ⚠️ Babel parse error: ${component.name}`);
       return this.parseReactWithRegex(content, component);
     }

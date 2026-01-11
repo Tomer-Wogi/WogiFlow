@@ -74,8 +74,8 @@ function safeRegExp(pattern, flags = '') {
 
   try {
     return new RegExp(pattern, flags);
-  } catch (e) {
-    console.error(`Invalid regex pattern: ${pattern} - ${e.message}`);
+  } catch (err) {
+    console.error(`Invalid regex pattern: ${pattern} - ${err.message}`);
     return null;
   }
 }
@@ -367,8 +367,8 @@ function loadPatterns() {
     // Ensure rules array exists
     parsed.rules = parsed.rules || [];
     return parsed;
-  } catch (e) {
-    console.error('Error loading damage-control.yaml:', e.message);
+  } catch (err) {
+    console.error(console.error('Error loading damage-control.yaml:', err.message));
     return {
       rules: [],
       blocked: [],
@@ -845,7 +845,7 @@ Configuration (config.json):
       if (contextStr) {
         try {
           context = JSON.parse(contextStr);
-        } catch (e) {
+        } catch (err) {
           log('red', 'Error: Context must be valid JSON');
           process.exit(1);
         }

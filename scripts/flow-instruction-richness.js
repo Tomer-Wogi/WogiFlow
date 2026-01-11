@@ -24,7 +24,7 @@ const path = require('path');
 let lspModule = null;
 try {
   lspModule = require('./flow-lsp');
-} catch (e) {
+} catch (err) {
   // LSP module not available, will use fallback
 }
 
@@ -320,7 +320,7 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
           if (typeInfo) {
             types.push(`// ${id.name}\n${typeInfo}`);
           }
-        } catch (e) {
+        } catch (err) {
           // Skip individual errors
         }
       }
@@ -338,7 +338,7 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
     }
 
     return types.length > 0 ? types.join('\n\n') : null;
-  } catch (e) {
+  } catch (err) {
     // Fallback to regex-based loading on any error
     return loadRelevantTypes(projectRoot, filePath, options);
   }

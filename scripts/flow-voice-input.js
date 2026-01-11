@@ -272,7 +272,7 @@ async function transcribeOpenAI(audioPath, options = {}) {
           } else {
             resolve({ text: json.text, provider: 'openai', model: 'whisper-1' });
           }
-        } catch (e) {
+        } catch (err) {
           reject(new Error(`Failed to parse response: ${data}`));
         }
       });
@@ -335,7 +335,7 @@ async function transcribeGroq(audioPath, options = {}) {
           } else {
             resolve({ text: json.text, provider: 'groq', model: 'whisper-large-v3' });
           }
-        } catch (e) {
+        } catch (err) {
           reject(new Error(`Failed to parse response: ${data}`));
         }
       });

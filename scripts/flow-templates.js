@@ -254,7 +254,7 @@ class ProjectAnalyzer {
         }));
 
         console.log(`\n  Import aliases: ${this.patterns.importAliases.map(a => a.alias).join(', ') || 'None'}`);
-      } catch (e) {
+      } catch (err) {
         // Ignore tsconfig parse errors
       }
     }

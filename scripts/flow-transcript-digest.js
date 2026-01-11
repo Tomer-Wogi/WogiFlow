@@ -36,7 +36,7 @@ function loadConfig() {
   try {
     const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
     return config.transcriptDigestion || {};
-  } catch (e) {
+  } catch (err) {
     return {};
   }
 }
@@ -61,7 +61,7 @@ function now() {
 function loadActiveDigest() {
   try {
     return JSON.parse(fs.readFileSync(ACTIVE_DIGEST_FILE, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return { session: { status: 'inactive' } };
   }
 }
@@ -568,7 +568,7 @@ function loadStatementMap() {
   const mapPath = path.join(activeDigest.session.digest_path, 'statement-map.json');
   try {
     return JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -869,7 +869,7 @@ function loadOrphans() {
   const orphansPath = path.join(activeDigest.session.digest_path, 'orphans.json');
   try {
     return JSON.parse(fs.readFileSync(orphansPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -1255,7 +1255,7 @@ function loadClarifications() {
   const clarPath = path.join(activeDigest.session.digest_path, 'clarifications.json');
   try {
     return JSON.parse(fs.readFileSync(clarPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return {
       questions: [],
       contradictions: [],
@@ -1971,7 +1971,7 @@ function getSessionProgress(digestPath) {
       progress.topics_count = topics.topics?.length || 0;
       progress.passes_completed.push('topics');
       progress.phase = 'topics';
-    } catch (e) {}
+    } catch (err) {}
   }
 
   // Check statements
@@ -1982,7 +1982,7 @@ function getSessionProgress(digestPath) {
       progress.statements_count = stmtMap.statements?.length || 0;
       progress.passes_completed.push('statements');
       progress.phase = 'statements';
-    } catch (e) {}
+    } catch (err) {}
   }
 
   // Check orphans pass
@@ -2001,7 +2001,7 @@ function getSessionProgress(digestPath) {
       progress.questions_total = clar.questions?.length || 0;
       progress.questions_answered = clar.questions?.filter(q => q.status === 'answered')?.length || 0;
       progress.phase = 'clarification';
-    } catch (e) {}
+    } catch (err) {}
   }
 
   // Check stories
@@ -2012,7 +2012,7 @@ function getSessionProgress(digestPath) {
       progress.stories_generated = stories.stories?.length || 0;
       progress.stories_approved = stories.stories?.filter(s => s.approval_status === 'approved')?.length || 0;
       progress.phase = 'stories';
-    } catch (e) {}
+    } catch (err) {}
   }
 
   // Check queue for presentation phase
@@ -4548,7 +4548,7 @@ function loadTopics() {
   const topicsPath = path.join(activeDigest.session.digest_path, 'topics.json');
   try {
     return JSON.parse(fs.readFileSync(topicsPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -6139,7 +6139,7 @@ function parseTeamsJSON(content, options = {}) {
   let data;
   try {
     data = JSON.parse(content);
-  } catch (e) {
+  } catch (err) {
     return { error: 'Invalid JSON format', format: 'unknown' };
   }
 
@@ -6194,7 +6194,7 @@ function detectMeetingType(content) {
     try {
       JSON.parse(trimmed);
       return 'teams_json';
-    } catch (e) {
+    } catch (err) {
       // Not valid JSON
     }
   }
@@ -7800,7 +7800,7 @@ function loadStory(storyId) {
   const storyPath = path.join(activeDigest.session.digest_path, 'stories', `${storyId}.json`);
   try {
     return JSON.parse(fs.readFileSync(storyPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -7820,11 +7820,11 @@ function loadAllStories() {
     return files.map(f => {
       try {
         return JSON.parse(fs.readFileSync(path.join(storiesPath, f), 'utf8'));
-      } catch (e) {
+      } catch (err) {
         return null;
       }
     }).filter(Boolean);
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -7919,7 +7919,7 @@ function loadQueue() {
   const queuePath = path.join(activeDigest.session.digest_path, 'presentation-queue.json');
   try {
     return JSON.parse(fs.readFileSync(queuePath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -8309,7 +8309,7 @@ function loadEditSessions() {
   const sessionsPath = path.join(activeDigest.session.digest_path, 'edit-sessions.json');
   try {
     return JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     return { active_session: null, sessions: [] };
   }
 }
@@ -9150,7 +9150,7 @@ function addTasksToReadyJson(tasks, options = {}) {
   let readyData;
   try {
     readyData = JSON.parse(fs.readFileSync(readyPath, 'utf8'));
-  } catch (e) {
+  } catch (err) {
     readyData = {
       lastUpdated: now(),
       ready: [],
@@ -10465,8 +10465,8 @@ function main() {
         if (pass2Result.metadata.contradictions_detected > 0) {
           console.log(`${c.yellow}⚠ Contradictions detected:${c.reset} ${pass2Result.metadata.contradictions_detected}`);
         }
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10544,8 +10544,8 @@ function main() {
         if (pass3Result.orphans.length > 0) {
           console.log(`${c.yellow}⚠ Still need clarification:${c.reset} ${pass3Result.orphans.length}`);
         }
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10599,8 +10599,8 @@ function main() {
             console.log(`  ${c.dim}${p.clarification_id}:${c.reset} ${p.statement1_id} vs ${p.statement2_id}`);
           }
         }
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10642,8 +10642,8 @@ function main() {
         console.log(`  ${c.yellow}P2 (Medium):${c.reset} ${qResult.stats.by_priority.P2 || 0}`);
         console.log(`  ${c.dim}P3 (Low):${c.reset} ${qResult.stats.by_priority.P3 || 0}`);
         console.log(`\n${c.dim}Topics with questions: ${qResult.stats.topics_with_questions}${c.reset}`);
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10752,8 +10752,8 @@ function main() {
           console.log(`\n${c.cyan}Next questions:${c.reset}\n`);
           console.log(answerResult.formatted_questions);
         }
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10824,8 +10824,8 @@ function main() {
         if (resolved.winner) {
           console.log(`  ${c.dim}Winner:${c.reset} ${resolved.winner}`);
         }
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -10905,8 +10905,8 @@ function main() {
         // Check completion
         const compStatus = checkCompletion();
         console.log(`\n${c.dim}Remaining: ${compStatus.pending_questions} question(s)${c.reset}`);
-      } catch (e) {
-        console.error(`${c.red}Error: ${e.message}${c.reset}`);
+      } catch (err) {
+        console.error(`${c.red}Error: ${err.message}${c.reset}`);
         process.exit(1);
       }
       break;
@@ -11883,7 +11883,7 @@ function main() {
       if (previewResult.validation.errors.length > 0) {
         console.log(`${c.red}Errors:${c.reset}`);
         for (const e of previewResult.validation.errors) {
-          console.log(`  ${e.story_id}: ${e.message}`);
+          console.log(`  ${e.story_id}: ${err.message}`);
         }
         console.log();
       }

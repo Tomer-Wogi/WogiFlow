@@ -38,8 +38,8 @@ function getCompletedTasks() {
   try {
     const ready = JSON.parse(fs.readFileSync(READY_PATH, 'utf8'));
     return ready.recentlyCompleted || [];
-  } catch (e) {
-    log('yellow', `Warning: Could not parse ready.json: ${e.message}`);
+  } catch (err) {
+    log('yellow', `Warning: Could not parse ready.json: ${err.message}`);
     return [];
   }
 }
@@ -139,11 +139,11 @@ function runTaskTests(taskId, taskData) {
       passed: true,
       testFiles
     };
-  } catch (e) {
+  } catch (err) {
     return {
       taskId,
       passed: false,
-      error: e.message,
+      error: err.message,
       testFiles
     };
   }
@@ -180,7 +180,7 @@ function detectTestRunner(testFiles) {
         // Fallback to npm test
         return 'npm test -- --passWithNoTests';
       }
-    } catch (e) {
+    } catch (err) {
       // package.json is malformed, fall through to default
     }
   }

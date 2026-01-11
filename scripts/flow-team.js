@@ -82,7 +82,7 @@ function getTeamState() {
       state.refreshToken = decryptToken(state.refreshToken);
     }
     return state;
-  } catch (e) {
+  } catch (err) {
     return { loggedIn: false };
   }
 }
@@ -126,7 +126,7 @@ function decryptToken(encrypted) {
     let decrypted = decipher.update(parts[1], 'hex', 'utf8');
     decrypted += decipher.final('utf8');
     return decrypted;
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -160,7 +160,7 @@ function getOfflineQueue() {
   if (!fileExists(OFFLINE_QUEUE_FILE)) return [];
   try {
     return JSON.parse(readFile(OFFLINE_QUEUE_FILE));
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -196,7 +196,7 @@ async function processOfflineQueue() {
         remaining.push({ ...item, retries: item.retries + 1 });
         failed++;
       }
-    } catch (e) {
+    } catch (err) {
       if (item.retries < 3) {
         remaining.push({ ...item, retries: item.retries + 1 });
       }
@@ -261,9 +261,9 @@ async function ensureValidToken() {
         saveTeamState(state);
         return state.accessToken;
       }
-    } catch (e) {
+    } catch (err) {
       // Token refresh failed, return existing token and hope for the best
-      console.error('Token refresh failed:', e.message);
+      console.error('Token refresh failed:', err.message);
     }
   }
 
@@ -306,7 +306,7 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     return await response.json();
-  } catch (e) {
+  } catch (err) {
     // Network error - add to offline queue if it's a write operation
     if (options.method && ['POST', 'PUT', 'DELETE'].includes(options.method)) {
       // Extract teamId from endpoint
@@ -321,7 +321,7 @@ async function apiRequest(endpoint, options = {}) {
         return { error: 'queued', message: 'Operation queued for sync when online' };
       }
     }
-    return { error: 'network', message: `Backend unavailable: ${e.message}` };
+    return { error: 'network', message: `Backend unavailable: ${err.message}` };
   }
 }
 
@@ -366,7 +366,7 @@ async function applyApprovedProposals(approvedProposals) {
     // Mark as applied in local memory
     try {
       await memoryDb.markFactPromoted(`proposal:${proposal.id}`, 'decisions.md');
-    } catch (e) {
+    } catch (err) {
       // Ignore if fact doesn't exist locally
     }
   }
@@ -560,8 +560,8 @@ async function login(inviteCodeOrEmail, password) {
     await sync({ silent: true });
     success('Initial sync complete');
 
-  } catch (e) {
-    error(`Could not connect to team backend: ${e.message}`);
+  } catch (err) {
+    error(`Could not connect to team backend: ${err.message}`);
     info('Check your internet connection or try again later.');
   }
 }
@@ -971,7 +971,7 @@ module.exports = {
 
 if (require.main === module) {
   main().catch(e => {
-    error(`Error: ${e.message}`);
+    error(`Error: ${err.message}`);
     process.exit(1);
   });
 }

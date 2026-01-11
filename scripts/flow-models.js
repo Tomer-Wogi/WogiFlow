@@ -452,10 +452,10 @@ function recordTaskExecution(modelId, taskData) {
         modelId,
         taskType: taskData.taskType || 'unknown'
       });
-    } catch (e) {
+    } catch (err) {
       // Cascade module not available - log only if not a "cannot find module" error
-      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
-        console.error('[flow-models] Cascade integration error:', e.message);
+      if (!err.code || err.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Cascade integration error:', err.message);
       }
     }
 
@@ -468,10 +468,10 @@ function recordTaskExecution(modelId, taskData) {
         success: true,
         context: taskData.description || taskData.title || ''
       });
-    } catch (e) {
+    } catch (err) {
       // Tiered learning module not available - log only if not a "cannot find module" error
-      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
-        console.error('[flow-models] Tiered learning integration error:', e.message);
+      if (!err.code || err.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Tiered learning integration error:', err.message);
       }
     }
   } else {
@@ -495,10 +495,10 @@ function recordTaskExecution(modelId, taskData) {
 
       // Add cascade info to task data for tracking
       taskData.cascadeInfo = cascadeResult;
-    } catch (e) {
+    } catch (err) {
       // Cascade module not available - log only if not a "cannot find module" error
-      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
-        console.error('[flow-models] Cascade integration error:', e.message);
+      if (!err.code || err.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Cascade integration error:', err.message);
       }
     }
 
@@ -511,10 +511,10 @@ function recordTaskExecution(modelId, taskData) {
         success: false,
         context: taskData.errorMessage || taskData.error || ''
       });
-    } catch (e) {
+    } catch (err) {
       // Tiered learning module not available - log only if not a "cannot find module" error
-      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
-        console.error('[flow-models] Tiered learning integration error:', e.message);
+      if (!err.code || err.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Tiered learning integration error:', err.message);
       }
     }
   }

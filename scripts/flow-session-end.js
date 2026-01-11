@@ -35,7 +35,7 @@ const { autoArchiveIfNeeded, getLogStats } = require('./flow-log-manager');
 let memoryDb = null;
 try {
   memoryDb = require('./flow-memory-db');
-} catch (e) {
+} catch (err) {
   // Memory module not available
 }
 
@@ -106,8 +106,8 @@ async function handleUncommittedChanges() {
         // Use execFileSync to prevent command injection from commit message
         execFileSync('git', ['commit', '-m', commitMsg], { stdio: 'pipe' });
         success('Changes committed');
-      } catch (e) {
-        warn(`Commit failed: ${e.message}`);
+      } catch (err) {
+        warn(`Commit failed: ${err.message}`);
       }
     }
   } else {
@@ -139,8 +139,8 @@ function updateProgress() {
 
     writeFile(PATHS.progress, content);
     success('Progress updated');
-  } catch (e) {
-    warn(`Failed to update progress: ${e.message}`);
+  } catch (err) {
+    warn(`Failed to update progress: ${err.message}`);
   }
 }
 
@@ -211,8 +211,8 @@ function saveSessionSummaryToState() {
 
     saveSessionSummary(summary);
     success('Session state saved');
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Session save: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Session save: ${err.message}`);
     warn('Could not save session state');
   }
 }
@@ -228,8 +228,8 @@ function archiveRequestLogIfNeeded() {
       success(`Archived ${result.archived} request log entries`);
       console.log(color('dim', `  Archive: ${result.archivePath}`));
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Archive: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Archive: ${err.message}`);
   }
 }
 
@@ -250,8 +250,8 @@ function showContextHealthSummary() {
         console.log(`  ${color(statusColor, health.recommendation)}`);
       }
     }
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Context health: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Context health: ${err.message}`);
   }
 }
 
@@ -344,7 +344,7 @@ async function automaticMemoryManagement() {
               // Fallback: tell user to run manually
               console.log('    Run: ./scripts/flow memory-sync --auto');
             }
-          } catch (e) {
+          } catch (err) {
             // Module not available or error, fall back to manual
             console.log('    Run: ./scripts/flow memory-sync --auto');
           }
@@ -359,8 +359,8 @@ async function automaticMemoryManagement() {
 
     success('Memory management complete');
 
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Memory management: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Memory management: ${err.message}`);
     warn('Memory management skipped');
   } finally {
     try {
@@ -432,6 +432,6 @@ async function main() {
 }
 
 main().catch(e => {
-  console.error('Error:', e.message);
+  console.error(console.error('Error:', err.message));
   process.exit(1);
 });

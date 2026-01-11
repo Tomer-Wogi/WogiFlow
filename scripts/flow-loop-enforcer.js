@@ -244,7 +244,7 @@ function getSimpleLoop() {
 
   try {
     return JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -870,7 +870,7 @@ function verifyCriterion(criterion, context = {}) {
               verification: 'component-exists'
             };
           }
-        } catch (e) { /* continue searching */ }
+        } catch (err) { /* continue searching */ }
       }
     }
     return {
@@ -901,10 +901,10 @@ function verifyCriterion(criterion, context = {}) {
         message: `✓ Command "flow ${cmd}" works`,
         verification: 'cli-works'
       };
-    } catch (e) {
+    } catch (err) {
       return {
         passed: false,
-        message: `✗ Command "flow ${cmd}" failed: ${e.message.substring(0, 100)}`,
+        message: `✗ Command "flow ${cmd}" failed: ${err.message.substring(0, 100)}`,
         verification: 'cli-works'
       };
     }
@@ -934,8 +934,8 @@ function verifyCriterion(criterion, context = {}) {
           : `✗ Config "${configKey}" not found`,
         verification: 'config-exists'
       };
-    } catch (e) {
-      return { passed: false, message: `✗ Config check failed: ${e.message}`, verification: 'config-exists' };
+    } catch (err) {
+      return { passed: false, message: `✗ Config check failed: ${err.message}`, verification: 'config-exists' };
     }
   }
 
@@ -980,8 +980,8 @@ function verifyCriterion(criterion, context = {}) {
         stdio: ['pipe', 'pipe', 'pipe']
       });
       return { passed: true, message: '✓ Tests pass', verification: 'tests' };
-    } catch (e) {
-      return { passed: false, message: `✗ Tests failed: ${e.message.substring(0, 100)}`, verification: 'tests' };
+    } catch (err) {
+      return { passed: false, message: `✗ Tests failed: ${err.message.substring(0, 100)}`, verification: 'tests' };
     }
   }
 

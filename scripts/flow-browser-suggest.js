@@ -68,7 +68,7 @@ function getTaskFiles(taskId, taskData) {
         const mentionedFiles = match[1].split(',').map(f => f.trim().replace(/`/g, ''));
         mentionedFiles.forEach(f => files.add(f));
       }
-    } catch (e) {
+    } catch (err) {
       // Ignore errors reading log
     }
   }
@@ -83,7 +83,7 @@ function getTaskFiles(taskId, taskData) {
         stdio: ['pipe', 'pipe', 'pipe']
       });
       diff.split('\n').filter(Boolean).forEach(f => files.add(f));
-    } catch (e) {
+    } catch (err) {
       // Git command failed, ignore
     }
   }
@@ -151,11 +151,11 @@ function findMatchingFlows(taskId, taskData) {
             }
           }
         }
-      } catch (e) {
+      } catch (err) {
         // Invalid flow file, skip
       }
     }
-  } catch (e) {
+  } catch (err) {
     // Can't read flows directory
   }
 
@@ -217,7 +217,7 @@ function listFlows() {
     return fs.readdirSync(FLOWS_DIR)
       .filter(f => f.endsWith('.json'))
       .map(f => f.replace('.json', ''));
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -281,7 +281,7 @@ Test flows are stored in: .workflow/tests/flows/*.json
       ];
       const task = allTasks.find(t => t.id === taskId);
       if (task) taskData = task;
-    } catch (e) {
+    } catch (err) {
       // Ignore
     }
   }

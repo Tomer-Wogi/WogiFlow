@@ -255,8 +255,8 @@ function saveState() {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(STATE_PATH, JSON.stringify(confidenceState, null, 2));
-  } catch (e) {
-    warn(`Could not save confidence state: ${e.message}`);
+  } catch (err) {
+    warn(`Could not save confidence state: ${err.message}`);
   }
 }
 
@@ -774,7 +774,7 @@ Examples:
       let content;
       try {
         content = fs.readFileSync(filePath, 'utf8');
-      } catch (e) {
+      } catch (err) {
         error('Failed to read file');
         process.exit(1);
       }

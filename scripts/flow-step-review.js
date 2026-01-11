@@ -164,7 +164,7 @@ async function runMultiAgentReview(files, config) {
       ]);
 
       allIssues.push(...fileIssues);
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }
@@ -186,7 +186,7 @@ async function runSimpleReview(files, config) {
       const content = fs.readFileSync(filePath, 'utf8');
       const fileIssues = runBasicChecks(content, file);
       allIssues.push(...fileIssues);
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }

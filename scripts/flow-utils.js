@@ -451,12 +451,12 @@ function readJson(filePath, defaultValue = undefined) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(content);
-  } catch (e) {
+  } catch (err) {
     // Check for undefined to allow falsy defaults like false, 0, ''
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Failed to read JSON from ${filePath}: ${e.message}`);
+    throw new Error(`Failed to read JSON from ${filePath}: ${err.message}`);
   }
 }
 
@@ -475,10 +475,10 @@ function writeJson(filePath, data) {
     fs.writeFileSync(tempPath, content);
     fs.renameSync(tempPath, filePath);  // Atomic rename
     return true;
-  } catch (e) {
+  } catch (err) {
     // Clean up temp file if it exists
     try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write JSON to ${filePath}: ${e.message}`);
+    throw new Error(`Failed to write JSON to ${filePath}: ${err.message}`);
   }
 }
 
@@ -532,12 +532,12 @@ function safeJsonParse(filePath, defaultValue = null) {
 function readFile(filePath, defaultValue = undefined) {
   try {
     return fs.readFileSync(filePath, 'utf-8');
-  } catch (e) {
+  } catch (err) {
     // Check for undefined to allow falsy defaults like false, 0, ''
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Failed to read file ${filePath}: ${e.message}`);
+    throw new Error(`Failed to read file ${filePath}: ${err.message}`);
   }
 }
 
@@ -551,10 +551,10 @@ function writeFile(filePath, content) {
     fs.writeFileSync(tempPath, content);
     fs.renameSync(tempPath, filePath);  // Atomic rename
     return true;
-  } catch (e) {
+  } catch (err) {
     // Clean up temp file if it exists
     try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write file ${filePath}: ${e.message}`);
+    throw new Error(`Failed to write file ${filePath}: ${err.message}`);
   }
 }
 
@@ -578,8 +578,8 @@ function validateJson(filePath) {
     const content = fs.readFileSync(filePath, 'utf-8');
     JSON.parse(content);
     return { valid: true };
-  } catch (e) {
-    return { valid: false, error: e.message };
+  } catch (err) {
+    return { valid: false, error: err.message };
   }
 }
 
@@ -867,7 +867,7 @@ function resolveConfigValue(value) {
     const resolvedPath = path.resolve(filePath);
     try {
       return fs.readFileSync(resolvedPath, 'utf-8').trim();
-    } catch (e) {
+    } catch (err) {
       return null;
     }
   }
@@ -1195,8 +1195,8 @@ function addRequestLogEntry(entry) {
     const content = readFile(PATHS.requestLog, '');
     writeFile(PATHS.requestLog, content + logEntry);
     return id;
-  } catch (e) {
-    error(`Failed to add request log entry: ${e.message}`);
+  } catch (err) {
+    error(`Failed to add request log entry: ${err.message}`);
     return null;
   }
 }
@@ -1294,8 +1294,8 @@ function addAppMapComponent(component) {
 
     writeFile(PATHS.appMap, content);
     return true;
-  } catch (e) {
-    error(`Failed to add component to app-map: ${e.message}`);
+  } catch (err) {
+    error(`Failed to add component to app-map: ${err.message}`);
     return false;
   }
 }
@@ -1342,8 +1342,8 @@ function getGitStatus() {
       uncommitted,
       clean: uncommitted === 0
     };
-  } catch (e) {
-    return { isRepo: true, error: e.message };
+  } catch (err) {
+    return { isRepo: true, error: err.message };
   }
 }
 

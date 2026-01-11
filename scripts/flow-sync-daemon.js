@@ -104,7 +104,7 @@ function isDaemonRunning() {
     }
 
     return true;
-  } catch (e) {
+  } catch (err) {
     // Process doesn't exist
     cleanupPidFile();
     return false;
@@ -137,7 +137,7 @@ function getDaemonStatus() {
       encoding: 'utf-8',
       cwd: PROJECT_ROOT
     }).trim();
-  } catch (e) {
+  } catch (err) {
     currentBranch = 'unknown';
   }
 
@@ -238,7 +238,7 @@ function stopDaemon() {
     cleanupPidFile();
     success('Daemon stopped');
     return true;
-  } catch (e) {
+  } catch (err) {
     cleanupPidFile();
     info('Daemon was not running (cleaned up stale PID)');
     return false;
@@ -269,7 +269,7 @@ function log(level, message) {
             fs.renameSync(LOG_FILE, backupPath);
           } catch (rotateError) {
             // Log rotation failed, continue anyway
-            console.error('Log rotation failed:', rotateError.message);
+            console.error(console.error('Log rotation failed:', rotateError.message));
           }
         }
       } catch (statError) {
@@ -278,9 +278,9 @@ function log(level, message) {
     }
 
     fs.appendFileSync(LOG_FILE, line);
-  } catch (e) {
+  } catch (err) {
     // Silently fail to avoid infinite loops if logging fails
-    console.error('Failed to write log:', e.message);
+    console.error(console.error('Failed to write log:', err.message));
   }
 }
 
@@ -307,7 +307,7 @@ function getCurrentBranch() {
       encoding: 'utf-8',
       cwd: PROJECT_ROOT
     }).trim();
-  } catch (e) {
+  } catch (err) {
     return 'unknown';
   }
 }
@@ -477,8 +477,8 @@ function runDaemon() {
       const watcher = fs.watch(fullPath, { recursive: true }, onFileChange);
       watchers.push(watcher);
       log('INFO', `Watching: ${watchPath}`);
-    } catch (e) {
-      log('ERROR', `Failed to watch ${watchPath}: ${e.message}`);
+    } catch (err) {
+      log('ERROR', `Failed to watch ${watchPath}: ${err.message}`);
     }
   }
 

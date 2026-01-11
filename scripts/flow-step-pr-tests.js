@@ -104,7 +104,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
   if (fs.existsSync(coveragePath)) {
     try {
       coverageData = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
-    } catch (e) {
+    } catch (err) {
       // Can't read coverage
     }
   }
@@ -200,7 +200,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
       if (qualityChecks.length > 0) {
         report.concerns.push({ file: testFile, issues: qualityChecks.length });
       }
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }
@@ -214,7 +214,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
       const content = fs.readFileSync(sourcePath, 'utf8');
       const testabilityIssues = checkTestability(content, sourceFile);
       issues.push(...testabilityIssues);
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }

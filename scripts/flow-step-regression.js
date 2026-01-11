@@ -39,7 +39,7 @@ async function run(options = {}) {
     let parsed;
     try {
       parsed = JSON.parse(result);
-    } catch (e) {
+    } catch (err) {
       // Non-JSON output means success with no issues
       return { passed: true, message: 'Regression tests passed' };
     }
@@ -69,7 +69,7 @@ async function run(options = {}) {
             details: parsed.failures,
           };
         }
-      } catch (e) {
+      } catch (err) {
         // Not JSON, treat as error
       }
     }

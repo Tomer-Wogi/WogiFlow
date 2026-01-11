@@ -432,7 +432,7 @@ function logLearning(modelName, failures, context) {
   if (fs.existsSync(LEARNING_LOG_PATH)) {
     try {
       log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-    } catch (e) {
+    } catch (err) {
       log = { entries: [] };
     }
   }
@@ -474,7 +474,7 @@ function trackStrategyEffectiveness(modelName, strategy, succeeded) {
   if (fs.existsSync(STRATEGY_STATS_PATH)) {
     try {
       stats = JSON.parse(fs.readFileSync(STRATEGY_STATS_PATH, 'utf-8'));
-    } catch (e) {
+    } catch (err) {
       stats = {};
     }
   }
@@ -517,7 +517,7 @@ function getStrategyEffectiveness(modelName) {
   try {
     const stats = JSON.parse(fs.readFileSync(STRATEGY_STATS_PATH, 'utf-8'));
     return stats[modelName] || null;
-  } catch (e) {
+  } catch (err) {
     return null;
   }
 }
@@ -818,7 +818,7 @@ function checkGitHubCLI() {
   try {
     execFileSync('gh', ['auth', 'status'], { stdio: 'pipe' });
     return { available: true };
-  } catch (e) {
+  } catch (err) {
     return { available: false, error: 'gh CLI not authenticated. Run: gh auth login' };
   }
 }
@@ -912,8 +912,8 @@ async function contributeLearnings(upstreamRepo = 'your-org/wogi-flow', options 
       learnings: data.summary.totalLearnings
     };
 
-  } catch (e) {
-    return { success: false, error: e.message };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 
@@ -1020,8 +1020,8 @@ These learnings help improve prompt refinement for all wogi-flow users.
     console.log(`${colors.green}✅ PR created successfully!${colors.reset}`);
     return { success: true };
 
-  } catch (e) {
-    return { success: false, error: e.message };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }
 

@@ -553,8 +553,8 @@ function updateConfig(analysis) {
     console.log(`  Styling: ${analysis.stylingApproach || 'not detected'}`);
     console.log(`  Component patterns: ${config.frameworkConfig.componentPatterns.length}`);
     return true;
-  } catch (e) {
-    console.log(`Error updating config: ${e.message}`);
+  } catch (err) {
+    console.log(`Error updating config: ${err.message}`);
     return false;
   }
 }

@@ -117,7 +117,7 @@ function parseRequestLog() {
     }
 
     return entries.slice(-50); // Last 50 entries
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -162,7 +162,7 @@ function getGitInfo() {
       });
 
     return { branch, commits };
-  } catch (e) {
+  } catch (err) {
     return { branch: 'unknown', commits: [] };
   }
 }
@@ -447,7 +447,7 @@ function getDashboardHTML() {
 
         document.getElementById('project-name').textContent = stats.projectName;
 
-      } catch (e) {
+      } catch (err) {
         console.error('Failed to load data:', e);
       }
 
@@ -632,9 +632,9 @@ function startServer(port) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Not found' }));
 
-    } catch (e) {
+    } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: e.message }));
+      res.end(JSON.stringify({ error: err.message }));
     }
   });
 
@@ -721,7 +721,7 @@ async function main() {
           info(`Open ${url} in your browser`);
         }
       });
-    } catch (e) {
+    } catch (err) {
       info(`Open ${url} in your browser`);
     }
   }

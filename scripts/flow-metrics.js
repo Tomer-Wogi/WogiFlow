@@ -46,7 +46,7 @@ function loadMetrics() {
     if (fs.existsSync(METRICS_PATH)) {
       return JSON.parse(fs.readFileSync(METRICS_PATH, 'utf-8'));
     }
-  } catch (e) {
+  } catch (err) {
     console.error(`${colors.yellow}Warning: Could not load metrics, starting fresh${colors.reset}`);
   }
   return getEmptyMetrics();

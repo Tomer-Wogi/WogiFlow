@@ -187,10 +187,10 @@ function getHandler(stepName) {
   if (!step._handler && step.handlerPath) {
     try {
       step._handler = require(step.handlerPath);
-    } catch (e) {
+    } catch (err) {
       // Handler not implemented yet
       if (process.env.DEBUG) {
-        console.warn(`[DEBUG] Failed to load handler for ${stepName}: ${e.message}`);
+        console.warn(`[DEBUG] Failed to load handler for ${stepName}: ${err.message}`);
       }
       return null;
     }

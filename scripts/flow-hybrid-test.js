@@ -29,9 +29,9 @@ async function run() {
       await t.fn();
       console.log(`✅ ${t.name}`);
       passed++;
-    } catch (e) {
+    } catch (err) {
       console.log(`❌ ${t.name}`);
-      console.log(`   Error: ${e.message}`);
+      console.log(`   Error: ${err.message}`);
       failed++;
     }
   }

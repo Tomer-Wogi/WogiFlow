@@ -168,8 +168,8 @@ async function main() {
         success(`Loaded PRD: ${result.prdId}`);
         console.log(`  Chunks: ${result.chunkCount}`);
         console.log(`  Sections: ${result.sections.join(', ')}`);
-      } catch (e) {
-        error(e.message);
+      } catch (err) {
+        error(err.message);
         process.exit(1);
       }
       break;
@@ -276,7 +276,7 @@ module.exports = {
 
 if (require.main === module) {
   main().catch(e => {
-    error(e.message);
+    error(err.message);
     process.exit(1);
   });
 }

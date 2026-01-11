@@ -40,7 +40,7 @@ function getCorrectionsDir() {
     if (detailPath) {
       return path.isAbsolute(detailPath) ? detailPath : path.join(PROJECT_ROOT, detailPath);
     }
-  } catch (e) {
+  } catch (err) {
     // Fall back to default if config can't be read
   }
   return path.join(PROJECT_ROOT, '.workflow', 'corrections');

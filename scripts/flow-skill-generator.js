@@ -14,7 +14,7 @@ function getTechOptions() {
   if (!_techOptions) {
     try {
       _techOptions = require('./flow-tech-options');
-    } catch (e) {
+    } catch (err) {
       _techOptions = { getSkillType: () => 'library', getParentFramework: () => null };
     }
   }

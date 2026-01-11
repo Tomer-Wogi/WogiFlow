@@ -138,7 +138,7 @@ function getChangedFiles(staged = false) {
       : 'git diff HEAD --name-only';
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     return output.trim().split('\n').filter(Boolean);
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -148,7 +148,7 @@ function getRecentCommitFiles(count = 1) {
     const cmd = `git diff HEAD~${count} --name-only`;
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     return output.trim().split('\n').filter(Boolean);
-  } catch (e) {
+  } catch (err) {
     return [];
   }
 }
@@ -215,7 +215,7 @@ function extractSemanticChanges(files, staged = false) {
       if (fileChanges.length > 0) {
         changes.push({ file, changes: fileChanges });
       }
-    } catch (e) {
+    } catch (err) {
       // Skip files that can't be diffed
     }
   }
@@ -506,7 +506,7 @@ function extractLearningContext(files, trigger, staged = false) {
     try {
       const msg = execSync('git log -1 --format=%B', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
       context.summary = msg.trim().split('\n')[0];
-    } catch (e) {
+    } catch (err) {
       context.summary = `Changed ${files.length} files`;
     }
   } else {
@@ -874,7 +874,7 @@ module.exports = {
 
 if (require.main === module) {
   main().catch(e => {
-    log('red', `Error: ${e.message}`);
+    log('red', `Error: ${err.message}`);
     process.exit(1);
   });
 }

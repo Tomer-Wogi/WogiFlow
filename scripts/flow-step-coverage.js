@@ -126,7 +126,7 @@ function findExistingCoverage() {
         if (fs.existsSync(jsonPath)) {
           return JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
         }
-      } catch (e) {
+      } catch (err) {
         // Continue to next path
       }
     }
@@ -172,7 +172,7 @@ async function runCoverageTests() {
     // Try to read the output
     return findExistingCoverage();
 
-  } catch (e) {
+  } catch (err) {
     // Test run failed or timed out
     return null;
   }

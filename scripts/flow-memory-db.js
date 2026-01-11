@@ -232,8 +232,8 @@ async function getEmbedder() {
       const { pipeline } = await import('@xenova/transformers');
       embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
       embeddingsAvailable = true;
-    } catch (e) {
-      if (e.code === 'ERR_MODULE_NOT_FOUND' || e.code === 'MODULE_NOT_FOUND') {
+    } catch (err) {
+      if (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND') {
         embeddingsAvailable = false;
         if (process.env.DEBUG) {
           console.warn('[DEBUG] @xenova/transformers not installed - semantic search disabled');

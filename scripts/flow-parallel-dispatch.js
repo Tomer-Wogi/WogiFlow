@@ -172,8 +172,8 @@ function saveState() {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(STATE_PATH, JSON.stringify(dispatchState, null, 2));
-  } catch (e) {
-    warn(`Could not save dispatch state: ${e.message}`);
+  } catch (err) {
+    warn(`Could not save dispatch state: ${err.message}`);
   }
 }
 
@@ -730,9 +730,9 @@ async function executeDispatchPlan(plan) {
     saveState();
 
     return execution;
-  } catch (e) {
+  } catch (err) {
     execution.status = DISPATCH_STATUS.FAILED;
-    execution.error = e.message;
+    execution.error = err.message;
     dispatchState.stats.failedDispatches++;
     saveState();
     throw e;
@@ -957,8 +957,8 @@ Examples:
           success('Dispatch completed');
           console.log(JSON.stringify(result, null, 2));
         }
-      } catch (e) {
-        error(`Failed to execute plan: ${e.message}`);
+      } catch (err) {
+        error(`Failed to execute plan: ${err.message}`);
         process.exit(1);
       }
       break;
@@ -981,7 +981,7 @@ Examples:
 
 if (require.main === module) {
   main().catch(e => {
-    error(e.message);
+    error(err.message);
     process.exit(1);
   });
 }

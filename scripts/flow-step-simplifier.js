@@ -59,7 +59,7 @@ async function run(options = {}) {
         suggestExtraction,
       });
       suggestions.push(...fileSuggestions);
-    } catch (e) {
+    } catch (err) {
       // Skip files that can't be analyzed
     }
   }

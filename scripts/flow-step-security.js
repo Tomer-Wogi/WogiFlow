@@ -59,7 +59,7 @@ async function run(options = {}) {
           break; // One issue per file is enough
         }
       }
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }
@@ -107,7 +107,7 @@ async function run(options = {}) {
           }
         }
       }
-    } catch (e) {
+    } catch (err) {
       // npm audit failed or returned non-zero
       if (e.stdout) {
         try {

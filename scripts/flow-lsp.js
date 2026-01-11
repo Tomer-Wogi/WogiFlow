@@ -102,7 +102,7 @@ class LSPClient {
         if (result.status === 0) {
           return result.stdout.trim() || loc;
         }
-      } catch (e) {
+      } catch (err) {
         // Try next location
       }
 
@@ -112,7 +112,7 @@ class LSPClient {
         if (result.status === 0) {
           return loc;
         }
-      } catch (e) {
+      } catch (err) {
         // Try next location
       }
     }
@@ -171,9 +171,9 @@ class LSPClient {
       try {
         const message = JSON.parse(messageStr);
         this._handleMessage(message);
-      } catch (e) {
+      } catch (err) {
         if (process.env.DEBUG_LSP) {
-          console.error('[LSP] Failed to parse message:', e.message);
+          console.error('[LSP] Failed to parse message:', err.message);
         }
       }
     }
@@ -579,7 +579,7 @@ class LSPClient {
     try {
       await this._send('shutdown', null);
       this._notify('exit', null);
-    } catch (e) {
+    } catch (err) {
       // Ignore errors during shutdown
     }
 
@@ -628,8 +628,8 @@ async function getLSP(projectRoot = PROJECT_ROOT) {
     instance = new LSPClient(projectRoot);
     await instance.start();
     return instance;
-  } catch (e) {
-    warn(`LSP initialization failed: ${e.message}`);
+  } catch (err) {
+    warn(`LSP initialization failed: ${err.message}`);
     instance = null;
     return null;
   }
@@ -686,7 +686,7 @@ async function getTypesForPositions(filePath, positions) {
           const key = pos.name || `${pos.line}:${pos.character}`;
           types[key] = extractTypeFromHover(content);
         }
-      } catch (e) {
+      } catch (err) {
         // Skip individual errors
       }
     }
@@ -878,8 +878,8 @@ Examples:
             console.log(`Server capabilities: ${Object.keys(lsp.serverCapabilities || {}).length} features`);
             await stopLSP();
           }
-        } catch (e) {
-          error(`LSP test failed: ${e.message}`);
+        } catch (err) {
+          error(`LSP test failed: ${err.message}`);
           process.exit(1);
         }
         break;
@@ -889,8 +889,8 @@ Examples:
         error(`Unknown command: ${command}`);
         process.exit(1);
     }
-  } catch (e) {
-    error(`Error: ${e.message}`);
+  } catch (err) {
+    error(`Error: ${err.message}`);
     await stopLSP();
     process.exit(1);
   }
@@ -917,7 +917,7 @@ module.exports = {
 
 if (require.main === module) {
   main().catch(e => {
-    error(e.message);
+    error(err.message);
     process.exit(1);
   });
 }

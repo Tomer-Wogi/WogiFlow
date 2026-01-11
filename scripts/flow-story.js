@@ -366,9 +366,9 @@ async function createStory(title, feature, options = {}) {
           fs.writeFileSync(READY_PATH, JSON.stringify(ready, null, 2));
         });
         result.addedToReady = true;
-      } catch (e) {
+      } catch (err) {
         result.addedToReady = false;
-        result.readyError = e.message;
+        result.readyError = err.message;
       }
     }
 
@@ -484,7 +484,7 @@ Examples:
     log('dim', '  3. Start with: /wogi-start ' + result.subTasks[0].id);
   }
   })().catch(e => {
-    log('red', `Error: ${e.message}`);
+    log('red', `Error: ${err.message}`);
     process.exit(1);
   });
 }

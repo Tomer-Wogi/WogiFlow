@@ -250,7 +250,7 @@ function main() {
           console.log(`  ${color('yellow', '⚠')} Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
           warnings++;
         }
-      } catch (e) {
+      } catch (err) {
         console.log(`  ${color('yellow', '⚠')} Could not parse config.json for strict mode check`);
         warnings++;
       }
@@ -327,7 +327,7 @@ function main() {
         console.log(`  ${color('yellow', '○')} respectGitignore: not set`);
       }
 
-    } catch (e) {
+    } catch (err) {
       console.log(`  ${color('yellow', '⚠')} Could not parse settings.local.json`);
       warnings++;
     }

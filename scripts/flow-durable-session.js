@@ -373,10 +373,10 @@ function archiveDurableSession(status = 'completed') {
     try {
       const { analyzeCompletedSession } = require('./flow-loop-retry-learning');
       analyzeCompletedSession(session);
-    } catch (e) {
+    } catch (err) {
       // Silent fail - learning is non-critical
       if (process.env.DEBUG) {
-        console.warn('[DEBUG] Loop retry learning failed:', e.message);
+        console.warn('[DEBUG] Loop retry learning failed:', err.message);
       }
     }
   }

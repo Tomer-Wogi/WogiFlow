@@ -166,8 +166,8 @@ async function main() {
   try {
     trackTaskStart(taskId, taskTitle);
     setCurrentTask(taskId, taskTitle);
-  } catch (e) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${e.message}`);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${err.message}`);
   }
 
   // v2.0: Initialize durable session for crash recovery (with file locking)
@@ -186,8 +186,8 @@ async function main() {
       } else if (process.env.DEBUG) {
         console.log(color('cyan', '📋 Durable session initialized (no acceptance criteria)'));
       }
-    } catch (e) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Durable session init: ${e.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Durable session init: ${err.message}`);
     }
   }
 
@@ -201,9 +201,9 @@ async function main() {
         console.log('');
         console.log(formatAutoContext(context));
       }
-    } catch (e) {
+    } catch (err) {
       // Auto-context is best-effort; don't block task start on failure
-      if (process.env.DEBUG) console.error(`[DEBUG] Auto-context: ${e.message}`);
+      if (process.env.DEBUG) console.error(`[DEBUG] Auto-context: ${err.message}`);
     }
   }
 

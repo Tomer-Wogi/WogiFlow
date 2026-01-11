@@ -61,7 +61,7 @@ async function run(options = {}) {
         checkPromiseChains,
       });
       issues.push(...fileIssues);
-    } catch (e) {
+    } catch (err) {
       // Skip unreadable files
     }
   }

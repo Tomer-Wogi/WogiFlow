@@ -135,9 +135,9 @@ function readMemoryBlocks() {
     }
 
     return JSON.parse(jsonMatch[1].trim());
-  } catch (e) {
+  } catch (err) {
     if (process.env.DEBUG) {
-      console.error(`[DEBUG] Failed to read memory blocks: ${e.message}`);
+      console.error(`[DEBUG] Failed to read memory blocks: ${err.message}`);
     }
     return null;
   }

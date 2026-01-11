@@ -164,7 +164,7 @@ async function syncBridge(options = {}) {
     let bridges;
     try {
       bridges = require(path.join(BRIDGES_DIR, 'index.js'));
-    } catch (e) {
+    } catch (err) {
       console.error(`${colors.red}Error:${colors.reset} Bridges module not found.`);
       console.error('Make sure .workflow/bridges/index.js exists.');
       process.exit(1);

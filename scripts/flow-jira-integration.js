@@ -127,7 +127,7 @@ function jiraRequest(method, endpoint, body = null) {
         }
         try {
           resolve(JSON.parse(data));
-        } catch (e) {
+        } catch (err) {
           resolve(data);
         }
       });
@@ -352,15 +352,15 @@ async function pushCompleted() {
 
     try {
       await updateIssueStatus(issueKey, targetStatus);
-    } catch (e) {
-      warn(`Failed to update status for ${issueKey}: ${e.message}`);
+    } catch (err) {
+      warn(`Failed to update status for ${issueKey}: ${err.message}`);
       continue;
     }
 
     try {
       await addComment(issueKey, `Completed via Wogi Flow at ${task.completedAt}`);
-    } catch (e) {
-      warn(`Failed to add comment to ${issueKey}: ${e.message}`);
+    } catch (err) {
+      warn(`Failed to add comment to ${issueKey}: ${err.message}`);
       // Status was updated, so still count as pushed
     }
 

@@ -38,10 +38,10 @@ const { loadRegistry, loadStats } = require('./flow-models');
 let cascadeModule = null;
 try {
   cascadeModule = require('./flow-cascade');
-} catch (e) {
+} catch (err) {
   // Cascade module not available - log only if not a "cannot find module" error
-  if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
-    console.error('[flow-model-router] Cascade module error:', e.message);
+  if (!err.code || err.code !== 'MODULE_NOT_FOUND') {
+    console.error('[flow-model-router] Cascade module error:', err.message);
   }
 }
 
@@ -817,8 +817,8 @@ async function main() {
         error(`Invalid --analysis JSON: unexpected keys: ${invalidKeys.join(', ')}`);
         process.exit(1);
       }
-    } catch (e) {
-      error(`Invalid --analysis JSON: ${e.message}`);
+    } catch (err) {
+      error(`Invalid --analysis JSON: ${err.message}`);
       process.exit(1);
     }
   } else if (positional.length > 0) {

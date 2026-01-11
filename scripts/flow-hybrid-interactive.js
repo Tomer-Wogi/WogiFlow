@@ -100,12 +100,12 @@ async function checkEndpoint(url, timeout = 3000) {
       res.on('end', () => {
         try {
           resolve({ success: true, data: JSON.parse(data) });
-        } catch (e) {
+        } catch (err) {
           resolve({ success: false, error: 'Invalid response' });
         }
       });
     });
-    req.on('error', (e) => resolve({ success: false, error: e.message }));
+    req.on('error', (e) => resolve({ success: false, error: err.message }));
     req.on('timeout', () => {
       req.destroy();
       resolve({ success: false, error: 'Timeout' });
@@ -341,8 +341,8 @@ async function testCloudConnection(provider, model) {
 
     spinner.stop('API connection verified!', true);
     return true;
-  } catch (e) {
-    spinner.stop(`Connection check: ${e.message}`, false);
+  } catch (err) {
+    spinner.stop(`Connection check: ${err.message}`, false);
     // Don't fail completely - API might still work
     return false;
   }
@@ -504,8 +504,8 @@ async function testConnection(provider, model) {
 
     spinner.stop('Connection successful!', true);
     return true;
-  } catch (e) {
-    spinner.stop(`Connection failed: ${e.message}`, false);
+  } catch (err) {
+    spinner.stop(`Connection failed: ${err.message}`, false);
     return false;
   }
 }
@@ -607,6 +607,6 @@ ${executorType === 'cloud'
 }
 
 main().catch(e => {
-  console.error(`${colors.red}Error: ${e.message}${colors.reset}`);
+  console.error(`${colors.red}Error: ${err.message}${colors.reset}`);
   process.exit(1);
 });
