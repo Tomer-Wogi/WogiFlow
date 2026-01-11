@@ -5,6 +5,12 @@
  *
  * Common functions used across all flow scripts.
  * Eliminates Python dependency and provides consistent path handling.
+ *
+ * NOTE: For new code, prefer importing from dedicated modules:
+ * - flow-output.js: colors, color, print, success, warn, error, info
+ * - flow-file-ops.js: readJson, writeJson, fileExists, dirExists, ensureDir
+ *
+ * This file re-exports all functions for backwards compatibility.
  */
 
 const fs = require('fs');
@@ -2138,6 +2144,7 @@ module.exports = {
   // File Operations
   fileExists,
   dirExists,
+  ensureDir: require('./flow-file-ops').ensureDir,
   readJson,
   writeJson,
   safeJsonParse,
