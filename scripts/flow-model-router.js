@@ -5,12 +5,15 @@
  *
  * Selects optimal model based on task analysis and routing strategy.
  * Supports quality-first, cost-optimized, and learned routing.
+ * Includes task-type preferences, language routing, and cascade fallback.
  *
  * Part of Phase 2: Multi-Model Core
+ * Enhanced in Phase 3: Intelligent Routing
  *
  * Usage:
  *   flow model-route "<task>" [--strategy quality-first]
  *   flow model-route --analysis <json> --strategy cost-optimized
+ *   flow route "<task>" --constraints '{"maxCostTier":"standard"}'
  */
 
 const path = require('path');
@@ -23,12 +26,24 @@ const {
   warn,
   error,
   safeJsonParse,
+  getConfig,
   printHeader,
   printSection
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
 const { loadRegistry, loadStats } = require('./flow-models');
+
+// Phase 3: Import cascade fallback (cached singleton)
+let cascadeModule = null;
+try {
+  cascadeModule = require('./flow-cascade');
+} catch (e) {
+  // Cascade module not available - log only if not a "cannot find module" error
+  if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+    console.error('[flow-model-router] Cascade module error:', e.message);
+  }
+}
 
 // ============================================================
 // Constants
@@ -48,10 +63,81 @@ const COST_TIER_ORDER = {
   premium: 3
 };
 
+/**
+ * Task-type specific routing preferences (Phase 3).
+ * Maps task types to preferred model tiers and required capabilities.
+ */
+const TASK_TYPE_ROUTING = {
+  architecture: {
+    preferTier: 'premium',
+    capabilities: ['reasoning', 'analysis'],
+    description: 'Complex architectural decisions benefit from premium models'
+  },
+  planning: {
+    preferTier: 'premium',
+    capabilities: ['reasoning', 'analysis'],
+    description: 'Planning tasks need strong reasoning capabilities'
+  },
+  feature: {
+    preferTier: 'standard',
+    capabilities: ['code-gen', 'reasoning'],
+    description: 'Feature development balances quality and cost'
+  },
+  bugfix: {
+    preferTier: 'standard',
+    capabilities: ['code-gen', 'analysis'],
+    description: 'Bug fixes need good analysis capabilities'
+  },
+  refactor: {
+    preferTier: 'standard',
+    capabilities: ['code-gen', 'analysis'],
+    description: 'Refactoring needs code understanding'
+  },
+  boilerplate: {
+    preferTier: 'economy',
+    capabilities: ['code-gen'],
+    description: 'Simple boilerplate can use cheaper models'
+  },
+  docs: {
+    preferTier: 'economy',
+    capabilities: ['code-gen'],
+    description: 'Documentation tasks are straightforward'
+  },
+  test: {
+    preferTier: 'standard',
+    capabilities: ['code-gen'],
+    description: 'Test writing needs good code generation'
+  }
+};
+
+/**
+ * Language-specific routing preferences (Phase 3).
+ * Maps languages to minimum proficiency requirements.
+ */
+const LANGUAGE_ROUTING = {
+  typescript: { minProficiency: 8, description: 'TypeScript needs strong type support' },
+  javascript: { minProficiency: 7, description: 'JavaScript is well-supported' },
+  python: { minProficiency: 7, description: 'Python is well-supported' },
+  rust: { minProficiency: 6, description: 'Rust has specialized syntax' },
+  go: { minProficiency: 6, description: 'Go is straightforward' },
+  java: { minProficiency: 7, description: 'Java needs good OOP support' },
+  csharp: { minProficiency: 7, description: 'C# needs good OOP support' },
+  cpp: { minProficiency: 6, description: 'C++ has complex features' },
+  ruby: { minProficiency: 6, description: 'Ruby is less common' },
+  php: { minProficiency: 6, description: 'PHP is well-documented' }
+};
+
 const DEFAULT_CONFIG = {
   routingStrategy: 'quality-first',
   fallbackEnabled: true,
-  maxEscalations: 2
+  maxEscalations: 2,
+  // Phase 3 additions
+  constraints: {
+    maxCostTier: 'premium',
+    requiredCapabilities: []
+  },
+  taskTypeOverrides: {},
+  cascadeEnabled: true
 };
 
 /**
@@ -161,8 +247,8 @@ function scoreModel(model, analysis, strategy, stats = {}) {
     if (modelStats.byTaskType?.[taskType]) {
       const typeStats = modelStats.byTaskType[taskType];
       const total = (typeStats.success || 0) + (typeStats.fail || 0);
-      if (total >= 5) {
-        const typeRate = typeStats.success / total;
+      if (total >= 5 && total > 0) {
+        const typeRate = (typeStats.success || 0) / total;
         scores.history = typeRate * 10;
         reasons.push(`${(typeRate * 100).toFixed(0)}% success rate on ${taskType} tasks`);
       }
@@ -301,6 +387,270 @@ function routeLearned(models, analysis, stats) {
     primary: scored[0],
     fallback: scored[1] || null,
     escalation: scored.find(m => COST_TIER_ORDER[m.costTier] > COST_TIER_ORDER[scored[0].costTier])
+  };
+}
+
+// ============================================================
+// Phase 3: Enhanced Routing
+// ============================================================
+
+/**
+ * Apply constraints to filter models.
+ * @param {Object[]} models - Available models
+ * @param {Object} constraints - Constraint configuration
+ * @returns {Object[]} Filtered models
+ */
+function applyConstraints(models, constraints = {}) {
+  let filtered = [...models];
+
+  // Filter by max cost tier
+  if (constraints.maxCostTier) {
+    const maxTier = COST_TIER_ORDER[constraints.maxCostTier] || 3;
+    filtered = filtered.filter(m => (COST_TIER_ORDER[m.costTier] || 2) <= maxTier);
+  }
+
+  // Filter by required capabilities
+  if (constraints.requiredCapabilities && constraints.requiredCapabilities.length > 0) {
+    const required = new Set(constraints.requiredCapabilities);
+    filtered = filtered.filter(m => {
+      const caps = new Set(m.capabilities || []);
+      return [...required].every(c => caps.has(c));
+    });
+  }
+
+  return filtered;
+}
+
+/**
+ * Apply task-type preferences to scoring.
+ * @param {Object} scored - Scored model result
+ * @param {string} taskType - Task type
+ * @param {Object} overrides - User overrides from config
+ * @returns {Object} Adjusted scored model
+ */
+function applyTaskTypePreferences(scored, taskType, overrides = {}) {
+  const prefs = overrides[taskType] || TASK_TYPE_ROUTING[taskType];
+  if (!prefs) return scored;
+
+  const adjustedScores = { ...scored.scores };
+  const reasons = [...scored.reasons];
+
+  // Bonus for matching preferred tier
+  if (prefs.preferTier === scored.costTier) {
+    adjustedScores.taskTypeBonus = 5;
+    reasons.push(`Matches preferred tier for ${taskType} tasks`);
+  } else {
+    adjustedScores.taskTypeBonus = 0;
+  }
+
+  adjustedScores.total = adjustedScores.capability + adjustedScores.language +
+    adjustedScores.cost + adjustedScores.history + adjustedScores.taskTypeBonus;
+
+  return {
+    ...scored,
+    scores: adjustedScores,
+    reasons,
+    taskTypeMatch: prefs.preferTier === scored.costTier
+  };
+}
+
+/**
+ * Apply language proficiency requirements.
+ * @param {Object} model - Model data
+ * @param {string} language - Primary language
+ * @returns {Object} Language check result
+ */
+function checkLanguageProficiency(model, language) {
+  const langReq = LANGUAGE_ROUTING[language];
+  if (!langReq) return { meets: true, reason: 'No specific requirements' };
+
+  const proficiency = (model.languages && typeof model.languages === 'object')
+    ? (model.languages[language] || 5)
+    : 5;
+
+  const meets = proficiency >= langReq.minProficiency;
+
+  return {
+    meets,
+    proficiency,
+    required: langReq.minProficiency,
+    reason: meets
+      ? `${language} proficiency ${proficiency}/10 meets requirement`
+      : `${language} proficiency ${proficiency}/10 below required ${langReq.minProficiency}`
+  };
+}
+
+/**
+ * Check cascade fallback status for a model.
+ * @param {string} modelId - Model identifier
+ * @param {string} taskType - Task type
+ * @param {Object} routing - Current routing decision
+ * @returns {Object|null} Cascade recommendation if applicable
+ */
+function checkCascadeFallback(modelId, taskType, routing) {
+  if (!cascadeModule) return null;
+
+  const escalation = cascadeModule.getEscalationTarget(modelId, routing);
+  return escalation;
+}
+
+/**
+ * Enhanced routing with constraints, task-type preferences, and cascade.
+ * @param {Object} params - Routing parameters
+ * @returns {Object} Enhanced routing decision
+ */
+function routeTaskEnhanced(params) {
+  const {
+    analysis,
+    strategy = 'quality-first',
+    constraints = {},
+    checkCascade = true
+  } = params;
+
+  // Load registry and stats
+  const registry = loadRegistry();
+  if (!registry) {
+    return { success: false, error: 'Model registry not found' };
+  }
+
+  const stats = loadStats();
+  const config = loadMultiModelConfig();
+
+  // Merge constraints
+  const effectiveConstraints = {
+    ...config.constraints,
+    ...constraints
+  };
+
+  // Convert registry models to array with IDs
+  let models = Object.entries(registry.models || {}).map(([id, data]) => ({
+    id,
+    ...data
+  }));
+
+  if (models.length === 0) {
+    return { success: false, error: 'No models in registry' };
+  }
+
+  // Phase 3: Apply constraints
+  const constrainedModels = applyConstraints(models, effectiveConstraints);
+  const constraintsApplied = constrainedModels.length < models.length;
+
+  if (constrainedModels.length === 0) {
+    return {
+      success: false,
+      error: 'No models meet constraints',
+      constraints: effectiveConstraints,
+      originalCount: models.length
+    };
+  }
+
+  models = constrainedModels;
+
+  // Check language proficiency for all models
+  const primaryLang = analysis.languages?.primary;
+  if (primaryLang) {
+    models = models.map(m => ({
+      ...m,
+      languageCheck: checkLanguageProficiency(m, primaryLang)
+    }));
+  }
+
+  // Run base routing
+  const effectiveStrategy = strategy || config.routingStrategy;
+  let decision;
+
+  switch (effectiveStrategy) {
+    case 'quality-first':
+      decision = routeQualityFirst(models, analysis, stats);
+      break;
+    case 'cost-optimized':
+      decision = routeCostOptimized(models, analysis, stats);
+      break;
+    case 'learned':
+      decision = routeLearned(models, analysis, stats);
+      break;
+    default:
+      decision = routeQualityFirst(models, analysis, stats);
+  }
+
+  // Phase 3: Apply task-type preferences
+  const taskType = analysis.taskType || analysis.type || 'feature';
+  if (decision.primary) {
+    decision.primary = applyTaskTypePreferences(
+      decision.primary,
+      taskType,
+      config.taskTypeOverrides
+    );
+  }
+
+  // Phase 3: Check cascade fallback
+  let cascadeInfo = null;
+  if (checkCascade && config.cascadeEnabled && cascadeModule && decision.primary) {
+    cascadeInfo = checkCascadeFallback(
+      decision.primary.modelId,
+      taskType,
+      decision
+    );
+
+    if (cascadeInfo?.shouldEscalate) {
+      decision.cascadeTriggered = true;
+      decision.cascadeInfo = cascadeInfo;
+
+      // If we have a target model, use it as primary
+      if (cascadeInfo.targetModel) {
+        const targetModelData = models.find(m => m.id === cascadeInfo.targetModel);
+        if (targetModelData) {
+          decision.originalPrimary = decision.primary;
+          decision.primary = scoreModel(targetModelData, analysis, effectiveStrategy, stats);
+          decision.primary.cascadeEscalated = true;
+        }
+      }
+    }
+  }
+
+  // Add enhanced metadata
+  decision.success = true;
+  decision.config = config;
+  decision.routedAt = new Date().toISOString();
+  decision.analysis = {
+    complexity: analysis.complexity?.level || 'medium',
+    domains: analysis.domains?.primary || 'general',
+    languages: analysis.languages?.primary || 'javascript',
+    taskType,
+    capabilities: analysis.capabilities || []
+  };
+  decision.enhanced = true;
+  decision.constraintsApplied = constraintsApplied;
+  decision.constraints = effectiveConstraints;
+
+  // Add task-type routing info
+  const taskTypeInfo = TASK_TYPE_ROUTING[taskType];
+  if (taskTypeInfo) {
+    decision.taskTypeRouting = {
+      taskType,
+      preferredTier: taskTypeInfo.preferTier,
+      requiredCapabilities: taskTypeInfo.capabilities,
+      description: taskTypeInfo.description
+    };
+  }
+
+  return decision;
+}
+
+/**
+ * Get routing configuration (for CLI display).
+ * @returns {Object} Routing configuration
+ */
+function getRoutingConfig() {
+  const config = loadMultiModelConfig();
+  return {
+    strategy: config.routingStrategy,
+    constraints: config.constraints,
+    taskTypeOverrides: config.taskTypeOverrides,
+    cascadeEnabled: config.cascadeEnabled,
+    taskTypeRouting: TASK_TYPE_ROUTING,
+    languageRouting: LANGUAGE_ROUTING
   };
 }
 
@@ -446,10 +796,25 @@ async function main() {
   // Get analysis from flag or run analyzer
   if (flags.analysis) {
     // flags.analysis is a JSON string from CLI, not a file path
+    // Security: Check for prototype pollution attempts
+    if (flags.analysis.includes('__proto__') ||
+        flags.analysis.includes('constructor') ||
+        flags.analysis.includes('prototype')) {
+      error('Invalid --analysis JSON: contains restricted keys');
+      process.exit(1);
+    }
     try {
       analysis = JSON.parse(flags.analysis);
-      if (!analysis || typeof analysis !== 'object') {
-        error('Invalid --analysis JSON: must be an object');
+      if (!analysis || typeof analysis !== 'object' || Array.isArray(analysis)) {
+        error('Invalid --analysis JSON: must be a non-array object');
+        process.exit(1);
+      }
+      // Validate expected structure
+      const validKeys = ['taskType', 'languages', 'capabilities', 'complexity', 'domains', 'patterns'];
+      const analysisKeys = Object.keys(analysis);
+      const invalidKeys = analysisKeys.filter(k => !validKeys.includes(k));
+      if (invalidKeys.length > 0) {
+        error(`Invalid --analysis JSON: unexpected keys: ${invalidKeys.join(', ')}`);
         process.exit(1);
       }
     } catch (e) {
@@ -482,16 +847,33 @@ async function main() {
 
 // Export for use by other scripts
 module.exports = {
+  // Core routing
   routeTask,
+  routeTaskEnhanced,
   scoreModel,
+
+  // Strategy functions
   routeQualityFirst,
   routeCostOptimized,
   routeLearned,
+
+  // Phase 3: Enhanced routing helpers
+  applyConstraints,
+  applyTaskTypePreferences,
+  checkLanguageProficiency,
+  checkCascadeFallback,
+  getRoutingConfig,
+
+  // Registry/stats access
   loadRegistry,
   loadStats,
   loadMultiModelConfig,
+
+  // Constants
   ROUTING_STRATEGIES,
-  COST_TIER_ORDER
+  COST_TIER_ORDER,
+  TASK_TYPE_ROUTING,
+  LANGUAGE_ROUTING
 };
 
 if (require.main === module) {
