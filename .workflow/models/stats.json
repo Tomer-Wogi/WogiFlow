@@ -1,0 +1,34 @@
+{
+  "$schema": "./stats-schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-11T07:30:00.000Z",
+  "trackingSince": "2026-01-11T07:30:00.000Z",
+
+  "summary": {
+    "totalTasks": 0,
+    "totalTokensUsed": 0,
+    "totalCost": 0,
+    "avgTokensPerTask": 0,
+    "avgCostPerTask": 0
+  },
+
+  "byModel": {},
+
+  "byTaskType": {},
+
+  "byCapability": {},
+
+  "failureStats": {
+    "totalFailures": 0,
+    "byCategory": {},
+    "recoveryRate": 0
+  },
+
+  "routingStats": {
+    "escalations": 0,
+    "fallbacks": 0,
+    "primarySuccessRate": 0
+  },
+
+  "recentTasks": []
+}

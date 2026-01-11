@@ -39,6 +39,8 @@ show_help() {
     echo "  install              Interactive setup wizard"
     echo "  install --quick      Quick setup with defaults"
     echo "  onboard              Analyze existing project & set up context"
+    echo "  migrate              Migrate to universal CLI-agnostic structure"
+    echo "  migrate --dry-run    Preview migration without changes"
     echo "  update               Update to latest version (preserves data)"
     echo "  update --check       Check for available updates"
     echo ""
@@ -207,6 +209,11 @@ show_help() {
     echo "  providers detect     Detect running local providers"
     echo "  providers test <t>   Test a provider connection"
     echo ""
+    echo "CLI Bridge:"
+    echo "  bridge sync          Sync .workflow/ to CLI-specific folder"
+    echo "  bridge status        Show bridge status"
+    echo "  bridge list          List available bridges"
+    echo ""
     echo "Declarative Workflows:"
     echo "  workflow list        List available workflows"
     echo "  workflow run <name>  Run a workflow"
@@ -325,6 +332,9 @@ case "${1:-}" in
         ;;
     onboard)
         "$SCRIPT_DIR/flow-onboard" "${@:2}"
+        ;;
+    migrate)
+        node "$SCRIPT_DIR/flow-migrate.js" "${@:2}"
         ;;
     update)
         "$SCRIPT_DIR/flow-update" "${@:2}"
@@ -644,6 +654,27 @@ case "${1:-}" in
         ;;
     providers)
         node "$SCRIPT_DIR/flow-providers.js" "${@:2}"
+        ;;
+    bridge)
+        case "${2:-status}" in
+            sync)
+                node "$SCRIPT_DIR/flow-bridge.js" sync "${@:3}"
+                ;;
+            status)
+                node "$SCRIPT_DIR/flow-bridge.js" status
+                ;;
+            list)
+                node "$SCRIPT_DIR/flow-bridge.js" list
+                ;;
+            *)
+                echo "Usage: flow bridge [sync|status|list]"
+                echo ""
+                echo "Commands:"
+                echo "  sync    Sync .workflow/ config to CLI-specific folder"
+                echo "  status  Show current bridge configuration"
+                echo "  list    List available CLI bridges"
+                ;;
+        esac
         ;;
     workflow)
         node "$SCRIPT_DIR/flow-workflow.js" "${@:2}"

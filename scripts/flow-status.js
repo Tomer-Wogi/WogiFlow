@@ -10,8 +10,11 @@
  *   flow status --json    JSON output for programmatic access
  */
 
+const path = require('path');
+
 const {
   PATHS,
+  PROJECT_ROOT,
   fileExists,
   dirExists,
   getTaskCounts,
@@ -40,6 +43,7 @@ function collectStatus() {
     components: 0,
     requestLog: 0,
     git: { isRepo: false, branch: null, uncommitted: 0 },
+    cli: { type: 'claude-code', bridgeStatus: 'unknown' },
     config: {},
     recommendation: {}
   };
@@ -71,6 +75,28 @@ function collectStatus() {
 
   // Git
   status.git = getGitStatus();
+
+  // CLI
+  if (fileExists(PATHS.config)) {
+    try {
+      const config = getConfig();
+      status.cli.type = config.cli?.type || 'claude-code';
+
+      // Check bridge status
+      const bridgesDir = path.join(PROJECT_ROOT, '.workflow', 'bridges');
+      const modelsDir = path.join(PROJECT_ROOT, '.workflow', 'models');
+
+      if (dirExists(bridgesDir) && dirExists(modelsDir)) {
+        status.cli.bridgeStatus = 'configured';
+      } else if (config.cli?.type) {
+        status.cli.bridgeStatus = 'partial';
+      } else {
+        status.cli.bridgeStatus = 'legacy';
+      }
+    } catch {
+      status.cli.bridgeStatus = 'error';
+    }
+  }
 
   // Config
   if (fileExists(PATHS.config)) {
@@ -155,6 +181,23 @@ function main() {
     console.log(`  Uncommitted: ${status.git.uncommitted || 0} files`);
     console.log('');
   }
+
+  // CLI status
+  printSection('CLI');
+  const cliNames = {
+    'claude-code': 'Claude Code',
+    'gemini-cli': 'Gemini CLI',
+    'opencode': 'OpenCode'
+  };
+  const bridgeColors = {
+    'configured': 'green',
+    'partial': 'yellow',
+    'legacy': 'yellow',
+    'error': 'red'
+  };
+  console.log(`  Type: ${cliNames[status.cli.type] || status.cli.type}`);
+  console.log(`  Bridge: ${color(bridgeColors[status.cli.bridgeStatus] || 'dim', status.cli.bridgeStatus)}`);
+  console.log('');
 
   // Config summary (use status.config from collectStatus)
   if (status.config.mandatoryAfterTask) {

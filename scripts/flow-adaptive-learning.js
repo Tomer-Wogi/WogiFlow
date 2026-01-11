@@ -16,6 +16,11 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectRoot, colors } = require('./flow-utils');
 const { storeSingleLearning, getAdapterPath } = require('./flow-model-adapter');
+const {
+  FailureCategory,
+  detectCategory,
+  shouldEscalate: checkShouldEscalate
+} = require('../.workflow/lib/failure-categories');
 
 const PROJECT_ROOT = getProjectRoot();
 const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptive-learning.json');
@@ -27,83 +32,32 @@ const STRATEGY_STATS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'strat
 
 /**
  * Error categories with detection patterns and fix strategies
+ * Now uses centralized FailureCategory from .workflow/lib/failure-categories.js
+ *
+ * Legacy mapping for backward compatibility - maps to centralized categories
  */
 const ERROR_CATEGORIES = {
-  IMPORT_ERROR: {
-    patterns: [
-      /cannot find module/i,
-      /module not found/i,
-      /no exported member/i,
-      /has no exported member/i,
-      /cannot resolve/i,
-      /failed to resolve import/i
-    ],
-    strategy: 'import_fix',
-    description: 'Import path or export name incorrect'
-  },
-  TYPE_ERROR: {
-    patterns: [
-      /type '.*' is not assignable/i,
-      /property '.*' does not exist/i,
-      /argument of type/i,
-      /expected \d+ arguments/i,
-      /missing property/i,
-      /is not a valid/i
-    ],
-    strategy: 'type_fix',
-    description: 'TypeScript type mismatch'
-  },
-  SYNTAX_ERROR: {
-    patterns: [
-      /unexpected token/i,
-      /parsing error/i,
-      /syntax error/i,
-      /unterminated string/i,
-      /expected.*but got/i,
-      /missing.*after/i
-    ],
-    strategy: 'syntax_fix',
-    description: 'JavaScript/TypeScript syntax error'
-  },
-  MARKDOWN_POLLUTION: {
-    patterns: [
-      /```typescript/,
-      /```jsx/,
-      /```tsx/,
-      /```javascript/,
-      /Here's the/i,
-      /Here is the/i,
-      /I'll create/i,
-      /Let me/i
-    ],
-    strategy: 'format_fix',
-    description: 'Model included markdown or explanatory text'
-  },
-  INCOMPLETE_OUTPUT: {
-    patterns: [
-      /unexpected end of/i,
-      /\.\.\./,
-      /\/\/ \.\.\./,
-      /TODO:/i,
-      /FIXME:/i
-    ],
-    strategy: 'completion_fix',
-    description: 'Model produced incomplete output'
-  },
-  HALLUCINATION: {
-    patterns: [
-      /does not exist/i,
-      /is not defined/i,
-      /cannot read property/i,
-      /undefined is not/i
-    ],
-    strategy: 'context_fix',
-    description: 'Model hallucinated non-existent code/imports'
-  }
+  IMPORT_ERROR: FailureCategory.IMPORT_ERROR,
+  TYPE_ERROR: FailureCategory.TYPE_ERROR,
+  SYNTAX_ERROR: FailureCategory.SYNTAX_ERROR,
+  MARKDOWN_POLLUTION: FailureCategory.MARKDOWN_POLLUTION,
+  INCOMPLETE_OUTPUT: FailureCategory.INCOMPLETE_OUTPUT,
+  HALLUCINATION: FailureCategory.HALLUCINATION,
+  // Additional categories from centralized module
+  PARSE_ERROR: FailureCategory.PARSE_ERROR,
+  RUNTIME_ERROR: FailureCategory.RUNTIME_ERROR,
+  RATE_LIMIT: FailureCategory.RATE_LIMIT,
+  API_ERROR: FailureCategory.API_ERROR,
+  CONTEXT_OVERFLOW: FailureCategory.CONTEXT_OVERFLOW,
+  CAPABILITY_MISMATCH: FailureCategory.CAPABILITY_MISMATCH,
+  MISSING_CONTEXT: FailureCategory.MISSING_CONTEXT,
+  PATTERN_VIOLATION: FailureCategory.PATTERN_VIOLATION,
+  UNKNOWN: FailureCategory.UNKNOWN
 };
 
 /**
  * Analyze a failure and categorize it
+ * Uses centralized detectCategory for consistent categorization
  * @param {string} error - Error message or output
  * @param {string} output - Model's output
  * @param {object} context - Task context
@@ -113,39 +67,27 @@ function analyzeFailure(error, output, context = {}) {
   const errorStr = String(error);
   const outputStr = String(output || '');
 
+  // Use centralized detection
+  const detection = detectCategory(errorStr, outputStr);
+
   const analysis = {
     timestamp: new Date().toISOString(),
-    categories: [],
-    primaryCategory: null,
-    strategy: null,
+    categories: detection.all.map(match => ({
+      category: match.category,
+      strategy: match.strategy,
+      description: match.description,
+      severity: match.severity,
+      escalate: match.escalate,
+      matchedPattern: match.matchedPattern
+    })),
+    primaryCategory: detection.primary.category,
+    strategy: detection.primary.strategy,
+    severity: detection.primary.severity,
+    shouldEscalate: detection.shouldEscalate,
     details: {},
     rawError: errorStr.slice(0, 500),
     outputSample: outputStr.slice(0, 300)
   };
-
-  // Check each category
-  for (const [category, config] of Object.entries(ERROR_CATEGORIES)) {
-    for (const pattern of config.patterns) {
-      if (pattern.test(errorStr) || pattern.test(outputStr)) {
-        analysis.categories.push({
-          category,
-          strategy: config.strategy,
-          description: config.description,
-          matchedPattern: pattern.toString()
-        });
-        break;
-      }
-    }
-  }
-
-  // Set primary category (first match)
-  if (analysis.categories.length > 0) {
-    analysis.primaryCategory = analysis.categories[0].category;
-    analysis.strategy = analysis.categories[0].strategy;
-  } else {
-    analysis.primaryCategory = 'UNKNOWN';
-    analysis.strategy = 'generic_fix';
-  }
 
   // Extract specific details based on category
   analysis.details = extractErrorDetails(errorStr, analysis.primaryCategory);
@@ -254,6 +196,54 @@ Do NOT invent or hallucinate imports or function names.`,
     prefix: `CRITICAL: Your previous attempt failed. Please try again more carefully.
 Follow the instructions exactly. Output only what is requested.`,
     suffix: `Take your time and ensure the output is correct.`
+  },
+
+  // Additional strategies for new centralized categories
+  wait_retry: {
+    prefix: `NOTE: The previous attempt encountered a temporary issue (rate limit or timeout).
+This is a retry - the same approach should work.`,
+    suffix: `Proceed normally - the temporary issue should be resolved.`
+  },
+
+  retry: {
+    prefix: `NOTE: The previous attempt failed due to a transient error.
+Please try again with the same approach.`,
+    suffix: `This should work on retry.`
+  },
+
+  context_reduction: {
+    prefix: `CRITICAL: Your previous output exceeded context limits.
+Please provide a MORE CONCISE response.
+Focus only on the essential code - no explanations.
+If the task is complex, break it into smaller parts.`,
+    suffix: `Keep your response as short as possible while still being complete.`
+  },
+
+  escalate: {
+    prefix: `NOTE: This task requires capabilities that may need escalation to a more advanced model.
+Please attempt the task anyway.`,
+    suffix: `If unable to complete, indicate what capability is missing.`
+  },
+
+  context_load: {
+    prefix: `CRITICAL: Your previous attempt was missing necessary context.
+The required components/files are now provided below.
+Use ONLY what is explicitly available.`,
+    suffix: `Remember: Use the context provided, don't assume or invent.`
+  },
+
+  clarify: {
+    prefix: `NOTE: The requirements were unclear in the previous attempt.
+Please focus on the CORE functionality described.
+If unsure, implement the simplest interpretation.`,
+    suffix: `When in doubt, keep it simple and focused on the main requirement.`
+  },
+
+  pattern_fix: {
+    prefix: `CRITICAL: Your previous output didn't follow project patterns.
+Review the patterns and conventions described below.
+Match the existing code style exactly.`,
+    suffix: `Remember: Follow project conventions - check naming, structure, and patterns.`
   }
 };
 
@@ -1037,6 +1027,11 @@ module.exports = {
   // Constants for external use
   ERROR_CATEGORIES,
   REFINEMENT_STRATEGIES,
+
+  // Re-export centralized failure categories for convenience
+  FailureCategory,
+  detectCategory,
+  shouldEscalate: checkShouldEscalate,
 
   // Utilities
   extractErrorDetails,
