@@ -125,7 +125,11 @@ function getDaemonStatus() {
   }
 
   if (fileExists(HEARTBEAT_FILE)) {
-    heartbeat = JSON.parse(fs.readFileSync(HEARTBEAT_FILE, 'utf-8'));
+    try {
+      heartbeat = JSON.parse(fs.readFileSync(HEARTBEAT_FILE, 'utf-8'));
+    } catch {
+      heartbeat = null; // Invalid JSON, treat as no heartbeat
+    }
   }
 
   try {

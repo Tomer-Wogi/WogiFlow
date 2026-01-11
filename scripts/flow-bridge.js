@@ -35,7 +35,12 @@ function getConfig() {
     console.error(`${colors.red}Error:${colors.reset} Config not found. Run 'flow install' first.`);
     process.exit(1);
   }
-  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  } catch (err) {
+    console.error(`${colors.red}Error:${colors.reset} Invalid JSON in config.json: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 /**
