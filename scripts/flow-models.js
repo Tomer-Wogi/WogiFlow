@@ -439,6 +439,17 @@ function recordTaskExecution(modelId, taskData) {
 
   if (taskData.success) {
     modelStats.successes++;
+
+    // Phase 3: Record success in cascade tracker (resets failure count)
+    try {
+      const cascadeModule = require('./flow-cascade');
+      cascadeModule.recordSuccess({
+        modelId,
+        taskType: taskData.taskType || 'unknown'
+      });
+    } catch {
+      // Cascade module not available, continue without it
+    }
   } else {
     modelStats.failures++;
     stats.failureStats.totalFailures++;
@@ -446,6 +457,22 @@ function recordTaskExecution(modelId, taskData) {
     if (taskData.errorCategory) {
       stats.failureStats.byCategory[taskData.errorCategory] =
         (stats.failureStats.byCategory[taskData.errorCategory] || 0) + 1;
+    }
+
+    // Phase 3: Record failure in cascade tracker
+    try {
+      const cascadeModule = require('./flow-cascade');
+      const cascadeResult = cascadeModule.recordFailure({
+        modelId,
+        taskType: taskData.taskType || 'unknown',
+        error: taskData.errorMessage || taskData.error || 'Unknown error',
+        category: taskData.errorCategory
+      });
+
+      // Add cascade info to task data for tracking
+      taskData.cascadeInfo = cascadeResult;
+    } catch {
+      // Cascade module not available, continue without it
     }
   }
 

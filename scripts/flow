@@ -233,6 +233,16 @@ show_help() {
     echo "  models route <type>  Get routing recommendation"
     echo "  models stats         Show model performance statistics"
     echo "  models cost          Show cost analysis"
+    echo ""
+    echo "Intelligent Routing (Phase 3):"
+    echo "  route \"<task>\"       Get enhanced routing recommendation"
+    echo "  route --strategy <s> Use specific strategy (quality-first, cost-optimized, learned)"
+    echo "  cascade status       Show cascade fallback state"
+    echo "  cascade reset        Reset failure tracking"
+    echo "  cascade config       Show cascade configuration"
+    echo "  learning tiers       Show patterns by confidence tier"
+    echo "  learning stats       Show learning statistics"
+    echo "  learning apply <p>   Manually apply a pattern"
     echo "  multi-approach       Start multi-approach session"
     echo "  multi-approach --analyze \"task\" Analyze without starting"
     echo "  complexity \"task\"    Assess task complexity and token estimate"
@@ -701,6 +711,18 @@ case "${1:-}" in
         ;;
     models)
         node "$SCRIPT_DIR/flow-models.js" "${@:2}"
+        ;;
+    route|model-route)
+        # Phase 3: Enhanced task routing
+        node "$SCRIPT_DIR/flow-model-router.js" "${@:2}"
+        ;;
+    cascade)
+        # Phase 3: Cascade fallback system
+        node "$SCRIPT_DIR/flow-cascade.js" "${@:2}"
+        ;;
+    learning)
+        # Phase 3: Tiered learning system
+        node "$SCRIPT_DIR/flow-tiered-learning.js" "${@:2}"
         ;;
     multi-approach)
         node "$SCRIPT_DIR/flow-multi-approach.js" "${@:2}"
