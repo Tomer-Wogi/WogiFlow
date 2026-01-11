@@ -644,7 +644,7 @@ class GoogleProvider extends BaseProvider {
     const model = options.model || this.config.model || DEFAULT_CONFIGS.google.model;
     const endpoint = this.config.endpoint || DEFAULT_CONFIGS.google.endpoint;
     const url = new URL(`/models/${model}:generateContent`, endpoint);
-    url.searchParams.set('key', this.apiKey);
+    // API key passed via header for security (not URL to avoid logging exposure)
 
     const body = {
       contents: [{
@@ -663,7 +663,7 @@ class GoogleProvider extends BaseProvider {
       };
     }
 
-    const response = await this._request(url, body);
+    const response = await this._request(url, body, 'POST', { 'x-goog-api-key': this.apiKey });
 
     if (response.error) {
       throw new Error(response.error.message);
@@ -688,10 +688,9 @@ class GoogleProvider extends BaseProvider {
 
     const endpoint = this.config.endpoint || DEFAULT_CONFIGS.google.endpoint;
     const url = new URL('/models', endpoint);
-    url.searchParams.set('key', this.apiKey);
 
     try {
-      const response = await this._request(url, null, 'GET');
+      const response = await this._request(url, null, 'GET', { 'x-goog-api-key': this.apiKey });
       return (response.models || [])
         .filter(m => m.name.includes('gemini'))
         .map(m => ({
@@ -704,14 +703,15 @@ class GoogleProvider extends BaseProvider {
     }
   }
 
-  _request(url, body, method = 'POST') {
+  _request(url, body, method = 'POST', additionalHeaders = {}) {
     return new Promise((resolve, reject) => {
       const options = {
         method,
         hostname: url.hostname,
         path: url.pathname + url.search,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...additionalHeaders
         },
         timeout: this.config.timeout || 60000
       };

@@ -32,7 +32,11 @@ const EVENT_TYPES = ['bash', 'file', 'stop', 'prompt', 'all'];
 const ACTIONS = ['block', 'warn', 'ask', 'allow'];
 
 // Maximum allowed regex pattern length to prevent abuse
-const MAX_REGEX_LENGTH = 500;
+// Reduced from 500 to prevent ReDoS attacks with complex patterns
+const MAX_REGEX_LENGTH = 100;
+
+// Maximum input length to test against regex (prevents slow matching)
+const MAX_INPUT_LENGTH = 10000;
 
 /**
  * Create a RegExp safely, rejecting patterns that could cause ReDoS
@@ -74,6 +78,23 @@ function safeRegExp(pattern, flags = '') {
     console.error(`Invalid regex pattern: ${pattern} - ${e.message}`);
     return null;
   }
+}
+
+/**
+ * Safely test a regex against input with length limits
+ * @param {RegExp} regex - The compiled regex
+ * @param {string} input - The input string to test
+ * @returns {boolean} - True if matches, false otherwise
+ */
+function safeRegexTest(regex, input) {
+  if (!regex) return false;
+
+  // Truncate overly long inputs to prevent slow matching
+  const safeInput = typeof input === 'string' && input.length > MAX_INPUT_LENGTH
+    ? input.substring(0, MAX_INPUT_LENGTH)
+    : String(input);
+
+  return regex.test(safeInput);
 }
 
 function log(color, ...args) {
@@ -392,7 +413,7 @@ function checkEventRule(rule, eventType, context) {
     if (!regex) {
       return null; // Invalid or unsafe regex, skip this condition
     }
-    if (!regex.test(String(value))) {
+    if (!safeRegexTest(regex, value)) {
       return null; // Condition not met
     }
   }
@@ -955,5 +976,10 @@ module.exports = {
   checkPath,
   promptHookCheck,
   getStatus,
-  SAFE_COMMANDS
+  SAFE_COMMANDS,
+  // Regex safety utilities (for use by other modules)
+  safeRegExp,
+  safeRegexTest,
+  MAX_REGEX_LENGTH,
+  MAX_INPUT_LENGTH
 };

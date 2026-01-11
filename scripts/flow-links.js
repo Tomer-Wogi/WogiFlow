@@ -24,6 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const dns = require('dns');
 const { getProjectRoot, colors: c } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -185,9 +186,77 @@ function detectLinkType(url) {
 }
 
 /**
- * Fetch content from URL
+ * Check if an IP address is private/internal (SSRF protection)
  */
-function fetchUrl(url, options = {}) {
+function isPrivateIP(ip) {
+  // Handle IPv4
+  const parts = ip.split('.').map(Number);
+  if (parts.length === 4) {
+    return (
+      ip === '127.0.0.1' ||
+      ip.startsWith('127.') ||
+      parts[0] === 10 ||
+      (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+      (parts[0] === 192 && parts[1] === 168) ||
+      parts[0] === 0 ||
+      ip === '255.255.255.255'
+    );
+  }
+  // Handle IPv6 loopback and link-local
+  return ip === '::1' || ip.startsWith('fe80:') || ip.startsWith('fc') || ip.startsWith('fd');
+}
+
+/**
+ * Validate URL for SSRF (resolve hostname and check IP)
+ */
+async function validateUrlForSSRF(urlString, options = {}) {
+  const url = new URL(urlString);
+
+  // Block non-HTTP(S) protocols
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`SSRF Protection: Only HTTP(S) protocols allowed, got ${url.protocol}`);
+  }
+
+  // Require HTTPS unless explicitly allowed
+  if (url.protocol !== 'https:' && !options.allowHttp) {
+    throw new Error('SSRF Protection: Only HTTPS URLs allowed. Use allowHttp option to override.');
+  }
+
+  // Block localhost and common internal hostnames
+  const hostname = url.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
+    throw new Error(`SSRF Protection: Internal hostnames not allowed: ${hostname}`);
+  }
+
+  // Resolve hostname and check IP addresses
+  try {
+    const addresses = await dns.promises.resolve4(hostname).catch(() => []);
+    const addresses6 = await dns.promises.resolve6(hostname).catch(() => []);
+    const allAddresses = [...addresses, ...addresses6];
+
+    if (allAddresses.length === 0) {
+      // Could not resolve - might be internal DNS, allow with caution
+      return;
+    }
+
+    for (const ip of allAddresses) {
+      if (isPrivateIP(ip)) {
+        throw new Error(`SSRF Protection: URL resolves to private IP address: ${ip}`);
+      }
+    }
+  } catch (err) {
+    if (err.message.startsWith('SSRF')) throw err;
+    // DNS resolution failed - proceed with caution (might be valid external host)
+  }
+}
+
+/**
+ * Fetch content from URL (with SSRF protection)
+ */
+async function fetchUrl(url, options = {}) {
+  // Validate URL for SSRF before making request
+  await validateUrlForSSRF(url, options);
+
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const protocol = urlObj.protocol === 'https:' ? https : http;
@@ -205,9 +274,11 @@ function fetchUrl(url, options = {}) {
     };
 
     const req = protocol.request(reqOptions, (res) => {
-      // Handle redirects
+      // Handle redirects (with SSRF check)
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        fetchUrl(res.headers.location, options)
+        // Validate redirect target for SSRF
+        validateUrlForSSRF(res.headers.location, options)
+          .then(() => fetchUrl(res.headers.location, options))
           .then(resolve)
           .catch(reject);
         return;
