@@ -332,18 +332,32 @@ Last synced: ${new Date().toISOString()}
       'Bash(wc *)',
       'Bash(grep *)',
       'Bash(find *)',
-      'Bash(chmod *)',
+      'Bash(chmod +x *)',  // Only make executable, not arbitrary permissions
       'Bash(node *)',
       'Bash(bash *)',
       'Bash(open *)',
       'Bash(test *)',
 
-      // AWS/Cloud
-      'Bash(aws *)',
-      'Bash(terraform *)',
+      // AWS - Read-only and safe operations
+      'Bash(aws s3 ls *)',
+      'Bash(aws s3 cp *)',
+      'Bash(aws sts get-caller-identity)',
+      'Bash(aws sts get-caller-identity *)',
+      'Bash(aws configure list)',
+      'Bash(aws --version)',
 
-      // Database
-      'Bash(sqlite3 *)',
+      // Terraform - Safe planning and validation operations
+      'Bash(terraform plan *)',
+      'Bash(terraform fmt *)',
+      'Bash(terraform validate *)',
+      'Bash(terraform init *)',
+      'Bash(terraform show *)',
+      'Bash(terraform output *)',
+      'Bash(terraform version)',
+
+      // Database - Project-scoped
+      'Bash(sqlite3 *.db *)',
+      'Bash(sqlite3 *.sqlite *)',
 
       // Web fetch domains
       'WebFetch(domain:github.com)',
@@ -361,6 +375,14 @@ Last synced: ${new Date().toISOString()}
     const additionalDomains = config.permissions?.allowedDomains || [];
     for (const domain of additionalDomains) {
       wildcardPermissions.push(`WebFetch(domain:${domain})`);
+    }
+
+    // Additional custom permissions from config (for advanced users)
+    const customPermissions = config.permissions?.custom || [];
+    for (const perm of customPermissions) {
+      if (!wildcardPermissions.includes(perm)) {
+        wildcardPermissions.push(perm);
+      }
     }
 
     return {

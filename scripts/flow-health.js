@@ -22,7 +22,8 @@ const {
   printSection,
   success,
   warn,
-  error
+  error,
+  validatePermissions
 } = require('./flow-utils');
 
 function main() {
@@ -135,11 +136,11 @@ function main() {
   console.log('');
   printSection('Checking knowledge files...');
 
-  // Check existence
+  // Use paths from PATHS constant (defined in flow-utils.js)
   const knowledgeFiles = [
-    { path: path.join(PROJECT_ROOT, '.workflow', 'state', 'stack.md'), name: 'stack.md', category: 'stack' },
-    { path: path.join(PROJECT_ROOT, '.workflow', 'state', 'architecture.md'), name: 'architecture.md', category: 'architecture' },
-    { path: path.join(PROJECT_ROOT, '.workflow', 'state', 'testing.md'), name: 'testing.md', category: 'testing' },
+    { path: PATHS.stackMd, name: 'stack.md', category: 'stack' },
+    { path: PATHS.architectureMd, name: 'architecture.md', category: 'architecture' },
+    { path: PATHS.testingMd, name: 'testing.md', category: 'testing' },
   ];
 
   // Try to load drift detection
@@ -238,14 +239,19 @@ function main() {
   if (fileExists(PATHS.config)) {
     const configResult = validateJson(PATHS.config);
     if (configResult.valid) {
-      const config = JSON.parse(require('fs').readFileSync(PATHS.config, 'utf-8'));
-      if (config.enforcement?.strictMode === true) {
-        console.log(`  ${color('green', '✓')} Strict mode: ENABLED`);
-      } else if (config.enforcement?.strictMode === false) {
-        console.log(`  ${color('yellow', '⚠')} Strict mode: DISABLED (Claude may skip task creation)`);
-        warnings++;
-      } else {
-        console.log(`  ${color('yellow', '⚠')} Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
+      try {
+        const config = JSON.parse(require('fs').readFileSync(PATHS.config, 'utf-8'));
+        if (config.enforcement?.strictMode === true) {
+          console.log(`  ${color('green', '✓')} Strict mode: ENABLED`);
+        } else if (config.enforcement?.strictMode === false) {
+          console.log(`  ${color('yellow', '⚠')} Strict mode: DISABLED (Claude may skip task creation)`);
+          warnings++;
+        } else {
+          console.log(`  ${color('yellow', '⚠')} Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
+          warnings++;
+        }
+      } catch (e) {
+        console.log(`  ${color('yellow', '⚠')} Could not parse config.json for strict mode check`);
         warnings++;
       }
     }
@@ -284,53 +290,15 @@ function main() {
       const settings = JSON.parse(require('fs').readFileSync(settingsPath, 'utf-8'));
       const permissions = settings.permissions?.allow || [];
 
-      // Check for duplicates
-      const seen = new Set();
-      const duplicates = [];
-      for (const perm of permissions) {
-        if (seen.has(perm)) {
-          duplicates.push(perm);
-        }
-        seen.add(perm);
-      }
+      // Use shared validation function
+      const validation = validatePermissions(permissions);
 
-      // Check for overly broad patterns
-      const overbroad = permissions.filter(p =>
-        p === 'Bash(*)' || p === 'Edit(*)' || p === 'Write(*)'
-      );
+      console.log(`  Total rules: ${validation.analysis.total}`);
 
-      // Check for potentially shadowed rules (specific rule when wildcard exists)
-      const wildcards = permissions.filter(p => p.includes('*'));
-      const specific = permissions.filter(p => !p.includes('*'));
-      const shadowed = [];
-
-      for (const spec of specific) {
-        // Extract tool type and pattern
-        const match = spec.match(/^(\w+)\((.+)\)$/);
-        if (match) {
-          const [, tool, pattern] = match;
-          // Check if a wildcard covers this
-          for (const wild of wildcards) {
-            const wildMatch = wild.match(/^(\w+)\((.+)\)$/);
-            if (wildMatch && wildMatch[1] === tool) {
-              const wildPattern = wildMatch[2].replace(/\*/g, '.*');
-              try {
-                const regex = new RegExp(`^${wildPattern}$`);
-                if (regex.test(pattern)) {
-                  shadowed.push({ specific: spec, wildcard: wild });
-                  break;
-                }
-              } catch {}
-            }
-          }
-        }
-      }
-
-      console.log(`  Total rules: ${permissions.length}`);
-
-      if (duplicates.length > 0) {
-        console.log(`  ${color('yellow', '⚠')} ${duplicates.length} duplicate rule(s) found`);
-        for (const dup of duplicates.slice(0, 3)) {
+      // Show duplicates (warning)
+      if (validation.analysis.duplicates.length > 0) {
+        console.log(`  ${color('yellow', '⚠')} ${validation.analysis.duplicates.length} duplicate rule(s) found`);
+        for (const dup of validation.analysis.duplicates.slice(0, 3)) {
           console.log(`    - ${dup}`);
         }
         warnings++;
@@ -338,16 +306,18 @@ function main() {
         console.log(`  ${color('green', '✓')} No duplicate rules`);
       }
 
-      if (overbroad.length > 0) {
-        console.log(`  ${color('yellow', '⚠')} ${overbroad.length} overly broad rule(s)`);
-        for (const ob of overbroad) {
+      // Show overly broad rules (issue)
+      if (validation.analysis.overbroad.length > 0) {
+        console.log(`  ${color('yellow', '⚠')} ${validation.analysis.overbroad.length} overly broad rule(s)`);
+        for (const ob of validation.analysis.overbroad) {
           console.log(`    - ${ob}`);
         }
         warnings++;
       }
 
-      if (shadowed.length > 0) {
-        console.log(`  ${color('dim', 'ℹ')} ${shadowed.length} rule(s) shadowed by wildcards (OK but redundant)`);
+      // Show shadowed rules (info only)
+      if (validation.analysis.shadowed.length > 0) {
+        console.log(`  ${color('dim', 'ℹ')} ${validation.analysis.shadowed.length} rule(s) shadowed by wildcards (OK but redundant)`);
       }
 
       // Check for respectGitignore

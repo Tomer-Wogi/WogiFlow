@@ -95,6 +95,21 @@ Then:
 
 See `.claude/docs/commands.md` for complete command reference.
 
+## Natural Language Command Detection
+
+**When you recognize these phrases, auto-invoke the corresponding command:**
+
+| Phrase Pattern | Command |
+|----------------|---------|
+| "review what we did", "review this session", "please review", "code review" | `/wogi-session-review` |
+| "show tasks", "what's ready", "available tasks" | `/wogi-ready` |
+| "project status", "show status", "where are we" | `/wogi-status` |
+| "check health", "workflow health", "is everything ok" | `/wogi-health` |
+| "wrap up", "end session", "that's all" | `/wogi-session-end` |
+| "compact context", "save context", "running low on context" | `/wogi-compact` |
+
+**IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
+
 ## Session Startup
 
 ```bash
