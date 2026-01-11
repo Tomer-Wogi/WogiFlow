@@ -416,36 +416,42 @@ function parseStoryFile(filePath) {
     return null;
   }
 
-  const content = fs.readFileSync(filePath, 'utf-8');
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
 
-  // Extract title from header
-  const titleMatch = content.match(/^#\s*\[[\w-]+\]\s*(.+)$/m);
-  const title = titleMatch ? titleMatch[1].trim() : '';
+    // Extract title from header
+    const titleMatch = content.match(/^#\s*\[[\w-]+\]\s*(.+)$/m);
+    const title = titleMatch ? titleMatch[1].trim() : '';
 
-  // Extract description
-  const descMatch = content.match(/## Description\s*\n([\s\S]*?)(?=\n## |\n$)/);
-  const description = descMatch ? descMatch[1].trim() : '';
+    // Extract description
+    const descMatch = content.match(/## Description\s*\n([\s\S]*?)(?=\n## |\n$)/);
+    const description = descMatch ? descMatch[1].trim() : '';
 
-  // Extract acceptance criteria
-  const criteriaMatches = content.matchAll(/\*\*(Given|When|Then|And)\*\*\s*(.+)/g);
-  const criteria = Array.from(criteriaMatches).map(m => m[2].trim());
+    // Extract acceptance criteria
+    const criteriaMatches = content.matchAll(/\*\*(Given|When|Then|And)\*\*\s*(.+)/g);
+    const criteria = Array.from(criteriaMatches).map(m => m[2].trim());
 
-  // Extract task type from content
-  let type = 'feature';
-  if (content.includes('bugfix') || content.includes('fix bug')) {
-    type = 'bugfix';
-  } else if (content.includes('refactor')) {
-    type = 'refactor';
-  } else if (content.includes('architecture')) {
-    type = 'architecture';
+    // Extract task type from content
+    let type = 'feature';
+    if (content.includes('bugfix') || content.includes('fix bug')) {
+      type = 'bugfix';
+    } else if (content.includes('refactor')) {
+      type = 'refactor';
+    } else if (content.includes('architecture')) {
+      type = 'architecture';
+    }
+
+    return {
+      title,
+      description,
+      acceptanceCriteria: criteria,
+      type
+    };
+  } catch (err) {
+    // File read error (permission denied, race condition, etc.)
+    console.error(`Warning: Could not read story file ${filePath}: ${err.message}`);
+    return null;
   }
-
-  return {
-    title,
-    description,
-    acceptanceCriteria: criteria,
-    type
-  };
 }
 
 // ============================================================

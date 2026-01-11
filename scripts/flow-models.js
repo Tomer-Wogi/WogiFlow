@@ -158,14 +158,28 @@ function calculateTaskCost(model, taskData) {
 // ============================================================
 
 /**
- * Load the model registry with safety checks
+ * Load the model registry with safety checks and validation
+ * @returns {Object|null} Validated registry data or null if invalid
  */
 function loadRegistry() {
   if (!fileExists(REGISTRY_PATH)) {
     return null;
   }
 
-  return safeJsonParse(REGISTRY_PATH);
+  const registry = safeJsonParse(REGISTRY_PATH);
+
+  // Validate registry structure
+  if (!registry || typeof registry !== 'object') {
+    return null;
+  }
+
+  // Ensure required top-level fields exist
+  if (!registry.version || !registry.models || typeof registry.models !== 'object') {
+    warn('Invalid registry structure: missing version or models');
+    return null;
+  }
+
+  return registry;
 }
 
 /**

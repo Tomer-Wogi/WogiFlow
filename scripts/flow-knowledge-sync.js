@@ -32,7 +32,8 @@ const {
   error,
   info,
   getConfig,
-  isPathWithinProject
+  isPathWithinProject,
+  safeJsonParse
 } = require('./flow-utils');
 
 // Files that indicate stack/architecture changes
@@ -111,7 +112,7 @@ function escapeGlobToRegex(pattern) {
   // Escape all regex special chars except *
   return pattern
     .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape special chars
-    .replace(/\*/g, '.*');                    // Convert * to .*
+    .replace(/\*/g, '[^/]*');                 // Convert * to non-path-separator match
 }
 
 /**
@@ -233,7 +234,8 @@ function loadSyncState() {
   }
 
   try {
-    return JSON.parse(fs.readFileSync(PATHS.knowledgeSync, 'utf-8'));
+    const content = fs.readFileSync(PATHS.knowledgeSync, 'utf-8');
+    return safeJsonParse(content, null);
   } catch {
     return null;
   }

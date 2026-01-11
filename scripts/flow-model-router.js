@@ -63,14 +63,28 @@ const DEFAULT_CONFIG = {
 // ============================================================
 
 /**
- * Load model registry
- * @returns {Object|null} Registry data
+ * Load model registry with validation
+ * @returns {Object|null} Validated registry data or null if invalid
  */
 function loadRegistry() {
   if (!fileExists(REGISTRY_PATH)) {
     return null;
   }
-  return safeJsonParse(REGISTRY_PATH);
+
+  const registry = safeJsonParse(REGISTRY_PATH);
+
+  // Validate registry structure
+  if (!registry || typeof registry !== 'object') {
+    return null;
+  }
+
+  // Ensure required top-level fields exist
+  if (!registry.version || !registry.models || typeof registry.models !== 'object') {
+    warn('Invalid registry structure: missing version or models');
+    return null;
+  }
+
+  return registry;
 }
 
 /**
@@ -470,9 +484,8 @@ async function main() {
 
   // Get analysis from flag or run analyzer
   if (flags.analysis) {
-    try {
-      analysis = JSON.parse(flags.analysis);
-    } catch {
+    analysis = safeJsonParse(flags.analysis, null);
+    if (!analysis) {
       error('Invalid --analysis JSON');
       process.exit(1);
     }

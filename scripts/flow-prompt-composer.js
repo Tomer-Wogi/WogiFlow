@@ -272,13 +272,20 @@ function composePrompt(params) {
  * @returns {string} Processed string
  */
 function applyTemplate(template, data) {
+  // Forbidden keys to prevent prototype pollution
+  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
   // Simple substitution: {{key}} or {{object.key}}
   return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
     const keys = path.trim().split('.');
     let value = data;
 
     for (const key of keys) {
+      // Prevent prototype pollution attacks
+      if (FORBIDDEN_KEYS.has(key)) return match;
       if (value === undefined || value === null) return match;
+      // Only access own properties
+      if (!Object.prototype.hasOwnProperty.call(value, key)) return match;
       value = value[key];
     }
 
