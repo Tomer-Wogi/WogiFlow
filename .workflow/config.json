@@ -330,6 +330,16 @@
     "loopRetryThreshold": 3,
     "autoSuggestPatternUpdates": true
   },
+  "autoLearning": {
+    "enabled": true,
+    "captureFrom": {
+      "sessionReview": true,
+      "bugFix": true
+    },
+    "confidenceThreshold": 80,
+    "promotionThreshold": 3,
+    "autoPromote": false
+  },
   "memory": {
     "enabled": true,
     "localDb": ".workflow/memory/local.db",

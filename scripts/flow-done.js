@@ -387,6 +387,16 @@ async function main() {
     if (process.env.DEBUG) console.error(`[DEBUG] afterTask steps: ${e.message}`);
   }
 
+  // Auto-capture learnings from bug fixes
+  if (taskType === 'bugfix' || taskType === 'fix') {
+    try {
+      const { captureFromBugFix } = require('./flow-auto-learn');
+      captureFromBugFix(taskId, modifiedFiles, taskTitle);
+    } catch (e) {
+      if (process.env.DEBUG) console.error(`[DEBUG] auto-learn: ${e.message}`);
+    }
+  }
+
   // v2.2: Run beforeCommit workflow steps
   try {
     const allSteps = getAllSteps();

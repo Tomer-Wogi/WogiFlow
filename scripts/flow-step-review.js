@@ -108,6 +108,16 @@ async function run(options = {}) {
   // Critical issues block, important issues warn
   const hasCritical = criticalIssues.length > 0;
 
+  // Auto-capture learnings from issues found
+  if (reportableIssues.length > 0) {
+    try {
+      const { captureFromSessionReview } = require('./flow-auto-learn');
+      captureFromSessionReview(reportableIssues);
+    } catch (err) {
+      // Auto-learn not available or failed - continue silently
+    }
+  }
+
   return {
     passed: !hasCritical,
     message: `${reportableIssues.length} issue(s) found (${criticalIssues.length} critical, ${importantIssues.length} important)`,
