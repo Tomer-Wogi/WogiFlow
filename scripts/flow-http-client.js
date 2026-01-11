@@ -91,8 +91,11 @@ class HttpClient {
             if (data && res.headers['content-type']?.includes('application/json')) {
               parsed = JSON.parse(data);
             }
-          } catch {
-            // Keep as string if not valid JSON
+          } catch (err) {
+            // Keep as string if not valid JSON, but log for debugging
+            if (process.env.DEBUG) {
+              console.warn(`[HttpClient] Failed to parse JSON response: ${err.message}`);
+            }
           }
 
           resolve({

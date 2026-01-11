@@ -34,6 +34,7 @@ function requireInit() {
 function loadActiveDigest() { requireInit(); return digestCore.loadActiveDigest(); }
 function saveActiveDigest(d) { requireInit(); return digestCore.saveActiveDigest(d); }
 function countWords(t) { requireInit(); return digestCore.countWords(t); }
+function now() { requireInit(); return digestCore.now(); }
 
 // Paths
 const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');

@@ -38,6 +38,9 @@ const TIMEOUTS = {
   // Polling
   POLL_INTERVAL: 1000,          // 1 second - default polling interval
   ENDPOINT_CHECK: 3000,         // 3 seconds - endpoint availability check
+
+  // Caching
+  CACHE_TTL: 300000,            // 5 minutes - default cache TTL for integrations
 };
 
 // ============================================================

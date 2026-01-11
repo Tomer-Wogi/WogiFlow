@@ -4805,6 +4805,7 @@ transcriptStories.init({
   loadClarifications,
   isRequirement,
   isVagueStatement,
+  analyzeComplexity,
   REQUIREMENT_PATTERNS,
   VAGUE_PATTERNS,
   ENTITY_PATTERNS
@@ -4814,7 +4815,8 @@ transcriptStories.init({
 transcriptChunking.init({
   loadActiveDigest,
   saveActiveDigest,
-  countWords
+  countWords,
+  now
 });
 
 /**

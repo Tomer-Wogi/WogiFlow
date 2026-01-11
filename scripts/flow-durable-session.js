@@ -879,7 +879,11 @@ function checkPollCondition(config) {
   }
 
   if (!validation.safe) {
-    console.warn(`Warning: Poll command may be unsafe - ${validation.reason}`);
+    return {
+      canResume: false,
+      reason: 'poll-command-unsafe',
+      error: `SECURITY: Command validation failed - ${validation.reason}`
+    };
   }
 
   try {

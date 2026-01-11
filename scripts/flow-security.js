@@ -61,16 +61,18 @@ function validatePathWithinProject(filePath, projectRoot) {
     if (fs.existsSync(resolvedPath)) {
       realPath = fs.realpathSync(resolvedPath);
     }
-  } catch {
+  } catch (err) {
     // If realpathSync fails, continue with resolved path
+    if (process.env.DEBUG) console.warn(`[Security] realpathSync failed for ${resolvedPath}: ${err.message}`);
   }
 
   // Get real project root (resolves symlinks)
   let realProjectRoot = projectRoot;
   try {
     realProjectRoot = fs.realpathSync(projectRoot);
-  } catch {
+  } catch (err) {
     // If realpathSync fails, continue with original
+    if (process.env.DEBUG) console.warn(`[Security] realpathSync failed for projectRoot: ${err.message}`);
   }
 
   // Ensure path starts with project root + separator
@@ -220,9 +222,9 @@ function safeGitCommand(args, options = {}) {
       stdio: ['pipe', 'pipe', 'pipe']
     });
     return result.trim();
-  } catch (error) {
+  } catch (err) {
     if (!silent) {
-      throw new Error(`Git command failed: git ${args.join(' ')}\n${error.stderr || error.message}`);
+      throw new Error(`Git command failed: git ${args.join(' ')}\n${err.stderr || err.message}`);
     }
     return null;
   }
@@ -320,8 +322,11 @@ function safeGrep(pattern, options = {}) {
       .split('\n')
       .filter(Boolean)
       .slice(0, maxResults);
-  } catch {
-    // grep returns non-zero when no matches found
+  } catch (err) {
+    // grep returns non-zero when no matches found - this is expected
+    if (process.env.DEBUG && err.status !== 1) {
+      console.warn(`[Security] safeGrep failed: ${err.message}`);
+    }
     return [];
   }
 }
@@ -363,7 +368,10 @@ function safeFind(dir, options = {}) {
       .split('\n')
       .filter(Boolean)
       .slice(0, maxResults);
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.warn(`[Security] safeFind failed: ${err.message}`);
+    }
     return [];
   }
 }

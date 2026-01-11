@@ -42,6 +42,7 @@ function loadStatementMap() { requireInit(); return digestCore.loadStatementMap(
 function loadClarifications() { requireInit(); return digestCore.loadClarifications(); }
 function isRequirement(s) { requireInit(); return digestCore.isRequirement(s); }
 function isVagueStatement(s) { requireInit(); return digestCore.isVagueStatement(s); }
+function analyzeComplexity() { requireInit(); return digestCore.analyzeComplexity(); }
 
 // State directory
 const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');

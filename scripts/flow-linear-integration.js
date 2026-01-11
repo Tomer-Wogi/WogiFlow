@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { HttpClient } = require('./flow-http-client');
+const { TIMEOUTS } = require('./flow-constants');
 const {
   PROJECT_ROOT,
   STATE_DIR,
@@ -45,7 +46,7 @@ const {
 
 const READY_PATH = path.join(STATE_DIR, 'ready.json');
 const LINEAR_CACHE_PATH = path.join(STATE_DIR, 'linear-cache.json');
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = TIMEOUTS.CACHE_TTL;
 const LINEAR_API_URL = 'https://api.linear.app/graphql';
 
 // ============================================================
