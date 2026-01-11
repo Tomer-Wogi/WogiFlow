@@ -14,10 +14,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, spawn } = require('child_process');
+const { execSync, execFileSync, spawn } = require('child_process');
 const http = require('http');
 const https = require('https');
 const readline = require('readline');
+const { validatePathWithinProject } = require('./flow-security');
 
 // Import complexity assessment module
 const {
@@ -2838,7 +2839,8 @@ class Validator {
         log('dim', `   📁 Running tsc from: ${path.relative(PROJECT_ROOT, cwd) || '.'}`);
       }
 
-      execSync('npx tsc --noEmit', {
+      // Use execFileSync with array args for safety
+      execFileSync('npx', ['tsc', '--noEmit'], {
         encoding: 'utf-8',
         cwd,
         stdio: ['pipe', 'pipe', 'pipe']
@@ -2894,7 +2896,8 @@ class Validator {
     try {
       // Also find the right directory for eslint config
       const cwd = this.findTsConfigDir(filePath);
-      execSync(`npx eslint "${filePath}" --fix`, {
+      // Use execFileSync with array args to prevent shell injection
+      execFileSync('npx', ['eslint', filePath, '--fix'], {
         encoding: 'utf-8',
         cwd,
         stdio: ['pipe', 'pipe', 'pipe']

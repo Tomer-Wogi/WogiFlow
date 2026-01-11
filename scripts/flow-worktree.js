@@ -22,10 +22,11 @@
  *   await discardWorktree(worktree);
  */
 
-const { execSync, spawn } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { sanitizeCommitMessage } = require('./flow-security');
 
 // ============================================================
 // Configuration
@@ -39,12 +40,17 @@ const WORKTREE_BASE_DIR = path.join(os.tmpdir(), 'wogi-worktrees');
 // ============================================================
 
 /**
- * Execute a git command and return the output
+ * Execute a git command safely and return the output.
+ * Uses execFileSync with array arguments to prevent shell injection.
+ *
+ * @param {string[]} args - Git arguments as an array (e.g., ['status', '--porcelain'])
+ * @param {Object} options - Execution options
+ * @returns {string|null} Command output or null on silent failure
  */
 function git(args, options = {}) {
   const { cwd = process.cwd(), silent = false } = options;
   try {
-    const result = execSync(`git ${args}`, {
+    const result = execFileSync('git', args, {
       cwd,
       encoding: 'utf-8',
       stdio: silent ? 'pipe' : ['pipe', 'pipe', 'pipe']
@@ -52,7 +58,7 @@ function git(args, options = {}) {
     return result.trim();
   } catch (error) {
     if (!silent) {
-      throw new Error(`Git command failed: git ${args}\n${error.stderr || error.message}`);
+      throw new Error(`Git command failed: git ${args.join(' ')}\n${error.stderr || error.message}`);
     }
     return null;
   }
@@ -63,7 +69,7 @@ function git(args, options = {}) {
  */
 function isGitRepo(cwd = process.cwd()) {
   try {
-    execSync('git rev-parse --git-dir', { cwd, stdio: 'pipe' });
+    execFileSync('git', ['rev-parse', '--git-dir'], { cwd, stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -74,14 +80,14 @@ function isGitRepo(cwd = process.cwd()) {
  * Get the current branch name
  */
 function getCurrentBranch(cwd = process.cwd()) {
-  return git('rev-parse --abbrev-ref HEAD', { cwd, silent: true }) || 'main';
+  return git(['rev-parse', '--abbrev-ref', 'HEAD'], { cwd, silent: true }) || 'main';
 }
 
 /**
  * Get the root of the git repository
  */
 function getRepoRoot(cwd = process.cwd()) {
-  return git('rev-parse --show-toplevel', { cwd, silent: true });
+  return git(['rev-parse', '--show-toplevel'], { cwd, silent: true });
 }
 
 /**
@@ -145,7 +151,7 @@ async function createWorktree(options = {}) {
 
   // Create the worktree with a new branch
   try {
-    git(`worktree add -b ${branchName} "${worktreePath}" ${base}`, { cwd: repoRoot });
+    git(['worktree', 'add', '-b', branchName, worktreePath, base], { cwd: repoRoot });
   } catch (error) {
     throw new Error(`Failed to create worktree: ${error.message}`);
   }
@@ -186,7 +192,7 @@ async function commitAndMerge(worktree, commitMessage, options = {}) {
   const { path: worktreePath, branchName, baseBranch, repoRoot } = worktree;
 
   // Check for changes
-  const status = git('status --porcelain', { cwd: worktreePath, silent: true });
+  const status = git(['status', '--porcelain'], { cwd: worktreePath, silent: true });
   if (!status) {
     // No changes to commit, just cleanup
     if (cleanup) {
@@ -195,33 +201,36 @@ async function commitAndMerge(worktree, commitMessage, options = {}) {
     return { merged: false, reason: 'no-changes' };
   }
 
+  // Sanitize commit message to prevent injection
+  const safeMessage = sanitizeCommitMessage(commitMessage);
+
   // Stage and commit in worktree
-  git('add -A', { cwd: worktreePath });
-  git(`commit -m "${commitMessage.replace(/"/g, '\\"')}"`, { cwd: worktreePath });
+  git(['add', '-A'], { cwd: worktreePath });
+  git(['commit', '-m', safeMessage], { cwd: worktreePath });
 
   // Switch to base branch in main repo
   const originalBranch = getCurrentBranch(repoRoot);
 
   try {
     // Checkout base branch
-    git(`checkout ${baseBranch}`, { cwd: repoRoot });
+    git(['checkout', baseBranch], { cwd: repoRoot });
 
     // Merge the worktree branch
     if (squash) {
-      git(`merge --squash ${branchName}`, { cwd: repoRoot });
-      git(`commit -m "${commitMessage.replace(/"/g, '\\"')}"`, { cwd: repoRoot });
+      git(['merge', '--squash', branchName], { cwd: repoRoot });
+      git(['commit', '-m', safeMessage], { cwd: repoRoot });
     } else {
-      git(`merge ${branchName} -m "${commitMessage.replace(/"/g, '\\"')}"`, { cwd: repoRoot });
+      git(['merge', branchName, '-m', safeMessage], { cwd: repoRoot });
     }
 
     // Push if requested
     if (push) {
-      git(`push origin ${baseBranch}`, { cwd: repoRoot });
+      git(['push', 'origin', baseBranch], { cwd: repoRoot });
     }
 
   } catch (error) {
     // Restore original branch on failure
-    git(`checkout ${originalBranch}`, { cwd: repoRoot, silent: true });
+    git(['checkout', originalBranch], { cwd: repoRoot, silent: true });
     throw new Error(`Merge failed: ${error.message}`);
   }
 
@@ -246,19 +255,19 @@ async function discardWorktree(worktree, options = {}) {
 
   // Remove the worktree
   try {
-    git(`worktree remove "${worktreePath}" --force`, { cwd: repoRoot, silent: true });
+    git(['worktree', 'remove', worktreePath, '--force'], { cwd: repoRoot, silent: true });
   } catch {
     // If git remove fails, try manual cleanup
     if (fs.existsSync(worktreePath)) {
       fs.rmSync(worktreePath, { recursive: true, force: true });
     }
     // Prune worktree list
-    git('worktree prune', { cwd: repoRoot, silent: true });
+    git(['worktree', 'prune'], { cwd: repoRoot, silent: true });
   }
 
   // Delete the branch
   if (deleteBranch) {
-    git(`branch -D ${branchName}`, { cwd: repoRoot, silent: true });
+    git(['branch', '-D', branchName], { cwd: repoRoot, silent: true });
   }
 
   return { discarded: true };
@@ -272,7 +281,7 @@ async function discardWorktree(worktree, options = {}) {
  */
 function listWorktrees(repoRoot = process.cwd()) {
   const root = getRepoRoot(repoRoot) || repoRoot;
-  const output = git('worktree list --porcelain', { cwd: root, silent: true });
+  const output = git(['worktree', 'list', '--porcelain'], { cwd: root, silent: true });
   if (!output) return [];
 
   const worktrees = [];

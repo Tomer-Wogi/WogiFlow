@@ -18,8 +18,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const { safeGrep, safeFind, escapeRegex } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -388,41 +388,29 @@ async function findRelatedCode(query, options = {}) {
  * Find files that import a given file
  */
 async function findFilesImporting(filePath) {
-  const results = [];
   const basename = path.basename(filePath, path.extname(filePath));
 
-  try {
-    const output = execSync(
-      `grep -rl "from.*${basename}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ 2>/dev/null | head -20`,
-      { cwd: PROJECT_ROOT, encoding: 'utf-8', timeout: 5000 }
-    );
-
-    results.push(...output.split('\n').filter(Boolean));
-  } catch {
-    // Ignore errors
-  }
-
-  return results;
+  // Use safe grep with escaped pattern to prevent injection
+  const pattern = `from.*${escapeRegex(basename)}`;
+  return safeGrep(pattern, {
+    cwd: PROJECT_ROOT,
+    searchDir: 'src/',
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    maxResults: 20
+  });
 }
 
 /**
  * Search codebase for keyword
  */
 async function searchCodebase(keyword, maxResults = 10) {
-  const results = [];
-
-  try {
-    const output = execSync(
-      `grep -ril "${keyword}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/ 2>/dev/null | head -${maxResults}`,
-      { cwd: PROJECT_ROOT, encoding: 'utf-8', timeout: 5000 }
-    );
-
-    results.push(...output.split('\n').filter(Boolean));
-  } catch {
-    // Ignore errors
-  }
-
-  return results;
+  // Use safe grep with escaped pattern to prevent injection
+  return safeGrep(keyword, {
+    cwd: PROJECT_ROOT,
+    searchDir: 'src/',
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
+    maxResults
+  });
 }
 
 // ============================================================
@@ -655,17 +643,16 @@ async function main() {
 
     case 'graph': {
       const dir = target || 'src';
-      const files = [];
 
-      // Get all relevant files
-      try {
-        const output = execSync(
-          `find ${dir} -type f \\( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \\) | head -100`,
-          { cwd: PROJECT_ROOT, encoding: 'utf-8' }
-        );
-        files.push(...output.split('\n').filter(Boolean));
-      } catch {
-        console.log(`${colors.red}Error scanning directory${colors.reset}`);
+      // Use safe find to prevent command injection
+      const files = safeFind(dir, {
+        cwd: PROJECT_ROOT,
+        extensions: ['.ts', '.tsx', '.js', '.jsx'],
+        maxResults: 100
+      });
+
+      if (files.length === 0) {
+        console.log(`${colors.red}Error scanning directory or no files found${colors.reset}`);
         process.exit(1);
       }
 

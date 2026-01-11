@@ -20,6 +20,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
+const { validatePathWithinProject } = require('./flow-security');
 
 // ============================================================================
 // Constants
@@ -939,6 +940,15 @@ function checkFileCondition(config) {
   const filePath = path.isAbsolute(config.watchPath)
     ? config.watchPath
     : path.join(projectRoot, config.watchPath);
+
+  // Security: Validate path is within project root to prevent path traversal
+  if (!validatePathWithinProject(filePath, projectRoot)) {
+    return {
+      canResume: false,
+      reason: 'path-traversal-blocked',
+      error: 'Watch path must be within project directory'
+    };
+  }
 
   if (!fs.existsSync(filePath)) {
     return {
