@@ -1,0 +1,24 @@
+# Architecture
+
+## Pattern
+
+<!-- Detected during onboarding -->
+<!-- Examples: MVC, Clean Architecture, DDD, Microservices, Monolith -->
+
+## Structure
+
+<!-- Project structure overview -->
+<!-- Key directories and their purposes -->
+
+## Key Decisions
+
+<!-- Architecture decisions made for this project -->
+<!-- Trade-offs and rationale -->
+
+## Dependencies
+
+<!-- Major dependencies and their purposes -->
+
+---
+
+*This file is auto-populated during `flow onboard`. Update manually as architecture evolves.*

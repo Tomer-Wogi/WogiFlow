@@ -1,0 +1,11 @@
+{
+  "currentTask": null,
+  "sessionId": null,
+  "startedAt": null,
+  "lastActivity": null,
+  "tasksCompleted": [],
+  "contextUsage": {
+    "percent": 0,
+    "lastChecked": null
+  }
+}

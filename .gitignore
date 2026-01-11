@@ -1,53 +1,65 @@
-# Wogi Flow - .gitignore for the REPO itself
-# This is what GitHub should ignore when hosting the framework
+# WogiFlow - .gitignore
+# Excludes user-specific data so npm install gives a clean slate
 
-# OS files
+# ===========================================
+# OS & IDE files
+# ===========================================
 .DS_Store
 Thumbs.db
-
-# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# Node (if any tooling added later)
+# ===========================================
+# Node.js
+# ===========================================
 node_modules/
+mcp-memory-server/node_modules/
 
+# ===========================================
 # Temp files
+# ===========================================
 *.tmp
 *.temp
 *.log
 
-# Hybrid mode cache files
-.workflow/state/export-map.json
-.workflow/state/hybrid-context.md
-
-# Auto-generated rules (regenerated from decisions.md)
-.claude/rules/
-
-# v1.7.0 session state (user-specific, transient)
-.workflow/state/session-state.json
-
-# MCP Memory Server
-mcp-memory-server/node_modules/
-.workflow/memory/
-
-# Note: When users install Wogi Flow in their projects,
-# they should use .gitignore-project instead (rename it)
-
 # ===========================================
-# User-specific state (created from templates on install)
+# Development artifacts (user-specific data)
+# These are created from templates on npm install
 # ===========================================
+
+# State files
 .workflow/state/ready.json
 .workflow/state/request-log.md
 .workflow/state/progress.md
+.workflow/state/session-state.json
+.workflow/state/knowledge-sync.json
+.workflow/state/architecture.md
+.workflow/state/stack.md
+.workflow/state/testing.md
+.workflow/state/durable-history.json
+.workflow/state/hybrid-session.json
+.workflow/state/gate-confidence.json
+.workflow/state/export-map.json
+.workflow/state/hybrid-context.md
 .workflow/state/component-index.json
 .workflow/state/app-map.md
-.workflow/state/digests/
+.workflow/state/decisions.md
+.workflow/state/feedback-patterns.md
 .workflow/state/durable-*.json
 
-# Verification artifacts (task-specific, transient)
+# Digest sessions (transcript processing)
+.workflow/state/digests/
+
+# Memory database (vector embeddings)
+.workflow/memory/
+
+# Task/change tracking (user data)
+.workflow/changes/**/*.md
+!.workflow/changes/.gitkeep
+
+# Verification artifacts (task-specific)
 .workflow/verifications/**
 !.workflow/verifications/.gitkeep
 
@@ -55,18 +67,25 @@ mcp-memory-server/node_modules/
 .workflow/specs/**
 !.workflow/specs/.gitkeep
 
-# User stories and changes (development-specific)
-.workflow/changes/**
-!.workflow/changes/.gitkeep
+# Internal roadmap
+.workflow/roadmap/roadmap.md
+
+# ===========================================
+# User-specific settings
+# ===========================================
+.claude/settings.local.json
+.claude/plans/
+
+# Auto-generated rules (regenerated from decisions.md)
+.claude/rules/
 
 # Skills developed by user (keep directory structure)
 .claude/skills/*/
 !.claude/skills/.gitkeep
 
-# Claude plans (user-specific)
-.claude/plans/
-
-# Hybrid mode session (user-specific)
-.workflow/state/hybrid-session.json
-.workflow/state/decisions.md
-.workflow/state/feedback-patterns.md
+# ===========================================
+# Claude docs (auto-generated during onboarding)
+# ===========================================
+.claude/docs/architecture.md
+.claude/docs/stack.md
+.claude/docs/testing.md

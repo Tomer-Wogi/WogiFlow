@@ -1,4 +1,4 @@
-# Wogi Flow v1.9.2
+# WogiFlow v1.0.0
 
 A self-improving AI development workflow that learns from your feedback and accumulates knowledge over time.
 
@@ -77,7 +77,7 @@ For existing projects:
 
 ## Developer Workflow
 
-Daily commands for working with Wogi Flow. Start with `/wogi-ready` to see tasks, use `/wogi-start` to begin work, and `/wogi-session-end` to save progress.
+Daily commands for working with WogiFlow. Start with `/wogi-ready` to see tasks, use `/wogi-start` to begin work, and `/wogi-session-end` to save progress.
 
 ```
 # Session Init
@@ -1326,7 +1326,7 @@ AWS-powered backend for team collaboration with shared memory, proposals, and ac
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Wogi Flow CLI  │ ──▶ │   API Gateway   │ ──▶ │     Lambda      │
+│  WogiFlow CLI  │ ──▶ │   API Gateway   │ ──▶ │     Lambda      │
 │   (Local)       │     │   (HTTP API)    │     │   Functions     │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                                                         │
@@ -1659,7 +1659,7 @@ CLAUDE.md                    # Main instructions
 
 ## Self-Improving Workflow
 
-Wogi Flow learns from your corrections:
+WogiFlow learns from your corrections:
 
 1. **Correction** → You correct Claude's work
 2. **Fix** → Claude fixes immediately

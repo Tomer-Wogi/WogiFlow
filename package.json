@@ -1,6 +1,6 @@
 {
-  "name": "wogi-flow",
-  "version": "1.9.0",
+  "name": "wogiflow",
+  "version": "1.0.0",
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
@@ -11,7 +11,7 @@
     "flow": "./scripts/flow",
     "test": "node mcp-memory-server/test.js",
     "memory-server": "node mcp-memory-server/index.js",
-    "prepublishOnly": "node scripts/prepublish.js"
+    "postinstall": "node scripts/postinstall.js"
   },
   "files": [
     "bin/",
@@ -21,6 +21,8 @@
     ".workflow/templates/",
     ".workflow/agents/",
     ".workflow/bridges/",
+    ".workflow/lib/",
+    ".workflow/state/*.template",
     "README.md",
     "LICENSE"
   ],
