@@ -1,4 +1,22 @@
 ---
+name: react
+version: 1.0.0
+description: React component patterns, hooks, and best practices
+scope: project
+user-invocable: true
+context: inline
+agent: developer
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash(npm *)
+  - Bash(npx *)
+lastUpdated: 2026-01-11
+learningCount: 0
+successRate: 0
 loadable: false
 status: coming-soon
 ---

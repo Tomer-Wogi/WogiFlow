@@ -1,4 +1,23 @@
 ---
+name: python
+version: 1.0.0
+description: Python/FastAPI patterns and best practices
+scope: project
+user-invocable: true
+context: inline
+agent: developer
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash(python *)
+  - Bash(pip *)
+  - Bash(pytest *)
+lastUpdated: 2026-01-11
+learningCount: 0
+successRate: 0
 loadable: false
 status: coming-soon
 ---

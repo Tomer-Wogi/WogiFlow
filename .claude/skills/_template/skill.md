@@ -3,6 +3,15 @@ name: _template
 version: 1.0.0
 description: Template for creating new skills - DO NOT LOAD
 scope: project
+user-invocable: false
+context: inline
+agent: developer
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
 lastUpdated: {{DATE}}
 learningCount: 0
 successRate: 0
@@ -19,6 +28,27 @@ loadable: false
   - {{USE_CASE_*}} with actual use cases
   - {{FILE_PATTERN_*}} with file globs
   - {{DATE}} with current date
+
+  ## Frontmatter Fields (Claude Code 2.1.x aligned)
+
+  Required:
+  - name: Skill identifier (kebab-case)
+  - description: Short description shown in slash command menu
+  - scope: project | user (where skill applies)
+
+  Claude Code 2.1.x fields:
+  - user-invocable: true | false (controls /slash command visibility)
+  - context: inline | fork (fork = isolated execution context)
+  - agent: orchestrator | developer | reviewer | tester (persona mapping)
+  - allowed-tools: YAML list of tools the skill can use
+    Example: [Read, Glob, Grep, Edit, Write, Bash(npm *), Bash(git *)]
+
+  Optional:
+  - lastUpdated: ISO date string
+  - learningCount: Number of learnings captured
+  - successRate: Historical success rate (0-1)
+  - loadable: true | false (whether skill can be loaded)
+  - template: true (only for _template skill)
 -->
 
 # {{SKILL_NAME}} Skill

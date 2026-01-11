@@ -227,6 +227,12 @@ show_help() {
     echo "  auto-context \"task\"  Preview context that would be loaded"
     echo "  model-adapter        Show current model adapter info"
     echo "  model-adapter --stats Show per-model statistics"
+    echo "  models               Manage model registry and stats"
+    echo "  models list          List all registered models"
+    echo "  models info <model>  Show detailed model info"
+    echo "  models route <type>  Get routing recommendation"
+    echo "  models stats         Show model performance statistics"
+    echo "  models cost          Show cost analysis"
     echo "  multi-approach       Start multi-approach session"
     echo "  multi-approach --analyze \"task\" Analyze without starting"
     echo "  complexity \"task\"    Assess task complexity and token estimate"
@@ -244,6 +250,8 @@ show_help() {
     echo "  compact-memory --preview Show what would be affected"
     echo "  memory-sync            Check patterns for promotion"
     echo "  memory-sync --auto     Auto-promote to decisions.md"
+    echo "  knowledge-sync status  Check knowledge files sync status"
+    echo "  knowledge-sync regenerate  Regenerate stale knowledge files"
     echo "  knowledge-route <text> Detect route for a learning"
     echo "  knowledge-route store  Store a learning with route"
     echo "  log-manager status     Show request-log statistics"
@@ -691,6 +699,9 @@ case "${1:-}" in
     model-adapter)
         node "$SCRIPT_DIR/flow-model-adapter.js" "${@:2}"
         ;;
+    models)
+        node "$SCRIPT_DIR/flow-models.js" "${@:2}"
+        ;;
     multi-approach)
         node "$SCRIPT_DIR/flow-multi-approach.js" "${@:2}"
         ;;
@@ -731,6 +742,9 @@ case "${1:-}" in
         ;;
     memory-sync)
         node "$SCRIPT_DIR/flow-memory-sync.js" "${@:2}"
+        ;;
+    knowledge-sync)
+        node "$SCRIPT_DIR/flow-knowledge-sync.js" "${@:2}"
         ;;
     knowledge-route)
         case "${2:-}" in

@@ -137,6 +137,11 @@ const PATHS = {
   skills: path.join(CLAUDE_DIR, 'skills'),
   rules: path.join(CLAUDE_DIR, 'rules'),
   commands: path.join(CLAUDE_DIR, 'commands'),
+  // Knowledge files (Phase 0.4 - synced documentation)
+  stackMd: path.join(STATE_DIR, 'stack.md'),
+  architectureMd: path.join(STATE_DIR, 'architecture.md'),
+  testingMd: path.join(STATE_DIR, 'testing.md'),
+  knowledgeSync: path.join(STATE_DIR, 'knowledge-sync.json'),
 };
 
 // ============================================================
@@ -466,6 +471,46 @@ function writeJson(filePath, data) {
     // Clean up temp file if it exists
     try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
     throw new Error(`Failed to write JSON to ${filePath}: ${e.message}`);
+  }
+}
+
+/**
+ * Safely parse JSON with prototype pollution protection
+ * Use this for user-modifiable files (registry, stats, etc.)
+ * @param {string} filePath - Path to JSON file
+ * @param {*} [defaultValue=null] - Default value if parsing fails
+ * @returns {object|null} Parsed JSON or defaultValue on error
+ */
+function safeJsonParse(filePath, defaultValue = null) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+
+    // Check for prototype pollution attempts in raw content
+    // Covers various quote styles and whitespace variants
+    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
+      console.error(`[safeJsonParse] Suspicious content detected in ${filePath}`);
+      return defaultValue;
+    }
+
+    const parsed = JSON.parse(content);
+
+    // Validate it's an object (not array or primitive for config files)
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.error(`[safeJsonParse] Invalid JSON structure in ${filePath} (expected object)`);
+      return defaultValue;
+    }
+
+    // Additional check: ensure no proto/constructor keys were added
+    const keys = Object.getOwnPropertyNames(parsed);
+    if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
+      console.error(`[safeJsonParse] Prototype pollution attempt detected in ${filePath}`);
+      return defaultValue;
+    }
+
+    return parsed;
+  } catch (err) {
+    console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+    return defaultValue;
   }
 }
 
@@ -1581,6 +1626,118 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
 }
 
 // ============================================================
+// Permission Validation (Claude Code settings.local.json)
+// ============================================================
+
+/**
+ * Analyze permission rules for issues
+ * @param {string[]} permissions - Array of permission rules
+ * @returns {Object} Analysis result with duplicates, overbroad, shadowed
+ */
+function analyzePermissions(permissions) {
+  const result = {
+    duplicates: [],
+    overbroad: [],
+    shadowed: [],
+    total: permissions.length
+  };
+
+  // Check for duplicates
+  const seen = new Set();
+  for (const perm of permissions) {
+    if (seen.has(perm)) {
+      result.duplicates.push(perm);
+    }
+    seen.add(perm);
+  }
+
+  // Check for overly broad patterns
+  const overbroadPatterns = ['Bash(*)', 'Edit(*)', 'Write(*)', 'Read(*)'];
+  for (const perm of permissions) {
+    if (overbroadPatterns.includes(perm)) {
+      result.overbroad.push(perm);
+    }
+  }
+
+  // Check for shadowed rules (specific rules covered by wildcards)
+  const wildcards = permissions.filter(p => p.includes('*'));
+  const specific = permissions.filter(p => !p.includes('*'));
+
+  for (const spec of specific) {
+    // Extract tool type and pattern
+    const match = spec.match(/^(\w+)\((.+)\)$/);
+    if (match) {
+      const [, tool, pattern] = match;
+      // Check if a wildcard covers this
+      for (const wild of wildcards) {
+        const wildMatch = wild.match(/^(\w+)\((.+)\)$/);
+        if (wildMatch && wildMatch[1] === tool) {
+          const wildPattern = wildMatch[2].replace(/\*/g, '.*');
+          try {
+            const regex = new RegExp(`^${wildPattern}$`);
+            if (regex.test(pattern)) {
+              result.shadowed.push({ specific: spec, wildcard: wild });
+              break;
+            }
+          } catch {
+            // Invalid regex, skip
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Validate permission rules and return issues
+ * @param {string[]} permissions - Array of permission rules
+ * @returns {Object} Validation result with issues and warnings
+ */
+function validatePermissions(permissions) {
+  const analysis = analyzePermissions(permissions);
+
+  const issues = [];
+  const warnings = [];
+
+  // Critical: duplicates waste space
+  if (analysis.duplicates.length > 0) {
+    warnings.push({
+      type: 'duplicate',
+      message: `${analysis.duplicates.length} duplicate rule(s) found`,
+      items: analysis.duplicates
+    });
+  }
+
+  // Critical: overly broad rules are security risks
+  if (analysis.overbroad.length > 0) {
+    issues.push({
+      type: 'overbroad',
+      severity: 'critical',
+      message: `${analysis.overbroad.length} overly broad rule(s) found`,
+      items: analysis.overbroad
+    });
+  }
+
+  // Info: shadowed rules are redundant but not harmful
+  if (analysis.shadowed.length > 0) {
+    warnings.push({
+      type: 'shadowed',
+      message: `${analysis.shadowed.length} rule(s) shadowed by wildcards (redundant)`,
+      items: analysis.shadowed.map(s => s.specific)
+    });
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+    warnings,
+    analysis
+  };
+}
+
+// ============================================================
 // AST-Grep Integration
 // ============================================================
 
@@ -1806,6 +1963,7 @@ module.exports = {
   dirExists,
   readJson,
   writeJson,
+  safeJsonParse,
   readFile,
   writeFile,
   validateJson,
@@ -1856,6 +2014,10 @@ module.exports = {
   withLock,
   withLockSync,
   cleanupStaleLocks,
+
+  // Permission Validation
+  analyzePermissions,
+  validatePermissions,
 
   // AST-Grep Integration
   AST_PATTERNS,
