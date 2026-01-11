@@ -58,10 +58,10 @@ function executeProjectCommand(projectRoot, args) {
   }
 
   // Spawn the project's flow script
+  // Note: shell: false (default) prevents command injection
   const child = spawn(projectFlow, args, {
     cwd: projectRoot,
-    stdio: 'inherit',
-    shell: true
+    stdio: 'inherit'
   });
 
   child.on('exit', (code) => {
