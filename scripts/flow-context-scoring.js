@@ -327,7 +327,9 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
 
   // Add target files (highest priority)
   for (const file of targetFiles) {
-    if (fs.existsSync(file)) {
+    try {
+      if (!fs.existsSync(file)) continue;
+
       const content = fs.readFileSync(file, 'utf8');
       items.push(createContextItem({
         type: 'target_file',
@@ -340,7 +342,12 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
       // Extract imports from target file
       const imports = extractImports(content, file);
       for (const imp of imports) {
-        if (fs.existsSync(imp.resolvedPath)) {
+        // Validate resolvedPath exists before using
+        if (!imp.resolvedPath) continue;
+
+        try {
+          if (!fs.existsSync(imp.resolvedPath)) continue;
+
           const importContent = fs.readFileSync(imp.resolvedPath, 'utf8');
           items.push(createContextItem({
             type: 'direct_imports',
@@ -349,8 +356,12 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
             relevance: scoreRelevance(importContent, taskContext),
             metadata: { importedFrom: file, importPath: imp.path }
           }));
+        } catch {
+          // Skip unreadable import files
         }
       }
+    } catch {
+      // Skip unreadable target files
     }
   }
 
@@ -368,17 +379,21 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
 
   // Add patterns from decisions.md
   const decisionsPath = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
-  if (fs.existsSync(decisionsPath)) {
-    const decisions = fs.readFileSync(decisionsPath, 'utf8');
-    const relevance = scoreRelevance(decisions, taskContext);
-    if (relevance > 0.3) {
-      items.push(createContextItem({
-        type: 'patterns',
-        content: decisions,
-        source: decisionsPath,
-        relevance
-      }));
+  try {
+    if (fs.existsSync(decisionsPath)) {
+      const decisions = fs.readFileSync(decisionsPath, 'utf8');
+      const relevance = scoreRelevance(decisions, taskContext);
+      if (relevance > 0.3) {
+        items.push(createContextItem({
+          type: 'patterns',
+          content: decisions,
+          source: decisionsPath,
+          relevance
+        }));
+      }
     }
+  } catch {
+    // Skip if decisions.md is unreadable
   }
 
   return items;
@@ -432,9 +447,13 @@ function resolveImportPath(importPath, baseDir) {
   const extensions = ['', '.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js'];
 
   for (const ext of extensions) {
-    const fullPath = path.resolve(baseDir, importPath + ext);
-    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
-      return fullPath;
+    try {
+      const fullPath = path.resolve(baseDir, importPath + ext);
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+        return fullPath;
+      }
+    } catch {
+      // Skip if path check fails (permissions, symlink issues)
     }
   }
 
@@ -571,11 +590,22 @@ function summarizeByCategory(items) {
  * @returns {Object} Analysis result
  */
 function analyzeFile(filePath) {
-  if (!fs.existsSync(filePath)) {
+  // Validate path is within project directory (prevent path traversal)
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(PROJECT_ROOT)) {
+    return { error: 'File must be within project directory' };
+  }
+
+  if (!fs.existsSync(resolvedPath)) {
     return { error: 'File not found' };
   }
 
-  const content = fs.readFileSync(filePath, 'utf8');
+  let content;
+  try {
+    content = fs.readFileSync(resolvedPath, 'utf8');
+  } catch {
+    return { error: 'Failed to read file' };
+  }
   const lines = content.split('\n');
   const tokens = estimateTokens(content);
 

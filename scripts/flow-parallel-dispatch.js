@@ -35,7 +35,8 @@ const {
   color,
   outputJson,
   printHeader,
-  printSection
+  printSection,
+  safeJsonParse
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
@@ -103,17 +104,25 @@ const DEFAULT_PARALLEL_CONFIG = {
 
 const STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'parallel-dispatch.json');
 
-let dispatchState = {
-  active: [],
-  completed: [],
-  stats: {
-    totalDispatches: 0,
-    successfulDispatches: 0,
-    failedDispatches: 0,
-    averageParallelism: 0,
-    totalTimeSaved: 0
-  }
-};
+/**
+ * Get default dispatch state.
+ * @returns {Object} Default state
+ */
+function getDefaultState() {
+  return {
+    active: [],
+    completed: [],
+    stats: {
+      totalDispatches: 0,
+      successfulDispatches: 0,
+      failedDispatches: 0,
+      averageParallelism: 0,
+      totalTimeSaved: 0
+    }
+  };
+}
+
+let dispatchState = getDefaultState();
 
 // ============================================================
 // Configuration
@@ -136,16 +145,19 @@ function getParallelConfig() {
 // ============================================================
 
 /**
- * Load dispatch state from file.
+ * Load dispatch state from file using safe JSON parsing.
  */
 function loadState() {
-  try {
-    if (fs.existsSync(STATE_PATH)) {
-      const data = fs.readFileSync(STATE_PATH, 'utf8');
-      dispatchState = JSON.parse(data);
+  if (fs.existsSync(STATE_PATH)) {
+    const loaded = safeJsonParse(STATE_PATH, null);
+    if (loaded && typeof loaded === 'object') {
+      // Validate structure before using
+      dispatchState = {
+        active: Array.isArray(loaded.active) ? loaded.active : [],
+        completed: Array.isArray(loaded.completed) ? loaded.completed : [],
+        stats: { ...getDefaultState().stats, ...(loaded.stats || {}) }
+      };
     }
-  } catch (e) {
-    warn(`Could not load dispatch state: ${e.message}`);
   }
 }
 
@@ -880,6 +892,11 @@ Examples:
         error('Please provide a task description');
         process.exit(1);
       }
+      // Input length validation (prevent DoS)
+      if (description.length > 10000) {
+        error('Task description exceeds maximum length (10000 chars)');
+        process.exit(1);
+      }
 
       const analysis = analyzeSubtasks({ description });
 
@@ -895,6 +912,11 @@ Examples:
       const description = positional.slice(1).join(' ') || flags.task;
       if (!description) {
         error('Please provide a task description');
+        process.exit(1);
+      }
+      // Input length validation (prevent DoS)
+      if (description.length > 10000) {
+        error('Task description exceeds maximum length (10000 chars)');
         process.exit(1);
       }
 
@@ -917,9 +939,21 @@ Examples:
         process.exit(1);
       }
 
+      // Validate path is within project directory (prevent path traversal)
+      const planPath = path.resolve(flags.plan);
+      if (!planPath.startsWith(PROJECT_ROOT)) {
+        error('Plan file must be within project directory');
+        process.exit(1);
+      }
+
+      // Use safe JSON parsing
+      const plan = safeJsonParse(planPath, null);
+      if (!plan) {
+        error('Failed to parse plan file');
+        process.exit(1);
+      }
+
       try {
-        const planData = fs.readFileSync(flags.plan, 'utf8');
-        const plan = JSON.parse(planData);
         const result = await executeDispatchPlan(plan);
 
         if (flags.json) {

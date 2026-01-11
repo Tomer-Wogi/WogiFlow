@@ -35,7 +35,8 @@ const {
   color,
   outputJson,
   printHeader,
-  printSection
+  printSection,
+  safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================
@@ -179,21 +180,29 @@ const DEFAULT_GATE_CONFIG = {
 
 const STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'gate-confidence.json');
 
-let confidenceState = {
-  history: [],
-  stats: {
-    totalAnalyzed: 0,
-    byLevel: {
-      high: 0,
-      medium: 0,
-      low: 0,
-      needs_clarification: 0
-    },
-    autoApplied: 0,
-    manualApproved: 0,
-    blocked: 0
-  }
-};
+/**
+ * Get default confidence state.
+ * @returns {Object} Default state
+ */
+function getDefaultState() {
+  return {
+    history: [],
+    stats: {
+      totalAnalyzed: 0,
+      byLevel: {
+        high: 0,
+        medium: 0,
+        low: 0,
+        needs_clarification: 0
+      },
+      autoApplied: 0,
+      manualApproved: 0,
+      blocked: 0
+    }
+  };
+}
+
+let confidenceState = getDefaultState();
 
 // ============================================================
 // Configuration
@@ -216,16 +225,23 @@ function getGateConfig() {
 // ============================================================
 
 /**
- * Load confidence state from file.
+ * Load confidence state from file using safe JSON parsing.
  */
 function loadState() {
-  try {
-    if (fs.existsSync(STATE_PATH)) {
-      const data = fs.readFileSync(STATE_PATH, 'utf8');
-      confidenceState = JSON.parse(data);
+  if (fs.existsSync(STATE_PATH)) {
+    const loaded = safeJsonParse(STATE_PATH, null);
+    if (loaded && typeof loaded === 'object') {
+      const defaults = getDefaultState();
+      // Validate structure before using
+      confidenceState = {
+        history: Array.isArray(loaded.history) ? loaded.history : [],
+        stats: {
+          ...defaults.stats,
+          ...(loaded.stats || {}),
+          byLevel: { ...defaults.stats.byLevel, ...(loaded.stats?.byLevel || {}) }
+        }
+      };
     }
-  } catch (e) {
-    warn(`Could not load confidence state: ${e.message}`);
   }
 }
 
@@ -292,16 +308,25 @@ function analyzeConfidence(text, options = {}) {
     }
   }
 
-  // Calculate base score
-  const highWeight = analysis.highMarkers.length * 0.15;
-  const lowWeight = analysis.lowMarkers.length * -0.2;
-  const questionWeight = analysis.questionMarkers.length * -0.25;
+  // Calculate base score using normalized weights to prevent unbounded values
+  const totalMarkers = analysis.highMarkers.length + analysis.lowMarkers.length + analysis.questionMarkers.length;
 
-  // Start from neutral (0.5) and adjust
-  let score = 0.5 + highWeight + lowWeight + questionWeight;
+  let score;
+  if (totalMarkers === 0) {
+    // No markers found - neutral score
+    score = 0.5;
+  } else {
+    // Normalize weights based on total markers found (max influence capped)
+    const highInfluence = Math.min(analysis.highMarkers.length, 5) * 0.08;  // Max +0.4
+    const lowInfluence = Math.min(analysis.lowMarkers.length, 5) * -0.1;    // Max -0.5
+    const questionInfluence = Math.min(analysis.questionMarkers.length, 3) * -0.12; // Max -0.36
 
-  // Clamp to 0-1
-  score = Math.max(0, Math.min(1, score));
+    // Start from neutral (0.5) and adjust
+    score = 0.5 + highInfluence + lowInfluence + questionInfluence;
+
+    // Clamp to 0-1
+    score = Math.max(0, Math.min(1, score));
+  }
 
   // Determine level
   let level;
@@ -489,10 +514,21 @@ function checkGate(response) {
 }
 
 /**
+ * Valid decision types for recordDecision.
+ */
+const VALID_DECISIONS = ['auto-apply', 'approved', 'blocked'];
+
+/**
  * Record a gate decision.
  * @param {Object} params - Decision parameters
+ * @throws {Error} If decision is not a valid type
  */
 function recordDecision({ analysisId, decision, outcome }) {
+  // Validate decision type to prevent silent failures
+  if (!VALID_DECISIONS.includes(decision)) {
+    throw new Error(`Invalid decision type: ${decision}. Must be one of: ${VALID_DECISIONS.join(', ')}`);
+  }
+
   loadState();
 
   switch (decision) {
@@ -699,6 +735,12 @@ Examples:
         process.exit(1);
       }
 
+      // Input length validation (prevent DoS)
+      if (text.length > 50000) {
+        error('Input text exceeds maximum length (50000 chars)');
+        process.exit(1);
+      }
+
       const analysis = analyzeConfidence(text, { track: !flags['no-track'] });
 
       if (flags.json) {
@@ -717,12 +759,26 @@ Examples:
         process.exit(1);
       }
 
-      if (!fs.existsSync(file)) {
-        error(`File not found: ${file}`);
+      // Validate path is within project directory (prevent path traversal)
+      const filePath = path.resolve(file);
+      if (!filePath.startsWith(PROJECT_ROOT)) {
+        error('File must be within project directory');
         process.exit(1);
       }
 
-      const content = fs.readFileSync(file, 'utf8');
+      if (!fs.existsSync(filePath)) {
+        error('File not found');
+        process.exit(1);
+      }
+
+      let content;
+      try {
+        content = fs.readFileSync(filePath, 'utf8');
+      } catch (e) {
+        error('Failed to read file');
+        process.exit(1);
+      }
+
       const gateResult = checkGate(content);
 
       if (flags.json) {
