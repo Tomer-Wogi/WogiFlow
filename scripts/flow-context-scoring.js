@@ -35,7 +35,8 @@ const {
   color,
   outputJson,
   printHeader,
-  printSection
+  printSection,
+  estimateTokens: utilsEstimateTokens
 } = require('./flow-utils');
 
 // ============================================================
@@ -85,12 +86,6 @@ const CONTEXT_CATEGORIES = {
   LOW: 'low',
   MINIMAL: 'minimal'
 };
-
-/**
- * Token estimation constants.
- */
-const TOKENS_PER_CHAR = 0.25; // Rough estimate: 4 chars per token
-const TOKENS_PER_LINE = 15;   // Average tokens per line of code
 
 /**
  * Default context scoring configuration.
@@ -175,21 +170,12 @@ function categorizeScore(score) {
 
 /**
  * Estimate tokens for a piece of content.
+ * Uses centralized estimateTokens with hybrid char+line estimation.
  * @param {string} content - Content to estimate
  * @returns {number} Estimated tokens
  */
 function estimateTokens(content) {
-  if (!content) return 0;
-
-  // Use line count for code (more accurate)
-  const lineCount = content.split('\n').length;
-
-  // Hybrid estimation
-  const charEstimate = Math.ceil(content.length * TOKENS_PER_CHAR);
-  const lineEstimate = lineCount * TOKENS_PER_LINE;
-
-  // Average the two estimates
-  return Math.ceil((charEstimate + lineEstimate) / 2);
+  return utilsEstimateTokens(content, { useLineEstimate: true });
 }
 
 /**

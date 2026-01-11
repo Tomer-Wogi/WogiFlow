@@ -36,7 +36,8 @@ const {
   outputJson,
   printHeader,
   printSection,
-  safeJsonParse
+  safeJsonParse,
+  estimateTokens: utilsEstimateTokens
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
@@ -278,7 +279,7 @@ function extractSubtasks(description, analysis) {
     ...subtask,
     files: inferAffectedFiles(subtask.description),
     complexity: inferComplexity(subtask.description),
-    estimatedTokens: estimateTokens(subtask.description)
+    estimatedTokens: estimateSubtaskTokens(subtask.description)
   }));
 }
 
@@ -347,19 +348,13 @@ function inferComplexity(description) {
 
 /**
  * Estimate tokens needed for a subtask.
+ * Uses centralized estimateTokens from flow-utils with complexity multiplier.
  * @param {string} description - Subtask description
  * @returns {number} Estimated tokens
  */
-function estimateTokens(description) {
-  // Rough estimation: 4 chars per token, multiply by complexity factor
-  const baseTokens = Math.ceil(description.length / 4);
-  const complexityMultiplier = {
-    low: 100,
-    medium: 500,
-    high: 2000
-  };
+function estimateSubtaskTokens(description) {
   const complexity = inferComplexity(description);
-  return baseTokens + complexityMultiplier[complexity];
+  return utilsEstimateTokens(description, { complexity });
 }
 
 // ============================================================
