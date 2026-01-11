@@ -649,6 +649,47 @@
       }
     }
   },
+  "parallelDispatch": {
+    "enabled": true,
+    "maxConcurrent": 3,
+    "taskTimeout": 300000,
+    "minIndependenceConfidence": 0.7,
+    "aggregationStrategy": "merge",
+    "retryOnFailure": true,
+    "maxRetries": 2
+  },
+  "contextScoring": {
+    "enabled": true,
+    "maxContextTokens": 100000,
+    "reserveOutputTokens": 8000,
+    "includeMinScore": 0.3,
+    "snippetMaxLines": 50,
+    "fullFileMaxLines": 200,
+    "priorities": {
+      "required_types": 1.0,
+      "target_file": 0.95,
+      "error_context": 0.93,
+      "direct_imports": 0.90,
+      "interface_definitions": 0.88,
+      "api_contracts": 0.85,
+      "related_imports": 0.80,
+      "test_files": 0.75,
+      "patterns": 0.70,
+      "similar_implementations": 0.65,
+      "documentation": 0.50,
+      "examples": 0.45,
+      "config_files": 0.40,
+      "full_files": 0.30
+    }
+  },
+  "gateConfidence": {
+    "enabled": true,
+    "autoApplyThreshold": 0.7,
+    "requireApprovalThreshold": 0.5,
+    "blockThreshold": 0.3,
+    "trackHistory": true,
+    "maxHistoryEntries": 100
+  },
   "voice": {
     "enabled": false,
     "provider": null,

@@ -250,6 +250,17 @@ show_help() {
     echo "  safety               Run security scan on codebase"
     echo "  context-init \"task\"  Initialize context for a task"
     echo ""
+    echo "Advanced Execution (Phase 4):"
+    echo "  dispatch analyze \"<task>\"  Analyze task for parallel execution"
+    echo "  dispatch plan \"<task>\"     Create dispatch plan"
+    echo "  dispatch status            Show dispatch status"
+    echo "  ctx-score score --task     Score context items by relevance"
+    echo "  ctx-score budget --tokens  Fit context within token budget"
+    echo "  ctx-score analyze --file   Analyze file for context inclusion"
+    echo "  confidence analyze \"<text>\" Analyze response confidence"
+    echo "  confidence check --file    Check confidence of file"
+    echo "  confidence stats           Show confidence statistics"
+    echo ""
     echo "Memory & Knowledge (v1.8):"
     echo "  memory search <query>  Search stored facts"
     echo "  memory stats           Show memory statistics"
@@ -724,6 +735,18 @@ case "${1:-}" in
     learning)
         # Phase 3: Tiered learning system
         node "$SCRIPT_DIR/flow-tiered-learning.js" "${@:2}"
+        ;;
+    dispatch)
+        # Phase 4: Parallel dispatch system
+        node "$SCRIPT_DIR/flow-parallel-dispatch.js" "${@:2}"
+        ;;
+    ctx-score)
+        # Phase 4: Context priority scoring
+        node "$SCRIPT_DIR/flow-context-scoring.js" "${@:2}"
+        ;;
+    confidence)
+        # Phase 4: Quality gate confidence
+        node "$SCRIPT_DIR/flow-gate-confidence.js" "${@:2}"
         ;;
     multi-approach)
         node "$SCRIPT_DIR/flow-multi-approach.js" "${@:2}"
