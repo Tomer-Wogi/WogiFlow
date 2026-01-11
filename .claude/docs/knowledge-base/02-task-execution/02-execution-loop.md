@@ -224,7 +224,7 @@ flow suspend --poll \
   --command "gh pr checks 123 | grep -q 'All checks passed'" \
   "Waiting for CI checks"
 
-# Wogi-Flow will:
+# WogiFlow will:
 # 1. Save current context
 # 2. Poll the command every 60 seconds
 # 3. Auto-resume when command succeeds

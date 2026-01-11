@@ -1,6 +1,6 @@
 # Project-Level Learning
 
-How Wogi-Flow learns project-specific patterns and conventions.
+How WogiFlow learns project-specific patterns and conventions.
 
 ---
 

@@ -11,7 +11,7 @@ Claude has a context window limit. When exceeded:
 - AI may hallucinate or repeat itself
 - Work quality degrades
 
-Wogi-Flow monitors context and helps you manage it.
+WogiFlow monitors context and helps you manage it.
 
 ---
 

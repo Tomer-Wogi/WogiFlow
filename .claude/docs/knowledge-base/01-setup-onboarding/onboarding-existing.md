@@ -1,13 +1,13 @@
 # Onboarding Existing Projects
 
-Analyze an existing codebase and set up Wogi-Flow with full context.
+Analyze an existing codebase and set up WogiFlow with full context.
 
 ---
 
 ## Quick Start
 
 ```bash
-./scripts/flow onboard
+npx flow onboard
 ```
 
 This interactive process:

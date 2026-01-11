@@ -1,6 +1,6 @@
 # Trade-offs
 
-Every configuration decision in Wogi-Flow involves trade-offs. Understanding these helps you tune the system for your specific needs.
+Every configuration decision in WogiFlow involves trade-offs. Understanding these helps you tune the system for your specific needs.
 
 ---
 

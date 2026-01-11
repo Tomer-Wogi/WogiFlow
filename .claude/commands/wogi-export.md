@@ -73,20 +73,13 @@ Share this file with team members.
 Import with: ./scripts/flow import-profile my-team.zip
 ```
 
-## Import During Installation
+## Import a Profile
 
-When starting a new project, run `flow install` and select option 2:
+After installing WogiFlow, import a team profile:
 
-```
-How would you like to set up Wogi Flow?
-
-   (1) Fresh start - New configuration with guided setup
-   (2) Import from profile - Use existing team/project profile
-   (3) Quick setup - Defaults without questions
-
-> 2
-
-Enter profile path: ~/my-team.zip
+```bash
+npm install wogiflow
+npx flow import-profile ~/my-team.zip
 ```
 
 ## CLI

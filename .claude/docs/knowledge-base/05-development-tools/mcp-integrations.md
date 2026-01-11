@@ -6,7 +6,7 @@ Connect external tools via Model Context Protocol servers.
 
 ## Overview
 
-MCP (Model Context Protocol) allows Wogi-Flow to:
+MCP (Model Context Protocol) allows WogiFlow to:
 - Connect to external services
 - Access additional tools
 - Extend functionality

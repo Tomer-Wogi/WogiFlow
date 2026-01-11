@@ -6,7 +6,7 @@ Everything related to initial setup, codebase analysis, and populating workflow 
 
 ## Purpose
 
-Before Wogi-Flow can help with your project, it needs context:
+Before WogiFlow can help with your project, it needs context:
 - What framework and language are you using?
 - What components already exist?
 - What patterns and conventions does your team follow?
@@ -18,18 +18,18 @@ The setup and onboarding process gathers this context automatically and stores i
 
 ## Quick Start
 
-### New Project
+### Install
 
 ```bash
-./scripts/flow install
+npm install wogiflow
 ```
 
-This creates the `.workflow/` directory structure with default configuration.
+The postinstall script automatically creates the `.workflow/` directory structure.
 
-### Existing Project
+### Analyze Existing Project
 
 ```bash
-./scripts/flow onboard
+npx flow onboard
 ```
 
 This analyzes your codebase and populates:
@@ -151,8 +151,8 @@ This analyzes your codebase and populates:
 
 | Command | Purpose |
 |---------|---------|
-| `./scripts/flow install` | Initialize workflow for new project |
-| `./scripts/flow onboard` | Analyze existing project |
+| `npm install wogiflow` | Install WogiFlow and create .workflow structure |
+| `npx flow onboard` | Analyze existing project |
 | `/wogi-map-index` | Show/regenerate component index |
 | `/wogi-map-scan` | Scan for unmapped components |
 | `/wogi-health` | Check workflow health |
@@ -174,4 +174,4 @@ This analyzes your codebase and populates:
 
 - [Task Execution](../02-task-execution/) - How to execute tasks
 - [Configuration Reference](../configuration/all-options.md) - All config options
-- [Self-Improvement](../03-self-improvement/) - How Wogi-Flow learns
+- [Self-Improvement](../03-self-improvement/) - How WogiFlow learns

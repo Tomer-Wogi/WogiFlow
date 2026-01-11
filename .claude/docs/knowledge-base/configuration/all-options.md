@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Complete reference for all Wogi-Flow configuration options.
+Complete reference for all WogiFlow configuration options.
 
 ---
 
@@ -1130,7 +1130,7 @@ Language server integration configuration. LSP provides type information, diagno
 
 ### Installation
 
-LSP dependencies are installed automatically during `flow install`. To install manually:
+LSP dependencies can be installed manually:
 
 ```bash
 npm i -D typescript-language-server typescript

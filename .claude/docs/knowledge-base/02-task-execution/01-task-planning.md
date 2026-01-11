@@ -1,6 +1,6 @@
 # Task Planning
 
-Before implementation begins, Wogi-Flow ensures proper planning through task gating, size assessment, and story creation.
+Before implementation begins, WogiFlow ensures proper planning through task gating, size assessment, and story creation.
 
 ---
 

@@ -68,11 +68,11 @@ Then:
 ## Quick Start
 
 ```bash
-# New project
-./scripts/flow install
+# Install
+npm install wogiflow
 
-# Existing project
-./scripts/flow onboard
+# Analyze existing project
+npx flow onboard
 ```
 
 ## Core Principles

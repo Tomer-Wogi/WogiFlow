@@ -148,5 +148,4 @@ Existing learnings in `knowledge/learnings.md` are preserved.
 
 ## Integration
 
-This wizard runs automatically during `flow install` (optional step).
-You can skip it during install and run `/wogi-setup-stack` anytime later.
+Run `/wogi-setup-stack` anytime after installing WogiFlow to configure your tech stack.

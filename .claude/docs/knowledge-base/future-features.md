@@ -1,6 +1,6 @@
 # Future Features
 
-Planned and considered features for Wogi-Flow.
+Planned and considered features for WogiFlow.
 
 ---
 

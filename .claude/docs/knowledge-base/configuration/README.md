@@ -1,6 +1,6 @@
 # Configuration
 
-How to configure Wogi-Flow.
+How to configure WogiFlow.
 
 ---
 

@@ -6,7 +6,7 @@ Facts, relevance decay, and memory tiers.
 
 ## Overview
 
-Wogi-Flow has multiple memory systems:
+WogiFlow has multiple memory systems:
 - **Local Facts**: Project-specific knowledge
 - **Memory Blocks**: Current session context
 - **Relevance Decay**: Time-based importance

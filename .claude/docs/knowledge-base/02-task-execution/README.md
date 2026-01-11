@@ -1,6 +1,6 @@
 # Task Execution Flow
 
-The `/wogi-start` command initiates a structured execution pipeline that ensures thorough, high-quality task completion. This is the heart of Wogi-Flow.
+The `/wogi-start` command initiates a structured execution pipeline that ensures thorough, high-quality task completion. This is the heart of WogiFlow.
 
 ---
 
@@ -25,7 +25,7 @@ The `/wogi-start` command initiates a structured execution pipeline that ensures
 - Leave tasks incomplete when "good enough"
 - Skip verification and break other features
 
-**The Solution**: Wogi-Flow enforces a pipeline that:
+**The Solution**: WogiFlow enforces a pipeline that:
 - Gates implementation behind proper planning
 - Loops until ALL acceptance criteria pass
 - Verifies changes don't break existing functionality
@@ -134,7 +134,7 @@ Comprehensive code review before finalizing changes.
 
 ## Trade-offs
 
-Understanding the trade-offs helps you configure Wogi-Flow for your needs:
+Understanding the trade-offs helps you configure WogiFlow for your needs:
 
 | Setting | Higher Value | Lower Value |
 |---------|-------------|-------------|

@@ -1,6 +1,6 @@
-# Wogi Flow Skills
+# WogiFlow Skills
 
-Skills are modular add-ons that extend Wogi Flow with specialized commands, templates, and rules for specific tech stacks.
+Skills are modular add-ons that extend WogiFlow with specialized commands, templates, and rules for specific tech stacks.
 
 ## Available Skills
 
@@ -12,14 +12,7 @@ Skills are modular add-ons that extend Wogi Flow with specialized commands, temp
 
 ## Installing Skills
 
-### During Setup
-
-```bash
-./scripts/flow install
-# Answer "nestjs" or "all" when asked about skills
-```
-
-### After Setup
+After installing WogiFlow:
 
 ```
 /wogi-skills add nestjs

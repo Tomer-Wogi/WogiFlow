@@ -50,7 +50,7 @@ A self-improving AI development workflow that learns from your feedback and accu
 |----------|-------------|
 | [Setup & Onboarding](.claude/docs/knowledge-base/01-setup-onboarding/) | Installation, onboarding, component indexing |
 | [Task Execution](.claude/docs/knowledge-base/02-task-execution/) | The execution pipeline with trade-offs |
-| [Self-Improvement](.claude/docs/knowledge-base/03-self-improvement/) | How wogi-flow learns and improves |
+| [Self-Improvement](.claude/docs/knowledge-base/03-self-improvement/) | How WogiFlow learns and improves |
 | [Memory & Context](.claude/docs/knowledge-base/04-memory-context/) | Context management and session persistence |
 | [Development Tools](.claude/docs/knowledge-base/05-development-tools/) | Figma, traces, voice, MCP integrations |
 | [Safety & Guardrails](.claude/docs/knowledge-base/06-safety-guardrails/) | Protection and recovery systems |
@@ -59,20 +59,21 @@ A self-improving AI development workflow that learns from your feedback and accu
 ## Quick Start
 
 ```bash
-# Install
-curl -fsSL https://raw.githubusercontent.com/Wogi-Git/wogi-flow/main/install.sh | bash
+# Install as dev dependency
+npm install wogiflow
 
-# Setup
-./scripts/flow install
-
-# Or quick setup with defaults
-./scripts/flow install --quick my-project
+# Analyze your project
+npx flow onboard
 ```
 
-For existing projects:
+The postinstall script automatically creates the `.workflow/` directory structure with template files.
+
+### For new projects without existing code:
 
 ```bash
-./scripts/flow onboard
+npm install wogiflow
+# Start creating tasks
+npx flow story "Add user authentication"
 ```
 
 ## Developer Workflow
@@ -1304,7 +1305,7 @@ Skills are modular add-ons for specific tech stacks that accumulate knowledge ov
 ### Install Skills
 
 ```bash
-./scripts/flow install          # During setup
+npm install wogiflow            # Install in your project
 /wogi-skills add nestjs         # After setup
 ```
 
@@ -1449,10 +1450,7 @@ Claude updates `config.json` accordingly.
 
 ```bash
 # Setup
-flow install                    # Interactive setup
-flow install --quick <name>     # Quick setup
-flow onboard                    # Onboard existing project
-flow update                     # Update to latest version
+flow onboard                    # Analyze existing project and populate state files
 
 # Tasks
 flow ready                      # Show task queue

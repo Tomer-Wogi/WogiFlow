@@ -1,12 +1,12 @@
 # Self-Improvement & Learning
 
-How Wogi-Flow learns and improves over time through feedback, corrections, and pattern recognition.
+How WogiFlow learns and improves over time through feedback, corrections, and pattern recognition.
 
 ---
 
 ## The Learning System
 
-Wogi-Flow learns at four levels:
+WogiFlow learns at four levels:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -38,7 +38,7 @@ Wogi-Flow learns at four levels:
 
 **The Problem**: AI makes the same mistakes repeatedly because it doesn't remember corrections.
 
-**The Solution**: Wogi-Flow captures corrections and patterns, then applies them to future work:
+**The Solution**: WogiFlow captures corrections and patterns, then applies them to future work:
 - Corrections update decisions.md
 - Patterns are extracted into skills
 - Model-specific behaviors are adapted

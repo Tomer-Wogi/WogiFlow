@@ -16,7 +16,7 @@ AI struggles with:
 
 ## The Solution
 
-Wogi-Flow manages memory through:
+WogiFlow manages memory through:
 - Context monitoring and compaction
 - Durable sessions for crash recovery
 - Memory blocks for key facts

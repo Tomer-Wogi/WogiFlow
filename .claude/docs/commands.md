@@ -189,11 +189,8 @@ When user types these commands, execute the corresponding action immediately.
 
 ```bash
 # Setup
-./scripts/flow install            # Interactive installer
-./scripts/flow install --quick    # Quick install with defaults
-./scripts/flow onboard            # Analyze existing project & set up context
-./scripts/flow update             # Update to latest version
-./scripts/flow update --check     # Check for available updates
+npm install wogiflow              # Install WogiFlow in your project
+npx flow onboard                  # Analyze existing project & set up context
 
 # Task Management
 ./scripts/flow ready              # See unblocked tasks

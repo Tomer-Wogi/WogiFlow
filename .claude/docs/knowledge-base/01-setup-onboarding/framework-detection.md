@@ -148,7 +148,7 @@ Skills are auto-added to config:
 
 ## Official Documentation
 
-When `fetchOfficialDocs` is enabled, Wogi-Flow can reference official documentation:
+When `fetchOfficialDocs` is enabled, WogiFlow can reference official documentation:
 
 ```json
 {

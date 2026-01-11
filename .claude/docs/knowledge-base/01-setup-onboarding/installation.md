@@ -1,20 +1,19 @@
 # Installation
 
-Set up Wogi-Flow for a new project.
+Set up WogiFlow for your project.
 
 ---
 
 ## Quick Install
 
 ```bash
-./scripts/flow install
+npm install wogiflow
 ```
 
-This interactive installer will:
-1. Ask for project name and description
-2. Create the `.workflow/` directory structure
-3. Generate default `config.json`
-4. Create template state files
+This automatically:
+1. Creates the `.workflow/` directory structure
+2. Copies template files to `.workflow/state/`
+3. Sets up necessary subdirectories
 
 ---
 
@@ -23,60 +22,34 @@ This interactive installer will:
 ```
 .workflow/
 ├── config.json              # Configuration (200+ options)
-├── specs/
-│   └── project.md          # Project specification
 ├── state/
 │   ├── ready.json          # Task queues
 │   ├── app-map.md          # Component registry
 │   ├── decisions.md        # Coding patterns
 │   ├── request-log.md      # Change history
-│   └── progress.md         # Session notes
-├── .claude/skills/          # Skill packages (Claude Code 2.1+)
-├── agents/                  # Agent personas
-│   ├── orchestrator.md
-│   ├── story-writer.md
-│   ├── developer.md
-│   ├── reviewer.md
-│   └── tester.md
-└── changes/                 # Feature change sets
+│   ├── progress.md         # Session notes
+│   └── component-index.json # Auto-scanned components
+├── changes/                 # Feature change sets
+├── memory/                  # Local memory database
+└── verifications/           # Verification artifacts
 ```
 
 ---
 
-## Installation Options
+## For Existing Projects
 
-### Interactive Mode (Default)
-
-```bash
-./scripts/flow install
-```
-
-Prompts for:
-- Project name
-- Brief description
-- Workflow style preference
-
-### Quick Mode
+After installing, run onboarding to analyze your codebase:
 
 ```bash
-./scripts/flow install --quick "my-project"
+npx flow onboard
 ```
 
-Creates workflow with minimal prompts using defaults.
+This analyzes your codebase and populates:
+- `decisions.md` - Detected coding patterns
+- `app-map.md` - Found components
+- `component-index.json` - Auto-scanned index
 
-### With PRD
-
-If you have a Product Requirements Document:
-
-```bash
-./scripts/flow install
-# Then during prompts, provide path to PRD
-```
-
-The PRD will be parsed and used to:
-- Generate initial decisions
-- Suggest component structure
-- Create initial tasks
+See [Onboarding Existing Projects](./onboarding-existing.md).
 
 ---
 
@@ -89,11 +62,11 @@ Check `.workflow/config.json` and adjust settings:
 ```json
 {
   "enforcement": {
-    "strictMode": true,              // Require tasks for implementation
+    "strictMode": true,
     "requireStoryForMediumTasks": true
   },
   "loops": {
-    "enforced": true,                // Enable execution loops
+    "enforced": true,
     "maxRetries": 5
   }
 }
@@ -103,19 +76,27 @@ Check `.workflow/config.json` and adjust settings:
 
 ```bash
 git add .workflow/
-git commit -m "feat: add wogi-flow workflow"
+git commit -m "feat: add WogiFlow workflow"
 ```
 
 ### 3. Verify Setup
 
 ```bash
+npx flow health
+```
+
+Or in Claude:
+```
 /wogi-health
 ```
 
-This checks:
-- Required files exist
-- Config is valid
-- No obvious issues
+---
+
+## Updating WogiFlow
+
+```bash
+npm update wogiflow
+```
 
 ---
 
@@ -134,33 +115,19 @@ The installer creates a balanced config:
 
 ---
 
-## For Existing Projects
-
-If you're adding Wogi-Flow to an existing project, use onboarding instead:
-
-```bash
-./scripts/flow onboard
-```
-
-This analyzes your codebase and populates state files automatically.
-
-See [Onboarding Existing Projects](./onboarding-existing.md).
-
----
-
 ## Troubleshooting
 
 ### Permission Denied
 
 ```bash
-chmod +x ./scripts/flow*
+chmod +x ./node_modules/wogiflow/scripts/flow*
 ```
 
 ### Missing Dependencies
 
-Ensure Node.js is installed:
+Ensure Node.js 18+ is installed:
 ```bash
-node --version  # Should be 16+
+node --version  # Should be 18+
 ```
 
 ### Config Validation Errors
