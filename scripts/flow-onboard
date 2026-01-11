@@ -488,6 +488,225 @@ EOF
     echo -e "${GREEN}✓${NC} Created project.md"
 }
 
+# ============================================================
+# KNOWLEDGE FILE GENERATION (Phase 0.4)
+# ============================================================
+
+detect_test_framework() {
+    local test_framework="unknown"
+    local test_command=""
+
+    if [ -f "package.json" ]; then
+        if grep -q '"jest"' package.json 2>/dev/null || grep -q '"@jest/core"' package.json 2>/dev/null; then
+            test_framework="Jest"
+            test_command="npm test"
+        elif grep -q '"vitest"' package.json 2>/dev/null; then
+            test_framework="Vitest"
+            test_command="npm test"
+        elif grep -q '"mocha"' package.json 2>/dev/null; then
+            test_framework="Mocha"
+            test_command="npm test"
+        fi
+
+        if grep -q '"@playwright/test"' package.json 2>/dev/null; then
+            test_framework="$test_framework + Playwright"
+        elif grep -q '"cypress"' package.json 2>/dev/null; then
+            test_framework="$test_framework + Cypress"
+        fi
+    fi
+
+    if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then
+        if grep -qi "pytest" requirements.txt 2>/dev/null || grep -qi "pytest" pyproject.toml 2>/dev/null; then
+            test_framework="pytest"
+            test_command="pytest"
+        fi
+    fi
+
+    echo "$test_framework|$test_command"
+}
+
+detect_architecture_pattern() {
+    local pattern="unknown"
+
+    if [ -d "src/modules" ] || [ -d "src/features" ]; then
+        pattern="Modular / Feature-based"
+    elif [ -d "src/domain" ] && [ -d "src/infrastructure" ]; then
+        pattern="Clean Architecture / DDD"
+    elif [ -d "src/controllers" ] && [ -d "src/services" ] && [ -d "src/models" ]; then
+        pattern="MVC / Layered"
+    elif [ -d "services" ] && [ -d "shared" ]; then
+        pattern="Microservices / Monorepo"
+    elif [ -d "src/components" ] && [ -d "src/pages" ]; then
+        pattern="Component-based (Frontend)"
+    elif [ -d "src" ] || [ -d "lib" ]; then
+        pattern="Standard"
+    fi
+
+    echo "$pattern"
+}
+
+generate_stack_md() {
+    echo -e "${CYAN}Generating stack.md...${NC}"
+
+    local pkg_manager=$(detect_package_manager)
+    local db=$(detect_database)
+    local test_info=$(detect_test_framework)
+    local test_framework=$(echo "$test_info" | cut -d'|' -f1)
+    local test_command=$(echo "$test_info" | cut -d'|' -f2)
+    local node_version=$(node --version 2>/dev/null || echo "unknown")
+
+    cat > "$WORKFLOW_DIR/state/stack.md" << EOF
+# Tech Stack
+
+> Auto-generated during onboarding. Keep synced with project changes.
+
+## Core Technologies
+
+| Category | Technology | Version |
+|----------|------------|---------|
+| Language | $DETECTED_LANGUAGE | - |
+| Framework | $DETECTED_FRAMEWORK | - |
+| Runtime | Node.js | $node_version |
+| Package Manager | $pkg_manager | - |
+| Database | $db | - |
+
+## Testing
+
+| Type | Framework | Command |
+|------|-----------|---------|
+| Unit | $test_framework | \`$test_command\` |
+
+## Build Commands
+
+| Action | Command |
+|--------|---------|
+| Build | \`npm run build\` |
+| Dev | \`npm run dev\` |
+| Lint | \`npm run lint\` |
+| Type Check | \`npm run typecheck\` |
+
+---
+
+*Last updated: $(date -Iseconds)*
+EOF
+
+    echo -e "${GREEN}✓${NC} Created stack.md"
+}
+
+generate_architecture_md() {
+    echo -e "${CYAN}Generating architecture.md...${NC}"
+
+    local arch_pattern=$(detect_architecture_pattern)
+
+    cat > "$WORKFLOW_DIR/state/architecture.md" << EOF
+# Architecture Overview
+
+> Auto-generated during onboarding. Update when architecture changes.
+
+## Pattern
+
+**$arch_pattern**
+
+## Folder Structure
+
+\`\`\`
+$(basename "$(pwd)")/
+$(ls -1d */ 2>/dev/null | head -10 | while read dir; do echo "├── $dir"; done)
+\`\`\`
+
+## Design Patterns
+
+$(case "$DETECTED_FRAMEWORK" in
+    "NestJS")
+        echo "- **Dependency Injection** - Constructor-based DI"
+        echo "- **Repository Pattern** - Data access abstraction"
+        echo "- **DTO Pattern** - Data transfer objects"
+        ;;
+    "React"|"Next.js")
+        echo "- **Component Composition** - Building UIs from components"
+        echo "- **Hooks Pattern** - State and side effects"
+        ;;
+    *)
+        echo "- *Add patterns as they are identified*"
+        ;;
+esac)
+
+## Data Flow
+
+\`\`\`
+$(case "$DETECTED_FRAMEWORK" in
+    "NestJS")
+        echo "Request → Controller → Service → Repository → Database"
+        ;;
+    "React"|"Next.js")
+        echo "User Action → Component → State → Re-render"
+        ;;
+    *)
+        echo "Client → API → Business Logic → Data Layer"
+        ;;
+esac)
+\`\`\`
+
+---
+
+*Last updated: $(date -Iseconds)*
+EOF
+
+    echo -e "${GREEN}✓${NC} Created architecture.md"
+}
+
+generate_testing_md() {
+    echo -e "${CYAN}Generating testing.md...${NC}"
+
+    local test_info=$(detect_test_framework)
+    local test_framework=$(echo "$test_info" | cut -d'|' -f1)
+    local test_command=$(echo "$test_info" | cut -d'|' -f2)
+    local test_count=$(find . -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | wc -l | tr -d ' ')
+
+    cat > "$WORKFLOW_DIR/state/testing.md" << EOF
+# Testing Guide
+
+> Auto-generated during onboarding. Update when test setup changes.
+
+## Test Framework
+
+| Setting | Value |
+|---------|-------|
+| Framework | $test_framework |
+| Test Count | ~$test_count files |
+
+## Commands
+
+| Action | Command |
+|--------|---------|
+| Run all | \`$test_command\` |
+| Watch | \`npm run test:watch\` |
+| Coverage | \`npm run coverage\` |
+
+## Conventions
+
+$(case "$DETECTED_FRAMEWORK" in
+    "NestJS")
+        echo "- Unit tests: \`*.spec.ts\` next to source"
+        echo "- E2E tests: \`test/\` directory"
+        ;;
+    "React"|"Next.js")
+        echo "- Tests in \`__tests__/\` or \`*.test.tsx\`"
+        echo "- Use React Testing Library"
+        ;;
+    *)
+        echo "- Follow project conventions"
+        ;;
+esac)
+
+---
+
+*Last updated: $(date -Iseconds)*
+EOF
+
+    echo -e "${GREEN}✓${NC} Created testing.md"
+}
+
 generate_app_map() {
     echo -e "${CYAN}Generating app map...${NC}"
     
@@ -699,10 +918,13 @@ print_summary() {
     echo "  • Components: ${#DETECTED_COMPONENTS[@]}"
     echo ""
     echo "Generated:"
-    echo "  • .workflow/specs/project.md     - Project specification"
-    echo "  • .workflow/state/app-map.md     - Component registry"
-    echo "  • .workflow/state/decisions.md   - Coding patterns"
-    [ -n "$KNOWN_ISSUES" ] && echo "  • .workflow/changes/onboarding/  - Initial tasks"
+    echo "  • .workflow/specs/project.md       - Project specification"
+    echo "  • .workflow/state/stack.md         - Tech stack details"
+    echo "  • .workflow/state/architecture.md  - Architecture overview"
+    echo "  • .workflow/state/testing.md       - Testing guide"
+    echo "  • .workflow/state/app-map.md       - Component registry"
+    echo "  • .workflow/state/decisions.md     - Coding patterns"
+    [ -n "$KNOWN_ISSUES" ] && echo "  • .workflow/changes/onboarding/    - Initial tasks"
     echo ""
     echo -e "${BOLD}Next steps:${NC}"
     echo ""
@@ -767,6 +989,9 @@ main() {
     echo ""
     
     generate_project_spec
+    generate_stack_md
+    generate_architecture_md
+    generate_testing_md
     generate_app_map
     generate_decisions
     generate_initial_tasks

@@ -184,6 +184,49 @@ class BaseBridge {
   }
 
   /**
+   * Sync knowledge files from .workflow/state/ to CLI-specific docs folder
+   * Also updates the knowledge-sync.json state
+   */
+  syncKnowledgeFiles() {
+    const stateDir = path.join(this.projectDir, this.workflowDir, 'state');
+    const cliDocsDir = path.join(this.projectDir, this.getCliFolder(), 'docs');
+
+    // Knowledge files to sync
+    const knowledgeFiles = ['stack.md', 'architecture.md', 'testing.md'];
+
+    // Ensure CLI docs directory exists
+    if (!fs.existsSync(cliDocsDir)) {
+      fs.mkdirSync(cliDocsDir, { recursive: true });
+    }
+
+    let syncedCount = 0;
+    for (const file of knowledgeFiles) {
+      const sourcePath = path.join(stateDir, file);
+      const targetPath = path.join(cliDocsDir, file);
+
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, targetPath);
+        this.log(`Synced knowledge file: ${file}`);
+        syncedCount++;
+      }
+    }
+
+    // Update knowledge-sync.json after bridge sync
+    if (syncedCount > 0) {
+      try {
+        const knowledgeSync = require('../../scripts/flow-knowledge-sync');
+        knowledgeSync.markAsSynced();
+        this.log('Updated knowledge-sync.json');
+      } catch (err) {
+        // flow-knowledge-sync not available
+        this.log(`Could not update knowledge-sync state: ${err.message}`);
+      }
+    }
+
+    return syncedCount;
+  }
+
+  /**
    * Generate and write the main rules file (e.g., CLAUDE.md)
    */
   generateRulesFile() {
@@ -229,7 +272,17 @@ class BaseBridge {
         results.errors.push({ step: 'rules', error: err.message });
       }
 
-      // 4. Generate rules file
+      // 4. Sync knowledge files (stack.md, architecture.md, testing.md)
+      try {
+        const syncedCount = this.syncKnowledgeFiles();
+        if (syncedCount > 0) {
+          results.synced.push('knowledge-files');
+        }
+      } catch (err) {
+        results.errors.push({ step: 'knowledge-files', error: err.message });
+      }
+
+      // 5. Generate rules file
       try {
         this.generateRulesFile();
         results.synced.push('rules-file');
@@ -237,7 +290,7 @@ class BaseBridge {
         results.errors.push({ step: 'rules-file', error: err.message });
       }
 
-      // 5. CLI-specific setup
+      // 6. CLI-specific setup
       try {
         const config = this.readConfig();
         await this.setupCliSpecific(config);

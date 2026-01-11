@@ -1,0 +1,24 @@
+{
+  "lastSync": "2026-01-11T10:13:13.882Z",
+  "stack": {
+    "files": [
+      "package.json",
+      "package-lock.json"
+    ],
+    "combinedHash": "d63cd382bf7e8870567ffe5f17028e96",
+    "individualHashes": {
+      "package.json": "a710683b130fabab35732f072f37f61b",
+      "package-lock.json": "b4d009608f63d0d91b69a23860f0b33c"
+    }
+  },
+  "architecture": {
+    "files": [],
+    "combinedHash": null,
+    "individualHashes": {}
+  },
+  "testing": {
+    "files": [],
+    "combinedHash": null,
+    "individualHashes": {}
+  }
+}

@@ -97,7 +97,37 @@ async function generateSpec(taskId, taskContext) {
     reasons: s.reasons
   }));
 
-  // 7. Rollback Plan (optional)
+  // 7. Assumptions (Phase 0.5 - Hybrid Assumption Surfacing)
+  if (specConfig.sections?.assumptions !== false) {
+    try {
+      const {
+        detectAssumptions,
+        getAssumptionsNeedingClarification,
+        generateClarificationQuestions
+      } = require('../.workflow/lib/assumption-detector');
+      const assumptions = detectAssumptions({
+        title: taskContext.title,
+        description: taskContext.description || taskContext.userStory || '',
+        acceptanceCriteria: taskContext.acceptanceCriteria || [],
+        context: taskContext
+      });
+      const needingClarification = getAssumptionsNeedingClarification(assumptions);
+      spec.sections.assumptions = {
+        detected: assumptions,
+        needingClarification,
+        clarificationRequired: needingClarification.length > 0,
+        // AskUserQuestion-compatible format for Claude to use
+        askUserQuestions: needingClarification.length > 0
+          ? generateClarificationQuestions(assumptions)
+          : []
+      };
+    } catch (e) {
+      // Assumption detector not available
+      spec.sections.assumptions = { detected: [], needingClarification: [], error: e.message };
+    }
+  }
+
+  // 8. Rollback Plan (optional)
   if (specConfig.sections?.rollbackPlan) {
     spec.sections.rollbackPlan = generateRollbackPlan(taskContext);
   }
@@ -482,6 +512,51 @@ function formatSpecAsMarkdown(spec) {
     for (const skill of spec.sections.matchedSkills) {
       md += `- **${skill.name}** (score: ${skill.score})\n`;
       md += `  - ${skill.reasons.slice(0, 3).join(', ')}\n`;
+    }
+    md += '\n';
+  }
+
+  // Assumptions
+  if (spec.sections.assumptions?.detected?.length > 0) {
+    md += `## Assumptions\n\n`;
+
+    // Show clarification warning if needed
+    const needClarification = spec.sections.assumptions.needingClarification || [];
+    if (needClarification.length > 0) {
+      md += `> ⚠️ **${needClarification.length} assumption(s) need clarification** before proceeding.\n\n`;
+      md += `> Use \`AskUserQuestion\` tool to clarify these assumptions before implementation.\n\n`;
+    }
+
+    // Format assumptions using assumption-detector if available
+    try {
+      const { formatAssumptionsForSpec } = require('../.workflow/lib/assumption-detector');
+      md += formatAssumptionsForSpec(spec.sections.assumptions.detected);
+    } catch {
+      // Fallback formatting
+      for (const a of spec.sections.assumptions.detected) {
+        const confidenceDisplay = Math.round(a.confidence * 100);
+        const needsFlag = a.needsClarification ? ' ⚠️' : '';
+        md += `- **[${a.id}]** ${a.text} (${confidenceDisplay}% confidence)${needsFlag}\n`;
+        if (a.needsClarification && a.clarificationQuestion) {
+          md += `  - *Clarify:* ${a.clarificationQuestion}\n`;
+        }
+      }
+    }
+
+    // Add clarification questions JSON for Claude to use with AskUserQuestion
+    if (spec.sections.assumptions.askUserQuestions?.length > 0) {
+      md += `\n### Clarification Questions\n\n`;
+      md += `The following questions are formatted for \`AskUserQuestion\`:\n\n`;
+      md += `\`\`\`json\n`;
+      // Format without assumption metadata (just the tool-compatible format)
+      const toolQuestions = spec.sections.assumptions.askUserQuestions.map(q => ({
+        question: q.question,
+        header: q.header,
+        options: q.options,
+        multiSelect: q.multiSelect
+      }));
+      md += JSON.stringify(toolQuestions, null, 2);
+      md += `\n\`\`\`\n`;
     }
     md += '\n';
   }

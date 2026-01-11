@@ -244,6 +244,8 @@ show_help() {
     echo "  compact-memory --preview Show what would be affected"
     echo "  memory-sync            Check patterns for promotion"
     echo "  memory-sync --auto     Auto-promote to decisions.md"
+    echo "  knowledge-sync status  Check knowledge files sync status"
+    echo "  knowledge-sync regenerate  Regenerate stale knowledge files"
     echo "  knowledge-route <text> Detect route for a learning"
     echo "  knowledge-route store  Store a learning with route"
     echo "  log-manager status     Show request-log statistics"
@@ -731,6 +733,9 @@ case "${1:-}" in
         ;;
     memory-sync)
         node "$SCRIPT_DIR/flow-memory-sync.js" "${@:2}"
+        ;;
+    knowledge-sync)
+        node "$SCRIPT_DIR/flow-knowledge-sync.js" "${@:2}"
         ;;
     knowledge-route)
         case "${2:-}" in
