@@ -19,7 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { HttpClient } = require('./flow-http-client');
 const {
   PROJECT_ROOT,
   STATE_DIR,
@@ -77,55 +77,29 @@ function getLinearConfig() {
 // ============================================================
 
 /**
- * Make authenticated Linear GraphQL request
+ * Make authenticated Linear GraphQL request using shared HttpClient
  */
-function linearRequest(query, variables = {}) {
+async function linearRequest(query, variables = {}) {
   const config = getLinearConfig();
 
   if (!config.apiKey) {
     throw new Error('Linear API key not configured. Run: flow linear config');
   }
 
-  return new Promise((resolve, reject) => {
-    const url = new URL(LINEAR_API_URL);
-
-    const options = {
-      hostname: url.hostname,
-      port: 443,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Authorization': config.apiKey,
-        'Content-Type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const result = JSON.parse(data);
-          if (result.errors) {
-            reject(new Error(result.errors[0].message));
-            return;
-          }
-          resolve(result.data);
-        } catch (err) {
-          reject(new Error(`Parse error: ${data}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.setTimeout(30000, () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-
-    req.write(JSON.stringify({ query, variables }));
-    req.end();
+  const client = new HttpClient(LINEAR_API_URL, {
+    headers: {
+      'Authorization': config.apiKey
+    },
+    timeout: 30000
   });
+
+  const response = await client.post('/', { query, variables });
+
+  if (response.data?.errors) {
+    throw new Error(response.data.errors[0].message);
+  }
+
+  return response.data?.data;
 }
 
 // ============================================================

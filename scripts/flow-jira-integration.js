@@ -19,8 +19,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const crypto = require('crypto');
+const { HttpClient } = require('./flow-http-client');
 const {
   PROJECT_ROOT,
   STATE_DIR,
@@ -92,58 +92,31 @@ async function saveJiraConfig(jiraConfig) {
 // ============================================================
 
 /**
- * Make authenticated Jira API request
+ * Make authenticated Jira API request using shared HttpClient
  */
-function jiraRequest(method, endpoint, body = null) {
+async function jiraRequest(method, endpoint, body = null) {
   const config = getJiraConfig();
 
   if (!config.baseUrl || !config.email || !config.apiToken) {
     throw new Error('Jira not configured. Run: flow jira config');
   }
 
-  return new Promise((resolve, reject) => {
-    const url = new URL(endpoint, config.baseUrl);
-    const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
-
-    const options = {
-      hostname: url.hostname,
-      port: url.port || 443,
-      path: url.pathname + url.search,
-      method,
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode >= 400) {
-          reject(new Error(`Jira API error ${res.statusCode}: ${data}`));
-          return;
-        }
-        try {
-          resolve(JSON.parse(data));
-        } catch (err) {
-          resolve(data);
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.setTimeout(30000, () => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    });
-
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
-    req.end();
+  const auth = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64');
+  const client = new HttpClient(config.baseUrl, {
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Accept': 'application/json'
+    },
+    timeout: 30000
   });
+
+  const response = await client.request(method, endpoint, body);
+
+  if (response.status >= 400) {
+    throw new Error(`Jira API error ${response.status}: ${JSON.stringify(response.data)}`);
+  }
+
+  return response.data;
 }
 
 // ============================================================
