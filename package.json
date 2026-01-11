@@ -4,8 +4,8 @@
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
-    "flow": "./bin/flow",
-    "wogi-flow": "./bin/flow"
+    "flow": "bin/flow",
+    "wogi-flow": "bin/flow"
   },
   "scripts": {
     "flow": "./scripts/flow",
