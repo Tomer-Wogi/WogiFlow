@@ -80,6 +80,17 @@ const DEFAULT_CONFIG = {
   autoPromote: false
 };
 
+// Table format constants (DRY)
+const TABLE_FORMAT = {
+  header: '| Date | Pattern | Source | Count | Confidence | Status |',
+  separator: '|------|---------|--------|-------|------------|--------|',
+  sectionHeader: '## Auto-Captured Patterns',
+  sectionRegex: /## Auto-Captured Patterns\s*\n\n\|[^\n]+\|\s*\n\|[-|\s]+\|\s*\n([\s\S]*?)(?=\n## |\n---|\n$)/
+};
+
+// Confidence update weight (0-1, higher means more weight to recent observations)
+const CONFIDENCE_WEIGHT_RECENT = 0.7;
+
 // ============================================================
 // Configuration
 // ============================================================
@@ -157,8 +168,8 @@ function loadAutoPatterns() {
   try {
     const content = fs.readFileSync(FEEDBACK_PATTERNS_PATH, 'utf-8');
 
-    // Find Auto-Captured Patterns section
-    const sectionMatch = content.match(/## Auto-Captured Patterns\s*\n\n\|[^\n]+\|\s*\n\|[-|\s]+\|\s*\n([\s\S]*?)(?=\n## |\n---|\n$)/);
+    // Find Auto-Captured Patterns section (using DRY constant)
+    const sectionMatch = content.match(TABLE_FORMAT.sectionRegex);
     if (!sectionMatch) {
       return [];
     }
@@ -195,21 +206,19 @@ function loadAutoPatterns() {
  */
 function saveAutoPatterns(patterns) {
   if (!fileExists(FEEDBACK_PATTERNS_PATH)) {
-    warn('feedback-patterns.md not found');
+    warn(`Could not save patterns: feedback-patterns.md not found`);
     return;
   }
 
   try {
     let content = fs.readFileSync(FEEDBACK_PATTERNS_PATH, 'utf-8');
 
-    // Build new table
-    const header = '| Date | Pattern | Source | Count | Confidence | Status |';
-    const separator = '|------|---------|--------|-------|------------|--------|';
+    // Build new table (using DRY constants)
     const rows = patterns.map(p =>
       `| ${p.date} | ${p.pattern} | ${p.source} | ${p.count} | ${p.confidence}% | ${p.status} |`
     );
 
-    const newSection = `## Auto-Captured Patterns\n\n${header}\n${separator}\n${rows.join('\n')}`;
+    const newSection = `${TABLE_FORMAT.sectionHeader}\n\n${TABLE_FORMAT.header}\n${TABLE_FORMAT.separator}\n${rows.join('\n')}`;
 
     // Replace or add section
     if (content.includes('## Auto-Captured Patterns')) {
@@ -269,9 +278,12 @@ function captureFromSessionReview(issues) {
     const existing = patterns.find(p => p.pattern === patternName);
 
     if (existing) {
-      // Increment count and update confidence (average)
+      // Increment count and update confidence (weighted average favoring recent)
       existing.count += 1;
-      existing.confidence = Math.round((existing.confidence + confidence) / 2);
+      existing.confidence = Math.round(
+        (1 - CONFIDENCE_WEIGHT_RECENT) * existing.confidence +
+        CONFIDENCE_WEIGHT_RECENT * confidence
+      );
       existing.date = today;
 
       // Check promotion threshold
@@ -441,7 +453,7 @@ function handlePromotion(pattern, config) {
  */
 function promoteToDecisions(pattern) {
   if (!fileExists(DECISIONS_PATH)) {
-    warn('decisions.md not found');
+    warn(`Could not promote pattern: decisions.md not found`);
     return;
   }
 
@@ -452,13 +464,14 @@ function promoteToDecisions(pattern) {
     const sectionHeader = '## Coding Standards';
 
     if (!content.includes(sectionHeader)) {
-      warn('Coding Standards section not found in decisions.md');
+      warn(`Could not promote pattern: Coding Standards section not found in decisions.md`);
       return;
     }
 
-    // Generate rule entry
+    // Generate rule entry (escape markdown special characters in pattern name)
     const today = new Date().toISOString().split('T')[0];
-    const ruleEntry = `\n### ${pattern.pattern} (${today})
+    const escapedPattern = pattern.pattern.replace(/[#*_\[\]()\\]/g, '\\$&');
+    const ruleEntry = `\n### ${escapedPattern} (${today})
 **Source**: Auto-learned from ${pattern.count} occurrences (${pattern.source})
 **Rule**: [Describe the pattern rule here]
 `;

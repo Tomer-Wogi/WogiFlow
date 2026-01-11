@@ -284,7 +284,8 @@ function loadSyncState() {
     }
 
     return state;
-  } catch {
+  } catch (err) {
+    warn(`Failed to load sync state: ${err.message}`);
     return null;
   }
 }

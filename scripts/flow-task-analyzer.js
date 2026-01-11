@@ -129,26 +129,42 @@ const LANGUAGE_PATTERNS = {
   }
 };
 
+/**
+ * Capability requirements mapped to task keywords
+ *
+ * Note: 'vision' and 'extended-thinking' capabilities are future-proofing
+ * for when model registry includes multimodal and o1-style models.
+ * Currently maps to Claude-4 capabilities.
+ */
 const CAPABILITY_REQUIREMENTS = {
   'reasoning': ['architecture', 'design', 'system', 'algorithm', 'optimize', 'complex'],
   'code-gen': ['implement', 'create', 'add', 'build', 'feature', 'component'],
   'analysis': ['review', 'analyze', 'audit', 'evaluate', 'assess'],
   'structured-output': ['schema', 'json', 'config', 'template', 'format'],
-  'vision': ['design', 'figma', 'screenshot', 'mockup', 'ui'],
-  'extended-thinking': ['difficult', 'challenging', 'intricate', 'debug']
+  'vision': ['design', 'figma', 'screenshot', 'mockup', 'ui'],           // Future: multimodal models
+  'extended-thinking': ['difficult', 'challenging', 'intricate', 'debug'] // Future: o1-style models
 };
 
-// Token estimation factors
+/**
+ * Token estimation factors
+ *
+ * Values calibrated from observed Claude Code task executions:
+ * - BASE_INPUT: Minimum tokens for task context, instructions, and rules
+ * - PER_FILE: Average tokens per file change (read + edit operations)
+ * - PER_DOMAIN: Additional context tokens per technical domain
+ * - COMPLEXITY_MULTIPLIER: Accounts for more iterations/exploration
+ * - OUTPUT_RATIO: Model output typically 60% of input for code tasks
+ */
 const TOKEN_FACTORS = {
-  BASE_INPUT: 500,       // Base prompt tokens
-  PER_FILE: 200,         // Tokens per estimated file
-  PER_DOMAIN: 150,       // Tokens per domain involved
+  BASE_INPUT: 500,
+  PER_FILE: 200,
+  PER_DOMAIN: 150,
   COMPLEXITY_MULTIPLIER: {
     low: 1.0,
     medium: 1.5,
     high: 2.5
   },
-  OUTPUT_RATIO: 0.6      // Output tokens as ratio of input
+  OUTPUT_RATIO: 0.6
 };
 
 // ============================================================

@@ -13,7 +13,6 @@
  *   flow model-route --analysis <json> --strategy cost-optimized
  */
 
-const fs = require('fs');
 const path = require('path');
 const {
   PROJECT_ROOT,
@@ -23,21 +22,18 @@ const {
   info,
   warn,
   error,
-  fileExists,
   safeJsonParse,
   printHeader,
   printSection
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
+const { loadRegistry, loadStats } = require('./flow-models');
 
 // ============================================================
 // Constants
 // ============================================================
 
-const MODELS_DIR = path.join(PROJECT_ROOT, '.workflow', 'models');
-const REGISTRY_PATH = path.join(MODELS_DIR, 'registry.json');
-const STATS_PATH = path.join(MODELS_DIR, 'stats.json');
 const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
 
 const ROUTING_STRATEGIES = {
@@ -57,46 +53,6 @@ const DEFAULT_CONFIG = {
   fallbackEnabled: true,
   maxEscalations: 2
 };
-
-// ============================================================
-// Registry Loading
-// ============================================================
-
-/**
- * Load model registry with validation
- * @returns {Object|null} Validated registry data or null if invalid
- */
-function loadRegistry() {
-  if (!fileExists(REGISTRY_PATH)) {
-    return null;
-  }
-
-  const registry = safeJsonParse(REGISTRY_PATH);
-
-  // Validate registry structure
-  if (!registry || typeof registry !== 'object') {
-    return null;
-  }
-
-  // Ensure required top-level fields exist
-  if (!registry.version || !registry.models || typeof registry.models !== 'object') {
-    warn('Invalid registry structure: missing version or models');
-    return null;
-  }
-
-  return registry;
-}
-
-/**
- * Load model stats
- * @returns {Object|null} Stats data
- */
-function loadStats() {
-  if (!fileExists(STATS_PATH)) {
-    return {};
-  }
-  return safeJsonParse(STATS_PATH) || {};
-}
 
 /**
  * Load multi-model config
@@ -119,7 +75,9 @@ function loadMultiModelConfig() {
  * @param {Object} model - Model data from registry
  * @param {Object} analysis - Task analysis
  * @param {string} strategy - Routing strategy
- * @param {Object} stats - Model stats (optional)
+ * @param {Object} stats - Model stats (optional). Only used for 'learned' strategy
+ *                         to incorporate historical success rates. Passed to all
+ *                         strategies for consistent function signature across routing.
  * @returns {Object} Scoring result
  */
 function scoreModel(model, analysis, strategy, stats = {}) {
@@ -159,7 +117,10 @@ function scoreModel(model, analysis, strategy, stats = {}) {
 
   // 2. Language proficiency (0-30 points)
   const primaryLang = analysis.languages.primary;
-  const langScore = model.languages?.[primaryLang] || 5;
+  // Type guard: ensure model.languages is an object before accessing
+  const langScore = (model.languages && typeof model.languages === 'object')
+    ? (model.languages[primaryLang] || 5)
+    : 5;
   scores.language = (langScore / 10) * 30;
 
   if (langScore >= 9) {

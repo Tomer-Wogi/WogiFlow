@@ -131,18 +131,31 @@ function loadFragments() {
   }
 
   const fragments = [];
-  const files = fs.readdirSync(FRAGMENTS_DIR).filter(f => f.endsWith('.md'));
+
+  let files;
+  try {
+    files = fs.readdirSync(FRAGMENTS_DIR).filter(f => f.endsWith('.md'));
+  } catch (err) {
+    warn(`Could not read fragments directory: ${err.message}`);
+    return [];
+  }
 
   for (const file of files) {
     const filePath = path.join(FRAGMENTS_DIR, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const parsed = parseFragment(content);
 
-    fragments.push({
-      file,
-      path: filePath,
-      ...parsed
-    });
+    try {
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const parsed = parseFragment(content);
+
+      fragments.push({
+        file,
+        path: filePath,
+        ...parsed
+      });
+    } catch (err) {
+      warn(`Could not read fragment ${file}: ${err.message}`);
+      // Continue with other fragments
+    }
   }
 
   return fragments;

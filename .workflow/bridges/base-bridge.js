@@ -19,6 +19,15 @@
 const fs = require('fs');
 const path = require('path');
 
+// Import safeJsonParse from flow-utils to avoid duplicate implementation
+let safeJsonParse;
+try {
+  safeJsonParse = require('../../scripts/flow-utils').safeJsonParse;
+} catch {
+  // Fallback if flow-utils not available
+  safeJsonParse = null;
+}
+
 class BaseBridge {
   /**
    * @param {string} cliType - The CLI type identifier (e.g., 'claude-code', 'gemini-cli')
@@ -32,11 +41,13 @@ class BaseBridge {
     this.projectDir = options.projectDir || process.cwd();
     this.verbose = options.verbose || false;
 
-    // These must be overridden by subclasses
-    this.cliFolder = null;       // e.g., '.claude', '.gemini'
-    this.rulesFile = null;       // e.g., 'CLAUDE.md', 'GEMINI.md'
-    this.skillsPath = null;      // e.g., '.claude/skills'
-    this.rulesPath = null;       // e.g., '.claude/rules'
+    // Note: These properties are deprecated in favor of getter methods below.
+    // Kept for backwards compatibility with any subclasses that set them directly.
+    // New subclasses should override getCliFolder(), getRulesFileName(), etc.
+    this.cliFolder = null;
+    this.rulesFile = null;
+    this.skillsPath = null;
+    this.rulesPath = null;
   }
 
   /**
@@ -97,13 +108,16 @@ class BaseBridge {
   // ==================== Common Methods ====================
 
   /**
-   * Safe JSON parse that checks for prototype pollution
+   * Safe JSON parse that checks for prototype pollution (fallback when flow-utils unavailable)
    * @param {string} content - JSON string to parse
    * @returns {Object|null} Parsed object or null if invalid
    */
-  safeJsonParse(content) {
-    // Check for prototype pollution attempts
-    if (content.includes('__proto__') || content.includes('constructor"')) {
+  safeJsonParseContent(content) {
+    // Check for prototype pollution attempts (case-insensitive)
+    const contentLower = content.toLowerCase();
+    if (contentLower.includes('__proto__') ||
+        contentLower.includes('constructor') ||
+        contentLower.includes('prototype')) {
       this.log('Warning: Potential prototype pollution detected in JSON');
       return null;
     }
@@ -129,8 +143,15 @@ class BaseBridge {
       throw new Error(`Config not found: ${configPath}`);
     }
 
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const config = this.safeJsonParse(content);
+    // Use flow-utils safeJsonParse if available, otherwise fall back to class method
+    let config;
+    if (safeJsonParse) {
+      config = safeJsonParse(configPath, null);
+    } else {
+      const content = fs.readFileSync(configPath, 'utf-8');
+      config = this.safeJsonParseContent(content);
+    }
+
     if (!config) {
       throw new Error(`Invalid config format: ${configPath}`);
     }

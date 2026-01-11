@@ -279,6 +279,12 @@ const ERROR_PARSERS = {
     // Parse npm audit JSON output
     try {
       const audit = JSON.parse(output);
+
+      // Validate structure before accessing nested properties
+      if (!audit || typeof audit !== 'object') {
+        throw new Error('Invalid audit JSON structure');
+      }
+
       const vulns = audit.metadata?.vulnerabilities || {};
 
       if (vulns.critical > 0) {
@@ -667,6 +673,50 @@ function getStagedFiles() {
 }
 
 /**
+ * Find source files recursively (safe alternative to shell find)
+ * @param {string} dir - Directory to search
+ * @param {string[]} extensions - File extensions to match
+ * @param {number} limit - Max files to return
+ * @returns {string[]} Array of relative file paths
+ */
+function findSourceFiles(dir, extensions, limit) {
+  const results = [];
+
+  function walk(currentDir, depth = 0) {
+    // Prevent infinite recursion
+    if (depth > 10 || results.length >= limit) return;
+
+    try {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (results.length >= limit) break;
+
+        // Skip hidden files/dirs and node_modules
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+
+        const fullPath = path.join(currentDir, entry.name);
+        const relativePath = path.relative(PROJECT_ROOT, fullPath);
+
+        if (entry.isDirectory()) {
+          walk(fullPath, depth + 1);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (extensions.includes(ext)) {
+            results.push(relativePath);
+          }
+        }
+      }
+    } catch {
+      // Skip unreadable directories
+    }
+  }
+
+  walk(dir);
+  return results;
+}
+
+/**
  * Check for hardcoded secrets in files
  */
 function checkForSecrets(files) {
@@ -789,12 +839,12 @@ async function runSecurityChecks(gateResult) {
   let files = getStagedFiles();
   if (files.length === 0) {
     // Fall back to src directory if no staged files
+    // Use fs.readdirSync instead of shell find to prevent command injection
     try {
-      const output = execSync('find src -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" 2>/dev/null | head -100', {
-        cwd: PROJECT_ROOT,
-        encoding: 'utf-8'
-      });
-      files = output.split('\n').filter(f => f.trim());
+      const srcDir = path.join(PROJECT_ROOT, 'src');
+      if (fs.existsSync(srcDir)) {
+        files = findSourceFiles(srcDir, ['.ts', '.tsx', '.js', '.jsx'], 100);
+      }
     } catch {
       files = [];
     }
