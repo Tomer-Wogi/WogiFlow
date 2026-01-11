@@ -484,9 +484,15 @@ async function main() {
 
   // Get analysis from flag or run analyzer
   if (flags.analysis) {
-    analysis = safeJsonParse(flags.analysis, null);
-    if (!analysis) {
-      error('Invalid --analysis JSON');
+    // flags.analysis is a JSON string from CLI, not a file path
+    try {
+      analysis = JSON.parse(flags.analysis);
+      if (!analysis || typeof analysis !== 'object') {
+        error('Invalid --analysis JSON: must be an object');
+        process.exit(1);
+      }
+    } catch (e) {
+      error(`Invalid --analysis JSON: ${e.message}`);
       process.exit(1);
     }
   } else if (positional.length > 0) {

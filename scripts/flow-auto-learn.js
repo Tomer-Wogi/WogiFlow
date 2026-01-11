@@ -488,8 +488,9 @@ function promoteToDecisions(pattern) {
     // Sync rules
     try {
       require('./flow-rules-sync');
-    } catch {
-      // Rules sync not available or failed
+    } catch (syncErr) {
+      // Log the failure for debugging
+      info(`Note: Rules sync skipped - ${syncErr.code === 'MODULE_NOT_FOUND' ? 'module not found' : syncErr.message}`);
     }
   } catch (err) {
     warn(`Could not promote to decisions.md: ${err.message}`);

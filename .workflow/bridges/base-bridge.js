@@ -97,6 +97,29 @@ class BaseBridge {
   // ==================== Common Methods ====================
 
   /**
+   * Safe JSON parse that checks for prototype pollution
+   * @param {string} content - JSON string to parse
+   * @returns {Object|null} Parsed object or null if invalid
+   */
+  safeJsonParse(content) {
+    // Check for prototype pollution attempts
+    if (content.includes('__proto__') || content.includes('constructor"')) {
+      this.log('Warning: Potential prototype pollution detected in JSON');
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed === null || typeof parsed !== 'object') {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Read the workflow config
    * @returns {Object}
    */
@@ -105,7 +128,13 @@ class BaseBridge {
     if (!fs.existsSync(configPath)) {
       throw new Error(`Config not found: ${configPath}`);
     }
-    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const config = this.safeJsonParse(content);
+    if (!config) {
+      throw new Error(`Invalid config format: ${configPath}`);
+    }
+    return config;
   }
 
   /**

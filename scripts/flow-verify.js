@@ -377,8 +377,8 @@ function runCommand(cmd, args, timeout = 120000) {
 
     const proc = spawn(cmd, args, {
       cwd: PROJECT_ROOT,
-      shell: true,
-      timeout
+      timeout,
+      stdio: ['pipe', 'pipe', 'pipe']
     });
 
     proc.stdout.on('data', (data) => {

@@ -226,6 +226,46 @@ function computeCategoryHashes(patterns) {
 }
 
 /**
+ * Validate sync state structure
+ * @param {Object} state - Parsed state object
+ * @returns {boolean} True if valid structure
+ */
+function isValidSyncState(state) {
+  if (!state || typeof state !== 'object') {
+    return false;
+  }
+
+  // lastSync is optional but must be string if present
+  if (state.lastSync !== undefined && typeof state.lastSync !== 'string') {
+    return false;
+  }
+
+  // Validate each category if present
+  const categories = ['stack', 'architecture', 'testing'];
+  for (const cat of categories) {
+    if (state[cat] !== undefined) {
+      const catData = state[cat];
+      if (typeof catData !== 'object' || catData === null) {
+        return false;
+      }
+      // combinedHash should be string or null
+      if (catData.combinedHash !== undefined &&
+          catData.combinedHash !== null &&
+          typeof catData.combinedHash !== 'string') {
+        return false;
+      }
+      // individualHashes should be object if present
+      if (catData.individualHashes !== undefined &&
+          (typeof catData.individualHashes !== 'object' || catData.individualHashes === null)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
  * Load current sync state
  */
 function loadSyncState() {
@@ -235,7 +275,15 @@ function loadSyncState() {
 
   try {
     const content = fs.readFileSync(PATHS.knowledgeSync, 'utf-8');
-    return safeJsonParse(content, null);
+    const state = safeJsonParse(content, null);
+
+    // Validate structure before returning
+    if (!isValidSyncState(state)) {
+      warn('Invalid sync state structure in knowledge-sync.json');
+      return null;
+    }
+
+    return state;
   } catch {
     return null;
   }

@@ -25,7 +25,8 @@ const {
   error,
   fileExists,
   printHeader,
-  printSection
+  printSection,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // ============================================================
@@ -524,6 +525,12 @@ async function main() {
     const filePath = path.isAbsolute(flags.file)
       ? flags.file
       : path.join(PROJECT_ROOT, flags.file);
+
+    // Validate path is within project to prevent path traversal
+    if (!isPathWithinProject(filePath)) {
+      error('File path must be within project directory');
+      process.exit(1);
+    }
 
     taskData = parseStoryFile(filePath);
     if (!taskData) {

@@ -27,7 +27,8 @@ const {
   fileExists,
   dirExists,
   printHeader,
-  printSection
+  printSection,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // ============================================================
@@ -61,35 +62,63 @@ function parseFragment(content) {
   if (!frontMatterMatch) {
     return {
       metadata: {},
-      content: content.trim()
+      content: content.trim(),
+      _parseErrors: []
     };
   }
 
   const frontMatter = frontMatterMatch[1];
   const body = frontMatterMatch[2].trim();
 
-  // Parse YAML-like front matter
+  // Parse YAML-like front matter with error tracking
   const metadata = {};
-  for (const line of frontMatter.split('\n')) {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) continue;
+  const parseErrors = [];
 
-    const key = line.slice(0, colonIndex).trim();
-    let value = line.slice(colonIndex + 1).trim();
+  try {
+    for (const line of frontMatter.split('\n')) {
+      const colonIndex = line.indexOf(':');
+      if (colonIndex === -1) {
+        // Skip empty lines silently, warn about malformed lines
+        if (line.trim() && !line.trim().startsWith('#')) {
+          parseErrors.push(`Malformed line (no colon): "${line.slice(0, 50)}"`);
+        }
+        continue;
+      }
 
-    // Parse arrays
-    if (value.startsWith('[') && value.endsWith(']')) {
-      value = value.slice(1, -1).split(',').map(v => v.trim());
+      const key = line.slice(0, colonIndex).trim();
+      if (!key) {
+        parseErrors.push(`Empty key in line: "${line.slice(0, 50)}"`);
+        continue;
+      }
+
+      let value = line.slice(colonIndex + 1).trim();
+
+      // Parse arrays
+      if (value.startsWith('[') && value.endsWith(']')) {
+        try {
+          value = value.slice(1, -1).split(',').map(v => v.trim());
+        } catch {
+          parseErrors.push(`Failed to parse array for key "${key}"`);
+          continue;
+        }
+      }
+      // Parse numbers
+      else if (/^\d+$/.test(value)) {
+        value = parseInt(value, 10);
+      }
+
+      metadata[key] = value;
     }
-    // Parse numbers
-    else if (/^\d+$/.test(value)) {
-      value = parseInt(value, 10);
-    }
-
-    metadata[key] = value;
+  } catch (err) {
+    parseErrors.push(`Unexpected error: ${err.message}`);
   }
 
-  return { metadata, content: body };
+  // Log warnings for parse errors
+  if (parseErrors.length > 0) {
+    warn(`Fragment parse warnings: ${parseErrors.join('; ')}`);
+  }
+
+  return { metadata, content: body, _parseErrors: parseErrors };
 }
 
 /**
@@ -272,7 +301,7 @@ function composePrompt(params) {
  * @returns {string} Processed string
  */
 function applyTemplate(template, data) {
-  // Forbidden keys to prevent prototype pollution
+  // Forbidden keys to prevent prototype pollution (case-insensitive)
   const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
   // Simple substitution: {{key}} or {{object.key}}
@@ -281,8 +310,9 @@ function applyTemplate(template, data) {
     let value = data;
 
     for (const key of keys) {
-      // Prevent prototype pollution attacks
-      if (FORBIDDEN_KEYS.has(key)) return match;
+      // Prevent prototype pollution attacks (case-insensitive check)
+      const keyLower = key.toLowerCase();
+      if (FORBIDDEN_KEYS.has(keyLower)) return match;
       if (value === undefined || value === null) return match;
       // Only access own properties
       if (!Object.prototype.hasOwnProperty.call(value, key)) return match;
@@ -414,6 +444,13 @@ async function main() {
     const outputPath = path.isAbsolute(flags.output)
       ? flags.output
       : path.join(PROJECT_ROOT, flags.output);
+
+    // Validate path is within project to prevent path traversal
+    if (!isPathWithinProject(outputPath)) {
+      error('Output path must be within project directory');
+      process.exit(1);
+    }
+
     fs.writeFileSync(outputPath, composed.prompt);
     info(`Saved to: ${outputPath}`);
   }
