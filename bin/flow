@@ -1,0 +1,205 @@
+#!/usr/bin/env node
+
+/**
+ * Wogi Flow CLI Entry Point
+ *
+ * This is the main entry point for the `flow` command when installed globally via npm.
+ * It handles both global commands (init, upgrade, version) and project-local commands
+ * by delegating to the project's scripts/flow when in a project context.
+ *
+ * Usage:
+ *   flow init              # Initialize a new project
+ *   flow upgrade           # Upgrade an existing project
+ *   flow --version         # Show version
+ *   flow <command>         # Project commands (when in a project)
+ */
+
+const path = require('path');
+const fs = require('fs');
+const { spawn } = require('child_process');
+
+// Package info
+const packageJson = require('../package.json');
+const VERSION = packageJson.version;
+
+// Global commands that don't require a project context
+const GLOBAL_COMMANDS = ['init', 'upgrade', 'version', '--version', '-v', '--help', '-h', 'skill', 'channel'];
+
+/**
+ * Find the project root by looking for .workflow directory
+ * @returns {string|null} Project root path or null if not in a project
+ */
+function findProjectRoot() {
+  let dir = process.cwd();
+  const root = path.parse(dir).root;
+
+  while (dir !== root) {
+    if (fs.existsSync(path.join(dir, '.workflow'))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+
+  return null;
+}
+
+/**
+ * Execute a project-local flow command
+ * @param {string} projectRoot - Project root directory
+ * @param {string[]} args - Command arguments
+ */
+function executeProjectCommand(projectRoot, args) {
+  const projectFlow = path.join(projectRoot, 'scripts', 'flow');
+
+  if (!fs.existsSync(projectFlow)) {
+    console.error('Error: scripts/flow not found in project');
+    console.error('Run `flow upgrade` to update the project structure');
+    process.exit(1);
+  }
+
+  // Spawn the project's flow script
+  const child = spawn(projectFlow, args, {
+    cwd: projectRoot,
+    stdio: 'inherit',
+    shell: true
+  });
+
+  child.on('exit', (code) => {
+    process.exit(code || 0);
+  });
+
+  child.on('error', (err) => {
+    console.error(`Failed to execute: ${err.message}`);
+    process.exit(1);
+  });
+}
+
+/**
+ * Show version information
+ */
+function showVersion() {
+  console.log(`wogi-flow v${VERSION}`);
+}
+
+/**
+ * Show help information
+ */
+function showHelp() {
+  console.log(`
+Wogi Flow v${VERSION}
+AI-powered development workflow management
+
+Usage: flow <command> [options]
+
+Global Commands:
+  init                 Initialize Wogi Flow in a new project
+  upgrade              Upgrade an existing project to latest version
+  --version, -v        Show version number
+  --help, -h           Show this help message
+
+Project Commands (run in a project directory):
+  status               Show project status
+  ready                Show available tasks
+  start <task>         Start working on a task
+  story "<title>"      Create a new story
+  health               Check workflow health
+  models               Model management commands
+  ... and many more
+
+For project command help, run: flow --help (in a project directory)
+
+Examples:
+  flow init                    # Set up Wogi Flow in current directory
+  flow init --cli claude       # Initialize with Claude Code
+  flow upgrade                 # Upgrade project to latest version
+  flow status                  # Show project overview (in project)
+
+Documentation: https://github.com/Wogi-Git/wogi-flow
+`);
+}
+
+/**
+ * Main entry point
+ */
+function main() {
+  const args = process.argv.slice(2);
+  const command = args[0];
+
+  // Handle version flag
+  if (command === '--version' || command === '-v' || command === 'version') {
+    showVersion();
+    return;
+  }
+
+  // Handle help flag
+  if (command === '--help' || command === '-h' || !command) {
+    const projectRoot = findProjectRoot();
+    if (projectRoot && command !== '--help' && command !== '-h') {
+      // In a project without args - show project help
+      executeProjectCommand(projectRoot, ['--help']);
+    } else {
+      showHelp();
+    }
+    return;
+  }
+
+  // Handle global commands
+  if (command === 'init') {
+    // Load and run installer
+    const installer = require('../lib/installer');
+    installer.init(args.slice(1));
+    return;
+  }
+
+  if (command === 'upgrade') {
+    // Load and run upgrader
+    const upgrader = require('../lib/upgrader');
+    upgrader.upgrade(args.slice(1));
+    return;
+  }
+
+  if (command === 'skill') {
+    // Skill registry commands
+    const projectRoot = findProjectRoot();
+    if (!projectRoot && args[1] !== 'list') {
+      console.error('Error: Not in a Wogi Flow project');
+      console.error('Use `flow init` to initialize a new project');
+      process.exit(1);
+    }
+    if (projectRoot) {
+      // In project context - delegate to project scripts
+      executeProjectCommand(projectRoot, args);
+    } else {
+      // Outside project - only allow list
+      const skillRegistry = require('../lib/skill-registry');
+      skillRegistry.skill(args.slice(1));
+    }
+    return;
+  }
+
+  if (command === 'channel') {
+    // Release channel management
+    const releaseChannel = require('../lib/release-channel');
+    releaseChannel.channel(args.slice(1));
+    return;
+  }
+
+  // For all other commands, try to find project context
+  const projectRoot = findProjectRoot();
+
+  if (!projectRoot) {
+    console.error('Error: Not in a Wogi Flow project');
+    console.error('');
+    console.error('To initialize a new project:');
+    console.error('  flow init');
+    console.error('');
+    console.error('To see all options:');
+    console.error('  flow --help');
+    process.exit(1);
+  }
+
+  // Execute project-local command
+  executeProjectCommand(projectRoot, args);
+}
+
+main();

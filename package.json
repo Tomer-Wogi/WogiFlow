@@ -1,21 +1,51 @@
 {
   "name": "wogi-flow",
   "version": "1.9.0",
-  "description": "AI-powered development workflow management system",
-  "private": true,
+  "description": "AI-powered development workflow management system with multi-model support",
+  "main": "lib/index.js",
+  "bin": {
+    "flow": "./bin/flow",
+    "wogi-flow": "./bin/flow"
+  },
   "scripts": {
     "flow": "./scripts/flow",
     "test": "node mcp-memory-server/test.js",
-    "memory-server": "node mcp-memory-server/index.js"
+    "memory-server": "node mcp-memory-server/index.js",
+    "prepublishOnly": "node scripts/prepublish.js"
   },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "templates/",
+    ".workflow/templates/",
+    ".workflow/agents/",
+    ".workflow/bridges/",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "workflow",
     "ai",
     "development",
     "claude",
-    "mcp"
+    "gemini",
+    "opencode",
+    "mcp",
+    "multi-model",
+    "automation",
+    "developer-tools"
   ],
+  "author": "Wogi-Git",
   "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wogi-Git/wogi-flow.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Wogi-Git/wogi-flow/issues"
+  },
+  "homepage": "https://github.com/Wogi-Git/wogi-flow#readme",
   "dependencies": {
     "sql.js": "^1.10.0"
   },
@@ -25,5 +55,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
