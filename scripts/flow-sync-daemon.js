@@ -83,14 +83,22 @@ function isDaemonRunning() {
     // Check if process exists
     process.kill(pid, 0);
 
-    // Check heartbeat freshness (2x interval)
+    // Check heartbeat freshness (2.5x interval for clearer threshold)
     if (fileExists(HEARTBEAT_FILE)) {
-      const heartbeat = JSON.parse(fs.readFileSync(HEARTBEAT_FILE, 'utf-8'));
-      const age = Date.now() - new Date(heartbeat.timestamp).getTime();
-      const config = getSyncConfig();
+      try {
+        const heartbeat = JSON.parse(fs.readFileSync(HEARTBEAT_FILE, 'utf-8'));
+        if (heartbeat?.timestamp) {
+          const age = Date.now() - new Date(heartbeat.timestamp).getTime();
+          const config = getSyncConfig();
+          const threshold = config.heartbeatIntervalMs * 2.5;
 
-      if (age > config.heartbeatIntervalMs * 2) {
-        warn('Daemon heartbeat stale, may be unresponsive');
+          if (!isNaN(age) && age > threshold) {
+            warn('Daemon heartbeat stale, may be unresponsive');
+            return false;
+          }
+        }
+      } catch (parseError) {
+        warn('Failed to parse heartbeat file: ' + parseError.message);
         return false;
       }
     }
@@ -155,6 +163,20 @@ function cleanupPidFile() {
 }
 
 /**
+ * Filter environment variables for daemon (security: only pass necessary vars)
+ */
+function getSafeEnv() {
+  const safeVars = ['PATH', 'HOME', 'USER', 'SHELL', 'LANG', 'TERM', 'NODE_ENV'];
+  const env = { WOGI_DAEMON: '1' };
+  for (const key of safeVars) {
+    if (process.env[key]) {
+      env[key] = process.env[key];
+    }
+  }
+  return env;
+}
+
+/**
  * Start the daemon
  */
 function startDaemon() {
@@ -170,18 +192,26 @@ function startDaemon() {
     return false;
   }
 
-  // Start daemon as detached process
+  // Start daemon as detached process with filtered environment
   const daemon = spawn('node', [__filename, '--daemon'], {
     detached: true,
     stdio: ['ignore', 'ignore', 'ignore'],
     cwd: PROJECT_ROOT,
-    env: { ...process.env, WOGI_DAEMON: '1' }
+    env: getSafeEnv()
   });
 
   daemon.unref();
 
   // Write PID file
   fs.writeFileSync(PID_FILE, daemon.pid.toString());
+
+  // Verify daemon started by waiting briefly and checking heartbeat
+  setTimeout(() => {
+    if (!fileExists(HEARTBEAT_FILE)) {
+      warn('Daemon may have failed to start - no heartbeat file yet');
+      warn('Check log file for errors: ' + LOG_FILE);
+    }
+  }, 500);
 
   success(`Daemon started (PID: ${daemon.pid})`);
   info(`Log file: ${LOG_FILE}`);
@@ -216,24 +246,38 @@ function stopDaemon() {
 // ============================================================
 
 /**
- * Log message to file
+ * Log message to file with proper error handling
  */
 function log(level, message) {
   const timestamp = new Date().toISOString();
   const line = `${timestamp} [${level}] ${message}\n`;
 
-  // Rotate log if too large
-  const config = getSyncConfig();
-  if (fileExists(LOG_FILE)) {
-    const stats = fs.statSync(LOG_FILE);
-    if (stats.size > config.maxLogSizeBytes) {
-      const backupPath = LOG_FILE + '.old';
-      if (fileExists(backupPath)) fs.unlinkSync(backupPath);
-      fs.renameSync(LOG_FILE, backupPath);
+  try {
+    // Rotate log if too large
+    const config = getSyncConfig();
+    if (fileExists(LOG_FILE)) {
+      try {
+        const stats = fs.statSync(LOG_FILE);
+        if (stats.size > config.maxLogSizeBytes) {
+          const backupPath = LOG_FILE + '.old';
+          try {
+            if (fileExists(backupPath)) fs.unlinkSync(backupPath);
+            fs.renameSync(LOG_FILE, backupPath);
+          } catch (rotateError) {
+            // Log rotation failed, continue anyway
+            console.error('Log rotation failed:', rotateError.message);
+          }
+        }
+      } catch (statError) {
+        // Stat failed, continue anyway
+      }
     }
-  }
 
-  fs.appendFileSync(LOG_FILE, line);
+    fs.appendFileSync(LOG_FILE, line);
+  } catch (e) {
+    // Silently fail to avoid infinite loops if logging fails
+    console.error('Failed to write log:', e.message);
+  }
 }
 
 /**
@@ -300,9 +344,26 @@ function handleBranchSwitch(fromBranch, toBranch) {
 }
 
 /**
+ * Validate branch name format (security: prevent JSON key injection)
+ */
+function isValidBranchName(branch) {
+  // Allow alphanumeric, dots, dashes, underscores, slashes (max 255 chars)
+  return branch &&
+         typeof branch === 'string' &&
+         branch.length <= 255 &&
+         /^[a-zA-Z0-9._/-]+$/.test(branch);
+}
+
+/**
  * Save state for a branch
  */
 function saveBranchState(branch) {
+  // Validate branch name before using as JSON key
+  if (!isValidBranchName(branch)) {
+    log('WARN', `Invalid branch name format, skipping save: ${branch?.slice(0, 50)}`);
+    return;
+  }
+
   const syncState = safeJsonParse(SYNC_STATE_FILE) || { branches: {} };
 
   syncState.branches[branch] = {

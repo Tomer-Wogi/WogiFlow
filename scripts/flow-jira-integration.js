@@ -33,9 +33,12 @@ const {
   fileExists,
   safeJsonParse,
   getConfig,
-  saveConfig,
+  setConfigValue,
+  resolveConfigValue,
   printHeader,
-  printSection
+  generateTaskId,
+  writeJson,
+  getReadyData
 } = require('./flow-utils');
 
 // ============================================================
@@ -62,7 +65,7 @@ function getJiraConfig() {
     baseUrl: jiraConfig.baseUrl || null,
     projectKey: jiraConfig.projectKey || null,
     email: jiraConfig.email || null,
-    apiToken: resolveValue(jiraConfig.apiToken),
+    apiToken: resolveConfigValue(jiraConfig.apiToken),
     jqlFilter: jiraConfig.jqlFilter || 'assignee = currentUser() AND status != Done ORDER BY priority DESC',
     syncStatuses: jiraConfig.syncStatuses || {
       ready: ['To Do', 'Open', 'Backlog'],
@@ -73,41 +76,15 @@ function getJiraConfig() {
 }
 
 /**
- * Resolve environment variable or file references
+ * Save Jira configuration (async with locking)
  */
-function resolveValue(value) {
-  if (!value) return null;
-
-  // {env:VAR_NAME}
-  if (value.startsWith('{env:') && value.endsWith('}')) {
-    const varName = value.slice(5, -1);
-    return process.env[varName] || null;
-  }
-
-  // {file:path}
-  if (value.startsWith('{file:') && value.endsWith('}')) {
-    const filePath = value.slice(6, -1).replace(/^~/, process.env.HOME);
-    try {
-      return fs.readFileSync(filePath, 'utf-8').trim();
-    } catch (e) {
-      return null;
-    }
-  }
-
-  return value;
-}
-
-/**
- * Save Jira configuration
- */
-function saveJiraConfig(jiraConfig) {
+async function saveJiraConfig(jiraConfig) {
   const config = getConfig();
-  config.integrations = config.integrations || {};
-  config.integrations.jira = {
-    ...config.integrations.jira,
+  const currentJira = config?.integrations?.jira || {};
+  await setConfigValue('integrations.jira', {
+    ...currentJira,
     ...jiraConfig
-  };
-  saveConfig(config);
+  });
 }
 
 // ============================================================
@@ -204,18 +181,23 @@ async function fetchIssues(jql = null) {
 async function getIssues(forceRefresh = false) {
   if (!forceRefresh && fileExists(JIRA_CACHE_PATH)) {
     const cache = safeJsonParse(JIRA_CACHE_PATH);
-    if (cache && Date.now() - new Date(cache.fetchedAt).getTime() < CACHE_TTL_MS) {
-      return cache.issues;
+    // Validate cache has issues array and valid timestamp
+    if (cache?.issues && cache?.fetchedAt) {
+      const fetchTime = new Date(cache.fetchedAt).getTime();
+      // Check for valid date and within TTL
+      if (!isNaN(fetchTime) && Date.now() - fetchTime < CACHE_TTL_MS) {
+        return cache.issues;
+      }
     }
   }
 
   const issues = await fetchIssues();
 
-  // Save to cache
-  fs.writeFileSync(JIRA_CACHE_PATH, JSON.stringify({
+  // Save to cache using writeJson for atomic writes
+  writeJson(JIRA_CACHE_PATH, {
     fetchedAt: new Date().toISOString(),
     issues
-  }, null, 2));
+  });
 
   return issues;
 }
@@ -308,8 +290,8 @@ async function syncToReady() {
       existing.updatedAt = new Date().toISOString();
       updated.push(issue.key);
     } else {
-      // Create new task
-      const taskId = `wf-${crypto.randomBytes(4).toString('hex')}`;
+      // Create new task using standard task ID generator
+      const taskId = generateTaskId();
       const task = {
         id: taskId,
         externalId,
@@ -328,9 +310,9 @@ async function syncToReady() {
     }
   }
 
-  // Save ready.json
+  // Save ready.json using atomic write
   ready.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(READY_PATH, JSON.stringify(ready, null, 2));
+  writeJson(READY_PATH, ready);
 
   return { imported, updated };
 }
@@ -346,23 +328,43 @@ async function pushCompleted() {
     return { pushed: [] };
   }
 
+  // Validate completed statuses array exists
+  const completedStatuses = config.syncStatuses?.completed || [];
+  if (completedStatuses.length === 0) {
+    warn('No completed statuses configured, using default "Done"');
+  }
+  const targetStatus = completedStatuses[0] || 'Done';
+
   const pushed = [];
 
   for (const task of ready.recentlyCompleted) {
+    // Validate external ID format
     if (!task.externalId || !task.externalId.startsWith('jira:')) {
       continue;
     }
 
     const issueKey = task.externalId.replace('jira:', '');
-    const targetStatus = config.syncStatuses.completed[0] || 'Done';
+    // Validate issue key format (PROJECT-123)
+    if (!/^[A-Z][A-Z0-9]+-\d+$/i.test(issueKey)) {
+      warn(`Invalid Jira issue key format: ${issueKey}`);
+      continue;
+    }
 
     try {
       await updateIssueStatus(issueKey, targetStatus);
-      await addComment(issueKey, `Completed via Wogi Flow at ${task.completedAt}`);
-      pushed.push(issueKey);
     } catch (e) {
-      warn(`Failed to update ${issueKey}: ${e.message}`);
+      warn(`Failed to update status for ${issueKey}: ${e.message}`);
+      continue;
     }
+
+    try {
+      await addComment(issueKey, `Completed via Wogi Flow at ${task.completedAt}`);
+    } catch (e) {
+      warn(`Failed to add comment to ${issueKey}: ${e.message}`);
+      // Status was updated, so still count as pushed
+    }
+
+    pushed.push(issueKey);
   }
 
   return { pushed };

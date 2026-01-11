@@ -17,7 +17,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFile } = require('child_process');
 const {
   PROJECT_ROOT,
   STATE_DIR,
@@ -36,6 +36,8 @@ const {
 // ============================================================
 
 const DEFAULT_PORT = 3850;
+const MIN_PORT = 1;
+const MAX_PORT = 65535;
 const READY_PATH = path.join(STATE_DIR, 'ready.json');
 const REQUEST_LOG_PATH = path.join(STATE_DIR, 'request-log.md');
 const PROGRESS_PATH = path.join(STATE_DIR, 'progress.md');
@@ -95,19 +97,23 @@ function parseRequestLog() {
   try {
     const content = fs.readFileSync(REQUEST_LOG_PATH, 'utf-8');
     const entries = [];
-    const entryPattern = /### R-(\d+)\s*\|\s*(.+?)\n\*\*Type\*\*:\s*(.+?)\n\*\*Tags\*\*:\s*(.+?)\n\*\*Request\*\*:\s*"(.+?)"\n\*\*Result\*\*:\s*(.+?)\n\*\*Files\*\*:\s*(.+?)(?=\n###|\n$)/gs;
+    // Use [\s\S] instead of . to match newlines in multiline fields
+    const entryPattern = /### R-(\d+)\s*\|\s*([^\n]+)\n\*\*Type\*\*:\s*([^\n]+)\n\*\*Tags\*\*:\s*([^\n]+)\n\*\*Request\*\*:\s*"([^"]+)"\n\*\*Result\*\*:\s*([\s\S]+?)\n\*\*Files\*\*:\s*([\s\S]+?)(?=\n###|\n*$)/g;
 
     let match;
     while ((match = entryPattern.exec(content)) !== null) {
-      entries.push({
-        id: `R-${match[1]}`,
-        timestamp: match[2].trim(),
-        type: match[3].trim(),
-        tags: match[4].trim().split(/\s+/).filter(t => t.startsWith('#')),
-        request: match[5].trim(),
-        result: match[6].trim(),
-        files: match[7].trim()
-      });
+      // Validate all capture groups exist before creating entry
+      if (match[1] && match[2] && match[3] && match[4] && match[5]) {
+        entries.push({
+          id: `R-${match[1]}`,
+          timestamp: match[2].trim(),
+          type: match[3].trim(),
+          tags: match[4].trim().split(/\s+/).filter(t => t.startsWith('#')),
+          request: match[5].trim(),
+          result: (match[6] || '').trim(),
+          files: (match[7] || '').trim()
+        });
+      }
     }
 
     return entries.slice(-50); // Last 50 entries
@@ -126,7 +132,8 @@ function getProjectStats() {
 
   const totalCompleted = tasks.recentlyCompleted?.length || 0;
   const totalRuns = runHistory.runs?.length || 0;
-  const successfulRuns = runHistory.runs?.filter(r => r.status === 'success').length || 0;
+  // Use optional chaining on filter result to prevent null reference errors
+  const successfulRuns = runHistory.runs?.filter(r => r.status === 'success')?.length || 0;
 
   return {
     tasksReady: tasks.ready?.length || 0,
@@ -553,8 +560,12 @@ function getDashboardHTML() {
 
 function startServer(port) {
   const server = http.createServer((req, res) => {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS headers - restricted to localhost only to prevent data exposure
+    const origin = req.headers.origin;
+    const allowedOrigins = [`http://localhost:${port}`, `http://127.0.0.1:${port}`];
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -681,18 +692,35 @@ async function main() {
     process.exit(0);
   }
 
-  const port = parseInt(flags.port) || DEFAULT_PORT;
+  // Validate port is a number within valid range
+  const portStr = flags.port;
+  let port = DEFAULT_PORT;
+  if (portStr !== undefined) {
+    if (!/^\d+$/.test(portStr)) {
+      error('Invalid port: must be a number');
+      process.exit(1);
+    }
+    port = parseInt(portStr, 10);
+    if (port < MIN_PORT || port > MAX_PORT) {
+      error(`Invalid port: must be between ${MIN_PORT} and ${MAX_PORT}`);
+      process.exit(1);
+    }
+  }
 
   startServer(port);
 
-  // Auto-open browser if requested
+  // Auto-open browser if requested - use execFile to prevent shell injection
   if (flags.open) {
     const url = `http://localhost:${port}`;
     try {
-      const { exec } = require('child_process');
       const cmd = process.platform === 'darwin' ? 'open' :
-                  process.platform === 'win32' ? 'start' : 'xdg-open';
-      exec(`${cmd} ${url}`);
+                  process.platform === 'win32' ? 'cmd' : 'xdg-open';
+      const args = process.platform === 'win32' ? ['/c', 'start', url] : [url];
+      execFile(cmd, args, (err) => {
+        if (err) {
+          info(`Open ${url} in your browser`);
+        }
+      });
     } catch (e) {
       info(`Open ${url} in your browser`);
     }

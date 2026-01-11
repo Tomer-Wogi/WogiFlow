@@ -20,7 +20,6 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const crypto = require('crypto');
 const {
   PROJECT_ROOT,
   STATE_DIR,
@@ -33,9 +32,11 @@ const {
   fileExists,
   safeJsonParse,
   getConfig,
-  saveConfig,
+  setConfigValue,
+  resolveConfigValue,
   printHeader,
-  printSection
+  generateTaskId,
+  writeJson
 } = require('./flow-utils');
 
 // ============================================================
@@ -60,7 +61,7 @@ function getLinearConfig() {
 
   return {
     enabled: linearConfig.enabled || false,
-    apiKey: resolveValue(linearConfig.apiKey),
+    apiKey: resolveConfigValue(linearConfig.apiKey),
     teamId: linearConfig.teamId || null,
     teamKey: linearConfig.teamKey || null,
     syncStatuses: linearConfig.syncStatuses || {
@@ -69,31 +70,6 @@ function getLinearConfig() {
       completed: ['Done', 'Canceled']
     }
   };
-}
-
-/**
- * Resolve environment variable or file references
- */
-function resolveValue(value) {
-  if (!value) return null;
-
-  // {env:VAR_NAME}
-  if (value.startsWith('{env:') && value.endsWith('}')) {
-    const varName = value.slice(5, -1);
-    return process.env[varName] || null;
-  }
-
-  // {file:path}
-  if (value.startsWith('{file:') && value.endsWith('}')) {
-    const filePath = value.slice(6, -1).replace(/^~/, process.env.HOME);
-    try {
-      return fs.readFileSync(filePath, 'utf-8').trim();
-    } catch (e) {
-      return null;
-    }
-  }
-
-  return value;
 }
 
 // ============================================================
@@ -223,18 +199,23 @@ async function fetchIssues() {
 async function getIssues(forceRefresh = false) {
   if (!forceRefresh && fileExists(LINEAR_CACHE_PATH)) {
     const cache = safeJsonParse(LINEAR_CACHE_PATH);
-    if (cache && Date.now() - new Date(cache.fetchedAt).getTime() < CACHE_TTL_MS) {
-      return cache.issues;
+    // Validate cache has issues array and valid timestamp
+    if (cache?.issues && cache?.fetchedAt) {
+      const fetchTime = new Date(cache.fetchedAt).getTime();
+      // Check for valid date and within TTL
+      if (!isNaN(fetchTime) && Date.now() - fetchTime < CACHE_TTL_MS) {
+        return cache.issues;
+      }
     }
   }
 
   const issues = await fetchIssues();
 
-  // Save to cache
-  fs.writeFileSync(LINEAR_CACHE_PATH, JSON.stringify({
+  // Save to cache using writeJson for atomic writes
+  writeJson(LINEAR_CACHE_PATH, {
     fetchedAt: new Date().toISOString(),
     issues
-  }, null, 2));
+  });
 
   return issues;
 }
@@ -364,8 +345,8 @@ async function syncToReady() {
       existing.updatedAt = new Date().toISOString();
       updated.push(issue.identifier);
     } else {
-      // Create new task
-      const taskId = `wf-${crypto.randomBytes(4).toString('hex')}`;
+      // Create new task using standard task ID generator
+      const taskId = generateTaskId();
       const task = {
         id: taskId,
         externalId,
@@ -384,9 +365,9 @@ async function syncToReady() {
     }
   }
 
-  // Save ready.json
+  // Save ready.json using atomic write
   ready.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(READY_PATH, JSON.stringify(ready, null, 2));
+  writeJson(READY_PATH, ready);
 
   return { imported, updated };
 }
@@ -412,26 +393,17 @@ async function pushCompleted() {
     const identifier = task.externalId.replace('linear:', '');
 
     try {
-      // Get issue ID from identifier
-      const issueQuery = `
-        query GetIssue($identifier: String!) {
-          issueVcsBranchSearch(branchName: $identifier) {
-            id
-          }
-        }
-      `;
-
-      // Use a different approach - search by identifier
+      // Use proper GraphQL variables to prevent injection
       const searchQuery = `
-        query {
-          issues(filter: { identifier: { eq: "${identifier}" } }) {
+        query SearchIssue($identifier: String!) {
+          issues(filter: { identifier: { eq: $identifier } }) {
             nodes { id }
           }
         }
       `;
 
-      const searchResult = await linearRequest(searchQuery);
-      const issueId = searchResult.issues.nodes[0]?.id;
+      const searchResult = await linearRequest(searchQuery, { identifier });
+      const issueId = searchResult.issues?.nodes?.[0]?.id;
 
       if (!issueId) {
         warn(`Could not find issue ${identifier}`);

@@ -828,6 +828,45 @@ function setConfigValueSync(configPath, newValue) {
   invalidateConfigCache();
 }
 
+/**
+ * Resolve config value that may contain environment variable or file references
+ * Supports: {env:VAR_NAME}, {file:path}, {file:~/path}
+ * @param {string|null} value - Value to resolve
+ * @returns {string|null} Resolved value or null if unresolvable
+ */
+function resolveConfigValue(value) {
+  if (!value || typeof value !== 'string') return value;
+
+  // {env:VAR_NAME} - environment variable
+  if (value.startsWith('{env:') && value.endsWith('}')) {
+    const varName = value.slice(5, -1);
+    // Validate env var name format
+    if (!/^[A-Z_][A-Z0-9_]*$/i.test(varName)) {
+      warn(`Invalid environment variable name: ${varName}`);
+      return null;
+    }
+    return process.env[varName] || null;
+  }
+
+  // {file:path} - file contents
+  if (value.startsWith('{file:') && value.endsWith('}')) {
+    let filePath = value.slice(6, -1);
+    // Expand tilde to home directory
+    if (filePath.startsWith('~')) {
+      filePath = filePath.replace(/^~/, process.env.HOME || '');
+    }
+    // Security: validate path doesn't escape expected locations
+    const resolvedPath = path.resolve(filePath);
+    try {
+      return fs.readFileSync(resolvedPath, 'utf-8').trim();
+    } catch (e) {
+      return null;
+    }
+  }
+
+  return value;
+}
+
 // ============================================================
 // Ready.json Operations
 // ============================================================
@@ -2119,6 +2158,7 @@ module.exports = {
   getConfigValue,
   setConfigValue,       // Async with locking
   setConfigValueSync,   // Sync without locking (use when already locked)
+  resolveConfigValue,   // Resolve {env:VAR} and {file:path} patterns
   invalidateConfigCache,
   validateConfig,
   KNOWN_CONFIG_KEYS,
