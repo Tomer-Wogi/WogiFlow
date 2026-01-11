@@ -3,7 +3,18 @@ name: nestjs
 version: 1.0.0
 description: Build production-ready NestJS modules with entities, DTOs, services, controllers
 scope: project
-lastUpdated: 2025-12-30
+user-invocable: true
+context: inline
+agent: developer
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash(npm *)
+  - Bash(npx *)
+lastUpdated: 2026-01-11
 learningCount: 0
 successRate: 0
 ---

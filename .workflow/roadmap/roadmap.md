@@ -72,6 +72,8 @@ Features are organized by logical dependencies to avoid refactoring. Build found
 | **4.2** | Context Priority Scoring | 1.1 | 4-6 hours |
 | **4.3** | Quality Gate Confidence | - | 2-3 hours |
 | **5.1** | npm Package Distribution | 0.1 | 1-2 days |
+| **5.1.1** | Release Channel Configuration | 5.1 | 4-6 hours |
+| **5.1.2** | LSP Tool Integration | 5.1 | 1-2 days |
 | **5.2** | Skill Library Marketplace | 5.1, 0.1 | 3-4 weeks |
 | **6.1** | Team Observability Web UI | Team Backend | 2-3 weeks |
 | **6.2** | Jira/Linear Integration | - | 1-2 days each |
@@ -417,6 +419,63 @@ const confidenceMarkers = {
 
 ---
 
+### 5.1.1 Release Channel Configuration
+
+**Depends on**: 5.1 (npm Package Distribution)
+
+**Why**: When Wogi Flow becomes an npm package, users need to choose stable vs beta releases.
+
+**Features**:
+- `flow config set releaseChannel stable|beta`
+- Auto-update notification preferences
+- Version pinning options
+
+**Implementation**:
+```json
+{
+  "releaseChannel": "stable",  // stable | beta | canary
+  "autoUpdate": {
+    "enabled": true,
+    "notifyOnly": false,
+    "schedule": "daily"
+  },
+  "versionPinning": {
+    "enabled": false,
+    "pinnedVersion": null
+  }
+}
+```
+
+**CLI-Agnostic**: Core config option, bridges expose to CLI settings.
+
+---
+
+### 5.1.2 LSP Tool Integration
+
+**Depends on**: 5.1 (npm Package Distribution)
+
+**Why**: Code intelligence features (go-to-definition, find references) significantly improve developer experience.
+
+**Features**:
+- Go-to-definition for symbols
+- Find all references
+- Hover documentation
+- Code outline/structure view
+- Symbol search across codebase
+
+**CLI-Agnostic Implementation**:
+- Each CLI bridge leverages native LSP capabilities
+- Claude Code: Uses built-in LSP tool
+- Cursor: Uses VS Code LSP integration
+- Other CLIs: Provide common LSP client wrapper
+
+**Integration Points**:
+- Skill patterns can reference symbols via LSP
+- Component reuse checks via reference counting
+- Auto-import suggestions in generated code
+
+---
+
 ### 5.2 Skill Library Marketplace
 
 **Depends on**: 5.1 (npm Package), 0.1 (CLI Agnosticism - skills work across CLIs)
@@ -539,6 +598,8 @@ These items are lower priority or need strong evidence before implementation.
 
 | Date | Change |
 |------|--------|
+| 2026-01-11 | Added: Release Channel Configuration (Phase 5.1.1) |
+| 2026-01-11 | Added: LSP Tool Integration (Phase 5.1.2) |
 | 2026-01-10 | **Reorganized roadmap by dependencies** - phases replace priorities |
 | 2026-01-10 | **CLI Agnosticism + Multi-Model designed in parallel** |
 | 2026-01-10 | Added: Variable Substitution in Config (Phase 0.3) |

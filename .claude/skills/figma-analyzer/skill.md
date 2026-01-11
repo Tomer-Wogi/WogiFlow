@@ -1,3 +1,24 @@
+---
+name: figma-analyzer
+version: 1.0.0
+description: Analyze Figma designs and match components against existing codebase
+scope: project
+user-invocable: true
+context: inline
+agent: developer
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash(./scripts/flow figma *)
+  - mcp__figma__*
+lastUpdated: 2026-01-11
+learningCount: 0
+successRate: 0
+---
+
 # Figma Component Analyzer Skill
 
 ## Overview

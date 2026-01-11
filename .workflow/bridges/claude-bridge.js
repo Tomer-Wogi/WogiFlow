@@ -275,6 +275,138 @@ Last synced: ${new Date().toISOString()}
   getNestedValue(obj, path) {
     return path.split('.').reduce((acc, part) => acc && acc[part], obj);
   }
+
+  /**
+   * Generate settings.local.json with wildcard permissions
+   * Claude Code 2.1.0+ supports wildcards like Bash(npm *)
+   */
+  generateSettings(config) {
+    const projectDir = this.projectDir;
+
+    // Base wildcard permissions - covers most common use cases
+    const wildcardPermissions = [
+      // Package managers
+      'Bash(npm *)',
+      'Bash(npx *)',
+      'Bash(yarn *)',
+      'Bash(pnpm *)',
+      'Bash(pip *)',
+      'Bash(python *)',
+      'Bash(python3 *)',
+
+      // Git operations
+      'Bash(git status)',
+      'Bash(git status *)',
+      'Bash(git diff *)',
+      'Bash(git log *)',
+      'Bash(git branch *)',
+      'Bash(git checkout *)',
+      'Bash(git add *)',
+      'Bash(git commit *)',
+      'Bash(git push *)',
+      'Bash(git pull *)',
+      'Bash(git fetch *)',
+      'Bash(git reset *)',
+      'Bash(git restore *)',
+      'Bash(git show *)',
+      'Bash(git rm *)',
+      'Bash(git ls-files *)',
+      'Bash(git check-ignore *)',
+
+      // GitHub CLI
+      'Bash(gh pr *)',
+      'Bash(gh issue *)',
+      'Bash(gh api *)',
+
+      // Flow scripts
+      `Bash(${path.join(projectDir, 'scripts/flow')} *)`,
+      'Bash(./scripts/flow *)',
+      'Bash(./scripts/flow)',
+
+      // Common utilities
+      'Bash(ls *)',
+      'Bash(tree *)',
+      'Bash(cat *)',
+      'Bash(head *)',
+      'Bash(tail *)',
+      'Bash(wc *)',
+      'Bash(grep *)',
+      'Bash(find *)',
+      'Bash(chmod *)',
+      'Bash(node *)',
+      'Bash(bash *)',
+      'Bash(open *)',
+      'Bash(test *)',
+
+      // AWS/Cloud
+      'Bash(aws *)',
+      'Bash(terraform *)',
+
+      // Database
+      'Bash(sqlite3 *)',
+
+      // Web fetch domains
+      'WebFetch(domain:github.com)',
+      'WebFetch(domain:api.github.com)',
+      'WebFetch(domain:raw.githubusercontent.com)',
+
+      // Web search
+      'WebSearch',
+
+      // Skills
+      'Skill(wogi-*)',
+    ];
+
+    // Additional domains from config
+    const additionalDomains = config.permissions?.allowedDomains || [];
+    for (const domain of additionalDomains) {
+      wildcardPermissions.push(`WebFetch(domain:${domain})`);
+    }
+
+    return {
+      permissions: {
+        allow: wildcardPermissions,
+      },
+      respectGitignore: true,
+      _wogiFlowManaged: true,
+      _wogiFlowVersion: '2.0.0',
+      _generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Sync settings.local.json with wildcard permissions
+   * Preserves hooks and other custom settings
+   */
+  syncSettings(config) {
+    const settingsPath = path.join(this.projectDir, this.cliFolder, 'settings.local.json');
+
+    let existingSettings = {};
+    if (fs.existsSync(settingsPath)) {
+      try {
+        existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      } catch (e) {
+        this.log(`Warning: Could not parse existing settings.local.json`);
+      }
+    }
+
+    const newSettings = this.generateSettings(config);
+
+    // Merge: keep existing hooks, use new permissions
+    const mergedSettings = {
+      permissions: newSettings.permissions,
+      respectGitignore: newSettings.respectGitignore,
+      hooks: existingSettings.hooks || {},
+      _wogiFlowManaged: newSettings._wogiFlowManaged,
+      _wogiFlowVersion: newSettings._wogiFlowVersion,
+      _generatedAt: newSettings._generatedAt,
+    };
+
+    fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2));
+    this.log(`Synced settings.local.json with wildcard permissions (${newSettings.permissions.allow.length} rules)`);
+
+    return mergedSettings;
+  }
 }
 
 module.exports = ClaudeBridge;

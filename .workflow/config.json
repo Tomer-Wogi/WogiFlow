@@ -745,7 +745,7 @@
       "claude-code"
     ],
     "gracefulDegradation": true,
-    "timeout": 5000,
+    "timeout": 600000,
     "rules": {
       "taskGating": {
         "enabled": true,
