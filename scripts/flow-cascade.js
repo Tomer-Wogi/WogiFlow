@@ -53,6 +53,12 @@ const FAILURE_CATEGORIES = {
 };
 
 /**
+ * Configuration constants for error tracking.
+ */
+const MAX_ERROR_MESSAGE_LENGTH = 200;
+const MAX_ERRORS_TO_STORE = 10;
+
+/**
  * Default cascade configuration.
  * Can be overridden in .workflow/config.json under "cascade" key.
  */
@@ -259,12 +265,12 @@ function recordFailure(params) {
   failureTracker[key].lastFailure = now;
   failureTracker[key].errors.push({
     timestamp: now,
-    message: errorMessage.slice(0, 200)
+    message: errorMessage.slice(0, MAX_ERROR_MESSAGE_LENGTH)
   });
 
-  // Keep only last 10 errors
-  if (failureTracker[key].errors.length > 10) {
-    failureTracker[key].errors = failureTracker[key].errors.slice(-10);
+  // Keep only most recent errors
+  if (failureTracker[key].errors.length > MAX_ERRORS_TO_STORE) {
+    failureTracker[key].errors = failureTracker[key].errors.slice(-MAX_ERRORS_TO_STORE);
   }
 
   saveState();

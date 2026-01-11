@@ -68,6 +68,12 @@ const LEARNING_TIERS = {
 };
 
 /**
+ * Configuration constants for pattern tracking.
+ */
+const MAX_PATTERN_HISTORY = 20;
+const MAX_CONTEXT_LENGTH = 100;
+
+/**
  * Default tiered learning configuration.
  * Can be overridden in .workflow/config.json under "tieredLearning" key.
  */
@@ -274,12 +280,12 @@ function recordPatternResult(params) {
   pattern.history.push({
     timestamp: new Date().toISOString(),
     success,
-    context: context.slice(0, 100)
+    context: context.slice(0, MAX_CONTEXT_LENGTH)
   });
 
-  // Keep only last 20 history entries
-  if (pattern.history.length > 20) {
-    pattern.history = pattern.history.slice(-20);
+  // Keep only most recent history entries
+  if (pattern.history.length > MAX_PATTERN_HISTORY) {
+    pattern.history = pattern.history.slice(-MAX_PATTERN_HISTORY);
   }
 
   pattern.lastUpdated = new Date().toISOString();

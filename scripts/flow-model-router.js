@@ -34,12 +34,15 @@ const {
 const { analyzeTask } = require('./flow-task-analyzer');
 const { loadRegistry, loadStats } = require('./flow-models');
 
-// Phase 3: Import cascade fallback
+// Phase 3: Import cascade fallback (cached singleton)
 let cascadeModule = null;
 try {
   cascadeModule = require('./flow-cascade');
-} catch {
-  // Cascade module not available, continue without it
+} catch (e) {
+  // Cascade module not available - log only if not a "cannot find module" error
+  if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+    console.error('[flow-model-router] Cascade module error:', e.message);
+  }
 }
 
 // ============================================================
@@ -244,8 +247,8 @@ function scoreModel(model, analysis, strategy, stats = {}) {
     if (modelStats.byTaskType?.[taskType]) {
       const typeStats = modelStats.byTaskType[taskType];
       const total = (typeStats.success || 0) + (typeStats.fail || 0);
-      if (total >= 5) {
-        const typeRate = typeStats.success / total;
+      if (total >= 5 && total > 0) {
+        const typeRate = (typeStats.success || 0) / total;
         scores.history = typeRate * 10;
         reasons.push(`${(typeRate * 100).toFixed(0)}% success rate on ${taskType} tasks`);
       }
@@ -793,10 +796,25 @@ async function main() {
   // Get analysis from flag or run analyzer
   if (flags.analysis) {
     // flags.analysis is a JSON string from CLI, not a file path
+    // Security: Check for prototype pollution attempts
+    if (flags.analysis.includes('__proto__') ||
+        flags.analysis.includes('constructor') ||
+        flags.analysis.includes('prototype')) {
+      error('Invalid --analysis JSON: contains restricted keys');
+      process.exit(1);
+    }
     try {
       analysis = JSON.parse(flags.analysis);
-      if (!analysis || typeof analysis !== 'object') {
-        error('Invalid --analysis JSON: must be an object');
+      if (!analysis || typeof analysis !== 'object' || Array.isArray(analysis)) {
+        error('Invalid --analysis JSON: must be a non-array object');
+        process.exit(1);
+      }
+      // Validate expected structure
+      const validKeys = ['taskType', 'languages', 'capabilities', 'complexity', 'domains', 'patterns'];
+      const analysisKeys = Object.keys(analysis);
+      const invalidKeys = analysisKeys.filter(k => !validKeys.includes(k));
+      if (invalidKeys.length > 0) {
+        error(`Invalid --analysis JSON: unexpected keys: ${invalidKeys.join(', ')}`);
         process.exit(1);
       }
     } catch (e) {

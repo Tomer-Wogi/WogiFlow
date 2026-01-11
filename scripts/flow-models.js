@@ -257,16 +257,21 @@ function getCurrentModel() {
   // Check environment (validate against registry)
   if (process.env.CLAUDE_MODEL) {
     const envModel = process.env.CLAUDE_MODEL;
-    // Validate the environment variable against known models
-    if (registry.models && registry.models[envModel]) {
+    // Security: Validate model ID format (alphanumeric, dash, dot, underscore only)
+    const SAFE_MODEL_ID_PATTERN = /^[a-zA-Z0-9._-]+$/;
+    if (!SAFE_MODEL_ID_PATTERN.test(envModel)) {
+      console.error(`[flow-models] CLAUDE_MODEL contains invalid characters, using default`);
+    } else if (registry.models && registry.models[envModel]) {
+      // Validate the environment variable against known models
       return {
         name: envModel,
         info: registry.models[envModel],
         source: 'environment'
       };
+    } else {
+      // Warn about invalid environment variable but continue to default
+      console.error(`[flow-models] CLAUDE_MODEL="${envModel}" not found in registry, using default`);
     }
-    // Warn about invalid environment variable but continue to default
-    console.error(`[flow-models] CLAUDE_MODEL="${envModel}" not found in registry, using default`);
   }
 
   // Use default from routing
@@ -447,8 +452,27 @@ function recordTaskExecution(modelId, taskData) {
         modelId,
         taskType: taskData.taskType || 'unknown'
       });
-    } catch {
-      // Cascade module not available, continue without it
+    } catch (e) {
+      // Cascade module not available - log only if not a "cannot find module" error
+      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Cascade integration error:', e.message);
+      }
+    }
+
+    // Phase 3: Record success in tiered learning
+    try {
+      const tieredLearning = require('./flow-tiered-learning');
+      const patternId = `${modelId}:${taskData.taskType || 'unknown'}`;
+      tieredLearning.recordPatternResult({
+        patternId,
+        success: true,
+        context: taskData.description || taskData.title || ''
+      });
+    } catch (e) {
+      // Tiered learning module not available - log only if not a "cannot find module" error
+      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Tiered learning integration error:', e.message);
+      }
     }
   } else {
     modelStats.failures++;
@@ -471,8 +495,27 @@ function recordTaskExecution(modelId, taskData) {
 
       // Add cascade info to task data for tracking
       taskData.cascadeInfo = cascadeResult;
-    } catch {
-      // Cascade module not available, continue without it
+    } catch (e) {
+      // Cascade module not available - log only if not a "cannot find module" error
+      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Cascade integration error:', e.message);
+      }
+    }
+
+    // Phase 3: Record failure in tiered learning
+    try {
+      const tieredLearning = require('./flow-tiered-learning');
+      const patternId = `${modelId}:${taskData.taskType || 'unknown'}`;
+      tieredLearning.recordPatternResult({
+        patternId,
+        success: false,
+        context: taskData.errorMessage || taskData.error || ''
+      });
+    } catch (e) {
+      // Tiered learning module not available - log only if not a "cannot find module" error
+      if (!e.code || e.code !== 'MODULE_NOT_FOUND') {
+        console.error('[flow-models] Tiered learning integration error:', e.message);
+      }
     }
   }
 
