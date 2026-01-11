@@ -475,6 +475,46 @@ function writeJson(filePath, data) {
 }
 
 /**
+ * Safely parse JSON with prototype pollution protection
+ * Use this for user-modifiable files (registry, stats, etc.)
+ * @param {string} filePath - Path to JSON file
+ * @param {*} [defaultValue=null] - Default value if parsing fails
+ * @returns {object|null} Parsed JSON or defaultValue on error
+ */
+function safeJsonParse(filePath, defaultValue = null) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+
+    // Check for prototype pollution attempts in raw content
+    // Covers various quote styles and whitespace variants
+    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
+      console.error(`[safeJsonParse] Suspicious content detected in ${filePath}`);
+      return defaultValue;
+    }
+
+    const parsed = JSON.parse(content);
+
+    // Validate it's an object (not array or primitive for config files)
+    if (typeof parsed !== 'object' || parsed === null) {
+      console.error(`[safeJsonParse] Invalid JSON structure in ${filePath} (expected object)`);
+      return defaultValue;
+    }
+
+    // Additional check: ensure no proto/constructor keys were added
+    const keys = Object.getOwnPropertyNames(parsed);
+    if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
+      console.error(`[safeJsonParse] Prototype pollution attempt detected in ${filePath}`);
+      return defaultValue;
+    }
+
+    return parsed;
+  } catch (err) {
+    console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+    return defaultValue;
+  }
+}
+
+/**
  * Read text file safely
  * @param {string} filePath - Path to text file
  * @param {*} [defaultValue=undefined] - Default value if file doesn't exist
@@ -1923,6 +1963,7 @@ module.exports = {
   dirExists,
   readJson,
   writeJson,
+  safeJsonParse,
   readFile,
   writeFile,
   validateJson,

@@ -31,7 +31,8 @@ const {
   warn,
   error,
   info,
-  getConfig
+  getConfig,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // Files that indicate stack/architecture changes
@@ -82,15 +83,45 @@ const TESTING_INDICATORS = [
 
 /**
  * Compute MD5 hash of file content
+ * @param {string} filePath - Path to file
+ * @returns {{hash: string|null, error: string|null}} Hash result with error context
  */
 function hashFile(filePath) {
   try {
-    if (!fs.existsSync(filePath)) return null;
+    if (!fs.existsSync(filePath)) {
+      return { hash: null, error: 'not_found' };
+    }
     const content = fs.readFileSync(filePath, 'utf-8');
-    return crypto.createHash('md5').update(content).digest('hex');
-  } catch {
-    return null;
+    return { hash: crypto.createHash('md5').update(content).digest('hex'), error: null };
+  } catch (err) {
+    // Provide error context for debugging
+    const errorType = err.code === 'EACCES' ? 'permission_denied' :
+                      err.code === 'EISDIR' ? 'is_directory' :
+                      'read_error';
+    return { hash: null, error: errorType };
   }
+}
+
+/**
+ * Escape all regex special characters except * which becomes .*
+ * @param {string} pattern - Glob pattern
+ * @returns {string} Regex-safe string
+ */
+function escapeGlobToRegex(pattern) {
+  // Escape all regex special chars except *
+  return pattern
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape special chars
+    .replace(/\*/g, '.*');                    // Convert * to .*
+}
+
+/**
+ * Validate pattern contains only safe characters
+ * @param {string} pattern - Pattern to validate
+ * @returns {boolean} True if safe
+ */
+function isSafePattern(pattern) {
+  // Only allow alphanumeric, -, _, ., and *
+  return /^[a-zA-Z0-9._*-]+$/.test(pattern);
 }
 
 /**
@@ -100,24 +131,52 @@ function findIndicatorFiles(patterns) {
   const found = [];
 
   for (const pattern of patterns) {
+    // Validate pattern is safe
+    if (!isSafePattern(pattern)) {
+      warn(`Skipping unsafe pattern: ${pattern}`);
+      continue;
+    }
+
     // Simple glob matching - supports * wildcard
     if (pattern.includes('*')) {
-      const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+      const regex = new RegExp('^' + escapeGlobToRegex(pattern) + '$');
       try {
         const files = fs.readdirSync(PROJECT_ROOT);
         for (const file of files) {
+          // Skip hidden files and symlinks for safety
+          const fullPath = path.join(PROJECT_ROOT, file);
+          try {
+            const stat = fs.lstatSync(fullPath);
+            if (stat.isSymbolicLink()) continue;
+          } catch {
+            continue;
+          }
+
           if (regex.test(file)) {
             found.push(file);
           }
         }
       } catch {
-        // Directory read error
+        // Directory read error - silently skip
       }
     } else {
       // Exact match
       const fullPath = path.join(PROJECT_ROOT, pattern);
-      if (fs.existsSync(fullPath)) {
-        found.push(pattern);
+
+      // Defense in depth: verify resolved path is within project
+      if (!isPathWithinProject(fullPath)) {
+        warn(`Path traversal blocked: ${pattern}`);
+        continue;
+      }
+
+      try {
+        // Check it exists and is not a symlink
+        const stat = fs.lstatSync(fullPath);
+        if (!stat.isSymbolicLink() && fs.existsSync(fullPath)) {
+          found.push(pattern);
+        }
+      } catch {
+        // File doesn't exist - skip
       }
     }
   }
@@ -131,12 +190,23 @@ function findIndicatorFiles(patterns) {
 function computeCategoryHashes(patterns) {
   const files = findIndicatorFiles(patterns);
   const hashes = {};
+  const errors = {};
 
   for (const file of files) {
     const fullPath = path.join(PROJECT_ROOT, file);
-    const hash = hashFile(fullPath);
-    if (hash) {
-      hashes[file] = hash;
+
+    // Defense in depth: double-check path is within project
+    if (!isPathWithinProject(fullPath)) {
+      errors[file] = 'path_traversal';
+      continue;
+    }
+
+    const result = hashFile(fullPath);
+    if (result.hash) {
+      hashes[file] = result.hash;
+    } else if (result.error && result.error !== 'not_found') {
+      // Track non-trivial errors for debugging
+      errors[file] = result.error;
     }
   }
 
@@ -149,7 +219,8 @@ function computeCategoryHashes(patterns) {
   return {
     files: Object.keys(hashes),
     combinedHash: combined ? crypto.createHash('md5').update(combined).digest('hex') : null,
-    individualHashes: hashes
+    individualHashes: hashes,
+    errors: Object.keys(errors).length > 0 ? errors : null
   };
 }
 
@@ -340,35 +411,51 @@ function printStatus(driftStatus) {
 
 /**
  * Regenerate knowledge files using onboard generators
+ * @param {string[]} categories - Categories to regenerate
+ * @returns {Promise<Object>} New sync state or null if failed
  */
 async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', 'testing']) {
   info('Regenerating knowledge files...');
 
-  // We'll call flow-onboard's generation functions
-  // For now, just mark as synced and tell user to run onboard
-  // In a full implementation, we'd import and call the generators directly
+  const { spawn } = require('child_process');
 
-  const { execSync } = require('child_process');
-
-  try {
-    // Run onboard in update mode (just regenerates knowledge files)
-    execSync('node ./scripts/flow-onboard --update-knowledge', {
+  return new Promise((resolve, reject) => {
+    // Use spawn with explicit args array and absolute path to prevent command injection
+    const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
+    const child = spawn('node', [scriptPath, '--update-knowledge'], {
       cwd: PROJECT_ROOT,
       stdio: 'inherit'
     });
 
-    // Update sync state
-    const state = markAsSynced();
-    success('Knowledge files regenerated and sync state updated');
-    return state;
-  } catch (err) {
-    // If onboard doesn't support --update-knowledge yet, fall back
-    warn('Full regeneration requires running "flow onboard"');
-    warn('For now, marking current state as synced');
+    child.on('error', (err) => {
+      // Spawn failed (e.g., node not found)
+      error(`Failed to spawn process: ${err.message}`);
+      warn('Run "flow onboard" manually to regenerate knowledge files');
+      resolve(null);
+    });
 
-    const state = markAsSynced();
-    return state;
-  }
+    child.on('close', (code) => {
+      if (code === 0) {
+        // Success - update sync state
+        const state = markAsSynced();
+        success('Knowledge files regenerated and sync state updated');
+        resolve(state);
+      } else if (code === null) {
+        // Process was killed
+        warn('Regeneration process was terminated');
+        resolve(null);
+      } else {
+        // Non-zero exit - onboard command may not support --update-knowledge
+        warn(`Onboard exited with code ${code}`);
+        info('The --update-knowledge flag may not be supported yet.');
+        info('Options:');
+        info('  1. Run "flow onboard" to regenerate all knowledge files');
+        info('  2. Run "flow knowledge-sync mark-synced" to accept current state');
+        // Do NOT mark as synced - this would be misleading
+        resolve(null);
+      }
+    });
+  });
 }
 
 /**

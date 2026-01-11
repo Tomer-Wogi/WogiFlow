@@ -29,7 +29,8 @@ const {
   info,
   getConfig,
   fileExists,
-  dirExists
+  dirExists,
+  safeJsonParse
 } = require('./flow-utils');
 
 // Paths
@@ -38,59 +39,159 @@ const REGISTRY_PATH = path.join(MODELS_DIR, 'registry.json');
 const STATS_PATH = path.join(MODELS_DIR, 'stats.json');
 
 // ============================================================
+// Constants (extracted magic numbers)
+// ============================================================
+
+const CONFIG = {
+  // Cost tier ordering for sorting
+  TIER_ORDER: { economy: 1, standard: 2, premium: 3 },
+  // Maximum recent tasks to keep in stats
+  MAX_RECENT_TASKS: 50,
+  // Minimum tasks before generating recommendations
+  MIN_TASKS_FOR_RECOMMENDATION: 5,
+  // Cost threshold for optimization recommendations
+  COST_OPTIMIZATION_THRESHOLD: 0.10,
+  // Estimated savings ratio when downgrading from premium to standard
+  DOWNGRADE_SAVINGS_RATIO: 0.6,
+  // Valid providers for input validation
+  VALID_PROVIDERS: ['anthropic', 'openai', 'google', 'ollama'],
+  // Valid capabilities for input validation
+  VALID_CAPABILITIES: ['code-gen', 'reasoning', 'analysis', 'structured-output', 'vision', 'extended-thinking'],
+  // Decimal places for cost display (consistent formatting)
+  COST_DECIMAL_PLACES: 4,
+  // Success rate thresholds for coloring
+  SUCCESS_RATE_HIGH: 90,
+  SUCCESS_RATE_MEDIUM: 70
+};
+
+// ============================================================
+// Input Validation
+// ============================================================
+
+/**
+ * Validate provider filter value
+ * @param {string} provider - Provider name to validate
+ * @returns {string|null} Valid provider or null
+ */
+function validateProvider(provider) {
+  if (!provider) return null;
+  const lower = provider.toLowerCase();
+  return CONFIG.VALID_PROVIDERS.includes(lower) ? lower : null;
+}
+
+/**
+ * Validate capability filter value
+ * @param {string} capability - Capability name to validate
+ * @returns {string|null} Valid capability or null
+ */
+function validateCapability(capability) {
+  if (!capability) return null;
+  const lower = capability.toLowerCase();
+  return CONFIG.VALID_CAPABILITIES.includes(lower) ? lower : null;
+}
+
+// ============================================================
+// Helper Functions (DRY extraction)
+// ============================================================
+
+/**
+ * Filter and sort models based on options
+ * @param {Array} models - Array of model objects
+ * @param {object} options - Filter/sort options
+ * @returns {Array} Filtered and sorted models
+ */
+function filterAndSortModels(models, options = {}) {
+  let result = [...models];
+
+  // Filter by provider
+  if (options.provider) {
+    const validProvider = validateProvider(options.provider);
+    if (validProvider) {
+      result = result.filter(m => m.provider === validProvider);
+    }
+  }
+
+  // Filter by capability (with defensive null check)
+  if (options.capability) {
+    const validCapability = validateCapability(options.capability);
+    if (validCapability) {
+      result = result.filter(m => m.capabilities?.includes(validCapability) ?? false);
+    }
+  }
+
+  // Sort by cost tier
+  if (options.sortBy === 'cost') {
+    result.sort((a, b) =>
+      (CONFIG.TIER_ORDER[a.costTier] || 2) - (CONFIG.TIER_ORDER[b.costTier] || 2)
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Calculate task cost based on model pricing
+ * @param {object} model - Model with pricing info
+ * @param {object} taskData - Task data with token counts
+ * @returns {number} Calculated cost
+ */
+function calculateTaskCost(model, taskData) {
+  if (!model?.pricing || !taskData.tokensUsed) {
+    return 0;
+  }
+
+  const inputCost = (taskData.inputTokens || 0) / 1000 * model.pricing.inputPer1kTokens;
+  const outputCost = (taskData.outputTokens || 0) / 1000 * model.pricing.outputPer1kTokens;
+  return inputCost + outputCost;
+}
+
+// ============================================================
 // Registry Loading
 // ============================================================
 
 /**
- * Load the model registry
+ * Load the model registry with safety checks
  */
 function loadRegistry() {
   if (!fileExists(REGISTRY_PATH)) {
     return null;
   }
 
-  try {
-    return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
-  } catch (err) {
-    console.error(error(`Failed to load registry: ${err.message}`));
-    return null;
-  }
+  return safeJsonParse(REGISTRY_PATH);
 }
 
 /**
- * Load model statistics
+ * Load model statistics with safety checks
  */
 function loadStats() {
+  const defaultStats = {
+    version: '1.0.0',
+    lastUpdated: new Date().toISOString(),
+    trackingSince: new Date().toISOString(),
+    summary: {
+      totalTasks: 0,
+      totalTokensUsed: 0,
+      totalCost: 0
+    },
+    byModel: {},
+    byTaskType: {},
+    failureStats: {
+      totalFailures: 0,
+      byCategory: {}
+    },
+    routingStats: {
+      escalations: 0,
+      fallbacks: 0
+    },
+    recentTasks: []
+  };
+
   if (!fileExists(STATS_PATH)) {
-    return {
-      version: '1.0.0',
-      lastUpdated: new Date().toISOString(),
-      trackingSince: new Date().toISOString(),
-      summary: {
-        totalTasks: 0,
-        totalTokensUsed: 0,
-        totalCost: 0
-      },
-      byModel: {},
-      byTaskType: {},
-      failureStats: {
-        totalFailures: 0,
-        byCategory: {}
-      },
-      routingStats: {
-        escalations: 0,
-        fallbacks: 0
-      },
-      recentTasks: []
-    };
+    return defaultStats;
   }
 
-  try {
-    return JSON.parse(fs.readFileSync(STATS_PATH, 'utf-8'));
-  } catch (err) {
-    console.error(error(`Failed to load stats: ${err.message}`));
-    return null;
-  }
+  const parsed = safeJsonParse(STATS_PATH);
+  return parsed || defaultStats;
 }
 
 /**
@@ -131,13 +232,19 @@ function getCurrentModel() {
     };
   }
 
-  // Check environment
+  // Check environment (validate against registry)
   if (process.env.CLAUDE_MODEL) {
-    return {
-      name: process.env.CLAUDE_MODEL,
-      info: registry.models[process.env.CLAUDE_MODEL] || null,
-      source: 'environment'
-    };
+    const envModel = process.env.CLAUDE_MODEL;
+    // Validate the environment variable against known models
+    if (registry.models && registry.models[envModel]) {
+      return {
+        name: envModel,
+        info: registry.models[envModel],
+        source: 'environment'
+      };
+    }
+    // Warn about invalid environment variable but continue to default
+    console.error(`[flow-models] CLAUDE_MODEL="${envModel}" not found in registry, using default`);
   }
 
   // Use default from routing
@@ -169,37 +276,29 @@ function listModels(options = {}) {
     return [];
   }
 
-  const models = [];
+  // Build model list
+  const models = Object.entries(registry.models).map(([id, model]) => ({
+    id,
+    displayName: model.displayName,
+    provider: model.provider,
+    contextWindow: model.contextWindow,
+    costTier: model.costTier,
+    capabilities: model.capabilities,
+    bestFor: model.bestFor
+  }));
 
-  for (const [id, model] of Object.entries(registry.models)) {
-    models.push({
-      id,
-      displayName: model.displayName,
-      provider: model.provider,
-      contextWindow: model.contextWindow,
-      costTier: model.costTier,
-      capabilities: model.capabilities,
-      bestFor: model.bestFor
-    });
-  }
+  // Use helper for filtering and sorting
+  return filterAndSortModels(models, options);
+}
 
-  // Sort by cost tier if requested
-  if (options.sortBy === 'cost') {
-    const tierOrder = { economy: 1, standard: 2, premium: 3 };
-    models.sort((a, b) => tierOrder[a.costTier] - tierOrder[b.costTier]);
-  }
-
-  // Filter by provider
-  if (options.provider) {
-    return models.filter(m => m.provider === options.provider);
-  }
-
-  // Filter by capability
-  if (options.capability) {
-    return models.filter(m => m.capabilities.includes(options.capability));
-  }
-
-  return models;
+/**
+ * Get alternative models for fallback (DRY helper)
+ * @param {string|null} fallback - Primary fallback model
+ * @param {string|null} escalation - Escalation model
+ * @returns {string[]} List of valid alternative model IDs
+ */
+function getAlternatives(fallback, escalation) {
+  return [fallback, escalation].filter(Boolean);
 }
 
 /**
@@ -211,6 +310,7 @@ function getRouteRecommendation(taskType, options = {}) {
 
   const routing = registry.routing;
   const stats = loadStats();
+  const defaultEscalation = routing.default?.escalation;
 
   // Check task-type specific routing
   const taskRouting = routing.byTaskType?.[taskType];
@@ -222,7 +322,7 @@ function getRouteRecommendation(taskType, options = {}) {
       recommended: modelId,
       model: model,
       reason: `Task type '${taskType}' routes to ${model?.displayName || modelId}`,
-      alternatives: [routing.default.fallback, routing.default.escalation].filter(Boolean),
+      alternatives: getAlternatives(routing.default?.fallback, defaultEscalation),
       stats: stats.byModel?.[modelId] || null
     };
   }
@@ -237,7 +337,7 @@ function getRouteRecommendation(taskType, options = {}) {
       recommended: modelId,
       model: model,
       reason: `Language '${options.language}' routes to ${model?.displayName || modelId}`,
-      alternatives: [langRouting.fallback, routing.default.escalation].filter(Boolean),
+      alternatives: getAlternatives(langRouting.fallback, defaultEscalation),
       stats: stats.byModel?.[modelId] || null
     };
   }
@@ -250,7 +350,7 @@ function getRouteRecommendation(taskType, options = {}) {
     recommended: defaultModel,
     model: model,
     reason: 'Using default routing',
-    alternatives: [routing.default.fallback, routing.default.escalation].filter(Boolean),
+    alternatives: getAlternatives(routing.default?.fallback, defaultEscalation),
     stats: stats.byModel?.[defaultModel] || null
   };
 }
@@ -283,18 +383,19 @@ function recordTaskExecution(modelId, taskData) {
   const registry = loadRegistry();
   const model = registry?.models[modelId];
 
+  // Warn if model not in registry (but still record)
+  if (!model) {
+    console.warn(`Warning: Model '${modelId}' not found in registry. Stats recorded without cost.`);
+  }
+
+  // Calculate cost FIRST using helper function (fixes cost tracking bug)
+  const taskCost = calculateTaskCost(model, taskData);
+  taskData.cost = taskCost;
+
   // Update summary
   stats.summary.totalTasks++;
   stats.summary.totalTokensUsed += taskData.tokensUsed || 0;
-
-  // Calculate cost
-  if (model?.pricing && taskData.tokensUsed) {
-    const inputCost = (taskData.inputTokens || 0) / 1000 * model.pricing.inputPer1kTokens;
-    const outputCost = (taskData.outputTokens || 0) / 1000 * model.pricing.outputPer1kTokens;
-    const taskCost = inputCost + outputCost;
-    stats.summary.totalCost += taskCost;
-    taskData.cost = taskCost;
-  }
+  stats.summary.totalCost += taskCost;
 
   // Initialize model stats if needed
   if (!stats.byModel[modelId]) {
@@ -312,7 +413,7 @@ function recordTaskExecution(modelId, taskData) {
   const modelStats = stats.byModel[modelId];
   modelStats.totalTasks++;
   modelStats.totalTokens += taskData.tokensUsed || 0;
-  modelStats.totalCost += taskData.cost || 0;
+  modelStats.totalCost += taskCost;
 
   if (taskData.success) {
     modelStats.successes++;
@@ -360,7 +461,7 @@ function recordTaskExecution(modelId, taskData) {
     cost: taskData.cost,
     latencyMs: taskData.latencyMs
   });
-  stats.recentTasks = stats.recentTasks.slice(0, 50);
+  stats.recentTasks = stats.recentTasks.slice(0, CONFIG.MAX_RECENT_TASKS);
 
   // Track routing events
   if (taskData.wasEscalation) {
@@ -419,15 +520,15 @@ function getCostAnalysis(options = {}) {
     };
   }
 
-  // Generate recommendations
+  // Generate recommendations using CONFIG constants
   for (const [modelId, modelData] of Object.entries(analysis.byModel)) {
-    if (modelData.costTier === 'premium' && modelData.totalTasks > 5) {
+    if (modelData.costTier === 'premium' && modelData.totalTasks > CONFIG.MIN_TASKS_FOR_RECOMMENDATION) {
       const avgCost = modelData.avgCostPerTask;
-      if (avgCost > 0.10) {
+      if (avgCost > CONFIG.COST_OPTIMIZATION_THRESHOLD) {
         analysis.recommendations.push({
           type: 'cost-optimization',
           message: `Consider using Claude Sonnet for simpler tasks currently using ${modelData.displayName}`,
-          potentialSavings: avgCost * 0.6 * modelData.totalTasks
+          potentialSavings: avgCost * CONFIG.DOWNGRADE_SAVINGS_RATIO * modelData.totalTasks
         });
       }
     }
@@ -663,8 +764,8 @@ function formatStats() {
     output += sectionHeader('By Model') + '\n';
 
     for (const model of comparison) {
-      const icon = parseFloat(model.successRate) >= 90 ? '+'
-        : parseFloat(model.successRate) >= 70 ? '~' : '-';
+      const icon = parseFloat(model.successRate) >= CONFIG.SUCCESS_RATE_HIGH ? '+'
+        : parseFloat(model.successRate) >= CONFIG.SUCCESS_RATE_MEDIUM ? '~' : '-';
       output += `\n  ${color('cyan', icon)} ${color('bold', model.displayName)}\n`;
       output += `    Tasks: ${model.totalTasks} | Success: ${model.successRate} | Avg cost: $${model.avgCost}\n`;
       if (model.topTaskTypes.length > 0) {

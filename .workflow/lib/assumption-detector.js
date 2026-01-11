@@ -11,9 +11,6 @@
  * - Flags low-confidence assumptions for clarification
  */
 
-const fs = require('fs');
-const path = require('path');
-
 // Assumption categories
 const ASSUMPTION_CATEGORIES = {
   TECHNICAL: 'technical',      // Tech stack, framework, patterns
@@ -36,6 +33,58 @@ const CONFIDENCE = {
 
 // Threshold for flagging assumptions
 const CLARIFICATION_THRESHOLD = 0.7;
+
+// Max input size before skipping pattern matching (ReDoS protection)
+const MAX_INPUT_SIZE = 100000; // 100KB
+
+// Unicode characters for confidence bar display
+const CONFIDENCE_FILLED = '\u25CF'; // ●
+const CONFIDENCE_EMPTY = '\u25CB';  // ○
+
+// Detection patterns - defined at module scope for performance
+const FRAMEWORK_PATTERNS = [
+  { pattern: /component|react|vue|angular|svelte/i, assumption: 'Using existing component framework', confidence: 0.9 },
+  { pattern: /api|endpoint|rest|graphql/i, assumption: 'Following existing API patterns', confidence: 0.7 },
+  { pattern: /database|db|query|model/i, assumption: 'Using existing database patterns', confidence: 0.7 },
+  { pattern: /auth|login|session|token/i, assumption: 'Integrating with existing auth system', confidence: 0.7 },
+];
+
+const AMBIGUOUS_TERMS = [
+  { term: 'integrate', question: 'What system/service should this integrate with?' },
+  { term: 'connect', question: 'What should this connect to?' },
+  { term: 'similar to', question: 'Which existing feature should this be similar to?' },
+  { term: 'like', question: 'What exactly should this be like?' },
+];
+
+const SCOPE_PATTERNS = [
+  { pattern: /all|every|each/i, assumption: 'Scope includes all instances', confidence: 0.5 },
+  { pattern: /complete|full|entire/i, assumption: 'Full implementation required (not partial)', confidence: 0.7 },
+  { pattern: /basic|simple|minimal/i, assumption: 'MVP scope only (no edge cases)', confidence: 0.7 },
+  { pattern: /update|modify|change/i, assumption: 'Updating existing feature (not creating new)', confidence: 0.7 },
+];
+
+const VAGUE_PATTERNS = [
+  { pattern: /should work|should be able/i, text: 'Specific success criteria undefined', confidence: 0.5 },
+  { pattern: /nice to have|optional/i, text: 'Optional features may be deferred', confidence: 0.7 },
+  { pattern: /as needed|when necessary/i, text: 'Trigger conditions are understood', confidence: 0.5 },
+  { pattern: /appropriate|suitable/i, text: '"Appropriate" behavior is understood', confidence: 0.5 },
+];
+
+// UI detection patterns
+const UI_ELEMENT_PATTERN = /button|form|modal|dialog|page|screen|view/i;
+const UI_LAYOUT_PATTERN = /layout|position|place|where/i;
+const UI_STYLING_PATTERN = /style|design|color|theme/i;
+const RESPONSIVE_PATTERN = /responsive|mobile|desktop/i;
+
+// Data detection patterns
+const DATA_PATTERN = /data|input|field|form/i;
+const FORMAT_PATTERN = /format|type|valid/i;
+const PERSISTENCE_PATTERN = /save|store|persist|database/i;
+
+// Behavior detection patterns
+const ASYNC_PATTERN = /fetch|load|api|async/i;
+const LOADING_PATTERN = /loading|spinner/i;
+const EDGE_CASE_PATTERN = /edge case|empty|null|undefined|invalid/i;
 
 /**
  * Assumption object structure
@@ -61,6 +110,24 @@ const CLARIFICATION_THRESHOLD = 0.7;
 function detectAssumptions(params) {
   const { title, description, acceptanceCriteria = [], context = {} } = params;
   const assumptions = [];
+
+  // ReDoS protection: check total input size before pattern matching
+  const totalInputSize = (title?.length || 0) +
+    (description?.length || 0) +
+    acceptanceCriteria.reduce((sum, c) => sum + (c?.length || 0), 0);
+
+  if (totalInputSize > MAX_INPUT_SIZE) {
+    console.warn(`[assumption-detector] Input too large (${totalInputSize} chars), skipping pattern matching`);
+    return [{
+      id: 'A01',
+      text: 'Input too large for detailed analysis',
+      category: ASSUMPTION_CATEGORIES.SCOPE,
+      confidence: CONFIDENCE.LOW,
+      source: 'size_limit',
+      clarificationQuestion: 'Please provide a more concise description for detailed analysis',
+      needsClarification: true
+    }];
+  }
 
   // 1. Detect technical assumptions
   assumptions.push(...detectTechnicalAssumptions(title, description, context));
@@ -96,15 +163,8 @@ function detectTechnicalAssumptions(title, description, context) {
   const assumptions = [];
   const text = `${title} ${description}`.toLowerCase();
 
-  // Framework assumptions
-  const frameworkPatterns = [
-    { pattern: /component|react|vue|angular|svelte/i, assumption: 'Using existing component framework', confidence: CONFIDENCE.HIGH },
-    { pattern: /api|endpoint|rest|graphql/i, assumption: 'Following existing API patterns', confidence: CONFIDENCE.MEDIUM },
-    { pattern: /database|db|query|model/i, assumption: 'Using existing database patterns', confidence: CONFIDENCE.MEDIUM },
-    { pattern: /auth|login|session|token/i, assumption: 'Integrating with existing auth system', confidence: CONFIDENCE.MEDIUM },
-  ];
-
-  for (const { pattern, assumption, confidence } of frameworkPatterns) {
+  // Framework assumptions - use module-level patterns
+  for (const { pattern, assumption, confidence } of FRAMEWORK_PATTERNS) {
     if (pattern.test(text)) {
       assumptions.push({
         text: assumption,
@@ -116,15 +176,8 @@ function detectTechnicalAssumptions(title, description, context) {
     }
   }
 
-  // Check for ambiguous technical terms
-  const ambiguousTerms = [
-    { term: 'integrate', question: 'What system/service should this integrate with?' },
-    { term: 'connect', question: 'What should this connect to?' },
-    { term: 'similar to', question: 'Which existing feature should this be similar to?' },
-    { term: 'like', question: 'What exactly should this be like?' },
-  ];
-
-  for (const { term, question } of ambiguousTerms) {
+  // Check for ambiguous technical terms - use module-level patterns
+  for (const { term, question } of AMBIGUOUS_TERMS) {
     if (text.includes(term)) {
       assumptions.push({
         text: `Integration approach for "${term}" is understood`,
@@ -147,15 +200,8 @@ function detectScopeAssumptions(title, description, acceptanceCriteria) {
   const text = `${title} ${description}`.toLowerCase();
   const criteriaText = acceptanceCriteria.join(' ').toLowerCase();
 
-  // Scope-expanding keywords that might need clarification
-  const scopePatterns = [
-    { pattern: /all|every|each/i, assumption: 'Scope includes all instances', confidence: CONFIDENCE.LOW },
-    { pattern: /complete|full|entire/i, assumption: 'Full implementation required (not partial)', confidence: CONFIDENCE.MEDIUM },
-    { pattern: /basic|simple|minimal/i, assumption: 'MVP scope only (no edge cases)', confidence: CONFIDENCE.MEDIUM },
-    { pattern: /update|modify|change/i, assumption: 'Updating existing feature (not creating new)', confidence: CONFIDENCE.MEDIUM },
-  ];
-
-  for (const { pattern, assumption, confidence } of scopePatterns) {
+  // Scope-expanding keywords - use module-level patterns
+  for (const { pattern, assumption, confidence } of SCOPE_PATTERNS) {
     if (pattern.test(text)) {
       assumptions.push({
         text: assumption,
@@ -187,15 +233,8 @@ function detectScopeAssumptions(title, description, acceptanceCriteria) {
 function detectRequirementsAssumptions(description, acceptanceCriteria) {
   const assumptions = [];
 
-  // Check for vague requirements
-  const vaguePatterns = [
-    { pattern: /should work|should be able/i, text: 'Specific success criteria undefined', confidence: CONFIDENCE.LOW },
-    { pattern: /nice to have|optional/i, text: 'Optional features may be deferred', confidence: CONFIDENCE.MEDIUM },
-    { pattern: /as needed|when necessary/i, text: 'Trigger conditions are understood', confidence: CONFIDENCE.LOW },
-    { pattern: /appropriate|suitable/i, text: '"Appropriate" behavior is understood', confidence: CONFIDENCE.LOW },
-  ];
-
-  for (const { pattern, text, confidence } of vaguePatterns) {
+  // Check for vague requirements - use module-level patterns
+  for (const { pattern, text, confidence } of VAGUE_PATTERNS) {
     if (pattern.test(description)) {
       assumptions.push({
         text,
@@ -207,9 +246,13 @@ function detectRequirementsAssumptions(description, acceptanceCriteria) {
     }
   }
 
-  // Check if acceptance criteria are specific enough
+  // Check if acceptance criteria are specific enough (require Given AND When AND Then)
   for (const criterion of acceptanceCriteria) {
-    if (!criterion.includes('Given') || !criterion.includes('Then')) {
+    const hasGiven = criterion.includes('Given');
+    const hasWhen = criterion.includes('When');
+    const hasThen = criterion.includes('Then');
+
+    if (!(hasGiven && hasWhen && hasThen)) {
       assumptions.push({
         text: `Acceptance criteria "${criterion.slice(0, 30)}..." is understood`,
         category: ASSUMPTION_CATEGORIES.REQUIREMENTS,
@@ -230,10 +273,10 @@ function detectUIAssumptions(title, description) {
   const assumptions = [];
   const text = `${title} ${description}`.toLowerCase();
 
-  // UI-related keywords
-  if (/button|form|modal|dialog|page|screen|view/i.test(text)) {
+  // UI-related keywords - use module-level patterns
+  if (UI_ELEMENT_PATTERN.test(text)) {
     // Check for layout assumptions
-    if (!/layout|position|place|where/i.test(text)) {
+    if (!UI_LAYOUT_PATTERN.test(text)) {
       assumptions.push({
         text: 'UI placement follows existing patterns',
         category: ASSUMPTION_CATEGORIES.UI,
@@ -244,7 +287,7 @@ function detectUIAssumptions(title, description) {
     }
 
     // Check for styling assumptions
-    if (!/style|design|color|theme/i.test(text)) {
+    if (!UI_STYLING_PATTERN.test(text)) {
       assumptions.push({
         text: 'Styling will match existing design system',
         category: ASSUMPTION_CATEGORIES.UI,
@@ -255,8 +298,8 @@ function detectUIAssumptions(title, description) {
     }
   }
 
-  // Responsive design
-  if (/responsive|mobile|desktop/i.test(text)) {
+  // Responsive design - use module-level pattern
+  if (RESPONSIVE_PATTERN.test(text)) {
     assumptions.push({
       text: 'Responsive breakpoints follow existing patterns',
       category: ASSUMPTION_CATEGORIES.UI,
@@ -276,9 +319,9 @@ function detectDataAssumptions(description, acceptanceCriteria) {
   const assumptions = [];
   const text = `${description} ${acceptanceCriteria.join(' ')}`.toLowerCase();
 
-  // Data format assumptions
-  if (/data|input|field|form/i.test(text)) {
-    if (!/format|type|valid/i.test(text)) {
+  // Data format assumptions - use module-level patterns
+  if (DATA_PATTERN.test(text)) {
+    if (!FORMAT_PATTERN.test(text)) {
       assumptions.push({
         text: 'Data validation follows existing patterns',
         category: ASSUMPTION_CATEGORIES.DATA,
@@ -289,8 +332,8 @@ function detectDataAssumptions(description, acceptanceCriteria) {
     }
   }
 
-  // Persistence assumptions
-  if (/save|store|persist|database/i.test(text)) {
+  // Persistence assumptions - use module-level pattern
+  if (PERSISTENCE_PATTERN.test(text)) {
     assumptions.push({
       text: 'Data persistence uses existing storage patterns',
       category: ASSUMPTION_CATEGORIES.DATA,
@@ -310,8 +353,8 @@ function detectBehaviorAssumptions(description, acceptanceCriteria) {
   const assumptions = [];
   const text = `${description} ${acceptanceCriteria.join(' ')}`.toLowerCase();
 
-  // Loading state
-  if (/fetch|load|api|async/i.test(text) && !/loading|spinner/i.test(text)) {
+  // Loading state - use module-level patterns
+  if (ASYNC_PATTERN.test(text) && !LOADING_PATTERN.test(text)) {
     assumptions.push({
       text: 'Loading states will be handled',
       category: ASSUMPTION_CATEGORIES.BEHAVIOR,
@@ -321,8 +364,8 @@ function detectBehaviorAssumptions(description, acceptanceCriteria) {
     });
   }
 
-  // Edge cases
-  if (!/edge case|empty|null|undefined|invalid/i.test(text)) {
+  // Edge cases - use module-level pattern
+  if (!EDGE_CASE_PATTERN.test(text)) {
     assumptions.push({
       text: 'Edge cases will follow existing patterns',
       category: ASSUMPTION_CATEGORIES.BEHAVIOR,
@@ -391,7 +434,7 @@ function formatAssumptionsForSpec(assumptions) {
 function getConfidenceBar(confidence) {
   const filled = Math.round(confidence * 5);
   const empty = 5 - filled;
-  return `[${'\u25CF'.repeat(filled)}${'\u25CB'.repeat(empty)}]`;
+  return `[${CONFIDENCE_FILLED.repeat(filled)}${CONFIDENCE_EMPTY.repeat(empty)}]`;
 }
 
 /**
