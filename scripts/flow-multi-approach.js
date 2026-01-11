@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const APPROACHES_DIR = path.join(PROJECT_ROOT, '.workflow', 'state', 'approaches');
@@ -317,12 +317,11 @@ function createSession(task, approaches) {
 function saveSession(session) {
   session.updatedAt = new Date().toISOString();
 
-  if (!fs.existsSync(APPROACHES_DIR)) {
-    fs.mkdirSync(APPROACHES_DIR, { recursive: true });
-  }
+  ensureDir(APPROACHES_DIR);
 
   const sessionPath = path.join(APPROACHES_DIR, `${session.id}.json`);
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  // Use atomic writeJson to prevent data corruption
+  writeJson(sessionPath, session);
 
   return sessionPath;
 }

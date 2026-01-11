@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectRoot } = require('./flow-utils');
+const { getConfig, getProjectRoot, writeJson } = require('./flow-utils');
 
 // v2.0: Import durable session for unified tracking
 const durableSession = require('./flow-durable-session');
@@ -192,7 +192,7 @@ function startLoop(taskId, acceptanceCriteria) {
     status: 'in_progress'
   };
 
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return session;
 }
 
@@ -227,7 +227,7 @@ function startSimpleLoop(taskId, completionPromise = null) {
     outputs: [] // Store recent outputs to check for completion
   };
 
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return session;
 }
 
@@ -280,7 +280,7 @@ function recordSimpleOutput(output) {
   if (completed) {
     session.status = 'completed';
     session.completedAt = new Date().toISOString();
-    fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+    writeJson(sessionPath, session);
     return {
       completed: true,
       message: `Completion promise detected: "${session.completionPromise}"`
@@ -292,7 +292,7 @@ function recordSimpleOutput(output) {
   if (session.iteration >= session.maxIterations) {
     session.status = 'max_iterations';
     session.completedAt = new Date().toISOString();
-    fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+    writeJson(sessionPath, session);
     return {
       completed: true,
       message: `Max iterations (${session.maxIterations}) reached`,
@@ -300,7 +300,7 @@ function recordSimpleOutput(output) {
     };
   }
 
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return {
     completed: false,
     message: `Iteration ${session.iteration}/${session.maxIterations}`,
@@ -420,7 +420,7 @@ function updateCriterion(criterionId, status, verificationResult = null, context
     }
   }
 
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return session;
 }
 
@@ -642,7 +642,7 @@ function incrementIteration() {
   if (!session) return null;
 
   session.iteration++;
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return session;
 }
 
@@ -672,7 +672,7 @@ function incrementRetry() {
   if (!session) return null;
 
   session.retries++;
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  writeJson(sessionPath, session);
   return session;
 }
 

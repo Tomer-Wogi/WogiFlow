@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock } = require('./flow-utils');
+const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
 const { validatePathWithinProject } = require('./flow-security');
 
@@ -314,13 +314,11 @@ function saveDurableSession(session) {
   const sessionPath = getSessionPath();
 
   // Ensure directory exists
-  const dir = path.dirname(sessionPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  ensureDir(path.dirname(sessionPath));
 
   session.updatedAt = new Date().toISOString();
-  fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+  // Use atomic writeJson to prevent data corruption on concurrent access
+  writeJson(sessionPath, session);
 }
 
 /**
@@ -360,7 +358,8 @@ function archiveDurableSession(status = 'completed') {
     history = history.slice(-MAX_SESSION_HISTORY);
   }
 
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  // Use atomic writeJson for history file
+  writeJson(historyPath, history);
 
   // Remove active session
   const sessionPath = getSessionPath();

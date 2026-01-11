@@ -50,7 +50,7 @@ const {
 } = require('./flow-export-scanner');
 
 // Import utilities for consistent project root, colors, and config
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, writeJson } = require('./flow-utils');
 const { getPromptAdjustments, recordModelResult } = require('./flow-model-adapter');
 
 // Import provider infrastructure for cloud executors
@@ -3140,7 +3140,8 @@ ${step.description || ''}
     Object.assign(session, data);
     session.updatedAt = new Date().toISOString();
 
-    fs.writeFileSync(sessionPath, JSON.stringify(session, null, 2));
+    // Use atomic writeJson to prevent data corruption
+    writeJson(sessionPath, session);
     return session;
   }
 

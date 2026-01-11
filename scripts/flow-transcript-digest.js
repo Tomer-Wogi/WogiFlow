@@ -11,6 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { writeJson } = require('./flow-utils');
 
 // Paths
 const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');
@@ -8323,7 +8324,7 @@ function saveEditSessions(data) {
   }
 
   const sessionsPath = path.join(activeDigest.session.digest_path, 'edit-sessions.json');
-  fs.writeFileSync(sessionsPath, JSON.stringify(data, null, 2));
+  writeJson(sessionsPath, data);
   return { saved: true };
 }
 
