@@ -9,6 +9,8 @@
  * NOTE: For new code, prefer importing from dedicated modules:
  * - flow-output.js: colors, color, print, success, warn, error, info
  * - flow-file-ops.js: readJson, writeJson, fileExists, dirExists, ensureDir
+ * - flow-constants.js: TIMEOUTS, LIMITS, THRESHOLDS, BACKOFF
+ * - flow-http-client.js: HttpClient, fetchJson, postJson
  *
  * This file re-exports all functions for backwards compatibility.
  */
