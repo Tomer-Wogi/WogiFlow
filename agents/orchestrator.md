@@ -195,10 +195,37 @@ Read `config.json` for task type requirements:
 When user gives feedback:
 
 1. Acknowledge and fix immediately
-2. Ask: "Should I update decisions.md / agents/*.md / config.json?"
-3. If yes, make the update
+2. Determine improvement scope (see below)
+3. Make the update in the correct location
 4. Commit with clear message
 5. Log to feedback-patterns.md
+
+### Improvement Placement (MANDATORY)
+
+Before implementing any improvement, determine its scope:
+
+**1. Project-specific?**
+- Only relevant to this codebase
+- Uses project-specific technologies or patterns
+- Example: "Use Tailwind for styling", "Follow our API naming convention"
+→ Add to `.workflow/state/decisions.md`
+
+**2. Team preference?**
+- Should transfer to other projects by this team
+- Team convention, not universal best practice
+- Example: "Our team prefers Jest", "We use feature branches"
+→ [Future] Add to team suggestion queue for admin approval
+→ [Now] Add to decisions.md with prefix: `[Team]`
+
+**3. Universal WogiFlow improvement?**
+- A gap in workflow logic that affects everyone
+- Not tech-specific, not team-specific
+- Example: "Always check dependencies before refactoring"
+→ Add to core templates (`templates/claude-md.hbs`) and agents (`agents/*.md`)
+→ Run `flow bridge sync` to regenerate CLAUDE.md
+→ Commit and bump package version
+
+**Ask when unclear**: "Is this specific to this project, a team preference, or something all WogiFlow users would benefit from?"
 
 ## Workflow Improvement
 

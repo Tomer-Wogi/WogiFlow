@@ -239,9 +239,17 @@ Before compacting: Update progress.md, ensure request-log is current, commit wor
 
 When corrected:
 1. Fix it
-2. Offer to update: decisions.md / agents/*.md / config.json / CLAUDE.md
-3. If accepted, update and commit
-4. Log to feedback-patterns.md
+2. Determine scope and update correct location
+3. Commit and log to feedback-patterns.md
+
+### Improvement Placement
+
+Before implementing, determine scope:
+1. **Project** → Add to `decisions.md`
+2. **Team** → Add to `decisions.md` with `[Team]` prefix (future: suggestion queue)
+3. **Universal** → Add to core templates/agents, bump version
+
+Ask if unclear: "Is this project-specific, team preference, or universal improvement?"
 
 ## Session End
 
