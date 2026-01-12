@@ -561,6 +561,9 @@ These items are lower priority or need strong evidence before implementation.
 ### SQLite Telemetry
 **Why deferred**: JSON files work fine for 50 runs/day. Would reconsider if users need complex queries.
 
+### Move npm to @wogi Organization
+**Why deferred**: Current `wogiflow` package works fine. Migration adds complexity (scoped package, update all docs). Consider when team grows or branding matters.
+
 ---
 
 ## Implemented Items ✅
