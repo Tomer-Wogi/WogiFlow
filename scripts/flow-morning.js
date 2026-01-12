@@ -298,9 +298,23 @@ function collectBriefingData() {
     ? getGitChangesSinceSession(sessionState.lastActive)
     : { commits: 0, commitDetails: [], newBugs: 0, filesChanged: [] };
 
-  // Determine current task
+  // Determine current task - prioritize in-progress tasks from ready.json over stale session-state
   let currentTask = null;
-  if (sessionState.currentTask) {
+  const readyData = getReadyData();
+  const inProgressTasks = readyData.inProgress || [];
+
+  if (inProgressTasks.length > 0) {
+    // Use the most recent in-progress task from ready.json (source of truth)
+    const task = inProgressTasks[0];
+    currentTask = typeof task === 'object' ? { ...task } : { id: task };
+    // Merge in session state files if task IDs match
+    if (sessionState.currentTask &&
+        sessionState.currentTask.id === currentTask.id &&
+        sessionState.recentFiles) {
+      currentTask.files = sessionState.recentFiles;
+    }
+  } else if (sessionState.currentTask) {
+    // Fallback to session state only if no in-progress tasks in ready.json
     currentTask = typeof sessionState.currentTask === 'object'
       ? sessionState.currentTask
       : { id: sessionState.currentTask };
