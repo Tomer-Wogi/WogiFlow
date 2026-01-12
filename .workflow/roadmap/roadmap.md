@@ -597,10 +597,39 @@ These items are lower priority or need strong evidence before implementation.
 
 ---
 
+## Future Enhancements
+
+### Browser Testing Integration
+**Priority**: Medium
+**Status**: Planned
+
+Integrate browser-based testing into the workflow for UI verification.
+
+**Features**:
+- Automated browser test suggestions after UI changes
+- Integration with Playwright/Puppeteer for E2E tests
+- Visual regression testing support
+- Manual test checklist generation for complex UI flows
+
+**CLI Commands**:
+```bash
+flow browser-test suggest     # Suggest tests for recent changes
+flow browser-test run         # Run browser tests
+flow browser-test visual      # Run visual regression tests
+```
+
+**Integration Points**:
+- Post-task hook to suggest browser tests
+- Quality gate for UI-related tasks
+- Screenshot comparison for visual regressions
+
+---
+
 ## Changelog
 
 | Date | Change |
 |------|--------|
+| 2026-01-12 | Added: Browser Testing Integration (Future Enhancements) |
 | 2026-01-11 | Added: Release Channel Configuration (Phase 5.1.1) |
 | 2026-01-11 | Added: LSP Tool Integration (Phase 5.1.2) |
 | 2026-01-10 | **Reorganized roadmap by dependencies** - phases replace priorities |

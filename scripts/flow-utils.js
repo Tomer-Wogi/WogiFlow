@@ -145,6 +145,8 @@ const PATHS = {
   skills: path.join(CLAUDE_DIR, 'skills'),
   rules: path.join(CLAUDE_DIR, 'rules'),
   commands: path.join(CLAUDE_DIR, 'commands'),
+  // Smart Context System (Phase 1)
+  sectionIndex: path.join(STATE_DIR, 'section-index.json'),
   // Knowledge files (Phase 0.4 - synced documentation)
   // NOTE: These are DEPRECATED - use specsStack, specsArchitecture, specsTesting instead
   // Kept for backward compatibility, will be removed in v2.0

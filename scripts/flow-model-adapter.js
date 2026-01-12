@@ -56,34 +56,40 @@ const MODEL_PATTERNS = {
 
 /**
  * Get current model from config or environment
+ *
+ * Note: This delegates to flow-models.js which is the single source of truth
+ * for model detection. This function returns just the normalized name string
+ * for backward compatibility with callers expecting a string.
  */
 function getCurrentModel() {
-  const config = getConfig();
+  try {
+    // Use flow-models as the single source of truth
+    const { getCurrentModel: getModelFromRegistry } = require('./flow-models');
+    const result = getModelFromRegistry();
+    return normalizeModelName(result.name || 'claude-opus');
+  } catch {
+    // Fallback if flow-models not available
+    const config = getConfig();
 
-  // Check hybrid mode config first
-  if (config.hybrid?.enabled) {
-    // New config structure: hybrid.executor.model
-    if (config.hybrid.executor?.model) {
-      return normalizeModelName(config.hybrid.executor.model);
+    if (config.hybrid?.enabled) {
+      if (config.hybrid.executor?.model) {
+        return normalizeModelName(config.hybrid.executor.model);
+      }
+      if (config.hybrid.model) {
+        return normalizeModelName(config.hybrid.model);
+      }
     }
-    // Legacy config structure: hybrid.model directly
-    if (config.hybrid.model) {
-      return normalizeModelName(config.hybrid.model);
+
+    if (process.env.CLAUDE_MODEL) {
+      return normalizeModelName(process.env.CLAUDE_MODEL);
     }
-  }
 
-  // Check environment variable
-  if (process.env.CLAUDE_MODEL) {
-    return normalizeModelName(process.env.CLAUDE_MODEL);
-  }
+    if (config.modelAdapters?.currentModel) {
+      return normalizeModelName(config.modelAdapters.currentModel);
+    }
 
-  // Check modelAdapters config
-  if (config.modelAdapters?.currentModel) {
-    return normalizeModelName(config.modelAdapters.currentModel);
+    return 'claude-opus';
   }
-
-  // Default to claude-opus (most capable)
-  return 'claude-opus';
 }
 
 /**
@@ -131,6 +137,18 @@ function getAdapterPath(modelName) {
 }
 
 /**
+ * Safely read file content with try-catch
+ */
+function safeReadFile(filePath) {
+  try {
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    // File may have been deleted/moved between existsSync and readFileSync (TOCTOU)
+    return null;
+  }
+}
+
+/**
  * Load adapter file content
  */
 function loadAdapter(modelName) {
@@ -142,9 +160,11 @@ function loadAdapter(modelName) {
     const familyPath = path.join(ADAPTERS_DIR, `${family}-default.md`);
 
     if (fs.existsSync(familyPath)) {
+      const content = safeReadFile(familyPath);
+      if (content === null) return null;
       return {
         path: familyPath,
-        content: fs.readFileSync(familyPath, 'utf-8'),
+        content,
         isDefault: true
       };
     }
@@ -152,9 +172,11 @@ function loadAdapter(modelName) {
     // Load template as last resort
     const templatePath = path.join(ADAPTERS_DIR, '_template.md');
     if (fs.existsSync(templatePath)) {
+      const content = safeReadFile(templatePath);
+      if (content === null) return null;
       return {
         path: templatePath,
-        content: fs.readFileSync(templatePath, 'utf-8'),
+        content,
         isTemplate: true
       };
     }
@@ -162,9 +184,11 @@ function loadAdapter(modelName) {
     return null;
   }
 
+  const content = safeReadFile(adapterPath);
+  if (content === null) return null;
   return {
     path: adapterPath,
-    content: fs.readFileSync(adapterPath, 'utf-8'),
+    content,
     isDefault: false
   };
 }
@@ -476,7 +500,7 @@ function storeSingleLearning(modelName, learning, context = {}) {
   let content = '';
 
   if (fs.existsSync(adapterPath)) {
-    content = fs.readFileSync(adapterPath, 'utf-8');
+    content = safeReadFile(adapterPath) || '';
   } else {
     // Ensure directory exists
     const dir = path.dirname(adapterPath);
@@ -487,8 +511,8 @@ function storeSingleLearning(modelName, learning, context = {}) {
     // Create from template or minimal
     const templatePath = path.join(ADAPTERS_DIR, '_template.md');
     if (fs.existsSync(templatePath)) {
-      content = fs.readFileSync(templatePath, 'utf-8')
-        .replace('{{MODEL_NAME}}', modelName);
+      const templateContent = safeReadFile(templatePath);
+      content = templateContent ? templateContent.replace('{{MODEL_NAME}}', modelName) : `# ${modelName} Adapter\n\n## Learnings\n`;
     } else {
       content = `# ${modelName} Adapter\n\n## Learnings\n`;
     }
@@ -539,13 +563,13 @@ function addLearningToAdapter(modelName, errors) {
   let content = '';
 
   if (fs.existsSync(adapterPath)) {
-    content = fs.readFileSync(adapterPath, 'utf-8');
+    content = safeReadFile(adapterPath) || '';
   } else {
     // Create from template
     const templatePath = path.join(ADAPTERS_DIR, '_template.md');
     if (fs.existsSync(templatePath)) {
-      content = fs.readFileSync(templatePath, 'utf-8')
-        .replace('{{MODEL_NAME}}', modelName);
+      const templateContent = safeReadFile(templatePath);
+      content = templateContent ? templateContent.replace('{{MODEL_NAME}}', modelName) : `# ${modelName} Adapter\n\n## Learnings\n`;
     } else {
       content = `# ${modelName} Adapter\n\n## Learnings\n`;
     }

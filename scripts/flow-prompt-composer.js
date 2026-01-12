@@ -28,8 +28,22 @@ const {
   dirExists,
   printHeader,
   printSection,
-  isPathWithinProject
+  isPathWithinProject,
+  estimateTokens
 } = require('./flow-utils');
+
+// Smart Context System integration
+let sectionResolver = null;
+let contextGatherer = null;
+let instructionRichness = null;
+
+try {
+  sectionResolver = require('./flow-section-resolver');
+  contextGatherer = require('./flow-context-gatherer');
+  instructionRichness = require('./flow-instruction-richness');
+} catch (err) {
+  // Smart Context modules not available, will use traditional approach
+}
 
 // ============================================================
 // Constants
@@ -341,6 +355,207 @@ function applyTemplate(template, data) {
 }
 
 // ============================================================
+// Smart Context Composition (Section-Level)
+// ============================================================
+
+/**
+ * Compose prompt with section-level context (Smart Context System)
+ * Instead of including full files, uses targeted section references.
+ *
+ * @param {Object} params - Composition parameters
+ * @returns {Promise<Object>} Composed prompt with section context
+ */
+async function composeWithSections(params) {
+  const {
+    model,
+    taskDescription,
+    taskType = 'feature',
+    domain = null,
+    taskData = null,
+    includeCore = true,
+    maxTokens = null
+  } = params;
+
+  // Check if Smart Context is available
+  if (!sectionResolver || !contextGatherer) {
+    // Fall back to traditional composition
+    return composePrompt({
+      model,
+      taskType,
+      domain,
+      taskData,
+      includeCore
+    });
+  }
+
+  // Get model preferences for context density
+  const modelPrefs = instructionRichness
+    ? instructionRichness.getModelContextPreferences(model)
+    : { density: 'standard', explicitExamples: true, patternHints: true };
+
+  // Gather relevant sections using Smart Context
+  const contextResult = await contextGatherer.gatherContext({
+    task: taskDescription,
+    model,
+    maxTokens,
+    format: modelPrefs.density === 'concise' ? 'summary' : 'full'
+  });
+
+  // Get CLI for model
+  const cli = MODEL_CLI_MAP[model] || 'claude-code';
+
+  // Build sections array for traditional fragment composition
+  const allFragments = loadFragments();
+  const filtered = filterFragments(allFragments, { model, cli, domain });
+
+  // Compose sections
+  const sections = [];
+
+  // 1. Smart Context sections (from decisions.md, app-map.md, etc.)
+  if (contextResult.sections && contextResult.sections.length > 0) {
+    sections.push({
+      name: 'Project Rules (Targeted)',
+      content: formatSectionsForPrompt(contextResult.sections, modelPrefs),
+      fragments: contextResult.sections.map(s => s.id)
+    });
+  }
+
+  // 2. Traditional fragments (quality guidelines, domain, formatting)
+  const qualityFragments = filtered.filter(f => f.metadata.purpose === 'quality');
+  const domainFragments = filtered.filter(f => f.metadata.purpose === 'domain');
+  const formatFragments = filtered.filter(f => f.metadata.purpose === 'formatting');
+
+  if (qualityFragments.length > 0) {
+    sections.push({
+      name: 'Quality Guidelines',
+      content: qualityFragments.map(f => f.content).join('\n\n'),
+      fragments: qualityFragments.map(f => f.metadata.id || f.file)
+    });
+  }
+
+  if (domainFragments.length > 0) {
+    sections.push({
+      name: 'Domain Guidelines',
+      content: domainFragments.map(f => f.content).join('\n\n'),
+      fragments: domainFragments.map(f => f.metadata.id || f.file)
+    });
+  }
+
+  if (formatFragments.length > 0) {
+    sections.push({
+      name: 'Output Format',
+      content: formatFragments.map(f => f.content).join('\n\n'),
+      fragments: formatFragments.map(f => f.metadata.id || f.file)
+    });
+  }
+
+  // 3. Core task context (if requested)
+  if (includeCore && taskData) {
+    const coreFragments = filtered.filter(f => f.metadata.purpose === 'core');
+    if (coreFragments.length > 0) {
+      let coreContent = coreFragments.map(f => f.content).join('\n\n');
+      coreContent = applyTemplate(coreContent, taskData);
+      sections.push({
+        name: 'Task Context',
+        content: coreContent,
+        fragments: coreFragments.map(f => f.metadata.id || f.file)
+      });
+    }
+  }
+
+  // Compose full prompt
+  let fullPrompt = '';
+  for (const section of sections) {
+    if (section.content) {
+      fullPrompt += `## ${section.name}\n\n${section.content}\n\n`;
+    }
+  }
+
+  // Apply template substitution if task data provided
+  if (taskData) {
+    fullPrompt = applyTemplate(fullPrompt, taskData);
+  }
+
+  return {
+    model,
+    cli,
+    domain,
+    taskType,
+    usedSmartContext: true,
+    modelDensity: modelPrefs.density,
+    sections: sections.map(s => ({
+      name: s.name,
+      fragments: s.fragments
+    })),
+    smartContextStats: contextResult.stats,
+    fragmentCount: filtered.length,
+    sectionCount: contextResult.sections?.length || 0,
+    prompt: fullPrompt.trim(),
+    tokenEstimate: estimateTokens ? estimateTokens(fullPrompt) : Math.ceil(fullPrompt.length / 4)
+  };
+}
+
+/**
+ * Format sections for inclusion in prompt based on model preferences
+ * @param {Object[]} sections - Sections from Smart Context
+ * @param {Object} modelPrefs - Model context preferences
+ * @returns {string} Formatted section content
+ */
+function formatSectionsForPrompt(sections, modelPrefs) {
+  if (!sections || sections.length === 0) return '';
+
+  const lines = [];
+
+  for (const section of sections) {
+    const source = section.source || 'decisions.md';
+    const category = section.category || 'General';
+
+    if (modelPrefs.patternHints && !modelPrefs.explicitExamples) {
+      // Concise format: Just reference the rule
+      lines.push(`### ${section.title}`);
+      lines.push(`*From: ${source} > ${category}*`);
+      // First line or two as a hint
+      const firstLines = section.content?.split('\n').slice(0, 2).join(' ').trim() || '';
+      if (firstLines) {
+        lines.push(firstLines);
+      }
+      lines.push('');
+    } else {
+      // Full format: Include complete content
+      lines.push(`### ${section.title}`);
+      lines.push(`*From: ${source} > ${category}*`);
+      lines.push('');
+      if (section.content) {
+        lines.push(section.content);
+      }
+      lines.push('');
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Compose prompt with automatic format selection
+ * Uses Smart Context when available and task description provided,
+ * falls back to traditional fragment-based composition otherwise.
+ *
+ * @param {Object} params - Composition parameters
+ * @returns {Promise<Object>} Composed prompt
+ */
+async function composePromptAuto(params) {
+  const { taskDescription, useSmartContext = true } = params;
+
+  // Use Smart Context if available and task description provided
+  if (useSmartContext && taskDescription && sectionResolver && contextGatherer) {
+    return composeWithSections(params);
+  }
+
+  // Fall back to traditional composition
+  return composePrompt(params);
+}
+
+// ============================================================
 // CLI Output
 // ============================================================
 
@@ -471,12 +686,17 @@ async function main() {
 
 // Export for use by other scripts
 module.exports = {
+  // Traditional composition
   composePrompt,
   loadFragments,
   filterFragments,
   parseFragment,
   applyTemplate,
-  MODEL_CLI_MAP
+  MODEL_CLI_MAP,
+  // Smart Context composition
+  composeWithSections,
+  composePromptAuto,
+  formatSectionsForPrompt
 };
 
 if (require.main === module) {

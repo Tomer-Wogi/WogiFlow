@@ -100,6 +100,12 @@
         "inputPer1kTokens": 0.015,
         "outputPer1kTokens": 0.075,
         "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "concise",
+        "explicitExamples": false,
+        "patternHints": true,
+        "minContextForQuality": 0.3
       }
     },
     "claude-sonnet-4": {
@@ -126,6 +132,12 @@
         "inputPer1kTokens": 0.003,
         "outputPer1kTokens": 0.015,
         "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "standard",
+        "explicitExamples": true,
+        "patternHints": true,
+        "minContextForQuality": 0.5
       }
     },
     "claude-haiku-3-5": {
@@ -152,6 +164,12 @@
         "inputPer1kTokens": 0.0008,
         "outputPer1kTokens": 0.004,
         "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "comprehensive",
+        "explicitExamples": true,
+        "patternHints": false,
+        "minContextForQuality": 0.7
       }
     },
     "gpt-4o": {
@@ -178,6 +196,12 @@
         "inputPer1kTokens": 0.005,
         "outputPer1kTokens": 0.015,
         "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "standard",
+        "explicitExamples": true,
+        "patternHints": true,
+        "minContextForQuality": 0.5
       }
     },
     "gemini-2-flash": {
@@ -204,6 +228,12 @@
         "inputPer1kTokens": 0.00,
         "outputPer1kTokens": 0.00,
         "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "comprehensive",
+        "explicitExamples": true,
+        "patternHints": false,
+        "minContextForQuality": 0.6
       }
     }
   },

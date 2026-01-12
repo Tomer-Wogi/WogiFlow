@@ -78,6 +78,10 @@ The [02-task-execution](./02-task-execution/) category is the heart of WogiFlow.
 | Use Figma-to-code | [Figma Analyzer](./05-development-tools/figma-analyzer.md) |
 | Set up safety guardrails | [Damage Control](./06-safety-guardrails/damage-control.md) |
 | Find a specific config option | [All Options](./configuration/all-options.md) |
+| Import tasks from Jira/Linear | [External Integrations](./02-task-execution/external-integrations.md) |
+| Load PRD/specs for context | [PRD Management](./04-memory-context/prd-management.md) |
+| Manage memory & entropy | [Memory Commands](./04-memory-context/memory-commands.md) |
+| Configure multiple models | [Model Management](./02-task-execution/model-management.md) |
 
 ---
 

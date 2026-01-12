@@ -10,7 +10,7 @@ Configuration lives in `.workflow/config.json`
 
 ```json
 {
-  "version": "1.9.0",
+  "version": "2.0.0",
   "projectName": "my-project",
   // ... options
 }
@@ -1639,7 +1639,7 @@ Session start context configuration.
 
 ```json
 {
-  "version": "1.9.0",
+  "version": "2.0.0",
   "projectName": "",
   "autoLog": true,
   "autoUpdateAppMap": true,
@@ -1649,7 +1649,7 @@ Session start context configuration.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `version` | string | `"1.9.0"` | Config version |
+| `version` | string | `"2.0.0"` | Config version |
 | `projectName` | string | `""` | Project name |
 | `autoLog` | boolean | `true` | Auto-update request log |
 | `autoUpdateAppMap` | boolean | `true` | Auto-update app-map |

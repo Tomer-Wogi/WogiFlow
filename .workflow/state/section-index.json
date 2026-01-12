@@ -1,0 +1,137 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-01-12T19:13:46.626Z",
+  "sources": {
+    "decisions.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/decisions.md",
+      "lastModified": "2026-01-11T14:26:13.498Z",
+      "contentHash": "d5fd455a",
+      "sections": [
+        {
+          "id": "component-architecture:component-reuse-policy",
+          "title": "Component Reuse Policy",
+          "category": "Component Architecture",
+          "pins": [
+            "component-creation",
+            "component-reuse",
+            "component",
+            "reuse",
+            "policy",
+            "component-reuse-policy"
+          ],
+          "lineStart": 10,
+          "lineEnd": 12,
+          "content": "**Added**: Project initialization\n**Rule**: Always check `app-map.md` before creating any component. Prefer adding variants over creating new components.",
+          "contentHash": "ed86242f"
+        },
+        {
+          "id": "component-architecture:variant-naming-convention",
+          "title": "Variant Naming Convention",
+          "category": "Component Architecture",
+          "pins": [
+            "component-naming",
+            "naming-convention",
+            "file-naming",
+            "variant-naming",
+            "variant",
+            "naming",
+            "convention",
+            "variant-naming-convention"
+          ],
+          "lineStart": 14,
+          "lineEnd": 20,
+          "content": "**Rule**: Use consistent variant names:\n- Size: `sm`, `md`, `lg`, `xl`\n- Intent: `primary`, `secondary`, `danger`, `success`, `warning`\n- State: `default`, `hover`, `active`, `disabled`",
+          "contentHash": "38bc3aca"
+        },
+        {
+          "id": "coding-standards:security-patterns-2026-01-11",
+          "title": "Security Patterns (2026-01-11)",
+          "category": "Coding Standards",
+          "pins": [
+            "try-catch",
+            "error-handling",
+            "fs-read",
+            "fs-write",
+            "file-safety",
+            "json-parse",
+            "json-safety",
+            "prototype-pollution",
+            "path-traversal",
+            "input-validation",
+            "security",
+            "patterns",
+            "2026-01-11",
+            "security-patterns-2026-01-11"
+          ],
+          "lineStart": 24,
+          "lineEnd": 50,
+          "content": "**Source**: Session review findings\n\n1. **File Read Safety**\n   - Always wrap `fs.readFileSync()` in try-catch, even after `fileExists()` check\n   - Reason: Race conditions, permission changes, symlink issues can still cause failures\n\n2. **JSON Parsing Safety**\n   - Use `safeJsonParse()` from flow-utils.js instead of raw `JSON.parse()`\n   - Validate parsed structure has expected fields before use\n   - Check for `__proto__`, `constructor`, `prototype` injection\n\n3. **Template Substitution Safety**\n   - Block access to `__proto__`, `constructor`, `prototype` keys\n   - Use `Object.prototype.hasOwnProperty.call()` for property access\n   - Example: See `applyTemplate()` in flow-prompt-composer.js\n\n4. **Path Safety**\n   - Validate patterns before `path.join()` with user/config data\n   - Use `isPathWithinProject()` for defense-in-depth\n   - Glob-to-regex: Use `[^/]*` not `.*` to prevent path separator matching\n\n5. **Module Dependencies**\n   - Check for circular dependencies when refactoring shared functions\n   - Node.js handles circular deps but can cause undefined exports during load",
+          "contentHash": "85da639f"
+        },
+        {
+          "id": "architecture-decisions:model-management-architecture-2026-01-11",
+          "title": "Model Management Architecture (2026-01-11)",
+          "category": "Architecture Decisions",
+          "pins": [
+            "model-architecture",
+            "model",
+            "management",
+            "architecture",
+            "2026-01-11",
+            "model-management-architecture-2026-01-11"
+          ],
+          "lineStart": 60,
+          "lineEnd": 80,
+          "content": "**Context**: Phase 1 introduced model registry and stats system alongside existing model-adapter.\n\n**Two Model Systems**:\n1. **flow-model-adapter.js** - Prompt adaptation system\n   - `getCurrentModel()` returns normalized model name (string)\n   - Focus: Per-model prompt adjustments, learning, and corrections\n   - Imports: Used by flow-knowledge-router.js\n\n2. **flow-models.js** - Registry and stats system\n   - `getCurrentModel()` returns `{name, info, source}` object\n   - Focus: Model listing, routing recommendations, cost tracking\n   - Standalone CLI commands: `flow models [subcommand]`\n\n**Design Decision**: Keep them separate because:\n- Different return types serve different consumers\n- Adapter system needs just the name for pattern matching\n- Registry system needs full model metadata for display/routing\n- Merging would create unnecessary coupling\n\n**Future Consideration**: Could extract shared model detection logic into a common utility if they drift apart.",
+          "contentHash": "c121be1d"
+        },
+        {
+          "id": "architecture-decisions:json-safety-pattern-2026-01-11",
+          "title": "JSON Safety Pattern (2026-01-11)",
+          "category": "Architecture Decisions",
+          "pins": [
+            "file-safety",
+            "json-parse",
+            "json-safety",
+            "prototype-pollution",
+            "input-validation",
+            "json",
+            "safety",
+            "pattern",
+            "2026-01-11",
+            "json-safety-pattern-2026-01-11"
+          ],
+          "lineStart": 82,
+          "lineEnd": 88,
+          "content": "**Rule**: Use `safeJsonParse()` pattern for external/user-modifiable JSON files.\n- Check for `__proto__` and `constructor\"` strings before parsing\n- Validate parsed result is object (not null/array for config files)\n- Located in: `scripts/flow-models.js` (can be extracted if needed elsewhere)",
+          "contentHash": "585e4d23"
+        },
+        {
+          "id": "file-folder-structure:2026-01-02",
+          "title": "2026-01-02",
+          "category": "File/Folder Structure",
+          "pins": [
+            "naming-convention",
+            "file-naming",
+            "2026-01-02"
+          ],
+          "lineStart": 96,
+          "lineEnd": 99,
+          "content": "Use kebab-case for all file names in this project",
+          "contentHash": "7d8867df"
+        }
+      ]
+    },
+    "app-map.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/app-map.md",
+      "lastModified": "2025-12-22T16:30:52.000Z",
+      "contentHash": "71a9204e",
+      "rows": []
+    }
+  },
+  "stats": {
+    "totalSections": 6,
+    "totalRows": 0,
+    "totalPins": 38
+  }
+}

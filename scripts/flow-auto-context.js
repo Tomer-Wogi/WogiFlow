@@ -33,7 +33,8 @@ const {
   findReactComponents,
   findCustomHooks,
   findTypeDefinitions,
-  isPathWithinProject
+  isPathWithinProject,
+  safeJsonParse
 } = require('./flow-utils');
 
 // Semantic memory search (optional - may not be initialized)
@@ -43,6 +44,14 @@ try {
   searchFacts = memoryDb.searchFacts;
 } catch {
   // Memory DB not available - that's ok
+}
+
+// Smart Context System (Phase 2) - optional
+let smartContextGatherer = null;
+try {
+  smartContextGatherer = require('./flow-context-gatherer');
+} catch {
+  // Smart context gatherer not available - that's ok
 }
 
 const PROJECT_ROOT = getProjectRoot();
@@ -350,7 +359,9 @@ function searchComponentIndex(keywords, config = null) {
   const maxComponentMatches = cfg.autoContext?.maxComponentMatches || 15;
 
   try {
-    const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+    // Use safeJsonParse for prototype pollution protection
+    const index = safeJsonParse(indexPath, null);
+    if (!index) return results;
     const components = index.components || [];
 
     const allKeywords = [...keywords.high, ...keywords.medium];
@@ -497,7 +508,9 @@ function searchRelatedTasks(keywords) {
   if (!fs.existsSync(PATHS.ready)) return results;
 
   try {
-    const data = JSON.parse(fs.readFileSync(PATHS.ready, 'utf-8'));
+    // Use safeJsonParse for prototype pollution protection
+    const data = safeJsonParse(PATHS.ready, null);
+    if (!data) return results;
     const allTasks = [
       ...(data.ready || []),
       ...(data.inProgress || []),
@@ -784,6 +797,50 @@ function searchWithAstGrep(keywords, taskType = null, config = null) {
 }
 
 // ============================================================
+// Smart Context (Phase 2)
+// ============================================================
+
+/**
+ * Get smart context using section-level references
+ * This is the new dynamic context system that replaces hardcoded limits
+ * @param {string} description - Task description
+ * @param {object} options - { model, maxTokens }
+ * @returns {object} - Smart context result
+ */
+async function getSmartContext(description, options = {}) {
+  if (!smartContextGatherer) {
+    return null; // Fall back to legacy behavior
+  }
+
+  const config = getConfig();
+  const model = options.model || config.multiModel?.orchestrator?.model || 'claude-sonnet-4';
+
+  try {
+    const result = await smartContextGatherer.gatherContext({
+      task: description,
+      model,
+      maxTokens: options.maxTokens,
+      format: 'full'
+    });
+
+    return {
+      enabled: true,
+      strategy: 'dynamic',
+      sectionContext: result.context,
+      sections: result.sections,
+      stats: result.stats,
+      message: `Smart context: ${result.stats.sectionsIncluded} sections, ${result.stats.totalTokens} tokens (${result.stats.budgetUsed})`
+    };
+  } catch (err) {
+    // Fall back to legacy behavior on error
+    if (config.debug) {
+      console.warn(`Smart context failed: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+// ============================================================
 // Main Context Loading
 // ============================================================
 
@@ -791,6 +848,8 @@ function searchWithAstGrep(keywords, taskType = null, config = null) {
  * Get auto-context for a task description
  * Returns prioritized list of relevant files and context
  * Now async to support semantic memory search
+ *
+ * v3.0: Supports 'dynamic' strategy using Smart Context System
  */
 async function getAutoContext(description, options = {}) {
   const config = getConfig();
@@ -799,6 +858,39 @@ async function getAutoContext(description, options = {}) {
   if (config.autoContext?.enabled === false) {
     return { enabled: false, files: [], context: [] };
   }
+
+  // v3.0: Use Smart Context System if strategy is 'dynamic'
+  const strategy = config.autoContext?.strategy || 'fixed';
+  if (strategy === 'dynamic' && smartContextGatherer) {
+    const smartResult = await getSmartContext(description, options);
+    if (smartResult) {
+      // Merge smart context with legacy context for backward compatibility
+      // The smart context provides section-level rules, legacy provides file context
+      const legacyResult = await getLegacyContext(description, options, config);
+
+      return {
+        ...legacyResult,
+        strategy: 'dynamic',
+        sectionContext: smartResult.sectionContext,
+        sections: smartResult.sections,
+        smartStats: smartResult.stats,
+        message: smartResult.message + (legacyResult.files.length > 0
+          ? ` | ${legacyResult.files.length} files`
+          : '')
+      };
+    }
+  }
+
+  // Fall back to legacy (fixed) strategy
+  return await getLegacyContext(description, options, config);
+}
+
+/**
+ * Legacy context loading (fixed strategy)
+ * This is the original implementation with hardcoded limits
+ */
+async function getLegacyContext(description, options = {}, config = null) {
+  config = config || getConfig();
 
   // v2.0: Check and refresh stale component index
   if (config.componentIndex?.autoScan !== false) {
@@ -1093,6 +1185,8 @@ module.exports = {
   inferTaskType,
   checkAndRefreshIndex,
   getAutoContext,
+  getLegacyContext,      // v3.0: Legacy context loading
+  getSmartContext,       // v3.0: Smart context with section-level refs
   formatAutoContext
 };
 

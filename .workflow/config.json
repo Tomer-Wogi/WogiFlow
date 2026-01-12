@@ -253,12 +253,11 @@
     "installed": [
       "nestjs",
       "figma-analyzer",
-      "transcript-digestion"
-    ],
-    "comingSoon": [
+      "transcript-digestion",
       "react",
       "python"
     ],
+    "comingSoon": [],
     "autoInvoke": true,
     "maxSkillsPerTask": 3,
     "loadPatterns": true,
@@ -395,19 +394,25 @@
   },
   "autoContext": {
     "enabled": true,
+    "strategy": "dynamic",
     "showLoadedFiles": true,
+    "includeContent": true,
+    "useSectionReferences": true,
     "maxFilesToLoad": 10,
     "maxGrepResults": 10,
     "maxComponentMatches": 15,
     "maxContentLines": 50,
-    "includeContent": false,
     "useAstGrep": false,
     "maxSemanticFacts": 5,
     "semanticMinRelevance": 40,
+    "fallbackLimits": {
+      "maxFilesHard": 50,
+      "maxTokensHard": 150000
+    },
     "lspEnrichment": {
       "enabled": true,
       "maxFiles": 5,
-      "timeoutMs": 2000,
+      "timeoutMs": 5000,
       "showExports": true,
       "showDiagnostics": true,
       "prioritizeHealthyFiles": true

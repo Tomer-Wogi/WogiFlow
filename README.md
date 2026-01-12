@@ -1315,6 +1315,8 @@ When working on files that match a skill's patterns, Claude automatically:
 
 ## Team Backend
 
+> **Note**: Team Backend infrastructure (Terraform) is defined but Lambda functions are not yet implemented. The local team sync features work, but cloud sync is a placeholder. This is planned for a future release.
+
 AWS-powered backend for team collaboration with shared memory, proposals, and activity tracking.
 
 ### Architecture
@@ -1568,9 +1570,96 @@ flow team status                # Show team connection status
 flow team sync                  # Sync local memory to team
 flow team activity              # Show team activity
 
-# Hooksflow setup-hooks install        # Install git hooks
+# Hooks
+flow setup-hooks install        # Install git hooks
 flow setup-hooks --status       # Check hook status
 flow setup-hooks --remove       # Remove hooks
+
+# Worktree Isolation
+flow worktree enable            # Enable worktree per task
+flow worktree disable           # Disable worktree isolation
+flow worktree list              # List active worktrees
+flow worktree cleanup           # Remove stale worktrees
+
+# Task Queue
+flow queue init <id1> <id2>     # Initialize multi-task queue
+flow queue status               # Show queue status
+flow queue advance              # Move to next task
+flow queue clear                # Clear the queue
+
+# Suspend/Resume (Durable Sessions)
+flow suspend                    # Suspend current task
+flow suspend --wait-ci          # Wait for CI/CD
+flow suspend --review           # Wait for human review
+flow resume                     # Resume suspended task
+flow resume --approve           # Approve and resume
+flow session status             # Show session status
+
+# Issue Tracker Integration
+flow jira list                  # List assigned Jira issues
+flow jira sync                  # Import issues to ready.json
+flow jira push                  # Push completed tasks
+flow linear list                # List assigned Linear issues
+flow linear sync                # Import issues to ready.json
+flow external-tasks             # List from all integrations
+
+# Background Sync
+flow sync-daemon start          # Start background sync
+flow sync-daemon stop           # Stop daemon
+flow sync-daemon status         # Show daemon status
+
+# Intelligent Routing
+flow route "<task>"             # Get routing recommendation
+flow route --strategy <s>       # Use specific strategy
+
+# Multi-Approach Sessions
+flow multi-approach             # Start multi-approach session
+flow multi-approach --analyze   # Analyze without starting
+
+# Metrics & Analysis
+flow metrics                    # Show command statistics
+flow metrics --problems         # Show only failures
+flow metrics --reset            # Clear all metrics
+
+# Cascade Fallback
+flow cascade status             # Show cascade state
+flow cascade reset              # Reset failure tracking
+flow cascade config             # Show configuration
+
+# Memory Management
+flow entropy                    # Show memory entropy
+flow entropy --auto             # Auto-compact if high
+flow memory-sync                # Check pattern promotion
+flow memory-sync --auto         # Auto-promote patterns
+flow compact-memory             # Run full compaction
+
+# PRD Management
+flow prd load <file>            # Load PRD into memory
+flow prd context <task>         # Get PRD context for task
+flow prd list                   # List loaded PRDs
+flow prd clear                  # Clear PRD data
+
+# Release Channels
+flow channel show               # Show current channel
+flow channel set <name>         # Set channel (stable/beta/canary)
+flow channel list               # List available channels
+
+# Complexity & Context
+flow complexity "<task>"        # Assess task complexity
+flow context-init "<task>"      # Initialize context for task
+flow auto-context "<task>"      # Preview auto-loaded context
+
+# Models
+flow models list                # List registered models
+flow models info <model>        # Show model details
+flow models route <type>        # Get routing recommendation
+flow models stats               # Show performance stats
+flow model-adapter              # Show adapter info
+flow model-adapter --stats      # Show per-model statistics
+
+# Learning System
+flow learning tiers             # Show patterns by confidence
+flow learning stats             # Show learning statistics
 ```
 
 ---

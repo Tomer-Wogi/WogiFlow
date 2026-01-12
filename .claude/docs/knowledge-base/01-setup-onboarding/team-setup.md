@@ -98,7 +98,7 @@ Import a team's shared configuration.
 
 ```json
 {
-  "version": "1.9.0",
+  "version": "2.0.0",
   "exportedAt": "2024-01-15T10:30:00Z",
   "exportedBy": "user-id",
   "config": {...},

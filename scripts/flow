@@ -172,8 +172,6 @@ show_help() {
     echo "Parallel Execution:"
     echo "  parallel config      Show parallel execution config"
     echo "  parallel check       Check tasks for parallel potential"
-    echo "  parallel analyze     Analyze tasks for parallel potential"
-    echo "  parallel suggest     Check if parallel should be suggested"
     echo "  parallel enable      Enable parallel execution"
     echo "  parallel disable     Disable parallel execution"
     echo ""
@@ -277,15 +275,19 @@ show_help() {
     echo "  context-init \"task\"  Initialize context for a task"
     echo ""
     echo "Advanced Execution (Phase 4):"
-    echo "  dispatch analyze \"<task>\"  Analyze task for parallel execution"
-    echo "  dispatch plan \"<task>\"     Create dispatch plan"
-    echo "  dispatch status            Show dispatch status"
     echo "  ctx-score score --task     Score context items by relevance"
     echo "  ctx-score budget --tokens  Fit context within token budget"
     echo "  ctx-score analyze --file   Analyze file for context inclusion"
     echo "  confidence analyze \"<text>\" Analyze response confidence"
     echo "  confidence check --file    Check confidence of file"
     echo "  confidence stats           Show confidence statistics"
+    echo ""
+    echo "Input & Editing:"
+    echo "  voice-input              Voice-to-transcript input"
+    echo "  voice-input setup        Install/configure voice dependencies"
+    echo "  voice-input record       Record and transcribe audio"
+    echo "  guided-edit \"task\"       Step-by-step guided multi-file editing"
+    echo "  guided-edit status       Show current guided edit session"
     echo ""
     echo "Memory & Knowledge (v1.8):"
     echo "  memory search <query>  Search stored facts"
@@ -460,12 +462,6 @@ case "${1:-}" in
             check)
                 node "$SCRIPT_DIR/flow-parallel.js" check
                 ;;
-            analyze)
-                node "$SCRIPT_DIR/flow-parallel-detector.js" analyze
-                ;;
-            suggest)
-                node "$SCRIPT_DIR/flow-parallel-detector.js" suggest
-                ;;
             enable)
                 node "$SCRIPT_DIR/flow-config-set.js" parallel.enabled true
                 ;;
@@ -476,7 +472,7 @@ case "${1:-}" in
                 node "$SCRIPT_DIR/flow-config-set.js" parallel.autoApprove true
                 ;;
             *)
-                echo "Usage: flow parallel [config|check|analyze|suggest|enable|disable|auto-approve]"
+                echo "Usage: flow parallel [config|check|enable|disable|auto-approve]"
                 ;;
         esac
         ;;
@@ -798,10 +794,6 @@ case "${1:-}" in
         # Phase 3: Tiered learning system
         node "$SCRIPT_DIR/flow-tiered-learning.js" "${@:2}"
         ;;
-    dispatch)
-        # Phase 4: Parallel dispatch system
-        node "$SCRIPT_DIR/flow-parallel-dispatch.js" "${@:2}"
-        ;;
     ctx-score)
         # Phase 4: Context priority scoring
         node "$SCRIPT_DIR/flow-context-scoring.js" "${@:2}"
@@ -941,6 +933,9 @@ case "${1:-}" in
     voice-input|voice)
         node "$SCRIPT_DIR/flow-voice-input.js" "${@:2}"
         ;;
+    guided-edit)
+        node "$SCRIPT_DIR/flow-guided-edit.js" "${@:2}"
+        ;;
     transcript-digest|digest)
         node "$SCRIPT_DIR/flow-transcript-digest.js" "${@:2}"
         ;;
@@ -971,6 +966,7 @@ case "${1:-}" in
                     worktree) echo "Manage worktree isolation. Subcommands: enable, disable, list, cleanup" ;;
                     voice-input|voice) echo "Voice-to-transcript input. Subcommands: setup, status, test, record" ;;
                     transcript-digest|digest) echo "Transcript digestion. Subcommands: status, new, check, topics, save-topics" ;;
+                    guided-edit) echo "Step-by-step guided multi-file editing. Usage: flow guided-edit \"task description\"" ;;
                     *) echo "No detailed help for '$2'. Run 'flow help' for all commands." ;;
                 esac
                 ;;

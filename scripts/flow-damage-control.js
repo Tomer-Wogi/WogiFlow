@@ -8,6 +8,10 @@
  *
  * Inspired by Hookify plugin patterns, adapted for multi-CLI compatibility.
  *
+ * LIMITATION: The 'prompt' event type's AI analysis hook is not yet implemented.
+ * Currently returns 'allow' for all prompts. See evaluatePromptWithAI() around line 734.
+ * TODO: Integrate with an AI API for prompt safety evaluation.
+ *
  * Usage:
  *   flow damage-control check "<command>"   Check if command is allowed
  *   flow damage-control event <type> <ctx>  Check event against rules
@@ -368,7 +372,7 @@ function loadPatterns() {
     parsed.rules = parsed.rules || [];
     return parsed;
   } catch (err) {
-    console.error(console.error('Error loading damage-control.yaml:', err.message));
+    console.error('Error loading damage-control.yaml:', err.message);
     return {
       rules: [],
       blocked: [],

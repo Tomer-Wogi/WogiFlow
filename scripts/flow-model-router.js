@@ -28,11 +28,22 @@ const {
   safeJsonParse,
   getConfig,
   printHeader,
-  printSection
+  printSection,
+  estimateTokens
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
 const { loadRegistry, loadStats } = require('./flow-models');
+
+// Smart Context System integration
+let contextGatherer = null;
+let instructionRichness = null;
+try {
+  contextGatherer = require('./flow-context-gatherer');
+  instructionRichness = require('./flow-instruction-richness');
+} catch (err) {
+  // Smart Context modules not available
+}
 
 // Phase 3: Import cascade fallback (cached singleton)
 let cascadeModule = null;
@@ -655,6 +666,236 @@ function getRoutingConfig() {
 }
 
 // ============================================================
+// Phase 4: Single Model Evaluation (Smart Context Integration)
+// ============================================================
+
+/**
+ * Evaluate if a single model can handle a task.
+ * Used when user has only one additional model configured.
+ *
+ * @param {Object} params - Evaluation parameters
+ * @param {string} params.modelId - Model identifier
+ * @param {Object} params.analysis - Task analysis
+ * @param {string} params.taskDescription - Task description for context estimation
+ * @returns {Promise<Object>} Evaluation result
+ */
+async function evaluateSingleModel(params) {
+  const { modelId, analysis, taskDescription = '' } = params;
+
+  // Load registry
+  const registry = loadRegistry();
+  if (!registry) {
+    return { canHandle: false, reason: 'Model registry not found' };
+  }
+
+  // Find model
+  const model = registry.models?.[modelId];
+  if (!model) {
+    return { canHandle: false, reason: `Model not found: ${modelId}` };
+  }
+
+  // 1. Check capabilities
+  const requiredCaps = new Set(analysis.capabilities || []);
+  const modelCaps = new Set(model.capabilities || []);
+  const missingCaps = [];
+
+  for (const cap of requiredCaps) {
+    if (!modelCaps.has(cap)) {
+      missingCaps.push(cap);
+    }
+  }
+
+  if (missingCaps.length > 0) {
+    return {
+      canHandle: false,
+      reason: 'Missing capabilities',
+      missing: missingCaps,
+      modelCapabilities: model.capabilities,
+      requiredCapabilities: [...requiredCaps]
+    };
+  }
+
+  // 2. Check language proficiency
+  const primaryLang = analysis.languages?.primary;
+  if (primaryLang) {
+    const langCheck = checkLanguageProficiency(model, primaryLang);
+    if (!langCheck.meets) {
+      return {
+        canHandle: false,
+        reason: langCheck.reason,
+        proficiency: langCheck.proficiency,
+        required: langCheck.required
+      };
+    }
+  }
+
+  // 3. Estimate context requirements
+  let contextRequirements = null;
+  let estimatedTaskTokens = 0;
+
+  if (contextGatherer && taskDescription) {
+    // Use Smart Context to estimate what context this task needs
+    const contextResult = await contextGatherer.gatherContext({
+      task: taskDescription,
+      model: modelId,
+      format: 'summary'  // Use summary for estimation
+    });
+
+    contextRequirements = {
+      sectionsNeeded: contextResult.stats?.sectionsIncluded || 0,
+      tokensEstimated: contextResult.stats?.totalTokens || 0,
+      budgetUsed: contextResult.stats?.budgetUsed || '0%',
+      modelDensity: contextResult.stats?.modelPrefs?.density || 'standard'
+    };
+
+    // Estimate total task tokens (context + task + buffer for output)
+    const taskTextTokens = estimateTokens?.(taskDescription) || Math.ceil(taskDescription.length / 4);
+    const outputBuffer = model.maxOutputTokens ? model.maxOutputTokens * 0.5 : 4000;
+
+    estimatedTaskTokens = contextRequirements.tokensEstimated + taskTextTokens + outputBuffer;
+  } else {
+    // Fallback estimation without Smart Context
+    const taskTextTokens = estimateTokens?.(taskDescription) || Math.ceil(taskDescription.length / 4);
+    const baseContextEstimate = 5000;  // Conservative base estimate
+    const outputBuffer = model.maxOutputTokens ? model.maxOutputTokens * 0.5 : 4000;
+
+    estimatedTaskTokens = taskTextTokens + baseContextEstimate + outputBuffer;
+
+    contextRequirements = {
+      sectionsNeeded: 'unknown',
+      tokensEstimated: baseContextEstimate,
+      budgetUsed: 'estimated',
+      modelDensity: 'standard'
+    };
+  }
+
+  // 4. Check if task fits in context window
+  const contextWindow = model.contextWindow || 128000;
+  const usableContext = contextWindow * 0.7;  // Reserve 30% buffer
+
+  if (estimatedTaskTokens > usableContext) {
+    return {
+      canHandle: false,
+      reason: 'Context too large for model',
+      estimatedTokens: estimatedTaskTokens,
+      contextWindow,
+      usableContext: Math.floor(usableContext),
+      overflow: estimatedTaskTokens - usableContext
+    };
+  }
+
+  // 5. Calculate estimated cost
+  let estimatedCost = null;
+  if (model.pricing) {
+    const inputCost = (estimatedTaskTokens / 1000) * (model.pricing.inputPer1kTokens || 0);
+    const outputCost = ((model.maxOutputTokens || 4000) / 1000) * (model.pricing.outputPer1kTokens || 0);
+    estimatedCost = {
+      input: inputCost.toFixed(4),
+      output: outputCost.toFixed(4),
+      total: (inputCost + outputCost).toFixed(4),
+      currency: model.pricing.currency || 'USD'
+    };
+  }
+
+  // Model can handle the task
+  return {
+    canHandle: true,
+    modelId,
+    displayName: model.displayName,
+    costTier: model.costTier,
+    contextRequirements,
+    estimatedTokens: estimatedTaskTokens,
+    contextWindow,
+    contextUsage: `${((estimatedTaskTokens / contextWindow) * 100).toFixed(1)}%`,
+    estimatedCost,
+    // Include model preferences for caller
+    modelPreferences: model.contextPreferences || {
+      density: 'standard',
+      explicitExamples: true,
+      patternHints: true,
+      minContextForQuality: 0.5
+    }
+  };
+}
+
+/**
+ * Evaluate multiple models for a task and recommend the best one.
+ * Useful when user wants to compare options.
+ *
+ * @param {Object} params - Evaluation parameters
+ * @param {Object} params.analysis - Task analysis
+ * @param {string} params.taskDescription - Task description
+ * @param {string[]} params.modelIds - Models to evaluate (if not provided, evaluates all)
+ * @returns {Promise<Object>} Comparison result
+ */
+async function evaluateModelsForTask(params) {
+  const { analysis, taskDescription, modelIds = null } = params;
+
+  const registry = loadRegistry();
+  if (!registry) {
+    return { success: false, error: 'Model registry not found' };
+  }
+
+  // Get models to evaluate
+  let models;
+  if (modelIds && modelIds.length > 0) {
+    models = modelIds.filter(id => registry.models?.[id]);
+  } else {
+    models = Object.keys(registry.models || {});
+  }
+
+  if (models.length === 0) {
+    return { success: false, error: 'No models to evaluate' };
+  }
+
+  // Evaluate each model
+  const evaluations = await Promise.all(
+    models.map(async modelId => {
+      const result = await evaluateSingleModel({
+        modelId,
+        analysis,
+        taskDescription
+      });
+      return { modelId, ...result };
+    })
+  );
+
+  // Separate capable and incapable models
+  const capable = evaluations.filter(e => e.canHandle);
+  const incapable = evaluations.filter(e => !e.canHandle);
+
+  // Rank capable models by quality (capability + cost efficiency)
+  const ranked = capable.sort((a, b) => {
+    // Prefer models with better context efficiency
+    const efficiencyA = parseFloat(a.contextUsage) || 100;
+    const efficiencyB = parseFloat(b.contextUsage) || 100;
+
+    // Lower context usage is better
+    if (Math.abs(efficiencyA - efficiencyB) > 10) {
+      return efficiencyA - efficiencyB;
+    }
+
+    // Then by cost tier (quality-first)
+    const tierOrder = { premium: 0, standard: 1, economy: 2 };
+    return (tierOrder[a.costTier] || 1) - (tierOrder[b.costTier] || 1);
+  });
+
+  return {
+    success: true,
+    taskDescription,
+    totalEvaluated: models.length,
+    capableCount: capable.length,
+    recommended: ranked[0] || null,
+    alternatives: ranked.slice(1),
+    incapable: incapable.map(e => ({
+      modelId: e.modelId,
+      reason: e.reason,
+      details: e.missing || e.overflow || null
+    }))
+  };
+}
+
+// ============================================================
 // Main Router
 // ============================================================
 
@@ -863,6 +1104,10 @@ module.exports = {
   checkLanguageProficiency,
   checkCascadeFallback,
   getRoutingConfig,
+
+  // Phase 4: Single model evaluation (Smart Context integration)
+  evaluateSingleModel,
+  evaluateModelsForTask,
 
   // Registry/stats access
   loadRegistry,

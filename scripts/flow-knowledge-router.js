@@ -3,6 +3,8 @@
 /**
  * Wogi Flow - Knowledge Router
  *
+ * See MEMORY-ARCHITECTURE.md for how this fits with other memory/knowledge modules.
+ *
  * Auto-detects where learnings/corrections should be stored:
  * - model-specific: Applies only to a specific LLM
  * - skill: Related to a specific skill (nestjs, react, etc.)

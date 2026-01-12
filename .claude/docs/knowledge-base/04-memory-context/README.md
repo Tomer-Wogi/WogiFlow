@@ -32,6 +32,8 @@ WogiFlow manages memory through:
 | [Session Persistence](./session-persistence.md) | Preserve work across sessions |
 | [Memory Systems](./memory-systems.md) | Facts, decay, tiers |
 | [Team History](./team-history.md) | Shared logs, audit trails |
+| [PRD Management](./prd-management.md) | Load and query product specs |
+| [Memory Commands](./memory-commands.md) | CLI for entropy, sync, routing |
 
 ---
 

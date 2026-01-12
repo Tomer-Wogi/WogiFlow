@@ -29,6 +29,81 @@ try {
 }
 
 // ============================================================
+// Model Context Preferences (from registry.json)
+// ============================================================
+
+/**
+ * Cache for model registry
+ */
+let registryCache = null;
+
+/**
+ * Load model registry from .workflow/models/registry.json
+ * @returns {Object|null} Registry data or null if not found
+ */
+function loadModelRegistry() {
+  if (registryCache) return registryCache;
+
+  const { PATHS } = require('./flow-utils');
+  const registryPath = path.join(path.dirname(PATHS.config), 'models', 'registry.json');
+
+  try {
+    if (fs.existsSync(registryPath)) {
+      const content = fs.readFileSync(registryPath, 'utf-8');
+      registryCache = JSON.parse(content);
+      return registryCache;
+    }
+  } catch (err) {
+    // Ignore errors, use defaults
+  }
+  return null;
+}
+
+/**
+ * Get model context preferences from registry
+ * @param {string} modelName - Model name (e.g., "claude-opus-4-5", "opus", "claude-sonnet-4")
+ * @returns {Object} Context preferences with defaults
+ */
+function getModelContextPreferences(modelName) {
+  const defaults = {
+    density: 'standard',
+    explicitExamples: true,
+    patternHints: true,
+    minContextForQuality: 0.5
+  };
+
+  if (!modelName) return defaults;
+
+  const registry = loadModelRegistry();
+  if (!registry?.models) return defaults;
+
+  // Normalize model name for lookup
+  const normalized = modelName.toLowerCase();
+
+  // Direct lookup first
+  if (registry.models[modelName]?.contextPreferences) {
+    return { ...defaults, ...registry.models[modelName].contextPreferences };
+  }
+
+  // Try partial matching (e.g., "opus" matches "claude-opus-4-5")
+  for (const [key, model] of Object.entries(registry.models)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      if (model.contextPreferences) {
+        return { ...defaults, ...model.contextPreferences };
+      }
+    }
+    // Also try matching against modelId
+    if (model.modelId && (normalized.includes(model.modelId) || model.modelId.includes(normalized))) {
+      if (model.contextPreferences) {
+        return { ...defaults, ...model.contextPreferences };
+      }
+    }
+  }
+
+  return defaults;
+}
+
+// ============================================================
 // Instruction Richness Levels (Guidance, NOT Limits)
 // ============================================================
 
@@ -104,18 +179,52 @@ const COMPLEXITY_TO_RICHNESS = {
 /**
  * Gets the instruction richness configuration for a complexity level
  *
+ * Model-aware: Different models need different amounts of context:
+ * - Opus (concise): Can use minimal even for medium tasks
+ * - Sonnet (standard): Use default mapping
+ * - Haiku/Local (comprehensive): Needs rich even for small tasks
+ *
  * @param {string} complexityLevel - 'small', 'medium', 'large', or 'xl'
  * @param {Object} config - Optional config overrides from config.json
+ * @param {string} model - Optional model name for model-aware richness
  * @returns {Object} - Richness configuration
  */
-function getInstructionRichness(complexityLevel, config = {}) {
-  // Map complexity to richness level
+function getInstructionRichness(complexityLevel, config = {}, model = null) {
+  // Map complexity to base richness level
   let richnessLevel = COMPLEXITY_TO_RICHNESS[complexityLevel] || 'standard';
+  const levels = ['minimal', 'standard', 'rich', 'maximum'];
+
+  // Model-aware adjustment
+  if (model) {
+    const modelPrefs = getModelContextPreferences(model);
+
+    if (modelPrefs.density === 'concise') {
+      // Opus: Can use less context - downgrade one level (but not below minimal)
+      // small → minimal (already minimal)
+      // medium → minimal (was standard)
+      // large → standard (was rich)
+      // xl → rich (was maximum)
+      const currentIndex = levels.indexOf(richnessLevel);
+      if (currentIndex > 0) {
+        richnessLevel = levels[currentIndex - 1];
+      }
+    } else if (modelPrefs.density === 'comprehensive') {
+      // Local LLM / Haiku: Needs more context - upgrade one level (but not above maximum)
+      // small → standard (was minimal)
+      // medium → rich (was standard)
+      // large → maximum (was rich)
+      // xl → maximum (already maximum)
+      const currentIndex = levels.indexOf(richnessLevel);
+      if (currentIndex < levels.length - 1) {
+        richnessLevel = levels[currentIndex + 1];
+      }
+    }
+    // 'standard' density uses default mapping
+  }
 
   // Check for minimum richness override in config
   const minRichness = config.minRichness;
   if (minRichness) {
-    const levels = ['minimal', 'standard', 'rich', 'maximum'];
     const currentIndex = levels.indexOf(richnessLevel);
     const minIndex = levels.indexOf(minRichness);
     if (minIndex > currentIndex) {
@@ -125,8 +234,13 @@ function getInstructionRichness(complexityLevel, config = {}) {
 
   const richness = { ...INSTRUCTION_RICHNESS[richnessLevel] };
 
-  // Add level name for reference
+  // Add level name and model info for reference
   richness.level = richnessLevel;
+  if (model) {
+    const modelPrefs = getModelContextPreferences(model);
+    richness.modelDensity = modelPrefs.density;
+    richness.patternHintsOnly = modelPrefs.patternHints && !modelPrefs.explicitExamples;
+  }
 
   return richness;
 }
@@ -145,17 +259,26 @@ function loadProjectContext(projectRoot) {
   let context = '';
 
   // Try hybrid-context first (optimized for hybrid mode)
+  // Use try-catch even after existsSync (race conditions, permissions)
   if (fs.existsSync(contextPath)) {
-    context += fs.readFileSync(contextPath, 'utf-8');
+    try {
+      context += fs.readFileSync(contextPath, 'utf-8');
+    } catch (err) {
+      // File may have been deleted/modified between check and read
+    }
   }
 
   // Add project overview
   if (fs.existsSync(projectPath)) {
-    const projectMd = fs.readFileSync(projectPath, 'utf-8');
-    // Extract just the summary section
-    const summaryMatch = projectMd.match(/## Summary[\s\S]*?(?=##|$)/);
-    if (summaryMatch) {
-      context += '\n\n### Project Summary\n' + summaryMatch[0];
+    try {
+      const projectMd = fs.readFileSync(projectPath, 'utf-8');
+      // Extract just the summary section
+      const summaryMatch = projectMd.match(/## Summary[\s\S]*?(?=##|$)/);
+      if (summaryMatch) {
+        context += '\n\n### Project Summary\n' + summaryMatch[0];
+      }
+    } catch (err) {
+      // File may have been deleted/modified between check and read
     }
   }
 
@@ -173,7 +296,13 @@ function loadPatterns(projectRoot) {
     return null;
   }
 
-  const content = fs.readFileSync(decisionsPath, 'utf-8');
+  let content;
+  try {
+    content = fs.readFileSync(decisionsPath, 'utf-8');
+  } catch (err) {
+    // File may have been deleted/modified between check and read
+    return null;
+  }
 
   // Extract ALL ## sections from decisions.md
   // This includes: Naming Conventions, File Structure, Error Handling, etc.
@@ -310,7 +439,13 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
     // If we have a target file, extract identifiers and get their types
     const absPath = path.isAbsolute(filePath) ? filePath : path.join(projectRoot, filePath);
     if (fs.existsSync(absPath)) {
-      const content = fs.readFileSync(absPath, 'utf-8');
+      let content;
+      try {
+        content = fs.readFileSync(absPath, 'utf-8');
+      } catch (err) {
+        // File may have been deleted/modified between check and read
+        return loadRelevantTypes(projectRoot, filePath, options);
+      }
       const identifiers = extractIdentifiersForLSP(content, keywords);
 
       // Get types for identified positions
@@ -759,6 +894,9 @@ module.exports = {
   COMPLEXITY_TO_RICHNESS,
   getInstructionRichness,
   getVerbosityGuidance,
+  // Model-aware context
+  getModelContextPreferences,
+  loadModelRegistry,
   // Context loaders
   loadProjectContext,
   loadPatterns,
@@ -781,26 +919,41 @@ if (require.main === module) {
 
   if (args.length === 0) {
     console.log(`
-Usage: node flow-instruction-richness.js <complexity-level>
+Usage: node flow-instruction-richness.js <complexity-level> [model]
 
 Complexity levels: small, medium, large, xl
+Model (optional): claude-opus-4-5, claude-sonnet-4, claude-haiku-3-5, etc.
+
+Model-Aware Context Density:
+  - opus (concise):        Uses less context, can infer from hints
+  - sonnet (standard):     Default context levels
+  - haiku/local (comprehensive): Uses more context, needs explicit examples
 
 Examples:
   node flow-instruction-richness.js small
-  node flow-instruction-richness.js large
+  node flow-instruction-richness.js medium claude-opus-4-5
+  node flow-instruction-richness.js medium claude-haiku-3-5
 `);
     process.exit(0);
   }
 
   const level = args[0];
-  const richness = getInstructionRichness(level);
+  const model = args[1] || null;
+  const richness = getInstructionRichness(level, {}, model);
 
   console.log('\n═══════════════════════════════════════════════════════════');
-  console.log('     INSTRUCTION RICHNESS CONFIG (Local LLM is FREE!)');
+  console.log('     INSTRUCTION RICHNESS CONFIG (Model-Aware)');
   console.log('═══════════════════════════════════════════════════════════\n');
 
   console.log(`Complexity Level: ${level.toUpperCase()}`);
   console.log(`Richness Level: ${richness.level.toUpperCase()}`);
+  if (model) {
+    console.log(`Model: ${model}`);
+    console.log(`Model Density: ${richness.modelDensity || 'standard'}`);
+    if (richness.patternHintsOnly) {
+      console.log(`Pattern Mode: Hints only (no explicit examples needed)`);
+    }
+  }
   console.log(`\n${richness.description}\n`);
 
   console.log('───────────────────────────────────────────────────────────');
@@ -821,7 +974,18 @@ Examples:
   console.log('───────────────────────────────────────────────────────────');
   console.log(getVerbosityGuidance(richness.templateVerbosity));
 
-  console.log('\n💡 Remember: Local LLM tokens are FREE! Include MORE context');
-  console.log('   when in doubt. Failed executions cost more than extra context.\n');
+  if (model) {
+    const prefs = getModelContextPreferences(model);
+    console.log('\n───────────────────────────────────────────────────────────');
+    console.log('              MODEL PREFERENCES');
+    console.log('───────────────────────────────────────────────────────────');
+    console.log(`  Density: ${prefs.density}`);
+    console.log(`  Explicit Examples: ${prefs.explicitExamples ? 'Yes' : 'No'}`);
+    console.log(`  Pattern Hints: ${prefs.patternHints ? 'Yes' : 'No'}`);
+    console.log(`  Min Context for Quality: ${(prefs.minContextForQuality * 100).toFixed(0)}%`);
+  }
+
+  console.log('\n💡 Model-aware context: Each model gets the right amount of');
+  console.log('   context for optimal quality without waste.\n');
   console.log('═══════════════════════════════════════════════════════════\n');
 }

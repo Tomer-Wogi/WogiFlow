@@ -3,6 +3,8 @@
 /**
  * Wogi Flow - Memory Database Module
  *
+ * See MEMORY-ARCHITECTURE.md for how this fits with other memory/knowledge modules.
+ *
  * Shared database operations for memory storage.
  * Used by both MCP server and CLI tools.
  *
@@ -26,6 +28,37 @@ const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const MEMORY_DIR = path.join(WORKFLOW_DIR, 'memory');
 const DB_PATH = path.join(MEMORY_DIR, 'local.db');
+
+// ============================================================
+// Safe JSON Helpers
+// ============================================================
+
+/**
+ * Safely parse pins JSON with validation
+ * Prevents prototype pollution and validates structure
+ * @param {string} pinsJson - JSON string of pins array
+ * @returns {string[]} - Parsed pins array (empty on error)
+ */
+function safeParsePins(pinsJson) {
+  if (!pinsJson || pinsJson === '[]') return [];
+
+  try {
+    // Check for prototype pollution attempts
+    if (/__proto__|constructor|prototype/i.test(pinsJson)) {
+      console.warn('[safeParsePins] Suspicious content detected in pins JSON');
+      return [];
+    }
+
+    const parsed = JSON.parse(pinsJson);
+
+    // Validate it's an array of strings
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(p => typeof p === 'string');
+  } catch {
+    return [];
+  }
+}
 
 // ============================================================
 // Database Singleton
@@ -162,6 +195,26 @@ async function initDatabase() {
       )
     `);
 
+    // Section index table for Smart Context System (Phase 1)
+    db.run(`
+      CREATE TABLE IF NOT EXISTS sections (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        category TEXT,
+        title TEXT NOT NULL,
+        pins TEXT,
+        content TEXT NOT NULL,
+        line_start INTEGER,
+        line_end INTEGER,
+        content_hash TEXT,
+        embedding TEXT,
+        access_count INTEGER DEFAULT 0,
+        last_accessed TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )
+    `);
+
     // Migrate existing databases - add new columns if they don't exist
     const migrations = [
       'ALTER TABLE facts ADD COLUMN last_accessed TEXT',
@@ -183,6 +236,9 @@ async function initDatabase() {
     try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_cold_archived ON facts_cold(archived_at)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_prd_prd_id ON prd_chunks(prd_id)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_source ON sections(source)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_category ON sections(category)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_hash ON sections(content_hash)'); } catch {}
 
     saveDatabase();
     return db;
@@ -240,7 +296,7 @@ async function getEmbedder() {
         }
         return null;
       }
-      throw e; // Re-throw other errors
+      throw err; // Re-throw other errors
     }
   }
   return embedder;
@@ -1052,6 +1108,326 @@ async function restoreFromColdStorage(factId) {
 }
 
 // ============================================================
+// Section Index Operations (Smart Context System)
+// ============================================================
+
+/**
+ * Sync sections from section-index.json to database
+ * @param {Object} index - Section index object from flow-section-index.js
+ * @returns {Object} - { synced, updated, unchanged }
+ */
+async function syncSectionsFromIndex(index) {
+  await initDatabase();
+  const results = { synced: 0, updated: 0, unchanged: 0, deleted: 0 };
+
+  if (!index || !index.sources) {
+    return results;
+  }
+
+  // Collect all section IDs from index
+  const indexSectionIds = new Set();
+
+  for (const [sourceName, sourceData] of Object.entries(index.sources)) {
+    const items = sourceData.sections || sourceData.rows || [];
+
+    for (const item of items) {
+      indexSectionIds.add(item.id);
+
+      // Check if section exists
+      const existing = db.exec('SELECT content_hash FROM sections WHERE id = ?', [item.id]);
+      const existingRows = queryToRows(existing);
+
+      if (existingRows.length === 0) {
+        // Insert new section
+        db.run(`
+          INSERT INTO sections (id, source, category, title, pins, content, line_start, line_end, content_hash)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          item.id,
+          sourceName,
+          item.category || null,
+          item.title || item.name,
+          JSON.stringify(item.pins || []),
+          item.content || JSON.stringify(item.data || {}),
+          item.lineStart || item.line || null,
+          item.lineEnd || item.line || null,
+          item.contentHash || null
+        ]);
+        results.synced++;
+      } else if (existingRows[0].content_hash !== item.contentHash) {
+        // Update existing section if content changed
+        db.run(`
+          UPDATE sections SET
+            category = ?, title = ?, pins = ?, content = ?,
+            line_start = ?, line_end = ?, content_hash = ?,
+            updated_at = datetime('now')
+          WHERE id = ?
+        `, [
+          item.category || null,
+          item.title || item.name,
+          JSON.stringify(item.pins || []),
+          item.content || JSON.stringify(item.data || {}),
+          item.lineStart || item.line || null,
+          item.lineEnd || item.line || null,
+          item.contentHash || null,
+          item.id
+        ]);
+        results.updated++;
+      } else {
+        results.unchanged++;
+      }
+    }
+  }
+
+  // Remove sections that are no longer in the index
+  const existingResult = db.exec('SELECT id FROM sections');
+  const existingIds = queryToRows(existingResult).map(r => r.id);
+
+  for (const existingId of existingIds) {
+    if (!indexSectionIds.has(existingId)) {
+      db.run('DELETE FROM sections WHERE id = ?', [existingId]);
+      results.deleted++;
+    }
+  }
+
+  saveDatabase();
+  return results;
+}
+
+/**
+ * Search sections by pins (keyword matching)
+ * @param {string[]} pins - Pins to match
+ * @param {Object} options - { limit, trackAccess }
+ * @returns {Object[]} - Matching sections with match scores
+ */
+async function searchSectionsByPins(pins, options = {}) {
+  await initDatabase();
+  const { limit = 20, trackAccess = true } = options;
+
+  const result = db.exec('SELECT * FROM sections');
+  const sections = queryToRows(result);
+
+  if (sections.length === 0) return [];
+
+  const pinsLower = pins.map(p => p.toLowerCase());
+
+  // Score each section by pin matches
+  const scored = sections.map(section => {
+    const sectionPins = safeParsePins(section.pins).map(p => p.toLowerCase());
+    const matchCount = pinsLower.filter(p => sectionPins.includes(p)).length;
+    const matchScore = pinsLower.length > 0 ? matchCount / pinsLower.length : 0;
+
+    return {
+      ...section,
+      pins: safeParsePins(section.pins),
+      matchCount,
+      matchScore
+    };
+  });
+
+  // Filter and sort
+  const matches = scored
+    .filter(s => s.matchCount > 0)
+    .sort((a, b) => b.matchScore - a.matchScore)
+    .slice(0, limit);
+
+  // Track access
+  if (trackAccess && matches.length > 0) {
+    const ids = matches.map(m => m.id);
+    db.run(`
+      UPDATE sections SET
+        access_count = access_count + 1,
+        last_accessed = datetime('now')
+      WHERE id IN (${ids.map(() => '?').join(',')})
+    `, ids);
+    saveDatabase();
+  }
+
+  return matches;
+}
+
+/**
+ * Search sections by semantic similarity (with embedding)
+ * Falls back to text search if embeddings unavailable
+ * @param {string} query - Search query
+ * @param {Object} options - { limit, category, trackAccess }
+ * @returns {Object[]} - Matching sections with similarity scores
+ */
+async function searchSectionsBySimilarity(query, options = {}) {
+  await initDatabase();
+  const { limit = 10, category = null, trackAccess = true } = options;
+
+  const queryEmbedding = await getEmbedding(query);
+
+  let sql = 'SELECT * FROM sections WHERE 1=1';
+  const params = [];
+
+  if (category) {
+    sql += ' AND category = ?';
+    params.push(category);
+  }
+
+  const result = db.exec(sql, params);
+  const sections = queryToRows(result);
+
+  if (sections.length === 0) return [];
+
+  let scored;
+  if (queryEmbedding) {
+    // Semantic search with embeddings
+    scored = sections.map(section => {
+      const embedding = section.embedding ? jsonToEmbedding(section.embedding) : [];
+      const similarity = embedding.length > 0 ? cosineSimilarity(queryEmbedding, embedding) : 0;
+      return { ...section, pins: safeParsePins(section.pins), similarity };
+    });
+  } else {
+    // Fallback: text matching
+    const queryLower = query.toLowerCase();
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+    scored = sections.map(section => {
+      const contentLower = (section.content + ' ' + section.title).toLowerCase();
+      const matches = queryWords.filter(w => contentLower.includes(w)).length;
+      const similarity = queryWords.length > 0 ? matches / queryWords.length : 0;
+      return { ...section, pins: safeParsePins(section.pins), similarity };
+    });
+  }
+
+  // Sort and limit
+  const matches = scored
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, limit);
+
+  // Track access
+  if (trackAccess && matches.length > 0) {
+    const ids = matches.filter(m => m.similarity > 0.1).map(m => m.id);
+    if (ids.length > 0) {
+      db.run(`
+        UPDATE sections SET
+          access_count = access_count + 1,
+          last_accessed = datetime('now')
+        WHERE id IN (${ids.map(() => '?').join(',')})
+      `, ids);
+      saveDatabase();
+    }
+  }
+
+  return matches;
+}
+
+/**
+ * Get section by ID
+ * @param {string} sectionId - Section ID
+ * @param {boolean} trackAccess - Whether to track access
+ * @returns {Object|null} - Section object or null
+ */
+async function getSectionById(sectionId, trackAccess = true) {
+  await initDatabase();
+
+  const result = db.exec('SELECT * FROM sections WHERE id = ?', [sectionId]);
+  const rows = queryToRows(result);
+
+  if (rows.length === 0) return null;
+
+  const section = rows[0];
+  section.pins = safeParsePins(section.pins);
+
+  // Track access
+  if (trackAccess) {
+    db.run(`
+      UPDATE sections SET
+        access_count = access_count + 1,
+        last_accessed = datetime('now')
+      WHERE id = ?
+    `, [sectionId]);
+    saveDatabase();
+  }
+
+  return section;
+}
+
+/**
+ * Get all sections from a source
+ * @param {string} source - Source file name (e.g., "decisions.md")
+ * @returns {Object[]} - All sections from that source
+ */
+async function getSectionsBySource(source) {
+  await initDatabase();
+
+  const result = db.exec('SELECT * FROM sections WHERE source = ? ORDER BY line_start', [source]);
+  const sections = queryToRows(result);
+
+  return sections.map(s => ({
+    ...s,
+    pins: safeParsePins(s.pins)
+  }));
+}
+
+/**
+ * Get section statistics
+ * @returns {Object} - Stats about sections
+ */
+async function getSectionStats() {
+  await initDatabase();
+
+  function count(sql, params = []) {
+    const result = db.exec(sql, params);
+    if (!result.length || !result[0].values.length) return 0;
+    return result[0].values[0][0];
+  }
+
+  function grouped(sql) {
+    const result = db.exec(sql);
+    if (!result.length) return {};
+    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
+  }
+
+  return {
+    total: count('SELECT COUNT(*) FROM sections'),
+    bySource: grouped('SELECT source, COUNT(*) FROM sections GROUP BY source'),
+    byCategory: grouped('SELECT category, COUNT(*) FROM sections GROUP BY category'),
+    neverAccessed: count('SELECT COUNT(*) FROM sections WHERE access_count = 0'),
+    topAccessed: queryToRows(db.exec(`
+      SELECT id, title, source, access_count
+      FROM sections
+      WHERE access_count > 0
+      ORDER BY access_count DESC
+      LIMIT 5
+    `))
+  };
+}
+
+/**
+ * Generate embeddings for sections that don't have them
+ * @returns {Object} - { generated, skipped, failed }
+ */
+async function generateSectionEmbeddings() {
+  await initDatabase();
+  const results = { generated: 0, skipped: 0, failed: 0 };
+
+  const result = db.exec('SELECT id, content, title FROM sections WHERE embedding IS NULL');
+  const sections = queryToRows(result);
+
+  for (const section of sections) {
+    try {
+      const text = `${section.title}\n${section.content}`;
+      const embedding = await getEmbedding(text);
+
+      if (embedding) {
+        db.run('UPDATE sections SET embedding = ? WHERE id = ?', [embeddingToJson(embedding), section.id]);
+        results.generated++;
+      } else {
+        results.skipped++;
+      }
+    } catch (err) {
+      results.failed++;
+    }
+  }
+
+  saveDatabase();
+  return results;
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -1103,6 +1479,15 @@ module.exports = {
   markFactPromoted,
   getPromotionCandidates,
   restoreFromColdStorage,
+
+  // Sections (Smart Context System)
+  syncSectionsFromIndex,
+  searchSectionsByPins,
+  searchSectionsBySimilarity,
+  getSectionById,
+  getSectionsBySource,
+  getSectionStats,
+  generateSectionEmbeddings,
 
   // Paths
   DB_PATH,

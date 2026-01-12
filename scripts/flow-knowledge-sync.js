@@ -3,6 +3,8 @@
 /**
  * Wogi Flow - Knowledge Sync
  *
+ * See MEMORY-ARCHITECTURE.md for how this fits with other memory/knowledge modules.
+ *
  * Detects drift in knowledge files (stack.md, architecture.md, testing.md)
  * by tracking hashes of project indicator files.
  *

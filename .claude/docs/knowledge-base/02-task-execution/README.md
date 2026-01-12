@@ -147,6 +147,25 @@ Understanding the trade-offs helps you configure WogiFlow for your needs:
 
 ---
 
+## Additional Features
+
+### External Integrations
+Import tasks from Jira and Linear for seamless project management integration.
+
+[Read more: External Integrations](./external-integrations.md)
+
+### Background Sync
+Keep workflow state synchronized across multiple sessions.
+
+[Read more: Sync Daemon](./sync-daemon.md)
+
+### Model Management
+Registry, routing, and statistics for multiple LLM providers.
+
+[Read more: Model Management](./model-management.md)
+
+---
+
 ## Related
 
 - [Commands Reference](../../commands.md) - All slash commands

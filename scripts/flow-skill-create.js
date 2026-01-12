@@ -5,6 +5,10 @@
  *
  * Creates new skills from templates with interactive prompts.
  *
+ * TODO: Consider consolidating with flow-skill-creator.js and
+ * flow-skill-generator.js into a single flow-skill.js with subcommands.
+ * See audit plan from 2026-01-12.
+ *
  * Usage:
  *   flow skill-create                  # Interactive mode
  *   flow skill-create <name>           # Create with name

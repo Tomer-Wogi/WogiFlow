@@ -3,6 +3,8 @@
 /**
  * Wogi Flow - Memory to Instructions Sync
  *
+ * See MEMORY-ARCHITECTURE.md for how this fits with other memory/knowledge modules.
+ *
  * Promotes high-relevance facts and patterns to decisions.md
  * This is the "self-editing core memory" feature.
  *

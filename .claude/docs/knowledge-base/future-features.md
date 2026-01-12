@@ -79,60 +79,6 @@ const LEARNING_TIERS = {
 
 ## Backlog Features
 
-### Jira/Linear Integration
-
-**Status**: Backlog
-
-Sync tasks with external project management tools:
-
-```json
-{
-  "integrations": {
-    "jira": {
-      "enabled": false,
-      "baseUrl": "https://company.atlassian.net",
-      "projectKey": "PROJ"
-    },
-    "linear": {
-      "enabled": false,
-      "apiKey": "$LINEAR_API_KEY",
-      "teamId": "TEAM-123"
-    }
-  }
-}
-```
-
-Commands:
-- `/wogi-external-tasks` - List assigned tasks
-- `/wogi-external-tasks PROJ-123` - Import specific task
-
-**Trigger**: Users request project management integration
-**Effort**: 1-2 days per integration
-
----
-
-### Cascade Fallback
-
-**Status**: Backlog
-
-If primary model fails 3x on same error, try alternate model:
-
-```json
-{
-  "cascade": {
-    "enabled": false,
-    "fallbackModel": null,
-    "maxFailuresBeforeEscalate": 3,
-    "escalateOnCategories": ["capability_mismatch", "context_overflow"]
-  }
-}
-```
-
-**Trigger**: Users with multiple models reporting "stuck on same error"
-**Requires**: Users with multiple models configured
-
----
-
 ### Quality Gate Confidence
 
 **Status**: Backlog
@@ -244,26 +190,6 @@ Execute independent subtasks on multiple models simultaneously.
 
 ---
 
-### Background Sync Daemon
-
-**Status**: Backlog
-
-Keep state in sync across multiple agent branches:
-
-```javascript
-const daemon = {
-  watchPaths: ['.workflow/state/'],
-  syncOnChange: true,
-  syncOnBranchSwitch: true,
-  heartbeatMs: 5000
-};
-```
-
-**Trigger**: Users report stale data when switching agent contexts
-**Risk**: Over-engineering for single-agent workflows
-
----
-
 ## Skipped Features
 
 We're skeptical these add value without strong evidence.
@@ -297,6 +223,20 @@ These were on the backlog but have been completed:
 
 | Feature | Implementation |
 |---------|---------------|
+| Jira Integration | flow-jira-integration.js - `flow jira list/sync/push` |
+| Linear Integration | flow-linear-integration.js - `flow linear list/sync/push` |
+| Cascade Fallback | flow-cascade.js - `flow cascade status/reset/config` |
+| Background Sync Daemon | flow-sync-daemon.js - `flow sync-daemon start/stop/status` |
+| PRD Management | flow-prd-manager.js - `flow prd load/context/list/clear` |
+| Memory Sync | flow-memory-sync.js - `flow memory-sync --auto` |
+| Entropy Monitor | flow-entropy-monitor.js - `flow entropy --auto` |
+| Model Registry & Stats | flow-models.js - `flow models list/info/route/stats` |
+| Model Router | flow-model-router.js - `flow route "<task>"` |
+| Multi-Approach | flow-multi-approach.js - `flow multi-approach` |
+| Complexity Assessment | flow-complexity.js - `flow complexity "<task>"` |
+| Metrics & Analysis | flow-metrics.js - `flow metrics --problems` |
+| Release Channels | lib/release-channel.js - `flow channel show/set/list` |
+| Tiered Learning | flow-tiered-learning.js - `flow learning tiers/stats` |
 | Failure Category Enum | `ERROR_CATEGORIES` in flow-adaptive-learning.js |
 | Strategy Effectiveness | `flow hybrid learning effectiveness` |
 | Learning Deduplication | 7-day window in flow-adaptive-learning.js |
