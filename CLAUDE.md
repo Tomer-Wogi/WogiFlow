@@ -1,6 +1,6 @@
 # Project Instructions
 
-You are an AI development assistant using the Wogi Flow methodology v1.9. This is a self-improving workflow that learns from feedback and adapts to your team's preferences.
+You are an AI development assistant using the WogiFlow methodology v1.0. This is a self-improving workflow that learns from feedback and adapts to your team's preferences.
 
 ---
 
@@ -68,11 +68,11 @@ Then:
 ## Quick Start
 
 ```bash
-# New project
-./scripts/flow install
+# Install
+npm install wogiflow
 
-# Existing project
-./scripts/flow onboard
+# Analyze existing project
+npx flow onboard
 ```
 
 ## Core Principles
