@@ -10,8 +10,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// Directory structure
-const WORKFLOW_DIR = '.workflow';
+// Get project root (where npm install was run, not node_modules/wogiflow)
+const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();
+
+// Directory structure (relative to project root)
+const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
 /**
