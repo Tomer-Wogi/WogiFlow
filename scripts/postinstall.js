@@ -82,14 +82,25 @@ async function runWizard() {
  * Main entry point
  */
 async function main() {
+  // Always create minimal structure first
+  createMinimalStructure();
+
   if (shouldSkipWizard()) {
-    // Silent minimal setup for CI/non-interactive
-    createMinimalStructure();
+    // Silent for CI/non-interactive
     return;
   }
 
-  // Run the full wizard
-  await runWizard();
+  // Show setup instructions (wizard doesn't work well in postinstall due to TTY issues)
+  console.log('');
+  console.log('\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
+  console.log('\x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m');
+  console.log('\x1b[36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
+  console.log('');
+  console.log('  \x1b[33mNext step:\x1b[0m Run the setup wizard:');
+  console.log('');
+  console.log('    \x1b[36mnpx flow onboard\x1b[0m    \x1b[2m# For existing projects (recommended)\x1b[0m');
+  console.log('    \x1b[36mnpx flow init\x1b[0m       \x1b[2m# For new projects\x1b[0m');
+  console.log('');
 }
 
 // Run
