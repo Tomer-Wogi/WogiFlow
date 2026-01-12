@@ -81,26 +81,29 @@ async function main() {
 
   // Already initialized - short message
   if (isAlreadyInitialized()) {
-    console.log('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.');
+    // Use stderr - npm suppresses stdout from postinstall
+    process.stderr.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
     return;
   }
 
-  // Show setup instructions (always show, even without TTY)
-  console.log('');
-  console.log('\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
-  console.log('\x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m');
-  console.log('\x1b[36m╚════════════════════════════════════════════════════════════╝\x1b[0m');
-  console.log('');
-  console.log('  \x1b[33mNext step:\x1b[0m Run the setup wizard:');
-  console.log('');
-  console.log('    \x1b[36mnpx flow onboard\x1b[0m    \x1b[2m# For existing projects (recommended)\x1b[0m');
-  console.log('    \x1b[36mnpx flow init\x1b[0m       \x1b[2m# For new projects\x1b[0m');
-  console.log('');
+  // Show setup instructions using stderr (npm suppresses stdout from postinstall)
+  const msg = `
+\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m
+\x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m
+\x1b[36m╚════════════════════════════════════════════════════════════╝\x1b[0m
+
+  \x1b[33mNext step:\x1b[0m Run the setup wizard:
+
+    \x1b[36mnpx flow onboard\x1b[0m    \x1b[2m# For existing projects (recommended)\x1b[0m
+    \x1b[36mnpx flow init\x1b[0m       \x1b[2m# For new projects\x1b[0m
+
+`;
+  process.stderr.write(msg);
 }
 
 // Run
 main().catch((err) => {
   // Don't fail npm install on postinstall errors
-  console.log(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}`);
+  process.stderr.write(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}\n`);
   createMinimalStructure();
 });
