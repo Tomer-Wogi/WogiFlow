@@ -12,7 +12,7 @@
 const path = require('path');
 
 // Import from parent scripts directory
-const { getConfig, getReadyData, findTask, PATHS } = require('../../flow-utils');
+const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS } = require('../../flow-utils');
 
 /**
  * Check if task gating should be enforced
@@ -65,6 +65,48 @@ function getActiveTask() {
     return null;
   } catch (err) {
     // If we can't read state, assume no active task
+    return null;
+  }
+}
+
+/**
+ * Create a quick task for ad-hoc edits when no task is active.
+ * This prevents blocking while maintaining task tracking.
+ *
+ * @param {string} filePath - The file being edited
+ * @param {string} operation - 'edit' or 'write'
+ * @returns {Object|null} The created task or null on failure
+ */
+function createQuickTask(filePath, operation) {
+  try {
+    const fileName = filePath ? path.basename(filePath) : 'unknown';
+    const title = `${operation === 'write' ? 'Create' : 'Fix'} ${fileName}`;
+    const taskId = generateTaskId(title);
+
+    const task = {
+      id: taskId,
+      title,
+      type: 'bugfix',
+      feature: 'general',
+      status: 'in_progress',
+      priority: 'P2',
+      startedAt: new Date().toISOString(),
+      autoCreated: true
+    };
+
+    // Add to inProgress
+    const readyData = getReadyData();
+    readyData.inProgress = readyData.inProgress || [];
+    readyData.inProgress.unshift(task);
+
+    saveReadyData(readyData);
+
+    return task;
+  } catch (err) {
+    // If creation fails, return null - checkTaskGate will fall back to blocking
+    if (process.env.DEBUG) {
+      console.error(`[task-gate] Failed to create quick task: ${err.message}`);
+    }
     return null;
   }
 }
@@ -136,7 +178,20 @@ function checkTaskGate(options = {}) {
     };
   }
 
-  // Block the operation
+  // Auto-create a quick task instead of blocking
+  const autoTask = createQuickTask(filePath, operation);
+
+  if (autoTask) {
+    return {
+      allowed: true,
+      blocked: false,
+      message: `Auto-created task: ${autoTask.id} - ${autoTask.title}`,
+      task: autoTask,
+      reason: 'task_auto_created'
+    };
+  }
+
+  // Fall back to blocking if auto-create failed
   return {
     allowed: false,
     blocked: true,
@@ -172,6 +227,7 @@ module.exports = {
   isTaskGatingEnabled,
   getActiveTask,
   checkTaskGate,
+  createQuickTask,
   generateBlockMessage,
   generateWarningMessage
 };
