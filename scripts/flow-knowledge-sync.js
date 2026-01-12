@@ -33,7 +33,8 @@ const {
   info,
   getConfig,
   isPathWithinProject,
-  safeJsonParse
+  safeJsonParse,
+  getSpecFilePath
 } = require('./flow-utils');
 
 // Files that indicate stack/architecture changes
@@ -361,10 +362,10 @@ function checkAllDrift() {
     testing: checkCategoryDrift('testing', TESTING_INDICATORS, syncState)
   };
 
-  // Check if knowledge files exist
-  results.stack.fileExists = fileExists(PATHS.stackMd);
-  results.architecture.fileExists = fileExists(PATHS.architectureMd);
-  results.testing.fileExists = fileExists(PATHS.testingMd);
+  // Check if knowledge files exist (checks new specs/ location first, then old state/)
+  results.stack.fileExists = getSpecFilePath('stack', { warnOnOld: false }) !== null;
+  results.architecture.fileExists = getSpecFilePath('architecture', { warnOnOld: false }) !== null;
+  results.testing.fileExists = getSpecFilePath('testing', { warnOnOld: false }) !== null;
 
   // Overall status
   const anyDrift = Object.values(results).some(r => r.needsRegeneration);
@@ -409,9 +410,9 @@ function printStatus(driftStatus) {
   console.log('');
 
   const categories = [
-    { key: 'stack', name: 'Stack (stack.md)', file: PATHS.stackMd },
-    { key: 'architecture', name: 'Architecture (architecture.md)', file: PATHS.architectureMd },
-    { key: 'testing', name: 'Testing (testing.md)', file: PATHS.testingMd }
+    { key: 'stack', name: 'Stack (stack.md)', file: getSpecFilePath('stack', { warnOnOld: false, preferNew: true }) },
+    { key: 'architecture', name: 'Architecture (architecture.md)', file: getSpecFilePath('architecture', { warnOnOld: false, preferNew: true }) },
+    { key: 'testing', name: 'Testing (testing.md)', file: getSpecFilePath('testing', { warnOnOld: false, preferNew: true }) }
   ];
 
   for (const { key, name, file } of categories) {

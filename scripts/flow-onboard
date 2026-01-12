@@ -555,7 +555,9 @@ generate_stack_md() {
     local test_command=$(echo "$test_info" | cut -d'|' -f2)
     local node_version=$(node --version 2>/dev/null || echo "unknown")
 
-    cat > "$WORKFLOW_DIR/state/stack.md" << EOF
+    # Ensure specs directory exists
+    mkdir -p "$WORKFLOW_DIR/specs"
+    cat > "$WORKFLOW_DIR/specs/stack.md" << EOF
 # Tech Stack
 
 > Auto-generated during onboarding. Keep synced with project changes.
@@ -598,7 +600,7 @@ generate_architecture_md() {
 
     local arch_pattern=$(detect_architecture_pattern)
 
-    cat > "$WORKFLOW_DIR/state/architecture.md" << EOF
+    cat > "$WORKFLOW_DIR/specs/architecture.md" << EOF
 # Architecture Overview
 
 > Auto-generated during onboarding. Update when architecture changes.
@@ -663,7 +665,7 @@ generate_testing_md() {
     local test_command=$(echo "$test_info" | cut -d'|' -f2)
     local test_count=$(find . -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | wc -l | tr -d ' ')
 
-    cat > "$WORKFLOW_DIR/state/testing.md" << EOF
+    cat > "$WORKFLOW_DIR/specs/testing.md" << EOF
 # Testing Guide
 
 > Auto-generated during onboarding. Update when test setup changes.
@@ -919,9 +921,9 @@ print_summary() {
     echo ""
     echo "Generated:"
     echo "  • .workflow/specs/project.md       - Project specification"
-    echo "  • .workflow/state/stack.md         - Tech stack details"
-    echo "  • .workflow/state/architecture.md  - Architecture overview"
-    echo "  • .workflow/state/testing.md       - Testing guide"
+    echo "  • .workflow/specs/stack.md         - Tech stack details"
+    echo "  • .workflow/specs/architecture.md  - Architecture overview"
+    echo "  • .workflow/specs/testing.md       - Testing guide"
     echo "  • .workflow/state/app-map.md       - Component registry"
     echo "  • .workflow/state/decisions.md     - Coding patterns"
     [ -n "$KNOWN_ISSUES" ] && echo "  • .workflow/changes/onboarding/    - Initial tasks"

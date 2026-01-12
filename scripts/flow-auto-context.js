@@ -21,7 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const {
   getProjectRoot,
   getConfig,
@@ -32,7 +32,8 @@ const {
   AST_PATTERNS,
   findReactComponents,
   findCustomHooks,
-  findTypeDefinitions
+  findTypeDefinitions,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // Semantic memory search (optional - may not be initialized)
@@ -224,6 +225,71 @@ function inferTaskType(keywords) {
 // ============================================================
 
 /**
+ * Search traces/ for relevant code flow traces
+ * @param {object} keywords - Extracted keywords object
+ * @returns {Array} Matching trace results
+ */
+function searchTraces(keywords) {
+  const results = [];
+  const tracesDir = path.join(PATHS.traces || path.join(PATHS.workflow, 'traces'));
+
+  if (!fs.existsSync(tracesDir)) return results;
+
+  try {
+    const files = fs.readdirSync(tracesDir).filter(f => f.endsWith('.md') && f !== '.gitkeep');
+    const allKeywords = [...keywords.high, ...keywords.medium].map(k => k.toLowerCase());
+
+    for (const file of files) {
+      const traceName = file.replace('.md', '');
+      const tracePath = path.join(tracesDir, file);
+
+      try {
+        const content = fs.readFileSync(tracePath, 'utf-8');
+        const firstLines = content.split('\n').slice(0, 30).join(' ').toLowerCase();
+
+        // Check if trace matches any keywords
+        let matchScore = 0;
+        let matchedKeywords = [];
+
+        for (const keyword of allKeywords) {
+          if (traceName.toLowerCase().includes(keyword)) {
+            matchScore += 3; // Name match is strong
+            matchedKeywords.push(keyword);
+          } else if (firstLines.includes(keyword)) {
+            matchScore += 1; // Content match is weaker
+            matchedKeywords.push(keyword);
+          }
+        }
+
+        if (matchScore > 0) {
+          // Extract query from trace file
+          const queryMatch = content.match(/> Query: "([^"]+)"/);
+          const statusMatch = content.match(/> Status: ([^\n]+)/);
+
+          results.push({
+            source: 'trace',
+            path: path.relative(PROJECT_ROOT, tracePath),
+            name: traceName,
+            query: queryMatch ? queryMatch[1] : traceName,
+            status: statusMatch ? statusMatch[1] : 'unknown',
+            matchedKeywords,
+            score: matchScore + 4 // Bonus for being a trace (high value)
+          });
+        }
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+
+    // Sort by score and limit
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, 3); // Max 3 traces
+  } catch {
+    return results;
+  }
+}
+
+/**
  * Search app-map.md for matching components
  */
 function searchAppMap(keywords) {
@@ -351,13 +417,23 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
 
   for (const keyword of searchKeywords) {
     try {
-      // Case-insensitive grep for the keyword
-      const output = execSync(
-        `grep -ril "${keyword}" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" "${srcDir}" 2>/dev/null | head -20`,
-        { encoding: 'utf-8', timeout: 5000 }
-      );
+      // Case-insensitive grep for the keyword (using spawnSync to prevent command injection)
+      const grepResult = spawnSync('grep', [
+        '-ril',
+        keyword,
+        '--include=*.ts',
+        '--include=*.tsx',
+        '--include=*.js',
+        '--include=*.jsx',
+        srcDir
+      ], {
+        encoding: 'utf-8',
+        timeout: 5000,
+        stdio: ['pipe', 'pipe', 'ignore'] // Ignore stderr (equivalent to 2>/dev/null)
+      });
 
-      const files = output.split('\n').filter(f => f.trim());
+      const output = grepResult.stdout || '';
+      const files = output.split('\n').filter(f => f.trim()).slice(0, 20); // Limit to 20 results
       totalMatches += files.length;
 
       for (const file of files) {
@@ -367,7 +443,7 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
         if (!results.some(r => r.path === relPath)) {
           // Optionally read file content with truncation
           let content = null;
-          if (cfg.autoContext?.includeContent) {
+          if (cfg.autoContext?.includeContent && isPathWithinProject(file)) {
             try {
               const fullContent = fs.readFileSync(file, 'utf-8');
               const lines = fullContent.split('\n');
@@ -543,6 +619,12 @@ async function enrichWithLSP(fileResults, config) {
   if (filesToEnrich.length === 0) return fileResults;
 
   try {
+    // Create timeout with cleanup to prevent resource leak
+    let timeoutId;
+    const timeoutPromise = new Promise(resolve => {
+      timeoutId = setTimeout(() => resolve(filesToEnrich), timeout);
+    });
+
     const enriched = await Promise.race([
       Promise.all(filesToEnrich.map(async (result) => {
         try {
@@ -566,9 +648,11 @@ async function enrichWithLSP(fileResults, config) {
           return result; // Graceful fallback for individual files
         }
       })),
-      // Timeout fallback - return original results if LSP takes too long
-      new Promise(resolve => setTimeout(() => resolve(filesToEnrich), timeout))
+      timeoutPromise
     ]);
+
+    // Clean up timeout to prevent resource leak
+    clearTimeout(timeoutId);
 
     // Merge enriched results back into full list
     const enrichedMap = new Map(enriched.map(r => [r.path, r]));
@@ -742,8 +826,12 @@ async function getAutoContext(description, options = {}) {
   // v2.2: Search semantic memory (async)
   const semanticResults = await searchSemanticMemory(keywords, config);
 
+  // v1.0.4: Search for relevant traces (high value context)
+  const traceResults = searchTraces(keywords);
+
   // Gather context from all sources (pass config for truncation settings)
   const allResults = [
+    ...traceResults,  // v1.0.4: Include relevant traces first
     ...searchAppMap(keywords),
     ...searchComponentIndex(keywords, config),
     ...searchWithAstGrep(keywords, taskType, config),  // AST-grep search (if enabled)
@@ -994,6 +1082,7 @@ async function main() {
 
 module.exports = {
   extractKeywords,
+  searchTraces,          // v1.0.4: Search code flow traces
   searchAppMap,
   searchComponentIndex,
   grepCodebase,

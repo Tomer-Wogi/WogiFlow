@@ -4,12 +4,19 @@
  * Wogi Flow - Health Check
  *
  * Verifies workflow files are in sync and properly configured.
+ *
+ * Usage:
+ *   flow health         Standard health check
+ *   flow health --deep  Deep audit with folder/file analysis
+ *   flow health --json  JSON output
  */
 
+const fs = require('fs');
 const path = require('path');
 const {
   PATHS,
   PROJECT_ROOT,
+  WORKFLOW_DIR,
   fileExists,
   dirExists,
   validateJson,
@@ -20,10 +27,15 @@ const {
   countFiles,
   color,
   printSection,
+  printHeader,
   success,
   warn,
   error,
-  validatePermissions
+  info,
+  validatePermissions,
+  parseFlags,
+  outputJson,
+  checkSpecMigration
 } = require('./flow-utils');
 
 function main() {
@@ -136,11 +148,12 @@ function main() {
   console.log('');
   printSection('Checking knowledge files...');
 
-  // Use paths from PATHS constant (defined in flow-utils.js)
+  // Use getSpecFilePath for backward compatibility (checks specs/ then state/)
+  const { getSpecFilePath } = require('./flow-utils');
   const knowledgeFiles = [
-    { path: PATHS.stackMd, name: 'stack.md', category: 'stack' },
-    { path: PATHS.architectureMd, name: 'architecture.md', category: 'architecture' },
-    { path: PATHS.testingMd, name: 'testing.md', category: 'testing' },
+    { path: getSpecFilePath('stack', { warnOnOld: false }) || PATHS.specsStack, name: 'stack.md', category: 'stack' },
+    { path: getSpecFilePath('architecture', { warnOnOld: false }) || PATHS.specsArchitecture, name: 'architecture.md', category: 'architecture' },
+    { path: getSpecFilePath('testing', { warnOnOld: false }) || PATHS.specsTesting, name: 'testing.md', category: 'testing' },
   ];
 
   // Try to load drift detection
@@ -208,7 +221,6 @@ function main() {
 
   const claudeMdPath = path.join(PROJECT_ROOT, 'CLAUDE.md');
   if (fileExists(claudeMdPath)) {
-    const fs = require('fs');
     const claudeMdContent = fs.readFileSync(claudeMdPath, 'utf-8');
     const claudeMdSize = fs.statSync(claudeMdPath).size;
     const sizeKb = Math.round(claudeMdSize / 1024);
@@ -240,7 +252,7 @@ function main() {
     const configResult = validateJson(PATHS.config);
     if (configResult.valid) {
       try {
-        const config = JSON.parse(require('fs').readFileSync(PATHS.config, 'utf-8'));
+        const config = JSON.parse(fs.readFileSync(PATHS.config, 'utf-8'));
         if (config.enforcement?.strictMode === true) {
           console.log(`  ${color('green', '✓')} Strict mode: ENABLED`);
         } else if (config.enforcement?.strictMode === false) {
@@ -287,7 +299,7 @@ function main() {
   const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.local.json');
   if (fileExists(settingsPath)) {
     try {
-      const settings = JSON.parse(require('fs').readFileSync(settingsPath, 'utf-8'));
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
       const permissions = settings.permissions?.allow || [];
 
       // Use shared validation function
@@ -407,7 +419,230 @@ function main() {
     console.log("Run './scripts/flow init' to fix missing files");
   }
 
-  process.exit(issues > 0 ? 1 : 0);
+  return { issues, warnings };
 }
 
-main();
+// ============================================================
+// Deep Audit (v1.0.4)
+// ============================================================
+
+/**
+ * Check if a directory is empty (ignoring .gitkeep)
+ */
+function isDirEmpty(dirPath) {
+  if (!dirExists(dirPath)) return true;
+  const files = fs.readdirSync(dirPath).filter(f => f !== '.gitkeep');
+  return files.length === 0;
+}
+
+/**
+ * Check if directory has subdirectories
+ */
+function hasSubdirs(dirPath) {
+  if (!dirExists(dirPath)) return false;
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  return entries.some(e => e.isDirectory());
+}
+
+/**
+ * Load manifest if it exists
+ */
+function loadManifest() {
+  const manifestPath = path.join(WORKFLOW_DIR, 'manifest.json');
+  if (fileExists(manifestPath)) {
+    try {
+      return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Deep audit function - checks for structural issues
+ */
+function deepAudit(flags = {}) {
+  const issues = [];
+  const manifest = loadManifest();
+
+  printHeader('DEEP HEALTH AUDIT');
+  console.log('');
+
+  // 1. Check empty directories
+  printSection('Empty Directories');
+  const expectedDirs = [
+    { path: path.join(WORKFLOW_DIR, 'traces'), name: 'traces/', purpose: 'Code flow traces from /wogi-trace' },
+    { path: path.join(WORKFLOW_DIR, 'checkpoints'), name: 'checkpoints/', purpose: 'Session state snapshots' },
+    { path: path.join(WORKFLOW_DIR, 'corrections'), name: 'corrections/', purpose: 'Individual correction records from /wogi-correct' }
+  ];
+
+  for (const dir of expectedDirs) {
+    if (dirExists(dir.path) && isDirEmpty(dir.path)) {
+      console.log(`  ${color('yellow', '⚠')} ${dir.name}`);
+      console.log(`      Purpose: ${dir.purpose}`);
+      console.log(`      Action: Run the feature or document why empty`);
+      issues.push({
+        type: 'empty_directory',
+        severity: 'warning',
+        path: dir.name,
+        message: `Empty directory - ${dir.purpose}`,
+        suggestion: 'Run the feature or remove if unneeded'
+      });
+    } else if (dirExists(dir.path)) {
+      const count = fs.readdirSync(dir.path).filter(f => f !== '.gitkeep').length;
+      console.log(`  ${color('green', '✓')} ${dir.name} (${count} files)`);
+    } else {
+      console.log(`  ${color('dim', '○')} ${dir.name} (not created)`);
+    }
+  }
+
+  // 2. Check misplaced files
+  console.log('');
+  printSection('Misplaced Files');
+
+  const specMigrations = checkSpecMigration();
+  if (specMigrations.length > 0) {
+    for (const file of specMigrations) {
+      console.log(`  ${color('yellow', '⚠')} ${file.name}.md`);
+      console.log(`      Current: state/${file.name}.md`);
+      console.log(`      Should be: specs/${file.name}.md`);
+      console.log(`      Action: Run 'flow migrate specs'`);
+      issues.push({
+        type: 'misplaced_file',
+        severity: 'warning',
+        file: file.name,
+        from: `state/${file.name}.md`,
+        to: `specs/${file.name}.md`,
+        suggestion: "Run 'flow migrate specs' to move"
+      });
+    }
+  } else {
+    console.log(`  ${color('green', '✓')} All spec files in correct location`);
+  }
+
+  // 3. Check rules structure
+  console.log('');
+  printSection('Rules Structure');
+
+  const rulesDir = path.join(PROJECT_ROOT, '.claude', 'rules');
+  if (dirExists(rulesDir)) {
+    const rulesHasSubdirs = hasSubdirs(rulesDir);
+    const ruleFiles = fs.readdirSync(rulesDir).filter(f => f.endsWith('.md'));
+
+    if (rulesHasSubdirs) {
+      const subdirs = fs.readdirSync(rulesDir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => e.name);
+      console.log(`  ${color('green', '✓')} Categorized structure (${subdirs.join(', ')})`);
+    } else {
+      console.log(`  ${color('yellow', '⚠')} Flat structure (${ruleFiles.length} files, no subdirs)`);
+      console.log(`      Suggestion: Organize into code-style/, security/, architecture/`);
+      issues.push({
+        type: 'unstructured',
+        severity: 'suggestion',
+        path: '.claude/rules/',
+        message: `Rules are flat (${ruleFiles.length} files, 0 subdirs)`,
+        suggestion: 'Organize into code-style/, security/, architecture/'
+      });
+    }
+  } else {
+    console.log(`  ${color('dim', '○')} .claude/rules/ not found`);
+  }
+
+  // 4. Check for orphaned implementations
+  console.log('');
+  printSection('Feature Coverage');
+
+  const features = [
+    { name: 'Traces', script: 'scripts/flow-trace', folder: 'traces/', skill: '.claude/commands/wogi-trace.md' },
+    { name: 'Checkpoints', script: 'scripts/flow-checkpoint.js', folder: 'checkpoints/', skill: '.claude/commands/wogi-checkpoint.md' },
+    { name: 'Corrections', script: 'scripts/flow-correct.js', folder: 'corrections/', skill: '.claude/commands/wogi-correct.md' }
+  ];
+
+  for (const feature of features) {
+    const scriptExists = fileExists(path.join(PROJECT_ROOT, feature.script));
+    const folderExists = dirExists(path.join(WORKFLOW_DIR, feature.folder.replace('/', '')));
+    const skillExists = fileExists(path.join(PROJECT_ROOT, feature.skill));
+
+    if (scriptExists && folderExists) {
+      console.log(`  ${color('green', '✓')} ${feature.name}: script + folder`);
+    } else if (scriptExists && !folderExists) {
+      console.log(`  ${color('yellow', '⚠')} ${feature.name}: script exists but folder missing`);
+      issues.push({
+        type: 'missing_folder',
+        severity: 'warning',
+        feature: feature.name,
+        message: `Script exists but ${feature.folder} missing`
+      });
+    } else if (!scriptExists && folderExists) {
+      console.log(`  ${color('yellow', '⚠')} ${feature.name}: folder exists but no script`);
+      issues.push({
+        type: 'missing_script',
+        severity: 'warning',
+        feature: feature.name,
+        message: `${feature.folder} exists but no script`
+      });
+    } else {
+      console.log(`  ${color('dim', '○')} ${feature.name}: not implemented`);
+    }
+  }
+
+  // 5. Check manifest
+  console.log('');
+  printSection('Folder Manifest');
+
+  if (manifest) {
+    console.log(`  ${color('green', '✓')} manifest.json found`);
+    const folderCount = Object.keys(manifest.folders || {}).length;
+    console.log(`      ${folderCount} folder(s) documented`);
+  } else {
+    console.log(`  ${color('yellow', '⚠')} manifest.json not found`);
+    console.log(`      Suggestion: Create .workflow/manifest.json to document folder purposes`);
+    issues.push({
+      type: 'missing_manifest',
+      severity: 'suggestion',
+      message: 'No folder manifest found',
+      suggestion: 'Create .workflow/manifest.json to document folder purposes'
+    });
+  }
+
+  // Summary
+  console.log('');
+  console.log('═'.repeat(56));
+
+  const warnings = issues.filter(i => i.severity === 'warning').length;
+  const suggestions = issues.filter(i => i.severity === 'suggestion').length;
+  const errors = issues.filter(i => i.severity === 'error').length;
+
+  console.log(`Summary: ${errors} error(s), ${warnings} warning(s), ${suggestions} suggestion(s)`);
+
+  if (flags.json) {
+    outputJson({
+      success: errors === 0,
+      issues,
+      summary: { errors, warnings, suggestions }
+    });
+  }
+
+  return { issues, errors, warnings, suggestions };
+}
+
+// ============================================================
+// Main with flags
+// ============================================================
+
+function run() {
+  const args = process.argv.slice(2);
+  const { flags } = parseFlags(args);
+
+  if (flags.deep) {
+    const result = deepAudit(flags);
+    process.exit(result.errors > 0 ? 1 : 0);
+  } else {
+    const result = main();
+    process.exit(result.issues > 0 ? 1 : 0);
+  }
+}
+
+run();

@@ -35,9 +35,15 @@ mcp-memory-server/node_modules/
 .workflow/state/progress.md
 .workflow/state/session-state.json
 .workflow/state/knowledge-sync.json
+# Legacy locations (deprecated in v1.0.4 - will be removed in v2.0)
 .workflow/state/architecture.md
 .workflow/state/stack.md
 .workflow/state/testing.md
+
+# New locations (v1.0.4+)
+.workflow/specs/architecture.md
+.workflow/specs/stack.md
+.workflow/specs/testing.md
 .workflow/state/durable-history.json
 .workflow/state/hybrid-session.json
 .workflow/state/gate-confidence.json

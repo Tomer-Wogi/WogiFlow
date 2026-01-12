@@ -238,9 +238,14 @@ Before compacting: Update progress.md, ensure request-log is current, commit wor
 ## Handling Feedback
 
 When corrected:
-1. Fix it
-2. Determine scope and update correct location
-3. Commit and log to feedback-patterns.md
+1. Fix it immediately
+2. Run `/wogi-correct "brief description"` to record the learning
+3. Determine scope (see Improvement Placement below)
+4. Update the appropriate location and commit
+
+**Why record corrections?**
+- Individual records stored in `.workflow/corrections/` for searchable history
+- Aggregated patterns in `feedback-patterns.md` for AI context
 
 ### Improvement Placement
 

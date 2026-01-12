@@ -16,7 +16,7 @@ const {
   error,
   getConfig
 } = require('./flow-utils');
-const { getAutoContext, formatAutoContext } = require('./flow-auto-context');
+const { getAutoContext, formatAutoContext, searchTraces, extractKeywords } = require('./flow-auto-context');
 const { shouldUseMultiApproach, analyzeForMultiApproach, formatAnalysis } = require('./flow-multi-approach');
 const { assessTaskComplexity } = require('./flow-complexity');
 
@@ -204,6 +204,29 @@ async function main() {
     } catch (err) {
       // Auto-context is best-effort; don't block task start on failure
       if (process.env.DEBUG) console.error(`[DEBUG] Auto-context: ${err.message}`);
+    }
+  }
+
+  // v1.0.4: Suggest trace generation for complex tasks
+  if (config.traces?.suggestForComplex !== false) {
+    try {
+      const complexity = assessTaskComplexity(taskDescription);
+      const keywords = extractKeywords(taskDescription);
+      const existingTraces = searchTraces(keywords);
+
+      // Suggest trace if complex and no relevant trace exists
+      if (complexity.level === 'high' && existingTraces.length === 0) {
+        console.log('');
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log(color('cyan', '📍 Trace Suggestion'));
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log('This is a complex task with no existing code trace.');
+        console.log('Consider generating a trace first to understand the code flow.');
+        console.log(`  Run: ${color('cyan', `flow trace "${taskDescription}"`)}`);
+        console.log('');
+      }
+    } catch {
+      // Ignore trace suggestion errors
     }
   }
 

@@ -146,10 +146,16 @@ const PATHS = {
   rules: path.join(CLAUDE_DIR, 'rules'),
   commands: path.join(CLAUDE_DIR, 'commands'),
   // Knowledge files (Phase 0.4 - synced documentation)
+  // NOTE: These are DEPRECATED - use specsStack, specsArchitecture, specsTesting instead
+  // Kept for backward compatibility, will be removed in v2.0
   stackMd: path.join(STATE_DIR, 'stack.md'),
   architectureMd: path.join(STATE_DIR, 'architecture.md'),
   testingMd: path.join(STATE_DIR, 'testing.md'),
   knowledgeSync: path.join(STATE_DIR, 'knowledge-sync.json'),
+  // Spec files (v1.0.4 - moved from state/ to specs/)
+  specsStack: path.join(WORKFLOW_DIR, 'specs', 'stack.md'),
+  specsArchitecture: path.join(WORKFLOW_DIR, 'specs', 'architecture.md'),
+  specsTesting: path.join(WORKFLOW_DIR, 'specs', 'testing.md'),
 };
 
 // ============================================================
@@ -751,16 +757,35 @@ function invalidateConfigCache() {
   _configMtime = null;
 }
 
+// Dangerous property names that could lead to prototype pollution
+const DANGEROUS_CONFIG_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Validate config path doesn't contain dangerous property names
+ * @param {string} configPath - Dot-notation path
+ * @returns {boolean} True if path is safe
+ */
+function isValidConfigPath(configPath) {
+  if (!configPath || typeof configPath !== 'string') return false;
+  const parts = configPath.split('.');
+  return parts.every(part => part && !DANGEROUS_CONFIG_PROPS.has(part));
+}
+
 /**
  * Get a config value by path (e.g., 'testing.runBeforeCommit')
  */
 function getConfigValue(configPath, defaultValue = null) {
+  // Validate path to prevent prototype pollution
+  if (!isValidConfigPath(configPath)) {
+    return defaultValue;
+  }
+
   const config = getConfig();
   const parts = configPath.split('.');
   let value = config;
 
   for (const part of parts) {
-    if (value && typeof value === 'object' && part in value) {
+    if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, part)) {
       value = value[part];
     } else {
       return defaultValue;
@@ -779,6 +804,11 @@ function getConfigValue(configPath, defaultValue = null) {
  * @throws {Error} If lock cannot be acquired after retries
  */
 async function setConfigValue(configPath, newValue) {
+  // Validate path to prevent prototype pollution
+  if (!isValidConfigPath(configPath)) {
+    throw new Error(`Invalid config path: ${configPath}`);
+  }
+
   // Use file lock to prevent concurrent writes
   const lockPath = PATHS.config;
   let release;
@@ -800,7 +830,7 @@ async function setConfigValue(configPath, newValue) {
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
-      if (!(part in obj)) {
+      if (!Object.prototype.hasOwnProperty.call(obj, part)) {
         obj[part] = {};
       }
       obj = obj[part];
@@ -819,13 +849,18 @@ async function setConfigValue(configPath, newValue) {
  * Use setConfigValue for concurrent-safe writes
  */
 function setConfigValueSync(configPath, newValue) {
+  // Validate path to prevent prototype pollution
+  if (!isValidConfigPath(configPath)) {
+    throw new Error(`Invalid config path: ${configPath}`);
+  }
+
   const config = getConfig();
   const parts = configPath.split('.');
   let obj = config;
 
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    if (!(part in obj)) {
+    if (!Object.prototype.hasOwnProperty.call(obj, part)) {
       obj[part] = {};
     }
     obj = obj[part];
@@ -2101,6 +2136,85 @@ function isCodeContent(content) {
 }
 
 // ============================================================
+// Spec File Path Resolution (v1.0.4 Migration Support)
+// ============================================================
+
+/**
+ * Spec file name to PATHS key mapping
+ */
+const SPEC_FILE_MAP = {
+  stack: { new: 'specsStack', old: 'stackMd' },
+  architecture: { new: 'specsArchitecture', old: 'architectureMd' },
+  testing: { new: 'specsTesting', old: 'testingMd' }
+};
+
+/**
+ * Get the path for a spec file with backward compatibility.
+ * Checks new location (specs/) first, falls back to old (state/).
+ *
+ * @param {string} name - Spec file name ('stack', 'architecture', 'testing')
+ * @param {Object} [options] - Options
+ * @param {boolean} [options.warnOnOld=true] - Warn if found in old location
+ * @param {boolean} [options.preferNew=false] - Return new path even if file doesn't exist yet
+ * @returns {string|null} Path to spec file, or null if not found and preferNew is false
+ */
+function getSpecFilePath(name, options = {}) {
+  const { warnOnOld = true, preferNew = false } = options;
+
+  const mapping = SPEC_FILE_MAP[name.toLowerCase()];
+  if (!mapping) {
+    warn(`Unknown spec file: ${name}. Valid options: stack, architecture, testing`);
+    return null;
+  }
+
+  const newPath = PATHS[mapping.new];
+  const oldPath = PATHS[mapping.old];
+
+  // Check new location first
+  if (fileExists(newPath)) {
+    return newPath;
+  }
+
+  // Check old location
+  if (fileExists(oldPath)) {
+    if (warnOnOld) {
+      warn(`${name}.md found in deprecated location (state/). Run 'flow migrate specs' to move to specs/`);
+    }
+    return oldPath;
+  }
+
+  // Neither exists
+  if (preferNew) {
+    return newPath; // Return new path for creating new files
+  }
+
+  return null;
+}
+
+/**
+ * Check if spec files need migration (are in old location)
+ * @returns {Object[]} Array of files needing migration
+ */
+function checkSpecMigration() {
+  const needsMigration = [];
+
+  for (const [name, mapping] of Object.entries(SPEC_FILE_MAP)) {
+    const oldPath = PATHS[mapping.old];
+    const newPath = PATHS[mapping.new];
+
+    if (fileExists(oldPath) && !fileExists(newPath)) {
+      needsMigration.push({
+        name,
+        from: oldPath,
+        to: newPath
+      });
+    }
+  }
+
+  return needsMigration;
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -2219,6 +2333,11 @@ module.exports = {
   findReactComponents,
   findCustomHooks,
   findTypeDefinitions,
+
+  // Spec File Migration (v1.0.4)
+  SPEC_FILE_MAP,
+  getSpecFilePath,
+  checkSpecMigration,
 };
 
 // ============================================================

@@ -1,0 +1,84 @@
+{
+  "version": "1.0.4",
+  "description": "Folder purposes and expected contents for WogiFlow",
+  "folders": {
+    "state": {
+      "purpose": "Runtime workflow state (tasks, logs, decisions)",
+      "expectedFiles": ["ready.json", "request-log.md", "app-map.md", "decisions.md", "progress.md"],
+      "managed": true,
+      "gitignored": ["ready.json", "request-log.md", "progress.md", "session-state.json"]
+    },
+    "specs": {
+      "purpose": "Project specification documents (architecture, stack, testing)",
+      "expectedFiles": ["*.md specification files"],
+      "createdBy": "/wogi-onboard or manual creation",
+      "managed": true
+    },
+    "traces": {
+      "purpose": "Code flow traces for understanding complex systems",
+      "expectedFiles": "*.md trace files",
+      "createdBy": "/wogi-trace command",
+      "managed": false,
+      "emptyIsOk": true,
+      "suggestion": "Run /wogi-trace 'feature name' to generate"
+    },
+    "checkpoints": {
+      "purpose": "Session state snapshots for rollback and recovery",
+      "expectedFiles": "cp-*.json checkpoint files",
+      "createdBy": "/wogi-checkpoint create or automatic checkpointing",
+      "managed": true,
+      "emptyIsOk": true,
+      "suggestion": "Run 'flow checkpoint create \"description\"' to create"
+    },
+    "corrections": {
+      "purpose": "Individual correction records for searchable history",
+      "expectedFiles": "CORR-*.md correction files",
+      "createdBy": "/wogi-correct command",
+      "managed": false,
+      "emptyIsOk": true,
+      "suggestion": "Run /wogi-correct 'description' when corrected",
+      "related": "feedback-patterns.md contains aggregated patterns"
+    },
+    "changes": {
+      "purpose": "Feature proposals and task definitions",
+      "expectedFiles": "Subdirectories per feature with proposal.md and tasks.json",
+      "createdBy": "/wogi-feature command",
+      "managed": true
+    },
+    "templates": {
+      "purpose": "Handlebars templates for generating project files",
+      "expectedFiles": "*.hbs template files",
+      "managed": true,
+      "note": "Edit templates then run 'flow bridge sync' to regenerate"
+    },
+    "agents": {
+      "purpose": "AI agent prompt definitions",
+      "expectedFiles": "*.md agent definition files",
+      "managed": true,
+      "core": ["orchestrator.md", "developer.md", "reviewer.md", "tester.md"]
+    },
+    "bridges": {
+      "purpose": "CLI bridge configurations for different AI tools",
+      "expectedFiles": "*.json bridge configuration files",
+      "managed": true
+    },
+    "models": {
+      "purpose": "Model registry and cost tracking",
+      "expectedFiles": ["registry.json"],
+      "createdBy": "flow models command",
+      "managed": true
+    },
+    "roadmap": {
+      "purpose": "Project roadmap and milestone definitions",
+      "expectedFiles": ["roadmap.json", "*.md milestone files"],
+      "managed": true
+    },
+    "verifications": {
+      "purpose": "Verification reports and test results",
+      "expectedFiles": "*.json verification results",
+      "managed": false,
+      "emptyIsOk": true
+    }
+  },
+  "lastUpdated": "2026-01-12"
+}
