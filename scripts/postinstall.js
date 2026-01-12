@@ -3,9 +3,8 @@
 /**
  * WogiFlow postinstall script
  *
- * Runs after npm install to set up project structure.
- * Creates necessary directories and copies template files for fresh installs.
- * Preserves existing user data (never overwrites).
+ * Runs after npm install to set up project with the unified wizard.
+ * In CI environments, creates minimal structure without interaction.
  */
 
 const fs = require('fs');
@@ -14,126 +13,88 @@ const path = require('path');
 // Directory structure
 const WORKFLOW_DIR = '.workflow';
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const CHANGES_DIR = path.join(WORKFLOW_DIR, 'changes');
-const MEMORY_DIR = path.join(WORKFLOW_DIR, 'memory');
-const VERIFICATIONS_DIR = path.join(WORKFLOW_DIR, 'verifications');
-const SPECS_DIR = path.join(WORKFLOW_DIR, 'specs');
 
-// Find template directory (relative to this script's location in node_modules)
-function findTemplateDir() {
-  // When installed via npm, templates are in the package
-  const npmPath = path.join(__dirname, '..', '.workflow', 'state');
-  if (fs.existsSync(npmPath)) {
-    return npmPath;
+/**
+ * Create minimal directory structure (for CI or non-interactive)
+ */
+function createMinimalStructure() {
+  const dirs = [
+    WORKFLOW_DIR,
+    STATE_DIR,
+    path.join(WORKFLOW_DIR, 'changes'),
+    path.join(WORKFLOW_DIR, 'specs')
+  ];
+
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
 
-  // Fallback for local development
-  const localPath = path.join(process.cwd(), '.workflow', 'state');
-  if (fs.existsSync(localPath)) {
-    return localPath;
+  // Create minimal ready.json
+  const readyPath = path.join(STATE_DIR, 'ready.json');
+  if (!fs.existsSync(readyPath)) {
+    fs.writeFileSync(readyPath, JSON.stringify({
+      lastUpdated: new Date().toISOString(),
+      ready: [],
+      inProgress: [],
+      blocked: [],
+      recentlyCompleted: []
+    }, null, 2));
   }
-
-  return null;
 }
 
-// Template files to copy (without .template extension in target)
-const TEMPLATES = [
-  'ready.json',
-  'request-log.md',
-  'progress.md',
-  'app-map.md',
-  'decisions.md',
-  'component-index.json',
-  'feedback-patterns.md',
-  'architecture.md',
-  'stack.md',
-  'testing.md',
-  'session-state.json',
-  'knowledge-sync.json'
-];
+/**
+ * Check if we should skip the wizard
+ */
+function shouldSkipWizard() {
+  // Skip in CI
+  if (process.env.CI) return true;
 
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    return true;
-  }
+  // Skip if explicitly requested
+  if (process.env.WOGIFLOW_SKIP_POSTINSTALL) return true;
+
+  // Skip if already initialized
+  if (fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) return true;
+
+  // Skip if not a TTY (non-interactive)
+  if (!process.stdin.isTTY) return true;
+
   return false;
 }
 
-function createGitkeep(dir) {
-  const gitkeepPath = path.join(dir, '.gitkeep');
-  if (!fs.existsSync(gitkeepPath)) {
-    fs.writeFileSync(gitkeepPath, '');
+/**
+ * Run the unified wizard
+ */
+async function runWizard() {
+  try {
+    const { runUnifiedWizard } = require('../lib/unified-wizard');
+    await runUnifiedWizard();
+  } catch (err) {
+    console.log(`\n\x1b[33mWogiFlow:\x1b[0m Wizard unavailable, creating minimal structure.`);
+    console.log(`\x1b[2m  ${err.message}\x1b[0m\n`);
+    createMinimalStructure();
+    console.log(`\x1b[36mWogiFlow:\x1b[0m Run \x1b[33mflow init\x1b[0m to complete setup.\n`);
   }
 }
 
-function copyTemplates(templateDir) {
-  let copied = 0;
-
-  for (const file of TEMPLATES) {
-    const templatePath = path.join(templateDir, `${file}.template`);
-    const targetPath = path.join(STATE_DIR, file);
-
-    // Only copy if target doesn't exist (preserve user data)
-    if (!fs.existsSync(targetPath) && fs.existsSync(templatePath)) {
-      try {
-        fs.copyFileSync(templatePath, targetPath);
-        console.log(`  \x1b[32m✓\x1b[0m Created ${file}`);
-        copied++;
-      } catch (err) {
-        console.log(`  \x1b[33m!\x1b[0m Could not create ${file}: ${err.message}`);
-      }
-    }
-  }
-
-  return copied;
-}
-
-function main() {
-  // Skip if running in CI or non-interactive environment
-  if (process.env.CI || process.env.WOGIFLOW_SKIP_POSTINSTALL) {
+/**
+ * Main entry point
+ */
+async function main() {
+  if (shouldSkipWizard()) {
+    // Silent minimal setup for CI/non-interactive
+    createMinimalStructure();
     return;
   }
 
-  console.log('\n\x1b[36mWogiFlow\x1b[0m: Setting up project structure...\n');
-
-  // Create directory structure
-  const dirsCreated = [];
-
-  if (ensureDir(WORKFLOW_DIR)) dirsCreated.push(WORKFLOW_DIR);
-  if (ensureDir(STATE_DIR)) dirsCreated.push(STATE_DIR);
-  if (ensureDir(CHANGES_DIR)) dirsCreated.push(CHANGES_DIR);
-  if (ensureDir(MEMORY_DIR)) dirsCreated.push(MEMORY_DIR);
-  if (ensureDir(VERIFICATIONS_DIR)) dirsCreated.push(VERIFICATIONS_DIR);
-  if (ensureDir(SPECS_DIR)) dirsCreated.push(SPECS_DIR);
-
-  // Create .gitkeep files to preserve empty directories
-  createGitkeep(CHANGES_DIR);
-  createGitkeep(VERIFICATIONS_DIR);
-  createGitkeep(SPECS_DIR);
-
-  if (dirsCreated.length > 0) {
-    console.log(`  \x1b[32m✓\x1b[0m Created directories: ${dirsCreated.join(', ')}`);
-  }
-
-  // Find and copy templates
-  const templateDir = findTemplateDir();
-
-  if (templateDir) {
-    const copied = copyTemplates(templateDir);
-    if (copied > 0) {
-      console.log(`\n  \x1b[32m✓\x1b[0m Initialized ${copied} state files from templates`);
-    }
-  }
-
-  console.log('\n\x1b[36mWogiFlow\x1b[0m: Setup complete!');
-  console.log('  Run \x1b[33mflow onboard\x1b[0m to analyze your project.\n');
+  // Run the full wizard
+  await runWizard();
 }
 
 // Run
-try {
-  main();
-} catch (err) {
-  // Don't fail install on postinstall errors
+main().catch((err) => {
+  // Don't fail npm install on postinstall errors
   console.log(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}`);
-}
+  createMinimalStructure();
+});
