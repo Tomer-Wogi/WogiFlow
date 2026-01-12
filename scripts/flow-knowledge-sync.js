@@ -273,21 +273,16 @@ function loadSyncState() {
     return null;
   }
 
-  try {
-    const content = fs.readFileSync(PATHS.knowledgeSync, 'utf-8');
-    const state = safeJsonParse(content, null);
+  // safeJsonParse expects a file path, not content
+  const state = safeJsonParse(PATHS.knowledgeSync, null);
 
-    // Validate structure before returning
-    if (!isValidSyncState(state)) {
-      warn('Invalid sync state structure in knowledge-sync.json');
-      return null;
-    }
-
-    return state;
-  } catch (err) {
-    warn(`Failed to load sync state: ${err.message}`);
+  // Validate structure before returning
+  if (!isValidSyncState(state)) {
+    warn('Invalid sync state structure in knowledge-sync.json');
     return null;
   }
+
+  return state;
 }
 
 /**
