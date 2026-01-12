@@ -3,7 +3,7 @@
 /**
  * Wogi Flow - Task Gate (Core Module)
  *
- * CLI-agnostic task gating logic.
+ * CLI-agnostic task gating logic with auto-task creation.
  * Checks if there's an active task before allowing implementation actions.
  *
  * Returns a standardized result that adapters transform for specific CLIs.
