@@ -79,14 +79,24 @@ async function main() {
     return;
   }
 
+  // Try to write directly to terminal (bypasses npm output capture)
+  let output = process.stderr; // Default fallback
+  try {
+    // Check if /dev/tty exists and is writable
+    fs.accessSync('/dev/tty', fs.constants.W_OK);
+    const fd = fs.openSync('/dev/tty', 'w');
+    output = { write: (msg) => fs.writeSync(fd, msg) };
+  } catch {
+    // Fallback to stderr if /dev/tty not available (Windows, CI, non-interactive)
+  }
+
   // Already initialized - short message
   if (isAlreadyInitialized()) {
-    // Use stderr - npm suppresses stdout from postinstall
-    process.stderr.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
+    output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
     return;
   }
 
-  // Show setup instructions using stderr (npm suppresses stdout from postinstall)
+  // Show setup instructions
   const msg = `
 \x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m
 \x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m
@@ -98,7 +108,7 @@ async function main() {
     \x1b[36mnpx flow init\x1b[0m       \x1b[2m# For new projects\x1b[0m
 
 `;
-  process.stderr.write(msg);
+  output.write(msg);
 }
 
 // Run
