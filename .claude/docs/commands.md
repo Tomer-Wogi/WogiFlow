@@ -148,8 +148,7 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-loop` | Show loop status (active session, progress). |
 
-### Memory & Knowledge (v1.8+)
-
+### Memory & Knowledge
 | Command | Action |
 |---------|--------|
 | `/wogi-compact` | Run memory compaction. Preview with `--preview`. |
@@ -278,8 +277,7 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow checkpoint rollback <id> # Rollback to checkpoint
 ./scripts/flow checkpoint cleanup # Remove old checkpoints
 
-# Memory & Knowledge (v1.8+)
-./scripts/flow memory search <q>  # Search stored facts
+# Memory & Knowledge./scripts/flow memory search <q>  # Search stored facts
 ./scripts/flow memory stats       # Show memory statistics
 ./scripts/flow memory-server      # Start MCP memory server
 ./scripts/flow entropy            # Show memory entropy stats

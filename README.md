@@ -1,4 +1,4 @@
-# WogiFlow v1.0.0
+# WogiFlow
 
 A self-improving AI development workflow that learns from your feedback and accumulates knowledge over time.
 
@@ -114,12 +114,12 @@ Daily commands for working with WogiFlow. Start with `/wogi-ready` to see tasks,
 
 ## Table of Contents
 
-- [Pattern Enforcement (New in v1.8)](#pattern-enforcement-new-in-v18)
-- [Loop Enforcement (New in v1.8)](#loop-enforcement-new-in-v18)
-- [Parallel Auto-Detection (New in v1.8)](#parallel-auto-detection-new-in-v18)
-- [Skill Auto-Creation (New in v1.8)](#skill-auto-creation-new-in-v18)
-- [Project-Based Team Sync (New in v1.8)](#project-based-team-sync-new-in-v18)
-- [Voice Input (New in v1.8)](#voice-input-new-in-v18)
+- [Pattern Enforcement](#pattern-enforcement)
+- [Loop Enforcement](#loop-enforcement)
+- [Parallel Auto-Detection](#parallel-auto-detection)
+- [Skill Auto-Creation](#skill-auto-creation)
+- [Project-Based Team Sync](#project-based-team-sync)
+- [Voice Input](#voice-input)
 - [Damage Control](#damage-control)
 - [Safety & Verification](#safety--verification)
 - [Execution Traces & Checkpoints](#execution-traces--checkpoints)
@@ -143,8 +143,7 @@ Daily commands for working with WogiFlow. Start with `/wogi-ready` to see tasks,
 
 ---
 
-## Pattern Enforcement (New in v1.8)
-
+## Pattern Enforcement
 Active pattern injection ensures the AI uses your established patterns from `decisions.md` and `app-map.md`.
 
 ### How It Works
@@ -190,8 +189,7 @@ export function formatDate(date) { ... }
 
 ---
 
-## Loop Enforcement (New in v1.8)
-
+## Loop Enforcement
 Prevents exiting tasks until all acceptance criteria pass - ensures no incomplete work.
 
 ### How It Works
@@ -247,8 +245,7 @@ Prevents exiting tasks until all acceptance criteria pass - ensures no incomplet
 
 ---
 
-## Parallel Auto-Detection (New in v1.8)
-
+## Parallel Auto-Detection
 Automatically detects when tasks can run in parallel and suggests optimal execution.
 
 ### How It Works
@@ -319,8 +316,7 @@ Automatically detects when tasks can run in parallel and suggests optimal execut
 
 ---
 
-## Skill Auto-Creation (New in v1.8)
-
+## Skill Auto-Creation
 Automatically detects frameworks in your project and generates skills from official documentation.
 
 ### How It Works
@@ -379,8 +375,7 @@ Automatically detects frameworks in your project and generates skills from offic
 
 ---
 
-## Project-Based Team Sync (New in v1.8)
-
+## Project-Based Team Sync
 Sync workflow files at project scope - share decisions, patterns, and knowledge across your team.
 
 ### What Gets Synced
@@ -436,8 +431,7 @@ Sync workflow files at project scope - share decisions, patterns, and knowledge 
 
 ---
 
-## Voice Input (New in v1.8)
-
+## Voice Input
 Voice-to-transcript support with multiple provider options. Create tasks, stories, and commands using your voice.
 
 ### How It Works
@@ -1473,8 +1467,7 @@ flow map-sync                   # Compare index with app-map
 flow trace "<prompt>"           # Generate trace
 flow trace list                 # List traces
 
-# Guided Edit (v1.9.2)
-flow guided-edit "description"  # Start guided edit session
+# Guided Editflow guided-edit "description"  # Start guided edit session
 flow guided-edit --continue     # Resume session
 flow guided-edit status         # Show session progress
 flow guided-edit abort          # Cancel session
@@ -1483,27 +1476,21 @@ flow guided-edit abort          # Cancel session
 flow skill-learn                # Extract learnings
 flow skill-create <name>        # Create skill
 flow skill-create --list        # List skills
-flow skill detect               # Detect frameworks (v1.8)
-flow skill list                 # List installed skills (v1.8)
-
-# Loop Enforcement (v1.8)
-flow loop status                # Show active loop session
+flow skill detect               # Detect frameworksflow skill list                 # List installed skills
+# Loop Enforcementflow loop status                # Show active loop session
 flow loop stats                 # Show loop statistics
 flow loop can-exit              # Check if exit is allowed
 flow loop enable                # Enable enforcement
 flow loop disable               # Disable enforcement
 
-# Parallel Detection (v1.8)
-flow parallel analyze           # Analyze tasks for parallel potential
+# Parallel Detectionflow parallel analyze           # Analyze tasks for parallel potential
 flow parallel suggest           # Check if suggestion available
 
-# Team Sync (v1.8)
-flow team sync-status           # Show project sync status
+# Team Syncflow team sync-status           # Show project sync status
 flow team sync-init             # Initialize project sync
 flow team project-id            # Show/set project ID
 
-# Voice Input (v1.8)
-flow voice-input setup          # Configure voice input
+# Voice Inputflow voice-input setup          # Configure voice input
 flow voice-input                # Record and transcribe
 flow voice-input -d 60          # Record for 60 seconds
 flow voice-input -p groq        # Use specific provider
@@ -1532,42 +1519,35 @@ flow dc check "<cmd>"           # Check if command is allowed
 flow dc path "<path>" <op>      # Check path operation (read/write/delete)
 flow dc patterns                # List all patterns
 
-# Safety & Verification (v1.6)
-flow safety status              # Show safety limits
+# Safety & Verificationflow safety status              # Show safety limits
 flow safety check-file <path>   # Check file permission
 flow safety check-command <cmd> # Check command permission
 flow verify lint                # Run lint gate
 flow verify all                 # Run all gates
 flow verify --json              # JSON output for CI
 
-# Execution Traces (v1.6)
-flow run-trace start <name>     # Start traced run
+# Execution Tracesflow run-trace start <name>     # Start traced run
 flow run-trace end              # End current run
 flow history                    # List recent runs
 flow inspect <run-id>           # Show run details
 
-# Checkpoints (v1.6)
-flow checkpoint create [msg]    # Create checkpoint
+# Checkpointsflow checkpoint create [msg]    # Create checkpoint
 flow checkpoint list            # List checkpoints
 flow checkpoint rollback <id>   # Rollback to checkpoint
 
-# Diff Preview (v1.6)
-flow diff <file1> <file2>       # Compare files
+# Diff Previewflow diff <file1> <file2>       # Compare files
 flow diff --preview <ops.json>  # Preview changes
 flow diff --apply <ops.json>    # Apply changes
 
-# Providers (v1.6)
-flow providers list             # List providers
+# Providersflow providers list             # List providers
 flow providers detect           # Detect local providers
 flow providers test <type>      # Test provider
 
-# External Links (v1.6)
-flow links list                 # List external links
+# External Linksflow links list                 # List external links
 flow links add <name> <url>     # Add link
 flow links fetch <name>         # Fetch and cache
 
-# Declarative Workflows (v1.6)
-flow workflow list              # List workflows
+# Declarative Workflowsflow workflow list              # List workflows
 flow workflow run <name>        # Run workflow
 flow workflow create <name>     # Create template
 
@@ -1588,8 +1568,7 @@ flow team status                # Show team connection status
 flow team sync                  # Sync local memory to team
 flow team activity              # Show team activity
 
-# Hooks (v1.9.2)
-flow setup-hooks install        # Install git hooks
+# Hooksflow setup-hooks install        # Install git hooks
 flow setup-hooks --status       # Check hook status
 flow setup-hooks --remove       # Remove hooks
 ```
@@ -1680,118 +1659,6 @@ After 3+ similar corrections → Claude suggests promoting to permanent instruct
 # Others import
 ./scripts/flow import-profile team-v1.zip
 ```
-
----
-
-## Changelog
-
-### v1.9.2 - Guided Edit & Index Freshness
-
-- **Guided Edit Mode**: Step-by-step multi-file editing with session persistence for large refactors
-- **Component Index Freshness**: Auto-refresh on session start (stale check), post-task completion, and pre-commit
-- **Smart Rule Loading**: Rules now have `alwaysApply` frontmatter - Claude loads rules only when relevant
-- **Git Hooks Setup**: New `flow setup-hooks` command to install pre-commit/post-commit hooks
-- **New commands**: `flow guided-edit`, `flow setup-hooks`, `/wogi-guided-edit`
-- **Configuration**: New `guidedEdit` section, enhanced `componentIndex.scanOn` triggers
-
-### v1.9.1 - Damage Control & Auto-Verification
-
-- **Damage Control System**: Pattern-based blocking of destructive commands (`rm -rf /`, `DROP DATABASE`, force push to main)
-- **Path Protection**: Zero-access, read-only, and no-delete path levels for sensitive files
-- **Auto-Inference Verification**: Loop enforcer automatically detects verification type from criterion text
-- **Browser Test Suggestions**: Automatically suggests browser tests for UI-related acceptance criteria
-- **New commands**: `flow dc [status|check|path|patterns]`
-- **New file**: `.workflow/damage-control.yaml` for customizable patterns
-
-### v1.9.0 - Cloud Executor Support
-
-- **Cloud Executors**: Choose between local LLM or cloud model as hybrid mode executor
-- **Supported Providers**: OpenAI (GPT-4o-mini), Anthropic (Claude Haiku), Google (Gemini Flash)
-- **Setup Wizard**: Updated `/wogi-hybrid` to prompt for executor type (Local/Cloud)
-- **Model Adapters**: Pre-configured adapters for cloud models with known quirks and best practices
-- **Backward Compatible**: Existing local LLM configurations continue to work
-- **Token Estimation**: Adjusts automatically based on cloud vs local executor
-
-### v1.8.0 - Pattern Enforcement & Team Sync
-
-- **Pattern Enforcement**: Active pattern injection from decisions.md/app-map.md into prompts with citation validation
-- **Loop Enforcement**: Blocks exit until all acceptance criteria pass, requireVerification, blockOnSkip
-- **Parallel Auto-Detection**: Automatically detects parallelizable tasks with autoSuggest and autoExecute options
-- **Skill Auto-Creation**: Detects frameworks from package.json and file patterns, fetches official documentation
-- **Project-Based Team Sync**: Sync decisions.md, app-map.md, component-index, skills, and memory facts across team
-- **Voice Input**: Voice-to-transcript support with local Whisper.cpp, OpenAI, and Groq providers
-- **Memory Export**: Schema-aware SQLite export for memory facts synchronization
-- **Conflict Resolution**: Configurable strategies (newest-wins, remote-wins, local-wins, merge)
-- **New commands**: `flow loop`, `flow parallel [analyze|suggest]`, `flow skill [detect|list]`, `flow team [sync-status|sync-init|project-id]`, `flow voice-input`
-
-### v1.7.0 - Team Backend
-
-- **AWS Team Backend**: Full serverless infrastructure for team collaboration
-- **Team APIs**: Teams, proposals, shared memory, activity logging
-- **Cognito Auth**: JWT-based authentication for secure team access
-- **Memory Sync**: Share learned patterns across team members
-- **Proposal Voting**: Democratic decision-making for workflow changes
-- **Infrastructure as Code**: Terraform-managed AWS resources
-
-### v1.6.0 - Enterprise Safety & Automation
-
-- **Safety Guardrails** (`flow-safety.js`): File/command permission models, bounded execution limits
-- **Verification Gates** (`flow-verify.js`): Structured gate results with LLM error context for self-healing
-- **Execution Traces** (`flow-run-trace.js`): JSONL event logging with artifact timeline
-- **Auto-Checkpoints** (`flow-checkpoint.js`): Periodic state snapshots with rollback support
-- **Diff-First Output** (`flow-diff.js`): Preview changes before applying, unified diff format
-- **Cloud Providers** (`flow-providers.js`): Unified interface for Anthropic, OpenAI, Ollama, LM Studio
-- **External Context** (`flow-links.js`): Reference external resources with automatic caching
-- **Declarative Workflows** (`flow-workflow.js`): YAML workflows with conditional routing and bounded loops
-- **CLI Utilities** (`flow-cli.js`): Standardized exit codes and JSON output for CI integration
-- **Project Context** (`flow-context-init.js`): Auto-detect tech stack, manage constraints and conventions
-- **New commands**: `flow safety`, `flow verify`, `flow run-trace`, `flow checkpoint`, `flow diff`, `flow providers`, `flow links`, `flow workflow`, `flow context-init`
-
-### v1.5.0 - Figma Component Analyzer
-
-- **Figma Component Analyzer**: Match Figma designs against existing codebase components
-- **Multi-framework support**: React, Vue, Svelte, Angular auto-detection
-- **Similarity matching**: Weighted scoring (CSS 35%, structure 25%, naming 20%, behavior 20%)
-- **Interactive confirmation**: Choose to reuse, add variant, or create new
-- **MCP Server**: Both stdio and HTTP modes for Claude Desktop/Cursor integration
-- **New commands**: `flow figma [scan|show|extract|match|analyze|confirm|generate|server]`
-- **New skill**: `.claude/skills/figma-analyzer/`
-
-### v1.4.0 - Continual Learning Skills
-
-- **Automatic skill learning**: Knowledge captured at pre-commit, task completion, session end
-- **New skill structure**: `knowledge/` directory with learnings, patterns, anti-patterns
-- **Agents use skills**: Developer agent loads relevant skill knowledge before tasks
-- **New commands**: `flow skill-learn`, `flow skill-create`
-- **New slash command**: `/wogi-skill-learn`
-- **Config section**: `skillLearning` in config.json
-
-### v1.3.0 - Hybrid Mode
-
-- **Hybrid mode**: Claude plans, local LLM executes - 20-60% token savings
-- **Supports**: Ollama and LM Studio
-- **Features**: Rollback, escalation, template system
-- **New commands**: `flow hybrid [enable|disable|status|rollback]`
-
-### v1.2.0 - Self-Completing Loops
-
-- **Self-completing `/wogi-start`**: Tasks run until truly done
-- **New `/wogi-loop`**: Autonomous loops for ad-hoc work
-- **Options**: `--no-loop`, `--pause-between`, `--max-retries`, `--done-when`
-
-### v1.1.0 - Component Index & Code Traces
-
-- **Hybrid component index**: Auto-generated + curated
-- **Code traces**: Task-focused flow documentation with Mermaid diagrams
-- **New commands**: `flow map-index`, `flow map-sync`, `flow trace`
-
-### v1.0.0 - Initial Release
-
-- Core workflow, task management, quality gates
-- Component registry, request logging
-- Self-improving feedback loop
-- Skills system, profile sharing
-- Browser testing, onboarding wizard
 
 ---
 
