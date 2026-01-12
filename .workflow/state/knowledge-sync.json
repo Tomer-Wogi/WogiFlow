@@ -1,24 +1,27 @@
 {
-  "lastSync": "2026-01-11T10:13:13.882Z",
+  "lastSync": "2026-01-12T09:45:40.457Z",
   "stack": {
     "files": [
       "package.json",
       "package-lock.json"
     ],
-    "combinedHash": "d63cd382bf7e8870567ffe5f17028e96",
+    "combinedHash": "dd2cfb26e9008a255ce8e3e4881b397e",
     "individualHashes": {
-      "package.json": "a710683b130fabab35732f072f37f61b",
-      "package-lock.json": "b4d009608f63d0d91b69a23860f0b33c"
-    }
+      "package.json": "4a7cc99ac6c1b137e48bad3c94824017",
+      "package-lock.json": "0004efd0ef6f198f0a893729cb4e3c71"
+    },
+    "errors": null
   },
   "architecture": {
     "files": [],
     "combinedHash": null,
-    "individualHashes": {}
+    "individualHashes": {},
+    "errors": null
   },
   "testing": {
     "files": [],
     "combinedHash": null,
-    "individualHashes": {}
+    "individualHashes": {},
+    "errors": null
   }
 }

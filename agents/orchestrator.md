@@ -46,6 +46,34 @@ Provide status: done recently, in progress, ready, blockers.
 
 When analyzing existing features or planning changes:
 
+### MANDATORY: Dependency Discovery (Before ANY Refactor/Integration)
+
+**Before touching any code, you MUST:**
+
+1. **Search for files that REFERENCE the target code**
+   - Who calls this function/module/script?
+   - What imports or requires it?
+   - Where is it invoked in the codebase?
+
+2. **Search for files that ARE REFERENCED BY the target code**
+   - What does this code call/import?
+   - What scripts/modules does it invoke?
+   - What files are part of this flow/pipeline?
+
+3. **Map the full flow before making changes**
+   - Draw the connection: A → B → C → D
+   - Identify ALL files in the pipeline
+   - Ask: "Are there other files invoked as part of this flow?"
+
+4. **Check for disconnected code**
+   - Are there related scripts that SHOULD be connected but aren't?
+   - Is there dead code that was meant to be part of this flow?
+   - Were there files created but never wired up?
+
+**Example failure mode**: Moving installer to npm but missing that `stack-wizard.js` and `flow-onboard` were supposed to be part of the install flow - they existed but were never connected.
+
+**The fix**: Always grep for related terms (e.g., "install", "onboard", "wizard", "setup") before declaring a refactor complete.
+
 ### Phase 1: Feature Discovery
 - Identify entry points (APIs, UI elements, CLI commands)
 - Locate core implementation files

@@ -126,6 +126,11 @@ cat .workflow/state/decisions.md # Project rules
 1. Check `app-map.md` for existing components
 2. Check `decisions.md` for coding patterns
 3. Load task acceptance criteria
+4. **Dependency Discovery** (for refactors/integrations):
+   - Search for files that REFERENCE the target code
+   - Search for files that ARE REFERENCED BY the target code
+   - Map the full flow/pipeline before making changes
+   - Ask: "Are there other files invoked as part of this flow?"
 
 ### While Working:
 1. Follow acceptance criteria exactly
