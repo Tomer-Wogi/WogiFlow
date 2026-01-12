@@ -45,37 +45,23 @@ function createMinimalStructure() {
 }
 
 /**
- * Check if we should skip the wizard
+ * Check if we should be completely silent (CI only)
  */
-function shouldSkipWizard() {
-  // Skip in CI
+function shouldBeSilent() {
+  // Silent in CI
   if (process.env.CI) return true;
 
-  // Skip if explicitly requested
+  // Silent if explicitly requested
   if (process.env.WOGIFLOW_SKIP_POSTINSTALL) return true;
-
-  // Skip if already initialized
-  if (fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) return true;
-
-  // Skip if not a TTY (non-interactive)
-  if (!process.stdin.isTTY) return true;
 
   return false;
 }
 
 /**
- * Run the unified wizard
+ * Check if already initialized
  */
-async function runWizard() {
-  try {
-    const { runUnifiedWizard } = require('../lib/unified-wizard');
-    await runUnifiedWizard();
-  } catch (err) {
-    console.log(`\n\x1b[33mWogiFlow:\x1b[0m Wizard unavailable, creating minimal structure.`);
-    console.log(`\x1b[2m  ${err.message}\x1b[0m\n`);
-    createMinimalStructure();
-    console.log(`\x1b[36mWogiFlow:\x1b[0m Run \x1b[33mflow init\x1b[0m to complete setup.\n`);
-  }
+function isAlreadyInitialized() {
+  return fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'));
 }
 
 /**
@@ -85,12 +71,18 @@ async function main() {
   // Always create minimal structure first
   createMinimalStructure();
 
-  if (shouldSkipWizard()) {
-    // Silent for CI/non-interactive
+  // Silent in CI or when explicitly disabled
+  if (shouldBeSilent()) {
     return;
   }
 
-  // Show setup instructions (wizard doesn't work well in postinstall due to TTY issues)
+  // Already initialized - short message
+  if (isAlreadyInitialized()) {
+    console.log('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.');
+    return;
+  }
+
+  // Show setup instructions (always show, even without TTY)
   console.log('');
   console.log('\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m');
   console.log('\x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m');
