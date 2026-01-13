@@ -7668,7 +7668,8 @@ function quickProcess(input, options = {}) {
 
   // 1. Split into statements (returns objects with .text property)
   const statements = splitIntoStatements(input);
-  const meaningfulStatements = statements.filter(s => isMeaningfulStatement(s.text));
+  // isMeaningfulStatement returns {meaningful: bool, reason: string}, filter on .meaningful
+  const meaningfulStatements = statements.filter(s => isMeaningfulStatement(s.text).meaningful);
 
   // 2. Quick topic extraction (keyword-based, no full analysis)
   const topicKeywords = new Set();

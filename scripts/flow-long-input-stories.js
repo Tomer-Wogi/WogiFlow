@@ -15,6 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Import safe utilities
+const { safeJsonParse } = require('./flow-utils');
+
 // Core functions are injected via init() to avoid circular dependencies
 let digestCore = null;
 
@@ -580,11 +583,7 @@ function loadStory(storyId) {
   }
 
   const storyPath = path.join(activeDigest.session.digest_path, 'stories', `${storyId}.json`);
-  try {
-    return JSON.parse(fs.readFileSync(storyPath, 'utf8'));
-  } catch (err) {
-    return null;
-  }
+  return safeJsonParse(storyPath, null);
 }
 
 /**
@@ -599,13 +598,7 @@ function loadAllStories() {
   const storiesPath = path.join(activeDigest.session.digest_path, 'stories');
   try {
     const files = fs.readdirSync(storiesPath).filter(f => f.endsWith('.json'));
-    return files.map(f => {
-      try {
-        return JSON.parse(fs.readFileSync(path.join(storiesPath, f), 'utf8'));
-      } catch (err) {
-        return null;
-      }
-    }).filter(Boolean);
+    return files.map(f => safeJsonParse(path.join(storiesPath, f), null)).filter(Boolean);
   } catch (err) {
     return [];
   }
@@ -699,11 +692,7 @@ function loadQueue() {
   }
 
   const queuePath = path.join(activeDigest.session.digest_path, 'presentation-queue.json');
-  try {
-    return JSON.parse(fs.readFileSync(queuePath, 'utf8'));
-  } catch (err) {
-    return null;
-  }
+  return safeJsonParse(queuePath, null);
 }
 
 /**
@@ -1089,11 +1078,7 @@ function loadEditSessions() {
   }
 
   const sessionsPath = path.join(activeDigest.session.digest_path, 'edit-sessions.json');
-  try {
-    return JSON.parse(fs.readFileSync(sessionsPath, 'utf8'));
-  } catch (err) {
-    return { active_session: null, sessions: [] };
-  }
+  return safeJsonParse(sessionsPath, { active_session: null, sessions: [] });
 }
 
 /**
@@ -1929,18 +1914,14 @@ function createFeatureTask(stories, featureName) {
 function addTasksToReadyJson(tasks, options = {}) {
   const readyPath = path.join(process.cwd(), '.workflow', 'state', 'ready.json');
 
-  let readyData;
-  try {
-    readyData = JSON.parse(fs.readFileSync(readyPath, 'utf8'));
-  } catch (err) {
-    readyData = {
-      lastUpdated: now(),
-      ready: [],
-      inProgress: [],
-      blocked: [],
-      recentlyCompleted: []
-    };
-  }
+  const defaultReady = {
+    lastUpdated: now(),
+    ready: [],
+    inProgress: [],
+    blocked: [],
+    recentlyCompleted: []
+  };
+  const readyData = safeJsonParse(readyPath, defaultReady);
 
   // Check for duplicates by source story_id
   const existingStoryIds = new Set(
@@ -2127,7 +2108,20 @@ function cleanupTempFiles(digestId) {
     return { cleaned: false, error: 'No digest ID provided' };
   }
 
+  // Path traversal validation - digestId must be a valid digest format
+  // Format: digest-[8 hex chars]
+  if (!/^digest-[a-f0-9]{8}$/.test(digestId)) {
+    return { cleaned: false, error: 'Invalid digest ID format' };
+  }
+
   const digestPath = path.join(TMP_DIR, digestId);
+
+  // Additional safety: ensure resolved path is within TMP_DIR
+  const resolvedPath = path.resolve(digestPath);
+  const resolvedTmpDir = path.resolve(TMP_DIR);
+  if (!resolvedPath.startsWith(resolvedTmpDir + path.sep)) {
+    return { cleaned: false, error: 'Path traversal attempt detected' };
+  }
 
   if (!fs.existsSync(digestPath)) {
     return { cleaned: false, error: 'Digest directory not found' };
@@ -2140,13 +2134,13 @@ function cleanupTempFiles(digestId) {
     // Also remove active-digest.json if it points to this digest
     const activeFile = path.join(TMP_DIR, 'active-digest.json');
     if (fs.existsSync(activeFile)) {
-      try {
-        const active = JSON.parse(fs.readFileSync(activeFile, 'utf8'));
-        if (active.session?.digest_id === digestId) {
+      const active = safeJsonParse(activeFile, null);
+      if (active && active.session?.digest_id === digestId) {
+        try {
           fs.unlinkSync(activeFile);
+        } catch (unlinkErr) {
+          // Ignore errors unlinking active file - main cleanup succeeded
         }
-      } catch {
-        // Ignore errors reading active file
       }
     }
 
