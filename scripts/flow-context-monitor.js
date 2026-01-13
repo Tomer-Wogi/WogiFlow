@@ -22,7 +22,8 @@ const {
   success,
   readFile,
   fileExists,
-  printHeader
+  printHeader,
+  safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================
@@ -134,8 +135,70 @@ const DEFAULTS = {
   criticalAt: 0.85,   // 85% - critical threshold
   contextWindow: 200000, // Claude's context window
   checkOnSessionStart: true,
-  checkAfterTask: true
+  checkAfterTask: true,
+  // Tracking method: 'estimated' (default), 'native', or 'auto'
+  // - 'estimated': Uses token estimation from state files
+  // - 'native': Uses Claude Code's native tracking (v1.0.52+)
+  // - 'auto': Uses native if available, falls back to estimated
+  trackingMethod: 'auto'
 };
+
+// Path to native context info (written by Claude Code hooks if configured)
+const NATIVE_CONTEXT_FILE = path.join(STATE_DIR, 'context-info.json');
+
+/**
+ * Try to read native context info from Claude Code
+ * Returns null if not available
+ */
+function getNativeContextInfo() {
+  if (!fs.existsSync(NATIVE_CONTEXT_FILE)) {
+    return null;
+  }
+
+  // Use safeJsonParse for prototype pollution protection
+  const data = safeJsonParse(NATIVE_CONTEXT_FILE, null);
+  if (!data) {
+    return null;
+  }
+
+  // Check if data is recent (within last 5 minutes)
+  if (data.timestamp) {
+    const age = Date.now() - new Date(data.timestamp).getTime();
+    if (age > 5 * 60 * 1000) {
+      return null; // Data too old
+    }
+  }
+
+  // Validate required fields
+  if (typeof data.usedPercentage === 'number') {
+    return {
+      usedPercentage: data.usedPercentage,
+      remainingPercentage: data.remainingPercentage || (100 - data.usedPercentage),
+      timestamp: data.timestamp,
+      source: 'native'
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Write native context info (called from hooks)
+ */
+function writeNativeContextInfo(usedPercentage, remainingPercentage) {
+  try {
+    const data = {
+      usedPercentage,
+      remainingPercentage,
+      timestamp: new Date().toISOString(),
+      source: 'claude-code'
+    };
+    fs.writeFileSync(NATIVE_CONTEXT_FILE, JSON.stringify(data, null, 2));
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
 
 /**
  * Get context monitor configuration
@@ -150,6 +213,7 @@ function getContextMonitorConfig() {
 
 /**
  * Check context health and return status
+ * Supports both native Claude Code tracking and estimated tracking
  */
 function checkContextHealth() {
   const config = getContextMonitorConfig();
@@ -160,21 +224,57 @@ function checkContextHealth() {
       currentTokens: 0,
       contextWindow: config.contextWindow,
       usage: 0,
-      recommendation: null
+      recommendation: null,
+      trackingMethod: 'disabled'
     };
   }
 
-  const { breakdown, total } = getContextBreakdown();
-  const usage = total / config.contextWindow;
+  // Determine tracking method
+  const trackingMethod = config.trackingMethod || 'auto';
+  let usage, total, breakdown, trackingSource;
+
+  // Try native tracking first (if configured)
+  if (trackingMethod === 'native' || trackingMethod === 'auto') {
+    const nativeInfo = getNativeContextInfo();
+    if (nativeInfo) {
+      usage = nativeInfo.usedPercentage / 100;
+      total = Math.round(usage * config.contextWindow);
+      breakdown = { 'native-tracking': total };
+      trackingSource = 'native';
+    }
+  }
+
+  // Fall back to estimated tracking
+  if (!trackingSource && (trackingMethod === 'estimated' || trackingMethod === 'auto')) {
+    const contextData = getContextBreakdown();
+    breakdown = contextData.breakdown;
+    total = contextData.total;
+    usage = total / config.contextWindow;
+    trackingSource = 'estimated';
+  }
+
+  // If native was required but not available
+  if (!trackingSource && trackingMethod === 'native') {
+    return {
+      status: 'unavailable',
+      currentTokens: 0,
+      contextWindow: config.contextWindow,
+      usage: 0,
+      usagePercent: 0,
+      recommendation: 'Native tracking not available. Run status line setup or switch to "estimated" mode.',
+      trackingMethod: 'native',
+      trackingSource: null
+    };
+  }
 
   let status, recommendation;
 
   if (usage >= config.criticalAt) {
     status = 'critical';
-    recommendation = 'Run /compact NOW to avoid context overflow';
+    recommendation = 'Run /wogi-compact NOW to avoid context overflow';
   } else if (usage >= config.warnAt) {
     status = 'warning';
-    recommendation = 'Consider running /compact soon';
+    recommendation = 'Consider running /wogi-compact soon';
   } else {
     status = 'healthy';
     recommendation = null;
@@ -191,7 +291,9 @@ function checkContextHealth() {
     thresholds: {
       warn: config.warnAt,
       critical: config.criticalAt
-    }
+    },
+    trackingMethod,
+    trackingSource
   };
 }
 
@@ -241,11 +343,28 @@ function showContextBreakdown() {
     healthy: 'green',
     warning: 'yellow',
     critical: 'red',
-    disabled: 'dim'
+    disabled: 'dim',
+    unavailable: 'yellow'
   };
   const statusColor = statusColors[health.status] || 'white';
   console.log(`Status: ${color(statusColor, health.status.toUpperCase())}`);
+
+  // Show tracking method
+  if (health.trackingSource) {
+    const sourceLabel = health.trackingSource === 'native' ? 'Claude Code Native' : 'Estimated';
+    console.log(`Tracking: ${color('dim', sourceLabel)}`);
+  }
   console.log('');
+
+  // Handle unavailable status
+  if (health.status === 'unavailable') {
+    console.log(color('yellow', 'Native tracking is configured but not available.'));
+    console.log(color('dim', 'Options:'));
+    console.log(color('dim', '  1. Run /wogi-statusline-setup to configure status line'));
+    console.log(color('dim', '  2. Set trackingMethod: "estimated" in config.json'));
+    console.log(color('dim', '  3. Set trackingMethod: "auto" to auto-fallback'));
+    return;
+  }
 
   // Progress bar
   const barWidth = 40;
@@ -255,18 +374,23 @@ function showContextBreakdown() {
   console.log(`${health.currentTokens.toLocaleString()} / ${health.contextWindow.toLocaleString()} tokens`);
   console.log('');
 
-  // Breakdown
-  console.log(color('cyan', 'Breakdown:'));
-  const sortedBreakdown = Object.entries(health.breakdown)
-    .sort((a, b) => b[1] - a[1]);
+  // Breakdown (only show for estimated tracking)
+  if (health.trackingSource === 'estimated') {
+    console.log(color('cyan', 'Breakdown:'));
+    const sortedBreakdown = Object.entries(health.breakdown)
+      .sort((a, b) => b[1] - a[1]);
 
-  for (const [file, tokens] of sortedBreakdown) {
-    if (tokens > 0) {
-      const percent = Math.round((tokens / health.currentTokens) * 100);
-      console.log(`  ${file.padEnd(25)} ${tokens.toLocaleString().padStart(8)} tokens (${percent}%)`);
+    for (const [file, tokens] of sortedBreakdown) {
+      if (tokens > 0) {
+        const percent = Math.round((tokens / health.currentTokens) * 100);
+        console.log(`  ${file.padEnd(25)} ${tokens.toLocaleString().padStart(8)} tokens (${percent}%)`);
+      }
     }
+    console.log('');
+  } else if (health.trackingSource === 'native') {
+    console.log(color('dim', '(Native tracking - breakdown not available)'));
+    console.log('');
   }
-  console.log('');
 
   // Thresholds
   console.log(color('dim', `Thresholds: warn=${Math.round(health.thresholds.warn * 100)}%, critical=${Math.round(health.thresholds.critical * 100)}%`));
@@ -374,11 +498,16 @@ module.exports = {
   checkContextHealth,
   getContextMonitorConfig,
 
+  // Native tracking
+  getNativeContextInfo,
+  writeNativeContextInfo,
+
   // Warnings
   warnIfContextHigh,
   showContextBreakdown,
   getStatusLine,
 
   // Constants
-  DEFAULTS
+  DEFAULTS,
+  NATIVE_CONTEXT_FILE
 };

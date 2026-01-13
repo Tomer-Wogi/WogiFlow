@@ -1172,6 +1172,7 @@ Context window management configuration.
 | `contextWindow` | number | `200000` | Estimated context window |
 | `checkOnSessionStart` | boolean | `true` | Check on start |
 | `checkAfterTask` | boolean | `true` | Check after task |
+| `trackingMethod` | string | `"auto"` | Tracking method: "auto", "native", or "estimated" |
 
 ---
 

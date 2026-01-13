@@ -76,6 +76,7 @@ show_help() {
     echo "  hooks setup          Install CLI hooks (Claude Code, etc.)"
     echo "  hooks remove         Remove CLI hooks"
     echo "  hooks status         Show CLI hooks status"
+    echo "  statusline-setup     Configure Claude Code status line"
     echo "  archive              Archive old request-log entries"
     echo "  watch                Run file watcher for auto-validation"
     echo ""
@@ -402,6 +403,9 @@ case "${1:-}" in
         ;;
     hooks)
         node "$SCRIPT_DIR/flow-hooks.js" "${@:2}"
+        ;;
+    statusline-setup|statusline)
+        node "$SCRIPT_DIR/flow-statusline-setup.js" "${@:2}"
         ;;
     update-map)
         "$SCRIPT_DIR/flow-update-map" "${@:2}"

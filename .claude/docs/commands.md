@@ -100,6 +100,12 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-test-browser all` | Run all test flows defined in `.workflow/tests/flows/`. |
 | `/wogi-test-record [name]` | Interactively record a new test flow. Open browser, perform actions, save as JSON flow definition. |
 
+### Status Line
+
+| Command | Action |
+|---------|--------|
+| `/wogi-statusline-setup` | Configure Claude Code's status line to show task info and context %. Opens interactive wizard or use `--format` flag. |
+
 ### Configuration
 
 | Command | Action |

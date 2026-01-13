@@ -25,10 +25,21 @@ WogiFlow monitors context and helps you manage it.
     "criticalAt": 0.85,         // Critical at 85%
     "contextWindow": 200000,    // Token limit
     "checkOnSessionStart": true,
-    "checkAfterTask": true
+    "checkAfterTask": true,
+    "trackingMethod": "auto"    // auto, native, or estimated
   }
 }
 ```
+
+### Tracking Methods (v1.0.3+)
+
+| Method | Description |
+|--------|-------------|
+| `auto` | Uses native if available, falls back to estimated (default) |
+| `native` | Uses Claude Code's native context tracking (v1.0.52+) |
+| `estimated` | Uses token estimation from state files |
+
+Native tracking is more accurate but requires Claude Code v1.0.52+ and status line configuration via `/wogi-statusline-setup`.
 
 ---
 

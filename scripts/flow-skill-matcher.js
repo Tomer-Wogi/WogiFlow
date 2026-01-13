@@ -23,6 +23,70 @@ const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
 const PROJECT_ROOT = getProjectRoot();
 const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
 
+// Maximum nesting depth for skill directories (prevents runaway recursion)
+const MAX_SKILL_NESTING_DEPTH = 3;
+
+// ============================================================
+// Nested Skill Discovery
+// ============================================================
+
+/**
+ * Recursively discover all skills in the skills directory
+ * Looks for directories containing skill.md files
+ *
+ * @param {string} baseDir - Base directory to search
+ * @param {string} prefix - Path prefix for nested skills
+ * @param {number} depth - Current recursion depth
+ * @returns {string[]} Array of skill paths (e.g., ["nestjs", "frontend/react"])
+ */
+function discoverNestedSkills(baseDir = SKILLS_DIR, prefix = '', depth = 0) {
+  if (depth > MAX_SKILL_NESTING_DEPTH) {
+    return [];
+  }
+
+  const skills = [];
+
+  try {
+    if (!fs.existsSync(baseDir)) {
+      return [];
+    }
+
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      // Skip hidden directories, _template, and non-directories
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) {
+        continue;
+      }
+
+      const entryPath = path.join(baseDir, entry.name);
+      const skillPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const skillMdPath = path.join(entryPath, 'skill.md');
+
+      // If this directory has a skill.md, it's a skill
+      if (fs.existsSync(skillMdPath)) {
+        skills.push(skillPath);
+      }
+
+      // Recursively check subdirectories for more skills
+      const nestedSkills = discoverNestedSkills(entryPath, skillPath, depth + 1);
+      skills.push(...nestedSkills);
+    }
+  } catch (err) {
+    // Silently ignore permission errors, etc.
+  }
+
+  return skills;
+}
+
+/**
+ * Get the absolute path to a skill directory
+ * Handles both flat ("nestjs") and nested ("frontend/react") paths
+ */
+function getSkillDir(skillName) {
+  return path.join(SKILLS_DIR, ...skillName.split('/'));
+}
+
 // ============================================================
 // Skill Trigger Definitions
 // ============================================================
@@ -71,6 +135,7 @@ const DEFAULT_TRIGGERS = {
 /**
  * Load skill metadata from skill.md
  * Parses YAML frontmatter and extracts trigger configuration
+ * Supports both flat ("nestjs") and nested ("frontend/react") skill paths
  */
 function loadSkillMetadata(skillName) {
   // Skip template skills
@@ -78,7 +143,14 @@ function loadSkillMetadata(skillName) {
     return null;
   }
 
-  const skillPath = path.join(SKILLS_DIR, skillName, 'skill.md');
+  // Handle nested paths - get the base name for template checks
+  const baseName = skillName.split('/').pop();
+  if (baseName.startsWith('_')) {
+    return null;
+  }
+
+  const skillDir = getSkillDir(skillName);
+  const skillPath = path.join(skillDir, 'skill.md');
 
   if (!fs.existsSync(skillPath)) {
     return null;
@@ -206,15 +278,24 @@ function parseListSection(section) {
 
 /**
  * Get all installed skills with their triggers
+ * Combines skills from config.json with auto-discovered nested skills
  */
 function getAllSkills() {
   const config = getConfig();
-  const installedSkills = config.skills?.installed || [];
+  const configuredSkills = config.skills?.installed || [];
+  const autoDiscover = config.skills?.autoDiscoverNested !== false; // Default: true
   const skills = [];
+  const seenSkills = new Set();
 
-  for (const skillName of installedSkills) {
+  // First, load configured skills (these take priority)
+  for (const skillName of configuredSkills) {
+    if (seenSkills.has(skillName)) continue;
+    seenSkills.add(skillName);
+
     const metadata = loadSkillMetadata(skillName);
-    const defaultTriggers = DEFAULT_TRIGGERS[skillName] || {
+    // Get default triggers - check both full path and base name
+    const baseName = skillName.split('/').pop();
+    const defaultTriggers = DEFAULT_TRIGGERS[skillName] || DEFAULT_TRIGGERS[baseName] || {
       keywords: [],
       filePatterns: [],
       taskTypes: ['feature', 'bugfix', 'refactor'],
@@ -227,6 +308,35 @@ function getAllSkills() {
       triggers: metadata?.triggers || defaultTriggers,
       filePatterns: metadata?.filePatterns || defaultTriggers.filePatterns
     });
+  }
+
+  // Then, auto-discover nested skills if enabled
+  if (autoDiscover) {
+    const discoveredSkills = discoverNestedSkills();
+
+    for (const skillName of discoveredSkills) {
+      if (seenSkills.has(skillName)) continue;
+      seenSkills.add(skillName);
+
+      const metadata = loadSkillMetadata(skillName);
+      if (!metadata) continue; // Skip if can't load metadata
+
+      // Get default triggers - check both full path and base name
+      const baseName = skillName.split('/').pop();
+      const defaultTriggers = DEFAULT_TRIGGERS[skillName] || DEFAULT_TRIGGERS[baseName] || {
+        keywords: [],
+        filePatterns: [],
+        taskTypes: ['feature', 'bugfix', 'refactor'],
+        categories: []
+      };
+
+      skills.push({
+        name: skillName,
+        metadata: metadata || {},
+        triggers: metadata?.triggers || defaultTriggers,
+        filePatterns: metadata?.filePatterns || defaultTriggers.filePatterns
+      });
+    }
   }
 
   return skills;
@@ -323,11 +433,12 @@ function matchSkills(taskDescription, options = {}) {
 
 /**
  * Convert glob pattern to regex
+ * Uses [^/]* instead of .* to prevent matching directory separators (security)
  */
 function patternToRegex(pattern) {
   const escaped = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*')
+    .replace(/\*/g, '[^/]*')  // Security: don't match path separators
     .replace(/\?/g, '.');
   return new RegExp(escaped, 'i');
 }
@@ -360,7 +471,8 @@ async function loadSkillContext(matchedSkills, options = {}) {
   };
 
   for (const skill of skillsToLoad) {
-    const skillDir = path.join(SKILLS_DIR, skill.name);
+    // Use getSkillDir to handle nested paths
+    const skillDir = getSkillDir(skill.name);
     const skillContext = {
       name: skill.name,
       score: skill.score,
@@ -567,7 +679,10 @@ module.exports = {
   loadSkillContext,
   formatSkillContext,
   getSkillSummary,
-  DEFAULT_TRIGGERS
+  discoverNestedSkills,
+  getSkillDir,
+  DEFAULT_TRIGGERS,
+  MAX_SKILL_NESTING_DEPTH
 };
 
 if (require.main === module) {

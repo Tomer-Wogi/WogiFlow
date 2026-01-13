@@ -122,11 +122,45 @@ Score display: `●●●●○` = 4/5 score
 {
   "skills": {
     "installed": ["nestjs", "react", "transcript-digestion"],
-    "autoInvoke": true,      // Auto-load matched skills
-    "minScore": 2            // Minimum score to invoke
+    "autoInvoke": true,           // Auto-load matched skills
+    "autoDiscoverNested": true,   // Auto-discover nested skills
+    "minScore": 2                 // Minimum score to invoke
   }
 }
 ```
+
+### Nested Skills (v1.0.3+)
+
+Skills can be organized in nested directories for better categorization:
+
+```
+.claude/skills/
+├── nestjs/                    # Flat skill (traditional)
+├── frontend/                  # Category directory
+│   ├── react/                # Nested skill: "frontend/react"
+│   └── vue/                  # Nested skill: "frontend/vue"
+└── backend/                   # Category directory
+    └── express/              # Nested skill: "backend/express"
+```
+
+**Nested skills are auto-discovered** when `autoDiscoverNested: true` (default).
+
+Create nested skills:
+```bash
+flow skill-create frontend/react
+flow skill-create backend/express
+```
+
+Reference in config:
+```json
+{
+  "skills": {
+    "installed": ["nestjs", "frontend/react", "backend/express"]
+  }
+}
+```
+
+**Max nesting depth**: 3 levels (e.g., `domain/category/framework`)
 
 ### Custom Triggers
 

@@ -1,0 +1,169 @@
+{
+  "feature": "claude-code-integration",
+  "created": "2026-01-13T09:30:00.000Z",
+  "tasks": [
+    {
+      "id": "wf-cc-001",
+      "title": "Update MCP documentation for @-mention removal",
+      "type": "bugfix",
+      "priority": "P0",
+      "status": "ready",
+      "description": "Claude Code removed the ability to @-mention MCP servers to enable/disable them. Update all WogiFlow documentation to use `/mcp enable <name>` instead.",
+      "userStory": "As a WogiFlow user, I want accurate documentation so that I can correctly enable/disable MCP servers.",
+      "acceptanceCriteria": [
+        {
+          "scenario": "Documentation accuracy",
+          "given": "A user reading WogiFlow documentation",
+          "when": "They look for how to enable MCP servers",
+          "then": "They find instructions using `/mcp enable <name>` syntax"
+        },
+        {
+          "scenario": "No stale references",
+          "given": "The entire WogiFlow codebase",
+          "when": "Searching for @-mention MCP patterns",
+          "then": "No outdated references exist"
+        }
+      ],
+      "technicalNotes": [
+        "Check: .claude/docs/knowledge-base/",
+        "Check: README.md",
+        "Check: agents/*.md",
+        "Check: templates/*.hbs"
+      ],
+      "complexity": "low",
+      "estimatedFiles": 2
+    },
+    {
+      "id": "wf-cc-002",
+      "title": "Enable nested skills directory discovery",
+      "type": "feature",
+      "priority": "P1",
+      "status": "ready",
+      "description": "Update flow-skill-matcher.js and related scripts to support nested skill directories. This enables hierarchical organization like `.claude/skills/frontend/react/` and workspace-specific skills in monorepos.",
+      "userStory": "As a developer working on a large project, I want to organize skills hierarchically so that I can better categorize domain-specific patterns.",
+      "acceptanceCriteria": [
+        {
+          "scenario": "Nested skill loading",
+          "given": "A skill at `.claude/skills/frontend/react/skill.md`",
+          "when": "The skill matcher runs",
+          "then": "The nested skill is discovered and can be matched"
+        },
+        {
+          "scenario": "Flat skills still work",
+          "given": "A skill at `.claude/skills/nestjs/skill.md` (flat structure)",
+          "when": "The skill matcher runs",
+          "then": "The flat skill is still discovered (backward compatible)"
+        },
+        {
+          "scenario": "Skill listing includes nested",
+          "given": "Mixed flat and nested skills",
+          "when": "Running `flow skill list`",
+          "then": "All skills are shown with their full paths"
+        },
+        {
+          "scenario": "Config supports nested paths",
+          "given": "config.json skills.installed array",
+          "when": "Adding a nested skill path like 'frontend/react'",
+          "then": "The skill is correctly loaded"
+        }
+      ],
+      "technicalNotes": [
+        "Update: scripts/flow-skill-matcher.js - recursive directory scan",
+        "Update: scripts/flow-skill-create.js - support nested paths",
+        "Update: config.json schema if needed",
+        "Consider: Maximum nesting depth (suggest 2 levels)"
+      ],
+      "complexity": "medium",
+      "estimatedFiles": 4,
+      "dependencies": []
+    },
+    {
+      "id": "wf-cc-003",
+      "title": "Create status line integration skill",
+      "type": "feature",
+      "priority": "P1",
+      "status": "ready",
+      "description": "Create a new skill/command `/wogi-statusline-setup` that configures Claude Code's status line to show WogiFlow-specific information like current task, context percentage, and active skill.",
+      "userStory": "As a WogiFlow user, I want to see my current task and context usage in the Claude Code status line so that I have constant visibility into my workflow state.",
+      "acceptanceCriteria": [
+        {
+          "scenario": "Status line shows task",
+          "given": "A task is in progress (ready.json has inProgress)",
+          "when": "The status line is configured",
+          "then": "The current task ID and title appear in the status line"
+        },
+        {
+          "scenario": "Status line shows context percentage",
+          "given": "Claude Code's context_window.used_percentage is available",
+          "when": "The status line is configured",
+          "then": "Context usage percentage is displayed"
+        },
+        {
+          "scenario": "Setup command works",
+          "given": "A user runs `/wogi-statusline-setup`",
+          "when": "The command completes",
+          "then": "The .claude/settings.local.json is updated with status line config"
+        },
+        {
+          "scenario": "Multiple format options",
+          "given": "User wants to customize status line format",
+          "when": "Running setup with options",
+          "then": "Can choose between compact, detailed, or minimal formats"
+        }
+      ],
+      "technicalNotes": [
+        "Create: .claude/commands/wogi-statusline-setup/ skill directory",
+        "Use: context_window.used_percentage and remaining_percentage fields",
+        "Update: .claude/settings.local.json statusLine config",
+        "Reference: Claude Code status line documentation"
+      ],
+      "complexity": "medium",
+      "estimatedFiles": 5,
+      "dependencies": []
+    },
+    {
+      "id": "wf-cc-004",
+      "title": "Enhance context monitor with native tracking",
+      "type": "feature",
+      "priority": "P2",
+      "status": "ready",
+      "description": "Enhance flow-context-monitor.js to optionally use Claude Code's native context_window tracking instead of manual token estimation. This provides more accurate context usage data.",
+      "userStory": "As a WogiFlow user, I want accurate context usage information so that I know exactly when to compact.",
+      "acceptanceCriteria": [
+        {
+          "scenario": "Use native tracking when available",
+          "given": "Claude Code provides context_window.used_percentage",
+          "when": "Running context monitor",
+          "then": "The native percentage is used instead of estimation"
+        },
+        {
+          "scenario": "Fallback to estimation",
+          "given": "Native tracking is not available (non-Claude Code CLI)",
+          "when": "Running context monitor",
+          "then": "Falls back to token estimation method"
+        },
+        {
+          "scenario": "Config option for tracking method",
+          "given": "config.json contextMonitor section",
+          "when": "Setting trackingMethod to 'native' or 'estimated'",
+          "then": "The specified method is used"
+        },
+        {
+          "scenario": "Thresholds work with native tracking",
+          "given": "warnAt: 0.7 and criticalAt: 0.85 in config",
+          "when": "Native tracking reports 75% usage",
+          "then": "Warning is triggered correctly"
+        }
+      ],
+      "technicalNotes": [
+        "Update: scripts/flow-context-monitor.js",
+        "Update: config.json schema - add contextMonitor.trackingMethod",
+        "The native tracking may require reading from Claude Code's internal state",
+        "Consider: How to access Claude Code's context window data from scripts"
+      ],
+      "complexity": "medium",
+      "estimatedFiles": 3,
+      "dependencies": ["wf-cc-003"]
+    }
+  ]
+}

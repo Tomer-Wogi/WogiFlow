@@ -80,14 +80,26 @@ function copyDirectory(src, dest, replacements = {}) {
 }
 
 async function createSkill(name, options = {}) {
-  const skillPath = path.join(SKILLS_DIR, name);
+  // Support nested paths like "frontend/react" or "backend/nestjs"
+  const pathParts = name.split('/').filter(Boolean);
+  const skillPath = path.join(SKILLS_DIR, ...pathParts);
+  const displayName = pathParts[pathParts.length - 1]; // Base name for display
 
   if (fs.existsSync(skillPath)) {
     log('red', `Skill '${name}' already exists at ${skillPath}`);
     return false;
   }
 
+  // Create parent directories if nested
+  if (pathParts.length > 1) {
+    const parentDir = path.join(SKILLS_DIR, ...pathParts.slice(0, -1));
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
   log('cyan', `\n📦 Creating skill: ${name}\n`);
+  if (pathParts.length > 1) {
+    log('dim', `   (nested skill at ${skillPath})\n`);
+  }
 
   // Gather information
   const description = options.description || await prompt('Short description');
@@ -327,7 +339,7 @@ async function main() {
   await createSkill(name);
 }
 
-main().catch(e => {
-  log('red', `Error: ${e.message}`);
+main().catch(err => {
+  log('red', `Error: ${err.message}`);
   process.exit(1);
 });

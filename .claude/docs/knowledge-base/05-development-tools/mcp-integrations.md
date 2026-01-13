@@ -63,6 +63,23 @@ mcp-find "search query"
 mcp-add server-name
 ```
 
+### Enable/Disable Servers
+
+Use Claude Code's MCP commands to manage servers:
+
+```bash
+# Enable a server
+/mcp enable <server-name>
+
+# Disable a server
+/mcp disable <server-name>
+
+# List all servers
+/mcp list
+```
+
+> **Note**: The @-mention syntax for enabling/disabling MCP servers was removed in Claude Code January 2026. Use `/mcp enable <name>` instead.
+
 ### Configure Server
 
 ```bash
