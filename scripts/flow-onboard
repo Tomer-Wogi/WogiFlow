@@ -940,9 +940,176 @@ print_summary() {
     echo ""
 }
 
+ask_onboard_mode() {
+    echo -e "${BOLD}How would you like to set up this project?${NC}"
+    echo ""
+    echo "  ${CYAN}[1]${NC} Fresh start - Analyze this project only"
+    echo "      Scan project structure, detect patterns, generate workflow files"
+    echo ""
+    echo "  ${CYAN}[2]${NC} Import profile - Load patterns from exported profile"
+    echo "      Import from a .zip profile exported from another project"
+    echo ""
+    echo "  ${CYAN}[3]${NC} Learn from project - Copy patterns from another folder"
+    echo "      Point to another project folder to extract and apply its patterns"
+    echo ""
+    read -p "Choice [1]: " onboard_choice
+
+    case "$onboard_choice" in
+        2) ONBOARD_MODE="import" ;;
+        3) ONBOARD_MODE="learn" ;;
+        *) ONBOARD_MODE="fresh" ;;
+    esac
+}
+
+handle_import_profile() {
+    echo ""
+    echo -e "${BOLD}Import from Profile${NC}"
+    echo ""
+    read -p "Path to profile ZIP: " profile_path
+
+    if [ -z "$profile_path" ] || [ ! -f "$profile_path" ]; then
+        echo -e "${RED}Error: Profile not found: $profile_path${NC}"
+        return 1
+    fi
+
+    echo ""
+    echo -e "${CYAN}Importing profile...${NC}"
+    "$SCRIPT_DIR/flow-import-profile" "$profile_path" --force
+
+    echo ""
+    echo -e "${GREEN}✓${NC} Profile imported. Continuing with project scan..."
+    echo ""
+}
+
+handle_learn_from_project() {
+    echo ""
+    echo -e "${BOLD}Learn from Another Project${NC}"
+    echo ""
+    read -p "Path to reference project: " reference_path
+
+    if [ -z "$reference_path" ] || [ ! -d "$reference_path" ]; then
+        echo -e "${RED}Error: Project folder not found: $reference_path${NC}"
+        return 1
+    fi
+
+    echo ""
+    echo -e "${CYAN}Scanning reference project for patterns...${NC}"
+
+    # Check for conflicts
+    echo -e "${DIM}Do you want to resolve any pattern conflicts interactively?${NC}"
+    echo "  [Y] Yes - I'll choose which patterns to adopt"
+    echo "  [n] No - Auto-accept the recommended patterns"
+    echo ""
+    read -p "Resolve conflicts? [Y/n]: " resolve_conflicts
+
+    local resolve_flag=""
+    if [[ ! "$resolve_conflicts" =~ ^[Nn]$ ]]; then
+        resolve_flag="--resolve-conflicts"
+    fi
+
+    "$SCRIPT_DIR/flow-import-profile" --scan "$reference_path" $resolve_flag --force
+
+    echo ""
+    echo -e "${GREEN}✓${NC} Patterns imported. Continuing with project scan..."
+    echo ""
+}
+
+run_pattern_extraction() {
+    # Run pattern extraction on current project to detect conflicts
+    echo -e "${CYAN}Scanning for patterns in current project...${NC}"
+
+    local temp_patterns=$(mktemp)
+    if node "$SCRIPT_DIR/flow-pattern-extractor.js" --format json --with-conflicts --output "$temp_patterns" 2>/dev/null; then
+        local conflict_count=$(node -e "const p = require('$temp_patterns'); console.log(p.conflicts ? p.conflicts.length : 0)" 2>/dev/null || echo "0")
+
+        if [ "$conflict_count" -gt 0 ]; then
+            echo -e "${YELLOW}!${NC} Found $conflict_count conflicting patterns in this codebase"
+            echo ""
+            echo "Some patterns in your codebase are inconsistent (e.g., old vs new code)."
+            echo "Would you like to resolve these conflicts now?"
+            echo ""
+            read -p "Resolve conflicts? [y/N]: " resolve_now
+
+            if [[ "$resolve_now" =~ ^[Yy]$ ]]; then
+                local conflicts_temp=$(mktemp)
+                node -e "const p = require('$temp_patterns'); console.log(JSON.stringify(p.conflicts, null, 2))" > "$conflicts_temp" 2>/dev/null
+
+                local resolved_file=$(mktemp)
+                if node "$SCRIPT_DIR/flow-conflict-resolver.js" --input "$conflicts_temp" --output "$resolved_file"; then
+                    # Apply resolved patterns to decisions.md
+                    local decisions_content=$(node "$SCRIPT_DIR/flow-conflict-resolver.js" --input "$resolved_file" --format decisions 2>/dev/null)
+                    if [ -n "$decisions_content" ]; then
+                        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+                        echo "---" >> "$WORKFLOW_DIR/state/decisions.md"
+                        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+                        echo "$decisions_content" >> "$WORKFLOW_DIR/state/decisions.md"
+                        echo -e "${GREEN}✓${NC} Pattern decisions saved to decisions.md"
+                    fi
+                fi
+                rm -f "$conflicts_temp" "$resolved_file"
+            fi
+        else
+            echo -e "${GREEN}✓${NC} No conflicting patterns detected"
+        fi
+
+        # Save patterns for reference
+        mkdir -p "$WORKFLOW_DIR/extracted"
+        mv "$temp_patterns" "$WORKFLOW_DIR/extracted/project-patterns.json"
+        echo -e "${GREEN}✓${NC} Patterns saved to .workflow/extracted/project-patterns.json"
+    else
+        rm -f "$temp_patterns"
+    fi
+    echo ""
+}
+
+ask_additional_docs() {
+    echo ""
+    echo -e "${BOLD}Additional Documentation${NC}"
+    echo ""
+    echo "Do you have any additional documentation to process?"
+    echo "(PRD, roadmap, specs, architecture docs, etc.)"
+    echo ""
+    echo "  ${CYAN}[1]${NC} Enter file path"
+    echo "  ${CYAN}[2]${NC} Paste content directly"
+    echo "  ${CYAN}[3]${NC} Skip"
+    echo ""
+    read -p "Choice [3]: " doc_choice
+
+    case "$doc_choice" in
+        1)
+            read -p "Path to document: " doc_path
+            if [ -f "$doc_path" ]; then
+                # Check size
+                local size=$(wc -c < "$doc_path")
+                if [ "$size" -gt 50000 ]; then
+                    echo -e "${CYAN}Processing large document through long-input pipeline...${NC}"
+                    if [ -f "$SCRIPT_DIR/flow-long-input.js" ]; then
+                        node "$SCRIPT_DIR/flow-long-input.js" process "$doc_path" 2>/dev/null || true
+                    fi
+                else
+                    ADDITIONAL_DOCS=$(cat "$doc_path" 2>/dev/null)
+                    echo -e "${GREEN}✓${NC} Document loaded"
+                fi
+            else
+                echo -e "${YELLOW}File not found${NC}"
+            fi
+            ;;
+        2)
+            echo "Paste your content (end with a line containing just 'END'):"
+            local pasted=""
+            while IFS= read -r line; do
+                [[ "$line" == "END" ]] && break
+                pasted+="$line"$'\n'
+            done
+            ADDITIONAL_DOCS="$pasted"
+            echo -e "${GREEN}✓${NC} Content captured"
+            ;;
+    esac
+}
+
 main() {
     print_header
-    
+
     # Check if already onboarded
     if [ -f "$WORKFLOW_DIR/specs/project.md" ] && grep -q "Tech Stack" "$WORKFLOW_DIR/specs/project.md" 2>/dev/null; then
         echo -e "${YELLOW}⚠ This project appears to be already onboarded.${NC}"
@@ -954,14 +1121,30 @@ main() {
         fi
         echo ""
     fi
-    
+
     # Ensure workflow exists
     if [ ! -d "$WORKFLOW_DIR" ]; then
         echo -e "${YELLOW}Workflow not initialized. Running install first...${NC}"
         "$SCRIPT_DIR/flow-install" --quick "$(basename "$(pwd)")"
         echo ""
     fi
-    
+
+    # Ask how user wants to set up the project
+    echo -e "${BOLD}━━━ Setup Mode ━━━${NC}"
+    echo ""
+    ask_onboard_mode
+    echo ""
+
+    # Handle import/learn modes
+    case "$ONBOARD_MODE" in
+        import)
+            handle_import_profile || exit 1
+            ;;
+        learn)
+            handle_learn_from_project || exit 1
+            ;;
+    esac
+
     # Detection phase
     echo -e "${BOLD}━━━ Analyzing Project ━━━${NC}"
     echo ""
@@ -986,7 +1169,19 @@ main() {
     ask_current_state
     ask_known_issues
     ask_coding_preferences
-    
+
+    # Pattern extraction (for fresh mode, scan current project for conflicts)
+    if [ "$ONBOARD_MODE" = "fresh" ]; then
+        echo ""
+        echo -e "${BOLD}━━━ Pattern Analysis ━━━${NC}"
+        echo ""
+        run_pattern_extraction
+    fi
+
+    # Ask for additional documentation
+    ask_additional_docs
+
+    echo ""
     echo -e "${BOLD}━━━ Generating Workflow Files ━━━${NC}"
     echo ""
     
@@ -1031,13 +1226,21 @@ if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
     echo ""
     echo "Usage: flow onboard"
     echo ""
+    echo "Setup Options:"
+    echo "  1. Fresh start   - Analyze this project only"
+    echo "  2. Import profile - Load patterns from exported .zip profile"
+    echo "  3. Learn from project - Extract patterns from another folder"
+    echo ""
     echo "This will:"
-    echo "  1. Detect your tech stack (language, framework, database)"
-    echo "  2. Scan for components, pages, modules"
-    echo "  3. Ask about your project (PRD, goals, issues)"
-    echo "  4. Generate project.md, app-map.md, decisions.md"
-    echo "  5. Create initial tasks from known issues"
-    echo "  6. Suggest relevant skills to install"
+    echo "  1. Ask how you want to set up (fresh/import/learn)"
+    echo "  2. Detect your tech stack (language, framework, database)"
+    echo "  3. Scan for components, pages, modules"
+    echo "  4. Extract patterns and detect conflicts"
+    echo "  5. Ask about your project (PRD, goals, issues)"
+    echo "  6. Ask for additional documentation (PRD, roadmap)"
+    echo "  7. Generate project.md, app-map.md, decisions.md"
+    echo "  8. Create initial tasks from known issues"
+    echo "  9. Suggest relevant skills to install"
     exit 0
 fi
 

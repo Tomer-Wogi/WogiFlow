@@ -1,0 +1,264 @@
+{
+  "version": "1.0.0",
+  "description": "Known best practices and conventions by framework for pattern scoring",
+
+  "react": {
+    "naming": {
+      "files": {
+        "convention": "kebab-case",
+        "reason": "React convention for file names, lowercase with dashes",
+        "examples": ["user-profile.tsx", "auth-context.tsx", "use-auth.ts"]
+      },
+      "components": {
+        "convention": "PascalCase",
+        "reason": "JSX convention for component names",
+        "examples": ["UserProfile", "AuthContext", "NavigationBar"]
+      },
+      "hooks": {
+        "convention": "useCamelCase",
+        "reason": "React Hooks naming convention",
+        "examples": ["useAuth", "useLocalStorage", "useFetch"]
+      }
+    },
+    "structure": {
+      "componentType": {
+        "convention": "functional",
+        "reason": "Functional components with hooks are the modern React pattern",
+        "alternatives": ["class"]
+      },
+      "propsDefinition": {
+        "convention": "interface",
+        "reason": "TypeScript interfaces for props provide better type inference",
+        "alternatives": ["type", "inline"]
+      }
+    },
+    "patterns": {
+      "stateManagement": ["hooks", "context", "redux", "zustand"],
+      "styling": ["css-modules", "styled-components", "tailwind", "sass"]
+    }
+  },
+
+  "nextjs": {
+    "extends": "react",
+    "naming": {
+      "files": {
+        "convention": "kebab-case",
+        "reason": "Next.js file-based routing uses kebab-case",
+        "examples": ["user-profile.tsx", "api/auth/login.ts"]
+      },
+      "pages": {
+        "convention": "kebab-case",
+        "reason": "Page files should match URL structure",
+        "examples": ["about-us.tsx", "user/[id].tsx"]
+      }
+    },
+    "structure": {
+      "apiRoutes": {
+        "convention": "pages/api or app/api",
+        "reason": "Next.js API routes convention"
+      }
+    }
+  },
+
+  "nestjs": {
+    "naming": {
+      "files": {
+        "convention": "kebab-case.suffix",
+        "reason": "NestJS convention with dot-separated suffixes",
+        "examples": ["user.service.ts", "auth.controller.ts", "user.module.ts"]
+      },
+      "classes": {
+        "convention": "PascalCase",
+        "reason": "TypeScript class naming convention",
+        "examples": ["UserService", "AuthController", "UserModule"]
+      },
+      "methods": {
+        "convention": "camelCase",
+        "reason": "Standard method naming",
+        "examples": ["findOne", "createUser", "validateToken"]
+      }
+    },
+    "structure": {
+      "modulePattern": {
+        "convention": "feature-module",
+        "reason": "Each feature should have its own module",
+        "files": ["*.module.ts", "*.controller.ts", "*.service.ts"]
+      },
+      "dtoPattern": {
+        "convention": "class-validator",
+        "reason": "DTOs with class-validator decorators for validation"
+      },
+      "entityPattern": {
+        "convention": "typeorm-decorators",
+        "reason": "TypeORM entities with decorators"
+      }
+    },
+    "patterns": {
+      "dependencyInjection": "constructor",
+      "validation": "class-validator",
+      "orm": ["typeorm", "prisma"]
+    }
+  },
+
+  "express": {
+    "naming": {
+      "files": {
+        "convention": "kebab-case",
+        "reason": "Node.js file naming convention",
+        "examples": ["user-routes.js", "auth-middleware.js"]
+      },
+      "routes": {
+        "convention": "kebab-case-plural",
+        "reason": "REST API naming convention",
+        "examples": ["/api/users", "/api/auth/login"]
+      }
+    },
+    "structure": {
+      "architecture": {
+        "convention": "mvc-layered",
+        "reason": "Routes -> Controllers -> Services -> Models"
+      }
+    },
+    "patterns": {
+      "errorHandling": "middleware",
+      "validation": ["express-validator", "joi", "zod"]
+    }
+  },
+
+  "typescript": {
+    "naming": {
+      "files": {
+        "convention": "kebab-case",
+        "reason": "Standard TypeScript convention"
+      },
+      "interfaces": {
+        "convention": "PascalCase",
+        "reason": "Interface naming without I prefix (modern convention)",
+        "examples": ["User", "AuthConfig", "RequestOptions"]
+      },
+      "types": {
+        "convention": "PascalCase",
+        "reason": "Type alias naming convention",
+        "examples": ["UserId", "AuthToken"]
+      },
+      "enums": {
+        "convention": "PascalCase",
+        "reason": "Enum naming convention",
+        "examples": ["UserRole", "HttpStatus"]
+      }
+    },
+    "patterns": {
+      "nullHandling": "strict-null-checks",
+      "imports": ["absolute", "relative"],
+      "exports": ["named", "default"]
+    }
+  },
+
+  "javascript": {
+    "naming": {
+      "files": {
+        "convention": "kebab-case",
+        "reason": "Standard JavaScript convention"
+      },
+      "variables": {
+        "convention": "camelCase",
+        "reason": "Standard variable naming"
+      },
+      "constants": {
+        "convention": "UPPER_SNAKE_CASE",
+        "reason": "Constants should be uppercase"
+      }
+    },
+    "patterns": {
+      "modules": ["esm", "commonjs"],
+      "errorHandling": "try-catch"
+    }
+  },
+
+  "python": {
+    "naming": {
+      "files": {
+        "convention": "snake_case",
+        "reason": "PEP 8 file naming convention",
+        "examples": ["user_service.py", "auth_handler.py"]
+      },
+      "classes": {
+        "convention": "PascalCase",
+        "reason": "PEP 8 class naming convention"
+      },
+      "functions": {
+        "convention": "snake_case",
+        "reason": "PEP 8 function naming convention"
+      },
+      "variables": {
+        "convention": "snake_case",
+        "reason": "PEP 8 variable naming convention"
+      },
+      "constants": {
+        "convention": "UPPER_SNAKE_CASE",
+        "reason": "Constants should be uppercase"
+      }
+    },
+    "patterns": {
+      "imports": "absolute",
+      "typeHints": "recommended"
+    }
+  },
+
+  "fastapi": {
+    "extends": "python",
+    "naming": {
+      "routes": {
+        "convention": "snake_case",
+        "reason": "FastAPI uses Python naming conventions for routes"
+      },
+      "schemas": {
+        "convention": "PascalCase",
+        "reason": "Pydantic models use PascalCase"
+      }
+    },
+    "structure": {
+      "architecture": {
+        "convention": "routers-services-models",
+        "reason": "FastAPI recommended structure"
+      }
+    },
+    "patterns": {
+      "validation": "pydantic",
+      "orm": ["sqlalchemy", "tortoise-orm"]
+    }
+  },
+
+  "go": {
+    "naming": {
+      "files": {
+        "convention": "snake_case",
+        "reason": "Go file naming convention"
+      },
+      "packages": {
+        "convention": "lowercase",
+        "reason": "Package names should be lowercase without underscores"
+      },
+      "functions": {
+        "convention": "MixedCaps or mixedCaps",
+        "reason": "Exported functions use MixedCaps, unexported use mixedCaps"
+      }
+    },
+    "patterns": {
+      "errorHandling": "explicit-return",
+      "interfaces": "implicit"
+    }
+  },
+
+  "common": {
+    "errorVariables": {
+      "convention": "err",
+      "reason": "Consistent catch block variable naming",
+      "alternatives": ["e", "error", "ex"]
+    },
+    "imports": {
+      "grouping": ["builtin", "external", "internal", "relative"],
+      "reason": "Imports should be grouped by type"
+    }
+  }
+}

@@ -26,7 +26,13 @@ show_help() {
     echo "  --rules          Include .claude/rules/ and decisions.md"
     echo "  --learnings      Include feedback-patterns.md and skill learnings"
     echo "  --templates      Include sanitized project.md and roadmap templates"
-    echo "  --full           Include everything (all categories)"
+    echo "  --full           Include everything (all categories + patterns)"
+    echo ""
+    echo "Pattern Extraction (NEW):"
+    echo "  --extract-patterns    Scan codebase and extract patterns"
+    echo "  --resolve-conflicts   Interactive conflict resolution (with --extract-patterns)"
+    echo "  --analysis-mode MODE  Analysis depth: balanced (default), deep"
+    echo "  --include-examples    Include code snippets as examples"
     echo ""
     echo "Legacy options:"
     echo "  --include-decisions    Include decisions.md only"
@@ -34,6 +40,7 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  flow export-profile my-team --full"
+    echo "  flow export-profile my-team --extract-patterns --resolve-conflicts"
     echo "  flow export-profile my-team --rules --learnings"
     echo "  flow export-profile my-team --include-decisions"
 }
@@ -52,6 +59,10 @@ INCLUDE_APP_MAP=false
 INCLUDE_RULES=false
 INCLUDE_LEARNINGS=false
 INCLUDE_TEMPLATES=false
+EXTRACT_PATTERNS=false
+RESOLVE_CONFLICTS=false
+ANALYSIS_MODE="balanced"
+INCLUDE_EXAMPLES=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -71,12 +82,26 @@ while [ $# -gt 0 ]; do
         --templates)
             INCLUDE_TEMPLATES=true
             ;;
+        --extract-patterns)
+            EXTRACT_PATTERNS=true
+            ;;
+        --resolve-conflicts)
+            RESOLVE_CONFLICTS=true
+            ;;
+        --analysis-mode)
+            shift
+            ANALYSIS_MODE="$1"
+            ;;
+        --include-examples)
+            INCLUDE_EXAMPLES=true
+            ;;
         --full)
             INCLUDE_DECISIONS=true
             INCLUDE_APP_MAP=true
             INCLUDE_RULES=true
             INCLUDE_LEARNINGS=true
             INCLUDE_TEMPLATES=true
+            EXTRACT_PATTERNS=true
             ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
@@ -85,6 +110,9 @@ while [ $# -gt 0 ]; do
     esac
     shift
 done
+
+# Determine scripts directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Create profiles directory
 mkdir -p "$PROFILES_DIR"
@@ -275,6 +303,93 @@ TEMPLATE_EOF
 ROADMAP_EOF
         echo -e "  ${GREEN}✓${NC} roadmap-template.md"
         CONTENTS="$CONTENTS\n- templates/roadmap-template.md"
+    fi
+fi
+
+# ==========================================
+# PATTERN EXTRACTION (NEW)
+# ==========================================
+if [ "$EXTRACT_PATTERNS" = true ]; then
+    echo ""
+    echo -e "${YELLOW}Pattern Extraction:${NC}"
+
+    mkdir -p "$PROFILE_DIR/.workflow/extracted"
+
+    # Build extractor options
+    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
+
+    # Run pattern extraction
+    echo -e "  ${DIM}Scanning codebase for patterns...${NC}"
+    PATTERNS_OUTPUT="$PROFILE_DIR/.workflow/extracted/patterns.json"
+
+    if node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_OUTPUT" 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} patterns.json"
+        CONTENTS="$CONTENTS\n- .workflow/extracted/patterns.json (extracted patterns)"
+
+        # Check for conflicts
+        CONFLICT_COUNT=$(node -e "const p = require('$PATTERNS_OUTPUT'); console.log(p.conflicts ? p.conflicts.length : 0)" 2>/dev/null || echo "0")
+
+        if [ "$CONFLICT_COUNT" -gt 0 ]; then
+            echo -e "  ${YELLOW}!${NC} Found $CONFLICT_COUNT conflicts"
+
+            # Run conflict resolution if requested
+            if [ "$RESOLVE_CONFLICTS" = true ]; then
+                # Extract conflicts to temp file
+                CONFLICTS_TEMP=$(mktemp)
+                node -e "const p = require('$PATTERNS_OUTPUT'); console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP" 2>/dev/null
+
+                echo -e "  ${DIM}Launching conflict resolver...${NC}"
+
+                RESOLVED_OUTPUT="$PROFILE_DIR/.workflow/extracted/conflicts-resolved.json"
+                if node "$SCRIPT_DIR/flow-conflict-resolver.js" --input "$CONFLICTS_TEMP" --output "$RESOLVED_OUTPUT"; then
+                    echo -e "  ${GREEN}✓${NC} conflicts-resolved.json"
+                    CONTENTS="$CONTENTS\n- .workflow/extracted/conflicts-resolved.json (user resolutions)"
+                else
+                    echo -e "  ${YELLOW}!${NC} Conflict resolution skipped or cancelled"
+                fi
+
+                rm -f "$CONFLICTS_TEMP"
+            fi
+        else
+            echo -e "  ${GREEN}✓${NC} No conflicting patterns found"
+        fi
+
+        # Extract examples if requested
+        if [ "$INCLUDE_EXAMPLES" = true ]; then
+            mkdir -p "$PROFILE_DIR/.workflow/extracted/examples"
+
+            # Extract example snippets from patterns
+            node -e "
+                const p = require('$PATTERNS_OUTPUT');
+                const fs = require('fs');
+                const path = require('path');
+
+                let count = 0;
+                for (const category in p.patterns) {
+                    for (const pattern of p.patterns[category] || []) {
+                        if (pattern.examples && pattern.examples.length > 0) {
+                            const filename = pattern.subcategory.replace(/\\./g, '-') + '.txt';
+                            const content = pattern.name + '\\n' + '='.repeat(40) + '\\n\\n' +
+                                pattern.examples.slice(0, 5).join('\\n');
+                            fs.writeFileSync(
+                                path.join('$PROFILE_DIR/.workflow/extracted/examples', filename),
+                                content
+                            );
+                            count++;
+                        }
+                    }
+                }
+                console.log(count);
+            " 2>/dev/null || true
+
+            EXAMPLE_COUNT=$(ls "$PROFILE_DIR/.workflow/extracted/examples/"*.txt 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$EXAMPLE_COUNT" -gt 0 ]; then
+                echo -e "  ${GREEN}✓${NC} examples/ ($EXAMPLE_COUNT pattern examples)"
+                CONTENTS="$CONTENTS\n- .workflow/extracted/examples/ (code snippets)"
+            fi
+        fi
+    else
+        echo -e "  ${RED}✗${NC} Pattern extraction failed (continuing without patterns)"
     fi
 fi
 

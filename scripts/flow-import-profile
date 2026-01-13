@@ -20,6 +20,7 @@ show_help() {
     echo "Import Workflow Profile"
     echo ""
     echo "Usage: flow import-profile <profile.zip> [options]"
+    echo "       flow import-profile --scan <project-folder> [options]"
     echo ""
     echo "Options:"
     echo "  --backup           Create backup of current config before importing"
@@ -29,10 +30,16 @@ show_help() {
     echo "  --skip-rules       Don't import rules (.claude/rules/)"
     echo "  --skip-templates   Don't import templates"
     echo ""
+    echo "Scan Mode (NEW):"
+    echo "  --scan <folder>       Scan another project folder for patterns"
+    echo "  --resolve-conflicts   Interactive conflict resolution (with --scan)"
+    echo "  --analysis-mode MODE  Analysis depth: balanced (default), deep"
+    echo ""
     echo "Examples:"
     echo "  flow import-profile team-frontend.zip"
     echo "  flow import-profile team-frontend.zip --backup"
-    echo "  flow import-profile team-frontend.zip --skip-learnings"
+    echo "  flow import-profile --scan /path/to/other/project"
+    echo "  flow import-profile --scan ../my-other-app --resolve-conflicts"
 }
 
 if [ -z "$1" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
@@ -40,16 +47,21 @@ if [ -z "$1" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     exit 0
 fi
 
-PROFILE_FILE="$1"
-shift
-
-# Parse options
+# Parse options first to detect --scan mode
 BACKUP=false
 DRY_RUN=false
 FORCE=false
 SKIP_LEARNINGS=false
 SKIP_RULES=false
 SKIP_TEMPLATES=false
+SCAN_MODE=false
+SCAN_PATH=""
+RESOLVE_CONFLICTS=false
+ANALYSIS_MODE="balanced"
+PROFILE_FILE=""
+
+# Determine scripts directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -71,15 +83,229 @@ while [ $# -gt 0 ]; do
         --skip-templates)
             SKIP_TEMPLATES=true
             ;;
-        *)
+        --scan)
+            SCAN_MODE=true
+            shift
+            SCAN_PATH="$1"
+            ;;
+        --resolve-conflicts)
+            RESOLVE_CONFLICTS=true
+            ;;
+        --analysis-mode)
+            shift
+            ANALYSIS_MODE="$1"
+            ;;
+        -*)
             echo -e "${RED}Unknown option: $1${NC}"
             exit 1
+            ;;
+        *)
+            # Positional argument - profile file
+            if [ -z "$PROFILE_FILE" ]; then
+                PROFILE_FILE="$1"
+            fi
             ;;
     esac
     shift
 done
 
+# ==========================================
+# SCAN MODE - Import patterns from another project
+# ==========================================
+if [ "$SCAN_MODE" = true ]; then
+    if [ -z "$SCAN_PATH" ]; then
+        echo -e "${RED}Error: --scan requires a project folder path${NC}"
+        exit 1
+    fi
+
+    if [ ! -d "$SCAN_PATH" ]; then
+        echo -e "${RED}Error: Project folder not found: $SCAN_PATH${NC}"
+        exit 1
+    fi
+
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║  Scanning Project for Patterns                           ║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${DIM}Source: $SCAN_PATH${NC}"
+    echo ""
+
+    # Create temp directory for extraction results
+    TEMP_DIR=$(mktemp -d)
+    PATTERNS_FILE="$TEMP_DIR/patterns.json"
+
+    # Run pattern extraction on the source project
+    echo -e "${YELLOW}Extracting patterns...${NC}"
+
+    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
+
+    if ! node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_FILE" --project "$SCAN_PATH" 2>/dev/null; then
+        echo -e "${RED}Error: Pattern extraction failed${NC}"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+
+    # Parse extraction results
+    PATTERN_COUNT=$(node -e "const p = require('$PATTERNS_FILE'); let c=0; for(const k in p.patterns){c+=p.patterns[k].length} console.log(c)" 2>/dev/null || echo "0")
+    CONFLICT_COUNT=$(node -e "const p = require('$PATTERNS_FILE'); console.log(p.conflicts ? p.conflicts.length : 0)" 2>/dev/null || echo "0")
+    FRAMEWORK=$(node -e "const p = require('$PATTERNS_FILE'); console.log(p.meta.framework || 'unknown')" 2>/dev/null || echo "unknown")
+
+    echo ""
+    echo -e "  ${GREEN}✓${NC} Detected: $FRAMEWORK"
+    echo -e "  ${GREEN}✓${NC} Extracted: $PATTERN_COUNT patterns"
+
+    # Handle conflicts
+    RESOLVED_FILE=""
+    if [ "$CONFLICT_COUNT" -gt 0 ]; then
+        echo -e "  ${YELLOW}!${NC} Found: $CONFLICT_COUNT conflicts"
+
+        if [ "$RESOLVE_CONFLICTS" = true ]; then
+            # Extract conflicts for resolver
+            CONFLICTS_TEMP="$TEMP_DIR/conflicts.json"
+            node -e "const p = require('$PATTERNS_FILE'); console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP" 2>/dev/null
+
+            echo ""
+            RESOLVED_FILE="$TEMP_DIR/resolved.json"
+
+            if ! node "$SCRIPT_DIR/flow-conflict-resolver.js" --input "$CONFLICTS_TEMP" --output "$RESOLVED_FILE"; then
+                echo -e "${YELLOW}Conflict resolution cancelled or skipped${NC}"
+                RESOLVED_FILE=""
+            fi
+        else
+            echo ""
+            echo -e "${DIM}Use --resolve-conflicts to interactively resolve conflicts${NC}"
+        fi
+    else
+        echo -e "  ${GREEN}✓${NC} No conflicts found"
+    fi
+
+    echo ""
+
+    # Dry run stops here
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "${YELLOW}Dry run - patterns found:${NC}"
+        echo ""
+        node -e "
+            const p = require('$PATTERNS_FILE');
+            for (const category in p.patterns) {
+                console.log('  ' + category + ':');
+                for (const pattern of p.patterns[category] || []) {
+                    console.log('    - ' + pattern.name + ' (' + pattern.frequency + ' occurrences)');
+                }
+            }
+        " 2>/dev/null || true
+        rm -rf "$TEMP_DIR"
+        exit 0
+    fi
+
+    # Confirm import
+    if [ "$FORCE" != true ]; then
+        echo -e "${CYAN}Will import $PATTERN_COUNT patterns to:${NC}"
+        echo -e "  → .workflow/state/decisions.md"
+        echo -e "  → .claude/rules/ (auto-generated)"
+        echo ""
+        read -p "Import patterns? (y/N) " confirm
+        if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+            echo "Cancelled"
+            rm -rf "$TEMP_DIR"
+            exit 0
+        fi
+    fi
+
+    # Create backup if requested
+    if [ "$BACKUP" = true ]; then
+        BACKUP_DIR="wogi-backup-$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$BACKUP_DIR"
+        [ -f "$WORKFLOW_DIR/state/decisions.md" ] && cp "$WORKFLOW_DIR/state/decisions.md" "$BACKUP_DIR/"
+        [ -d ".claude/rules" ] && cp -r ".claude/rules" "$BACKUP_DIR/"
+        echo -e "${GREEN}✓${NC} Backup created: $BACKUP_DIR"
+        echo ""
+    fi
+
+    echo -e "${CYAN}Importing patterns...${NC}"
+    echo ""
+
+    # Generate decisions.md content from patterns
+    mkdir -p "$WORKFLOW_DIR/state"
+
+    DECISIONS_CONTENT=$(node -e "
+        const p = require('$PATTERNS_FILE');
+        const lines = [];
+
+        lines.push('## Imported Patterns');
+        lines.push('Source: $SCAN_PATH');
+        lines.push('Imported: ' + new Date().toISOString().split('T')[0]);
+        lines.push('');
+
+        for (const category in p.patterns) {
+            lines.push('### ' + category.charAt(0).toUpperCase() + category.slice(1) + ' Patterns');
+            lines.push('');
+
+            for (const pattern of (p.patterns[category] || []).slice(0, 10)) {
+                lines.push('**' + pattern.subcategory + '**: ' + pattern.name);
+                if (pattern.examples && pattern.examples.length > 0) {
+                    lines.push('  Examples: \\\`' + pattern.examples.slice(0, 3).join('\\\`, \\\`') + '\\\`');
+                }
+                lines.push('');
+            }
+        }
+
+        console.log(lines.join('\\n'));
+    " 2>/dev/null)
+
+    if [ -f "$WORKFLOW_DIR/state/decisions.md" ]; then
+        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo "---" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo "$DECISIONS_CONTENT" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(appended)${NC}"
+    else
+        echo "# Project Decisions" > "$WORKFLOW_DIR/state/decisions.md"
+        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo "$DECISIONS_CONTENT" >> "$WORKFLOW_DIR/state/decisions.md"
+        echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(created)${NC}"
+    fi
+
+    # Generate rules from patterns
+    if [ -f "$SCRIPT_DIR/flow-rules-sync.js" ]; then
+        echo -e "  ${DIM}Syncing rules from patterns...${NC}"
+        node "$SCRIPT_DIR/flow-rules-sync.js" 2>/dev/null || true
+        echo -e "  ${GREEN}✓${NC} .claude/rules/"
+    fi
+
+    # Save extracted patterns for future reference
+    mkdir -p "$WORKFLOW_DIR/extracted"
+    cp "$PATTERNS_FILE" "$WORKFLOW_DIR/extracted/imported-patterns.json"
+
+    if [ -n "$RESOLVED_FILE" ] && [ -f "$RESOLVED_FILE" ]; then
+        cp "$RESOLVED_FILE" "$WORKFLOW_DIR/extracted/imported-resolutions.json"
+    fi
+
+    # Cleanup
+    rm -rf "$TEMP_DIR"
+
+    echo ""
+    echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║  ✓ Patterns imported successfully!                       ║${NC}"
+    echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${DIM}Imported $PATTERN_COUNT patterns from $SCAN_PATH${NC}"
+    echo -e "${DIM}Restart Claude CLI to apply changes.${NC}"
+
+    exit 0
+fi
+
+# ==========================================
+# PROFILE MODE - Import from zip file
+# ==========================================
+
 # Check file exists
+if [ -z "$PROFILE_FILE" ]; then
+    echo -e "${RED}Error: No profile file specified${NC}"
+    echo -e "${DIM}Use --help for usage information${NC}"
+    exit 1
+fi
+
 if [ ! -f "$PROFILE_FILE" ]; then
     echo -e "${RED}Error: Profile file not found: $PROFILE_FILE${NC}"
     exit 1
