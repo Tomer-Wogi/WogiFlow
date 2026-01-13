@@ -35,6 +35,41 @@ const SPEAKER_COLON_PATTERN = /^([A-Z][a-zA-Z\s]+):\s*/;
 const SPEAKER_BRACKET_PATTERN = /^\[([^\]]+)\]\s*/;
 
 /**
+ * Simple word counter utility
+ */
+function countWords(text) {
+  return text.split(/\s+/).filter(w => w.length > 0).length;
+}
+
+/**
+ * Detect VTT format
+ */
+function isVTTFormat(text) {
+  // Check for WEBVTT header
+  if (text.trim().startsWith('WEBVTT')) {
+    return { detected: true, confidence: 0.95 };
+  }
+  // Check for VTT timestamps
+  const timestamps = text.match(VTT_TIMESTAMP_FULL) || text.match(VTT_TIMESTAMP_SHORT);
+  if (timestamps) {
+    return { detected: true, confidence: 0.85 };
+  }
+  return { detected: false, confidence: 0 };
+}
+
+/**
+ * Detect SRT format
+ */
+function isSRTFormat(text) {
+  const timestamps = text.match(SRT_TIMESTAMP);
+  const cueNumbers = text.match(/^\d+\s*$/m);
+  if (timestamps && cueNumbers) {
+    return { detected: true, confidence: 0.9 };
+  }
+  return { detected: false, confidence: 0 };
+}
+
+/**
  * Convert timestamp to milliseconds
  */
 function timestampToMs(hours, minutes, seconds, ms) {

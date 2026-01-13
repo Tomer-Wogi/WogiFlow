@@ -35,6 +35,7 @@ function loadActiveDigest() { requireInit(); return digestCore.loadActiveDigest(
 function saveActiveDigest(d) { requireInit(); return digestCore.saveActiveDigest(d); }
 function countWords(t) { requireInit(); return digestCore.countWords(t); }
 function now() { requireInit(); return digestCore.now(); }
+function measureInputMetrics(t) { requireInit(); return digestCore.measureInputMetrics(t); }
 
 // Paths - temp processing files, cleaned up after completion
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
