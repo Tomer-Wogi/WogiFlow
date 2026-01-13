@@ -53,26 +53,31 @@ function createMinimalStructure() {
 
 /**
  * Create pending-setup.json marker for AI to detect
+ * Uses exclusive write flag to prevent race conditions
  */
 function createPendingSetupMarker() {
   const markerPath = path.join(STATE_DIR, 'pending-setup.json');
-
-  // Don't overwrite if already exists
-  if (fs.existsSync(markerPath)) {
-    return;
-  }
 
   // Don't create if already fully initialized
   if (fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) {
     return;
   }
 
-  fs.writeFileSync(markerPath, JSON.stringify({
-    status: 'pending_ai_setup',
-    createdAt: new Date().toISOString(),
-    projectRoot: PROJECT_ROOT,
-    version: '1.0'
-  }, null, 2));
+  // Use 'wx' flag for atomic creation - fails if file already exists
+  // This prevents race conditions when multiple npm installs run in parallel
+  try {
+    fs.writeFileSync(markerPath, JSON.stringify({
+      status: 'pending_ai_setup',
+      createdAt: new Date().toISOString(),
+      projectRoot: PROJECT_ROOT,
+      version: '1.0'
+    }, null, 2), { flag: 'wx' });
+  } catch (err) {
+    // EEXIST means file already exists - that's fine, another process created it
+    if (err.code !== 'EEXIST') {
+      throw err;
+    }
+  }
 }
 
 /**
@@ -107,18 +112,27 @@ async function main() {
   }
 
   // Try to write directly to terminal (bypasses npm output capture)
+  // Note: /dev/tty is Unix-specific, will use stderr fallback on Windows
   let output = process.stderr;
+  let ttyFd = null;
   try {
-    fs.accessSync('/dev/tty', fs.constants.W_OK);
-    const fd = fs.openSync('/dev/tty', 'w');
-    output = { write: (msg) => fs.writeSync(fd, msg) };
-  } catch (_err) {
+    if (process.platform !== 'win32') {
+      fs.accessSync('/dev/tty', fs.constants.W_OK);
+      ttyFd = fs.openSync('/dev/tty', 'w');
+      output = { write: (msg) => fs.writeSync(ttyFd, msg) };
+    }
+  } catch (err) {
     // Fallback to stderr if /dev/tty not available
+    ttyFd = null;
   }
 
   // Already initialized - short message
   if (isAlreadyInitialized()) {
     output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
+    // Close TTY file descriptor if opened
+    if (ttyFd !== null) {
+      try { fs.closeSync(ttyFd); } catch (err) { /* ignore */ }
+    }
     return;
   }
 
@@ -140,6 +154,11 @@ async function main() {
 
 `;
   output.write(msg);
+
+  // Close TTY file descriptor if opened
+  if (ttyFd !== null) {
+    try { fs.closeSync(ttyFd); } catch (err) { /* ignore */ }
+  }
 }
 
 // Run

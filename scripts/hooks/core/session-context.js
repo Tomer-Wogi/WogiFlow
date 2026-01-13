@@ -13,7 +13,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS, getReadyData } = require('../../flow-utils');
+const { getConfig, PATHS, getReadyData, safeJsonParse } = require('../../flow-utils');
 const setupCheck = require('./setup-check');
 
 /**
@@ -30,21 +30,17 @@ function isSessionContextEnabled() {
  * @returns {Object|null} Suspended task info or null
  */
 function getSuspendedTask() {
-  try {
-    const suspensionPath = path.join(PATHS.state, 'suspension.json');
-    if (!fs.existsSync(suspensionPath)) {
-      return null;
-    }
-
-    const suspension = JSON.parse(fs.readFileSync(suspensionPath, 'utf-8'));
-    if (!suspension.taskId || suspension.status === 'resumed') {
-      return null;
-    }
-
-    return suspension;
-  } catch (err) {
+  const suspensionPath = path.join(PATHS.state, 'suspension.json');
+  if (!fs.existsSync(suspensionPath)) {
     return null;
   }
+
+  const suspension = safeJsonParse(suspensionPath, null);
+  if (!suspension || !suspension.taskId || suspension.status === 'resumed') {
+    return null;
+  }
+
+  return suspension;
 }
 
 /**
@@ -115,7 +111,8 @@ function getRecentActivity(maxEntries = 3) {
     const entries = [];
 
     // Parse request log entries (### R-XXX format)
-    const entryRegex = /^###\s+R-(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2}[^]*?)(?=^###\s+R-|\Z)/gm;
+    // Use [\s\S]*? instead of [^]*? for better performance and compatibility
+    const entryRegex = /^###\s+R-(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2}[\s\S]*?)(?=^###\s+R-|$)/gm;
     let match;
 
     while ((match = entryRegex.exec(content)) !== null && entries.length < maxEntries) {
@@ -140,21 +137,21 @@ function getRecentActivity(maxEntries = 3) {
  * @returns {Object|null} Session state or null
  */
 function getSessionState() {
-  try {
-    const sessionPath = path.join(PATHS.state, 'session-state.json');
-    if (!fs.existsSync(sessionPath)) {
-      return null;
-    }
-
-    const state = JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
-    return {
-      lastActive: state.lastActive,
-      recentFiles: (state.recentFiles || []).slice(0, 5),
-      recentDecisions: (state.recentDecisions || []).slice(0, 3)
-    };
-  } catch (err) {
+  const sessionPath = path.join(PATHS.state, 'session-state.json');
+  if (!fs.existsSync(sessionPath)) {
     return null;
   }
+
+  const state = safeJsonParse(sessionPath, null);
+  if (!state) {
+    return null;
+  }
+
+  return {
+    lastActive: state.lastActive,
+    recentFiles: (state.recentFiles || []).slice(0, 5),
+    recentDecisions: (state.recentDecisions || []).slice(0, 3)
+  };
 }
 
 /**

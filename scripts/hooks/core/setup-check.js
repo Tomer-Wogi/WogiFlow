@@ -13,6 +13,9 @@
 const path = require('path');
 const fs = require('fs');
 
+// Import safeJsonParse for security (prototype pollution protection)
+const { safeJsonParse } = require('../../flow-utils');
+
 // State paths
 const WORKFLOW_DIR = path.join(process.cwd(), '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
@@ -31,12 +34,8 @@ function isSetupPending() {
 
   // Check for pending-setup marker
   if (fs.existsSync(PENDING_SETUP_PATH)) {
-    try {
-      const marker = JSON.parse(fs.readFileSync(PENDING_SETUP_PATH, 'utf-8'));
-      return marker.status === 'pending_ai_setup';
-    } catch (_err) {
-      return true; // If can't parse, assume pending
-    }
+    const marker = safeJsonParse(PENDING_SETUP_PATH, { status: 'pending_ai_setup' });
+    return marker.status === 'pending_ai_setup';
   }
 
   // No config and no marker - still needs setup
@@ -52,12 +51,11 @@ function getPendingSetupInfo() {
     return null;
   }
 
-  try {
-    if (fs.existsSync(PENDING_SETUP_PATH)) {
-      return JSON.parse(fs.readFileSync(PENDING_SETUP_PATH, 'utf-8'));
-    }
-  } catch (_err) {
-    // Ignore parse errors
+  if (fs.existsSync(PENDING_SETUP_PATH)) {
+    return safeJsonParse(PENDING_SETUP_PATH, {
+      status: 'pending_ai_setup',
+      projectRoot: process.cwd()
+    });
   }
 
   // Return default info if marker doesn't exist
@@ -82,14 +80,10 @@ function getSetupContext() {
 
   // Detect project name from package.json if available
   let projectName = null;
-  try {
-    const pkgPath = path.join(process.cwd(), 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-      projectName = pkg.name || null;
-    }
-  } catch (_err) {
-    // Ignore
+  const pkgPath = path.join(process.cwd(), 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    const pkg = safeJsonParse(pkgPath, {});
+    projectName = pkg.name || null;
   }
 
   return {
@@ -112,7 +106,9 @@ function clearPendingSetup() {
       fs.unlinkSync(PENDING_SETUP_PATH);
     }
     return true;
-  } catch (_err) {
+  } catch (err) {
+    // Log but don't throw - setup marker removal is best-effort
+    console.error(`[clearPendingSetup] Failed to remove marker: ${err.message}`);
     return false;
   }
 }
