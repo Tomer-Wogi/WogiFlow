@@ -14,6 +14,7 @@ const fs = require('fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS, getReadyData } = require('../../flow-utils');
+const setupCheck = require('./setup-check');
 
 /**
  * Check if session context is enabled
@@ -221,6 +222,12 @@ function gatherSessionContext(options = {}) {
     context.sessionState = sessionState;
   }
 
+  // Setup check - high priority if setup is needed
+  const setupContext = setupCheck.getSetupContext();
+  if (setupContext && setupContext.needsSetup) {
+    context.setupRequired = setupContext;
+  }
+
   return {
     enabled: true,
     context
@@ -239,6 +246,16 @@ function formatContextForInjection(context) {
 
   const ctx = context.context;
   let output = '## Wogi Flow Session Context\n\n';
+
+  // PRIORITY: Setup required - show first if needs setup
+  if (ctx.setupRequired && ctx.setupRequired.needsSetup) {
+    output += `### ⚠️ Setup Required\n`;
+    output += `WogiFlow needs initial configuration.\n`;
+    if (ctx.setupRequired.projectName) {
+      output += `Detected project: **${ctx.setupRequired.projectName}**\n`;
+    }
+    output += `\nRun \`/wogi-init\` or say "setup wogiflow" to configure.\n\n`;
+  }
 
   // Suspended task alert
   if (ctx.suspendedTask) {

@@ -1,253 +1,51 @@
 #!/bin/bash
 
 # Wogi Flow - Initialize Workflow
-
-set -e
+# This script redirects to AI-driven setup
 
 WORKFLOW_DIR=".workflow"
 
 # Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
 NC='\033[0m'
 
-echo -e "${CYAN}Initializing Wogi Flow${NC}"
-echo "======================"
+# Check if already initialized
+if [ -f "$WORKFLOW_DIR/config.json" ]; then
+    echo -e "${CYAN}WogiFlow:${NC} Already initialized."
+    echo ""
+    echo "Run ${YELLOW}flow status${NC} to see project state."
+    echo "Run ${YELLOW}flow health${NC} to check workflow health."
+    exit 0
+fi
+
+# Check if pending-setup.json exists (postinstall created it)
+if [ -f "$WORKFLOW_DIR/state/pending-setup.json" ]; then
+    echo -e "${CYAN}WogiFlow:${NC} Setup pending."
+    echo ""
+fi
+
+# Direct users to AI assistant
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║${NC}                  ${GREEN}WogiFlow Setup${NC}                             ${CYAN}║${NC}"
+echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  WogiFlow setup is handled by your AI assistant.            ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${YELLOW}Start your AI assistant:${NC}                                  ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    ${GREEN}claude${NC}      (Claude Code)                               ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    ${GREEN}gemini${NC}      (Gemini CLI)                                ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    ${GREEN}opencode${NC}    (OpenCode)                                  ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  Then say: ${YELLOW}\"setup wogiflow\"${NC} or run ${YELLOW}/wogi-init${NC}             ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  The AI will guide you through:                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    • Project name confirmation                               ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    • Tech stack selection                                    ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    • Importing patterns from other projects                  ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    • Generating skills and rules                             ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-
-# Create directories
-echo -e "${YELLOW}Creating directories...${NC}"
-
-dirs=(
-    "$WORKFLOW_DIR/state/components"
-    "$WORKFLOW_DIR/specs/capabilities"
-    "$WORKFLOW_DIR/changes"
-    "$WORKFLOW_DIR/archive"
-    "$WORKFLOW_DIR/bugs"
-    "$WORKFLOW_DIR/tests/flows"
-)
-
-for dir in "${dirs[@]}"; do
-    mkdir -p "$dir"
-    echo -e "  ${GREEN}✓${NC} $dir"
-done
-
-# Create state files if missing
-echo ""
-echo -e "${YELLOW}Creating state files...${NC}"
-
-# config.json
-if [ ! -f "$WORKFLOW_DIR/config.json" ]; then
-    cat > "$WORKFLOW_DIR/config.json" << 'EOF'
-{
-  "version": "1.2",
-  "projectName": "",
-  "mandatorySteps": {
-    "afterTask": [],
-    "beforeCommit": [],
-    "onSessionEnd": ["updateRequestLog", "updateAppMap"]
-  },
-  "autoLog": true,
-  "autoUpdateAppMap": true,
-  "qualityGates": {
-    "feature": {
-      "require": ["tests", "appMapUpdate", "requestLogEntry"],
-      "optional": ["review", "docs"]
-    },
-    "bugfix": {
-      "require": ["tests", "requestLogEntry"],
-      "optional": ["review"]
-    },
-    "refactor": {
-      "require": ["tests", "noNewFeatures"],
-      "optional": ["review"]
-    }
-  },
-  "requireApproval": [],
-  "componentRules": {
-    "preferVariants": true,
-    "requireAppMapEntry": true,
-    "requireDetailDoc": false
-  },
-  "testing": {
-    "runAfterTask": false,
-    "runBeforeCommit": false,
-    "browserTests": false
-  },
-  "agents": {
-    "enabled": ["orchestrator", "developer", "reviewer", "tester"],
-    "optional": ["accessibility", "security", "performance", "docs", "design-system", "onboarding"]
-  }
-}
-EOF
-    echo -e "  ${GREEN}✓${NC} config.json"
-else
-    echo -e "  ${YELLOW}○${NC} config.json (exists)"
-fi
-
-# ready.json
-if [ ! -f "$WORKFLOW_DIR/state/ready.json" ]; then
-    cat > "$WORKFLOW_DIR/state/ready.json" << 'EOF'
-{
-  "lastUpdated": "",
-  "ready": [],
-  "inProgress": [],
-  "blocked": [],
-  "recentlyCompleted": []
-}
-EOF
-    echo -e "  ${GREEN}✓${NC} ready.json"
-else
-    echo -e "  ${YELLOW}○${NC} ready.json (exists)"
-fi
-
-# request-log.md
-if [ ! -f "$WORKFLOW_DIR/state/request-log.md" ]; then
-    cat > "$WORKFLOW_DIR/state/request-log.md" << 'EOF'
-# Request Log
-
-Automatic log of all requests that changed files. Searchable by tags.
-
----
-
-EOF
-    echo -e "  ${GREEN}✓${NC} request-log.md"
-else
-    echo -e "  ${YELLOW}○${NC} request-log.md (exists)"
-fi
-
-# app-map.md
-if [ ! -f "$WORKFLOW_DIR/state/app-map.md" ]; then
-    cat > "$WORKFLOW_DIR/state/app-map.md" << 'EOF'
-# App Map
-
-Quick reference of all screens and components. Check before creating anything new.
-
----
-
-## Screens
-
-| Screen | Route | Status |
-|--------|-------|--------|
-
----
-
-## Modals
-
-| Modal | Trigger | Status |
-|-------|---------|--------|
-
----
-
-## Components
-
-| Component | Variants | Path | Details |
-|-----------|----------|------|---------|
-
----
-EOF
-    echo -e "  ${GREEN}✓${NC} app-map.md"
-else
-    echo -e "  ${YELLOW}○${NC} app-map.md (exists)"
-fi
-
-# decisions.md
-if [ ! -f "$WORKFLOW_DIR/state/decisions.md" ]; then
-    cat > "$WORKFLOW_DIR/state/decisions.md" << 'EOF'
-# Project Decisions
-
-Project-specific rules that agents must follow.
-
----
-
-## Component Architecture
-
-### Component Reuse Policy
-**Rule**: Always check `app-map.md` before creating any component.
-
----
-
-## Coding Standards
-
----
-
-## UI/UX Decisions
-
----
-EOF
-    echo -e "  ${GREEN}✓${NC} decisions.md"
-else
-    echo -e "  ${YELLOW}○${NC} decisions.md (exists)"
-fi
-
-# progress.md
-if [ ! -f "$WORKFLOW_DIR/state/progress.md" ]; then
-    cat > "$WORKFLOW_DIR/state/progress.md" << 'EOF'
-# Progress & Handoff Notes
-
-## Last Updated
-
-## Last Session
-
-## In Progress
-
-## Next
-
-## Blockers
-EOF
-    echo -e "  ${GREEN}✓${NC} progress.md"
-else
-    echo -e "  ${YELLOW}○${NC} progress.md (exists)"
-fi
-
-# feedback-patterns.md
-if [ ! -f "$WORKFLOW_DIR/state/feedback-patterns.md" ]; then
-    cat > "$WORKFLOW_DIR/state/feedback-patterns.md" << 'EOF'
-# Feedback Patterns
-
-Tracks corrections to identify patterns for workflow improvement.
-
----
-
-## Patterns Log
-
-| Date | Correction | Count | Promoted To | Status |
-|------|------------|-------|-------------|--------|
-
----
-EOF
-    echo -e "  ${GREEN}✓${NC} feedback-patterns.md"
-else
-    echo -e "  ${YELLOW}○${NC} feedback-patterns.md (exists)"
-fi
-
-# project.md
-if [ ! -f "$WORKFLOW_DIR/specs/project.md" ]; then
-    cat > "$WORKFLOW_DIR/specs/project.md" << 'EOF'
-# Project Overview
-
-## Summary
-[Brief description]
-
-## Users
-[Who uses this]
-
-## Features
-[Main features]
-
-## Tech Stack
-[Technologies used]
-EOF
-    echo -e "  ${GREEN}✓${NC} specs/project.md"
-else
-    echo -e "  ${YELLOW}○${NC} specs/project.md (exists)"
-fi
-
-echo ""
-echo -e "${GREEN}✓ Wogi Flow initialized!${NC}"
-echo ""
-echo "Next steps:"
-echo "  1. Edit .workflow/specs/project.md with project details"
-echo "  2. Run: ./scripts/flow health"
-echo "  3. Start working: ./scripts/flow ready"

@@ -11,6 +11,7 @@ const validation = require('./validation');
 const loopCheck = require('./loop-check');
 const componentCheck = require('./component-check');
 const sessionContext = require('./session-context');
+const setupCheck = require('./setup-check');
 
 module.exports = {
   // Task Gating
@@ -31,5 +32,9 @@ module.exports = {
 
   // Session Context
   ...sessionContext,
-  sessionContext
+  sessionContext,
+
+  // Setup Check
+  ...setupCheck,
+  setupCheck
 };

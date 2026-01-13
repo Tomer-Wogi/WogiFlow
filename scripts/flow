@@ -37,9 +37,8 @@ show_help() {
     echo "Usage: flow <command> [options]"
     echo ""
     echo "Setup & Updates:"
-    echo "  install              Interactive setup wizard"
-    echo "  install --quick      Quick setup with defaults"
-    echo "  onboard              Analyze existing project & set up context"
+    echo "  init                 Setup guide (directs to AI assistant)"
+    echo "  onboard              Project onboarding (directs to AI assistant)"
     echo "  migrate              Migrate to universal CLI-agnostic structure"
     echo "  migrate --dry-run    Preview migration without changes"
     echo "  update               Update to latest version (preserves data)"
@@ -383,11 +382,8 @@ case "${1:-}" in
     session-end)
         node "$SCRIPT_DIR/flow-session-end.js" "${@:2}"
         ;;
-    init)
+    init|install)
         "$SCRIPT_DIR/flow-init" "${@:2}"
-        ;;
-    install)
-        "$SCRIPT_DIR/flow-install" "${@:2}"
         ;;
     onboard)
         "$SCRIPT_DIR/flow-onboard" "${@:2}"

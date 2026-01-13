@@ -3,8 +3,12 @@
 /**
  * WogiFlow postinstall script
  *
- * Runs after npm install to set up project with the unified wizard.
- * In CI environments, creates minimal structure without interaction.
+ * Runs after npm install to:
+ * 1. Create minimal directory structure
+ * 2. Create pending-setup.json marker for AI to detect
+ * 3. Print instructions to start AI assistant
+ *
+ * All actual setup is done by the AI via /wogi-init command.
  */
 
 const fs = require('fs');
@@ -18,7 +22,7 @@ const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
 /**
- * Create minimal directory structure (for CI or non-interactive)
+ * Create minimal directory structure
  */
 function createMinimalStructure() {
   const dirs = [
@@ -48,15 +52,35 @@ function createMinimalStructure() {
 }
 
 /**
+ * Create pending-setup.json marker for AI to detect
+ */
+function createPendingSetupMarker() {
+  const markerPath = path.join(STATE_DIR, 'pending-setup.json');
+
+  // Don't overwrite if already exists
+  if (fs.existsSync(markerPath)) {
+    return;
+  }
+
+  // Don't create if already fully initialized
+  if (fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) {
+    return;
+  }
+
+  fs.writeFileSync(markerPath, JSON.stringify({
+    status: 'pending_ai_setup',
+    createdAt: new Date().toISOString(),
+    projectRoot: PROJECT_ROOT,
+    version: '1.0'
+  }, null, 2));
+}
+
+/**
  * Check if we should be completely silent (CI only)
  */
 function shouldBeSilent() {
-  // Silent in CI
   if (process.env.CI) return true;
-
-  // Silent if explicitly requested
   if (process.env.WOGIFLOW_SKIP_POSTINSTALL) return true;
-
   return false;
 }
 
@@ -74,20 +98,22 @@ async function main() {
   // Always create minimal structure first
   createMinimalStructure();
 
+  // Create marker for AI to detect (unless already initialized)
+  createPendingSetupMarker();
+
   // Silent in CI or when explicitly disabled
   if (shouldBeSilent()) {
     return;
   }
 
   // Try to write directly to terminal (bypasses npm output capture)
-  let output = process.stderr; // Default fallback
+  let output = process.stderr;
   try {
-    // Check if /dev/tty exists and is writable
     fs.accessSync('/dev/tty', fs.constants.W_OK);
     const fd = fs.openSync('/dev/tty', 'w');
     output = { write: (msg) => fs.writeSync(fd, msg) };
-  } catch {
-    // Fallback to stderr if /dev/tty not available (Windows, CI, non-interactive)
+  } catch (_err) {
+    // Fallback to stderr if /dev/tty not available
   }
 
   // Already initialized - short message
@@ -96,16 +122,21 @@ async function main() {
     return;
   }
 
-  // Show setup instructions
+  // Show setup instructions - point to AI assistant
   const msg = `
-\x1b[36m╔════════════════════════════════════════════════════════════╗\x1b[0m
-\x1b[36m║\x1b[0m  \x1b[1mWogiFlow installed successfully!\x1b[0m                           \x1b[36m║\x1b[0m
-\x1b[36m╚════════════════════════════════════════════════════════════╝\x1b[0m
-
-  \x1b[33mNext step:\x1b[0m Run the setup wizard:
-
-    \x1b[36mnpx flow onboard\x1b[0m    \x1b[2m# For existing projects (recommended)\x1b[0m
-    \x1b[36mnpx flow init\x1b[0m       \x1b[2m# For new projects\x1b[0m
+\x1b[36m╔══════════════════════════════════════════════════════════════╗\x1b[0m
+\x1b[36m║\x1b[0m             \x1b[1mWogiFlow Installed Successfully!\x1b[0m               \x1b[36m║\x1b[0m
+\x1b[36m╠══════════════════════════════════════════════════════════════╣\x1b[0m
+\x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m  \x1b[33mTo complete setup, start your AI assistant:\x1b[0m                \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    \x1b[32mclaude\x1b[0m      \x1b[2m(Claude Code)\x1b[0m                               \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    \x1b[32mgemini\x1b[0m      \x1b[2m(Gemini CLI)\x1b[0m                                \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    \x1b[32mopencode\x1b[0m    \x1b[2m(OpenCode)\x1b[0m                                  \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m  Then say: \x1b[33m"setup wogiflow"\x1b[0m or run \x1b[33m/wogi-init\x1b[0m               \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
+\x1b[36m╚══════════════════════════════════════════════════════════════╝\x1b[0m
 
 `;
   output.write(msg);
