@@ -138,6 +138,73 @@ AskUserQuestion({
    - Architecture requirements
    - Feature requirements
 3. Use detected info to pre-select tech stack options
+4. Also use this to populate `product.md` (see Step 2.5)
+
+### Step 2.5: Product Description (NEW)
+
+After import sources, ask about product documentation:
+
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "Would you like to describe your product? This helps me generate better stories and features.",
+    header: "Product",
+    options: [
+      { label: "Describe my product", description: "Paste a PRD or describe what you're building" },
+      { label: "Scan and infer", description: "I'll analyze your project and show you what I found" },
+      { label: "Skip for now", description: "Create a placeholder - you can fill it in later" }
+    ],
+    multiSelect: false
+  }]
+});
+```
+
+#### If "Describe my product" selected:
+1. Ask user to paste PRD or description in their next message
+2. Parse the content and extract:
+   - Product name and tagline
+   - Target users
+   - Key features
+   - Non-goals
+3. Show a summary:
+```
+I understood your product as:
+
+**Name**: [extracted name]
+**Tagline**: [one-liner]
+**Target Users**: [list]
+**Key Features**: [list 3-5]
+
+Is this correct? [Yes / Let me correct]
+```
+4. Generate `product.md` with PIN markers to `.workflow/specs/product.md`
+
+#### If "Scan and infer" selected:
+1. Run `scripts/flow-product-scanner.js` to analyze:
+   - `package.json` (name, description, keywords)
+   - `README.md` (description, features)
+   - Project structure (routes, screens, API)
+2. Show brief summary:
+```
+Based on scanning your project:
+
+**Name**: [from package.json]
+**Type**: [web-app | api | cli] (detected [framework])
+**Features**: [top 3 detected]
+
+Is this correct? [Yes / Let me correct]
+```
+3. If user says "Let me correct", ask what to change
+4. Generate `product.md` with PIN markers
+
+#### If "Skip for now" selected:
+1. Copy `templates/context/product-placeholder.md` to `.workflow/specs/product.md`
+2. Show reminder:
+```
+Created a placeholder product.md. You can fill it in later by:
+- Running `/wogi-init` again and selecting "Describe my product"
+- Editing `.workflow/specs/product.md` directly
+```
 
 ### Step 3: Tech Stack Selection (if no import or new project)
 

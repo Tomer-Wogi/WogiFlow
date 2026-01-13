@@ -60,9 +60,9 @@ For each major decision in decisions.md:
 ### Step 6: Getting Started
 ```
 "Here's how to start working:
-1. Run: ./scripts/flow ready
+1. Run: /wogi-ready
 2. Pick a task
-3. Run: ./scripts/flow start TASK-XXX
+3. Run: /wogi-start TASK-XXX
 4. Ask me for help implementing"
 ```
 
@@ -115,18 +115,20 @@ grep "[filename]" .workflow/state/request-log.md
 [From app-map.md]
 
 ## Workflow
-1. Check what's ready: `./scripts/flow ready`
-2. Start a task: `./scripts/flow start TASK-XXX`
+1. Check what's ready: `/wogi-ready`
+2. Start a task: `/wogi-start TASK-XXX`
 3. Get help: Ask Claude with the task context
 4. Log changes: Automatic via Wogi Flow
-5. Complete: `./scripts/flow done TASK-XXX`
+5. Complete: `/wogi-done TASK-XXX`
 
 ## Common Commands
 | Command | Purpose |
 |---------|---------|
-| `flow ready` | See available tasks |
-| `flow status` | Project overview |
-| `flow health` | Check workflow health |
+| `/wogi-ready` | See available tasks |
+| `/wogi-status` | Project overview |
+| `/wogi-health` | Check workflow health |
+| `/wogi-story` | Create a new story |
+| `/wogi-start` | Start working on a task |
 
 ## Who to Ask
 [Team/contact info if available]

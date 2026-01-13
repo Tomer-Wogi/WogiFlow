@@ -25,6 +25,14 @@ const {
   withLock
 } = require('./flow-utils');
 
+// Import context orchestrator for product context
+let contextOrchestrator = null;
+try {
+  contextOrchestrator = require('./flow-context-orchestrator');
+} catch (err) {
+  // Context orchestrator not available - continue without it
+}
+
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const CHANGES_DIR = path.join(WORKFLOW_DIR, 'changes');
@@ -52,10 +60,41 @@ function getSubTaskId(parentId, subNum) {
 }
 
 /**
+ * Get product context for story generation
+ * @returns {Object|null} Product overview or null
+ */
+function getProductContextForStory() {
+  if (!contextOrchestrator) {
+    return null;
+  }
+
+  try {
+    return contextOrchestrator.getProductOverview();
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
  * Generate story template content
  */
 function generateStoryTemplate(taskId, title) {
+  // Get product context if available
+  const productContext = getProductContextForStory();
+  const productSection = productContext && productContext.name
+    ? `
+## Product Context
+<!-- PIN: product-context -->
+**Product**: ${productContext.name}
+${productContext.tagline ? `**Tagline**: ${productContext.tagline}` : ''}
+${productContext.type ? `**Type**: ${productContext.type}` : ''}
+
+---
+`
+    : '';
+
   return `# [${taskId}] ${title}
+${productSection}
 
 ## User Story
 **As a** [user type]

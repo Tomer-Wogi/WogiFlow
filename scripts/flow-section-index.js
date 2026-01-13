@@ -376,6 +376,164 @@ function createAppMapRow(category, headers, cells, lineNumber) {
 }
 
 // ============================================================
+// Generic PIN Document Parser
+// ============================================================
+
+/**
+ * Parse any markdown document with explicit PIN markers
+ * Supports: <!-- PIN: xxx --> and <!-- PINS: a, b, c --> formats
+ * @param {string} content - File content
+ * @param {string} sourceName - Source identifier (e.g., "product.md")
+ * @returns {Object[]} - Array of indexed sections
+ */
+function parsePinnedDocument(content, sourceName) {
+  const sections = [];
+  const lines = content.split('\n');
+
+  // Extract document-level pins from header comment
+  const headerPinsMatch = content.match(/<!--\s*PINS:\s*([^>]+)\s*-->/i);
+  const documentPins = headerPinsMatch
+    ? headerPinsMatch[1].split(',').map(p => p.trim().toLowerCase())
+    : [];
+
+  let currentSection = null;
+  let currentContent = [];
+  let currentPins = [];
+  let lineStart = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check for PIN marker
+    const pinMatch = line.match(/<!--\s*PIN:\s*([^>]+)\s*-->/i);
+    if (pinMatch) {
+      currentPins = pinMatch[1].split(',').map(p => p.trim().toLowerCase());
+      continue;
+    }
+
+    // Match ## or ### headers (sections)
+    const headerMatch = line.match(/^(#{2,3})\s+(.+)$/);
+    if (headerMatch) {
+      // Save previous section
+      if (currentSection && currentContent.length > 0) {
+        const trimmedContent = currentContent.join('\n').trim();
+        if (trimmedContent) {
+          sections.push(createPinnedSection(
+            sourceName,
+            currentSection,
+            trimmedContent,
+            currentPins,
+            documentPins,
+            lineStart,
+            i - 1
+          ));
+        }
+      }
+
+      currentSection = headerMatch[2].trim();
+      currentContent = [];
+      currentPins = [];
+      lineStart = i + 1;
+      continue;
+    }
+
+    // Accumulate content
+    if (currentSection) {
+      currentContent.push(line);
+    }
+  }
+
+  // Save last section
+  if (currentSection && currentContent.length > 0) {
+    const trimmedContent = currentContent.join('\n').trim();
+    if (trimmedContent) {
+      sections.push(createPinnedSection(
+        sourceName,
+        currentSection,
+        trimmedContent,
+        currentPins,
+        documentPins,
+        lineStart,
+        lines.length - 1
+      ));
+    }
+  }
+
+  return sections;
+}
+
+/**
+ * Create a pinned section object
+ */
+function createPinnedSection(sourceName, title, content, sectionPins, documentPins, lineStart, lineEnd) {
+  const sourceSlug = slugify(sourceName.replace('.md', ''));
+  const titleSlug = slugify(title);
+  const id = `${sourceSlug}:${titleSlug}`;
+
+  // Combine section pins, document pins, and auto-generated pins
+  const allPins = new Set([
+    ...sectionPins,
+    ...documentPins,
+    ...generatePins(title, content)
+  ]);
+
+  return {
+    id,
+    title,
+    source: sourceName,
+    pins: Array.from(allPins),
+    lineStart: lineStart + 1,
+    lineEnd: lineEnd + 1,
+    content,
+    contentHash: hashContent(content)
+  };
+}
+
+/**
+ * Scan specs directory for markdown files with PIN markers
+ * @returns {Object} - { files: [{ name, path, sections }] }
+ */
+function scanSpecsDirectory() {
+  const specsDir = PATHS.specs;
+  const results = [];
+
+  if (!dirExists(specsDir)) {
+    return results;
+  }
+
+  try {
+    const files = fs.readdirSync(specsDir);
+
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+
+      const filePath = path.join(specsDir, file);
+      try {
+        const content = readFile(filePath);
+
+        // Check if file has PIN markers
+        if (content.includes('<!-- PIN:') || content.includes('<!-- PINS:')) {
+          const sections = parsePinnedDocument(content, file);
+          results.push({
+            name: file,
+            path: filePath,
+            lastModified: fs.statSync(filePath).mtime.toISOString(),
+            contentHash: hashContent(content),
+            sections
+          });
+        }
+      } catch (err) {
+        warn(`Error parsing ${file}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    warn(`Error scanning specs directory: ${err.message}`);
+  }
+
+  return results;
+}
+
+// ============================================================
 // Index Generation
 // ============================================================
 
@@ -422,13 +580,26 @@ function generateIndex() {
     }
   }
 
+  // Parse specs/*.md files with PIN markers
+  const specsFiles = scanSpecsDirectory();
+  for (const specFile of specsFiles) {
+    index.sources[`specs/${specFile.name}`] = {
+      path: specFile.path,
+      lastModified: specFile.lastModified,
+      contentHash: specFile.contentHash,
+      sections: specFile.sections
+    };
+  }
+
   // Calculate stats
   const decisionsSections = index.sources['decisions.md']?.sections?.length || 0;
   const appMapRows = index.sources['app-map.md']?.rows?.length || 0;
+  const specsSections = specsFiles.reduce((sum, f) => sum + f.sections.length, 0);
 
   index.stats = {
-    totalSections: decisionsSections,
+    totalSections: decisionsSections + specsSections,
     totalRows: appMapRows,
+    specsFiles: specsFiles.length,
     totalPins: countUniquePins(index)
   };
 
@@ -704,6 +875,8 @@ module.exports = {
   generatePins,
   parseDecisionsSections,
   parseAppMapRows,
+  parsePinnedDocument,
+  scanSpecsDirectory,
   INDEX_PATH
 };
 
