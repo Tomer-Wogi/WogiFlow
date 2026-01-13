@@ -940,8 +940,9 @@ case "${1:-}" in
     guided-edit)
         node "$SCRIPT_DIR/flow-guided-edit.js" "${@:2}"
         ;;
-    transcript-digest|digest)
-        node "$SCRIPT_DIR/flow-transcript-digest.js" "${@:2}"
+    long-input|long-input-process|transcript-digest|digest)
+        # long-input is the new name, transcript-digest kept for backward compatibility
+        node "$SCRIPT_DIR/flow-long-input.js" "${@:2}"
         ;;
     version|--version|-v)
         show_version
@@ -969,7 +970,7 @@ case "${1:-}" in
                     parallel) echo "Manage parallel execution. Subcommands: config, check, enable, disable" ;;
                     worktree) echo "Manage worktree isolation. Subcommands: enable, disable, list, cleanup" ;;
                     voice-input|voice) echo "Voice-to-transcript input. Subcommands: setup, status, test, record" ;;
-                    transcript-digest|digest) echo "Transcript digestion. Subcommands: status, new, check, topics, save-topics" ;;
+                    long-input|long-input-process|transcript-digest|digest) echo "Long input processing. Ensures nothing missed from long prompts/transcripts/specs. Subcommands: status, new, check, topics, save-topics" ;;
                     guided-edit) echo "Step-by-step guided multi-file editing. Usage: flow guided-edit \"task description\"" ;;
                     *) echo "No detailed help for '$2'. Run 'flow help' for all commands." ;;
                 esac

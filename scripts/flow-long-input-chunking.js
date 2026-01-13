@@ -36,8 +36,9 @@ function saveActiveDigest(d) { requireInit(); return digestCore.saveActiveDigest
 function countWords(t) { requireInit(); return digestCore.countWords(t); }
 function now() { requireInit(); return digestCore.now(); }
 
-// Paths
-const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');
+// Paths - temp processing files, cleaned up after completion
+const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
+const STATE_DIR = TMP_DIR; // Alias for backward compatibility
 
 // ==========================================================================
 // E5-S3: Durable Digest Session Persistence

@@ -44,8 +44,9 @@ function isRequirement(s) { requireInit(); return digestCore.isRequirement(s); }
 function isVagueStatement(s) { requireInit(); return digestCore.isVagueStatement(s); }
 function analyzeComplexity() { requireInit(); return digestCore.analyzeComplexity(); }
 
-// State directory
-const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');
+// Temp directory for processing (cleaned up after completion)
+const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
+const STATE_DIR = TMP_DIR; // Alias for backward compatibility
 
 // ==========================================================================
 // E3-S2: Story Generation with Source Tracing
@@ -2099,6 +2100,12 @@ function finalizeDigestion(options = {}) {
   };
   saveActiveDigest(activeDigest);
 
+  // 6. Cleanup temp files (processing artifacts no longer needed)
+  let cleanupResult = { cleaned: false };
+  if (!options.keepTempFiles) {
+    cleanupResult = cleanupTempFiles(activeDigest.session.digest_id);
+  }
+
   return {
     success: true,
     approved_count: exportResult.summary.total_approved,
@@ -2106,8 +2113,47 @@ function finalizeDigestion(options = {}) {
     tasks_skipped: addResult.skipped || 0,
     files_exported: fileExport?.exported.length || 0,
     validation: exportResult.validation,
-    digest_status: 'completed'
+    digest_status: 'completed',
+    temp_cleanup: cleanupResult.cleaned ? 'cleaned' : 'kept'
   };
+}
+
+/**
+ * Cleanup temp processing files after successful completion
+ * Removes the digest-specific directory from .workflow/tmp/long-input/
+ */
+function cleanupTempFiles(digestId) {
+  if (!digestId) {
+    return { cleaned: false, error: 'No digest ID provided' };
+  }
+
+  const digestPath = path.join(TMP_DIR, digestId);
+
+  if (!fs.existsSync(digestPath)) {
+    return { cleaned: false, error: 'Digest directory not found' };
+  }
+
+  try {
+    // Remove the digest directory and all its contents
+    fs.rmSync(digestPath, { recursive: true, force: true });
+
+    // Also remove active-digest.json if it points to this digest
+    const activeFile = path.join(TMP_DIR, 'active-digest.json');
+    if (fs.existsSync(activeFile)) {
+      try {
+        const active = JSON.parse(fs.readFileSync(activeFile, 'utf8'));
+        if (active.session?.digest_id === digestId) {
+          fs.unlinkSync(activeFile);
+        }
+      } catch {
+        // Ignore errors reading active file
+      }
+    }
+
+    return { cleaned: true, path: digestPath };
+  } catch (err) {
+    return { cleaned: false, error: err.message };
+  }
 }
 
 // ============================================================================
@@ -2190,5 +2236,8 @@ module.exports = {
   formatTaskAsMarkdown,
   exportStoryFiles,
   previewExport,
-  finalizeDigestion
+  finalizeDigestion,
+
+  // Temp File Cleanup
+  cleanupTempFiles
 };

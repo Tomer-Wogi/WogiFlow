@@ -55,8 +55,11 @@ mcp-memory-server/node_modules/
 .workflow/state/feedback-patterns.md
 .workflow/state/durable-*.json
 
-# Digest sessions (transcript processing)
+# Digest sessions (transcript processing) - legacy location
 .workflow/state/digests/
+
+# Temp processing files (long input processing)
+.workflow/tmp/
 
 # Memory database (vector embeddings)
 .workflow/memory/

@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Transcript Digestion - Multi-pass extraction system
+ * Long Input Processing - Multi-pass extraction system
  *
- * This script manages digest sessions and provides utilities for the
- * multi-pass extraction process. The actual extraction is done by Claude
- * following the rules in .claude/skills/transcript-digestion/rules/
+ * Ensures nothing is missed from long/complex inputs (transcripts, prompts,
+ * specs, documents). Uses a 4-pass extraction system:
+ *   Pass 1: Topic extraction
+ *   Pass 2: Statement association
+ *   Pass 3: Orphan check
+ *   Pass 4: Contradiction resolution
+ *
+ * Renamed from flow-transcript-digest.js in v1.8.0
  */
 
 const fs = require('fs');
@@ -13,15 +18,16 @@ const path = require('path');
 const crypto = require('crypto');
 const { writeJson } = require('./flow-utils');
 
-// Import extracted modules
-const transcriptParsing = require('./flow-transcript-parsing');
-const transcriptLanguage = require('./flow-transcript-language');
-const transcriptStories = require('./flow-transcript-stories');
-const transcriptChunking = require('./flow-transcript-chunking');
+// Import extracted modules (renamed from transcript-* to long-input-*)
+const transcriptParsing = require('./flow-long-input-parsing');
+const transcriptLanguage = require('./flow-long-input-language');
+const transcriptStories = require('./flow-long-input-stories');
+const transcriptChunking = require('./flow-long-input-chunking');
 
-// Paths
-const STATE_DIR = path.join(process.cwd(), '.workflow', 'state', 'digests');
-const ACTIVE_DIGEST_FILE = path.join(STATE_DIR, 'active-digest.json');
+// Paths - temp processing files go to .workflow/tmp/, cleaned up after completion
+const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
+const STATE_DIR = TMP_DIR; // Alias for backward compatibility during migration
+const ACTIVE_DIGEST_FILE = path.join(TMP_DIR, 'active-digest.json');
 const CONFIG_FILE = path.join(process.cwd(), '.workflow', 'config.json');
 
 // Colors for CLI output
@@ -7641,6 +7647,131 @@ ${c.dim}Examples:${c.reset}
   }
 }
 
+// ==========================================================================
+// Quick Processing Mode
+// ==========================================================================
+
+/**
+ * Quick process mode - single-pass extraction without interactive clarification.
+ * Used by the long input gate for fast feedback.
+ *
+ * @param {string} input - The input text to process
+ * @param {Object} options - Processing options
+ * @returns {Object} Quick scan results
+ */
+function quickProcess(input, options = {}) {
+  if (!input || typeof input !== 'string') {
+    return { error: 'No input provided' };
+  }
+
+  const startTime = Date.now();
+
+  // 1. Split into statements (returns objects with .text property)
+  const statements = splitIntoStatements(input);
+  const meaningfulStatements = statements.filter(s => isMeaningfulStatement(s.text));
+
+  // 2. Quick topic extraction (keyword-based, no full analysis)
+  const topicKeywords = new Set();
+  const topicPatterns = [
+    /\b(add|create|build|implement)\s+(?:a\s+)?(\w+(?:\s+\w+)?)/gi,
+    /\b(\w+)\s+(feature|component|page|button|form|table|list)/gi,
+    /\b(user|admin|guest)\s+(?:can|should|must|wants?)\s+(\w+)/gi
+  ];
+
+  for (const statement of meaningfulStatements) {
+    const text = statement.text;
+    for (const pattern of topicPatterns) {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        const keyword = (match[2] || match[1]).toLowerCase();
+        if (keyword.length > 2) {
+          topicKeywords.add(keyword);
+        }
+      }
+    }
+  }
+
+  // 3. Quick contradiction detection
+  const contradictions = [];
+  const seenValues = new Map(); // attribute -> { value, text }
+
+  const valuePatterns = [
+    { pattern: /(\d+)\s*(columns?|rows?|items?|pages?)/gi, attr: 'count' },
+    { pattern: /(primary|secondary|danger|success)\s*(?:color|button)/gi, attr: 'style' },
+    { pattern: /(left|right|center|top|bottom)/gi, attr: 'position' }
+  ];
+
+  for (const statement of meaningfulStatements) {
+    const text = statement.text;
+    for (const { pattern, attr } of valuePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const value = match[1].toLowerCase();
+        const key = `${attr}`;
+
+        if (seenValues.has(key) && seenValues.get(key).value !== value) {
+          // Check for correction phrase
+          const isCorrection = detectCorrectionPhrase(text);
+
+          contradictions.push({
+            attribute: attr,
+            value1: seenValues.get(key).value,
+            value2: value,
+            statement1: seenValues.get(key).text.slice(0, 50),
+            statement2: text.slice(0, 50),
+            autoResolved: isCorrection,
+            resolution: isCorrection ? `Later statement (${value}) supersedes` : 'needs_review'
+          });
+        }
+
+        seenValues.set(key, { value, text });
+      }
+    }
+  }
+
+  const elapsed = Date.now() - startTime;
+
+  return {
+    mode: 'quick',
+    success: true,
+    metrics: {
+      totalStatements: statements.length,
+      meaningfulStatements: meaningfulStatements.length,
+      topicsDetected: topicKeywords.size,
+      contradictionsFound: contradictions.length,
+      autoResolved: contradictions.filter(c => c.autoResolved).length,
+      processingTimeMs: elapsed
+    },
+    topics: Array.from(topicKeywords),
+    contradictions: contradictions.filter(c => !c.autoResolved),
+    summary: generateQuickSummary(meaningfulStatements.length, topicKeywords.size, contradictions)
+  };
+}
+
+/**
+ * Generate human-readable summary for quick scan
+ */
+function generateQuickSummary(statementCount, topicCount, contradictions) {
+  const unresolvedCount = contradictions.filter(c => !c.autoResolved).length;
+
+  let summary = `Quick scan complete: ${statementCount} statements, ${topicCount} topics detected.`;
+
+  if (contradictions.length > 0) {
+    const autoResolved = contradictions.filter(c => c.autoResolved).length;
+    summary += `\n${contradictions.length} potential contradictions found`;
+    if (autoResolved > 0) {
+      summary += ` (${autoResolved} auto-resolved as corrections)`;
+    }
+    if (unresolvedCount > 0) {
+      summary += `.\n${unresolvedCount} need review.`;
+    }
+  } else {
+    summary += '\nNo obvious contradictions detected.';
+  }
+
+  return summary;
+}
+
 // Export for use as module
 module.exports = {
   createSession,
@@ -7909,7 +8040,10 @@ module.exports = {
   saveChunkingState: transcriptChunking.saveChunkingState,
   updateChunkStatus: transcriptChunking.updateChunkStatus,
   getChunkContent: transcriptChunking.getChunkContent,
-  getChunkingStatus: transcriptChunking.getChunkingStatus
+  getChunkingStatus: transcriptChunking.getChunkingStatus,
+  // Quick Processing Mode (for gate integration)
+  quickProcess,
+  generateQuickSummary
 };
 
 // Run CLI if called directly
