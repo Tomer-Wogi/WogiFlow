@@ -16,7 +16,12 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Import safe utilities
-const { safeJsonParse } = require('./flow-utils');
+const { safeJsonParse, writeJson } = require('./flow-utils');
+
+// Utility: ISO timestamp
+function now() {
+  return new Date().toISOString();
+}
 
 // Core functions are injected via init() to avoid circular dependencies
 let digestCore = null;

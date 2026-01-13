@@ -24,6 +24,84 @@ const transcriptLanguage = require('./flow-long-input-language');
 const transcriptStories = require('./flow-long-input-stories');
 const transcriptChunking = require('./flow-long-input-chunking');
 
+// Destructure commonly used language functions
+const {
+  detectLanguage,
+  detectMultipleLanguages,
+  getLanguageInfo,
+  LANGUAGE_INFO
+} = transcriptLanguage;
+
+// Destructure commonly used parsing functions
+const {
+  parseVTT,
+  parseSRT,
+  parseSubtitle,
+  mergeCues,
+  formatCuesAsText,
+  getSubtitleStats,
+  parseZoom,
+  parseTeams,
+  parseMeeting,
+  mergeMeetingEntries,
+  formatMeetingAsText,
+  getMeetingStats
+} = transcriptParsing;
+
+// Destructure commonly used chunking functions
+const {
+  loadDurableSessions,
+  listDurableSessions,
+  getDurableSession,
+  switchDurableSession,
+  archiveDurableSession,
+  deleteDurableSession,
+  generateRecoverySummaryForSession,
+  getTimeSince,
+  needsChunking,
+  planChunks,
+  getChunkingStatus
+} = transcriptChunking;
+
+// Destructure additional language utilities
+const { listSupportedLanguages } = transcriptLanguage;
+
+// Destructure commonly used story functions
+const {
+  generateStoryFromTopic,
+  generateAllStories,
+  saveStory,
+  loadStory,
+  loadAllStories,
+  formatStoryAsMarkdown,
+  initializePresentation,
+  getPresentationStatus,
+  getNextStory,
+  getCurrentStory,
+  approveCurrentStory,
+  rejectCurrentStory,
+  skipCurrentStory,
+  formatStorySummary,
+  formatActionsPrompt,
+  getCompletionSummary,
+  resetPresentation,
+  // Edit session functions
+  startEditSession,
+  editUserStory,
+  editCriterion,
+  addCriterion,
+  removeCriterion,
+  getEditChanges,
+  commitEditSession,
+  cancelEditSession,
+  getEditHistory,
+  listEditableStories,
+  // Export functions
+  previewExport,
+  exportApprovedStories,
+  finalizeDigestion
+} = transcriptStories;
+
 // Paths - temp processing files go to .workflow/tmp/, cleaned up after completion
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
 const STATE_DIR = TMP_DIR; // Alias for backward compatibility during migration
@@ -7379,7 +7457,7 @@ function main() {
       if (previewResult.validation.errors.length > 0) {
         console.log(`${c.red}Errors:${c.reset}`);
         for (const e of previewResult.validation.errors) {
-          console.log(`  ${e.story_id}: ${err.message}`);
+          console.log(`  ${e.story_id}: ${e.message}`);
         }
         console.log();
       }
@@ -7775,6 +7853,9 @@ function generateQuickSummary(statementCount, topicCount, contradictions) {
 
 // Export for use as module
 module.exports = {
+  // Utilities
+  now,
+  // Core session management
   createSession,
   loadActiveDigest,
   saveActiveDigest,
