@@ -26,7 +26,8 @@ const {
   parseFlags,
   outputJson,
   info,
-  warn
+  warn,
+  safeJsonParse
 } = require('./flow-utils');
 
 const {
@@ -82,7 +83,7 @@ function truncateToTokenLimit(sections, maxTokens) {
       const availableChars = (maxTokens - currentTokens) * CHARS_PER_TOKEN;
       result.push({
         ...section,
-        content: section.content?.substring(0, availableChars) + '...[truncated]',
+        content: (section.content || '').substring(0, availableChars) + '...[truncated]',
         truncated: true
       });
       break;
@@ -222,26 +223,24 @@ async function getTargetedContext(options = {}) {
     includeProduct = true
   } = options;
 
-  const allSections = [];
-
   // Get sections by task description
+  let taskSections = [];
   if (task) {
-    const taskSections = await getSectionsForTask(task, {
+    taskSections = await getSectionsForTask(task, {
       limit: DEFAULT_SECTION_LIMIT
     });
-    allSections.push(...taskSections);
   }
 
   // Get sections by explicit pins
+  let pinSections = [];
   if (pins.length > 0) {
-    const pinSections = await getSectionsByPins(pins, {
+    pinSections = await getSectionsByPins(pins, {
       limit: Math.floor(DEFAULT_SECTION_LIMIT / 2)
     });
-    allSections.push(...pinSections);
   }
 
-  // Merge and deduplicate
-  const mergedSections = mergeSections(allSections);
+  // Merge and deduplicate (pass arrays separately as intended by mergeSections)
+  const mergedSections = mergeSections(taskSections, pinSections);
 
   // Calculate available tokens for sections
   let availableTokens = maxTokens;
@@ -295,27 +294,23 @@ async function getContextForTaskId(taskId) {
     return getTargetedContext({ task: taskId });
   }
 
-  try {
-    const ready = JSON.parse(readFile(readyPath));
-    const allTasks = [
-      ...(ready.ready || []),
-      ...(ready.inProgress || []),
-      ...(ready.blocked || [])
-    ];
+  const ready = safeJsonParse(readyPath, {});
+  const allTasks = [
+    ...(ready.ready || []),
+    ...(ready.inProgress || []),
+    ...(ready.blocked || [])
+  ];
 
-    const task = allTasks.find(t =>
-      (typeof t === 'string' && t === taskId) ||
-      (typeof t === 'object' && t.id === taskId)
-    );
+  const task = allTasks.find(t =>
+    (typeof t === 'string' && t === taskId) ||
+    (typeof t === 'object' && t.id === taskId)
+  );
 
-    if (task && typeof task === 'object' && task.title) {
-      return getTargetedContext({
-        task: `${task.title} ${task.description || ''}`,
-        pins: task.tags || []
-      });
-    }
-  } catch (err) {
-    // Fall back to using taskId as description
+  if (task && typeof task === 'object' && task.title) {
+    return getTargetedContext({
+      task: `${task.title} ${task.description || ''}`,
+      pins: task.tags || []
+    });
   }
 
   return getTargetedContext({ task: taskId });

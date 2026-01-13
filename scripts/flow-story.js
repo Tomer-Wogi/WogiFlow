@@ -22,7 +22,8 @@ const {
   generateTaskId,
   parseFlags,
   outputJson,
-  withLock
+  withLock,
+  safeJsonParse
 } = require('./flow-utils');
 
 // Import context orchestrator for product context
@@ -71,6 +72,9 @@ function getProductContextForStory() {
   try {
     return contextOrchestrator.getProductOverview();
   } catch (err) {
+    // Intentionally silent - product context is optional enhancement
+    // Debug: uncomment to diagnose issues
+    // console.error('[getProductContextForStory] Error:', err.message);
     return null;
   }
 }
@@ -372,7 +376,7 @@ async function createStory(title, feature, options = {}) {
     if (fs.existsSync(READY_PATH)) {
       try {
         await withLock(READY_PATH, async () => {
-          const ready = JSON.parse(fs.readFileSync(READY_PATH, 'utf8'));
+          const ready = safeJsonParse(READY_PATH, { ready: [] });
           ready.ready = ready.ready || [];
 
           // Add parent task with new format
@@ -498,7 +502,7 @@ Examples:
 
   if (result.decomposed) {
     console.log('');
-    log('cyan', `📋 Decomposed into ${result.subTasks.length} sub-tasks:`);
+    log('cyan', `Decomposed into ${result.subTasks.length} sub-tasks:`);
     result.subTasks.forEach(sub => {
       log('dim', `   ${sub.id}: ${sub.objective}`);
     });
@@ -508,7 +512,7 @@ Examples:
     }
   } else if (result.decompositionSuggested) {
     console.log('');
-    log('yellow', `💡 This looks like a complex story (${result.patterns.join(', ')})`);
+    log('yellow', `This looks like a complex story (${result.patterns.join(', ')})`);
     log('yellow', `   Consider using --deep to decompose into ~${result.suggestedCount} sub-tasks`);
     log('dim', `   Run: flow story "${title}" ${feature} --deep`);
   }
@@ -522,7 +526,7 @@ Examples:
   } else {
     log('dim', '  3. Start with: /wogi-start ' + result.subTasks[0].id);
   }
-  })().catch(e => {
+  })().catch(err => {
     log('red', `Error: ${err.message}`);
     process.exit(1);
   });

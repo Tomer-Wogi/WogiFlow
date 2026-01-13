@@ -428,7 +428,7 @@ Examples:
   }
 
   // Default: verbose output
-  console.log('\n📦 Product Scan Results\n');
+  console.log('\nProduct Scan Results\n');
   console.log(`Name: ${result.name}`);
   console.log(`Type: ${result.type}${result.framework ? ` (${result.framework})` : ''}`);
   console.log(`Description: ${result.description || '[not detected]'}`);
