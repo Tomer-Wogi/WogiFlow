@@ -550,7 +550,7 @@ async function main() {
   showSummary();
 }
 
-main().catch(e => {
-  console.error(console.error('Error:', err.message));
+main().catch(err => {
+  console.error('Error:', err.message);
   process.exit(1);
 });

@@ -109,26 +109,31 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-# Safe JSON reading function (prevents code execution via require())
+# Safe JSON reading function (prevents file path injection via process.argv)
+# Note: queries are hardcoded in this script, not external input
+# The query is passed via environment variable to avoid shell quoting issues
 safe_read_json() {
     local file="$1"
     local query="$2"
-    node -e "
-        const fs = require('fs');
+    SAFE_JSON_QUERY="$query" node -e '
+        const fs = require("fs");
+        const file = process.argv[1];
         try {
-            const content = fs.readFileSync('$file', 'utf-8');
+            const content = fs.readFileSync(file, "utf-8");
             // Check for prototype pollution attempts
-            if (/__proto__|constructor\\s*[\"'\`:]|prototype\\s*[\"'\`:]/i.test(content)) {
-                console.error('Suspicious content detected');
+            if (/__proto__|constructor\s*["'"'"'`:]|prototype\s*["'"'"'`:]/i.test(content)) {
+                console.error("Suspicious content detected");
                 process.exit(1);
             }
             const p = JSON.parse(content);
-            $query
+            // Query is passed via environment to avoid complex quoting issues
+            const queryFn = new Function("p", process.env.SAFE_JSON_QUERY);
+            queryFn(p);
         } catch(e) {
             console.error(e.message);
             process.exit(1);
         }
-    " 2>/dev/null
+    ' -- "$file" 2>/dev/null
 }
 
 # ==========================================

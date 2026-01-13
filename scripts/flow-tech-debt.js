@@ -27,6 +27,16 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Import shared utilities from flow-utils
+const {
+  colors: c,
+  safeJsonParse,
+  writeJson,
+  fileExists,
+  getProjectRoot,
+  ensureDir
+} = require('./flow-utils');
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -40,44 +50,15 @@ const AUTO_FIXABLE_TYPES = [
   'empty-catch'
 ];
 
-// Colors for CLI output
-const c = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  bold: '\x1b[1m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  magenta: '\x1b[35m'
-};
-
 // ============================================================================
 // Utility Functions
 // ============================================================================
 
 /**
- * Get project root directory
- */
-function getProjectRoot() {
-  let current = process.cwd();
-  const root = path.parse(current).root;
-
-  while (current !== root) {
-    if (fs.existsSync(path.join(current, '.workflow'))) {
-      return current;
-    }
-    current = path.dirname(current);
-  }
-  return process.cwd();
-}
-
-/**
- * Generate unique debt item ID
+ * Generate unique debt item ID (6 bytes for better collision resistance)
  */
 function generateDebtId() {
-  return 'td-' + crypto.randomBytes(4).toString('hex');
+  return 'td-' + crypto.randomBytes(6).toString('hex');
 }
 
 /**
@@ -88,30 +69,12 @@ function getCurrentDate() {
 }
 
 /**
- * Safe JSON read with prototype pollution check
- */
-function safeReadJson(filePath, defaultValue = null) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
-      console.error(`${c.red}Suspicious content detected in ${filePath}${c.reset}`);
-      return defaultValue;
-    }
-    return JSON.parse(content);
-  } catch {
-    return defaultValue;
-  }
-}
-
-/**
- * Safe JSON write
+ * Safe JSON write with atomic temp file pattern
  */
 function safeWriteJson(filePath, data) {
   const dir = path.dirname(filePath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  ensureDir(dir);
+  writeJson(filePath, data);
 }
 
 // ============================================================================
@@ -143,7 +106,7 @@ class TechDebtManager {
       }
     };
 
-    const data = safeReadJson(this.debtFilePath, defaultData);
+    const data = safeJsonParse(this.debtFilePath, defaultData);
     return data;
   }
 
@@ -151,7 +114,7 @@ class TechDebtManager {
    * Load config for tech debt settings
    */
   loadConfig() {
-    const config = safeReadJson(this.configPath, {});
+    const config = safeJsonParse(this.configPath, {});
     return config.techDebt || {
       enabled: true,
       promptOnSessionEnd: true,
@@ -334,7 +297,7 @@ class TechDebtManager {
       return { success: false, error: 'Issue not found or not open' };
     }
 
-    const ready = safeReadJson(this.readyPath, { ready: [], inProgress: [] });
+    const ready = safeJsonParse(this.readyPath, { ready: [], inProgress: [] });
 
     // Check if already promoted
     const existingTask = ready.ready.find(t => t.debtItemId === id);

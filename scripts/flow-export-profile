@@ -59,26 +59,38 @@ if ! [[ "$PROFILE_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
     exit 1
 fi
 
-# Safe JSON reading function (prevents code execution via require())
+# Safe JSON reading function (prevents code injection by using process.argv)
 safe_read_json() {
     local file="$1"
     local query="$2"
-    node -e "
-        const fs = require('fs');
+    node -e '
+        const fs = require("fs");
+        const file = process.argv[1];
+        const query = process.argv[2];
         try {
-            const content = fs.readFileSync('$file', 'utf-8');
+            const content = fs.readFileSync(file, "utf-8");
             // Check for prototype pollution attempts
-            if (/__proto__|constructor\\s*[\"'\`:]|prototype\\s*[\"'\`:]/i.test(content)) {
-                console.error('Suspicious content detected');
+            if (/__proto__|constructor\s*["'"'"'`:]|prototype\s*["'"'"'`:]/i.test(content)) {
+                console.error("Suspicious content detected");
                 process.exit(1);
             }
             const p = JSON.parse(content);
-            $query
+            // Safe property access based on query type
+            if (query === "conflicts.length") {
+                console.log(p.conflicts ? p.conflicts.length : 0);
+            } else if (query === "conflicts.json") {
+                console.log(JSON.stringify(p.conflicts, null, 2));
+            } else if (query === "recommendations.json") {
+                console.log(JSON.stringify(p.recommendations, null, 2));
+            } else {
+                console.error("Unknown query: " + query);
+                process.exit(1);
+            }
         } catch(e) {
             console.error(e.message);
             process.exit(1);
         }
-    " 2>/dev/null
+    ' -- "$file" "$query" 2>/dev/null
 }
 
 # Parse options
@@ -355,7 +367,7 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
         CONTENTS="$CONTENTS\n- .workflow/extracted/patterns.json (extracted patterns)"
 
         # Check for conflicts (using safe JSON parsing instead of require())
-        CONFLICT_COUNT=$(safe_read_json "$PATTERNS_OUTPUT" "console.log(p.conflicts ? p.conflicts.length : 0)" || echo "0")
+        CONFLICT_COUNT=$(safe_read_json "$PATTERNS_OUTPUT" "conflicts.length" || echo "0")
 
         if [ "$CONFLICT_COUNT" -gt 0 ]; then
             echo -e "  ${YELLOW}!${NC} Found $CONFLICT_COUNT conflicts"
@@ -364,7 +376,7 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
             if [ "$RESOLVE_CONFLICTS" = true ]; then
                 # Extract conflicts to temp file (using safe JSON parsing)
                 CONFLICTS_TEMP=$(mktemp)
-                safe_read_json "$PATTERNS_OUTPUT" "console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP"
+                safe_read_json "$PATTERNS_OUTPUT" "conflicts.json" > "$CONFLICTS_TEMP"
 
                 echo -e "  ${DIM}Launching conflict resolver...${NC}"
 

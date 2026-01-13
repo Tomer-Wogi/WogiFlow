@@ -30,7 +30,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const crypto = require('crypto');
 
 // ============================================================================
@@ -239,23 +239,25 @@ function _getGitBlameDate(projectRoot, filePath, lineNumber) {
       return null;
     }
 
-    // Validate filePath doesn't contain shell metacharacters
-    if (/[`$|;&<>]/.test(filePath)) {
-      return null;
-    }
-
     const fullPath = path.join(projectRoot, filePath);
-    const output = execSync(
-      `git blame -L ${lineNum},${lineNum} --porcelain "${fullPath}" 2>/dev/null`,
-      { encoding: 'utf-8', cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    // Use execFileSync with array arguments to prevent shell injection
+    const output = execFileSync('git', [
+      'blame',
+      '-L', `${lineNum},${lineNum}`,
+      '--porcelain',
+      fullPath
+    ], {
+      encoding: 'utf-8',
+      cwd: projectRoot,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
 
     const timestampMatch = output.match(/^author-time (\d+)/m);
     if (timestampMatch) {
       return new Date(parseInt(timestampMatch[1]) * 1000);
     }
   } catch {
-    // Git blame failed
+    // Git blame failed (file not tracked, invalid line, etc.)
   }
   return null;
 }

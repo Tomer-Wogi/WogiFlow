@@ -509,13 +509,29 @@ function safeJsonParse(content, defaultValue = null) {
       return defaultValue;
     }
 
-    // Additional check: ensure no proto/constructor keys were added
-    if (!Array.isArray(parsed)) {
-      const keys = Object.getOwnPropertyNames(parsed);
-      if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
-        console.error(`${c.red}Prototype pollution attempt detected${c.reset}`);
-        return defaultValue;
+    // Recursive check for prototype pollution in nested structures
+    function hasPrototypePollution(obj) {
+      if (typeof obj !== 'object' || obj === null) {
+        return false;
       }
+      if (!Array.isArray(obj)) {
+        const keys = Object.getOwnPropertyNames(obj);
+        if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
+          return true;
+        }
+      }
+      // Recursively check all values (array elements or object properties)
+      for (const value of Object.values(obj)) {
+        if (hasPrototypePollution(value)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    if (hasPrototypePollution(parsed)) {
+      console.error(`${c.red}Prototype pollution attempt detected${c.reset}`);
+      return defaultValue;
     }
 
     return parsed;
