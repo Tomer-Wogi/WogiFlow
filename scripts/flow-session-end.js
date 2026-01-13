@@ -370,6 +370,122 @@ async function automaticMemoryManagement() {
 }
 
 /**
+ * Offer tech debt cleanup (v1.9.0)
+ */
+async function offerDebtCleanup() {
+  const config = getConfig();
+  const techDebtConfig = config.techDebt || {};
+
+  if (!techDebtConfig.promptOnSessionEnd) {
+    return;
+  }
+
+  try {
+    const { TechDebtManager } = require('./flow-tech-debt');
+    const manager = new TechDebtManager();
+    const stats = manager.getStats();
+
+    if (stats.totalOpen === 0) {
+      return; // No debt to clean up
+    }
+
+    console.log('');
+    console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
+    console.log(color('cyan', '║  Technical Debt Check                                     ║'));
+    console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
+    console.log('');
+
+    // Summary
+    const severityParts = [];
+    if (stats.bySeverity.critical > 0) severityParts.push(color('red', `${stats.bySeverity.critical} critical`));
+    if (stats.bySeverity.high > 0) severityParts.push(color('yellow', `${stats.bySeverity.high} high`));
+    if (stats.bySeverity.medium > 0) severityParts.push(color('blue', `${stats.bySeverity.medium} medium`));
+    if (stats.bySeverity.low > 0) severityParts.push(color('dim', `${stats.bySeverity.low} low`));
+
+    console.log(`You have ${color('bold', stats.totalOpen)} open debt items:`);
+    console.log(`  ${severityParts.join(', ')}`);
+
+    if (stats.autoFixable > 0) {
+      console.log(`  ${color('green', '✓')} ${stats.autoFixable} are auto-fixable`);
+    }
+    if (stats.agingCount > 0) {
+      console.log(`  ${color('yellow', '⚠')} ${stats.agingCount} have been aging (3+ sessions)`);
+    }
+
+    console.log('');
+    console.log('Would you like to address some debt?');
+    console.log('');
+    if (stats.autoFixable > 0) {
+      console.log(`  ${color('cyan', '[1]')} Quick fixes only (${stats.autoFixable} items)`);
+      console.log(`      ${color('dim', 'Auto-fix: remove console.logs, unused imports')}`);
+    }
+    if (stats.agingCount > 0) {
+      console.log(`  ${color('cyan', '[2]')} Aging issues (${stats.agingCount} items)`);
+      console.log(`      ${color('dim', 'Items persisting 3+ sessions')}`);
+    }
+    console.log(`  ${color('cyan', '[3]')} Full cleanup (${stats.totalOpen} items)`);
+    console.log(`      ${color('dim', 'Address all open debt')}`);
+    console.log(`  ${color('cyan', '[4]')} Skip for now`);
+    console.log('');
+
+    const choice = await prompt('Choice [4]: ');
+
+    switch (choice.trim()) {
+      case '1':
+        if (stats.autoFixable > 0) {
+          console.log('');
+          console.log(color('cyan', 'Running auto-fixes...'));
+          const result = manager.runAutoFix();
+          if (result.fixed > 0) {
+            success(`Fixed ${result.fixed} issues`);
+            for (const file of result.files) {
+              console.log(`  ${color('dim', file)}`);
+            }
+          }
+          if (result.failed > 0) {
+            warn(`Could not fix ${result.failed} issues`);
+          }
+        }
+        break;
+
+      case '2':
+        if (stats.agingCount > 0) {
+          console.log('');
+          console.log(color('cyan', 'Aging items need manual review:'));
+          const aging = manager.getAgingIssues();
+          for (const issue of aging) {
+            console.log(`  ${color('dim', `[${issue.id}]`)} ${issue.file}:${issue.line}`);
+            console.log(`      ${issue.description}`);
+          }
+          console.log('');
+          console.log(color('dim', 'Run /wogi-debt promote <id> to create a task from any item.'));
+        }
+        break;
+
+      case '3':
+        console.log('');
+        console.log(color('cyan', 'All open debt items:'));
+        const all = manager.getOpenIssues();
+        for (const issue of all) {
+          const severityColor = issue.severity === 'critical' ? 'red' : issue.severity === 'high' ? 'yellow' : 'dim';
+          console.log(`  ${color('dim', `[${issue.id}]`)} ${issue.file}:${issue.line} ${color(severityColor, `(${issue.severity})`)}`);
+          console.log(`      ${issue.description}`);
+        }
+        console.log('');
+        console.log(color('dim', 'Run /wogi-debt fix to auto-fix safe items, or /wogi-debt promote <id> to create tasks.'));
+        break;
+
+      case '4':
+      default:
+        console.log(color('dim', 'Skipping debt cleanup.'));
+        break;
+    }
+  } catch {
+    // Tech debt manager not available - skip silently
+  }
+}
+
+/**
  * Show status summary
  */
 function showSummary() {
@@ -421,6 +537,9 @@ async function main() {
 
   // v1.8.0: Automatic memory management
   await automaticMemoryManagement();
+
+  // v1.9.0: Offer tech debt cleanup
+  await offerDebtCleanup();
 
   console.log('');
 

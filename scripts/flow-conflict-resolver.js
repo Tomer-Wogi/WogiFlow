@@ -23,7 +23,18 @@ const readline = require('readline');
 // Constants
 // ============================================================================
 
+// Display configuration
+const DEFAULT_TERMINAL_WIDTH = 80;
+const MAX_BOX_WIDTH = 62;
+const MAX_LINE_WIDTH = 60;
+const DEFAULT_MAX_PATH_LENGTH = 50;
+const DAYS_PER_WEEK = 7;
+const DAYS_PER_MONTH = 30;
+const DAYS_PER_YEAR = 365;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
 // Colors for CLI output
+// TODO: Consider using flow-output.js for shared color definitions
 const c = {
   reset: '\x1b[0m',
   dim: '\x1b[2m',
@@ -75,7 +86,7 @@ function showCursor() {
  * Get terminal width
  */
 function getTerminalWidth() {
-  return process.stdout.columns || 80;
+  return process.stdout.columns || DEFAULT_TERMINAL_WIDTH;
 }
 
 /**
@@ -83,14 +94,14 @@ function getTerminalWidth() {
  */
 function horizontalLine(char = '─', width = null) {
   const w = width || getTerminalWidth();
-  return char.repeat(Math.min(w, 60));
+  return char.repeat(Math.min(w, MAX_LINE_WIDTH));
 }
 
 /**
  * Box drawing for headers
  */
 function boxHeader(text) {
-  const width = Math.min(getTerminalWidth(), 62);
+  const width = Math.min(getTerminalWidth(), MAX_BOX_WIDTH);
   const textWidth = width - 4;
   const paddedText = text.padEnd(textWidth).slice(0, textWidth);
 
@@ -104,7 +115,7 @@ function boxHeader(text) {
 /**
  * Format a file path for display
  */
-function formatFilePath(filePath, maxLength = 50) {
+function formatFilePath(filePath, maxLength = DEFAULT_MAX_PATH_LENGTH) {
   if (!filePath) return '';
   if (filePath.length <= maxLength) return filePath;
 
@@ -124,14 +135,14 @@ function formatTimeAgo(date) {
   const now = new Date();
   const then = new Date(date);
   const diffMs = now - then;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(diffMs / MS_PER_DAY);
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-  return `${Math.floor(diffDays / 365)} years ago`;
+  if (diffDays < DAYS_PER_WEEK) return `${diffDays} days ago`;
+  if (diffDays < DAYS_PER_MONTH) return `${Math.floor(diffDays / DAYS_PER_WEEK)} weeks ago`;
+  if (diffDays < DAYS_PER_YEAR) return `${Math.floor(diffDays / DAYS_PER_MONTH)} months ago`;
+  return `${Math.floor(diffDays / DAYS_PER_YEAR)} years ago`;
 }
 
 // ============================================================================
@@ -143,7 +154,7 @@ function formatTimeAgo(date) {
  */
 function renderConflict(conflict, index, total, selectedOption = null) {
   const lines = [];
-  const width = Math.min(getTerminalWidth(), 62);
+  const width = Math.min(getTerminalWidth(), MAX_BOX_WIDTH);
 
   // Header
   lines.push('');
@@ -481,12 +492,51 @@ function resolutionsToDecisions(resolutions) {
 }
 
 /**
+ * Safe JSON parsing with prototype pollution prevention
+ */
+function safeJsonParse(content, defaultValue = null) {
+  try {
+    // Check for prototype pollution attempts in raw content
+    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
+      console.error(`${c.red}Suspicious content detected in JSON${c.reset}`);
+      return defaultValue;
+    }
+
+    const parsed = JSON.parse(content);
+
+    // Validate it's an array or object
+    if (typeof parsed !== 'object' || parsed === null) {
+      return defaultValue;
+    }
+
+    // Additional check: ensure no proto/constructor keys were added
+    if (!Array.isArray(parsed)) {
+      const keys = Object.getOwnPropertyNames(parsed);
+      if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
+        console.error(`${c.red}Prototype pollution attempt detected${c.reset}`);
+        return defaultValue;
+      }
+    }
+
+    return parsed;
+  } catch (err) {
+    console.error(`${c.red}JSON parse error: ${err.message}${c.reset}`);
+    return defaultValue;
+  }
+}
+
+/**
  * Load conflicts from JSON file
  */
 function loadConflictsFromFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(content);
+    const data = safeJsonParse(content);
+
+    if (!data) {
+      console.error(`${c.red}Error: Failed to parse conflicts file.${c.reset}`);
+      process.exit(1);
+    }
 
     // Handle both direct array and wrapped format
     if (Array.isArray(data)) {

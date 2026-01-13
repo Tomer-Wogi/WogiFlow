@@ -109,6 +109,28 @@ while [ $# -gt 0 ]; do
     shift
 done
 
+# Safe JSON reading function (prevents code execution via require())
+safe_read_json() {
+    local file="$1"
+    local query="$2"
+    node -e "
+        const fs = require('fs');
+        try {
+            const content = fs.readFileSync('$file', 'utf-8');
+            // Check for prototype pollution attempts
+            if (/__proto__|constructor\\s*[\"'\`:]|prototype\\s*[\"'\`:]/i.test(content)) {
+                console.error('Suspicious content detected');
+                process.exit(1);
+            }
+            const p = JSON.parse(content);
+            $query
+        } catch(e) {
+            console.error(e.message);
+            process.exit(1);
+        }
+    " 2>/dev/null
+}
+
 # ==========================================
 # SCAN MODE - Import patterns from another project
 # ==========================================
@@ -145,10 +167,10 @@ if [ "$SCAN_MODE" = true ]; then
         exit 1
     fi
 
-    # Parse extraction results
-    PATTERN_COUNT=$(node -e "const p = require('$PATTERNS_FILE'); let c=0; for(const k in p.patterns){c+=p.patterns[k].length} console.log(c)" 2>/dev/null || echo "0")
-    CONFLICT_COUNT=$(node -e "const p = require('$PATTERNS_FILE'); console.log(p.conflicts ? p.conflicts.length : 0)" 2>/dev/null || echo "0")
-    FRAMEWORK=$(node -e "const p = require('$PATTERNS_FILE'); console.log(p.meta.framework || 'unknown')" 2>/dev/null || echo "unknown")
+    # Parse extraction results (using safe JSON parsing instead of require())
+    PATTERN_COUNT=$(safe_read_json "$PATTERNS_FILE" "let c=0; for(const k in p.patterns){c+=p.patterns[k].length} console.log(c)" || echo "0")
+    CONFLICT_COUNT=$(safe_read_json "$PATTERNS_FILE" "console.log(p.conflicts ? p.conflicts.length : 0)" || echo "0")
+    FRAMEWORK=$(safe_read_json "$PATTERNS_FILE" "console.log(p.meta.framework || 'unknown')" || echo "unknown")
 
     echo ""
     echo -e "  ${GREEN}✓${NC} Detected: $FRAMEWORK"
@@ -160,9 +182,9 @@ if [ "$SCAN_MODE" = true ]; then
         echo -e "  ${YELLOW}!${NC} Found: $CONFLICT_COUNT conflicts"
 
         if [ "$RESOLVE_CONFLICTS" = true ]; then
-            # Extract conflicts for resolver
+            # Extract conflicts for resolver (using safe JSON parsing)
             CONFLICTS_TEMP="$TEMP_DIR/conflicts.json"
-            node -e "const p = require('$PATTERNS_FILE'); console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP" 2>/dev/null
+            safe_read_json "$PATTERNS_FILE" "console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP"
 
             echo ""
             RESOLVED_FILE="$TEMP_DIR/resolved.json"
@@ -185,15 +207,14 @@ if [ "$SCAN_MODE" = true ]; then
     if [ "$DRY_RUN" = true ]; then
         echo -e "${YELLOW}Dry run - patterns found:${NC}"
         echo ""
-        node -e "
-            const p = require('$PATTERNS_FILE');
+        safe_read_json "$PATTERNS_FILE" "
             for (const category in p.patterns) {
                 console.log('  ' + category + ':');
                 for (const pattern of p.patterns[category] || []) {
                     console.log('    - ' + pattern.name + ' (' + pattern.frequency + ' occurrences)');
                 }
             }
-        " 2>/dev/null || true
+        " || true
         rm -rf "$TEMP_DIR"
         exit 0
     fi
@@ -225,11 +246,10 @@ if [ "$SCAN_MODE" = true ]; then
     echo -e "${CYAN}Importing patterns...${NC}"
     echo ""
 
-    # Generate decisions.md content from patterns
+    # Generate decisions.md content from patterns (using safe JSON parsing)
     mkdir -p "$WORKFLOW_DIR/state"
 
-    DECISIONS_CONTENT=$(node -e "
-        const p = require('$PATTERNS_FILE');
+    DECISIONS_CONTENT=$(safe_read_json "$PATTERNS_FILE" "
         const lines = [];
 
         lines.push('## Imported Patterns');
@@ -244,14 +264,14 @@ if [ "$SCAN_MODE" = true ]; then
             for (const pattern of (p.patterns[category] || []).slice(0, 10)) {
                 lines.push('**' + pattern.subcategory + '**: ' + pattern.name);
                 if (pattern.examples && pattern.examples.length > 0) {
-                    lines.push('  Examples: \\\`' + pattern.examples.slice(0, 3).join('\\\`, \\\`') + '\\\`');
+                    lines.push('  Examples: \\\\\\\`' + pattern.examples.slice(0, 3).join('\\\\\\\`, \\\\\\\`') + '\\\\\\\`');
                 }
                 lines.push('');
             }
         }
 
         console.log(lines.join('\\n'));
-    " 2>/dev/null)
+    ")
 
     if [ -f "$WORKFLOW_DIR/state/decisions.md" ]; then
         echo "" >> "$WORKFLOW_DIR/state/decisions.md"

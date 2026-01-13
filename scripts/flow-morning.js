@@ -421,6 +421,48 @@ function printBriefing(briefing) {
     console.log('');
   }
 
+  // Technical Debt Summary
+  if (morningConfig.showTechDebt !== false) {
+    try {
+      const { TechDebtManager } = require('./flow-tech-debt');
+      const debtManager = new TechDebtManager();
+      const stats = debtManager.getStats();
+
+      if (stats.totalOpen > 0) {
+        printSection('TECHNICAL DEBT');
+
+        // Summary line
+        const severityParts = [];
+        if (stats.bySeverity.critical > 0) severityParts.push(color('red', `${stats.bySeverity.critical} critical`));
+        if (stats.bySeverity.high > 0) severityParts.push(color('yellow', `${stats.bySeverity.high} high`));
+        if (stats.bySeverity.medium > 0) severityParts.push(color('blue', `${stats.bySeverity.medium} medium`));
+        if (stats.bySeverity.low > 0) severityParts.push(color('dim', `${stats.bySeverity.low} low`));
+
+        console.log(`  Open issues: ${stats.totalOpen} (${severityParts.join(', ')})`);
+
+        // Aging warning
+        if (stats.agingCount > 0) {
+          console.log(`  ${color('yellow', '\u26a0')} ${stats.agingCount} item${stats.agingCount !== 1 ? 's' : ''} aging (seen 3+ sessions)`);
+
+          // Auto-promote aging items to tasks
+          const promoted = debtManager.promoteAgingToTasks();
+          if (promoted.length > 0) {
+            console.log(`  ${color('green', '\u2713')} ${promoted.length} aging item${promoted.length !== 1 ? 's' : ''} added to task queue`);
+          }
+        }
+
+        // Auto-fixable hint
+        if (stats.autoFixable > 0) {
+          console.log(`  ${color('green', '\u2713')} ${stats.autoFixable} auto-fixable - run ${color('cyan', '/wogi-debt fix')}`);
+        }
+
+        console.log('');
+      }
+    } catch {
+      // Tech debt manager not available - skip silently
+    }
+  }
+
   // Changes since last session
   if (morningConfig.showChanges !== false) {
     const changes = briefing.changesSinceLastSession;

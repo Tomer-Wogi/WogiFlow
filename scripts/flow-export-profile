@@ -53,6 +53,34 @@ fi
 PROFILE_NAME="$1"
 shift
 
+# Validate profile name to prevent path traversal
+if ! [[ "$PROFILE_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo -e "${RED}Error: Invalid profile name. Use only letters, numbers, underscores, and hyphens.${NC}"
+    exit 1
+fi
+
+# Safe JSON reading function (prevents code execution via require())
+safe_read_json() {
+    local file="$1"
+    local query="$2"
+    node -e "
+        const fs = require('fs');
+        try {
+            const content = fs.readFileSync('$file', 'utf-8');
+            // Check for prototype pollution attempts
+            if (/__proto__|constructor\\s*[\"'\`:]|prototype\\s*[\"'\`:]/i.test(content)) {
+                console.error('Suspicious content detected');
+                process.exit(1);
+            }
+            const p = JSON.parse(content);
+            $query
+        } catch(e) {
+            console.error(e.message);
+            process.exit(1);
+        }
+    " 2>/dev/null
+}
+
 # Parse options
 INCLUDE_DECISIONS=false
 INCLUDE_APP_MAP=false
@@ -326,17 +354,17 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
         echo -e "  ${GREEN}✓${NC} patterns.json"
         CONTENTS="$CONTENTS\n- .workflow/extracted/patterns.json (extracted patterns)"
 
-        # Check for conflicts
-        CONFLICT_COUNT=$(node -e "const p = require('$PATTERNS_OUTPUT'); console.log(p.conflicts ? p.conflicts.length : 0)" 2>/dev/null || echo "0")
+        # Check for conflicts (using safe JSON parsing instead of require())
+        CONFLICT_COUNT=$(safe_read_json "$PATTERNS_OUTPUT" "console.log(p.conflicts ? p.conflicts.length : 0)" || echo "0")
 
         if [ "$CONFLICT_COUNT" -gt 0 ]; then
             echo -e "  ${YELLOW}!${NC} Found $CONFLICT_COUNT conflicts"
 
             # Run conflict resolution if requested
             if [ "$RESOLVE_CONFLICTS" = true ]; then
-                # Extract conflicts to temp file
+                # Extract conflicts to temp file (using safe JSON parsing)
                 CONFLICTS_TEMP=$(mktemp)
-                node -e "const p = require('$PATTERNS_OUTPUT'); console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP" 2>/dev/null
+                safe_read_json "$PATTERNS_OUTPUT" "console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP"
 
                 echo -e "  ${DIM}Launching conflict resolver...${NC}"
 
@@ -358,28 +386,40 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
         if [ "$INCLUDE_EXAMPLES" = true ]; then
             mkdir -p "$PROFILE_DIR/.workflow/extracted/examples"
 
-            # Extract example snippets from patterns
+            # Extract example snippets from patterns (using safe JSON parsing)
             node -e "
-                const p = require('$PATTERNS_OUTPUT');
                 const fs = require('fs');
                 const path = require('path');
 
-                let count = 0;
-                for (const category in p.patterns) {
-                    for (const pattern of p.patterns[category] || []) {
-                        if (pattern.examples && pattern.examples.length > 0) {
-                            const filename = pattern.subcategory.replace(/\\./g, '-') + '.txt';
-                            const content = pattern.name + '\\n' + '='.repeat(40) + '\\n\\n' +
-                                pattern.examples.slice(0, 5).join('\\n');
-                            fs.writeFileSync(
-                                path.join('$PROFILE_DIR/.workflow/extracted/examples', filename),
-                                content
-                            );
-                            count++;
+                try {
+                    const content = fs.readFileSync('$PATTERNS_OUTPUT', 'utf-8');
+                    // Check for prototype pollution attempts
+                    if (/__proto__|constructor\\s*[\"'\`:]|prototype\\s*[\"'\`:]/i.test(content)) {
+                        console.error('Suspicious content detected');
+                        process.exit(1);
+                    }
+                    const p = JSON.parse(content);
+
+                    let count = 0;
+                    for (const category in p.patterns) {
+                        for (const pattern of p.patterns[category] || []) {
+                            if (pattern.examples && pattern.examples.length > 0) {
+                                const filename = pattern.subcategory.replace(/\\./g, '-') + '.txt';
+                                const fileContent = pattern.name + '\\n' + '='.repeat(40) + '\\n\\n' +
+                                    pattern.examples.slice(0, 5).join('\\n');
+                                fs.writeFileSync(
+                                    path.join('$PROFILE_DIR/.workflow/extracted/examples', filename),
+                                    fileContent
+                                );
+                                count++;
+                            }
                         }
                     }
+                    console.log(count);
+                } catch(e) {
+                    console.error(e.message);
+                    process.exit(1);
                 }
-                console.log(count);
             " 2>/dev/null || true
 
             EXAMPLE_COUNT=$(ls "$PROFILE_DIR/.workflow/extracted/examples/"*.txt 2>/dev/null | wc -l | tr -d ' ')

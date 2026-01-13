@@ -116,6 +116,25 @@ async function run(options = {}) {
     } catch (err) {
       // Auto-learn not available or failed - continue silently
     }
+
+    // Also capture to tech debt ledger for persistent tracking
+    try {
+      const { TechDebtManager } = require('./flow-tech-debt');
+      const debtManager = new TechDebtManager();
+      const { added, updated } = debtManager.addIssues(reportableIssues.map(issue => ({
+        file: issue.file,
+        line: issue.line,
+        category: issue.perspective || 'code',
+        severity: issue.severity === 'critical' ? 'critical' : (issue.severity === 'important' ? 'high' : 'medium'),
+        description: issue.description,
+        fix: issue.fix || ''
+      })));
+      if (added > 0 || updated > 0) {
+        console.log(colors.dim + `  Tech debt: ${added} new, ${updated} updated` + colors.reset);
+      }
+    } catch (err) {
+      // Tech debt manager not available or failed - continue silently
+    }
   }
 
   return {

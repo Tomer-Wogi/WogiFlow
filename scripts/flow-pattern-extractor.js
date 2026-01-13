@@ -233,9 +233,20 @@ function detectFramework(projectRoot) {
  */
 function _getGitBlameDate(projectRoot, filePath, lineNumber) {
   try {
+    // Validate lineNumber to prevent command injection
+    const lineNum = parseInt(lineNumber, 10);
+    if (isNaN(lineNum) || lineNum < 1 || lineNum > 1000000) {
+      return null;
+    }
+
+    // Validate filePath doesn't contain shell metacharacters
+    if (/[`$|;&<>]/.test(filePath)) {
+      return null;
+    }
+
     const fullPath = path.join(projectRoot, filePath);
     const output = execSync(
-      `git blame -L ${lineNumber},${lineNumber} --porcelain "${fullPath}" 2>/dev/null`,
+      `git blame -L ${lineNum},${lineNum} --porcelain "${fullPath}" 2>/dev/null`,
       { encoding: 'utf-8', cwd: projectRoot, stdio: ['pipe', 'pipe', 'pipe'] }
     );
 

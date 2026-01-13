@@ -442,7 +442,22 @@
     "showRecommendedTasks": 3,
     "generatePrompt": true,
     "showBlockers": true,
-    "showKeyContext": true
+    "showKeyContext": true,
+    "showTechDebt": true
+  },
+  "techDebt": {
+    "enabled": true,
+    "promptOnSessionEnd": true,
+    "showInMorningBriefing": true,
+    "agingThreshold": 3,
+    "autoFix": {
+      "enabled": true,
+      "types": ["console.log", "unused-import", "debugger", "empty-catch"]
+    },
+    "debtBudget": {
+      "enabled": false,
+      "maxOpenItems": 20
+    }
   },
   "requestLog": {
     "enabled": true,
