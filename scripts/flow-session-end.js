@@ -370,6 +370,70 @@ async function automaticMemoryManagement() {
 }
 
 /**
+ * Offer knowledge sync if drifted (v1.9.1)
+ */
+async function offerKnowledgeSync() {
+  const config = getConfig();
+  const morningConfig = config.morningBriefing || {};
+
+  // Skip if disabled or if auto-regenerate handled it in morning
+  if (morningConfig.checkKnowledgeSync === false) {
+    return;
+  }
+
+  try {
+    const { checkAllDrift, markAsSynced } = require('./flow-knowledge-sync');
+    const driftStatus = checkAllDrift();
+
+    if (!driftStatus.anyDrift) {
+      return; // All synced
+    }
+
+    console.log('');
+    console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
+    console.log(color('cyan', '║  Knowledge Sync Check                                     ║'));
+    console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
+    console.log('');
+
+    console.log('Knowledge files are out of sync:');
+    for (const [category, status] of Object.entries(driftStatus.categories)) {
+      if (status.status === 'drifted') {
+        console.log(`  ${color('yellow', '•')} ${category}.md - ${status.reason}`);
+      }
+    }
+    console.log('');
+
+    const answer = await prompt('Regenerate now? (y/N): ');
+    if (answer.toLowerCase() === 'y') {
+      try {
+        const { spawnSync } = require('child_process');
+        const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
+        console.log(color('dim', 'Regenerating knowledge files...'));
+
+        const result = spawnSync('node', [scriptPath, '--update-knowledge'], {
+          cwd: PROJECT_ROOT,
+          stdio: 'pipe',
+          timeout: 30000
+        });
+
+        if (result.status === 0) {
+          markAsSynced();
+          success('Knowledge files regenerated');
+        } else {
+          warn('Could not regenerate - run: flow knowledge-sync regenerate');
+        }
+      } catch (err) {
+        warn(`Regeneration failed: ${err.message}`);
+      }
+    } else {
+      console.log(color('dim', 'Skipped - run: flow knowledge-sync regenerate'));
+    }
+  } catch {
+    // Knowledge sync not available - skip silently
+  }
+}
+
+/**
  * Offer tech debt cleanup (v1.9.0)
  */
 async function offerDebtCleanup() {
@@ -537,6 +601,9 @@ async function main() {
 
   // v1.8.0: Automatic memory management
   await automaticMemoryManagement();
+
+  // v1.9.1: Offer knowledge sync if drifted
+  await offerKnowledgeSync();
 
   // v1.9.0: Offer tech debt cleanup
   await offerDebtCleanup();

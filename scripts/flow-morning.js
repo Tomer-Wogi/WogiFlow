@@ -16,6 +16,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const {
   PATHS,
+  PROJECT_ROOT,
   fileExists,
   readJson,
   readFile,
@@ -419,6 +420,57 @@ function printBriefing(briefing) {
       console.log(`  ${color('red', '\u2022')} ${blocker}`);
     }
     console.log('');
+  }
+
+  // Knowledge Sync Check
+  if (morningConfig.checkKnowledgeSync !== false) {
+    try {
+      const { checkAllDrift, markAsSynced } = require('./flow-knowledge-sync');
+      const driftStatus = checkAllDrift();
+
+      if (driftStatus.anyDrift) {
+        printSection('KNOWLEDGE SYNC');
+
+        // Show what drifted
+        const driftedCategories = [];
+        for (const [category, status] of Object.entries(driftStatus.categories)) {
+          if (status.status === 'drifted') {
+            console.log(`  ${color('yellow', '\u26a0')} ${category}.md out of sync (${status.reason})`);
+            driftedCategories.push(category);
+          }
+        }
+
+        // Auto-regenerate if enabled
+        if (morningConfig.autoRegenerateKnowledge !== false) {
+          try {
+            const { spawnSync } = require('child_process');
+            const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
+            const result = spawnSync('node', [scriptPath, '--update-knowledge'], {
+              cwd: PROJECT_ROOT,
+              stdio: 'pipe',
+              timeout: 30000
+            });
+
+            if (result.status === 0) {
+              markAsSynced();
+              console.log(`  ${color('green', '\u2713')} Auto-regenerated knowledge files`);
+            } else {
+              console.log(`  ${color('yellow', '!')} Could not auto-regenerate`);
+              console.log(`    Run: ${color('cyan', 'flow knowledge-sync regenerate')}`);
+            }
+          } catch (err) {
+            console.log(`  ${color('yellow', '!')} Could not auto-regenerate: ${err.message}`);
+            console.log(`    Run: ${color('cyan', 'flow knowledge-sync regenerate')}`);
+          }
+        } else {
+          console.log(`  ${color('dim', 'Run:')} ${color('cyan', 'flow knowledge-sync regenerate')}`);
+        }
+
+        console.log('');
+      }
+    } catch {
+      // Knowledge sync not available - skip silently
+    }
   }
 
   // Technical Debt Summary

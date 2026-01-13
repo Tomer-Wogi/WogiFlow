@@ -443,7 +443,9 @@
     "generatePrompt": true,
     "showBlockers": true,
     "showKeyContext": true,
-    "showTechDebt": true
+    "showTechDebt": true,
+    "checkKnowledgeSync": true,
+    "autoRegenerateKnowledge": true
   },
   "techDebt": {
     "enabled": true,
