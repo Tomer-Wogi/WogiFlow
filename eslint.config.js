@@ -31,7 +31,7 @@ module.exports = [
     rules: {
       // Minimal rules - just catch obvious errors
       'no-undef': 'error',
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-const-assign': 'error',
       'no-dupe-keys': 'error',
       'no-duplicate-case': 'error',

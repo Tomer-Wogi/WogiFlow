@@ -292,7 +292,7 @@ function parseSRT(content) {
   const lines = content.split('\n');
   const cues = [];
   let currentCue = null;
-  let expectingTimestamp = false;
+  let _expectingTimestamp = false;
 
   try {
   for (let i = 0; i < lines.length; i++) {
@@ -303,14 +303,14 @@ function parseSRT(content) {
       if (currentCue && currentCue.textLines.length > 0) {
         cues.push(finalizeCue(currentCue));
         currentCue = null;
-        expectingTimestamp = false;
+        _expectingTimestamp = false;
       }
       continue;
     }
 
     // Check for cue number
     if (/^\d+$/.test(line) && !currentCue) {
-      expectingTimestamp = true;
+      _expectingTimestamp = true;
       continue;
     }
 
@@ -329,7 +329,7 @@ function parseSRT(content) {
         textLines: [],
         rawLines: []
       };
-      expectingTimestamp = false;
+      _expectingTimestamp = false;
       continue;
     }
 
@@ -815,7 +815,7 @@ function parseTeamsJSON(content, options = {}) {
   let data;
   try {
     data = JSON.parse(content);
-  } catch (err) {
+  } catch (_err) {
     return { error: 'Invalid JSON format', format: 'unknown' };
   }
 
@@ -870,7 +870,7 @@ function detectMeetingType(content) {
     try {
       JSON.parse(trimmed);
       return 'teams_json';
-    } catch (err) {
+    } catch (_err) {
       // Not valid JSON
     }
   }

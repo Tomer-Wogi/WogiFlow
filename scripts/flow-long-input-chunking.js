@@ -39,7 +39,7 @@ function measureInputMetrics(t) { requireInit(); return digestCore.measureInputM
 
 // Paths - temp processing files, cleaned up after completion
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
-const STATE_DIR = TMP_DIR; // Alias for backward compatibility
+const _STATE_DIR = TMP_DIR; // Alias for backward compatibility (kept for reference)
 
 // ==========================================================================
 // E5-S3: Durable Digest Session Persistence
@@ -62,7 +62,7 @@ function loadDurableSessions() {
 
   try {
     return JSON.parse(fs.readFileSync(DURABLE_DIGEST_PATH, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return {
       version: DURABLE_DIGEST_VERSION,
       sessions: [],
@@ -134,7 +134,7 @@ function getSessionProgress(digestPath) {
       progress.topics_count = topics.topics?.length || 0;
       progress.passes_completed.push('topics');
       progress.phase = 'topics';
-    } catch (err) {}
+    } catch (_err) { /* ignore parse errors */ }
   }
 
   // Check statements
@@ -145,7 +145,7 @@ function getSessionProgress(digestPath) {
       progress.statements_count = stmtMap.statements?.length || 0;
       progress.passes_completed.push('statements');
       progress.phase = 'statements';
-    } catch (err) {}
+    } catch (_err) { /* ignore parse errors */ }
   }
 
   // Check orphans pass
@@ -164,7 +164,7 @@ function getSessionProgress(digestPath) {
       progress.questions_total = clar.questions?.length || 0;
       progress.questions_answered = clar.questions?.filter(q => q.status === 'answered')?.length || 0;
       progress.phase = 'clarification';
-    } catch (err) {}
+    } catch (_err) { /* ignore parse errors */ }
   }
 
   // Check stories
@@ -175,7 +175,7 @@ function getSessionProgress(digestPath) {
       progress.stories_generated = stories.stories?.length || 0;
       progress.stories_approved = stories.stories?.filter(s => s.approval_status === 'approved')?.length || 0;
       progress.phase = 'stories';
-    } catch (err) {}
+    } catch (_err) { /* ignore parse errors */ }
   }
 
   // Check queue for presentation phase

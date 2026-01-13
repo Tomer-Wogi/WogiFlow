@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { writeJson } = require('./flow-utils');
+// Note: writeJson available from flow-utils if needed
 
 // Import extracted modules (renamed from transcript-* to long-input-*)
 const transcriptParsing = require('./flow-long-input-parsing');
@@ -74,7 +74,7 @@ const {
   loadStory,
   loadAllStories,
   formatStoryAsMarkdown,
-  initializePresentation,
+  // initializePresentation - available if needed
   getPresentationStatus,
   getNextStory,
   getCurrentStory,
@@ -126,7 +126,7 @@ function loadConfig() {
   try {
     const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
     return config.transcriptDigestion || {};
-  } catch (err) {
+  } catch (_err) {
     return {};
   }
 }
@@ -151,7 +151,7 @@ function now() {
 function loadActiveDigest() {
   try {
     return JSON.parse(fs.readFileSync(ACTIVE_DIGEST_FILE, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return { session: { status: 'inactive' } };
   }
 }
@@ -658,7 +658,7 @@ function loadStatementMap() {
   const mapPath = path.join(activeDigest.session.digest_path, 'statement-map.json');
   try {
     return JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -854,7 +854,7 @@ function resolveOrphan(orphan, topics) {
 /**
  * Create a new topic from orphan statements
  */
-function createTopicFromOrphans(orphans, existingTopics) {
+function createTopicFromOrphans(orphans, _existingTopics) {
   // Guard against empty orphans array
   if (!orphans || orphans.length === 0) {
     const topicId = 't-auto-' + crypto.randomBytes(3).toString('hex');
@@ -959,7 +959,7 @@ function loadOrphans() {
   const orphansPath = path.join(activeDigest.session.digest_path, 'orphans.json');
   try {
     return JSON.parse(fs.readFileSync(orphansPath, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -1345,7 +1345,7 @@ function loadClarifications() {
   const clarPath = path.join(activeDigest.session.digest_path, 'clarifications.json');
   try {
     return JSON.parse(fs.readFileSync(clarPath, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return {
       questions: [],
       contradictions: [],
@@ -3621,7 +3621,7 @@ function loadTopics() {
   const topicsPath = path.join(activeDigest.session.digest_path, 'topics.json');
   try {
     return JSON.parse(fs.readFileSync(topicsPath, 'utf8'));
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -3676,8 +3676,6 @@ function shouldTriggerDigestion(text) {
  * Basic content classification
  */
 function classifyContent(text) {
-  const lowerText = text.toLowerCase();
-
   // Check for code patterns
   const codePatterns = [
     /```[\s\S]*```/g,
@@ -4496,7 +4494,7 @@ function extractEntities(statements) {
     if (!statement.text) continue;
 
     // Check UI patterns
-    for (const { pattern, type } of UI_PATTERNS) {
+    for (const { pattern } of UI_PATTERNS) {
       const match = statement.text.match(pattern);
       if (match) {
         entities.ui_components.add(match[1].toLowerCase());
@@ -4504,7 +4502,7 @@ function extractEntities(statements) {
     }
 
     // Check data patterns
-    for (const { pattern, type } of DATA_PATTERNS) {
+    for (const { pattern } of DATA_PATTERNS) {
       const match = statement.text.match(pattern);
       if (match) {
         entities.data_entities.add(match[1].toLowerCase());
@@ -4512,7 +4510,7 @@ function extractEntities(statements) {
     }
 
     // Check interaction patterns
-    for (const { pattern, type } of INTERACTION_PATTERNS) {
+    for (const { pattern } of INTERACTION_PATTERNS) {
       const match = statement.text.match(pattern);
       if (match) {
         entities.interactions.add(match[1].toLowerCase());
@@ -7737,7 +7735,7 @@ ${c.dim}Examples:${c.reset}
  * @param {Object} options - Processing options
  * @returns {Object} Quick scan results
  */
-function quickProcess(input, options = {}) {
+function quickProcess(input, _options = {}) {
   if (!input || typeof input !== 'string') {
     return { error: 'No input provided' };
   }

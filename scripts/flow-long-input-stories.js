@@ -45,16 +45,16 @@ function requireInit() {
 function loadActiveDigest() { requireInit(); return digestCore.loadActiveDigest(); }
 function saveActiveDigest(d) { requireInit(); return digestCore.saveActiveDigest(d); }
 function loadTopics() { requireInit(); return digestCore.loadTopics(); }
-function saveTopics(t) { requireInit(); return digestCore.saveTopics(t); }
+function _saveTopics(t) { requireInit(); return digestCore.saveTopics(t); } // Available if needed
 function loadStatementMap() { requireInit(); return digestCore.loadStatementMap(); }
 function loadClarifications() { requireInit(); return digestCore.loadClarifications(); }
 function isRequirement(s) { requireInit(); return digestCore.isRequirement(s); }
-function isVagueStatement(s) { requireInit(); return digestCore.isVagueStatement(s); }
+function _isVagueStatement(s) { requireInit(); return digestCore.isVagueStatement(s); } // Available if needed
 function analyzeComplexity() { requireInit(); return digestCore.analyzeComplexity(); }
 
 // Temp directory for processing (cleaned up after completion)
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
-const STATE_DIR = TMP_DIR; // Alias for backward compatibility
+const _STATE_DIR = TMP_DIR; // Alias for backward compatibility (kept for reference)
 
 // ==========================================================================
 // E3-S2: Story Generation with Source Tracing
@@ -283,7 +283,7 @@ function extractThen(requirement) {
 /**
  * Generate criteria from clarification answers
  */
-function generateCriteriaFromClarification(clarification, topic) {
+function generateCriteriaFromClarification(clarification, _topic) {
   const criteria = [];
   const question = (clarification.question || '').toLowerCase();
   const answer = clarification.answer || '';
@@ -604,7 +604,7 @@ function loadAllStories() {
   try {
     const files = fs.readdirSync(storiesPath).filter(f => f.endsWith('.json'));
     return files.map(f => safeJsonParse(path.join(storiesPath, f), null)).filter(Boolean);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -1916,7 +1916,7 @@ function createFeatureTask(stories, featureName) {
 /**
  * Add tasks to ready.json
  */
-function addTasksToReadyJson(tasks, options = {}) {
+function addTasksToReadyJson(tasks, _options = {}) {
   const readyPath = path.join(process.cwd(), '.workflow', 'state', 'ready.json');
 
   const defaultReady = {
@@ -2143,7 +2143,7 @@ function cleanupTempFiles(digestId) {
       if (active && active.session?.digest_id === digestId) {
         try {
           fs.unlinkSync(activeFile);
-        } catch (unlinkErr) {
+        } catch (_unlinkErr) {
           // Ignore errors unlinking active file - main cleanup succeeded
         }
       }
