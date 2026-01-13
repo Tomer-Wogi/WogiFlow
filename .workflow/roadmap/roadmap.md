@@ -59,6 +59,15 @@ Features are organized by logical dependencies to avoid refactoring. Build found
 | Order | Feature | Depends On | Effort |
 |-------|---------|------------|--------|
 | **0.1** | CLI Agnosticism + Multi-Model Architecture | - | 4-6 weeks |
+| ↳ 0.1.1 | CLI Template System (flow-cli-sync.js) | - | 4-6 hours |
+| ↳ 0.1.2 | Claude Template | 0.1.1 | 2-3 hours |
+| ↳ 0.1.3 | Codex Template (<100 lines) | 0.1.1 | 3-4 hours |
+| ↳ 0.1.4 | Gemini Template | 0.1.1 | 3-4 hours |
+| ↳ 0.1.5 | OpenCode Template | 0.1.1 | 2-3 hours |
+| ↳ 0.1.6 | Sync Command (flow sync) | 0.1.1 | 2-3 hours |
+| ↳ 0.1.7 | Hook Integration | 0.1.6 | 4-6 hours |
+| ↳ 0.1.8 | Installer Update (multi-CLI) | 0.1.2-5 | 3-4 hours |
+| ↳ 0.1.9 | CLI Detection | 0.1.1 | 2-3 hours |
 | **0.2** | Failure Category Enum | - | 1-2 hours |
 | **0.3** | Variable Substitution | - | 4-6 hours |
 | **1.1** | Formalized Model Registry | 0.1 | 3-4 hours |
@@ -100,7 +109,7 @@ Design CLI Agnosticism and Multi-Model together so everything works across CLIs 
 
 ### 0.1 CLI Agnosticism + Multi-Model Architecture
 
-**Why first**: Everything we build should work across CLIs (Claude Code, Gemini CLI, OpenCode). Building Claude-specific features now means rewriting later. Multi-Model needs to know about providers/CLIs.
+**Why first**: Everything we build should work across CLIs (Claude Code, Codex, Gemini CLI, OpenCode). Building Claude-specific features now means rewriting later. Multi-Model needs to know about providers/CLIs.
 
 **Universal Architecture**:
 ```
@@ -109,27 +118,113 @@ Design CLI Agnosticism and Multi-Model together so everything works across CLIs 
 ├── models/                  ← Model registry (CLI-agnostic)
 │   ├── registry.json        ← All model capabilities
 │   └── stats.json           ← Performance tracking
+├── model-adapters/          ← Per-MODEL learnings (shared across CLIs)
+│   ├── claude-opus.md
+│   ├── gpt-4o.md
+│   └── gemini-2-pro.md
+├── cli/                     ← CLI-specific generation (NEW)
+│   ├── active.json          ← Which CLIs are enabled
+│   ├── last-sync.json       ← Sync timestamps per CLI
+│   └── templates/           ← Handlebars templates
+│       ├── claude.hbs       → CLAUDE.md
+│       ├── codex.hbs        → AGENTS.md (<100 lines)
+│       ├── gemini.hbs       → GEMINI.md
+│       └── opencode.hbs     → AGENTS.md
 ├── state/
 └── skills/                  ← Skills work across CLIs
          │
-         ▼ (bridges generate CLI-specific files)
+         ▼ (templates generate CLI-specific files)
+┌──────────────────────────────────────────────────────────┐
+│  Claude Code  │  Codex CLI    │  Gemini CLI  │  OpenCode │
+│  .claude/     │  .codex/      │  .gemini/    │  .opencode│
+│  CLAUDE.md    │  AGENTS.md    │  GEMINI.md   │  config   │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Key Design Decisions**:
+
+1. **Model Adapters vs CLI Templates (Separation of Concerns)**:
+   - **Model Adapters**: Per-model learnings (strengths, weaknesses, anti-patterns)
+     - Shared across ALL CLIs using that model
+     - Example: GPT-4o learnings apply whether using Codex or OpenCode
+   - **CLI Templates**: Per-CLI instruction format
+     - Translates `.workflow/` state to CLI-specific files
+     - Templates only, no complex adapter logic
+
+2. **One-Way Sync (Simpler, Safer)**:
+   - `.workflow/` → CLI files: Always generated from source of truth
+   - CLI → `.workflow/`: Only specific events via hooks (task completions, learnings)
+   - No bidirectional sync = no conflict resolution needed
+
+3. **Progressive Discovery Pattern**:
+   - Keep generated CLI files lean (<100 lines for Codex best practice)
+   - Main file references `.workflow/` docs for details
+   - Model reads main file, discovers deeper docs as needed
+
+**CLI Comparison Matrix**:
+
+| Feature | Claude Code | Codex CLI | Gemini CLI | OpenCode |
+|---------|-------------|-----------|------------|----------|
+| Instruction File | CLAUDE.md | AGENTS.md | GEMINI.md | AGENTS.md |
+| Best Practice Size | Any | <100 lines | Any | Any |
+| Config Format | JSON | TOML | JSON | JSON |
+| Config Location | .claude/ | .codex/ | .gemini/ | .opencode/ |
+| Hooks | 4 events | Limited | 8 events | Limited |
+| MCP Support | Yes | Yes | Yes | Yes |
+
+**Sync Flow**:
+```
 ┌─────────────────────────────────────────────┐
-│  Claude Code    │  Gemini CLI   │  OpenCode │
-│  .claude/       │  .gemini/     │  .opencode│
-│  CLAUDE.md      │  GEMINI.md    │  config   │
+│              .workflow/                      │
+│        (Single Source of Truth)              │
+└─────────────────────────────────────────────┘
+                    │
+                    │ One-way generation (flow sync)
+                    ▼
+┌─────────────────────────────────────────────┐
+│   CLAUDE.md    AGENTS.md    GEMINI.md       │
+│   (Generated)  (Generated)  (Generated)      │
+│                                              │
+│   ⚠️ "Auto-generated. Edit .workflow/"       │
+└─────────────────────────────────────────────┘
+                    │
+                    │ Hooks capture events
+                    ▼
+┌─────────────────────────────────────────────┐
+│              .workflow/                      │
+│   - ready.json (task status)                 │
+│   - model-adapters/*.md (learnings)          │
+│   - request-log.md (history)                 │
 └─────────────────────────────────────────────┘
 ```
 
 **Deliverables**:
-- Universal `.workflow/models/` structure
-- CLI bridge architecture
-- Provider abstraction layer
-- Installer asks "Which CLI?" and "Which models?"
+- CLI template system (`flow-cli-sync.js`)
+- Templates for Claude, Codex, Gemini, OpenCode
+- `flow sync` command for regenerating CLI files
+- Hook integration for event-based sync back
+- Installer asks "Which CLI(s)?" and generates appropriate files
 
 **CLI Selection**:
-- **Install-time** (default): Installer asks "Which CLI?" as first question
-- **Runtime detection** (advanced): Auto-detect running CLI
-- **Multi-CLI** (team scenarios): Generate for multiple CLIs
+- **Install-time** (default): Installer asks "Which CLI(s)?" supporting multiple selection
+- **Runtime detection** (advanced): Auto-detect running CLI via env vars
+- **Multi-CLI** (team scenarios): Generate for multiple CLIs, sync shared state
+
+**Implementation Sub-tasks**:
+
+| Task | Effort | Description |
+|------|--------|-------------|
+| 0.1.1 CLI Template System | 4-6 hours | Create `flow-cli-sync.js` with Handlebars rendering |
+| 0.1.2 Claude Template | 2-3 hours | Migrate CLAUDE.md generation to template |
+| 0.1.3 Codex Template | 3-4 hours | Create AGENTS.md template (<100 lines, progressive discovery) |
+| 0.1.4 Gemini Template | 3-4 hours | Create GEMINI.md + system.md templates |
+| 0.1.5 OpenCode Template | 2-3 hours | Create AGENTS.md + opencode.json templates |
+| 0.1.6 Sync Command | 2-3 hours | `flow sync` CLI command |
+| 0.1.7 Hook Integration | 4-6 hours | Event-based sync for task completions |
+| 0.1.8 Installer Update | 3-4 hours | Multi-CLI selection in postinstall |
+| 0.1.9 CLI Detection | 2-3 hours | Auto-detect running CLI |
+
+**Total Effort**: ~4-6 weeks (can parallelize template creation)
 
 ---
 
@@ -629,6 +724,9 @@ flow browser-test visual      # Run visual regression tests
 
 | Date | Change |
 |------|--------|
+| 2026-01-13 | **Refined: CLI Agnosticism (Phase 0.1)** - Simplified to template-only approach with one-way sync |
+| 2026-01-13 | Added: CLI comparison matrix, sub-task breakdown, progressive discovery pattern |
+| 2026-01-13 | Added: Codex CLI support with AGENTS.md (<100 lines best practice) |
 | 2026-01-12 | Added: Browser Testing Integration (Future Enhancements) |
 | 2026-01-11 | Added: Release Channel Configuration (Phase 5.1.1) |
 | 2026-01-11 | Added: LSP Tool Integration (Phase 5.1.2) |

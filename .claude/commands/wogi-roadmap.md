@@ -1,66 +1,241 @@
-Display project roadmap with phases and progress.
+# /wogi-roadmap - Roadmap Management
 
-Usage: `/wogi-roadmap`
+View and manage the project roadmap for deferred work and future phases.
 
-## When Available
+## Usage
 
-Only when `config.json` has `phases.enabled: true`
+```
+/wogi-roadmap                    # Show roadmap summary
+/wogi-roadmap add "title"        # Add item to roadmap
+/wogi-roadmap validate "title"   # Validate dependencies before implementing
+/wogi-roadmap promote "title"    # Move item to ready.json as a story
+```
+
+## When to Use
+
+- **View deferred work**: See what's planned for later
+- **Add deferred phases**: When breaking large features into phases
+- **Before implementing**: Validate dependencies are still valid
+- **Promote to active**: When ready to implement a deferred item
 
 ## Steps
 
-1. Check if phase-based planning is enabled
-2. Read `.workflow/specs/ROADMAP.md` for phase definitions
-3. Read `ready.json` for task statuses
-4. Calculate progress per phase
-5. Display visual roadmap
+### Show Roadmap (Default)
 
-## Output
+1. Read `.workflow/roadmap.md`
+2. Parse phases: Now, Next, Later, Ideas, Completed
+3. Display summary with item counts per phase
+4. Show dependencies for items in Later phase
 
+**Output format:**
 ```
-🗺️ Project Roadmap
+==================================================
+        Project Roadmap
+==================================================
 
-Phase Overview
-══════════════════════════════════════════════════════════════
+> Now (Current Focus) (2)
+    Authentication system ← Phase 0: Setup
+    User profile page
 
-Phase 0: Project Setup           ████████████████████ 100% ✓
-  5/5 features completed
+- Next (Ready to Plan) (3)
+    Password reset flow ← Phase 1: Auth
+    Email verification
+    OAuth integration ← Phase 1: Auth
 
-Phase 1: Core Infrastructure     ████████████░░░░░░░░  60%
-  3/5 features completed
-  • F006: Database setup ✓
-  • F007: Auth module ✓
-  • F008: User service ✓
-  • F009: API gateway ← in progress
-  • F010: Logging (blocked)
+o Later (Future Phases) (4)
+    Two-factor auth ← Phase 2: Security
+    Session management ← Phase 2: Security
+    API rate limiting
+    Audit logging ← Phase 3: Compliance
 
-Phase 2: Core Features           ░░░░░░░░░░░░░░░░░░░░   0%
-  0/8 features completed
-  Blocked by: Phase 1
+? Ideas (Exploration) (1)
+    Single sign-on
 
-Phase 3: Business Logic          ░░░░░░░░░░░░░░░░░░░░   0%
-  0/6 features completed
-  Blocked by: Phase 2
-
-Phase 4: Testing & Docs          ░░░░░░░░░░░░░░░░░░░░   0%
-  0/4 features completed
-  Blocked by: Phase 3
-
-══════════════════════════════════════════════════════════════
-
-Current: Phase 1 - Core Infrastructure
-Next milestone: Phase 1 complete (2 features remaining)
+File: .workflow/roadmap.md
+Commands: add, validate, promote, move
 ```
 
-## If Phases Not Enabled
+### Add Item
+
+When user runs `/wogi-roadmap add "Feature name"`:
+
+1. Parse optional flags:
+   - `--phase=<now|next|later|ideas>` (default: later)
+   - `--depends="Parent phase"`
+   - `--assumes="assumption1, assumption2"`
+   - `--files="path/to/file.ts, other/file.ts"`
+
+2. Create item block:
+```markdown
+### [Feature Name]
+
+**Status:** Deferred
+**Created:** [TODAY]
+**Depends On:** [from --depends or ask user]
+
+**Assumes:**
+- [from --assumes or ask user]
+
+**Key Files:**
+- [from --files or ask user]
+
+**Context When Deferred:**
+[Ask user or infer from current work]
+
+**Implementation Plan:**
+1. [Ask user]
+```
+
+3. Insert into appropriate phase section in `.workflow/roadmap.md`
+
+4. Confirm: "Added '[Feature]' to [phase] phase"
+
+### Validate Item
+
+When user runs `/wogi-roadmap validate "Feature name"`:
+
+1. Find the item in roadmap.md
+2. Check each dependency:
+
+   **Depends On:**
+   - Is parent phase/feature marked complete?
+   - Check both roadmap.md (Completed section) and ready.json (recentlyCompleted)
+
+   **Key Files:**
+   - Do the listed files still exist?
+   - (Advanced) Do they still have expected exports/interfaces?
+
+   **Assumes:**
+   - Flag assumptions for AI review
+   - Look for contradicting patterns in codebase
+
+3. Report results:
+
+**If valid:**
+```
+Validating: OAuth integration
+
++ All dependencies valid
++ Ready to implement
+```
+
+**If issues found:**
+```
+Validating: OAuth integration
+
+Issues (blocking):
+  - Key file not found: src/auth/jwt.ts
+
+Warnings (review recommended):
+  - Dependency not marked complete: Phase 1: Auth
+  - Assumption needs verification: Using JWT tokens
+
+Cannot proceed until issues are resolved.
+```
+
+### Promote Item
+
+When user runs `/wogi-roadmap promote "Feature name"`:
+
+1. Validate the item first (run validate step)
+2. If validation fails, show issues and ask to proceed anyway
+3. If valid (or user confirms):
+   - Extract implementation plan
+   - Run `/wogi-story "[Feature name]"` to create story
+   - Move item to "Completed" section in roadmap
+   - Add note: "Promoted to story on [DATE]"
+
+### Move Item
+
+When user runs `/wogi-roadmap move "Feature" --to=next`:
+
+1. Find item in current phase
+2. Remove from current location
+3. Insert into target phase
+4. Confirm: "Moved '[Feature]' from [old] to [new]"
+
+## AI Behavior Integration
+
+### When User Requests Large Feature
+
+If you detect a request that would require 5+ tasks or multiple phases:
+
+1. Break down into phases
+2. Present breakdown to user
+3. If user agrees to defer later phases:
+   ```javascript
+   // For each deferred phase:
+   const item = {
+     title: "Phase N: Feature description",
+     dependsOn: "Phase N-1: Previous phase",
+     assumes: [
+       "Key assumption from current implementation",
+       "Another architectural decision"
+     ],
+     keyFiles: [
+       "src/relevant/file.ts - Contains X interface",
+       "src/other/file.ts - Has Y dependency"
+     ],
+     context: "Current state description",
+     plan: ["Step 1", "Step 2", "Step 3"]
+   };
+
+   // Add to roadmap
+   const { addItem } = require('./scripts/flow-roadmap');
+   addItem(item, 'later');
+   ```
+
+4. Inform user: "Added N items to your roadmap. Run `/wogi-roadmap` to see them."
+
+### When Modifying Key Files
+
+Before modifying any file, check if it's listed in roadmap items:
+
+```javascript
+const { parseRoadmap } = require('./scripts/flow-roadmap');
+const roadmap = parseRoadmap();
+
+// Collect all key files from all phases
+const keyFiles = [];
+for (const [phase, items] of Object.entries(roadmap.phases)) {
+  for (const item of items) {
+    if (item.keyFiles) {
+      keyFiles.push(...item.keyFiles.map(f => ({
+        file: f,
+        item: item.title,
+        phase
+      })));
+    }
+  }
+}
+
+// Check if target file is in list
+const affected = keyFiles.filter(k =>
+  k.file.includes(targetFile) || targetFile.includes(k.file.split(' - ')[0])
+);
+
+if (affected.length > 0) {
+  // Warn user
+}
+```
+
+## If Roadmap Doesn't Exist
 
 ```
-⚠️ Phase-based planning is not enabled.
+No roadmap found for this project.
 
-To enable:
-1. Edit .workflow/config.json
-2. Set "phases.enabled": true
-3. Create .workflow/specs/ROADMAP.md with phase definitions
-4. Add "phase" field to tasks in ready.json
+Would you like me to create one? This helps track:
+- Deferred work from large features
+- Future phases and their dependencies
+- Ideas for later exploration
 
-Or run: /wogi-config phases on
+[Yes, create roadmap] [No thanks]
 ```
+
+If yes, copy template from `templates/roadmap.md` to `.workflow/roadmap.md`.
+
+## Related Commands
+
+- `/wogi-story` - Create detailed story with acceptance criteria
+- `/wogi-ready` - View tasks ready to implement
+- `/wogi-status` - Overall project status

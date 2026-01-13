@@ -92,6 +92,7 @@ npx flow onboard
 | `/wogi-story "title"` | Create story with acceptance criteria |
 | `/wogi-status` | Project overview |
 | `/wogi-health` | Check workflow health |
+| `/wogi-roadmap` | View/manage deferred work |
 
 See `.claude/docs/commands.md` for complete command reference.
 
@@ -107,6 +108,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "check health", "workflow health", "is everything ok" | `/wogi-health` |
 | "wrap up", "end session", "that's all" | `/wogi-session-end` |
 | "compact context", "save context", "running low on context" | `/wogi-compact` |
+| "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
 
@@ -193,6 +195,7 @@ Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 | Components | `.workflow/state/app-map.md` |
 | Rules | `.workflow/state/decisions.md` |
 | Progress | `.workflow/state/progress.md` |
+| Roadmap | `.workflow/roadmap.md` |
 
 ## Commit Behavior
 
@@ -224,6 +227,102 @@ Check `config.json → qualityGates` before closing any task:
 "qualityGates": {
   "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
 }
+```
+
+## Handling Large Requests (IMPORTANT)
+
+When a user requests work that would require:
+- More than 5 distinct tasks or files
+- Multiple logical phases
+- Work that spans beyond a reasonable session
+- A "build me X" request for a substantial system
+
+**You MUST:**
+
+### Step 1: Acknowledge and Break Down
+Break the request into logical phases. Present it clearly:
+
+```
+This is a substantial feature. Let me break it down:
+
+**Phase 1 (Implement Now):**
+- [Core foundation tasks]
+
+**Phase 2 (Defer to Roadmap):**
+- [Tasks that depend on Phase 1]
+
+**Phase 3 (Defer to Roadmap):**
+- [Future enhancements]
+```
+
+### Step 2: Ask User
+```
+Should I:
+1. Implement Phase 1 now and add Phases 2-3 to your roadmap?
+2. Create stories for all phases (you choose when to implement)?
+3. Just implement Phase 1 (forget the rest)?
+```
+
+### Step 3: If User Chooses Option 1 (Recommended)
+1. Create stories for Phase 1
+2. Add remaining phases to `.workflow/roadmap.md` using this format:
+
+```markdown
+### [Phase Name]: [Feature]
+
+**Status:** Deferred
+**Created:** [TODAY]
+**Depends On:** [Parent phase]
+
+**Assumes:**
+- [Key assumptions from current implementation]
+- [Architectural decisions that must remain true]
+
+**Key Files:**
+- `path/to/file.ts` - [Why this file matters]
+
+**Context When Deferred:**
+[Brief description of current project state]
+
+**Implementation Plan:**
+1. [Step 1]
+2. [Step 2]
+```
+
+3. Inform user: "Added N items to your roadmap. Run `/wogi-roadmap` to see them."
+
+### Before Implementing Roadmap Items
+
+When user asks to implement something from the roadmap:
+
+1. **Find the item**: Check `.workflow/roadmap.md`
+2. **Validate dependencies**:
+   - Is "Depends On" complete?
+   - Do "Key Files" still exist?
+   - Do "Assumes" still hold true?
+3. **If validation fails**:
+   ```
+   ⚠️ This roadmap item may be outdated.
+
+   Issue: [What changed]
+
+   Options:
+   1. Update this item to match current architecture
+   2. Remove this item (no longer relevant)
+   3. Proceed anyway (you take responsibility)
+   ```
+4. **If validation passes**: Proceed with implementation
+
+### When Modifying Code That Roadmap Items Depend On
+
+If you're about to modify a file listed in any roadmap item's "Key Files":
+
+```
+Note: This change may affect roadmap items:
+- [Item 1 name]
+- [Item 2 name]
+
+Should I review and update those items after this change?
 ```
 
 ## Context Management

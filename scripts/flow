@@ -57,6 +57,13 @@ show_help() {
     echo "  new-feature <n>   Create new feature"
     echo "  bug <title>          Create bug report"
     echo ""
+    echo "Roadmap & Planning:"
+    echo "  roadmap              Show project roadmap"
+    echo "  roadmap add <title>  Add item to roadmap"
+    echo "  roadmap validate <t> Validate item dependencies"
+    echo "  roadmap move <t>     Move item between phases"
+    echo "  roadmap list [phase] List items by phase"
+    echo ""
     echo "Workflow:"
     echo "  morning              Morning briefing - where you left off"
     echo "  health               Check workflow health"
@@ -324,6 +331,9 @@ case "${1:-}" in
         ;;
     story)
         node "$SCRIPT_DIR/flow-story.js" "${@:2}"
+        ;;
+    roadmap)
+        node "$SCRIPT_DIR/flow-roadmap.js" "${@:2}"
         ;;
     new-feature)
         "$SCRIPT_DIR/flow-new-feature" "${@:2}"
