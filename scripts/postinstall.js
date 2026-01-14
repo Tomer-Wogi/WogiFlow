@@ -121,7 +121,7 @@ async function main() {
       ttyFd = fs.openSync('/dev/tty', 'w');
       output = { write: (msg) => fs.writeSync(ttyFd, msg) };
     }
-  } catch (err) {
+  } catch (_err) {
     // Fallback to stderr if /dev/tty not available
     ttyFd = null;
   }
@@ -131,7 +131,7 @@ async function main() {
     output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
     // Close TTY file descriptor if opened
     if (ttyFd !== null) {
-      try { fs.closeSync(ttyFd); } catch (err) { /* ignore */ }
+      try { fs.closeSync(ttyFd); } catch (_err) { /* ignore */ }
     }
     return;
   }
@@ -157,7 +157,7 @@ async function main() {
 
   // Close TTY file descriptor if opened
   if (ttyFd !== null) {
-    try { fs.closeSync(ttyFd); } catch (err) { /* ignore */ }
+    try { fs.closeSync(ttyFd); } catch (_err) { /* ignore */ }
   }
 }
 
