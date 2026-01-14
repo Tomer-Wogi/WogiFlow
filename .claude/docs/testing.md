@@ -1,6 +1,10 @@
 # Testing Strategy
 
+<!-- PINS: test-commands, verification-gates, windows-testing -->
+
 ## Current State
+<!-- PIN: test-commands -->
+
 - No formal test framework configured
 - Manual testing via CLI commands
 
@@ -17,6 +21,8 @@
 ```
 
 ## Verification Gates
+<!-- PIN: verification-gates -->
+
 Configured in `config.json → qualityGates`:
 - Lint check
 - TypeScript type check
@@ -28,11 +34,13 @@ Configured in `config.json → qualityGates`:
 - Add E2E tests for full workflow scenarios
 
 ## Windows Testing Checklist
+<!-- PIN: windows-testing -->
 
 When testing WogiFlow on Windows with Claude Code 2.1.7+:
 
 ### Path Handling
-- [ ] Verify temp directory paths work (especially with `\t`, `\n` characters)
+- [ ] Verify temp directory paths work correctly
+  - Windows paths may contain backslash sequences like `C:\temp` or `C:\new` where `\t` and `\n` could be misinterpreted as tab and newline escape sequences if not handled properly
 - [ ] Confirm `path.join()` creates valid Windows paths
 - [ ] Test file operations in OneDrive/Dropbox-synced directories
 
@@ -55,7 +63,7 @@ npx flow status
 npx flow ready
 ```
 
-**Note**: Claude Code 2.1.7 fixed several Windows-specific issues. If you encounter problems, ensure Claude Code is updated.
+**Note**: Claude Code 2.1.7 fixed several Windows-specific issues including path escape sequence handling and false "file modified" errors with cloud sync tools. If you encounter problems, ensure Claude Code is updated.
 
 ---
 

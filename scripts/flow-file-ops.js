@@ -293,6 +293,7 @@ module.exports = {
 
   // Path validation
   isPathWithinDir,
+  isPathWithinProject: isPathWithinDir,  // Alias for documentation consistency
 
   // Directory operations
   listDirs,

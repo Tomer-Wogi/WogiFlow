@@ -1,10 +1,13 @@
 # MCP Integrations
 
+<!-- PINS: overview, figma-integration, context7-docs, lsp-integration, custom-servers, auto-search, troubleshooting -->
+
 Connect external tools via Model Context Protocol servers.
 
 ---
 
 ## Overview
+<!-- PIN: overview -->
 
 MCP (Model Context Protocol) allows WogiFlow to:
 - Connect to external services
@@ -78,9 +81,10 @@ Use Claude Code's MCP commands to manage servers:
 /mcp list
 ```
 
-> **Note**: The @-mention syntax for enabling/disabling MCP servers was removed in Claude Code January 2026. Use `/mcp enable <name>` instead.
+> **Note**: The @-mention syntax for enabling/disabling MCP servers has been removed. Use `/mcp enable <name>` instead.
 
 ### MCP Tool Auto-Search Mode (Claude Code 2.1.7+)
+<!-- PIN: auto-search -->
 
 Claude Code automatically manages MCP tools to optimize context usage:
 
@@ -112,6 +116,7 @@ mcp-config-set server-name {config}
 ---
 
 ## Figma Integration
+<!-- PIN: figma-integration -->
 
 ### Setup
 
@@ -142,6 +147,7 @@ mcp-config-set server-name {config}
 ---
 
 ## Documentation Integration
+<!-- PIN: context7-docs -->
 
 ### Context7 Lookup
 
@@ -171,6 +177,7 @@ With `skillLearning.fetchOfficialDocs`:
 ---
 
 ## LSP Integration
+<!-- PIN: lsp-integration -->
 
 Language Server Protocol for type information:
 
@@ -195,6 +202,7 @@ Language Server Protocol for type information:
 ---
 
 ## Building Custom MCP Servers
+<!-- PIN: custom-servers -->
 
 ### Code Mode
 
@@ -224,20 +232,6 @@ module.exports = {
 
 ---
 
-## Profiles
-
-Save MCP configurations as profiles:
-
-```bash
-# Create profile
-mcp-create-profile "development"
-
-# Switch profiles
-mcp-load-profile "production"
-```
-
----
-
 ## Resource Access
 
 Read resources from MCP servers:
@@ -263,6 +257,7 @@ mcp-read-resource "server-name" "resource://path"
 ---
 
 ## Troubleshooting
+<!-- PIN: troubleshooting -->
 
 ### Server Not Responding
 

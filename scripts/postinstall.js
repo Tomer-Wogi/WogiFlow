@@ -21,6 +21,20 @@ const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
+// File permissions for security
+const DIR_MODE = 0o755;  // rwxr-xr-x for directories
+const FILE_MODE = 0o644; // rw-r--r-- for files
+
+/**
+ * Safely close a file descriptor, ignoring errors
+ * @param {number|null} fd - File descriptor to close
+ */
+function safeClose(fd) {
+  if (fd !== null) {
+    try { fs.closeSync(fd); } catch (_err) { /* intentionally ignored */ }
+  }
+}
+
 /**
  * Create minimal directory structure
  */
@@ -33,9 +47,8 @@ function createMinimalStructure() {
   ];
 
   for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    // recursive:true handles existing dirs gracefully, no need for existsSync check
+    fs.mkdirSync(dir, { recursive: true, mode: DIR_MODE });
   }
 
   // Create minimal ready.json
@@ -47,7 +60,7 @@ function createMinimalStructure() {
       inProgress: [],
       blocked: [],
       recentlyCompleted: []
-    }, null, 2));
+    }, null, 2), { mode: FILE_MODE });
   }
 }
 
@@ -58,7 +71,7 @@ function createMinimalStructure() {
 function createPendingSetupMarker() {
   const markerPath = path.join(STATE_DIR, 'pending-setup.json');
 
-  // Don't create if already fully initialized
+  // Check-then-act is non-atomic, but EEXIST handling below provides safety
   if (fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) {
     return;
   }
@@ -71,7 +84,7 @@ function createPendingSetupMarker() {
       createdAt: new Date().toISOString(),
       projectRoot: PROJECT_ROOT,
       version: '1.0'
-    }, null, 2), { flag: 'wx' });
+    }, null, 2), { flag: 'wx', mode: FILE_MODE });
   } catch (err) {
     // EEXIST means file already exists - that's fine, another process created it
     if (err.code !== 'EEXIST') {
@@ -97,9 +110,9 @@ function isAlreadyInitialized() {
 }
 
 /**
- * Main entry point
+ * Main entry point (sync - no async operations needed)
  */
-async function main() {
+function main() {
   // Always create minimal structure first
   createMinimalStructure();
 
@@ -111,33 +124,32 @@ async function main() {
     return;
   }
 
-  // Try to write directly to terminal (bypasses npm output capture)
-  // Note: /dev/tty is Unix-specific, will use stderr fallback on Windows
+  // Try to write directly to terminal, bypassing npm output capture
+  // /dev/tty is Unix-specific; npm normally captures postinstall output
+  // On Windows or in environments without TTY, fallback to stderr
   let output = process.stderr;
   let ttyFd = null;
-  try {
-    if (process.platform !== 'win32') {
-      fs.accessSync('/dev/tty', fs.constants.W_OK);
+
+  if (process.platform !== 'win32') {
+    try {
+      // Combine access check and open into single try-catch to avoid TOCTOU
       ttyFd = fs.openSync('/dev/tty', 'w');
       output = { write: (msg) => fs.writeSync(ttyFd, msg) };
+    } catch (_err) {
+      // /dev/tty not available (no terminal, CI, etc.) - fallback to stderr
+      ttyFd = null;
     }
-  } catch (_err) {
-    // Fallback to stderr if /dev/tty not available
-    ttyFd = null;
   }
 
-  // Already initialized - short message
-  if (isAlreadyInitialized()) {
-    output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
-    // Close TTY file descriptor if opened
-    if (ttyFd !== null) {
-      try { fs.closeSync(ttyFd); } catch (_err) { /* ignore */ }
+  try {
+    // Already initialized - short message
+    if (isAlreadyInitialized()) {
+      output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
+      return;
     }
-    return;
-  }
 
-  // Show setup instructions - point to AI assistant
-  const msg = `
+    // Show setup instructions - point to AI assistant
+    const msg = `
 \x1b[36m╔══════════════════════════════════════════════════════════════╗\x1b[0m
 \x1b[36m║\x1b[0m             \x1b[1mWogiFlow Installed Successfully!\x1b[0m               \x1b[36m║\x1b[0m
 \x1b[36m╠══════════════════════════════════════════════════════════════╣\x1b[0m
@@ -153,17 +165,19 @@ async function main() {
 \x1b[36m╚══════════════════════════════════════════════════════════════╝\x1b[0m
 
 `;
-  output.write(msg);
-
-  // Close TTY file descriptor if opened
-  if (ttyFd !== null) {
-    try { fs.closeSync(ttyFd); } catch (_err) { /* ignore */ }
+    output.write(msg);
+  } finally {
+    // Always close TTY file descriptor if opened
+    safeClose(ttyFd);
   }
 }
 
 // Run
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   // Don't fail npm install on postinstall errors
-  process.stderr.write(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}\n`);
+  const errorInfo = process.env.DEBUG ? ` (${err.code || 'unknown'})` : '';
+  process.stderr.write(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}${errorInfo}\n`);
   createMinimalStructure();
-});
+}
