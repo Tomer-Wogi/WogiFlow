@@ -1,0 +1,10 @@
+{
+  "taskId": "wf-cc-005",
+  "timestamp": "2026-01-14T08:22:49.800Z",
+  "failedGates": [
+    "loopComplete"
+  ],
+  "errors": {
+    "loopComplete": "🚫 LOOP ENFORCEMENT ACTIVE\n────────────────────────────────────────\n\nTask: wf-cc-005\nIteration: 0\nRetries: 0\n\n⏳ Pending (1):\n   • Document MCP auto-search mode behavior in knowledge base\n\n────────────────────────────────────────\n🔄 You must complete all criteria before exiting."
+  }
+}

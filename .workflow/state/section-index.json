@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-01-12T19:13:46.626Z",
+  "generatedAt": "2026-01-14T08:22:44.907Z",
   "sources": {
     "decisions.md": {
       "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/decisions.md",
-      "lastModified": "2026-01-11T14:26:13.498Z",
-      "contentHash": "d5fd455a",
+      "lastModified": "2026-01-12T22:34:55.218Z",
+      "contentHash": "474e34b2",
       "sections": [
         {
           "id": "component-architecture:component-reuse-policy",
@@ -64,9 +64,29 @@
             "security-patterns-2026-01-11"
           ],
           "lineStart": 24,
-          "lineEnd": 50,
+          "lineEnd": 48,
           "content": "**Source**: Session review findings\n\n1. **File Read Safety**\n   - Always wrap `fs.readFileSync()` in try-catch, even after `fileExists()` check\n   - Reason: Race conditions, permission changes, symlink issues can still cause failures\n\n2. **JSON Parsing Safety**\n   - Use `safeJsonParse()` from flow-utils.js instead of raw `JSON.parse()`\n   - Validate parsed structure has expected fields before use\n   - Check for `__proto__`, `constructor`, `prototype` injection\n\n3. **Template Substitution Safety**\n   - Block access to `__proto__`, `constructor`, `prototype` keys\n   - Use `Object.prototype.hasOwnProperty.call()` for property access\n   - Example: See `applyTemplate()` in flow-prompt-composer.js\n\n4. **Path Safety**\n   - Validate patterns before `path.join()` with user/config data\n   - Use `isPathWithinProject()` for defense-in-depth\n   - Glob-to-regex: Use `[^/]*` not `.*` to prevent path separator matching\n\n5. **Module Dependencies**\n   - Check for circular dependencies when refactoring shared functions\n   - Node.js handles circular deps but can cause undefined exports during load",
           "contentHash": "85da639f"
+        },
+        {
+          "id": "coding-standards:code-quality-patterns-2026-01-12",
+          "title": "Code Quality Patterns (2026-01-12)",
+          "category": "Coding Standards",
+          "pins": [
+            "try-catch",
+            "error-handling",
+            "component-naming",
+            "file-naming",
+            "code",
+            "quality",
+            "patterns",
+            "2026-01-12",
+            "code-quality-patterns-2026-01-12"
+          ],
+          "lineStart": 50,
+          "lineEnd": 77,
+          "content": "**Source**: Session review findings\n\n1. **Catch Block Variable Naming**\n   - **Standard**: Use `err` for all catch blocks in this codebase\n   - Avoid: `e`, `error`, `ex`, `exception` - these cause confusion with loop variables\n   - Example: `catch (err) { console.error(err.message); }`\n   - Bad: `arr.map(e => e.value)` inside a `catch (err)` block using `e.message` (typo!)\n   - Reason: Standardizing on `err` prevents mix-ups with iterator variables like `e`\n\n2. **Single Source of Truth for Constants**\n   - Avoid duplicating model/configuration objects across files\n   - Import from one canonical location instead\n   - Example: `getModelContextPreferences()` in flow-instruction-richness.js\n   - Reason: Prevents drift and makes updates simpler\n\n3. **Named Constants for Magic Numbers**\n   - Define constants for threshold values, percentages, limits\n   - Example: `COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85, concise: 0.5 }`\n   - Reason: Self-documenting code, easier maintenance\n\n4. **Budget Functions Need Hard Ceilings**\n   - When implementing \"minimum budget\" logic, add a hard ceiling\n   - Prevents forced includes from exceeding budget indefinitely\n   - Example: `hardCeiling = tokenBudget * (1 + maxOverflow)`\n   - Reason: Unbounded growth can cause OOM or context overflow",
+          "contentHash": "c352e3e4"
         },
         {
           "id": "architecture-decisions:model-management-architecture-2026-01-11",
@@ -80,8 +100,8 @@
             "2026-01-11",
             "model-management-architecture-2026-01-11"
           ],
-          "lineStart": 60,
-          "lineEnd": 80,
+          "lineStart": 87,
+          "lineEnd": 107,
           "content": "**Context**: Phase 1 introduced model registry and stats system alongside existing model-adapter.\n\n**Two Model Systems**:\n1. **flow-model-adapter.js** - Prompt adaptation system\n   - `getCurrentModel()` returns normalized model name (string)\n   - Focus: Per-model prompt adjustments, learning, and corrections\n   - Imports: Used by flow-knowledge-router.js\n\n2. **flow-models.js** - Registry and stats system\n   - `getCurrentModel()` returns `{name, info, source}` object\n   - Focus: Model listing, routing recommendations, cost tracking\n   - Standalone CLI commands: `flow models [subcommand]`\n\n**Design Decision**: Keep them separate because:\n- Different return types serve different consumers\n- Adapter system needs just the name for pattern matching\n- Registry system needs full model metadata for display/routing\n- Merging would create unnecessary coupling\n\n**Future Consideration**: Could extract shared model detection logic into a common utility if they drift apart.",
           "contentHash": "c121be1d"
         },
@@ -101,8 +121,8 @@
             "2026-01-11",
             "json-safety-pattern-2026-01-11"
           ],
-          "lineStart": 82,
-          "lineEnd": 88,
+          "lineStart": 109,
+          "lineEnd": 115,
           "content": "**Rule**: Use `safeJsonParse()` pattern for external/user-modifiable JSON files.\n- Check for `__proto__` and `constructor\"` strings before parsing\n- Validate parsed result is object (not null/array for config files)\n- Located in: `scripts/flow-models.js` (can be extracted if needed elsewhere)",
           "contentHash": "585e4d23"
         },
@@ -115,8 +135,8 @@
             "file-naming",
             "2026-01-02"
           ],
-          "lineStart": 96,
-          "lineEnd": 99,
+          "lineStart": 123,
+          "lineEnd": 126,
           "content": "Use kebab-case for all file names in this project",
           "contentHash": "7d8867df"
         }
@@ -130,8 +150,9 @@
     }
   },
   "stats": {
-    "totalSections": 6,
+    "totalSections": 7,
     "totalRows": 0,
-    "totalPins": 38
+    "specsFiles": 0,
+    "totalPins": 42
   }
 }

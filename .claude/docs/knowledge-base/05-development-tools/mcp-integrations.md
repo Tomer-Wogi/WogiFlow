@@ -80,6 +80,29 @@ Use Claude Code's MCP commands to manage servers:
 
 > **Note**: The @-mention syntax for enabling/disabling MCP servers was removed in Claude Code January 2026. Use `/mcp enable <name>` instead.
 
+### MCP Tool Auto-Search Mode (Claude Code 2.1.7+)
+
+Claude Code automatically manages MCP tools to optimize context usage:
+
+- **When enabled**: If MCP tool descriptions exceed 10% of the context window, tools are automatically deferred
+- **Discovery**: Deferred tools are discovered via the `MCPSearch` tool instead of being loaded upfront
+- **Default**: Enabled by default for all users
+
+**Implications for WogiFlow users:**
+- Keep tool descriptions concise (under 100 words recommended)
+- Tools with verbose descriptions may not appear in initial tool list
+- Use `MCPSearch` to find deferred tools when needed
+
+**To disable** (not recommended):
+```json
+// In Claude Code settings
+{
+  "disallowedTools": ["MCPSearch"]
+}
+```
+
+**Best practice**: Design MCP tool descriptions to be concise and searchable. Front-load the most important keywords.
+
 ### Configure Server
 
 ```bash
