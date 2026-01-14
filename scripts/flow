@@ -290,9 +290,6 @@ show_help() {
     echo "  confidence stats           Show confidence statistics"
     echo ""
     echo "Input & Editing:"
-    echo "  voice-input              Voice-to-transcript input"
-    echo "  voice-input setup        Install/configure voice dependencies"
-    echo "  voice-input record       Record and transcribe audio"
     echo "  guided-edit \"task\"       Step-by-step guided multi-file editing"
     echo "  guided-edit status       Show current guided edit session"
     echo ""
@@ -940,9 +937,6 @@ case "${1:-}" in
         # Phase 6: Background Sync Daemon
         node "$SCRIPT_DIR/flow-sync-daemon.js" "${@:2}"
         ;;
-    voice-input|voice)
-        node "$SCRIPT_DIR/flow-voice-input.js" "${@:2}"
-        ;;
     guided-edit)
         node "$SCRIPT_DIR/flow-guided-edit.js" "${@:2}"
         ;;
@@ -975,7 +969,6 @@ case "${1:-}" in
                     hybrid) echo "Manage hybrid mode. Subcommands: enable, disable, status, execute, test, learning" ;;
                     parallel) echo "Manage parallel execution. Subcommands: config, check, enable, disable" ;;
                     worktree) echo "Manage worktree isolation. Subcommands: enable, disable, list, cleanup" ;;
-                    voice-input|voice) echo "Voice-to-transcript input. Subcommands: setup, status, test, record" ;;
                     long-input|long-input-process|transcript-digest|digest) echo "Long input processing. Ensures nothing missed from long prompts/transcripts/specs. Subcommands: status, new, check, topics, save-topics" ;;
                     guided-edit) echo "Step-by-step guided multi-file editing. Usage: flow guided-edit \"task description\"" ;;
                     *) echo "No detailed help for '$2'. Run 'flow help' for all commands." ;;

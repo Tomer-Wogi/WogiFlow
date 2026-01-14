@@ -9,37 +9,33 @@
       "type": "string",
       "description": "JSON Schema reference for IDE support"
     },
-
     "version": {
       "type": "string",
       "description": "Config schema version (e.g., '2.0.0')",
       "default": "2.0.0"
     },
-
     "projectName": {
       "type": "string",
       "description": "Name of the project for display purposes"
     },
-
     "autoLog": {
       "type": "boolean",
       "description": "Automatically update request-log.md after changes",
       "default": true
     },
-
     "autoUpdateAppMap": {
       "type": "boolean",
       "description": "Automatically update app-map.md when components change",
       "default": true
     },
-
     "requireApproval": {
       "type": "array",
       "description": "List of operations requiring user approval",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "default": []
     },
-
     "enforcement": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Task gating and strict mode settings",
@@ -76,29 +72,52 @@
             "small": {
               "type": "object",
               "properties": {
-                "maxFiles": { "type": "number", "description": "Max files for small task", "default": 3 },
-                "maxHours": { "type": "number", "description": "Max hours for small task", "default": 1 }
+                "maxFiles": {
+                  "type": "number",
+                  "description": "Max files for small task",
+                  "default": 3
+                },
+                "maxHours": {
+                  "type": "number",
+                  "description": "Max hours for small task",
+                  "default": 1
+                }
               }
             },
             "medium": {
               "type": "object",
               "properties": {
-                "maxFiles": { "type": "number", "description": "Max files for medium task", "default": 10 },
-                "maxHours": { "type": "number", "description": "Max hours for medium task", "default": 4 }
+                "maxFiles": {
+                  "type": "number",
+                  "description": "Max files for medium task",
+                  "default": 10
+                },
+                "maxHours": {
+                  "type": "number",
+                  "description": "Max hours for medium task",
+                  "default": 4
+                }
               }
             },
             "large": {
               "type": "object",
               "properties": {
-                "minFiles": { "type": "number", "description": "Min files for large task", "default": 10 },
-                "minHours": { "type": "number", "description": "Min hours for large task", "default": 4 }
+                "minFiles": {
+                  "type": "number",
+                  "description": "Min files for large task",
+                  "default": 10
+                },
+                "minHours": {
+                  "type": "number",
+                  "description": "Min hours for large task",
+                  "default": 4
+                }
               }
             }
           }
         }
       }
     },
-
     "workflow": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - High-level workflow configuration",
@@ -106,18 +125,24 @@
         "planningStyle": {
           "type": "string",
           "description": "Planning approach for tasks",
-          "enum": ["feature-based", "sprint-based", "kanban"],
+          "enum": [
+            "feature-based",
+            "sprint-based",
+            "kanban"
+          ],
           "default": "feature-based"
         },
         "agentStructure": {
           "type": "string",
           "description": "How agents are organized",
-          "enum": ["unified", "specialized"],
+          "enum": [
+            "unified",
+            "specialized"
+          ],
           "default": "unified"
         }
       }
     },
-
     "loops": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Self-completing execution loop settings",
@@ -211,12 +236,15 @@
         "regressionOnRecheck": {
           "type": "string",
           "description": "Action when regression is detected during re-check",
-          "enum": ["warn", "block", "auto-fix"],
+          "enum": [
+            "warn",
+            "block",
+            "auto-fix"
+          ],
           "default": "warn"
         }
       }
     },
-
     "durableSteps": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Crash recovery and session persistence",
@@ -243,7 +271,6 @@
         }
       }
     },
-
     "suspension": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Long-running task suspension settings",
@@ -270,7 +297,6 @@
         }
       }
     },
-
     "parallel": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Concurrent task execution settings",
@@ -322,7 +348,6 @@
         }
       }
     },
-
     "phases": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Project phase tracking",
@@ -335,12 +360,13 @@
         "definitions": {
           "type": "array",
           "description": "Phase definitions",
-          "items": { "type": "object" },
+          "items": {
+            "type": "object"
+          },
           "default": []
         }
       }
     },
-
     "mandatorySteps": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Required steps at various points",
@@ -348,24 +374,32 @@
         "afterTask": {
           "type": "array",
           "description": "Steps to run after each task completion",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": []
         },
         "beforeCommit": {
           "type": "array",
           "description": "Steps to run before each commit",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": []
         },
         "onSessionEnd": {
           "type": "array",
           "description": "Steps to run when session ends",
-          "items": { "type": "string" },
-          "default": ["updateRequestLog", "updateAppMap"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "updateRequestLog",
+            "updateAppMap"
+          ]
         }
       }
     },
-
     "priorities": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Task priority configuration",
@@ -373,7 +407,13 @@
         "defaultPriority": {
           "type": "string",
           "description": "Default priority for new tasks",
-          "enum": ["P0", "P1", "P2", "P3", "P4"],
+          "enum": [
+            "P0",
+            "P1",
+            "P2",
+            "P3",
+            "P4"
+          ],
           "default": "P2"
         },
         "autoBoostDays": {
@@ -392,14 +432,17 @@
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "label": { "type": "string" },
-              "description": { "type": "string" }
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
             }
           }
         }
       }
     },
-
     "storyDecomposition": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Story breakdown settings",
@@ -417,7 +460,11 @@
         "complexityThreshold": {
           "type": "string",
           "description": "Threshold for suggesting decomposition",
-          "enum": ["small", "medium", "large"],
+          "enum": [
+            "small",
+            "medium",
+            "large"
+          ],
           "default": "medium"
         },
         "minSubTasks": {
@@ -442,7 +489,6 @@
         }
       }
     },
-
     "qualityGates": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Per-task-type quality requirements",
@@ -452,17 +498,20 @@
           "require": {
             "type": "array",
             "description": "Required gates for task type",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "optional": {
             "type": "array",
             "description": "Optional gates for task type",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         }
       }
     },
-
     "validation": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Auto-validation command settings",
@@ -481,7 +530,9 @@
               "description": "Commands per file extension (e.g., '*.ts': ['npx tsc --noEmit'])",
               "additionalProperties": {
                 "type": "array",
-                "items": { "type": "string" }
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "fixErrorsBeforeContinuing": {
@@ -503,8 +554,13 @@
             "commands": {
               "type": "array",
               "description": "Commands to run after task",
-              "items": { "type": "string" },
-              "default": ["npm run lint", "npm run typecheck"]
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "npm run lint",
+                "npm run typecheck"
+              ]
             }
           }
         },
@@ -520,14 +576,19 @@
             "commands": {
               "type": "array",
               "description": "Commands to run before commit",
-              "items": { "type": "string" },
-              "default": ["npm run lint", "npm run typecheck", "npm run test"]
+              "items": {
+                "type": "string"
+              },
+              "default": [
+                "npm run lint",
+                "npm run typecheck",
+                "npm run test"
+              ]
             }
           }
         }
       }
     },
-
     "testing": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Test execution settings",
@@ -554,7 +615,6 @@
         }
       }
     },
-
     "regressionTesting": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Regression test settings",
@@ -577,12 +637,15 @@
         "onFailure": {
           "type": "string",
           "description": "Action on regression failure",
-          "enum": ["warn", "block", "fix"],
+          "enum": [
+            "warn",
+            "block",
+            "fix"
+          ],
           "default": "warn"
         }
       }
     },
-
     "browserTesting": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Browser test integration",
@@ -619,7 +682,6 @@
         }
       }
     },
-
     "componentRules": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Component reuse and creation rules",
@@ -651,7 +713,6 @@
         }
       }
     },
-
     "strictMode": {
       "type": "object",
       "description": "CATEGORY: QUALITY & VALIDATION - Additional strict mode options",
@@ -673,7 +734,6 @@
         }
       }
     },
-
     "skills": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Installed skills",
@@ -681,12 +741,13 @@
         "installed": {
           "type": "array",
           "description": "List of installed skill names",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": []
         }
       }
     },
-
     "skillLearning": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Skill auto-creation and learning",
@@ -705,9 +766,21 @@
           "type": "object",
           "description": "When to trigger learning",
           "properties": {
-            "onCommit": { "type": "boolean", "description": "Learn on commit", "default": true },
-            "onTaskComplete": { "type": "boolean", "description": "Learn on task completion", "default": true },
-            "onCompact": { "type": "boolean", "description": "Learn when compacting", "default": true }
+            "onCommit": {
+              "type": "boolean",
+              "description": "Learn on commit",
+              "default": true
+            },
+            "onTaskComplete": {
+              "type": "boolean",
+              "description": "Learn on task completion",
+              "default": true
+            },
+            "onCompact": {
+              "type": "boolean",
+              "description": "Learn when compacting",
+              "default": true
+            }
           }
         },
         "minCorrectionsToLearn": {
@@ -718,7 +791,11 @@
         "autoCreateSkills": {
           "type": "string",
           "description": "Auto-create skills behavior",
-          "enum": ["ask", "auto", "never"],
+          "enum": [
+            "ask",
+            "auto",
+            "never"
+          ],
           "default": "ask"
         },
         "autoDetectFrameworks": {
@@ -736,13 +813,17 @@
           "description": "File patterns to detect frameworks",
           "additionalProperties": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
         "officialDocsUrls": {
           "type": "object",
           "description": "URLs for official framework documentation",
-          "additionalProperties": { "type": "string" }
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "learnFromLoopRetries": {
           "type": "boolean",
@@ -762,7 +843,6 @@
         }
       }
     },
-
     "memory": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Fact storage configuration",
@@ -794,7 +874,6 @@
         }
       }
     },
-
     "automaticMemory": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Automatic memory management",
@@ -818,31 +897,62 @@
           "type": "object",
           "description": "Relevance decay settings",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable relevance decay", "default": true },
-            "decayRate": { "type": "number", "description": "Decay rate per day", "default": 0.033 },
-            "neverAccessedPenalty": { "type": "number", "description": "Penalty for never-accessed facts", "default": 0.1 }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable relevance decay",
+              "default": true
+            },
+            "decayRate": {
+              "type": "number",
+              "description": "Decay rate per day",
+              "default": 0.033
+            },
+            "neverAccessedPenalty": {
+              "type": "number",
+              "description": "Penalty for never-accessed facts",
+              "default": 0.1
+            }
           }
         },
         "demotion": {
           "type": "object",
           "description": "Memory demotion settings",
           "properties": {
-            "relevanceThreshold": { "type": "number", "description": "Threshold for demotion", "default": 0.3 },
-            "coldRetentionDays": { "type": "number", "description": "Days to keep demoted facts", "default": 90 }
+            "relevanceThreshold": {
+              "type": "number",
+              "description": "Threshold for demotion",
+              "default": 0.3
+            },
+            "coldRetentionDays": {
+              "type": "number",
+              "description": "Days to keep demoted facts",
+              "default": 90
+            }
           }
         },
         "selfTuning": {
           "type": "object",
           "description": "Self-tuning memory settings",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable self-tuning", "default": false },
-            "adjustOnOverflow": { "type": "boolean", "description": "Adjust on memory overflow", "default": true },
-            "adjustOnFailures": { "type": "boolean", "description": "Adjust on retrieval failures", "default": true }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable self-tuning",
+              "default": false
+            },
+            "adjustOnOverflow": {
+              "type": "boolean",
+              "description": "Adjust on memory overflow",
+              "default": true
+            },
+            "adjustOnFailures": {
+              "type": "boolean",
+              "description": "Adjust on retrieval failures",
+              "default": true
+            }
           }
         }
       }
     },
-
     "automaticPromotion": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Pattern promotion to persistent storage",
@@ -865,8 +975,12 @@
         "destinations": {
           "type": "array",
           "description": "Where to promote patterns",
-          "items": { "type": "string" },
-          "default": ["decisions.md"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "decisions.md"
+          ]
         },
         "requireApproval": {
           "type": "boolean",
@@ -880,7 +994,6 @@
         }
       }
     },
-
     "knowledgeRouting": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Local vs team knowledge routing",
@@ -898,7 +1011,10 @@
         "defaultScope": {
           "type": "string",
           "description": "Default scope for new knowledge",
-          "enum": ["local", "team"],
+          "enum": [
+            "local",
+            "team"
+          ],
           "default": "local"
         },
         "modelSpecificLearning": {
@@ -908,7 +1024,6 @@
         }
       }
     },
-
     "modelAdapters": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - Per-model learning adapters",
@@ -930,7 +1045,6 @@
         }
       }
     },
-
     "prd": {
       "type": "object",
       "description": "CATEGORY: LEARNING & MEMORY - PRD (Product Requirements Document) handling",
@@ -957,7 +1071,6 @@
         }
       }
     },
-
     "autoContext": {
       "type": "object",
       "description": "CATEGORY: CONTEXT & SESSION - Auto-loading related files",
@@ -1016,17 +1129,40 @@
           "type": "object",
           "description": "LSP enrichment settings for type info",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable LSP enrichment", "default": true },
-            "maxFiles": { "type": "number", "description": "Max files to enrich", "default": 5 },
-            "timeoutMs": { "type": "number", "description": "LSP timeout", "default": 2000 },
-            "showExports": { "type": "boolean", "description": "Show exported symbols", "default": true },
-            "showDiagnostics": { "type": "boolean", "description": "Show error/warning counts", "default": true },
-            "prioritizeHealthyFiles": { "type": "boolean", "description": "Sort error-free first", "default": true }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable LSP enrichment",
+              "default": true
+            },
+            "maxFiles": {
+              "type": "number",
+              "description": "Max files to enrich",
+              "default": 5
+            },
+            "timeoutMs": {
+              "type": "number",
+              "description": "LSP timeout",
+              "default": 2000
+            },
+            "showExports": {
+              "type": "boolean",
+              "description": "Show exported symbols",
+              "default": true
+            },
+            "showDiagnostics": {
+              "type": "boolean",
+              "description": "Show error/warning counts",
+              "default": true
+            },
+            "prioritizeHealthyFiles": {
+              "type": "boolean",
+              "description": "Sort error-free first",
+              "default": true
+            }
           }
         }
       }
     },
-
     "sessionState": {
       "type": "object",
       "description": "CATEGORY: CONTEXT & SESSION - Session persistence settings",
@@ -1068,7 +1204,6 @@
         }
       }
     },
-
     "contextMonitor": {
       "type": "object",
       "description": "CATEGORY: CONTEXT & SESSION - Context window monitoring",
@@ -1105,7 +1240,6 @@
         }
       }
     },
-
     "morningBriefing": {
       "type": "object",
       "description": "CATEGORY: CONTEXT & SESSION - Session start briefing",
@@ -1147,7 +1281,6 @@
         }
       }
     },
-
     "requestLog": {
       "type": "object",
       "description": "CATEGORY: CONTEXT & SESSION - Change history logging",
@@ -1179,7 +1312,6 @@
         }
       }
     },
-
     "componentIndex": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Component auto-scanning",
@@ -1192,8 +1324,14 @@
         "scanOn": {
           "type": "array",
           "description": "When to scan (sessionStart, afterTask, preCommit)",
-          "items": { "type": "string" },
-          "default": ["sessionStart", "afterTask", "preCommit"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "sessionStart",
+            "afterTask",
+            "preCommit"
+          ]
         },
         "staleAfterMinutes": {
           "type": "number",
@@ -1203,16 +1341,19 @@
         "directories": {
           "type": "array",
           "description": "Directories to scan for components",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "ignore": {
           "type": "array",
           "description": "Patterns to ignore",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
-
     "figmaAnalyzer": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Design-to-code matching",
@@ -1226,22 +1367,44 @@
           "type": "object",
           "description": "Match score thresholds",
           "properties": {
-            "exactMatch": { "type": "number", "description": "Score for exact match", "default": 95 },
-            "strongMatch": { "type": "number", "description": "Score for strong match", "default": 80 },
-            "variantCandidate": { "type": "number", "description": "Score for variant candidate", "default": 60 }
+            "exactMatch": {
+              "type": "number",
+              "description": "Score for exact match",
+              "default": 95
+            },
+            "strongMatch": {
+              "type": "number",
+              "description": "Score for strong match",
+              "default": 80
+            },
+            "variantCandidate": {
+              "type": "number",
+              "description": "Score for variant candidate",
+              "default": 60
+            }
           }
         },
         "componentDirs": {
           "type": "array",
           "description": "Directories to search for components",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "mcpServer": {
           "type": "object",
           "description": "MCP server settings",
           "properties": {
-            "port": { "type": "number", "description": "Server port", "default": 3847 },
-            "autoStart": { "type": "boolean", "description": "Auto-start server", "default": false }
+            "port": {
+              "type": "number",
+              "description": "Server port",
+              "default": 3847
+            },
+            "autoStart": {
+              "type": "boolean",
+              "description": "Auto-start server",
+              "default": false
+            }
           }
         },
         "autoScanOnAnalyze": {
@@ -1256,7 +1419,6 @@
         }
       }
     },
-
     "guidedEdit": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Step-by-step multi-file editing",
@@ -1274,17 +1436,28 @@
         "extensions": {
           "type": "array",
           "description": "File extensions to search",
-          "items": { "type": "string" },
-          "default": ["ts", "tsx", "js", "jsx", "vue", "svelte"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "ts",
+            "tsx",
+            "js",
+            "jsx",
+            "vue",
+            "svelte"
+          ]
         },
         "srcDir": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "description": "Source directory (null = auto-detect)",
           "default": null
         }
       }
     },
-
     "traces": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Code flow trace configuration",
@@ -1301,7 +1474,6 @@
         }
       }
     },
-
     "worktree": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Git worktree isolation",
@@ -1328,7 +1500,6 @@
         }
       }
     },
-
     "hybrid": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Local LLM execution (85-95% token savings)",
@@ -1342,39 +1513,110 @@
           "type": "object",
           "description": "Executor configuration",
           "properties": {
-            "type": { "type": "string", "enum": ["local", "cloud"], "default": "local" },
-            "provider": { "type": ["string", "null"], "description": "Cloud provider name" },
-            "providerEndpoint": { "type": ["string", "null"], "description": "Custom endpoint URL" },
-            "model": { "type": ["string", "null"], "description": "Model to use" },
-            "apiKey": { "type": ["string", "null"], "description": "API key (or use env var)" }
+            "type": {
+              "type": "string",
+              "enum": [
+                "local",
+                "cloud"
+              ],
+              "default": "local"
+            },
+            "provider": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Cloud provider name"
+            },
+            "providerEndpoint": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Custom endpoint URL"
+            },
+            "model": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Model to use"
+            },
+            "apiKey": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "API key (or use env var)"
+            }
           }
         },
         "planner": {
           "type": "object",
           "description": "Planner configuration",
           "properties": {
-            "adaptToExecutor": { "type": "boolean", "default": true },
-            "useAdapterKnowledge": { "type": "boolean", "default": true }
+            "adaptToExecutor": {
+              "type": "boolean",
+              "default": true
+            },
+            "useAdapterKnowledge": {
+              "type": "boolean",
+              "default": true
+            }
           }
         },
         "settings": {
           "type": "object",
           "description": "LLM settings",
           "properties": {
-            "temperature": { "type": "number", "default": 0.7 },
-            "maxTokens": { "type": "number", "default": 4096 },
-            "maxRetries": { "type": "number", "default": 20 },
-            "timeout": { "type": "number", "description": "Timeout in ms", "default": 120000 },
-            "autoExecute": { "type": "boolean", "default": false },
-            "createBranch": { "type": "boolean", "default": false },
+            "temperature": {
+              "type": "number",
+              "default": 0.7
+            },
+            "maxTokens": {
+              "type": "number",
+              "default": 4096
+            },
+            "maxRetries": {
+              "type": "number",
+              "default": 20
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Timeout in ms",
+              "default": 120000
+            },
+            "autoExecute": {
+              "type": "boolean",
+              "default": false
+            },
+            "createBranch": {
+              "type": "boolean",
+              "default": false
+            },
             "tokenEstimation": {
               "type": "object",
               "properties": {
-                "enabled": { "type": "boolean", "default": true },
-                "minTokens": { "type": "number", "default": 1000 },
-                "maxTokens": { "type": "number", "default": 8000 },
-                "defaultLevel": { "type": "string", "default": "medium" },
-                "logMetrics": { "type": "boolean", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "default": true
+                },
+                "minTokens": {
+                  "type": "number",
+                  "default": 1000
+                },
+                "maxTokens": {
+                  "type": "number",
+                  "default": 8000
+                },
+                "defaultLevel": {
+                  "type": "string",
+                  "default": "medium"
+                },
+                "logMetrics": {
+                  "type": "boolean",
+                  "default": true
+                }
               }
             }
           }
@@ -1386,7 +1628,10 @@
         "templates": {
           "type": "object",
           "properties": {
-            "directory": { "type": "string", "default": "templates/hybrid" }
+            "directory": {
+              "type": "string",
+              "default": "templates/hybrid"
+            }
           }
         },
         "projectContext": {
@@ -1395,38 +1640,6 @@
         }
       }
     },
-
-    "voice": {
-      "type": "object",
-      "description": "CATEGORY: DEVELOPMENT TOOLS - Voice input configuration",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Enable voice input",
-          "default": false
-        },
-        "provider": {
-          "type": ["string", "null"],
-          "description": "Voice provider (openai, groq, local)",
-          "enum": ["openai", "groq", "local", null]
-        },
-        "openaiApiKey": { "type": ["string", "null"] },
-        "groqApiKey": { "type": ["string", "null"] },
-        "localModelPath": {
-          "type": "string",
-          "description": "Local Whisper model path",
-          "default": "base.en"
-        },
-        "defaultDuration": {
-          "type": "number",
-          "description": "Default recording duration (seconds)",
-          "default": 30
-        },
-        "sampleRate": { "type": "number", "default": 16000 },
-        "channels": { "type": "number", "default": 1 }
-      }
-    },
-
     "lsp": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Language server integration",
@@ -1453,7 +1666,6 @@
         }
       }
     },
-
     "codebaseInsights": {
       "type": "object",
       "description": "CATEGORY: DEVELOPMENT TOOLS - Project analysis",
@@ -1466,12 +1678,16 @@
         "generateOn": {
           "type": "array",
           "description": "When to generate insights",
-          "items": { "type": "string" },
-          "default": ["onboarding", "manual"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "onboarding",
+            "manual"
+          ]
         }
       }
     },
-
     "commits": {
       "type": "object",
       "description": "CATEGORY: SAFETY & COMMITS - Commit approval workflow",
@@ -1480,10 +1696,22 @@
           "type": "object",
           "description": "Which task types require commit approval",
           "properties": {
-            "feature": { "type": "boolean", "default": true },
-            "bugfix": { "type": "boolean", "default": false },
-            "refactor": { "type": "boolean", "default": true },
-            "docs": { "type": "boolean", "default": false }
+            "feature": {
+              "type": "boolean",
+              "default": true
+            },
+            "bugfix": {
+              "type": "boolean",
+              "default": false
+            },
+            "refactor": {
+              "type": "boolean",
+              "default": true
+            },
+            "docs": {
+              "type": "boolean",
+              "default": false
+            }
           }
         },
         "autoCommitSmallFixes": {
@@ -1504,12 +1732,14 @@
         "commitMessageFormat": {
           "type": "string",
           "description": "Commit message format",
-          "enum": ["conventional", "simple"],
+          "enum": [
+            "conventional",
+            "simple"
+          ],
           "default": "conventional"
         }
       }
     },
-
     "security": {
       "type": "object",
       "description": "CATEGORY: SAFETY & COMMITS - Pre-commit security scanning",
@@ -1528,19 +1758,32 @@
           "type": "object",
           "description": "What to check for",
           "properties": {
-            "secrets": { "type": "boolean", "description": "Check for secrets/credentials", "default": true },
-            "injection": { "type": "boolean", "description": "Check for injection vulnerabilities", "default": true },
-            "npmAudit": { "type": "boolean", "description": "Run npm audit", "default": true }
+            "secrets": {
+              "type": "boolean",
+              "description": "Check for secrets/credentials",
+              "default": true
+            },
+            "injection": {
+              "type": "boolean",
+              "description": "Check for injection vulnerabilities",
+              "default": true
+            },
+            "npmAudit": {
+              "type": "boolean",
+              "description": "Run npm audit",
+              "default": true
+            }
           }
         },
         "ignoreFiles": {
           "type": "array",
           "description": "Files to ignore in security scans",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
-
     "damageControl": {
       "type": "object",
       "description": "CATEGORY: SAFETY & COMMITS - Destructive command protection",
@@ -1585,22 +1828,42 @@
           "type": "object",
           "description": "AI review for dangerous commands",
           "properties": {
-            "enabled": { "type": "boolean", "default": false },
-            "model": { "type": "string", "default": "haiku" },
-            "timeout": { "type": "number", "default": 5000 },
-            "skipSafeCommands": { "type": "boolean", "default": true }
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "model": {
+              "type": "string",
+              "default": "haiku"
+            },
+            "timeout": {
+              "type": "number",
+              "default": 5000
+            },
+            "skipSafeCommands": {
+              "type": "boolean",
+              "default": true
+            }
           }
         },
         "onBlock": {
           "type": "string",
           "description": "Action when blocking",
-          "enum": ["error", "warn", "log"],
+          "enum": [
+            "error",
+            "warn",
+            "log"
+          ],
           "default": "error"
         },
         "onAsk": {
           "type": "string",
           "description": "Action for uncertain commands",
-          "enum": ["prompt", "block", "allow"],
+          "enum": [
+            "prompt",
+            "block",
+            "allow"
+          ],
           "default": "prompt"
         },
         "logging": {
@@ -1610,7 +1873,6 @@
         }
       }
     },
-
     "team": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - Team sync configuration",
@@ -1620,11 +1882,36 @@
           "description": "Enable team sync",
           "default": false
         },
-        "teamId": { "type": ["string", "null"] },
-        "userId": { "type": ["string", "null"] },
-        "setupId": { "type": ["string", "null"] },
-        "projectId": { "type": ["string", "null"] },
-        "apiKey": { "type": ["string", "null"] },
+        "teamId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "userId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "setupId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "projectId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "apiKey": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "backendUrl": {
           "type": "string",
           "description": "Backend URL for team sync",
@@ -1649,19 +1936,47 @@
           "type": "object",
           "description": "What to sync",
           "properties": {
-            "decisions": { "type": "boolean", "default": true },
-            "appMap": { "type": "boolean", "default": true },
-            "componentIndex": { "type": "boolean", "default": true },
-            "skills": { "type": "boolean", "default": true },
-            "memory": { "type": "boolean", "default": true },
-            "requestLog": { "type": ["string", "boolean"], "default": "recent" },
-            "tasks": { "type": "boolean", "default": false }
+            "decisions": {
+              "type": "boolean",
+              "default": true
+            },
+            "appMap": {
+              "type": "boolean",
+              "default": true
+            },
+            "componentIndex": {
+              "type": "boolean",
+              "default": true
+            },
+            "skills": {
+              "type": "boolean",
+              "default": true
+            },
+            "memory": {
+              "type": "boolean",
+              "default": true
+            },
+            "requestLog": {
+              "type": [
+                "string",
+                "boolean"
+              ],
+              "default": "recent"
+            },
+            "tasks": {
+              "type": "boolean",
+              "default": false
+            }
           }
         },
         "conflictResolution": {
           "type": "string",
           "description": "Conflict resolution strategy",
-          "enum": ["newest-wins", "oldest-wins", "manual"],
+          "enum": [
+            "newest-wins",
+            "oldest-wins",
+            "manual"
+          ],
           "default": "newest-wins"
         },
         "aws": {
@@ -1670,7 +1985,6 @@
         }
       }
     },
-
     "agents": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - Agent persona configuration",
@@ -1678,18 +1992,34 @@
         "enabled": {
           "type": "array",
           "description": "Enabled agent personas",
-          "items": { "type": "string" },
-          "default": ["orchestrator", "story-writer", "developer", "reviewer", "tester"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "orchestrator",
+            "story-writer",
+            "developer",
+            "reviewer",
+            "tester"
+          ]
         },
         "optional": {
           "type": "array",
           "description": "Optional agent personas",
-          "items": { "type": "string" },
-          "default": ["accessibility", "security", "performance", "docs", "design-system", "onboarding"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "accessibility",
+            "security",
+            "performance",
+            "docs",
+            "design-system",
+            "onboarding"
+          ]
         }
       }
     },
-
     "multiApproach": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - Multiple solution analysis",
@@ -1702,14 +2032,22 @@
         "mode": {
           "type": "string",
           "description": "How to handle multiple approaches",
-          "enum": ["suggest", "auto"],
+          "enum": [
+            "suggest",
+            "auto"
+          ],
           "default": "suggest"
         },
         "triggerOn": {
           "type": "array",
           "description": "Task sizes to trigger multi-approach",
-          "items": { "type": "string" },
-          "default": ["large", "xl"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "large",
+            "xl"
+          ]
         },
         "maxApproaches": {
           "type": "number",
@@ -1719,12 +2057,15 @@
         "selectionStrategy": {
           "type": "string",
           "description": "How to select approach",
-          "enum": ["first-passing", "best-score", "user-choice"],
+          "enum": [
+            "first-passing",
+            "best-score",
+            "user-choice"
+          ],
           "default": "first-passing"
         }
       }
     },
-
     "hooks": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - CLI hooks configuration",
@@ -1737,8 +2078,12 @@
         "targets": {
           "type": "array",
           "description": "Target CLIs for hooks",
-          "items": { "type": "string" },
-          "default": ["claude-code"]
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "claude-code"
+          ]
         },
         "gracefulDegradation": {
           "type": "boolean",
@@ -1758,49 +2103,101 @@
               "type": "object",
               "description": "Block edits without an active task",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable task gating", "default": true },
-                "blockWithoutTask": { "type": "boolean", "description": "Block file edits if no task is active", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable task gating",
+                  "default": true
+                },
+                "blockWithoutTask": {
+                  "type": "boolean",
+                  "description": "Block file edits if no task is active",
+                  "default": true
+                }
               }
             },
             "validation": {
               "type": "object",
               "description": "Run lint/typecheck after file edits",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable validation hook", "default": true },
-                "runAfterEdit": { "type": "boolean", "description": "Run validation after each edit", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable validation hook",
+                  "default": true
+                },
+                "runAfterEdit": {
+                  "type": "boolean",
+                  "description": "Run validation after each edit",
+                  "default": true
+                }
               }
             },
             "loopEnforcement": {
               "type": "object",
               "description": "Block stop until acceptance criteria met",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable loop enforcement", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable loop enforcement",
+                  "default": true
+                }
               }
             },
             "componentReuse": {
               "type": "object",
               "description": "Check for similar existing components",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable component reuse check", "default": true },
-                "threshold": { "type": "number", "description": "Similarity threshold (0-100)", "default": 80 },
-                "blockOnSimilar": { "type": "boolean", "description": "Block if similar component exists", "default": false }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable component reuse check",
+                  "default": true
+                },
+                "threshold": {
+                  "type": "number",
+                  "description": "Similarity threshold (0-100)",
+                  "default": 80
+                },
+                "blockOnSimilar": {
+                  "type": "boolean",
+                  "description": "Block if similar component exists",
+                  "default": false
+                }
               }
             },
             "sessionContext": {
               "type": "object",
               "description": "Load context on session start",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable session context loading", "default": true },
-                "loadSuspendedTasks": { "type": "boolean", "description": "Load suspended task info", "default": true },
-                "loadDecisions": { "type": "boolean", "description": "Load recent decisions", "default": true },
-                "loadRecentActivity": { "type": "boolean", "description": "Load recent activity summary", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable session context loading",
+                  "default": true
+                },
+                "loadSuspendedTasks": {
+                  "type": "boolean",
+                  "description": "Load suspended task info",
+                  "default": true
+                },
+                "loadDecisions": {
+                  "type": "boolean",
+                  "description": "Load recent decisions",
+                  "default": true
+                },
+                "loadRecentActivity": {
+                  "type": "boolean",
+                  "description": "Load recent activity summary",
+                  "default": true
+                }
               }
             },
             "autoLogging": {
               "type": "object",
               "description": "Auto-log session activity to request-log.md",
               "properties": {
-                "enabled": { "type": "boolean", "description": "Enable auto-logging", "default": true }
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Enable auto-logging",
+                  "default": true
+                }
               }
             }
           }
@@ -1809,14 +2206,22 @@
           "type": "object",
           "description": "Claude Code specific settings",
           "properties": {
-            "installPath": { "type": "string", "default": ".claude/settings.local.json" }
+            "installPath": {
+              "type": "string",
+              "default": ".claude/settings.local.json"
+            }
           }
         },
-        "gemini": { "type": "object", "description": "Gemini CLI settings (future)" },
-        "codex": { "type": "object", "description": "Codex CLI settings (future)" }
+        "gemini": {
+          "type": "object",
+          "description": "Gemini CLI settings (future)"
+        },
+        "codex": {
+          "type": "object",
+          "description": "Codex CLI settings (future)"
+        }
       }
     },
-
     "metrics": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - Usage tracking",
@@ -1843,7 +2248,6 @@
         }
       }
     },
-
     "corrections": {
       "type": "object",
       "description": "CATEGORY: INTEGRATIONS - Correction file handling",
@@ -1851,7 +2255,10 @@
         "mode": {
           "type": "string",
           "description": "Correction storage mode",
-          "enum": ["inline", "detailed"],
+          "enum": [
+            "inline",
+            "detailed"
+          ],
           "default": "inline"
         },
         "detailPath": {
@@ -1861,7 +2268,6 @@
         }
       }
     },
-
     "workflowSteps": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Configurable plug-in steps that run at various points in task execution. Enable/disable steps via config or interactive setup.",
@@ -1876,17 +2282,29 @@
           "mode": {
             "type": "string",
             "description": "Step behavior mode: 'block' (must pass), 'warn' (advisory), 'prompt' (ask user), 'auto' (silent)",
-            "enum": ["block", "warn", "prompt", "auto"]
+            "enum": [
+              "block",
+              "warn",
+              "prompt",
+              "auto"
+            ]
           },
           "when": {
             "type": "string",
             "description": "When to run: 'afterTask', 'beforeCommit', 'afterCommit', 'onSessionEnd'",
-            "enum": ["afterTask", "beforeCommit", "afterCommit", "onSessionEnd"]
+            "enum": [
+              "afterTask",
+              "beforeCommit",
+              "afterCommit",
+              "onSessionEnd"
+            ]
           },
           "triggerFor": {
             "type": "array",
             "description": "File patterns that trigger this step (e.g., ['*.tsx', '*.jsx'])",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "config": {
             "type": "object",
@@ -1899,13 +2317,35 @@
           "type": "object",
           "description": "Test random completed tasks to catch regressions. Uses flow-regression.js under the hood.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable regression testing after tasks", "default": true },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable regression testing after tasks",
+              "default": true
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "sampleSize": { "type": "number", "description": "Number of random tasks to test", "default": 3 }
+                "sampleSize": {
+                  "type": "number",
+                  "description": "Number of random tasks to test",
+                  "default": 3
+                }
               }
             }
           }
@@ -1914,13 +2354,35 @@
           "type": "object",
           "description": "Suggest browser tests for UI changes. Checks .workflow/tests/flows/ for test definitions.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable browser test suggestions", "default": true },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "prompt" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable browser test suggestions",
+              "default": true
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "prompt"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "triggerFor": {
               "type": "array",
               "description": "File extensions that trigger browser tests",
-              "default": ["*.tsx", "*.jsx", "*.vue"]
+              "default": [
+                "*.tsx",
+                "*.jsx",
+                "*.vue"
+              ]
             }
           }
         },
@@ -1928,19 +2390,46 @@
           "type": "object",
           "description": "Run npm audit and check for secrets in code. Blocks on high/critical vulnerabilities by default.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable security scanning", "default": true },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "block" },
-            "when": { "type": "string", "description": "Execution point", "default": "beforeCommit" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable security scanning",
+              "default": true
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "block"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "beforeCommit"
+            },
             "config": {
               "type": "object",
               "properties": {
                 "severity": {
                   "type": "string",
                   "description": "Minimum severity to block on",
-                  "enum": ["critical", "high", "moderate", "low"],
+                  "enum": [
+                    "critical",
+                    "high",
+                    "moderate",
+                    "low"
+                  ],
                   "default": "high"
                 },
-                "alwaysAudit": { "type": "boolean", "description": "Run npm audit even if package.json wasn't modified", "default": false }
+                "alwaysAudit": {
+                  "type": "boolean",
+                  "description": "Run npm audit even if package.json wasn't modified",
+                  "default": false
+                }
               }
             }
           }
@@ -1949,31 +2438,89 @@
           "type": "object",
           "description": "Prompt to document learnings in .claude/docs/knowledge-base/. Detects patterns, hooks, APIs, and config changes.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable knowledge base prompts", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "prompt" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable knowledge base prompts",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "prompt"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            }
           }
         },
         "updateChangelog": {
           "type": "object",
           "description": "Add entries to CHANGELOG.md following Keep a Changelog format. Auto-categorizes as Added/Fixed/Changed.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable changelog updates", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "prompt" },
-            "when": { "type": "string", "description": "Execution point", "default": "beforeCommit" }
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable changelog updates",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "prompt"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "beforeCommit"
+            }
           }
         },
         "codeComplexityCheck": {
           "type": "object",
           "description": "Analyze cyclomatic complexity of modified functions. Flags functions exceeding threshold.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable complexity checking", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable complexity checking",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "threshold": { "type": "number", "description": "Max cyclomatic complexity (10 is typical)", "default": 10 }
+                "threshold": {
+                  "type": "number",
+                  "description": "Max cyclomatic complexity (10 is typical)",
+                  "default": 10
+                }
               }
             }
           }
@@ -1982,15 +2529,45 @@
           "type": "object",
           "description": "Verify test coverage meets threshold. Supports Jest, Vitest, NYC/Istanbul.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable coverage checking", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "beforeCommit" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable coverage checking",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "beforeCommit"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "minCoverage": { "type": "number", "description": "Minimum coverage percentage required", "default": 80 },
-                "checkModifiedOnly": { "type": "boolean", "description": "Only check coverage for modified files", "default": true },
-                "runTests": { "type": "boolean", "description": "Run tests if no coverage data exists", "default": true }
+                "minCoverage": {
+                  "type": "number",
+                  "description": "Minimum coverage percentage required",
+                  "default": 80
+                },
+                "checkModifiedOnly": {
+                  "type": "boolean",
+                  "description": "Only check coverage for modified files",
+                  "default": true
+                },
+                "runTests": {
+                  "type": "boolean",
+                  "description": "Run tests if no coverage data exists",
+                  "default": true
+                }
               }
             }
           }
@@ -1999,15 +2576,45 @@
           "type": "object",
           "description": "AI-powered qualitative code simplification suggestions. Analyzes nesting, function length, complexity patterns.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable code simplifier", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "prompt" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable code simplifier",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "prompt"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "maxFunctionLines": { "type": "number", "description": "Max lines per function before flagging", "default": 50 },
-                "maxNestingDepth": { "type": "number", "description": "Max nesting levels before flagging", "default": 3 },
-                "suggestExtraction": { "type": "boolean", "description": "Suggest extracting code to functions", "default": true }
+                "maxFunctionLines": {
+                  "type": "number",
+                  "description": "Max lines per function before flagging",
+                  "default": 50
+                },
+                "maxNestingDepth": {
+                  "type": "number",
+                  "description": "Max nesting levels before flagging",
+                  "default": 3
+                },
+                "suggestExtraction": {
+                  "type": "boolean",
+                  "description": "Suggest extracting code to functions",
+                  "default": true
+                }
               }
             }
           }
@@ -2016,15 +2623,53 @@
           "type": "object",
           "description": "Hybrid code review: multi-agent for large/high-risk files, simple for small changes.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable code review", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable code review",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "multiAgentThreshold": { "type": "number", "description": "File count threshold for multi-agent review", "default": 5 },
-                "highRiskPatterns": { "type": "array", "description": "Patterns that trigger multi-agent review", "items": { "type": "string" }, "default": ["auth", "payment", "security", "crypto"] },
-                "confidenceThreshold": { "type": "number", "description": "Min confidence (0-100) to report issues", "default": 80 }
+                "multiAgentThreshold": {
+                  "type": "number",
+                  "description": "File count threshold for multi-agent review",
+                  "default": 5
+                },
+                "highRiskPatterns": {
+                  "type": "array",
+                  "description": "Patterns that trigger multi-agent review",
+                  "items": {
+                    "type": "string"
+                  },
+                  "default": [
+                    "auth",
+                    "payment",
+                    "security",
+                    "crypto"
+                  ]
+                },
+                "confidenceThreshold": {
+                  "type": "number",
+                  "description": "Min confidence (0-100) to report issues",
+                  "default": 80
+                }
               }
             }
           }
@@ -2033,15 +2678,45 @@
           "type": "object",
           "description": "Analyze test coverage and quality for modified files.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable PR test analysis", "default": true },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "beforeCommit" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable PR test analysis",
+              "default": true
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "beforeCommit"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "checkCoverage": { "type": "boolean", "description": "Check coverage for modified files", "default": true },
-                "checkQuality": { "type": "boolean", "description": "Check test quality (mocks, assertions)", "default": true },
-                "minCoverageForModified": { "type": "number", "description": "Min coverage % for modified files", "default": 70 }
+                "checkCoverage": {
+                  "type": "boolean",
+                  "description": "Check coverage for modified files",
+                  "default": true
+                },
+                "checkQuality": {
+                  "type": "boolean",
+                  "description": "Check test quality (mocks, assertions)",
+                  "default": true
+                },
+                "minCoverageForModified": {
+                  "type": "number",
+                  "description": "Min coverage % for modified files",
+                  "default": 70
+                }
               }
             }
           }
@@ -2050,16 +2725,50 @@
           "type": "object",
           "description": "Detect empty catch blocks, swallowed errors, and unhandled async.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable silent failure detection", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable silent failure detection",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "checkEmptyCatch": { "type": "boolean", "description": "Check for empty catch blocks", "default": true },
-                "checkLogOnlyCatch": { "type": "boolean", "description": "Check for catch blocks that only log", "default": true },
-                "checkUnhandledAsync": { "type": "boolean", "description": "Check for async without try-catch", "default": true },
-                "checkPromiseChains": { "type": "boolean", "description": "Check for .then() without .catch()", "default": true }
+                "checkEmptyCatch": {
+                  "type": "boolean",
+                  "description": "Check for empty catch blocks",
+                  "default": true
+                },
+                "checkLogOnlyCatch": {
+                  "type": "boolean",
+                  "description": "Check for catch blocks that only log",
+                  "default": true
+                },
+                "checkUnhandledAsync": {
+                  "type": "boolean",
+                  "description": "Check for async without try-catch",
+                  "default": true
+                },
+                "checkPromiseChains": {
+                  "type": "boolean",
+                  "description": "Check for .then() without .catch()",
+                  "default": true
+                }
               }
             }
           }
@@ -2068,17 +2777,55 @@
           "type": "object",
           "description": "Analyze comment quality: TODOs, stale comments, JSDoc accuracy.",
           "properties": {
-            "enabled": { "type": "boolean", "description": "Enable comment analysis", "default": false },
-            "mode": { "type": "string", "description": "Behavior mode", "enum": ["block", "warn", "prompt", "auto"], "default": "warn" },
-            "when": { "type": "string", "description": "Execution point", "default": "afterTask" },
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable comment analysis",
+              "default": false
+            },
+            "mode": {
+              "type": "string",
+              "description": "Behavior mode",
+              "enum": [
+                "block",
+                "warn",
+                "prompt",
+                "auto"
+              ],
+              "default": "warn"
+            },
+            "when": {
+              "type": "string",
+              "description": "Execution point",
+              "default": "afterTask"
+            },
             "config": {
               "type": "object",
               "properties": {
-                "flagTodo": { "type": "boolean", "description": "Flag TODO comments", "default": true },
-                "flagFixme": { "type": "boolean", "description": "Flag FIXME/XXX/HACK comments", "default": true },
-                "checkJsdoc": { "type": "boolean", "description": "Check JSDoc accuracy vs code", "default": true },
-                "flagCommentedCode": { "type": "boolean", "description": "Flag commented-out code", "default": true },
-                "flagStale": { "type": "boolean", "description": "Flag potentially stale comments", "default": true }
+                "flagTodo": {
+                  "type": "boolean",
+                  "description": "Flag TODO comments",
+                  "default": true
+                },
+                "flagFixme": {
+                  "type": "boolean",
+                  "description": "Flag FIXME/XXX/HACK comments",
+                  "default": true
+                },
+                "checkJsdoc": {
+                  "type": "boolean",
+                  "description": "Check JSDoc accuracy vs code",
+                  "default": true
+                },
+                "flagCommentedCode": {
+                  "type": "boolean",
+                  "description": "Flag commented-out code",
+                  "default": true
+                },
+                "flagStale": {
+                  "type": "boolean",
+                  "description": "Flag potentially stale comments",
+                  "default": true
+                }
               }
             }
           }

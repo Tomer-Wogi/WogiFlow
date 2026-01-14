@@ -94,38 +94,42 @@ function writeJson(filePath, data) {
 }
 
 /**
- * Safely parse JSON with prototype pollution protection
+ * Safely read and parse JSON file with prototype pollution protection
  * Use this for user-modifiable files (registry, stats, etc.)
+ *
+ * Note: For parsing raw JSON content (not files), use safeJsonParseContent
+ * from lib/utils.js instead.
+ *
  * @param {string} filePath - Path to JSON file
  * @param {*} [defaultValue=null] - Default value if parsing fails
  * @returns {object|null} Parsed JSON or defaultValue on error
  */
-function safeJsonParse(filePath, defaultValue = null) {
+function safeJsonParseFile(filePath, defaultValue = null) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
 
     // Check for prototype pollution attempts
     if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
-      console.error(`[safeJsonParse] Suspicious content detected in ${filePath}`);
+      console.error(`[safeJsonParseFile] Suspicious content detected in ${filePath}`);
       return defaultValue;
     }
 
     const parsed = JSON.parse(content);
 
     if (typeof parsed !== 'object' || parsed === null) {
-      console.error(`[safeJsonParse] Invalid JSON structure in ${filePath} (expected object)`);
+      console.error(`[safeJsonParseFile] Invalid JSON structure in ${filePath} (expected object)`);
       return defaultValue;
     }
 
     const keys = Object.getOwnPropertyNames(parsed);
     if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
-      console.error(`[safeJsonParse] Prototype pollution attempt detected in ${filePath}`);
+      console.error(`[safeJsonParseFile] Prototype pollution attempt detected in ${filePath}`);
       return defaultValue;
     }
 
     return parsed;
   } catch (err) {
-    console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+    console.error(`[safeJsonParseFile] Failed to parse ${filePath}: ${err.message}`);
     return defaultValue;
   }
 }
@@ -284,7 +288,8 @@ module.exports = {
   // JSON operations
   readJson,
   writeJson,
-  safeJsonParse,
+  safeJsonParseFile,
+  safeJsonParse: safeJsonParseFile,  // Backward-compatible alias (deprecated)
   validateJson,
 
   // Text operations

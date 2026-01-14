@@ -47,7 +47,7 @@ cat .workflow/config.json
 | **Memory** | Context monitor, session state, facts |
 | **Safety** | Damage control, security scanning, checkpoints |
 | **Team** | Sync settings, conflict resolution |
-| **Development** | Figma, traces, voice, MCP |
+| **Development** | Figma, traces, MCP |
 
 ---
 

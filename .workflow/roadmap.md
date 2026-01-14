@@ -599,11 +599,48 @@ Community skill sharing with discovery, installation, publishing.
 
 ---
 
+### Phase 6.0: Team Collaboration Backend
+
+**Status:** Deferred
+**Created:** 2026-01-14
+**Depends On:** None
+
+**Assumes:**
+- AWS backend infrastructure ready (Cognito, API Gateway)
+- Subscription model defined
+
+**Key Files (already exist):**
+- `scripts/flow-team.js` - Team login, logout, setup selection
+- `scripts/flow-team-sync.js` - Knowledge sync with backend
+- `scripts/flow-team-dashboard.js` - Team status display
+
+**Context When Deferred:**
+Scripts exist from v1.8.0 development. Features require:
+- Active AWS backend (api.wogi-flow.com)
+- Subscription/payment system
+- Team invite code generation
+
+**Commands (to implement):**
+- `/wogi-team login <code>` - Join team with invite
+- `/wogi-team logout` - Leave team
+- `/wogi-team sync` - Manual knowledge sync
+- `/wogi-team proposals` - View/vote on rule proposals
+- `/wogi-team status` - Connection and sync status
+
+**Implementation Plan:**
+1. Activate AWS backend infrastructure
+2. Implement subscription validation
+3. Create team invite flow
+4. Test knowledge sync across team members
+5. Create command files for slash commands
+
+---
+
 ### Phase 6.1: Team Observability Web UI
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Team Backend (already exists)
+**Depends On:** Phase 6.0: Team Collaboration Backend
 
 **Assumes:**
 - Team backend API available
@@ -705,6 +742,25 @@ Integrate browser-based testing into the workflow for UI verification.
 - Automated browser test suggestions after UI changes
 - Integration with Playwright/Puppeteer for E2E tests
 - Visual regression testing support
+
+---
+
+### Voice Input Integration
+
+**Priority**: Low
+
+**Why deferred**: Feature complexity vs immediate value. Requires external dependencies (sox, whisper-cpp) and has UX challenges (no native way to inject transcript as Claude prompt).
+
+**When to revisit**:
+- When MCP supports audio input tools
+- When Claude Code gets native voice input
+- If user demand increases
+
+**Original scope**:
+- Record audio via sox
+- Transcribe via whisper-cpp (local) or OpenAI/Groq APIs
+- Output transcript for user to paste as prompt
+- Auto-trigger long-input-gate for long transcripts
 
 ---
 

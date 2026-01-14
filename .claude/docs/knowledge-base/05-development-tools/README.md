@@ -10,7 +10,6 @@ These tools speed up common tasks:
 - Design-to-code with Figma
 - Understanding codebases with traces
 - Step-by-step multi-file editing
-- Voice-driven development
 - MCP server integrations
 
 ---
@@ -22,7 +21,6 @@ These tools speed up common tasks:
 | [Figma Analyzer](./figma-analyzer.md) | Design-to-code component matching |
 | [Code Traces](./code-traces.md) | Understand code flow for features |
 | [Guided Edit](./guided-edit.md) | Step-by-step multi-file changes |
-| [Voice Input](./voice-input.md) | Voice-driven commands |
 | [MCP Integrations](./mcp-integrations.md) | External tool connections |
 
 ---
@@ -47,13 +45,6 @@ These tools speed up common tasks:
 /wogi-guided-edit "rename Button to BaseButton"
 ```
 
-### Voice Input
-
-```bash
-/wogi-voice
-# Speak your command
-```
-
 ---
 
 ## Key Configuration
@@ -70,10 +61,6 @@ These tools speed up common tasks:
   "traces": {
     "saveTo": ".workflow/traces",
     "generateDiagrams": true
-  },
-  "voice": {
-    "enabled": false,
-    "provider": null
   }
 }
 ```

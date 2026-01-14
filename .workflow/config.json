@@ -132,8 +132,14 @@
   "specificationMode": {
     "enabled": true,
     "mandatory": true,
-    "mandatoryFor": ["medium", "large"],
-    "skipFor": ["small", "bugfix"],
+    "mandatoryFor": [
+      "medium",
+      "large"
+    ],
+    "skipFor": [
+      "small",
+      "bugfix"
+    ],
     "requireApproval": true,
     "specDirectory": ".workflow/specs",
     "template": "default",
@@ -251,13 +257,11 @@
   },
   "skills": {
     "installed": [
-      "nestjs",
-      "figma-analyzer",
-      "react",
-      "python"
+      "figma-analyzer"
     ],
     "comingSoon": [],
     "autoInvoke": true,
+    "autoDiscoverNested": true,
     "maxSkillsPerTask": 3,
     "loadPatterns": true,
     "loadAntiPatterns": true,
@@ -453,7 +457,12 @@
     "agingThreshold": 3,
     "autoFix": {
       "enabled": true,
-      "types": ["console.log", "unused-import", "debugger", "empty-catch"]
+      "types": [
+        "console.log",
+        "unused-import",
+        "debugger",
+        "empty-catch"
+      ]
     },
     "debtBudget": {
       "enabled": false,
@@ -638,15 +647,19 @@
     },
     "costBudget": {
       "enabled": false,
-      "daily": 10.00,
-      "perTask": 0.50,
+      "daily": 10,
+      "perTask": 0.5,
       "warnAt": 0.8
     }
   },
   "cascade": {
     "enabled": true,
     "maxFailuresBeforeEscalate": 3,
-    "escalateOnCategories": ["capability_mismatch", "context_overflow", "rate_limit"],
+    "escalateOnCategories": [
+      "capability_mismatch",
+      "context_overflow",
+      "rate_limit"
+    ],
     "resetAfterMinutes": 30,
     "persistState": false
   },
@@ -687,20 +700,20 @@
     "snippetMaxLines": 50,
     "fullFileMaxLines": 200,
     "priorities": {
-      "required_types": 1.0,
+      "required_types": 1,
       "target_file": 0.95,
       "error_context": 0.93,
-      "direct_imports": 0.90,
+      "direct_imports": 0.9,
       "interface_definitions": 0.88,
       "api_contracts": 0.85,
-      "related_imports": 0.80,
+      "related_imports": 0.8,
       "test_files": 0.75,
-      "patterns": 0.70,
+      "patterns": 0.7,
       "similar_implementations": 0.65,
-      "documentation": 0.50,
+      "documentation": 0.5,
       "examples": 0.45,
-      "config_files": 0.40,
-      "full_files": 0.30
+      "config_files": 0.4,
+      "full_files": 0.3
     }
   },
   "gateConfidence": {
@@ -710,16 +723,6 @@
     "blockThreshold": 0.3,
     "trackHistory": true,
     "maxHistoryEntries": 100
-  },
-  "voice": {
-    "enabled": false,
-    "provider": null,
-    "openaiApiKey": null,
-    "groqApiKey": null,
-    "localModelPath": "base.en",
-    "defaultDuration": 30,
-    "sampleRate": 16000,
-    "channels": 1
   },
   "longInputGate": {
     "enabled": true,
@@ -733,22 +736,38 @@
       "code": "skip",
       "default": "quick"
     },
-    "autoTriggerTypes": ["transcript", "specs", "requirements", "feature-request"],
+    "autoTriggerTypes": [
+      "transcript",
+      "specs",
+      "requirements",
+      "feature-request"
+    ],
     "clarificationStyle": "grouped",
     "verificationLevel": "statement",
     "storyPresentation": "user-controlled",
     "autoResolveContradictions": true,
     "showSourceStatements": true,
     "voiceClarification": true,
-    "supportedLanguages": ["en", "uk", "ru", "he"],
+    "supportedLanguages": [
+      "en",
+      "uk",
+      "ru",
+      "he"
+    ],
     "chunkingThreshold": 10000,
     "chunkSize": 5000,
     "chunkOverlap": 500,
     "outputLanguage": "en",
     "adaptiveComplexity": {
       "enabled": true,
-      "smallThreshold": { "topics": 3, "statements": 10 },
-      "mediumThreshold": { "topics": 8, "statements": 30 }
+      "smallThreshold": {
+        "topics": 3,
+        "statements": 10
+      },
+      "mediumThreshold": {
+        "topics": 8,
+        "statements": 30
+      }
     }
   },
   "lsp": {
@@ -777,10 +796,16 @@
     "commitMessageFormat": "conventional"
   },
   "export": {
-    "defaultFlags": ["--rules"],
+    "defaultFlags": [
+      "--rules"
+    ],
     "sanitizeTemplates": true,
     "includeSkillLearnings": true,
-    "excludePatterns": ["*.local.*", "*.secret.*", ".env*"]
+    "excludePatterns": [
+      "*.local.*",
+      "*.secret.*",
+      ".env*"
+    ]
   },
   "security": {
     "scanBeforeCommit": true,
@@ -985,7 +1010,12 @@
       "when": "afterTask",
       "config": {
         "multiAgentThreshold": 5,
-        "highRiskPatterns": ["auth", "payment", "security", "crypto"],
+        "highRiskPatterns": [
+          "auth",
+          "payment",
+          "security",
+          "crypto"
+        ],
         "confidenceThreshold": 80
       }
     },

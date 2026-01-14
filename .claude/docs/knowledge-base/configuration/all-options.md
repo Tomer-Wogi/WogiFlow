@@ -83,7 +83,6 @@ Configuration lives in `.workflow/config.json`
 | [traces](#traces) | Code flow traces |
 | [worktree](#worktree) | Git worktree isolation |
 | [hybrid](#hybrid) | Local LLM execution |
-| [voice](#voice) | Voice input |
 | [lsp](#lsp) | Language server integration |
 | [codebaseInsights](#codebaseinsights) | Project analysis |
 
@@ -1423,38 +1422,6 @@ Pattern promotion configuration.
 | `destinations` | array | `["decisions.md"]` | Where to promote |
 | `requireApproval` | boolean | `true` | Require user approval |
 | `autoApplyTeamApproved` | boolean | `true` | Auto-apply team approved |
-
----
-
-## voice
-
-Voice input configuration.
-
-```json
-{
-  "voice": {
-    "enabled": false,
-    "provider": null,
-    "openaiApiKey": null,
-    "groqApiKey": null,
-    "localModelPath": "base.en",
-    "defaultDuration": 30,
-    "sampleRate": 16000,
-    "channels": 1
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable voice input |
-| `provider` | string | `null` | `"openai"`, `"groq"`, or `"local"` |
-| `openaiApiKey` | string | `null` | OpenAI API key |
-| `groqApiKey` | string | `null` | Groq API key |
-| `localModelPath` | string | `"base.en"` | Whisper model path |
-| `defaultDuration` | number | `30` | Default recording duration |
-| `sampleRate` | number | `16000` | Audio sample rate |
-| `channels` | number | `1` | Audio channels |
 
 ---
 

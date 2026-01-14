@@ -124,16 +124,29 @@ Not directly to processing - the gate decides based on content.
 ---
 
 ## Migration from transcript-digestion
+<!-- PIN: migration -->
 
-The old `/transcript-digestion` skill has been replaced:
+The old `/transcript-digestion` skill has been replaced with automatic detection:
 
 | Old | New |
 |-----|-----|
 | `/transcript-digestion` command | Automatic via long-input-gate |
 | `transcriptDigestion` config | `longInputGate` config |
 | Skill-based invocation | Hook-based detection |
+| `.claude/skills/transcript-digestion/` | (deleted) |
 
-The new system is automatic - no slash command needed.
+### Migration Steps
+
+If upgrading from an older version:
+
+1. **Update config**: Rename `transcriptDigestion` → `longInputGate` in `.workflow/config.json`
+2. **Remove old skill**: Delete `.claude/skills/transcript-digestion/` if it exists
+3. **Remove from installed**: Remove `transcript-digestion` from `skills.installed` array
+4. **No action needed**: The new system is automatic - no slash command needed
+
+### Backward Compatibility
+
+The system will recognize the old `transcriptDigestion` config key and warn about migration, but new installations should use `longInputGate`.
 
 ---
 

@@ -52,7 +52,7 @@ A self-improving AI development workflow that learns from your feedback and accu
 | [Task Execution](.claude/docs/knowledge-base/02-task-execution/) | The execution pipeline with trade-offs |
 | [Self-Improvement](.claude/docs/knowledge-base/03-self-improvement/) | How WogiFlow learns and improves |
 | [Memory & Context](.claude/docs/knowledge-base/04-memory-context/) | Context management and session persistence |
-| [Development Tools](.claude/docs/knowledge-base/05-development-tools/) | Figma, traces, voice, MCP integrations |
+| [Development Tools](.claude/docs/knowledge-base/05-development-tools/) | Figma, traces, MCP integrations |
 | [Safety & Guardrails](.claude/docs/knowledge-base/06-safety-guardrails/) | Protection and recovery systems |
 | [Configuration Reference](.claude/docs/knowledge-base/configuration/all-options.md) | All 200+ configuration options |
 
@@ -119,7 +119,6 @@ Daily commands for working with WogiFlow. Start with `/wogi-ready` to see tasks,
 - [Parallel Auto-Detection](#parallel-auto-detection)
 - [Skill Auto-Creation](#skill-auto-creation)
 - [Project-Based Team Sync](#project-based-team-sync)
-- [Voice Input](#voice-input)
 - [Damage Control](#damage-control)
 - [Safety & Verification](#safety--verification)
 - [Execution Traces & Checkpoints](#execution-traces--checkpoints)
@@ -428,74 +427,6 @@ Sync workflow files at project scope - share decisions, patterns, and knowledge 
 ./scripts/flow team project-id    # Show/set project ID
 ./scripts/flow team sync          # Sync local → remote
 ```
-
----
-
-## Voice Input
-Voice-to-transcript support with multiple provider options. Create tasks, stories, and commands using your voice.
-
-### How It Works
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Microphone  │ ──▶ │   Record    │ ──▶ │ Transcribe  │
-│   Input     │     │   Audio     │     │   (Whisper) │
-└─────────────┘     └─────────────┘     └─────────────┘
-                                               │
-                                               ▼
-                                         ┌──────────┐
-                                         │   Text   │
-                                         │  Output  │
-                                         └──────────┘
-```
-
-### Providers
-
-| Provider | API Key | Description |
-|----------|---------|-------------|
-| **Local** | No | Whisper.cpp - works offline |
-| **OpenAI** | Yes | Best accuracy |
-| **Groq** | Yes (free tier) | Fast cloud transcription |
-
-### Setup
-
-```bash
-./scripts/flow voice-input setup    # Interactive setup
-```
-
-The setup wizard will:
-1. Ask if you want to enable voice input
-2. Let you choose a provider
-3. Configure API keys (if using cloud)
-
-### Configuration
-
-```json
-{
-  "voice": {
-    "enabled": true,
-    "provider": "groq",
-    "groqApiKey": "gsk_...",
-    "defaultDuration": 30
-  }
-}
-```
-
-### Commands
-
-```bash
-./scripts/flow voice-input              # Record and transcribe
-./scripts/flow voice-input -d 60        # Record for 60 seconds
-./scripts/flow voice-input -p openai    # Use specific provider
-./scripts/flow voice-input --to-story   # Create story from voice
-./scripts/flow voice-input status       # Show configuration
-./scripts/flow voice-input test         # Test with 5-second recording
-```
-
-### Requirements
-
-- **Recording**: `sox` - install with `brew install sox` (macOS) or `apt install sox` (Linux)
-- **Local Whisper**: `pip install openai-whisper` or download whisper.cpp
 
 ---
 
@@ -1491,13 +1422,6 @@ flow parallel suggest           # Check if suggestion available
 # Team Syncflow team sync-status           # Show project sync status
 flow team sync-init             # Initialize project sync
 flow team project-id            # Show/set project ID
-
-# Voice Inputflow voice-input setup          # Configure voice input
-flow voice-input                # Record and transcribe
-flow voice-input -d 60          # Record for 60 seconds
-flow voice-input -p groq        # Use specific provider
-flow voice-input status         # Show configuration
-flow voice-input test           # Test recording
 
 # Hybrid Mode
 flow hybrid enable              # Enable with wizard

@@ -29,7 +29,7 @@ When user types these commands, execute the corresponding action immediately.
 
 | Command | Action |
 |---------|--------|
-| `/wogi-session-review` | **Comprehensive code review.** Runs 3 parallel agents: Code & Logic, Security, Architecture & Conflicts. Triggered by command or "please review". Options: `--commits N`, `--staged`, `--security-only`, `--quick`. |
+| `/wogi-review` | **Comprehensive code review.** First runs verification gates (lint, typecheck, test), then 3 parallel AI agents: Code & Logic, Security, Architecture. Triggered by command or "please review". Options: `--commits N`, `--staged`, `--skip-verify`, `--verify-only`, `--security-only`, `--quick`. |
 | `/wogi-health` | Check all workflow files exist and are valid. Verify config.json and ready.json are valid JSON. Check app-map sync with src/components. Report issues. |
 | `/wogi-standup` | Generate standup summary: what was done (from request-log), what's in progress, what's next, any blockers. |
 | `/wogi-session-end` | Ensure request-log is current. Update app-map if components created. Update progress.md. Commit all changes. Offer to push. |
@@ -60,29 +60,7 @@ When user types these commands, execute the corresponding action immediately.
 | Command | Action |
 |---------|--------|
 | `/wogi-search [tag]` | Search request-log.md for entries with the given tag. Show matching entries with context. |
-| `/wogi-context [id]` | Load all context for a task: the story, related request-log entries, relevant component docs from app-map, decisions.md patterns. |
-
-### Team Collaboration
-
-| Command | Action |
-|---------|--------|
-| `/wogi-team login <code>` | Join a team with invite code. Downloads team config and triggers initial sync. |
-| `/wogi-team logout` | Leave current team. Disables team features but preserves local data. |
-| `/wogi-team setup [n]` | List or select a team setup configuration. |
-| `/wogi-team sync` | Manually sync knowledge with team backend. |
-| `/wogi-team proposals` | View pending team rule proposals. Vote with `proposals vote <id> <approve\|reject>`. |
-| `/wogi-team status` | Show team connection status, sync info, and local proposals. |
-
-### PRD Management
-
-| Command | Action |
-|---------|--------|
-| `/wogi-prd load <file>` | Load PRD markdown file into memory. Chunks content for contextual retrieval. |
-| `/wogi-prd context <task>` | Get relevant PRD context for a task description. |
-| `/wogi-prd list` | List loaded PRDs with chunk counts. |
-| `/wogi-prd show <id>` | Show chunks from a specific PRD. |
-| `/wogi-prd remove <id>` | Remove a PRD from memory. |
-| `/wogi-prd clear` | Clear all PRD data. |
+| `/wogi-context [id]` | Load all context for a task: story, product context (from product.md), related request-log entries, component docs from app-map, decisions.md patterns. |
 
 ### Export & Import
 
@@ -98,7 +76,6 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-test-browser [flow]` | Open browser and execute test flow. Navigate to URLs, interact with elements, verify outcomes. Report pass/fail with screenshots. |
 | `/wogi-test-browser all` | Run all test flows defined in `.workflow/tests/flows/`. |
-| `/wogi-test-record [name]` | Interactively record a new test flow. Open browser, perform actions, save as JSON flow definition. |
 
 ### Status Line
 
@@ -164,18 +141,6 @@ When user types these commands, execute the corresponding action immediately.
 | Command | Action |
 |---------|--------|
 | `/wogi-morning` | Morning briefing - show where you left off, pending tasks, recent changes. |
-
-### Verification
-
-| Command | Action |
-|---------|--------|
-| `/wogi-verify [gate]` | Run verification gate (lint, typecheck, test, build). Use `all` for all gates. |
-
-### Voice Input
-
-| Command | Action |
-|---------|--------|
-| `/wogi-voice` | Voice-to-transcript input. Subcommands: setup, status, test, record. |
 
 ### Guided Edit
 
@@ -329,12 +294,6 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow complexity "task"  # Assess task complexity
 ./scripts/flow safety             # Run security scan
 ./scripts/flow context-init "t"   # Initialize context for task
-
-# Voice Input
-./scripts/flow voice-input setup  # Set up voice input
-./scripts/flow voice-input status # Check voice input status
-./scripts/flow voice-input test   # Test voice input
-./scripts/flow voice-input record # Record voice input
 
 # Worktree Isolation
 ./scripts/flow worktree enable    # Enable worktree isolation

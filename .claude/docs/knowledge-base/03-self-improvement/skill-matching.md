@@ -1,16 +1,20 @@
 # Skill Matching
 
+<!-- PINS: overview, matching-flow, trigger-types, scoring, configuration, auto-invoke, debugging -->
+
 How skills are automatically matched to task context based on keywords, file patterns, and task types.
 
 ---
 
 ## Overview
+<!-- PIN: overview -->
 
 Skill matching enables model-invoked skills - automatically loading relevant framework knowledge based on what you're working on. No manual activation required.
 
 ---
 
 ## How Matching Works
+<!-- PIN: matching-flow -->
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -41,6 +45,7 @@ Skill matching enables model-invoked skills - automatically loading relevant fra
 ---
 
 ## Trigger Types
+<!-- PIN: trigger-types -->
 
 ### 1. Keywords
 
@@ -99,6 +104,7 @@ Broader categorization:
 ---
 
 ## Scoring System
+<!-- PIN: scoring -->
 
 Each trigger type contributes to the match score:
 
@@ -115,6 +121,7 @@ Score display: `●●●●○` = 4/5 score
 ---
 
 ## Configuration
+<!-- PIN: configuration -->
 
 ### Installed Skills
 
@@ -192,6 +199,7 @@ When multiple skills match:
 ---
 
 ## Auto-Invoke Behavior
+<!-- PIN: auto-invoke -->
 
 When `autoInvoke: true`:
 
@@ -259,6 +267,7 @@ Globally:
 ---
 
 ## Debugging Matches
+<!-- PIN: debugging -->
 
 Check why a skill was/wasn't matched:
 

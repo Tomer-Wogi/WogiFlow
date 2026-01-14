@@ -13,6 +13,8 @@ const path = require('path');
 
 // Import from parent scripts directory
 const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS } = require('../../flow-utils');
+const { trackTaskStart } = require('../../flow-session-state');
+const { setCurrentTask } = require('../../flow-memory-blocks');
 
 /**
  * Check if task gating should be enforced
@@ -100,6 +102,16 @@ function createQuickTask(filePath, operation) {
     readyData.inProgress.unshift(task);
 
     saveReadyData(readyData);
+
+    // Sync session state (same as flow-start.js does)
+    try {
+      trackTaskStart(taskId, title);
+      setCurrentTask(taskId, title);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[task-gate] Failed to sync session state: ${err.message}`);
+      }
+    }
 
     return task;
   } catch (err) {

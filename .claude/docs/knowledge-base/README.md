@@ -10,7 +10,7 @@ Welcome to the comprehensive knowledge base for WogiFlow, an AI workflow framewo
 | [Task Execution](./02-task-execution/) | The `/wogi-start` pipeline - how tasks are enforced and completed | [Execution Flow](./02-task-execution/README.md) |
 | [Self-Improvement](./03-self-improvement/) | How WogiFlow learns and improves over time | [Learning Overview](./03-self-improvement/README.md) |
 | [Memory & Context](./04-memory-context/) | Preventing hallucinations, managing context, session persistence | [Context Management](./04-memory-context/context-management.md) |
-| [Development Tools](./05-development-tools/) | Figma analyzer, code traces, voice input, MCP integrations | [Tools Overview](./05-development-tools/README.md) |
+| [Development Tools](./05-development-tools/) | Figma analyzer, code traces, MCP integrations | [Tools Overview](./05-development-tools/README.md) |
 | [Safety & Guardrails](./06-safety-guardrails/) | Damage control, security scanning, checkpoint/rollback | [Safety Overview](./06-safety-guardrails/README.md) |
 | [Configuration](./configuration/) | Complete reference for all 200+ config options | [All Options](./configuration/all-options.md) |
 | [Future Features](./future-features.md) | Roadmap and planned features | [Roadmap](./future-features.md) |
@@ -57,7 +57,7 @@ The [02-task-execution](./02-task-execution/) category is the heart of WogiFlow.
 [04-memory-context](./04-memory-context/) addresses the biggest challenge in AI coding: context window limits and session persistence. These features prevent hallucinations and preserve history.
 
 ### 5. Accelerating Development
-[05-development-tools](./05-development-tools/) covers additional tools that speed up specific workflows like design-to-code, understanding codebases, and voice input.
+[05-development-tools](./05-development-tools/) covers additional tools that speed up specific workflows like design-to-code and understanding codebases.
 
 ### 6. Staying Safe
 [06-safety-guardrails](./06-safety-guardrails/) documents protections against mistakes, including pattern-based damage control, security scanning, and recovery systems.
