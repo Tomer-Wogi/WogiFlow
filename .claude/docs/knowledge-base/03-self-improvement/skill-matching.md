@@ -121,7 +121,7 @@ Score display: `●●●●○` = 4/5 score
 ```json
 {
   "skills": {
-    "installed": ["nestjs", "react", "transcript-digestion"],
+    "installed": ["nestjs", "react", "figma-analyzer", "python"],
     "autoInvoke": true,           // Auto-load matched skills
     "autoDiscoverNested": true,   // Auto-discover nested skills
     "minScore": 2                 // Minimum score to invoke
@@ -224,7 +224,8 @@ Built-in triggers for common frameworks:
 | `react` | component, hook, useState, *.tsx, *.jsx |
 | `python` | pip, django, flask, fastapi, *.py |
 | `figma-analyzer` | figma, design, design-system, tokens |
-| `transcript-digestion` | transcript, meeting, notes, spec, requirements |
+
+> **Note**: Long input processing (transcripts, specs, requirements) is now handled automatically by the `long-input-gate` hook, not as a skill.
 
 ---
 

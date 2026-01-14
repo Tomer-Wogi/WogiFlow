@@ -253,7 +253,6 @@
     "installed": [
       "nestjs",
       "figma-analyzer",
-      "transcript-digestion",
       "react",
       "python"
     ],
@@ -722,9 +721,18 @@
     "sampleRate": 16000,
     "channels": 1
   },
-  "transcriptDigestion": {
+  "longInputGate": {
     "enabled": true,
-    "autoTriggerThreshold": 2000,
+    "charThreshold": 2000,
+    "lineThreshold": 50,
+    "smartDefault": true,
+    "contentRules": {
+      "transcript": "full",
+      "spec": "full",
+      "requirements": "full",
+      "code": "skip",
+      "default": "quick"
+    },
     "autoTriggerTypes": ["transcript", "specs", "requirements", "feature-request"],
     "clarificationStyle": "grouped",
     "verificationLevel": "statement",
