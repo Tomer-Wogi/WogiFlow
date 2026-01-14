@@ -119,13 +119,9 @@ const DEFAULT_TRIGGERS = {
     filePatterns: [],
     taskTypes: ['feature'],
     categories: ['design', 'ui']
-  },
-  'transcript-digestion': {
-    keywords: ['transcript', 'meeting', 'notes', 'spec', 'requirements', 'extract', 'digestion'],
-    filePatterns: [],
-    taskTypes: ['feature', 'story'],
-    categories: ['planning', 'documentation']
   }
+  // Note: transcript/long-input processing is now handled by long-input-gate hook,
+  // not as a skill. See scripts/hooks/core/long-input-gate.js
 };
 
 // ============================================================
