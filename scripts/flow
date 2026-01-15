@@ -486,13 +486,13 @@ case "${1:-}" in
     loop)
         case "${2:-status}" in
             status)
-                node "$SCRIPT_DIR/flow-loop-enforcer.js" status
+                node "$SCRIPT_DIR/flow-task-enforcer.js" status
                 ;;
             stats)
-                node "$SCRIPT_DIR/flow-loop-enforcer.js" stats
+                node "$SCRIPT_DIR/flow-task-enforcer.js" stats
                 ;;
             can-exit)
-                node "$SCRIPT_DIR/flow-loop-enforcer.js" can-exit
+                node "$SCRIPT_DIR/flow-task-enforcer.js" can-exit
                 ;;
             enable)
                 node "$SCRIPT_DIR/flow-config-set.js" loops.enforced true
