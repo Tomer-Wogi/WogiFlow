@@ -7,6 +7,7 @@
  */
 
 const { execSync, execFileSync, spawnSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const {
   PATHS,
@@ -38,8 +39,8 @@ const { runSteps, getAllSteps } = require('./flow-workflow-steps');
 // v2.0 durable session support
 const { loadDurableSession, archiveDurableSession } = require('./flow-durable-session');
 
-// v2.1 loop enforcement as explicit quality gate
-const { canExitLoop, getActiveLoop } = require('./flow-loop-enforcer');
+// v2.1 task enforcement as explicit quality gate
+const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
@@ -238,9 +239,189 @@ function runQualityGates(taskId) {
 }
 
 /**
- * Commit changes if any
+ * Get conventional commit prefix from task type
+ * @param {string} taskType - Type of task (feature, bugfix, refactor, docs, etc.)
+ * @returns {string} Conventional commit prefix
  */
-function commitChanges(commitMsg) {
+function getCommitPrefix(taskType) {
+  const prefixMap = {
+    feature: 'feat',
+    feat: 'feat',
+    bugfix: 'fix',
+    bug: 'fix',
+    fix: 'fix',
+    refactor: 'refactor',
+    docs: 'docs',
+    documentation: 'docs',
+    test: 'test',
+    tests: 'test',
+    chore: 'chore',
+    style: 'style',
+    perf: 'perf',
+    ci: 'ci'
+  };
+  return prefixMap[taskType?.toLowerCase()] || 'feat';
+}
+
+/**
+ * Archive change spec file when task completes
+ * Handles both flat files and feature folders
+ * Moves from .workflow/changes/ to .workflow/archive/specs/[YYYY-MM]/
+ * @param {string} taskId - Task ID to archive
+ */
+function archiveChangeSpec(taskId) {
+  const changesDir = path.join(PATHS.workflow, 'changes');
+  const archiveDir = path.join(PATHS.workflow, 'archive', 'specs');
+
+  if (!fs.existsSync(changesDir)) {
+    return { archived: [], archivedFolder: null };
+  }
+
+  // Get current year-month for archive folder
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const targetDir = path.join(archiveDir, yearMonth);
+
+  const archived = [];
+  let archivedFolder = null;
+  const taskPattern = new RegExp(`^${taskId}(-\\d+)?\\.md$`, 'i');
+
+  try {
+    const entries = fs.readdirSync(changesDir, { withFileTypes: true });
+
+    // First pass: check for feature folders containing this task
+    for (const entry of entries) {
+      if (entry.isDirectory() && entry.name !== 'README.md') {
+        const subDir = path.join(changesDir, entry.name);
+        const subFiles = fs.readdirSync(subDir);
+
+        // Check if this folder contains files for this task
+        const matchingFiles = subFiles.filter(f => taskPattern.test(f));
+
+        if (matchingFiles.length > 0) {
+          // Archive the entire feature folder
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+
+          const targetFolderPath = path.join(targetDir, entry.name);
+          fs.renameSync(subDir, targetFolderPath);
+          archivedFolder = entry.name;
+          archived.push({ from: `${entry.name}/`, to: path.join(yearMonth, entry.name) + '/', isFolder: true });
+
+          // Don't continue checking flat files if we found a folder
+          return { archived, archivedFolder };
+        }
+      }
+    }
+
+    // Second pass: check for flat files matching taskId
+    for (const entry of entries) {
+      if (entry.isFile() && taskPattern.test(entry.name)) {
+        const sourcePath = path.join(changesDir, entry.name);
+
+        // Ensure archive directory exists
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+
+        const targetPath = path.join(targetDir, entry.name);
+        fs.renameSync(sourcePath, targetPath);
+        archived.push({ from: entry.name, to: path.join(yearMonth, entry.name) });
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] archiveChangeSpec: ${err.message}`);
+  }
+
+  return { archived, archivedFolder };
+}
+
+/**
+ * Update implementation timeline with completed task
+ * @param {string} taskId - Task ID
+ * @param {string} taskTitle - Task title/description
+ */
+function updateImplementationTimeline(taskId, taskTitle) {
+  const timelinePath = path.join(PATHS.state, 'implementation-timeline.md');
+
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const day = now.getDate();
+  const monthName = now.toLocaleDateString('en-US', { month: 'long' });
+  const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  // Calculate week number in month
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekNum = Math.ceil((day + firstDay.getDay()) / 7);
+
+  // Calculate week start/end dates
+  const weekStart = new Date(now);
+  weekStart.setDate(day - now.getDay());
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+  const weekRange = `${monthName.slice(0, 3)} ${weekStart.getDate()}-${weekEnd.getDate()}`;
+
+  const entry = `- [x] ${taskId}: ${taskTitle} (${dateStr})`;
+  const weekHeader = `### Week ${weekNum} (${weekRange})`;
+  const monthHeader = `## ${yearMonth}`;
+
+  try {
+    let content = '';
+    if (fs.existsSync(timelinePath)) {
+      content = fs.readFileSync(timelinePath, 'utf-8');
+    } else {
+      // Create new file with header
+      content = '# Implementation Timeline\n\nTasks completed, organized by date.\n\n';
+    }
+
+    // Check if this task is already logged
+    if (content.includes(taskId)) {
+      return { updated: false, reason: 'already logged' };
+    }
+
+    // Find or create month section
+    if (!content.includes(monthHeader)) {
+      // Add new month section at the top (after header)
+      const headerEnd = content.indexOf('\n\n', content.indexOf('# Implementation Timeline'));
+      const insertPos = headerEnd > 0 ? headerEnd + 2 : content.length;
+      content = content.slice(0, insertPos) + `${monthHeader}\n\n${weekHeader}\n${entry}\n\n` + content.slice(insertPos);
+    } else {
+      // Month exists, find or create week section
+      const monthPos = content.indexOf(monthHeader);
+      const nextMonthMatch = content.slice(monthPos + monthHeader.length).match(/\n## \d{4}-\d{2}/);
+      const monthEnd = nextMonthMatch
+        ? monthPos + monthHeader.length + nextMonthMatch.index
+        : content.length;
+
+      const monthSection = content.slice(monthPos, monthEnd);
+
+      if (!monthSection.includes(`Week ${weekNum}`)) {
+        // Add new week section after month header
+        const weekInsertPos = monthPos + monthHeader.length + 1;
+        content = content.slice(0, weekInsertPos) + `\n${weekHeader}\n${entry}\n` + content.slice(weekInsertPos);
+      } else {
+        // Week exists, add entry under it
+        const weekPos = content.indexOf(`Week ${weekNum}`, monthPos);
+        const lineEnd = content.indexOf('\n', weekPos);
+        content = content.slice(0, lineEnd + 1) + entry + '\n' + content.slice(lineEnd + 1);
+      }
+    }
+
+    fs.writeFileSync(timelinePath, content, 'utf-8');
+    return { updated: true };
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] updateImplementationTimeline: ${err.message}`);
+    return { updated: false, reason: err.message };
+  }
+}
+
+/**
+ * Commit changes if any
+ * @param {string} commitMsg - Commit message
+ * @param {string} [taskType='feature'] - Task type for commit prefix
+ */
+function commitChanges(commitMsg, taskType = 'feature') {
   try {
     const status = execSync('git status --porcelain', {
       encoding: 'utf-8',
@@ -252,7 +433,8 @@ function commitChanges(commitMsg) {
       console.log(color('yellow', 'Committing changes...'));
       // Use execFileSync to prevent command injection
       execFileSync('git', ['add', '-A'], { stdio: 'pipe' });
-      execFileSync('git', ['commit', '-m', `feat: ${commitMsg}`], { stdio: 'pipe' });
+      const prefix = getCommitPrefix(taskType);
+      execFileSync('git', ['commit', '-m', `${prefix}: ${commitMsg}`], { stdio: 'pipe' });
       success('Changes committed');
     }
   } catch (err) {
@@ -359,6 +541,24 @@ async function main() {
     if (process.env.DEBUG) console.error(`[DEBUG] Auto-archive: ${err.message}`);
   }
 
+  // v2.3: Archive change spec and update implementation timeline
+  try {
+    const taskTitle = result.task?.title || taskId;
+    const specArchive = archiveChangeSpec(taskId);
+    if (specArchive.archivedFolder) {
+      console.log(color('dim', `📦 Archived feature folder: ${specArchive.archivedFolder}/`));
+    } else if (specArchive.archived.length > 0) {
+      console.log(color('dim', `📦 Archived ${specArchive.archived.length} spec file(s)`));
+    }
+
+    const timelineResult = updateImplementationTimeline(taskId, taskTitle);
+    if (timelineResult.updated && process.env.DEBUG) {
+      console.log(color('dim', '📋 Updated implementation timeline'));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Spec archive/timeline: ${err.message}`);
+  }
+
   // v2.2: Run afterTask workflow steps
   const modifiedFiles = getModifiedFiles();
   const taskTitle = result.task?.title || taskId;
@@ -421,8 +621,8 @@ async function main() {
     if (process.env.DEBUG) console.error(`[DEBUG] beforeCommit steps: ${err.message}`);
   }
 
-  // Commit if there are changes
-  commitChanges(commitMsg);
+  // Commit if there are changes (use task type for commit prefix)
+  commitChanges(commitMsg, taskType);
 
   // v1.9.0: Run regression tests if configured (legacy - skipped if using workflowSteps)
   const config = getConfig();

@@ -5,11 +5,11 @@
  *
  * Creates detailed stories with acceptance criteria.
  * Supports --deep flag for automatic decomposition into sub-tasks.
+ * Stories are stored flat in .workflow/changes/ and archived when completed.
  *
  * Usage:
  *   flow story "Add login form"              # Create standard story
  *   flow story "Add login form" --deep       # Create with decomposition
- *   flow story "Add login form" auth-feature # Specify feature folder
  */
 
 const fs = require('fs');
@@ -247,59 +247,31 @@ function analyzeForDecomposition(title) {
 }
 
 /**
- * Sanitize feature name to prevent path traversal and invalid characters
- * @param {string} feature - The feature name to sanitize
- * @returns {string} Sanitized feature name
+ * Convert title to URL-safe slug for folder names
+ * @param {string} title - Title to slugify
+ * @returns {string} Slugified title
  */
-function sanitizeFeatureName(feature) {
-  if (!feature || typeof feature !== 'string') {
-    return 'general';
-  }
-
-  // Remove path traversal attempts and normalize
-  let sanitized = feature
-    .replace(/\.\./g, '')           // Remove ..
-    .replace(/[\/\\]/g, '-')        // Replace slashes with dashes
-    .replace(/[<>:"|?*\x00-\x1f]/g, '')  // Remove invalid filename chars
-    .replace(/^[.\s]+|[.\s]+$/g, '')    // Remove leading/trailing dots and spaces
-    .trim();
-
-  // If empty after sanitization, use default
-  if (!sanitized) {
-    return 'general';
-  }
-
-  // Limit length
-  if (sanitized.length > 100) {
-    sanitized = sanitized.substring(0, 100);
-  }
-
-  return sanitized;
-}
-
-/**
- * Validate that a path stays within the allowed directory
- * @param {string} targetPath - The path to validate
- * @param {string} allowedDir - The directory that must contain the path
- * @returns {boolean} True if valid
- */
-function isPathWithinDir(targetPath, allowedDir) {
-  const resolved = path.resolve(targetPath);
-  const resolvedAllowed = path.resolve(allowedDir);
-  return resolved.startsWith(resolvedAllowed + path.sep) || resolved === resolvedAllowed;
+function slugify(title) {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')     // Remove non-word chars (except spaces and hyphens)
+    .replace(/[\s_]+/g, '-')       // Replace spaces and underscores with hyphens
+    .replace(/-+/g, '-')           // Replace multiple hyphens with single
+    .replace(/^-+|-+$/g, '')       // Trim hyphens from start/end
+    .substring(0, 50);             // Limit length
 }
 
 /**
  * Create story with optional deep decomposition
+ * - Simple stories: flat in .workflow/changes/
+ * - Decomposed stories: grouped in feature folder
  */
-async function createStory(title, feature, options = {}) {
+async function createStory(title, options = {}) {
   // Input validation
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
     throw new Error('Title is required and must be a non-empty string');
   }
-
-  // Sanitize feature name to prevent path traversal
-  const sanitizedFeature = sanitizeFeatureName(feature);
 
   const config = getConfig();
   const decompositionConfig = config.storyDecomposition || {};
@@ -308,37 +280,41 @@ async function createStory(title, feature, options = {}) {
   const defaultPriority = getConfigValue('priorities.defaultPriority', 'P2');
   const priority = options.priority || defaultPriority;
 
-  // Build and validate feature directory path
-  const featureDir = path.join(CHANGES_DIR, sanitizedFeature);
-
-  // Ensure the path stays within CHANGES_DIR (defense in depth)
-  if (!isPathWithinDir(featureDir, CHANGES_DIR)) {
-    throw new Error(`Invalid feature name: path traversal detected`);
-  }
-
-  fs.mkdirSync(featureDir, { recursive: true });
+  // Ensure changes directory exists
+  fs.mkdirSync(CHANGES_DIR, { recursive: true });
 
   // Generate hash-based task ID
   const taskId = getTaskId(title);
 
+  // Check if decomposition needed (before creating files)
+  const analysis = analyzeForDecomposition(title);
+  const shouldDecompose = options.deep ||
+    (decompositionConfig.autoDecompose && analysis.shouldDecompose);
+
+  // Determine target directory: feature folder for decomposed, flat for simple
+  let targetDir = CHANGES_DIR;
+  let featureFolder = null;
+
+  if (shouldDecompose && analysis.suggestedSubTasks.length > 0) {
+    // Create feature folder for decomposed stories
+    featureFolder = slugify(title);
+    targetDir = path.join(CHANGES_DIR, featureFolder);
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+
   // Create main story file
   const storyContent = generateStoryTemplate(taskId, title);
-  const storyFile = path.join(featureDir, `${taskId}.md`);
+  const storyFile = path.join(targetDir, `${taskId}.md`);
   fs.writeFileSync(storyFile, storyContent);
 
   const result = {
     taskId,
     title,
-    feature: sanitizedFeature,
     priority,
     storyFile,
+    featureFolder,  // null for flat, folder name for decomposed
     subTasks: []
   };
-
-  // Check if decomposition needed
-  const analysis = analyzeForDecomposition(title);
-  const shouldDecompose = options.deep ||
-    (decompositionConfig.autoDecompose && analysis.shouldDecompose);
 
   const shouldSuggest = !options.deep &&
     !decompositionConfig.autoDecompose &&
@@ -352,7 +328,7 @@ async function createStory(title, feature, options = {}) {
   }
 
   if (shouldDecompose && analysis.suggestedSubTasks.length > 0) {
-    // Create sub-task files
+    // Create sub-task files in feature folder
     let subNum = 1;
     const subTaskIds = [];
 
@@ -360,7 +336,7 @@ async function createStory(title, feature, options = {}) {
       const deps = subNum > 1 ? [`${taskId}-${String(subNum - 1).padStart(2, '0')}`] : [];
       const subTask = generateSubTaskTemplate(taskId, subNum, sub.objective, sub.criteria, deps);
 
-      const subTaskFile = path.join(featureDir, `${subTask.id}.md`);
+      const subTaskFile = path.join(targetDir, `${subTask.id}.md`);
       fs.writeFileSync(subTaskFile, subTask.content);
 
       subTaskIds.push(subTask.id);
@@ -431,16 +407,20 @@ if (require.main === module) {
 Wogi Flow - Story Creation
 
 Usage:
-  flow story "<title>"                          Create standard story
-  flow story "<title>" --deep                   Create with decomposition
-  flow story "<title>" <feature>                Specify feature folder
-  flow story "<title>" --priority P1            Set priority (P0-P4)
-  flow story "<title>" <feature> --deep --json  All options
+  flow story "<title>"                 Create standard story
+  flow story "<title>" --deep          Create with decomposition
+  flow story "<title>" --priority P1   Set priority (P0-P4)
+  flow story "<title>" --deep --json   All options
 
 Options:
   --deep           Automatically decompose into sub-tasks
   --priority <P>   Priority P0-P4 (default: from config, usually P2)
   --json           Output JSON instead of human-readable
+
+Storage:
+  - Simple stories: flat in .workflow/changes/
+  - Decomposed stories (--deep): grouped in feature folder
+  - Completed stories: auto-archived to .workflow/archive/specs/
 
 Configuration (config.json):
   "storyDecomposition": {
@@ -455,8 +435,6 @@ Examples:
   flow story "Add user login"
   flow story "Add user login" --deep
   flow story "Add user login" --priority P1
-  flow story "Add user login" authentication
-  flow story "Add user login" authentication --deep --json
 `);
     process.exit(0);
   }
@@ -467,7 +445,6 @@ Examples:
   }
 
   const title = positional[0];
-  const feature = positional[1] || 'general';
 
   // Validate priority if provided
   let priority = flags.priority;
@@ -477,7 +454,7 @@ Examples:
   }
 
   // Create story
-  const result = await createStory(title, feature, {
+  const result = await createStory(title, {
     deep: flags.deep,
     priority
   });
@@ -497,8 +474,10 @@ Examples:
   log('cyan', `  ${result.storyFile}`);
   console.log('');
   log('white', `Title: ${result.title}`);
-  log('white', `Feature: ${result.feature}`);
   log('white', `Priority: ${result.priority}`);
+  if (result.featureFolder) {
+    log('white', `Feature folder: ${result.featureFolder}/`);
+  }
 
   if (result.decomposed) {
     console.log('');
@@ -514,7 +493,7 @@ Examples:
     console.log('');
     log('yellow', `This looks like a complex story (${result.patterns.join(', ')})`);
     log('yellow', `   Consider using --deep to decompose into ~${result.suggestedCount} sub-tasks`);
-    log('dim', `   Run: flow story "${title}" ${feature} --deep`);
+    log('dim', `   Run: flow story "${title}" --deep`);
   }
 
   console.log('');
