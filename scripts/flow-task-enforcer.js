@@ -1,21 +1,33 @@
 #!/usr/bin/env node
 
 /**
- * Wogi Flow - Loop Enforcer
+ * Wogi Flow - Task Enforcer
  *
- * Ensures self-completing loops actually complete. When enforced:true,
- * the loop cannot be exited until all acceptance criteria pass.
+ * Ensures tasks actually complete. When enforced:true,
+ * the task cannot be exited until all acceptance criteria pass.
  *
  * v2.0: Now delegates to flow-durable-session.js for unified step tracking.
  * Legacy loop-session.json is still supported for backward compatibility.
+ *
+ * Config: Uses config.tasks.* settings (fallback to config.loops.* for migration)
  */
 
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectRoot, writeJson } = require('./flow-utils');
+const { getConfig, getProjectRoot, writeJson, safeJsonParse } = require('./flow-utils');
 
 // v2.0: Import durable session for unified tracking
 const durableSession = require('./flow-durable-session');
+
+/**
+ * Get task config with fallback to legacy loops config for migration
+ * Prefers config.tasks.*, falls back to config.loops.* if tasks not configured
+ */
+function getTaskConfig() {
+  const config = getConfig();
+  // Prefer tasks section, fallback to loops for backward compatibility
+  return config.tasks || config.loops || {};
+}
 
 /**
  * Sanitize a string for safe use in shell commands
@@ -41,51 +53,51 @@ function escapeShellPath(p) {
 }
 
 /**
- * Check if loop enforcement is enabled
+ * Check if task enforcement is enabled
  */
 function isEnforcementEnabled() {
-  const config = getConfig();
-  return config.loops?.enforced === true;
+  const taskConfig = getTaskConfig();
+  return taskConfig.enforced === true;
 }
 
 /**
  * Check if exit blocking is enabled
  */
 function isExitBlocked() {
-  const config = getConfig();
-  return config.loops?.blockExitUntilComplete === true;
+  const taskConfig = getTaskConfig();
+  return taskConfig.blockExitUntilComplete === true;
 }
 
 /**
  * Check if verification is required before marking criteria complete
  */
 function isVerificationRequired() {
-  const config = getConfig();
-  return config.loops?.requireVerification !== false; // Default true
+  const taskConfig = getTaskConfig();
+  return taskConfig.requireVerification !== false; // Default true
 }
 
 /**
  * Check if skipping is blocked (must complete or explicitly skip with approval)
  */
 function isSkipBlocked() {
-  const config = getConfig();
-  return config.loops?.blockOnSkip !== false; // Default true
+  const taskConfig = getTaskConfig();
+  return taskConfig.blockOnSkip !== false; // Default true
 }
 
 /**
  * Check if Simple Mode is enabled
  */
 function isSimpleModeEnabled() {
-  const config = getConfig();
-  return config.loops?.simpleMode?.enabled === true;
+  const taskConfig = getTaskConfig();
+  return taskConfig.simpleMode?.enabled === true;
 }
 
 /**
  * Check if regression re-check is enabled
  */
 function isRecheckEnabled() {
-  const config = getConfig();
-  return config.loops?.recheckAllAfterFix !== false; // Default true
+  const taskConfig = getTaskConfig();
+  return taskConfig.recheckAllAfterFix !== false; // Default true
 }
 
 /**
@@ -142,20 +154,12 @@ function getActiveLoop() {
   const projectRoot = getProjectRoot();
   const sessionPath = path.join(projectRoot, '.workflow', 'state', 'loop-session.json');
 
-  if (!fs.existsSync(sessionPath)) {
-    return null;
+  // Use safeJsonParse for prototype pollution protection
+  const session = safeJsonParse(sessionPath, null);
+  if (!session && process.env.DEBUG) {
+    console.warn(`[DEBUG] No loop session found at: ${sessionPath}`);
   }
-
-  try {
-    return JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
-  } catch (parseError) {
-    // Always log parse errors (corrupted session files are actionable issues)
-    console.warn(`[Warning] Could not parse loop session file: ${parseError.message}`);
-    if (process.env.DEBUG) {
-      console.warn(`[DEBUG] Session path: ${sessionPath}`);
-    }
-    return null;
-  }
+  return session;
 }
 
 /**
@@ -208,13 +212,13 @@ function startLoop(taskId, acceptanceCriteria) {
  * @param {string} completionPromise - String to detect in output for completion
  */
 function startSimpleLoop(taskId, completionPromise = null) {
-  const config = getConfig();
+  const taskConfig = getTaskConfig();
   const projectRoot = getProjectRoot();
   const sessionPath = path.join(projectRoot, '.workflow', 'state', 'simple-loop-session.json');
 
   // Use configured completion promise or default
-  const promise = completionPromise || config.loops?.simpleMode?.completionPromise || 'TASK_COMPLETE';
-  const maxIterations = config.loops?.simpleMode?.maxIterations || 10;
+  const promise = completionPromise || taskConfig.simpleMode?.completionPromise || 'TASK_COMPLETE';
+  const maxIterations = taskConfig.simpleMode?.maxIterations || 10;
 
   const session = {
     taskId,
@@ -238,15 +242,8 @@ function getSimpleLoop() {
   const projectRoot = getProjectRoot();
   const sessionPath = path.join(projectRoot, '.workflow', 'state', 'simple-loop-session.json');
 
-  if (!fs.existsSync(sessionPath)) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
-  } catch (err) {
-    return null;
-  }
+  // Use safeJsonParse for prototype pollution protection
+  return safeJsonParse(sessionPath, null);
 }
 
 /**
@@ -321,19 +318,19 @@ function endSimpleLoop(status = 'completed') {
   session.status = status;
   session.endedAt = new Date().toISOString();
 
-  // Archive to history
+  // Archive to history (use atomic write for crash safety)
   const historyPath = path.join(projectRoot, '.workflow', 'state', 'simple-loop-history.json');
   let history = [];
-  if (fs.existsSync(historyPath)) {
-    try {
-      history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
-    } catch { history = []; }
-  }
+  try {
+    const content = fs.readFileSync(historyPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) history = parsed;
+  } catch { /* use empty array */ }
   history.push(session);
   if (history.length > 50) {
     history = history.slice(-50);
   }
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  writeJson(historyPath, history);
 
   // Remove active session
   fs.unlinkSync(sessionPath);
@@ -433,7 +430,7 @@ function updateCriterion(criterionId, status, verificationResult = null, context
  * @returns {array} - Array of regressions found
  */
 function performRegressionRecheck(excludeCriterionId, context = {}) {
-  const config = getConfig();
+  const taskConfig = getTaskConfig();
   const session = getActiveLoop();
 
   if (!session) return [];
@@ -459,7 +456,7 @@ function performRegressionRecheck(excludeCriterionId, context = {}) {
       });
 
       // Handle based on config
-      const onRegression = config.loops?.regressionOnRecheck || 'warn';
+      const onRegression = taskConfig.regressionOnRecheck || 'warn';
 
       if (onRegression === 'block') {
         // Mark criterion as failed - must be fixed
@@ -494,6 +491,7 @@ function performRegressionRecheck(excludeCriterionId, context = {}) {
  */
 function canExitLoop() {
   const config = getConfig();
+  const taskConfig = getTaskConfig();
 
   // v2.0: Use durable session if enabled
   if (config.durableSteps?.enabled !== false) {
@@ -545,7 +543,7 @@ function canExitLoop() {
   }
 
   // Max retries exceeded?
-  const maxRetries = config.loops?.maxRetries || 5;
+  const maxRetries = taskConfig.maxRetries || 5;
   if (session.retries >= maxRetries) {
     return {
       canExit: true,
@@ -556,7 +554,7 @@ function canExitLoop() {
   }
 
   // Max iterations exceeded?
-  const maxIterations = config.loops?.maxIterations || 20;
+  const maxIterations = taskConfig.maxIterations || 20;
   if (session.iteration >= maxIterations) {
     return {
       canExit: true,
@@ -698,16 +696,14 @@ function endLoop(status = 'completed') {
   session.status = status;
   session.endedAt = new Date().toISOString();
 
-  // Archive to history
+  // Archive to history (use atomic write for crash safety)
   const historyPath = path.join(projectRoot, '.workflow', 'state', 'loop-history.json');
   let history = [];
-  if (fs.existsSync(historyPath)) {
-    try {
-      history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
-    } catch {
-      history = [];
-    }
-  }
+  try {
+    const content = fs.readFileSync(historyPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) history = parsed;
+  } catch { /* use empty array */ }
   history.push(session);
 
   // Keep last 50 sessions
@@ -715,7 +711,7 @@ function endLoop(status = 'completed') {
     history = history.slice(-50);
   }
 
-  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  writeJson(historyPath, history);
 
   // Remove active session
   fs.unlinkSync(sessionPath);
@@ -750,7 +746,13 @@ function getLoopStats() {
   }
 
   try {
-    const history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
+    const content = fs.readFileSync(historyPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    // Validate it's an array
+    if (!Array.isArray(parsed)) {
+      return { totalLoops: 0, completed: 0, failed: 0, avgIterations: 0 };
+    }
+    const history = parsed;
     const completed = history.filter(h => h.status === 'completed').length;
     const failed = history.filter(h => h.status === 'failed').length;
     const avgIterations = history.length > 0
@@ -776,11 +778,12 @@ function verifyCriterion(criterion, context = {}) {
   const { execSync } = require('child_process');
   const { changedFiles = [], testResults = null, lintResults = null } = context;
   const config = getConfig();
+  const taskConfig = getTaskConfig();
   const desc = criterion.description;
   const descLower = desc.toLowerCase();
 
   // Check if auto-inference is enabled
-  const autoInfer = config.loops?.autoInferVerification !== false; // Default true
+  const autoInfer = taskConfig.autoInferVerification !== false; // Default true
   if (!autoInfer) {
     return { passed: null, message: '⚠️ Auto-inference disabled', verification: 'disabled' };
   }
@@ -851,26 +854,39 @@ function verifyCriterion(criterion, context = {}) {
   if (componentMatch) {
     const componentName = componentMatch[1];
     const searchPaths = ['src/components', 'components', 'src/ui', 'app'];
+
+    // Safe recursive file search without shell commands
+    function findComponentFiles(dir, name, depth = 0) {
+      if (depth > 5) return []; // Limit recursion depth for safety
+      const results = [];
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+            results.push(...findComponentFiles(fullPath, name, depth + 1));
+          } else if (entry.isFile()) {
+            const baseName = entry.name.split('.')[0];
+            if (baseName.toLowerCase() === name.toLowerCase()) {
+              results.push(fullPath);
+            }
+          }
+        }
+      } catch (err) { /* ignore permission errors */ }
+      return results;
+    }
+
     for (const searchPath of searchPaths) {
       const searchDir = path.join(projectRoot, searchPath);
       if (fs.existsSync(searchDir)) {
-        try {
-          // Sanitize component name and escape path for shell safety
-          const safeName = sanitizeShellArg(componentName);
-          const safeLower = sanitizeShellArg(componentName.toLowerCase());
-          const safePath = escapeShellPath(searchDir);
-          const files = execSync(
-            `find "${safePath}" -name "${safeName}.*" -o -name "${safeLower}.*" 2>/dev/null`,
-            { encoding: 'utf-8', timeout: 5000 }
-          ).trim();
-          if (files) {
-            return {
-              passed: true,
-              message: `✓ Component found: ${files.split('\n')[0]}`,
-              verification: 'component-exists'
-            };
-          }
-        } catch (err) { /* continue searching */ }
+        const found = findComponentFiles(searchDir, componentName);
+        if (found.length > 0) {
+          return {
+            passed: true,
+            message: `✓ Component found: ${found[0]}`,
+            verification: 'component-exists'
+          };
+        }
       }
     }
     return {
@@ -1012,7 +1028,7 @@ function verifyCriterion(criterion, context = {}) {
   ];
 
   const isUITest = uiPatterns.some(p => p.test(desc));
-  const suggestBrowserTests = config.loops?.suggestBrowserTests !== false; // Default true
+  const suggestBrowserTests = taskConfig.suggestBrowserTests !== false; // Default true
   const browserConfig = config.browserTesting || {};
 
   if (isUITest && suggestBrowserTests && browserConfig.enabled) {
@@ -1029,7 +1045,7 @@ function verifyCriterion(criterion, context = {}) {
   // FALLBACK
   // ═══════════════════════════════════════════════════════════════
 
-  const fallbackToManual = config.loops?.fallbackToManual !== false; // Default true
+  const fallbackToManual = taskConfig.fallbackToManual !== false; // Default true
   if (fallbackToManual) {
     return {
       passed: null,
@@ -1193,7 +1209,7 @@ if (require.main === module) {
       const output = args.slice(1).join(' ');
       if (!output) {
         console.log('Error: Output text required');
-        console.log('Usage: node flow-loop-enforcer.js simple-record "output text"');
+        console.log('Usage: node flow-task-enforcer.js simple-record "output text"');
         process.exit(1);
       }
       const result = recordSimpleOutput(output);
@@ -1218,7 +1234,7 @@ if (require.main === module) {
 Wogi Flow - Loop Enforcer
 
 Usage:
-  node flow-loop-enforcer.js <command>
+  node flow-task-enforcer.js <command>
 
 Standard Loop Commands:
   status      Show active loop session

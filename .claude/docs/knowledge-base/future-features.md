@@ -242,7 +242,7 @@ These were on the backlog but have been completed:
 | Learning Deduplication | 7-day window in flow-adaptive-learning.js |
 | Community Contribution | `flow hybrid learning contribute --auto-pr` |
 | Damage Control System | flow-damage-control.js |
-| Auto-Inference Verification | flow-loop-enforcer.js |
+| Auto-Inference Verification | flow-task-enforcer.js |
 | Durable Sessions | flow-durable-session.js |
 | Suspend/Resume | flow-suspend.js, flow-resume.js |
 | agent_requested Rules | Rules have `alwaysApply` frontmatter for smart loading |

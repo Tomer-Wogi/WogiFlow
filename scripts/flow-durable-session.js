@@ -1035,7 +1035,7 @@ function resumeSession(options = {}) {
 // ============================================================================
 
 /**
- * Start a loop (backward compat with flow-loop-enforcer)
+ * Start a loop (backward compat with flow-task-enforcer)
  * @deprecated Use createDurableSession instead
  */
 function startLoop(taskId, acceptanceCriteria) {

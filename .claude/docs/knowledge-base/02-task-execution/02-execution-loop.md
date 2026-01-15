@@ -375,7 +375,7 @@ flow parallel merge
 
 ```bash
 # Current loop status
-node scripts/flow-loop-enforcer.js status
+node scripts/flow-task-enforcer.js status
 
 # Output:
 # 📊 Active Loop Session
@@ -395,7 +395,7 @@ node scripts/flow-loop-enforcer.js status
 ### Loop Statistics
 
 ```bash
-node scripts/flow-loop-enforcer.js stats
+node scripts/flow-task-enforcer.js stats
 
 # Output:
 # 📈 Loop Statistics

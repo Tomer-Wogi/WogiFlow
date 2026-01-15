@@ -36,6 +36,7 @@ const {
   getConfig,
   isPathWithinProject,
   safeJsonParse,
+  writeJson,
   getSpecFilePath
 } = require('./flow-utils');
 
@@ -124,6 +125,8 @@ function escapeGlobToRegex(pattern) {
  * @returns {boolean} True if safe
  */
 function isSafePattern(pattern) {
+  // Block parent directory traversal attempts
+  if (pattern.includes('..')) return false;
   // Only allow alphanumeric, -, _, ., and *
   return /^[a-zA-Z0-9._*-]+$/.test(pattern);
 }
@@ -289,10 +292,10 @@ function loadSyncState() {
 }
 
 /**
- * Save sync state
+ * Save sync state using atomic write pattern
  */
 function saveSyncState(state) {
-  fs.writeFileSync(PATHS.knowledgeSync, JSON.stringify(state, null, 2));
+  writeJson(PATHS.knowledgeSync, state);
 }
 
 /**
@@ -469,18 +472,19 @@ async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', '
   const { spawn } = require('child_process');
 
   return new Promise((resolve, reject) => {
-    // Use spawn with explicit args array and absolute path to prevent command injection
+    // Use spawn without shell to prevent command injection
+    // Node.js respects shebangs natively when executing scripts directly
     const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
-    const child = spawn('node', [scriptPath, '--update-knowledge'], {
+    const child = spawn(scriptPath, ['--update-knowledge'], {
       cwd: PROJECT_ROOT,
       stdio: 'inherit'
     });
 
     child.on('error', (err) => {
-      // Spawn failed (e.g., node not found)
+      // Spawn failed (e.g., script not found, permission denied)
       error(`Failed to spawn process: ${err.message}`);
       warn('Run "flow onboard" manually to regenerate knowledge files');
-      resolve(null);
+      reject(new Error(`Spawn failed: ${err.message}`));
     });
 
     child.on('close', (code) => {
@@ -490,7 +494,7 @@ async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', '
         success('Knowledge files regenerated and sync state updated');
         resolve(state);
       } else if (code === null) {
-        // Process was killed
+        // Process was killed - not an error, just cancelled
         warn('Regeneration process was terminated');
         resolve(null);
       } else {
@@ -500,8 +504,8 @@ async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', '
         info('Options:');
         info('  1. Run "flow onboard" to regenerate all knowledge files');
         info('  2. Run "flow knowledge-sync mark-synced" to accept current state');
-        // Do NOT mark as synced - this would be misleading
-        resolve(null);
+        // Reject so caller knows regeneration failed
+        reject(new Error(`Onboard exited with code ${code}`));
       }
     });
   });

@@ -497,16 +497,45 @@ function writeJson(filePath, data) {
  * @param {*} [defaultValue=null] - Default value if parsing fails
  * @returns {object|null} Parsed JSON or defaultValue on error
  */
+/**
+ * Recursively check for dangerous keys in nested objects
+ * @param {Object} obj - Object to scan
+ * @param {string} path - Current path for error reporting
+ * @returns {string|null} - Error message if dangerous key found, null otherwise
+ */
+function checkForDangerousKeys(obj, path = '') {
+  const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+
+  for (const key of Object.getOwnPropertyNames(obj)) {
+    if (dangerousKeys.includes(key)) {
+      return `Dangerous key "${key}" at path: ${path}${key}`;
+    }
+    const value = obj[key];
+    if (value && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        // Recurse into array elements
+        for (let i = 0; i < value.length; i++) {
+          if (value[i] && typeof value[i] === 'object') {
+            const nestedError = checkForDangerousKeys(value[i], `${path}${key}[${i}].`);
+            if (nestedError) return nestedError;
+          }
+        }
+      } else {
+        const nestedError = checkForDangerousKeys(value, `${path}${key}.`);
+        if (nestedError) return nestedError;
+      }
+    }
+  }
+  return null;
+}
+
 function safeJsonParse(filePath, defaultValue = null) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
 
-    // Check for prototype pollution attempts in raw content
-    // Covers various quote styles and whitespace variants
-    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
-      console.error(`[safeJsonParse] Suspicious content detected in ${filePath}`);
-      return defaultValue;
-    }
+    // NOTE: We no longer check raw content with regex because it causes false positives
+    // when "__proto__" appears in string values (e.g., {"desc": "__proto__ is dangerous"})
+    // The recursive checkForDangerousKeys() on the parsed object is the proper defense
 
     const parsed = JSON.parse(content);
 
@@ -516,16 +545,20 @@ function safeJsonParse(filePath, defaultValue = null) {
       return defaultValue;
     }
 
-    // Additional check: ensure no proto/constructor keys were added
-    const keys = Object.getOwnPropertyNames(parsed);
-    if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
-      console.error(`[safeJsonParse] Prototype pollution attempt detected in ${filePath}`);
+    // Recursive check for prototype pollution in nested objects and arrays
+    const dangerousKeyError = checkForDangerousKeys(parsed);
+    if (dangerousKeyError) {
+      console.error(`[safeJsonParse] Prototype pollution attempt in ${filePath}: ${dangerousKeyError}`);
       return defaultValue;
     }
 
     return parsed;
   } catch (err) {
-    console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+    // Only log errors for actual parse failures, not missing files
+    // ENOENT is expected for optional files - caller handles with defaultValue
+    if (err.code !== 'ENOENT') {
+      console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+    }
     return defaultValue;
   }
 }
@@ -896,12 +929,24 @@ function resolveConfigValue(value) {
   // {file:path} - file contents
   if (value.startsWith('{file:') && value.endsWith('}')) {
     let filePath = value.slice(6, -1);
+    const homeDir = process.env.HOME || '';
+
     // Expand tilde to home directory
     if (filePath.startsWith('~')) {
-      filePath = filePath.replace(/^~/, process.env.HOME || '');
+      filePath = filePath.replace(/^~/, homeDir);
     }
-    // Security: validate path doesn't escape expected locations
+
+    // Security: validate path is within project OR user's home directory
+    // This allows reading credentials from ~/.config/ but blocks /etc/passwd etc.
     const resolvedPath = path.resolve(filePath);
+    const isWithinProject = isPathWithinProject(resolvedPath, PROJECT_ROOT);
+    const isWithinHome = homeDir && resolvedPath.startsWith(homeDir + path.sep);
+
+    if (!isWithinProject && !isWithinHome) {
+      warn(`File path outside allowed locations blocked: ${resolvedPath}`);
+      return null;
+    }
+
     try {
       return fs.readFileSync(resolvedPath, 'utf-8').trim();
     } catch (err) {
