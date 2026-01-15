@@ -26,6 +26,15 @@
       }
     }
   },
+  "tasks": {
+    "maxIterations": 20,
+    "stuckThreshold": 3,
+    "progressCommitInterval": 3,
+    "recheckAfterFix": true,
+    "blockExitUntilComplete": true,
+    "autoInferVerification": true,
+    "maxRetries": 5
+  },
   "workflow": {
     "planningStyle": "feature-based",
     "agentStructure": "unified"
@@ -341,6 +350,16 @@
     "confidenceThreshold": 80,
     "promotionThreshold": 3,
     "autoPromote": false
+  },
+  "sessionLearning": {
+    "enabled": true,
+    "autoApplyThreshold": 90,
+    "minOccurrences": 2,
+    "confidenceThreshold": 70,
+    "scope": "today",
+    "analyzeReviews": true,
+    "analyzeRetries": true,
+    "analyzeFixes": true
   },
   "memory": {
     "enabled": true,

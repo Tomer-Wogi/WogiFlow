@@ -39,6 +39,14 @@ try {
   // Memory module not available
 }
 
+// v2.4.0 session learning analysis
+let sessionLearning = null;
+try {
+  sessionLearning = require('./flow-session-learning');
+} catch (err) {
+  // Session learning module not available
+}
+
 /**
  * Prompt user for input
  */
@@ -167,6 +175,40 @@ function extractSkillLearnings() {
         success('Skills updated');
       }
     }
+  }
+}
+
+/**
+ * Analyze session for learnings (v2.4.0)
+ */
+function analyzeSessionForLearnings() {
+  if (!sessionLearning) return;
+
+  const config = getConfig();
+  const sessionLearningConfig = config.sessionLearning || {};
+
+  // Check if enabled (default: true)
+  if (sessionLearningConfig.enabled === false) return;
+
+  try {
+    console.log('');
+    console.log(color('yellow', 'Analyzing session for learnings...'));
+
+    const result = sessionLearning.analyzeSessionLearnings({
+      display: true,
+      apply: true
+    });
+
+    if (result.learnings && result.learnings.length > 0) {
+      if (result.applied && result.applied.length > 0) {
+        success(`Applied ${result.applied.length} high-confidence learning(s)`);
+      }
+      if (result.skipped && result.skipped.length > 0) {
+        console.log(color('dim', `${result.skipped.length} pattern(s) noted for observation`));
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Session learning: ${err.message}`);
   }
 }
 
@@ -589,6 +631,9 @@ async function main() {
 
   // Extract skill learnings
   extractSkillLearnings();
+
+  // v2.4.0: Analyze session for learnings
+  analyzeSessionForLearnings();
 
   // v1.7.0: Save session summary
   saveSessionSummaryToState();

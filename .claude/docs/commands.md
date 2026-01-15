@@ -21,8 +21,7 @@ When user types these commands, execute the corresponding action immediately.
 
 | Command | Action |
 |---------|--------|
-| `/wogi-story [title]` | Create a detailed story using story-writer.md format. Include user story, Given/When/Then acceptance criteria, technical notes with app-map components, test strategy. |
-| `/wogi-feature [name]` | Create new feature directory in `.workflow/changes/`. Generate proposal.md and tasks.json templates. Ask user for details to fill in. |
+| `/wogi-story [title]` | Create a detailed story. Simple stories go flat in `.workflow/changes/`. Use `--deep` for decomposition which creates a feature folder. Auto-archived when completed. |
 | `/wogi-bug [title]` | Create bug report in `.workflow/bugs/` with next BUG-XXX number. Use bug-report template. |
 
 ### Workflow Management
@@ -32,7 +31,7 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-review` | **Comprehensive code review.** First runs verification gates (lint, typecheck, test), then 3 parallel AI agents: Code & Logic, Security, Architecture. Triggered by command or "please review". Options: `--commits N`, `--staged`, `--skip-verify`, `--verify-only`, `--security-only`, `--quick`. |
 | `/wogi-health` | Check all workflow files exist and are valid. Verify config.json and ready.json are valid JSON. Check app-map sync with src/components. Report issues. |
 | `/wogi-standup` | Generate standup summary: what was done (from request-log), what's in progress, what's next, any blockers. |
-| `/wogi-session-end` | Ensure request-log is current. Update app-map if components created. Update progress.md. Commit all changes. Offer to push. |
+| `/wogi-session-end` | End session: update progress, analyze session for learnings (auto-apply 90%+ confidence patterns), archive logs, offer tech debt cleanup, commit and push. |
 | `/wogi-init` | Initialize workflow structure. Create all directories and state files. Use for new projects. |
 
 ### Component Management
@@ -123,13 +122,7 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-suspend` | Suspend current task. Options: `--wait-ci`, `--review`, `--rate-limit N`. |
 | `/wogi-resume` | Resume suspended task. Options: `--status`, `--approve`. |
-| `/wogi-session-end` | Properly end work session. Update logs, commit changes. |
-
-### Loop Enforcement
-
-| Command | Action |
-|---------|--------|
-| `/wogi-loop` | Show loop status (active session, progress). |
+| `/wogi-session-end` | End session with learning analysis, memory management, tech debt cleanup, commit and push. |
 
 ### Memory & Knowledge
 | Command | Action |
@@ -165,10 +158,9 @@ npx flow onboard                  # Analyze existing project & set up context
 # Task Management
 ./scripts/flow ready              # See unblocked tasks
 ./scripts/flow start TASK-X       # Start a task
-./scripts/flow done TASK-X        # Complete a task
-./scripts/flow story "title"      # Create detailed story
-./scripts/flow story "t" --deep   # Create story with automatic decomposition
-./scripts/flow new-feature        # Create feature
+./scripts/flow done TASK-X        # Complete a task (auto-archives spec)
+./scripts/flow story "title"      # Create simple story (flat)
+./scripts/flow story "t" --deep   # Create decomposed story (feature folder)
 ./scripts/flow bug                # Report bug
 ./scripts/flow status             # Project overview
 ./scripts/flow deps TASK-X        # Show task dependencies
@@ -182,7 +174,8 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow regression --all   # Test all completed tasks
 ./scripts/flow browser-suggest    # Suggest browser tests for a task
 ./scripts/flow standup            # Generate standup summary
-./scripts/flow session-end        # End session properly
+./scripts/flow session-end        # End session properly (with learning analysis)
+./scripts/flow session-learning   # Analyze session for patterns (standalone)
 ./scripts/flow search "#tag"      # Search request-log
 ./scripts/flow context TASK-X     # Load task context
 ./scripts/flow export-profile     # Export workflow config for team
