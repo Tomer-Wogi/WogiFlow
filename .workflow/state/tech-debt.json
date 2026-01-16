@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-01-15T00:00:00.000Z",
+  "issues": [],
+  "stats": {
+    "totalOpen": 0,
+    "bySeverity": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
+    "autoFixable": 0
+  }
+}

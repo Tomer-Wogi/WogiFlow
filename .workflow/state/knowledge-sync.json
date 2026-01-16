@@ -1,14 +1,14 @@
 {
-  "lastSync": "2026-01-12T12:19:43.343Z",
+  "lastSync": "2026-01-15T15:56:03.544Z",
   "stack": {
     "files": [
       "package.json",
       "package-lock.json"
     ],
-    "combinedHash": "94c93a6b5d6d0410a8ec719e87a5dc66",
+    "combinedHash": "af9a60bc12eeed6d3196956100811dd6",
     "individualHashes": {
-      "package.json": "0aba031c8ce7222ce557518207f53abb",
-      "package-lock.json": "0004efd0ef6f198f0a893729cb4e3c71"
+      "package.json": "4a6da923f8ba98ce3b96c5dc58ca06cf",
+      "package-lock.json": "c20c6dc8871351ad872a95f67cc87958"
     },
     "errors": null
   },

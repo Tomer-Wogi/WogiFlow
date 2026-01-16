@@ -949,7 +949,7 @@ function resolveConfigValue(value) {
 
     try {
       return fs.readFileSync(resolvedPath, 'utf-8').trim();
-    } catch (err) {
+    } catch {
       return null;
     }
   }
@@ -1974,7 +1974,7 @@ function astGrepSearch(pattern, options = {}) {
  * @param {object} options - Search options
  */
 function findReactComponents(options = {}) {
-  const { maxResults = 10, cwd = PROJECT_ROOT } = options;
+  const { maxResults = 10 } = options;
 
   // Try function components first
   let results = astGrepSearch(AST_PATTERNS.reactComponent, { ...options, maxResults });
