@@ -42,6 +42,9 @@ const { loadDurableSession, archiveDurableSession } = require('./flow-durable-se
 // v2.1 task enforcement as explicit quality gate
 const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
+// v2.5 checkpoint system
+const { Checkpoint } = require('./flow-checkpoint');
+
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
 
@@ -69,7 +72,7 @@ function getModifiedFiles() {
     // Combine and dedupe
     const all = [...new Set([...staged, ...unstaged, ...untracked])];
     return all.filter(f => f && f.length > 0);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -141,7 +144,7 @@ function runQualityGates(taskId) {
       if (result.status !== 0) {
         // Try auto-fix
         console.log(`  ${color('yellow', '⟳')} lint issues found, attempting auto-fix...`);
-        const fixResult = spawnSync('npm', ['run', 'lint', '--', '--fix'], {
+        spawnSync('npm', ['run', 'lint', '--', '--fix'], {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe']
         });
@@ -284,7 +287,9 @@ function archiveChangeSpec(taskId) {
 
   const archived = [];
   let archivedFolder = null;
-  const taskPattern = new RegExp(`^${taskId}(-\\d+)?\\.md$`, 'i');
+  // SECURITY: Escape special regex characters to prevent ReDoS attacks
+  const escapedTaskId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const taskPattern = new RegExp(`^${escapedTaskId}(-\\d+)?\\.md$`, 'i');
 
   try {
     const entries = fs.readdirSync(changesDir, { withFileTypes: true });
@@ -624,8 +629,21 @@ async function main() {
   // Commit if there are changes (use task type for commit prefix)
   commitChanges(commitMsg, taskType);
 
-  // v1.9.0: Run regression tests if configured (legacy - skipped if using workflowSteps)
+  // v2.5: Create checkpoint after task completion if configured
   const config = getConfig();
+  if (config.checkpoint?.enabled && config.checkpoint?.onTaskComplete) {
+    try {
+      const checkpoint = new Checkpoint(config);
+      const cp = checkpoint.create(`Task complete: ${taskId} - ${result.task?.title || commitMsg}`);
+      if (cp) {
+        console.log(color('dim', `📍 Checkpoint created: ${cp.id}`));
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Checkpoint creation: ${err.message}`);
+    }
+  }
+
+  // v1.9.0: Run regression tests if configured (legacy - skipped if using workflowSteps)
   const usingWorkflowSteps = config.workflowSteps?.regressionTest?.enabled;
   if (!usingWorkflowSteps && config.regressionTesting?.enabled && config.regressionTesting?.runOnTaskComplete) {
     console.log('');
@@ -667,13 +685,46 @@ async function main() {
       console.log(color('dim', '🔄 Refreshing component index...'));
       execFileSync('bash', ['scripts/flow-map-index', 'scan', '--quiet'], {
         encoding: 'utf-8',
-        stdio: 'pipe'
+        stdio: 'pipe',
+        timeout: 30000
       });
       if (process.env.DEBUG) {
         console.log(color('dim', '   Component index updated'));
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Component index refresh: ${err.message}`);
+    }
+  }
+
+  // v2.7: Refresh function registry after task if configured
+  const funcScanOn = config.functionRegistry?.scanOn || [];
+  if (config.functionRegistry?.enabled && config.functionRegistry?.autoUpdate !== false &&
+      funcScanOn.includes('afterTask')) {
+    try {
+      if (process.env.DEBUG) console.log(color('dim', '🔄 Refreshing function registry...'));
+      execFileSync('node', ['scripts/flow-function-index.js', 'scan'], {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 30000
+      });
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Function registry refresh: ${err.message}`);
+    }
+  }
+
+  // v2.7: Refresh API registry after task if configured
+  const apiScanOn = config.apiRegistry?.scanOn || [];
+  if (config.apiRegistry?.enabled && config.apiRegistry?.autoUpdate !== false &&
+      apiScanOn.includes('afterTask')) {
+    try {
+      if (process.env.DEBUG) console.log(color('dim', '🔄 Refreshing API registry...'));
+      execFileSync('node', ['scripts/flow-api-index.js', 'scan'], {
+        encoding: 'utf-8',
+        stdio: 'pipe',
+        timeout: 30000
+      });
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] API registry refresh: ${err.message}`);
     }
   }
 

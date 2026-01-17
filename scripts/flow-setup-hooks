@@ -20,16 +20,20 @@ show_help() {
     echo "Usage: flow setup-hooks [options]"
     echo ""
     echo "Options:"
-    echo "  install      Install pre-commit hooks"
-    echo "  uninstall    Remove pre-commit hooks"
+    echo "  install      Install git hooks (pre-commit + post-commit)"
+    echo "  uninstall    Remove git hooks"
     echo "  status       Check if hooks are installed"
     echo ""
-    echo "Hooks enforce:"
+    echo "Pre-commit hook enforces:"
     echo "  • request-log.md has been updated"
     echo "  • app-map.md updated if new components"
     echo "  • No console.log in production code"
     echo "  • Tests pass (if configured in config.json)"
     echo "  • Skill learning extraction (if skillLearning.enabled)"
+    echo ""
+    echo "Post-commit hook:"
+    echo "  • Auto-closes auto-created tasks when their files are committed"
+    echo "  • Prevents stale tasks from accumulating in the queue"
 }
 
 install_hooks() {
@@ -149,22 +153,46 @@ exit 0
 HOOK
     
     chmod +x .git/hooks/pre-commit
-    
+
     echo -e "${GREEN}✓ Pre-commit hook installed${NC}"
+
+    # Create post-commit hook for auto-task completion
+    cat > .git/hooks/post-commit << 'HOOK'
+#!/bin/bash
+
+# Wogi Flow Post-commit Hook
+# Auto-closes auto-created tasks when their files are committed
+
+# Run the Node.js post-commit handler if it exists
+SCRIPT_DIR="$(dirname "$0")/../../scripts/hooks/git"
+if [ -f "$SCRIPT_DIR/post-commit.js" ]; then
+    node "$SCRIPT_DIR/post-commit.js" 2>/dev/null || true
+fi
+
+# Always exit 0 - don't block after successful commit
+exit 0
+HOOK
+
+    chmod +x .git/hooks/post-commit
+
+    echo -e "${GREEN}✓ Post-commit hook installed${NC}"
     echo ""
-    echo "The hook will check:"
+    echo "Pre-commit hook will check:"
     echo "  • request-log.md updates (warning)"
     echo "  • console.log statements (warning)"
     echo "  • Tests (if runBeforeCommit: true in config.json)"
     echo "  • Lint (if eslint configured)"
+    echo ""
+    echo "Post-commit hook will:"
+    echo "  • Auto-close auto-created tasks when their files are committed"
     echo ""
     echo "To bypass: git commit --no-verify"
     echo "To remove: ./scripts/flow setup-hooks uninstall"
 }
 
 uninstall_hooks() {
+    # Remove pre-commit hook
     if [ -f ".git/hooks/pre-commit" ]; then
-        # Check if it's our hook
         if grep -q "Wogi Flow" .git/hooks/pre-commit 2>/dev/null; then
             rm .git/hooks/pre-commit
             echo -e "${GREEN}✓ Pre-commit hook removed${NC}"
@@ -175,17 +203,31 @@ uninstall_hooks() {
     else
         echo "No pre-commit hook installed"
     fi
+
+    # Remove post-commit hook
+    if [ -f ".git/hooks/post-commit" ]; then
+        if grep -q "Wogi Flow" .git/hooks/post-commit 2>/dev/null; then
+            rm .git/hooks/post-commit
+            echo -e "${GREEN}✓ Post-commit hook removed${NC}"
+        else
+            echo -e "${YELLOW}Post-commit hook exists but wasn't installed by Wogi Flow${NC}"
+            echo "Remove manually if desired: rm .git/hooks/post-commit"
+        fi
+    else
+        echo "No post-commit hook installed"
+    fi
 }
 
 check_status() {
     echo -e "${CYAN}Hook Status${NC}"
     echo ""
-    
+
     if [ ! -d ".git" ]; then
         echo -e "${YELLOW}Not a git repository${NC}"
         exit 0
     fi
-    
+
+    # Check pre-commit hook
     if [ -f ".git/hooks/pre-commit" ]; then
         if grep -q "Wogi Flow" .git/hooks/pre-commit 2>/dev/null; then
             echo -e "${GREEN}✓${NC} Wogi Flow pre-commit hook installed"
@@ -194,6 +236,19 @@ check_status() {
         fi
     else
         echo -e "${YELLOW}○${NC} No pre-commit hook installed"
+    fi
+
+    # Check post-commit hook
+    if [ -f ".git/hooks/post-commit" ]; then
+        if grep -q "Wogi Flow" .git/hooks/post-commit 2>/dev/null; then
+            echo -e "${GREEN}✓${NC} Wogi Flow post-commit hook installed"
+            echo "    Auto-closes auto-created tasks on commit"
+        else
+            echo -e "${YELLOW}○${NC} Post-commit hook exists (not Wogi Flow)"
+        fi
+    else
+        echo -e "${YELLOW}○${NC} No post-commit hook installed"
+        echo "    Run 'flow setup-hooks install' to enable auto-task completion"
     fi
 }
 

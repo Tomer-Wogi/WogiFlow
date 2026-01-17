@@ -13,14 +13,12 @@
 const path = require('path');
 const fs = require('fs');
 
-// Import safeJsonParse for security (prototype pollution protection)
-const { safeJsonParse } = require('../../flow-utils');
+// Import from flow-utils for consistent paths and safe JSON parsing
+const { safeJsonParse, PATHS } = require('../../flow-utils');
 
-// State paths
-const WORKFLOW_DIR = path.join(process.cwd(), '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const PENDING_SETUP_PATH = path.join(STATE_DIR, 'pending-setup.json');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
+// State paths using PATHS for consistency across the codebase
+const PENDING_SETUP_PATH = path.join(PATHS.state, 'pending-setup.json');
+const CONFIG_PATH = PATHS.config;
 
 /**
  * Check if setup is pending

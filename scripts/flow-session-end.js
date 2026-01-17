@@ -31,6 +31,9 @@ const { resetSessionContext, getSessionContext, writeMemoryBlocks, readMemoryBlo
 const { saveSessionSummary, loadSessionState } = require('./flow-session-state');
 const { autoArchiveIfNeeded, getLogStats } = require('./flow-log-manager');
 
+// v2.5.0 stale task cleanup
+const { getReadyData, saveReadyData } = require('./flow-utils');
+
 // v1.8.0 automatic memory management
 let memoryDb = null;
 try {
@@ -592,6 +595,112 @@ async function offerDebtCleanup() {
 }
 
 /**
+ * v2.5.0: Clean up stale auto-created tasks
+ *
+ * Detects auto-created tasks that have no uncommitted changes
+ * and offers to close them.
+ */
+async function cleanupStaleTasks() {
+  try {
+    const readyData = getReadyData();
+    const inProgress = readyData.inProgress || [];
+
+    // Find auto-created tasks
+    const autoCreatedTasks = inProgress.filter(task =>
+      typeof task === 'object' && task.autoCreated === true
+    );
+
+    if (autoCreatedTasks.length === 0) return;
+
+    // Check git status for uncommitted changes
+    let uncommittedFiles = [];
+    try {
+      const status = execSync('git status --porcelain', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+      uncommittedFiles = status.trim().split('\n')
+        .filter(Boolean)
+        .map(line => line.substring(3).trim()); // Remove status prefix
+    } catch {
+      // Not a git repo or git error, skip
+      return;
+    }
+
+    // Find stale tasks (auto-created with no matching uncommitted files)
+    const staleTasks = autoCreatedTasks.filter(task => {
+      // Extract expected filename from title (e.g., "Fix flow-utils.js" -> "flow-utils.js")
+      const match = task.title?.match(/^(?:Fix|Create|Update|Edit)\s+(.+)$/i);
+      if (!match) return false;
+
+      const expectedFilename = match[1].trim();
+
+      // Check if any uncommitted file matches
+      const hasUncommittedChanges = uncommittedFiles.some(file =>
+        file.endsWith(expectedFilename) || path.basename(file) === expectedFilename
+      );
+
+      return !hasUncommittedChanges;
+    });
+
+    if (staleTasks.length === 0) return;
+
+    // Show stale tasks and offer to close them
+    console.log('');
+    console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
+    console.log(color('cyan', '║  Stale Auto-Created Tasks                                ║'));
+    console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
+    console.log('');
+
+    console.log('Found auto-created tasks with no uncommitted changes:');
+    for (const task of staleTasks) {
+      const age = task.startedAt
+        ? Math.round((Date.now() - new Date(task.startedAt).getTime()) / (1000 * 60 * 60))
+        : 0;
+      console.log(`  ${color('dim', `[${task.id}]`)} ${task.title} ${color('dim', `(${age}h old)`)}`);
+    }
+    console.log('');
+    console.log(color('dim', 'These tasks may have been committed without being marked done.'));
+    console.log('');
+
+    const answer = await prompt(`Close ${staleTasks.length} stale task(s)? (Y/n): `);
+
+    if (answer.toLowerCase() !== 'n') {
+      // Close stale tasks
+      for (const task of staleTasks) {
+        // Remove from inProgress
+        const index = readyData.inProgress.findIndex(t =>
+          typeof t === 'object' && t.id === task.id
+        );
+        if (index !== -1) {
+          readyData.inProgress.splice(index, 1);
+        }
+
+        // Add to recentlyCompleted
+        const completedTask = {
+          ...task,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          autoCompleted: true,
+          completedBy: 'session-end-cleanup'
+        };
+
+        readyData.recentlyCompleted = readyData.recentlyCompleted || [];
+        readyData.recentlyCompleted.unshift(completedTask);
+        readyData.recentlyCompleted = readyData.recentlyCompleted.slice(0, 10);
+      }
+
+      saveReadyData(readyData);
+      success(`Closed ${staleTasks.length} stale task(s)`);
+    } else {
+      console.log(color('dim', 'Skipped - tasks remain in progress'));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Stale task cleanup: ${err.message}`);
+  }
+}
+
+/**
  * Show status summary
  */
 function showSummary() {
@@ -622,6 +731,9 @@ async function main() {
 
   // Check requirements
   checkRequirements();
+
+  // v2.5.0: Clean up stale auto-created tasks first
+  await cleanupStaleTasks();
 
   // Handle uncommitted changes
   await handleUncommittedChanges();

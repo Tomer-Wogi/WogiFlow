@@ -175,6 +175,29 @@ After EVERY request that changes files:
 2. Search codebase for existing
 3. Priority: Use existing → Add variant → Extend → Create new (last resort)
 
+## Function & API Reuse
+
+**Before creating ANY new utility function or API call:**
+
+1. **Check `function-map.md`** for existing utilities
+   - Search by purpose (date formatting, validation, parsing)
+   - Check if extending an existing function makes sense
+
+2. **Check `api-map.md`** for existing API endpoints
+   - Search by entity type (users, products, orders)
+   - Check if existing endpoint can be parameterized
+
+3. **Evaluate**: Can you extend an existing item instead of creating new?
+   - Same intent? → Extend with variant/parameter
+   - Similar but different? → Create new, reference existing
+   - Completely new? → Create and register
+
+**Decision criteria**: Does extending require LESS effort AND make logical sense?
+
+**After creating new functions/APIs:**
+- Run `flow function-index scan` to update the function registry
+- Run `flow api-index scan` to update the API registry
+
 {{#if skills}}
 ## Installed Skills
 
@@ -193,6 +216,8 @@ Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 | Tasks | `.workflow/state/ready.json` |
 | Logs | `.workflow/state/request-log.md` |
 | Components | `.workflow/state/app-map.md` |
+| Functions | `.workflow/state/function-map.md` |
+| APIs | `.workflow/state/api-map.md` |
 | Rules | `.workflow/state/decisions.md` |
 | Progress | `.workflow/state/progress.md` |
 | Roadmap | `.workflow/roadmap.md` |

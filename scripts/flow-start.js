@@ -7,6 +7,8 @@
  * v2.0: Integrates with durable session for crash recovery and suspension support.
  */
 
+const fs = require('fs');
+const path = require('path');
 const {
   PATHS,
   fileExists,
@@ -37,6 +39,58 @@ const {
   isSuspended,
   STEP_STATUS
 } = require('./flow-durable-session');
+
+// v2.7 Registry relevance detection - import from semantic matching
+const { SEMANTIC_KEYWORDS } = require('./flow-semantic-match');
+
+// Flatten semantic keywords for simple task detection
+const FUNCTION_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.functions || {}).flat();
+const API_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.apis || {}).flat();
+
+/**
+ * Check if task description suggests working with utility functions
+ */
+function isRelevantToFunctions(taskDescription) {
+  const lower = taskDescription.toLowerCase();
+  return FUNCTION_KEYWORDS.some(kw => lower.includes(kw)) ||
+         /\b(add|create|new|write|implement)\b.*\b(function|method|helper)\b/i.test(taskDescription);
+}
+
+/**
+ * Check if task description suggests working with API calls
+ */
+function isRelevantToAPIs(taskDescription) {
+  const lower = taskDescription.toLowerCase();
+  return API_KEYWORDS.some(kw => lower.includes(kw)) ||
+         /\b(add|create|new|implement)\b.*\b(api|endpoint|call|request)\b/i.test(taskDescription) ||
+         /\b(fetch|load|save|get|post|put|delete)\b.*\b(data|user|item|record)\b/i.test(taskDescription);
+}
+
+/**
+ * Get summary of registry contents
+ */
+function getRegistrySummary(registryPath, type) {
+  try {
+    if (!fs.existsSync(registryPath)) return null;
+
+    const content = fs.readFileSync(registryPath, 'utf-8');
+    if (type === 'function') {
+      const registry = JSON.parse(content);
+      const count = registry.functions?.length || 0;
+      const categories = Object.keys(registry.categories || {});
+      return { count, categories };
+    } else if (type === 'api') {
+      const registry = JSON.parse(content);
+      const funcCount = registry.clientFunctions?.length || 0;
+      const endpointCount = registry.endpoints?.length || 0;
+      const services = Object.keys(registry.services || {});
+      return { funcCount, endpointCount, services };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 async function main() {
   const taskId = process.argv[2];
@@ -205,6 +259,61 @@ async function main() {
       // Auto-context is best-effort; don't block task start on failure
       if (process.env.DEBUG) console.error(`[DEBUG] Auto-context: ${err.message}`);
     }
+  }
+
+  // v2.7: Check and suggest function/API registries when relevant
+  const funcRegistryPath = path.join(PATHS.state, 'function-index.json');
+  const apiRegistryPath = path.join(PATHS.state, 'api-index.json');
+  const funcMapPath = path.join(PATHS.state, 'function-map.md');
+  const apiMapPath = path.join(PATHS.state, 'api-map.md');
+
+  const showFunctionRegistry = config.functionRegistry?.enabled !== false && isRelevantToFunctions(taskDescription);
+  const showApiRegistry = config.apiRegistry?.enabled !== false && isRelevantToAPIs(taskDescription);
+
+  if (showFunctionRegistry || showApiRegistry) {
+    console.log('');
+    console.log(color('cyan', '━'.repeat(50)));
+    console.log(color('cyan', '📚 Reuse Check'));
+    console.log(color('cyan', '━'.repeat(50)));
+
+    if (showFunctionRegistry) {
+      const funcSummary = getRegistrySummary(funcRegistryPath, 'function');
+      if (funcSummary && funcSummary.count > 0) {
+        console.log(color('yellow', '📦 Function Registry:'));
+        console.log(`   ${funcSummary.count} functions available`);
+        if (funcSummary.categories.length > 0) {
+          console.log(`   Categories: ${funcSummary.categories.join(', ')}`);
+        }
+        console.log(`   ${color('dim', `Check: .workflow/state/function-map.md`)}`);
+        console.log('');
+      } else {
+        console.log(color('yellow', '📦 Function Registry:'));
+        console.log('   No functions indexed yet.');
+        console.log(`   Run: ${color('cyan', 'flow function-index scan')} to populate`);
+        console.log('');
+      }
+    }
+
+    if (showApiRegistry) {
+      const apiSummary = getRegistrySummary(apiRegistryPath, 'api');
+      if (apiSummary && (apiSummary.funcCount > 0 || apiSummary.endpointCount > 0)) {
+        console.log(color('yellow', '🌐 API Registry:'));
+        console.log(`   ${apiSummary.funcCount} API functions, ${apiSummary.endpointCount} endpoints`);
+        if (apiSummary.services.length > 0) {
+          console.log(`   Services: ${apiSummary.services.join(', ')}`);
+        }
+        console.log(`   ${color('dim', `Check: .workflow/state/api-map.md`)}`);
+        console.log('');
+      } else {
+        console.log(color('yellow', '🌐 API Registry:'));
+        console.log('   No APIs indexed yet.');
+        console.log(`   Run: ${color('cyan', 'flow api-index scan')} to populate`);
+        console.log('');
+      }
+    }
+
+    console.log(color('dim', 'Before creating new functions/APIs, check if existing ones can be extended.'));
+    console.log('');
   }
 
   // v1.0.4: Suggest trace generation for complex tasks

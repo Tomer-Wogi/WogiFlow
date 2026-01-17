@@ -14,11 +14,25 @@ const { BaseAdapter } = require('./base-adapter');
 // Import from parent scripts directory
 const { PATHS } = require('../../flow-utils');
 
+// ============================================================
+// Hook Timeout Constants (in seconds)
+// ============================================================
+
+const HOOK_TIMEOUTS = {
+  SESSION_START: 10,      // Session initialization
+  SETUP: 30,              // Project setup/onboarding
+  PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
+  POST_TOOL_USE: 60,      // Validation (linting, type checking)
+  STOP: 5,                // Loop enforcement check
+  SESSION_END: 10         // Session cleanup/logging
+};
+
 /**
  * Claude Code Hook Events
  */
 const CLAUDE_CODE_EVENTS = [
   'SessionStart',
+  'Setup',           // Claude Code 2.1.10+ - triggered by --init, --init-only, --maintenance
   'PreToolUse',
   'PostToolUse',
   'Stop',
@@ -92,6 +106,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
     switch (event) {
       case 'SessionStart':
         return this.transformSessionStart(coreResult);
+      case 'Setup':
+        return this.transformSetup(coreResult);
       case 'PreToolUse':
         return this.transformPreToolUse(coreResult);
       case 'PostToolUse':
@@ -128,6 +144,42 @@ class ClaudeCodeAdapter extends BaseAdapter {
   }
 
   /**
+   * Transform Setup result (Claude Code 2.1.10+ --init/--maintenance)
+   */
+  transformSetup(coreResult) {
+    // If setup is needed, inject context for the AI to act on
+    if (coreResult.needsSetup && coreResult.message) {
+      return {
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: 'Setup',
+          additionalContext: coreResult.message
+        }
+      };
+    }
+
+    // Maintenance results
+    if (coreResult.results && coreResult.message) {
+      return {
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: 'Setup',
+          additionalContext: coreResult.message
+        }
+      };
+    }
+
+    // No action needed (already configured or setup disabled)
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message }),
+      hookSpecificOutput: {
+        hookEventName: 'Setup'
+      }
+    };
+  }
+
+  /**
    * Transform PreToolUse result (task gating, component check)
    */
   transformPreToolUse(coreResult) {
@@ -143,9 +195,9 @@ class ClaudeCodeAdapter extends BaseAdapter {
       };
     }
 
-    // Warning - allow but show message
+    // Warning - allow but show message and inject context (Claude Code 2.1.9+)
     if (coreResult.warning && coreResult.message) {
-      return {
+      const result = {
         continue: true,
         systemMessage: coreResult.message,
         hookSpecificOutput: {
@@ -153,6 +205,14 @@ class ClaudeCodeAdapter extends BaseAdapter {
           permissionDecision: 'allow'
         }
       };
+
+      // Inject component context via additionalContext (Claude Code 2.1.9+ feature)
+      // This gives the AI richer context about similar components for better decisions
+      if (coreResult.contextBlock) {
+        result.hookSpecificOutput.additionalContext = coreResult.contextBlock;
+      }
+
+      return result;
     }
 
     // Allowed
@@ -274,7 +334,18 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'session-start.js')}"`,
-          timeout: 10
+          timeout: HOOK_TIMEOUTS.SESSION_START
+        }]
+      }];
+    }
+
+    // Setup hook (Claude Code 2.1.10+ --init/--maintenance)
+    if (rules.setup?.enabled !== false) {
+      hooks.Setup = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'setup.js')}"`,
+          timeout: HOOK_TIMEOUTS.SETUP
         }]
       }];
     }
@@ -288,7 +359,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'pre-tool-use.js')}"`,
-          timeout: 5
+          timeout: HOOK_TIMEOUTS.PRE_TOOL_USE
         }]
       });
     }
@@ -304,7 +375,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'post-tool-use.js')}"`,
-          timeout: 60
+          timeout: HOOK_TIMEOUTS.POST_TOOL_USE
         }]
       }];
     }
@@ -315,7 +386,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'stop.js')}"`,
-          timeout: 5
+          timeout: HOOK_TIMEOUTS.STOP
         }]
       }];
     }
@@ -326,7 +397,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'session-end.js')}"`,
-          timeout: 10
+          timeout: HOOK_TIMEOUTS.SESSION_END
         }]
       }];
     }

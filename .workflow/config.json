@@ -237,6 +237,14 @@
     "runAfterTask": false,
     "runBeforeCommit": false
   },
+  "checkpoint": {
+    "enabled": true,
+    "onTaskComplete": true,
+    "maxCheckpoints": 20,
+    "autoCommit": false,
+    "commitPrefix": "[checkpoint]",
+    "includeStateFiles": true
+  },
   "regressionTesting": {
     "enabled": true,
     "sampleSize": 3,
@@ -521,6 +529,44 @@
       "__mocks__"
     ]
   },
+  "functionRegistry": {
+    "enabled": true,
+    "directories": [
+      "src/utils",
+      "src/lib",
+      "src/helpers"
+    ],
+    "scanOn": [
+      "sessionStart",
+      "afterTask"
+    ],
+    "autoUpdate": true
+  },
+  "apiRegistry": {
+    "enabled": true,
+    "directories": [
+      "src/api",
+      "src/services"
+    ],
+    "scanOn": [
+      "sessionStart",
+      "afterTask"
+    ],
+    "autoUpdate": true
+  },
+  "semanticMatching": {
+    "enabled": true,
+    "thresholds": {
+      "definiteMatch": 90,
+      "likelyMatch": 70,
+      "possibleMatch": 50
+    },
+    "weights": {
+      "stringSimilarity": 0.3,
+      "semanticSimilarity": 0.7
+    },
+    "useAIReview": true
+  },
   "figmaAnalyzer": {
     "enabled": true,
     "thresholds": {
@@ -571,7 +617,9 @@
       "provider": null,
       "providerEndpoint": null,
       "model": null,
-      "apiKey": null
+      "apiKey": null,
+      "contextWindow": null,
+      "useFullContext": true
     },
     "planner": {
       "adaptToExecutor": true,
@@ -582,11 +630,13 @@
     "model": null,
     "settings": {
       "temperature": 0.7,
-      "maxTokens": 4096,
+      "maxTokens": null,
       "maxRetries": 20,
       "timeout": 120000,
       "autoExecute": false,
       "createBranch": false,
+      "outputReserveRatio": 0.3,
+      "outputReserveMax": 4096,
       "tokenEstimation": {
         "enabled": true,
         "minTokens": 1000,
@@ -935,7 +985,8 @@
       "componentReuse": {
         "enabled": true,
         "threshold": 80,
-        "blockOnSimilar": false
+        "blockOnSimilar": false,
+        "injectContext": true
       },
       "sessionContext": {
         "enabled": true,
@@ -945,6 +996,11 @@
       },
       "autoLogging": {
         "enabled": true
+      },
+      "setup": {
+        "enabled": true,
+        "autoOnboard": false,
+        "maintenanceTasks": ["healthCheck", "cleanupLocks"]
       }
     },
     "claudeCode": {
@@ -1071,5 +1127,9 @@
         "flagStale": true
       }
     }
+  },
+  "planning": {
+    "plansDirectory": ".workflow/plans",
+    "exemptFromTaskGating": true
   }
 }

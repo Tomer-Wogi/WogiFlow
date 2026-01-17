@@ -374,6 +374,7 @@ async function testHook(hookName) {
 
   const testInputs = {
     'session-start': { hook_event_name: 'SessionStart', source: 'startup' },
+    'setup': { hook_event_name: 'Setup', source: 'init' },  // Claude Code 2.1.10+
     'pre-tool-use': {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',

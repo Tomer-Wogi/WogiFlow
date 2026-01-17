@@ -12,7 +12,7 @@
 const path = require('path');
 
 // Import from parent scripts directory
-const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS } = require('../../flow-utils');
+const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS, safeJsonParse } = require('../../flow-utils');
 const { trackTaskStart } = require('../../flow-session-state');
 const { setCurrentTask } = require('../../flow-memory-blocks');
 
@@ -54,14 +54,11 @@ function getActiveTask() {
       return typeof task === 'string' ? { id: task } : task;
     }
 
-    // Check durable session
-    const fs = require('fs');
+    // Check durable session (use safeJsonParse to prevent prototype pollution)
     const durableSessionPath = path.join(PATHS.state, 'durable-session.json');
-    if (fs.existsSync(durableSessionPath)) {
-      const session = JSON.parse(fs.readFileSync(durableSessionPath, 'utf-8'));
-      if (session.taskId && session.status === 'active') {
-        return { id: session.taskId, fromDurableSession: true };
-      }
+    const session = safeJsonParse(durableSessionPath, null);
+    if (session && session.taskId && session.status === 'active') {
+      return { id: session.taskId, fromDurableSession: true };
     }
 
     return null;
@@ -143,14 +140,27 @@ function checkTaskGate(options = {}) {
     };
   }
 
-  // Also exempt plan files
-  if (filePath && filePath.includes('.claude/plans/')) {
-    return {
-      allowed: true,
-      blocked: false,
-      message: null,
-      reason: 'plan_file_exempt'
-    };
+  // Also exempt plan files (configurable directory + hardcoded fallback for backward compat)
+  // Use path.resolve + startsWith for path traversal safety
+  if (filePath) {
+    const config = getConfig();
+    const plansDir = config.planning?.plansDirectory || '.workflow/plans';
+    const resolvedPath = path.resolve(filePath);
+    const resolvedPlansDir = path.resolve(plansDir);
+    const resolvedClaudePlansDir = path.resolve('.claude/plans');
+
+    // Safely check if path is within plans directories (prevents path traversal)
+    if (resolvedPath.startsWith(resolvedPlansDir + path.sep) ||
+        resolvedPath.startsWith(resolvedClaudePlansDir + path.sep) ||
+        resolvedPath === resolvedPlansDir ||
+        resolvedPath === resolvedClaudePlansDir) {
+      return {
+        allowed: true,
+        blocked: false,
+        message: null,
+        reason: 'plan_file_exempt'
+      };
+    }
   }
 
 

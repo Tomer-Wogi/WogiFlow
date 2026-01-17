@@ -92,6 +92,14 @@ show_help() {
     echo "  map-index scan       Rescan codebase"
     echo "  map-sync             Compare index with app-map"
     echo ""
+    echo "Functions & APIs:"
+    echo "  function-index scan  Scan for utility functions"
+    echo "  function-index show  Show function details"
+    echo "  function-index map   Regenerate function-map.md"
+    echo "  api-index scan       Scan for API calls"
+    echo "  api-index show       Show API function or endpoint"
+    echo "  api-index map        Regenerate api-map.md"
+    echo ""
     echo "Skills & Learning:"
     echo "  skill-learn          Extract learnings from recent changes"
     echo "  skill-create <name>  Create a new skill"
@@ -418,6 +426,12 @@ case "${1:-}" in
         ;;
     map-sync)
         "$SCRIPT_DIR/flow-map-sync" "${@:2}"
+        ;;
+    function-index)
+        node "$SCRIPT_DIR/flow-function-index.js" "${@:2}"
+        ;;
+    api-index)
+        node "$SCRIPT_DIR/flow-api-index.js" "${@:2}"
         ;;
     skill-learn)
         node "$SCRIPT_DIR/flow-skill-learn.js" "${@:2}"

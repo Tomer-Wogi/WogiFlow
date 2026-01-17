@@ -12,6 +12,7 @@ const loopCheck = require('./loop-check');
 const componentCheck = require('./component-check');
 const sessionContext = require('./session-context');
 const setupCheck = require('./setup-check');
+const setupHandler = require('./setup-handler');
 
 module.exports = {
   // Task Gating
@@ -36,5 +37,9 @@ module.exports = {
 
   // Setup Check
   ...setupCheck,
-  setupCheck
+  setupCheck,
+
+  // Setup Handler (Claude Code 2.1.10+)
+  ...setupHandler,
+  setupHandler
 };

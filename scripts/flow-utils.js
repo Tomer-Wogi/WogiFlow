@@ -58,6 +58,26 @@ const MAX_SESSION_HISTORY = 50;
 const MAX_WORKFLOW_ITERATIONS = 100;
 
 // ============================================================
+// CLI Session ID Detection (CLI-Agnostic)
+// ============================================================
+
+/**
+ * Get the current AI CLI session ID.
+ * Supports multiple CLIs by checking their respective environment variables.
+ * Returns null if no session ID is available.
+ *
+ * @returns {string|null} Session ID or null
+ */
+function getSessionId() {
+  return process.env.CLAUDE_SESSION_ID    // Claude Code
+      || process.env.GEMINI_SESSION_ID    // Gemini CLI (future)
+      || process.env.CODEX_SESSION_ID     // Codex CLI (future)
+      || process.env.OPENCODE_SESSION_ID  // OpenCode (future)
+      || process.env.AI_SESSION_ID        // Generic fallback
+      || null;
+}
+
+// ============================================================
 // Project Root Detection
 // ============================================================
 
@@ -1255,12 +1275,17 @@ function getNextRequestId() {
  * @param {string} entry.request - What was requested
  * @param {string} entry.result - What was done
  * @param {string[]} [entry.files] - Files changed
+ * @param {string} [entry.sessionId] - CLI session ID (auto-detected if not provided)
  */
 function addRequestLogEntry(entry) {
-  const { type, tags, request, result, files = [] } = entry;
+  const { type, tags, request, result, files = [], sessionId } = entry;
   const id = getNextRequestId();
   const now = new Date();
   const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+
+  // Get session ID from entry or auto-detect from environment
+  const session = sessionId || getSessionId();
+  const sessionLine = session ? `\n**Session**: ${session}` : '';
 
   const filesLine = files.length > 0 ? `\n**Files**: ${files.join(', ')}` : '';
   const tagsStr = tags.join(' ');
@@ -1268,7 +1293,7 @@ function addRequestLogEntry(entry) {
   const logEntry = `
 ### ${id} | ${timestamp}
 **Type**: ${type}
-**Tags**: ${tagsStr}
+**Tags**: ${tagsStr}${sessionLine}
 **Request**: "${request}"
 **Result**: ${result}${filesLine}
 `;
@@ -2275,6 +2300,9 @@ module.exports = {
   LOCK_MAX_RETRIES,
   MAX_SESSION_HISTORY,
   MAX_WORKFLOW_ITERATIONS,
+
+  // CLI Session ID (CLI-Agnostic)
+  getSessionId,
 
   // Paths
   PATHS,

@@ -9,6 +9,7 @@
 
 const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { setCliSessionId } = require('../../../flow-session-state');
 
 async function main() {
   try {
@@ -20,6 +21,19 @@ async function main() {
 
     const input = inputData ? JSON.parse(inputData) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
+
+    // Store CLI session ID for tracking (CLI-agnostic via session-state)
+    // Uses async with locking to prevent race conditions
+    if (parsedInput.sessionId) {
+      try {
+        await setCliSessionId(parsedInput.sessionId);
+      } catch (err) {
+        // Non-blocking - session ID storage is best-effort
+        if (process.env.DEBUG) {
+          console.error(`[session-start] Failed to store session ID: ${err.message}`);
+        }
+      }
+    }
 
     // Gather session context
     const coreResult = gatherSessionContext({

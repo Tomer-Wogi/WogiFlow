@@ -11,8 +11,19 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const http = require('http');
 const { HttpClient } = require('./flow-http-client');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { URL, URLSearchParams } = require('url');
+const { getProjectRoot, colors, safeJsonParse } = require('./flow-utils');
+
+// Import model registry for smart model selection
+let modelRegistry = null;
+try {
+  const { loadRegistry, listModels, getRouteRecommendation } = require('./flow-models');
+  modelRegistry = { loadRegistry, listModels, getRouteRecommendation };
+} catch (_err) {
+  // Registry not available, will use hardcoded models
+}
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -29,28 +40,52 @@ const symbols = {
   cloud: '☁️'
 };
 
-// Cloud provider configurations
+// Cloud provider configurations - expanded model list
+// Users can also enter custom model names
 const CLOUD_PROVIDERS = {
   openai: {
     name: 'OpenAI',
-    models: ['gpt-4o-mini', 'gpt-4o'],
+    models: [
+      'gpt-4o-mini',
+      'gpt-4o',
+      'gpt-4-turbo',
+      'gpt-4',
+      'gpt-3.5-turbo',
+      'o1-mini',
+      'o1-preview'
+    ],
     defaultModel: 'gpt-4o-mini',
     envKey: 'OPENAI_API_KEY',
-    testEndpoint: 'https://api.openai.com/v1/models'
+    testEndpoint: 'https://api.openai.com/v1/models',
+    allowCustomModel: true
   },
   anthropic: {
     name: 'Anthropic',
-    models: ['claude-3-5-haiku-latest', 'claude-3-haiku-20240307'],
+    models: [
+      'claude-3-5-haiku-latest',
+      'claude-3-5-sonnet-latest',
+      'claude-3-haiku-20240307',
+      'claude-3-sonnet-20240229',
+      'claude-3-opus-latest'
+    ],
     defaultModel: 'claude-3-5-haiku-latest',
     envKey: 'ANTHROPIC_API_KEY',
-    testEndpoint: 'https://api.anthropic.com/v1/messages'
+    testEndpoint: 'https://api.anthropic.com/v1/messages',
+    allowCustomModel: true
   },
   google: {
     name: 'Google',
-    models: ['gemini-2.0-flash-exp', 'gemini-1.5-flash'],
+    models: [
+      'gemini-2.0-flash-exp',
+      'gemini-1.5-flash',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro',
+      'gemini-pro'
+    ],
     defaultModel: 'gemini-2.0-flash-exp',
     envKey: 'GOOGLE_API_KEY',
-    testEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
+    testEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+    allowCustomModel: true
   }
 };
 
@@ -99,12 +134,12 @@ async function checkEndpoint(url, timeout = 3000) {
       res.on('end', () => {
         try {
           resolve({ success: true, data: JSON.parse(data) });
-        } catch (err) {
+        } catch (_err) {
           resolve({ success: false, error: 'Invalid response' });
         }
       });
     });
-    req.on('error', (e) => resolve({ success: false, error: err.message }));
+    req.on('error', (err) => resolve({ success: false, error: err.message }));
     req.on('timeout', () => {
       req.destroy();
       resolve({ success: false, error: 'Timeout' });
@@ -269,30 +304,171 @@ async function selectCloudProvider() {
 }
 
 /**
- * Select a cloud model
+ * Load models from registry for a specific provider
+ * Falls back to hardcoded list if registry not available
+ */
+function getModelsFromRegistry(providerId) {
+  if (!modelRegistry) return null;
+
+  try {
+    const registry = modelRegistry.loadRegistry();
+    if (!registry || !registry.models) return null;
+
+    // Filter models by provider and suitable for executor role (economy/standard tier)
+    const executorModels = [];
+    for (const [modelKey, model] of Object.entries(registry.models)) {
+      if (model.provider === providerId) {
+        // Prefer economy/standard tier for executor (cheaper)
+        const isExecutorTier = model.costTier === 'economy' || model.costTier === 'standard';
+        executorModels.push({
+          id: model.modelId,
+          key: modelKey,
+          name: model.displayName,
+          contextWindow: model.contextWindow,
+          costTier: model.costTier,
+          capabilities: model.capabilities || [],
+          bestFor: model.bestFor || [],
+          isExecutorTier,
+          pricing: model.pricing
+        });
+      }
+    }
+
+    // Sort: executor tier first, then by context window
+    executorModels.sort((a, b) => {
+      if (a.isExecutorTier && !b.isExecutorTier) return -1;
+      if (!a.isExecutorTier && b.isExecutorTier) return 1;
+      return b.contextWindow - a.contextWindow;
+    });
+
+    return executorModels.length > 0 ? executorModels : null;
+  } catch (_err) {
+    return null;
+  }
+}
+
+/**
+ * Format model capabilities for display
+ */
+function formatModelCapabilities(model) {
+  const parts = [];
+  if (model.contextWindow) {
+    parts.push(`${Math.round(model.contextWindow / 1000)}K ctx`);
+  }
+  if (model.costTier) {
+    const tierColors = { economy: colors.green, standard: colors.yellow, premium: colors.red };
+    parts.push(`${tierColors[model.costTier] || ''}${model.costTier}${colors.reset}`);
+  }
+  if (model.bestFor && model.bestFor.length > 0) {
+    parts.push(model.bestFor.slice(0, 2).join(', '));
+  }
+  return parts.length > 0 ? ` ${colors.dim}(${parts.join(' | ')})${colors.reset}` : '';
+}
+
+/**
+ * Select a cloud model (with registry support and custom input)
  */
 async function selectCloudModel(provider) {
-  console.log(`\n${colors.cyan}Available ${provider.name} models:${colors.reset}\n`);
+  // Try to load models from registry first
+  const registryModels = getModelsFromRegistry(provider.id);
+  const useRegistry = registryModels && registryModels.length > 0;
 
-  provider.models.forEach((m, i) => {
-    const isDefault = m.id === provider.defaultModel ? ` ${colors.dim}(recommended)${colors.reset}` : '';
-    console.log(`  ${colors.cyan}[${i + 1}]${colors.reset} ${m.name}${isDefault}`);
-  });
-
-  const choice = await prompt(`\nSelect model [1-${provider.models.length}] (default: 1): `);
-  const index = parseInt(choice) - 1;
-
-  if (index >= 0 && index < provider.models.length) {
-    return provider.models[index];
+  // Merge registry models with hardcoded fallback
+  let models;
+  if (useRegistry) {
+    console.log(`\n${colors.cyan}Available ${provider.name} models:${colors.reset} ${colors.dim}(from registry)${colors.reset}\n`);
+    models = registryModels;
+  } else {
+    console.log(`\n${colors.cyan}Available ${provider.name} models:${colors.reset}\n`);
+    models = provider.models.map(m => ({
+      id: typeof m === 'string' ? m : m.id,
+      name: typeof m === 'string' ? m : m.name
+    }));
   }
 
-  return provider.models[0];
+  models.forEach((m, i) => {
+    const isDefault = m.id === provider.defaultModel ? ` ${colors.green}★ recommended${colors.reset}` : '';
+    const capabilities = useRegistry ? formatModelCapabilities(m) : '';
+    console.log(`  ${colors.cyan}[${i + 1}]${colors.reset} ${m.name}${isDefault}${capabilities}`);
+  });
+
+  // Add custom option
+  const customOption = models.length + 1;
+  console.log(`  ${colors.cyan}[${customOption}]${colors.reset} ${colors.dim}Enter custom model name${colors.reset}`);
+
+  const choice = await prompt(`\nSelect model [1-${customOption}] (default: 1): `);
+  const index = parseInt(choice) - 1;
+
+  // Custom model input
+  if (index === models.length) {
+    const customModel = await prompt(`Enter model name: `);
+    if (customModel.trim()) {
+      return { id: customModel.trim(), name: customModel.trim() };
+    }
+  }
+
+  if (index >= 0 && index < models.length) {
+    const selected = models[index];
+    return {
+      id: selected.id,
+      name: selected.name,
+      contextWindow: selected.contextWindow,
+      costTier: selected.costTier
+    };
+  }
+
+  return { id: models[0].id, name: models[0].name };
+}
+
+/**
+ * Ask for context window override (for local LLMs)
+ */
+async function askContextWindowOverride(detectedSize = null) {
+  console.log(`\n${colors.cyan}Context Window Configuration:${colors.reset}\n`);
+
+  if (detectedSize) {
+    console.log(`  Detected context window: ${detectedSize.toLocaleString()} tokens`);
+  }
+
+  console.log(`  ${colors.dim}Local LLMs like LM Studio often support larger context than default.${colors.reset}`);
+  console.log(`  ${colors.dim}You can override this if you've configured a larger window.${colors.reset}\n`);
+
+  const options = [
+    { label: 'Use detected/default', value: null },
+    { label: '32K tokens', value: 32768 },
+    { label: '64K tokens', value: 65536 },
+    { label: '128K tokens', value: 131072 },
+    { label: '200K tokens', value: 200000 },
+    { label: '250K tokens', value: 250000 },
+    { label: 'Enter custom value', value: 'custom' }
+  ];
+
+  options.forEach((opt, i) => {
+    const isDetected = opt.value === null && detectedSize ? ` (${detectedSize.toLocaleString()})` : '';
+    console.log(`  ${colors.cyan}[${i + 1}]${colors.reset} ${opt.label}${isDetected}`);
+  });
+
+  const choice = await prompt(`\nSelect context window [1-${options.length}] (default: 1): `);
+  const index = parseInt(choice) - 1;
+
+  if (index >= 0 && index < options.length) {
+    if (options[index].value === 'custom') {
+      const custom = await prompt(`Enter context window size in tokens: `);
+      const parsed = parseInt(custom);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return options[index].value;
+  }
+
+  return null; // Use default
 }
 
 /**
  * Test cloud provider connection using shared HttpClient
  */
-async function testCloudConnection(provider, model) {
+async function testCloudConnection(provider, _model) {
   console.log(`\n${symbols.info} Testing connection to ${provider.name}...`);
 
   const spinner = new Spinner('Verifying API access...');
@@ -311,10 +487,11 @@ async function testCloudConnection(provider, model) {
       headers['anthropic-version'] = '2023-06-01';
     }
 
-    // Add API key to URL for Google
+    // Add API key to URL for Google (properly encoded)
     let path = url.pathname;
     if (provider.id === 'google' && provider.apiKey) {
-      path += `?key=${provider.apiKey}`;
+      const params = new URLSearchParams({ key: provider.apiKey });
+      path += `?${params.toString()}`;
     }
 
     const client = new HttpClient(url.origin, { headers, timeout: 10000 });
@@ -406,15 +583,19 @@ async function selectModel(provider) {
   return provider.models[0];
 }
 
-async function saveConfig(executorType, provider, model) {
+async function saveConfig(executorType, provider, model, options = {}) {
   let config = {};
 
   if (fs.existsSync(CONFIG_PATH)) {
-    config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    config = safeJsonParse(CONFIG_PATH, {});
+    if (Object.keys(config).length === 0 && fs.statSync(CONFIG_PATH).size > 2) {
+      console.log(`${colors.yellow}${symbols.warning} Could not parse existing config, starting fresh${colors.reset}`);
+    }
   }
 
   // Preserve existing hybrid settings if present
   const existingHybrid = config.hybrid || {};
+  const isLocal = executorType === 'local';
 
   config.hybrid = {
     enabled: true,
@@ -422,9 +603,14 @@ async function saveConfig(executorType, provider, model) {
     executor: {
       type: executorType,
       provider: provider.id,
-      providerEndpoint: executorType === 'local' ? provider.endpoint : null,
+      providerEndpoint: isLocal ? provider.endpoint : null,
       model: model.id,
-      apiKey: executorType === 'cloud' ? provider.apiKey : null
+      // SECURITY: Never store API keys in config - use env var reference
+      apiKeyEnv: !isLocal ? (CLOUD_PROVIDERS[provider.id]?.envKey || null) : null,
+      // New: context window override for local LLMs
+      contextWindow: options.contextWindow || null,
+      // New: use full context for local (they're free!)
+      useFullContext: isLocal
     },
     // Planner settings
     planner: {
@@ -433,15 +619,19 @@ async function saveConfig(executorType, provider, model) {
     },
     // Preserve legacy fields for backward compatibility
     provider: provider.id,
-    providerEndpoint: executorType === 'local' ? provider.endpoint : null,
+    providerEndpoint: isLocal ? provider.endpoint : null,
     model: model.id,
     settings: {
       temperature: existingHybrid.settings?.temperature ?? 0.7,
-      maxTokens: existingHybrid.settings?.maxTokens ?? (executorType === 'cloud' ? 4096 : 16384),
+      // maxTokens: null means calculate from contextWindow for local LLMs
+      maxTokens: isLocal ? null : (existingHybrid.settings?.maxTokens ?? 8192),
       maxRetries: existingHybrid.settings?.maxRetries ?? 20,
-      timeout: existingHybrid.settings?.timeout ?? (executorType === 'cloud' ? 60000 : 120000),
+      timeout: existingHybrid.settings?.timeout ?? (isLocal ? 120000 : 60000),
       autoExecute: existingHybrid.settings?.autoExecute ?? false,
       createBranch: existingHybrid.settings?.createBranch ?? false,
+      // New: configurable output reserve
+      outputReserveRatio: existingHybrid.settings?.outputReserveRatio ?? 0.3,
+      outputReserveMax: existingHybrid.settings?.outputReserveMax ?? 4096,
       tokenEstimation: existingHybrid.settings?.tokenEstimation ?? {
         enabled: true,
         minTokens: 1000,
@@ -453,8 +643,8 @@ async function saveConfig(executorType, provider, model) {
     templates: {
       directory: existingHybrid.templates?.directory || 'templates/hybrid'
     },
-    // Cloud provider reference
-    cloudProviders: existingHybrid.cloudProviders || CLOUD_PROVIDERS,
+    // Cloud provider reference - use expanded list
+    cloudProviders: CLOUD_PROVIDERS,
     // Project context
     projectContext: existingHybrid.projectContext || {}
   };
@@ -462,6 +652,18 @@ async function saveConfig(executorType, provider, model) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 
   console.log(`\n${colors.green}${symbols.success} Configuration saved!${colors.reset}`);
+
+  // Show summary
+  console.log(`\n${colors.cyan}Configuration Summary:${colors.reset}`);
+  console.log(`  Executor: ${executorType === 'local' ? symbols.local : symbols.cloud} ${executorType}`);
+  console.log(`  Provider: ${provider.name}`);
+  console.log(`  Model: ${model.name || model.id}`);
+  if (options.contextWindow) {
+    console.log(`  Context Window: ${options.contextWindow.toLocaleString()} tokens (override)`);
+  }
+  if (isLocal) {
+    console.log(`  Token Usage: ${colors.green}Full context${colors.reset} (local LLM = free)`);
+  }
 }
 
 async function testConnection(provider, model) {
@@ -548,8 +750,16 @@ ${colors.cyan}╔═════════════════════
     }
   }
 
+  // For local LLMs, ask about context window override
+  let contextWindowOverride = null;
+  if (executorType === 'local') {
+    contextWindowOverride = await askContextWindowOverride();
+  }
+
   // Save config
-  await saveConfig(executorType, provider, model);
+  await saveConfig(executorType, provider, model, {
+    contextWindow: contextWindowOverride
+  });
 
   // Summary
   const executorIcon = executorType === 'cloud' ? symbols.cloud : symbols.local;
@@ -585,7 +795,7 @@ ${executorType === 'cloud'
 `);
 }
 
-main().catch(e => {
+main().catch(err => {
   console.error(`${colors.red}Error: ${err.message}${colors.reset}`);
   process.exit(1);
 });

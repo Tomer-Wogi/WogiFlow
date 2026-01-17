@@ -193,6 +193,37 @@ function loadHybridConfig() {
 
   // Use getExecutorConfig to normalize legacy vs new config format
   const executorConfig = getExecutorConfig(hybrid);
+  const isLocal = executorConfig.type !== 'cloud';
+
+  // Context window: config override > executor config > auto-detect later
+  const contextWindow = hybrid.executor?.contextWindow ||
+                        hybrid.settings?.contextWindow ||
+                        executorConfig.contextWindow ||
+                        null;
+
+  // For local LLMs: use full context (they're free!)
+  // For cloud: respect configured limits or use model defaults
+  const useFullContext = hybrid.executor?.useFullContext ?? isLocal;
+  const outputReserveRatio = hybrid.settings?.outputReserveRatio ?? 0.3;
+  const outputReserveMax = hybrid.settings?.outputReserveMax ?? 4096;
+
+  // maxTokens calculation:
+  // - If explicitly set in config, use that
+  // - For local with useFullContext: will be calculated from contextWindow later
+  // - For cloud: use a reasonable default based on model
+  let maxTokens = hybrid.settings?.maxTokens;
+  if (maxTokens === null || maxTokens === undefined) {
+    if (isLocal && useFullContext) {
+      // Will be calculated dynamically from contextWindow - reserve
+      maxTokens = null; // Signal to calculate later
+    } else if (!isLocal) {
+      // Cloud models: use model's typical output limit
+      maxTokens = 8192; // Most cloud models support at least this
+    } else {
+      // Local but not useFullContext: conservative default
+      maxTokens = 16384;
+    }
+  }
 
   return {
     // Executor identification (new format)
@@ -208,13 +239,17 @@ function loadHybridConfig() {
 
     // Execution settings
     temperature: hybrid.settings?.temperature ?? 0.7,
-    // Cloud models may have different token limits
-    maxTokens: hybrid.settings?.maxTokens ?? (executorConfig.type === 'cloud' ? 4096 : 16384),
+    maxTokens,
     maxRetries: hybrid.settings?.maxRetries ?? 20,
-    timeout: hybrid.settings?.timeout ?? (executorConfig.type === 'cloud' ? 60000 : 120000),
+    timeout: hybrid.settings?.timeout ?? (isLocal ? 120000 : 60000),
     autoExecute: hybrid.settings?.autoExecute ?? false,
-    // Context window can be overridden in config, otherwise auto-detected from model
-    contextWindow: hybrid.settings?.contextWindow || null,
+
+    // Context window settings (new)
+    contextWindow,
+    useFullContext,
+    outputReserveRatio,
+    outputReserveMax,
+
     // Instruction richness settings
     instructionRichness: hybrid.settings?.instructionRichness || {},
 
@@ -1946,7 +1981,7 @@ class Validator {
       });
       return { success: true, message: 'TypeScript check passed' };
     } catch (err) {
-      const stderr = e.stderr || e.stdout || err.message;
+      const stderr = err.stderr || err.stdout || err.message;
 
       // Filter out help text (indicates no tsconfig found)
       if (stderr.includes('COMMON COMMANDS') || stderr.includes('tsc: The TypeScript Compiler')) {
@@ -2003,7 +2038,7 @@ class Validator {
       });
       return { success: true, message: 'ESLint check passed' };
     } catch (err) {
-      const stderr = e.stderr || e.stdout || err.message;
+      const stderr = err.stderr || err.stdout || err.message;
       return {
         success: false,
         message: stderr.split('\n').slice(0, 10).join('\n')
@@ -2757,9 +2792,12 @@ class Orchestrator {
 
       try {
         // Auto-compact prompt if needed
-        const contextWindow = this.llm.contextWindow || 4096;
-        // Reserve 30% of context for output, but cap at 2048 tokens
-        const reserveForOutput = Math.min(2048, Math.floor(contextWindow * 0.3));
+        // Use config override, or LLM's detected context window, or conservative fallback
+        const contextWindow = this.config.contextWindow || this.llm.contextWindow || 4096;
+        // Reserve configurable % of context for output, with configurable max
+        const reserveRatio = this.config.outputReserveRatio || 0.3;
+        const reserveMax = this.config.outputReserveMax || 4096;
+        const reserveForOutput = Math.min(reserveMax, Math.floor(contextWindow * reserveRatio));
         const { prompt: compactedPrompt, wasCompacted, usage } = autoCompactPrompt(
           prompt,
           contextWindow,

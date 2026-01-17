@@ -1,0 +1,37 @@
+# API Registry
+
+Quick reference of API calls and endpoints. **Check before creating anything new.**
+
+> Run `flow api-index scan` to populate this file.
+
+---
+
+## User Endpoints
+
+| Endpoint | Method | Purpose | File |
+|----------|--------|---------|------|
+| `/api/users` | GET | Fetch all users | `src/api/users.ts` |
+| `/api/users/:id` | GET | Fetch single user | `src/api/users.ts` |
+
+---
+
+## API Client Functions
+
+### Users
+
+| Function | Method | Endpoint | File |
+|----------|--------|----------|------|
+| `fetchUsers` | GET | /api/users | `src/api/users.ts` |
+| `createUser` | POST | /api/users | `src/api/users.ts` |
+
+---
+
+## Rules
+
+1. **Before creating** → Search this file for existing API calls
+2. **If similar exists** → Extend with parameter or options
+3. **After creating** → Run `flow api-index scan` to update
+
+---
+
+Last scanned: _Not yet scanned_

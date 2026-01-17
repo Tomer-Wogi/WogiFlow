@@ -3,8 +3,11 @@
 /**
  * Wogi Flow - Component Check (Core Module)
  *
- * CLI-agnostic component reuse detection.
- * Checks if a similar component exists before creating a new one.
+ * CLI-agnostic component reuse detection with hybrid matching.
+ * Uses combination of:
+ * - String similarity (Levenshtein)
+ * - Semantic similarity (keywords, categories, purpose)
+ * - AI decision prompts for ambiguous cases
  *
  * Returns a standardized result that adapters transform for specific CLIs.
  */
@@ -14,6 +17,13 @@ const fs = require('fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');
+const {
+  calculateStringSimilarity,
+  findSimilarItems,
+  generateAIDecisionPrompt,
+  generateContextBlock,
+  getMatchConfig
+} = require('../../flow-semantic-match');
 
 /**
  * Check if component reuse checking is enabled
@@ -36,12 +46,18 @@ function getComponentPatterns() {
 }
 
 /**
- * Get similarity threshold
+ * Get similarity threshold (legacy - now uses semantic matching thresholds)
  * @returns {number} Threshold (0-100)
  */
 function getSimilarityThreshold() {
   const config = getConfig();
-  return config.hooks?.rules?.componentReuse?.threshold || 80;
+  // Use new semantic matching threshold if available
+  const semanticConfig = config.semanticMatching?.thresholds;
+  if (semanticConfig) {
+    return semanticConfig.possibleMatch || 50;
+  }
+  // Fall back to legacy threshold
+  return config.hooks?.rules?.componentReuse?.threshold || 70;
 }
 
 /**
@@ -78,7 +94,7 @@ function loadComponentIndex() {
       return null;
     }
     return JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -117,58 +133,19 @@ function parseAppMap() {
     }
 
     return components;
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
 
 /**
  * Calculate similarity between two strings (Levenshtein-based)
+ * Alias for calculateStringSimilarity from flow-semantic-match for backward compatibility.
  * @param {string} a - First string
  * @param {string} b - Second string
  * @returns {number} Similarity score (0-100)
  */
-function calculateSimilarity(a, b) {
-  if (!a || !b) return 0;
-
-  const aLower = a.toLowerCase();
-  const bLower = b.toLowerCase();
-
-  if (aLower === bLower) return 100;
-
-  // Check if one contains the other
-  if (aLower.includes(bLower) || bLower.includes(aLower)) {
-    const longer = Math.max(a.length, b.length);
-    const shorter = Math.min(a.length, b.length);
-    return Math.round((shorter / longer) * 100);
-  }
-
-  // Levenshtein distance
-  const matrix = [];
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
-  for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
-  }
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (bLower[i - 1] === aLower[j - 1]) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
-        );
-      }
-    }
-  }
-
-  const distance = matrix[b.length][a.length];
-  const maxLen = Math.max(a.length, b.length);
-  return Math.round(((maxLen - distance) / maxLen) * 100);
-}
+const calculateSimilarity = calculateStringSimilarity;
 
 /**
  * Extract component name from file path
@@ -184,60 +161,70 @@ function extractComponentName(filePath) {
 }
 
 /**
- * Find similar components to a given name
+ * Find similar components using hybrid matching (string + semantic)
  * @param {string} componentName - Name to search for
- * @returns {Array} Similar components sorted by similarity
+ * @param {Object} options - Optional: { purpose }
+ * @returns {Array} Similar components sorted by combined score
  */
-function findSimilarComponents(componentName) {
-  const threshold = getSimilarityThreshold();
-  const similar = [];
+function findSimilarComponents(componentName, options = {}) {
+  const registry = [];
 
-  // Check component index
+  // Build registry from component index
   const index = loadComponentIndex();
   if (index && index.components) {
     for (const comp of index.components) {
       const name = comp.name || extractComponentName(comp.path || '');
-      const similarity = calculateSimilarity(componentName, name);
-      if (similarity >= threshold) {
-        similar.push({
-          name,
-          path: comp.path,
-          similarity,
-          source: 'component-index'
-        });
-      }
+      registry.push({
+        name,
+        path: comp.path,
+        description: comp.description || comp.purpose || '',
+        source: 'component-index'
+      });
     }
   }
 
-  // Check app-map
+  // Add from app-map
   const appMapComponents = parseAppMap();
   for (const comp of appMapComponents) {
-    const similarity = calculateSimilarity(componentName, comp.name);
-    if (similarity >= threshold) {
-      // Avoid duplicates
-      if (!similar.some(s => s.name === comp.name)) {
-        similar.push({
-          name: comp.name,
-          similarity,
-          source: 'app-map'
-        });
-      }
+    // Avoid duplicates
+    if (!registry.some(r => r.name === comp.name)) {
+      registry.push({
+        name: comp.name,
+        description: comp.description || '',
+        source: 'app-map'
+      });
     }
   }
 
-  // Sort by similarity descending
-  return similar.sort((a, b) => b.similarity - a.similarity);
+  // Use hybrid matching
+  const similar = findSimilarItems(componentName, registry, 'components', {
+    purpose: options.purpose
+  });
+
+  // Transform to legacy format for compatibility
+  return similar.map(item => ({
+    name: item.name,
+    path: item.path,
+    description: item.description,
+    similarity: item.scores.combined,  // Combined score
+    stringSimilarity: item.scores.string,
+    semanticSimilarity: item.scores.semantic,
+    matchLevel: item.matchLevel,
+    source: item.source,
+    scores: item.scores  // Full scores object
+  }));
 }
 
 /**
- * Check component reuse for a new file
+ * Check component reuse for a new file with hybrid matching
  * @param {Object} options
  * @param {string} options.filePath - Path of new file
  * @param {string} options.content - Content of new file (optional)
- * @returns {Object} Result: { allowed, warning, message, similar }
+ * @param {string} options.purpose - Purpose/description of new component (optional)
+ * @returns {Object} Result: { allowed, warning, message, similar, aiPrompt }
  */
 function checkComponentReuse(options = {}) {
-  const { filePath, content } = options;
+  const { filePath, purpose } = options;
 
   if (!isComponentCheckEnabled()) {
     return {
@@ -259,7 +246,7 @@ function checkComponentReuse(options = {}) {
   }
 
   const componentName = extractComponentName(filePath);
-  const similar = findSimilarComponents(componentName);
+  const similar = findSimilarComponents(componentName, { purpose });
 
   if (similar.length === 0) {
     return {
@@ -270,14 +257,33 @@ function checkComponentReuse(options = {}) {
     };
   }
 
-  // Found similar components
+  // Found similar components - determine action based on match level
   const config = getConfig();
+  const matchConfig = getMatchConfig();
   const shouldBlock = config.hooks?.rules?.componentReuse?.blockOnSimilar === true;
+  const shouldInjectContext = config.hooks?.rules?.componentReuse?.injectContext !== false;
   const bestMatch = similar[0];
 
-  const message = generateSimilarMessage(componentName, similar);
+  // Generate appropriate response based on match level
+  let message;
+  let aiPrompt = null;
+  let contextBlock = null;
 
-  if (shouldBlock) {
+  // Always generate message
+  message = generateSimilarMessage(componentName, similar);
+
+  // Always generate contextBlock for additionalContext injection (Claude Code 2.1.9+)
+  // This allows the AI to see component details in its context, not just warnings
+  if (shouldInjectContext) {
+    contextBlock = generateContextBlock(componentName, similar, 'components');
+  }
+
+  // Generate AI decision prompt for likely matches (when useAIReview enabled)
+  if (bestMatch.matchLevel === 'likely' && matchConfig.useAIReview) {
+    aiPrompt = generateAIDecisionPrompt(componentName, purpose, similar, 'components');
+  }
+
+  if (shouldBlock && bestMatch.matchLevel === 'definite') {
     return {
       allowed: false,
       warning: false,
@@ -285,6 +291,8 @@ function checkComponentReuse(options = {}) {
       message,
       similar,
       bestMatch,
+      aiPrompt,
+      contextBlock,
       reason: 'similar_component_exists'
     };
   }
@@ -295,19 +303,44 @@ function checkComponentReuse(options = {}) {
     message,
     similar,
     bestMatch,
-    reason: 'similar_component_warning'
+    aiPrompt,
+    contextBlock,
+    requiresAIReview: bestMatch.matchLevel === 'likely',
+    reason: bestMatch.matchLevel === 'definite'
+      ? 'similar_component_warning'
+      : 'possible_component_match'
   };
 }
 
 /**
- * Generate message about similar components
+ * Generate message about similar components with hybrid scores
  */
 function generateSimilarMessage(componentName, similar) {
   const bestMatch = similar[0];
-  let msg = `Similar component found: ${bestMatch.name} (${bestMatch.similarity}% match)`;
+
+  // Show combined score and breakdown for transparency
+  let matchInfo = `${bestMatch.similarity}% combined`;
+  if (bestMatch.stringSimilarity !== undefined && bestMatch.semanticSimilarity !== undefined) {
+    matchInfo += ` (name: ${bestMatch.stringSimilarity}%, semantic: ${bestMatch.semanticSimilarity}%)`;
+  }
+
+  let msg = `Similar component found: ${bestMatch.name} - ${matchInfo}`;
 
   if (bestMatch.path) {
-    msg += ` at ${bestMatch.path}`;
+    msg += `\n  Location: ${bestMatch.path}`;
+  }
+  if (bestMatch.description) {
+    msg += `\n  Purpose: ${bestMatch.description}`;
+  }
+
+  // Show match level (text-only for CLI compatibility)
+  if (bestMatch.matchLevel) {
+    const levelLabels = {
+      definite: '[DEFINITE] Strongly consider reusing this component',
+      likely: '[LIKELY] Review this component before creating a new one',
+      possible: '[POSSIBLE] Shown for awareness - may not be relevant'
+    };
+    msg += `\n  ${levelLabels[bestMatch.matchLevel] || ''}`;
   }
 
   if (similar.length > 1) {
@@ -318,10 +351,10 @@ function generateSimilarMessage(componentName, similar) {
     }
   }
 
-  msg += `\n\nConsider:`;
-  msg += `\n1. Using the existing component`;
-  msg += `\n2. Adding a variant to the existing component`;
-  msg += `\n3. Extending the existing component`;
+  msg += `\n\nRecommended actions:`;
+  msg += `\n1. USE existing - if it meets your needs`;
+  msg += `\n2. EXTEND - add a variant/prop to existing`;
+  msg += `\n3. CREATE new - if purpose is genuinely different`;
 
   return msg;
 }

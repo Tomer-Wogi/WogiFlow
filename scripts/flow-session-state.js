@@ -75,6 +75,7 @@ function getSessionStateConfig() {
 function getDefaultState() {
   return {
     lastActive: null,
+    cliSessionId: null,    // CLI-provided session ID (e.g., CLAUDE_SESSION_ID)
     currentTask: null,
     recentFiles: [],
     recentDecisions: [],
@@ -203,6 +204,34 @@ function getTimeSinceLastActive() {
     return `${hours}h ${minutes}m ago`;
   }
   return `${minutes}m ago`;
+}
+
+// ============================================================
+// CLI Session ID
+// ============================================================
+
+/**
+ * Set the CLI session ID (e.g., from CLAUDE_SESSION_ID)
+ * This is called during session start to associate Wogi Flow state with the CLI session.
+ *
+ * Uses async version with locking to prevent race conditions when multiple
+ * hooks fire simultaneously.
+ *
+ * @param {string} sessionId - The CLI-provided session ID
+ * @returns {Promise<Object>} Updated session state
+ */
+async function setCliSessionId(sessionId) {
+  if (!sessionId) return loadSessionState();
+  return saveSessionStateAsync({ cliSessionId: sessionId });
+}
+
+/**
+ * Get the stored CLI session ID
+ * @returns {string|null} The CLI session ID or null
+ */
+function getCliSessionId() {
+  const state = loadSessionState();
+  return state.cliSessionId || null;
 }
 
 // ============================================================
@@ -637,6 +666,10 @@ module.exports = {
   // Session detection
   isResumingSession,
   getTimeSinceLastActive,
+
+  // CLI Session ID
+  setCliSessionId,
+  getCliSessionId,
 
   // Task tracking
   trackTaskStart,

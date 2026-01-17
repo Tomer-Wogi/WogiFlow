@@ -1,0 +1,33 @@
+# Function Registry
+
+Quick reference of utility functions. **Check before creating anything new.**
+
+> Run `flow function-index scan` to populate this file.
+
+---
+
+## Utilities
+
+| Function | Purpose | File | Parameters |
+|----------|---------|------|------------|
+| _Example_ | Format dates for display | `src/utils/date.ts` | date: Date, format?: string |
+
+---
+
+## Helpers
+
+| Function | Purpose | File | Parameters |
+|----------|---------|------|------------|
+| _Example_ | Validate email format | `src/helpers/validation.ts` | email: string |
+
+---
+
+## Rules
+
+1. **Before creating** → Search this file
+2. **If similar exists** → Extend with parameter, don't create new
+3. **After creating** → Run `flow function-index scan` to update
+
+---
+
+Last scanned: _Not yet scanned_

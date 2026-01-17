@@ -714,6 +714,35 @@ Keep state in sync when multiple agents work on different branches.
 
 <!-- Nice-to-have, not committed. No dependencies tracked yet. -->
 
+### Plan Management System
+
+**Priority**: Medium
+**Status**: Needs Discussion
+
+A formal system for creating, tracking, and cleaning up implementation plans.
+
+**Current State**:
+- `.claude/plans/` exists but is informal (just exempted from task gating)
+- No creation workflow, no cleanup after implementation
+- Claude Code 2.1.9 added `plansDirectory` setting (their feature)
+
+**Potential Features**:
+- `flow plan create "title"` - Create plan from template
+- `flow plan list` - Show active plans
+- `flow plan archive <id>` - Archive completed plan
+- `flow plan status` - Show plan → implementation tracking
+- Auto-archive when linked tasks complete
+
+**Open Questions (Needs User Input)**:
+- Should plans be Wogi Flow's responsibility or delegate to CLI?
+- What's the plan lifecycle? Draft → Approved → Implementing → Done → Archived?
+- Should plans link to tasks/stories in ready.json?
+- Cleanup: auto-archive vs manual vs never delete?
+
+**Why Deferred**: Needs discussion with user before design decisions.
+
+---
+
 ### Structured JSON Contract
 
 **Why deferred**: Local LLMs can't reliably produce JSON. Current flow-response-parser.js handles messy output.
