@@ -1,25 +1,32 @@
-Comprehensive code review with verification gates and 3 parallel AI agents.
+Comprehensive code review with verification gates and AI analysis. Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents) based on file count and security patterns.
 
 **Triggers**: `/wogi-review`, `/wogi-session-review`, "please review", "review what we did", "code review"
 
 ## Usage
 
 ```bash
-/wogi-review                  # Full review (verify + AI analysis)
+/wogi-review                  # Full review (auto-detects if multipass needed)
 /wogi-review --commits 3      # Include last 3 commits
 /wogi-review --staged         # Only staged changes
 /wogi-review --skip-verify    # Skip verification gates (AI only)
 /wogi-review --verify-only    # Only run verification gates
-/wogi-review --multipass      # Use sequential multi-pass review mode
+/wogi-review --multipass      # Force multi-pass review mode
+/wogi-review --no-multipass   # Disable auto multi-pass detection
 ```
 
 ## Review Modes
 
-### Parallel Mode (Default)
-Runs 3 AI agents simultaneously for faster results. Best for quick reviews.
+### Parallel Mode
+Runs 3 AI agents simultaneously for faster results. Used for simple reviews.
 
-### Multi-Pass Mode (--multipass)
-Runs 4 sequential passes with context isolation. Best for thorough reviews:
+### Multi-Pass Mode (Auto-Enabled)
+Runs 4 sequential passes with context isolation. **Auto-enabled when:**
+- 5+ files changed
+- Security-sensitive files detected (auth, credential, .env)
+- Security patterns in content (password, token, secret, etc.)
+- API/service files detected
+
+Best for thorough reviews:
 
 ```
 Pass 1: Structure (Haiku)      → File organization, naming, anti-patterns
@@ -46,9 +53,15 @@ Multi-pass advantages:
 │  2. VERIFY: Run verification gates                           │
 │     → Spec verification (all deliverables exist?)            │
 │     → Lint, typecheck, test checks                           │
-│  3. REVIEW: Launch 3 parallel AI agents                      │
-│     → Deep analysis for subtle issues                        │
-│  4. Consolidate results into single report                   │
+│  3. CHECK: Should multi-pass be enabled?                     │
+│     → 5+ files? Security files? API files? → YES = multi-pass│
+│     → Otherwise → NO = parallel mode                         │
+│  4. REVIEW:                                                  │
+│     IF multi-pass: Run 4 sequential passes                   │
+│        Pass 1: Structure (Haiku) → Pass 2: Logic (Sonnet)    │
+│        Pass 3: Security (Sonnet) → Pass 4: Integration       │
+│     ELSE: Launch 3 parallel AI agents                        │
+│  5. Consolidate results into single report                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -195,14 +208,27 @@ When `/wogi-review` is invoked:
    - Test run (if configured)
    - Report any failures immediately (spec failures are blockers)
 
-3. **Launch 3 agents in parallel** (single message with 3 Task tool calls):
+3. **Check if multi-pass should be auto-enabled** (unless --no-multipass):
+
+   Auto-enable multi-pass if ANY of these conditions are met:
+   - `--multipass` flag is provided
+   - 5+ files changed
+   - Any security-sensitive files (auth, credential, .env, security)
+   - Security patterns detected in content (password, token, secret, api_key)
+   - API/service files detected (*.api.ts, *.service.ts, /api/, /routes/)
+
+   **If multi-pass is triggered**: Skip to "Multi-Pass Mode Execution" section below.
+
+   **If parallel mode**: Continue with step 4.
+
+4. **Launch 3 agents in parallel** (single message with 3 Task tool calls):
    - Agent 1: Code & Logic (subagent_type=Explore)
    - Agent 2: Security (subagent_type=Explore)
    - Agent 3: Architecture (subagent_type=Explore)
 
-4. **Wait for all agents to complete**
+5. **Wait for all agents to complete**
 
-5. **Consolidate and display results**:
+6. **Consolidate and display results**:
 
 ```
 ╔══════════════════════════════════════════════════════════╗
@@ -257,7 +283,9 @@ Top Recommendations:
 
 ## Multi-Pass Mode Execution
 
-When `--multipass` is specified, use the sequential pass system instead of parallel agents:
+When multi-pass is triggered (auto-detected or via `--multipass`), execute **4 sequential passes** using Task agents. Each pass has fresh context and builds on previous findings.
+
+**IMPORTANT**: Run passes SEQUENTIALLY, not in parallel. Each pass informs the next.
 
 ### Multi-Pass Execution Steps
 
@@ -265,42 +293,95 @@ When `--multipass` is specified, use the sequential pass system instead of paral
 
 2. **Run verification gates** (same as parallel mode)
 
-3. **Execute passes sequentially** using the review pass modules:
+3. **Execute Pass 1: Structure** using Task agent (model=haiku for speed):
 
-   ```javascript
-   // Load pass modules
-   const { runMultiPassReview, PASS_DEFINITIONS } = require('./scripts/flow-review-passes');
+   Launch a Task agent with subagent_type=Explore, model=haiku:
+   ```
+   Analyze file structure and naming conventions for:
+   [FILE_LIST]
 
-   // Or run via CLI
-   node scripts/flow-review-passes --files file1.js,file2.js
+   Check for:
+   1. File naming conventions (kebab-case for files)
+   2. Folder organization (components in components/, etc.)
+   3. Anti-patterns from decisions.md
+   4. Unused imports or dead code at top of files
+
+   Return: List of files needing deeper review, structural issues found.
    ```
 
-4. **Pass 1: Structure** (Haiku model - fast/cheap)
-   - File organization check
-   - Naming convention validation
-   - Anti-pattern detection from decisions.md
-   - Output: `filesToExamine[]`, `structuralIssues[]`
+4. **Execute Pass 2: Logic** using Task agent (model=sonnet):
 
-5. **Pass 2: Logic** (Sonnet model)
-   - Only examines files flagged by Pass 1
-   - Business logic correctness
-   - Error handling patterns
-   - Async/await issues
-   - Output: `logicIssues[]`, `testGaps[]`
+   Launch a Task agent with subagent_type=Explore focusing on files flagged by Pass 1:
+   ```
+   Deep logic review of:
+   [FILES_FROM_PASS_1 or ALL_FILES if none flagged]
 
-6. **Pass 3: Security** (Sonnet, CONDITIONAL)
-   - Only runs if: security patterns detected OR high-risk file types
-   - OWASP Top 10 checks
-   - Credential exposure scan
-   - Injection risk analysis
-   - Output: `vulnerabilities[]`
+   Check for:
+   1. Business logic correctness
+   2. Edge cases and null checks
+   3. Error handling patterns
+   4. Async/await issues (missing await, unhandled promises)
+   5. Race conditions
 
-7. **Pass 4: Integration** (Sonnet, CONDITIONAL)
-   - Only runs if: 5+ files OR API changes detected
-   - Breaking change analysis
-   - Contract drift detection
-   - Circular dependency check
-   - Output: `breakingChanges[]`, `conflicts[]`
+   Return: Logic issues with file:line, severity, and fix recommendation.
+   ```
+
+5. **Execute Pass 3: Security** (CONDITIONAL - only if security triggers detected):
+
+   Skip if: No security-sensitive files AND no security patterns in content.
+
+   Launch a Task agent with subagent_type=Explore:
+   ```
+   Security review of:
+   [FILE_LIST]
+
+   Check for OWASP Top 10:
+   1. Injection (SQL, XSS, command injection)
+   2. Broken authentication
+   3. Sensitive data exposure (hardcoded secrets, tokens)
+   4. Security misconfiguration
+   5. Insufficient input validation
+
+   Return: Vulnerabilities with severity, file:line, and remediation steps.
+   ```
+
+6. **Execute Pass 4: Integration** (CONDITIONAL - only if 5+ files OR API changes):
+
+   Skip if: < 5 files AND no API/contract changes detected.
+
+   Launch a Task agent with subagent_type=Explore:
+   ```
+   Integration review of:
+   [FILE_LIST]
+
+   Check for:
+   1. Breaking API changes (function signatures, exports)
+   2. Import/export mismatches
+   3. Circular dependencies
+   4. Type contract changes
+   5. Cross-module state issues
+
+   Return: Breaking changes, conflicts, and integration issues.
+   ```
+
+7. **Consolidate all pass results** into the multi-pass output format below.
+
+### Legacy: CLI Module (Optional)
+
+The pass modules in `scripts/flow-review-passes/` can also be used programmatically:
+
+```javascript
+const { runMultiPassReview } = require('./scripts/flow-review-passes');
+
+const results = await runMultiPassReview({
+  files: [{ path: 'src/api.ts', content: '...' }],
+  config: {
+    passes: ['structure', 'logic', 'security', 'integration'],
+    earlyExitOnCritical: true,
+    passForward: true
+  }
+});
+```
 
 ### Multi-Pass Output Format
 

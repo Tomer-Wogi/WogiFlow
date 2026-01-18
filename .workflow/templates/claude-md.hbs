@@ -37,16 +37,25 @@ Check `.workflow/state/ready.json` for existing tasks.
 
 ### Step 3: Assess task size
 
-| Size | Criteria | Action |
-|------|----------|--------|
-| **Small** | < {{config.enforcement.taskSizeThresholds.small.maxFiles}} files, < {{config.enforcement.taskSizeThresholds.small.maxHours}} hour, obvious scope | Create task inline, proceed with `/wogi-start` |
-| **Medium** | {{config.enforcement.taskSizeThresholds.small.maxFiles}}-{{config.enforcement.taskSizeThresholds.medium.maxFiles}} files, {{config.enforcement.taskSizeThresholds.small.maxHours}}-{{config.enforcement.taskSizeThresholds.medium.maxHours}} hours, some complexity | **STOP** - Create story first |
-| **Large** | > {{config.enforcement.taskSizeThresholds.medium.maxFiles}} files, > {{config.enforcement.taskSizeThresholds.medium.maxHours}} hours, new feature | **STOP** - Create story first |
+| Level | Type | Files | Criteria | Action |
+|-------|------|-------|----------|--------|
+| L3 | **Subtask** | 1 | Atomic operation, trivial | Execute inline |
+| L2 | **Task** | 1-5 | Single concern, 1-3 AC | Create task, proceed with `/wogi-start` |
+| L1 | **Story** | 5-15 | Multi-component, 3-10 AC | **STOP** - Create story first |
+| L0 | **Epic** | 15+ | New subsystem, 3+ stories | **STOP** - Create epic, decompose to stories |
 
-### For Medium/Large Tasks:
+**Classification Keywords:**
+- Epic indicators: system, architecture, migration, redesign, platform
+- Story indicators: feature, flow, integration, module, workflow
+- Task indicators: add, fix, update, change, remove
 
+Note: WogiFlow can auto-classify requests. If unsure, default to creating a story for medium+ requests.
+
+### For Story/Epic Requests:
+
+**For Stories (L1):**
 ```
-This looks like a medium/large task.
+This looks like a story-level feature (5-15 files).
 
 Before I start implementing, I need to create a story with acceptance criteria.
 
@@ -59,6 +68,22 @@ Then:
 1. Run `/wogi-story "[title]"` to create acceptance criteria
 2. **WAIT for user approval** on the story
 3. Only then proceed with `/wogi-start`
+
+**For Epics (L0):**
+```
+This is a large feature that qualifies as an Epic (15+ files, multiple stories).
+
+I'll need to decompose this into stories first.
+
+**Proposed epic:** "[title based on request]"
+
+Should I create this epic and decompose it into stories for your approval?
+```
+
+Then:
+1. Run `/wogi-epic "[title]"` to create the epic with story breakdown
+2. **WAIT for user approval** on the epic structure
+3. Start with the first story using `/wogi-start`
 
 **This is NON-NEGOTIABLE when strict mode is enabled.**
 

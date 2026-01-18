@@ -18,9 +18,35 @@ const {
   error,
   getConfig
 } = require('./flow-utils');
-const { getAutoContext, formatAutoContext, searchTraces, extractKeywords } = require('./flow-auto-context');
-const { shouldUseMultiApproach, analyzeForMultiApproach, formatAnalysis } = require('./flow-multi-approach');
-const { assessTaskComplexity } = require('./flow-complexity');
+// Auto-context module (optional - graceful degradation)
+let autoContext = null;
+try {
+  autoContext = require('./flow-auto-context');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-auto-context not available: ${err.message}`);
+}
+const getAutoContext = autoContext?.getAutoContext || (() => Promise.resolve({ files: [] }));
+const formatAutoContext = autoContext?.formatAutoContext || (() => '');
+const searchTraces = autoContext?.searchTraces || (() => []);
+const extractKeywords = autoContext?.extractKeywords || (() => []);
+
+// Multi-approach module (optional - graceful degradation)
+let multiApproach = null;
+try {
+  multiApproach = require('./flow-multi-approach');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-multi-approach not available: ${err.message}`);
+}
+const shouldUseMultiApproach = multiApproach?.shouldUseMultiApproach || (() => ({ shouldUse: false }));
+
+// Complexity assessment module (optional - graceful degradation)
+let complexityModule = null;
+try {
+  complexityModule = require('./flow-complexity');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-complexity not available: ${err.message}`);
+}
+const assessTaskComplexity = complexityModule?.assessTaskComplexity || (() => ({ level: 'unknown' }));
 
 // v1.7.0 context memory management
 const { warnIfContextHigh, checkContextHealth } = require('./flow-context-monitor');
@@ -39,6 +65,25 @@ const {
   isSuspended,
   STEP_STATUS
 } = require('./flow-durable-session');
+
+// v3.0 phased task execution (recursive enhancements)
+const {
+  initializePhasedTask,
+  getCurrentPhase,
+  getPhasedTaskStatus,
+  formatPhasedStatus,
+  isPhasedModeEnabled,
+  generatePhaseContext
+} = require('./flow-phased-task');
+
+// v3.1 recursive context compaction (hierarchical context loading)
+let contextCompact;
+try {
+  contextCompact = require('./flow-context-compact');
+} catch (err) {
+  // Module optional - graceful degradation
+  contextCompact = null;
+}
 
 // v2.7 Registry relevance detection - import from semantic matching
 const { SEMANTIC_KEYWORDS } = require('./flow-semantic-match');
@@ -96,9 +141,10 @@ async function main() {
   const taskId = process.argv[2];
   const forceResume = process.argv.includes('--force-resume');
   const skipSuspensionCheck = process.argv.includes('--skip-suspension');
+  const usePhasedMode = process.argv.includes('--phased');
 
   if (!taskId) {
-    console.log('Usage: flow start <task-id> [--force-resume] [--skip-suspension]');
+    console.log('Usage: flow start <task-id> [--force-resume] [--skip-suspension] [--phased]');
     process.exit(1);
   }
 
@@ -245,6 +291,66 @@ async function main() {
     }
   }
 
+  // v3.0: Initialize phased execution if requested or auto-enabled for complex tasks
+  const shouldUsePhased = usePhasedMode || (config.phases?.autoEnable && isPhasedModeEnabled());
+
+  if (shouldUsePhased) {
+    try {
+      // Check if task already has phased state
+      const existingPhasedState = getPhasedTaskStatus(taskId);
+
+      if (existingPhasedState && existingPhasedState.status === 'active') {
+        // Resume existing phased execution
+        const currentPhase = getCurrentPhase(taskId);
+        console.log('');
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log(color('cyan', '📐 Phased Execution (Resuming)'));
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log(formatPhasedStatus(existingPhasedState));
+
+        if (currentPhase) {
+          console.log('');
+          console.log(color('yellow', `Current Focus: ${currentPhase.name}`));
+          console.log(color('dim', currentPhase.description));
+
+          // Generate phase context to display
+          const phaseContext = generatePhaseContext(currentPhase, result.task || {},
+            existingPhasedState.phases.filter(p => p.status === 'completed'));
+          console.log('');
+          console.log(phaseContext);
+        }
+      } else {
+        // Initialize new phased execution
+        const phasedTask = initializePhasedTask(taskId, {
+          skipPhases: config.phases?.skipPhases || []
+        });
+
+        console.log('');
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log(color('cyan', '📐 Phased Execution (Initialized)'));
+        console.log(color('cyan', '━'.repeat(50)));
+        console.log(formatPhasedStatus(phasedTask));
+
+        const firstPhase = phasedTask.phases[0];
+        if (firstPhase) {
+          console.log('');
+          console.log(color('yellow', `Starting Phase: ${firstPhase.name}`));
+          console.log(color('dim', firstPhase.description));
+
+          const phaseContext = generatePhaseContext(firstPhase, result.task || {}, []);
+          console.log('');
+          console.log(phaseContext);
+        }
+      }
+
+      console.log('');
+      console.log(color('dim', 'Phase commands: flow phase complete <taskId> | flow phase skip <taskId> | flow phase status <taskId>'));
+      console.log('');
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Phased task init: ${err.message}`);
+    }
+  }
+
   // Auto-context: show relevant files for this task
   const taskDescription = result.task?.title || result.task?.description || taskId;
 
@@ -258,6 +364,38 @@ async function main() {
     } catch (err) {
       // Auto-context is best-effort; don't block task start on failure
       if (process.env.DEBUG) console.error(`[DEBUG] Auto-context: ${err.message}`);
+    }
+  }
+
+  // v3.1: Hierarchical context from summary tree (recursive enhancements)
+  if (contextCompact && config.contextCompact?.enabled !== false) {
+    try {
+      const treeStats = contextCompact.getStats();
+      if (treeStats.exists) {
+        // Get relevant context for this task
+        const relevantContext = contextCompact.getContext(taskDescription);
+
+        if (relevantContext.sections && relevantContext.sections.length > 0) {
+          console.log('');
+          console.log(color('cyan', '━'.repeat(50)));
+          console.log(color('cyan', '📜 Hierarchical Context'));
+          console.log(color('cyan', '━'.repeat(50)));
+          console.log(`Summary tree: ${treeStats.nodes} nodes, ~${treeStats.tokens} tokens`);
+          console.log(`Relevant sections: ${relevantContext.sections.length}`);
+
+          // Show top relevant sections
+          for (const section of relevantContext.sections.slice(0, 3)) {
+            console.log(`  • ${section.title || section.id}: ${section.summary?.substring(0, 60) || '(no summary)'}...`);
+          }
+
+          if (relevantContext.sections.length > 3) {
+            console.log(`  ... and ${relevantContext.sections.length - 3} more`);
+          }
+          console.log('');
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Context compact: ${err.message}`);
     }
   }
 

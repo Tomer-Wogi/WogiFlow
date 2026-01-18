@@ -51,6 +51,22 @@ const { updateEpicProgress, listEpics } = require('./flow-epics');
 // v3.1 spec verification gate
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
 
+// v3.1 recursive error recovery (with hypothesis generation)
+let errorRecovery;
+try {
+  errorRecovery = require('./flow-error-recovery');
+} catch (err) {
+  // Module optional - graceful degradation
+  errorRecovery = null;
+}
+
+let hypothesisGenerator;
+try {
+  hypothesisGenerator = require('./flow-hypothesis-generator');
+} catch (err) {
+  hypothesisGenerator = null;
+}
+
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
 
@@ -78,7 +94,9 @@ function getModifiedFiles() {
     // Combine and dedupe
     const all = [...new Set([...staged, ...unstaged, ...untracked])];
     return all.filter(f => f && f.length > 0);
-  } catch (_err) {
+  } catch (err) {
+    // Log in DEBUG mode instead of silently swallowing
+    if (process.env.DEBUG) console.error(`[DEBUG] getModifiedFiles: ${err.message}`);
     return [];
   }
 }
@@ -527,6 +545,50 @@ async function main() {
       console.log(color('dim', `Failure details saved to: ${LAST_FAILURE_PATH}`));
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Failed to save failure artifact: ${err.message}`);
+    }
+
+    // v3.1: Error recovery analysis with hypotheses
+    if (errorRecovery && doneConfig.errorRecovery?.enabled !== false) {
+      console.log('');
+      console.log(color('cyan', '━'.repeat(50)));
+      console.log(color('cyan', '🔍 Error Recovery Analysis'));
+      console.log(color('cyan', '━'.repeat(50)));
+
+      // Analyze each failed gate
+      for (const gate of gateResult.failed) {
+        const errorText = gateResult.errors[gate] || '';
+        if (errorText) {
+          try {
+            // Classify the error
+            const classified = errorRecovery.classifyError(errorText);
+            const levelName = errorRecovery.getLevelName(classified.level);
+            console.log(`${gate}: ${color('yellow', levelName || 'unknown')} error`);
+
+            // Get fix suggestions
+            const suggestions = errorRecovery.getSuggestedFixes(classified.level, errorText);
+            if (suggestions && suggestions.length > 0) {
+              console.log(`  Suggested fixes:`);
+              suggestions.slice(0, 3).forEach(fix => {
+                console.log(`    → ${fix}`);
+              });
+            }
+
+            // Generate hypotheses if available
+            if (hypothesisGenerator) {
+              const hypotheses = hypothesisGenerator.generateHypotheses(errorText, classified);
+              if (hypotheses && hypotheses.length > 0) {
+                console.log(`  Hypotheses:`);
+                hypotheses.slice(0, 2).forEach(h => {
+                  console.log(`    • ${h.hypothesis} (${Math.round(h.likelihood * 100)}% likelihood)`);
+                });
+              }
+            }
+            console.log('');
+          } catch (analysisErr) {
+            if (process.env.DEBUG) console.error(`[DEBUG] Error analysis: ${analysisErr.message}`);
+          }
+        }
+      }
     }
 
     console.log('');

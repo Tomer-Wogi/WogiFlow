@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-01-14T08:23:36.960Z",
+  "generatedAt": "2026-01-18T19:07:32.532Z",
   "sources": {
     "decisions.md": {
       "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/decisions.md",
-      "lastModified": "2026-01-12T22:34:55.218Z",
-      "contentHash": "474e34b2",
+      "lastModified": "2026-01-16T09:09:05.930Z",
+      "contentHash": "f6048b7d",
       "sections": [
         {
           "id": "component-architecture:component-reuse-policy",
@@ -127,16 +127,35 @@
           "contentHash": "585e4d23"
         },
         {
-          "id": "file-folder-structure:2026-01-02",
+          "id": "review-cleanup-procedures:deletion-review-gate-2026-01-16",
+          "title": "Deletion Review Gate (2026-01-16)",
+          "category": "Review & Cleanup Procedures",
+          "pins": [
+            "fs-read",
+            "file-safety",
+            "file-naming",
+            "deletion",
+            "review",
+            "gate",
+            "2026-01-16",
+            "deletion-review-gate-2026-01-16"
+          ],
+          "lineStart": 125,
+          "lineEnd": 163,
+          "content": "**Source**: Near-miss where checkpoint and prompts folders were incorrectly flagged for deletion\n\n**Rule**: Before recommending deletion of ANY file/folder, complete this checklist:\n\n1. **Search for direct path references**\n   - `grep -r \"folder-name\" scripts/`\n\n2. **Search for module imports** (for .js files)\n   - `grep -r \"require.*module-name\" scripts/`\n   - `grep -r \"from.*module-name\" scripts/`\n\n3. **Read the actual file/script** to understand its purpose\n   - Check file header comments for usage documentation\n   - Look for `module.exports` to see what it provides\n\n4. **Check if it's wired into CLI**\n   - Search in `scripts/flow` for command registration\n   - Check if there's a corresponding `/wogi-*` skill\n\n5. **Check config.json for related configuration**\n   - Feature may be implemented but disabled/not configured\n\n6. **Verify with installer/templates**\n   - Check `lib/installer.js` for folder purposes\n   - Check `templates/` for related template files\n\n**Only recommend deletion if ALL checks show no usage.**\n\n**Present findings as:**\n```\nKEEP: [reason - what uses it]\nREMOVE: [reason - verified unused by checks 1-6]\nDISCONNECTED: [built but not wired - consider connecting vs removing]\n```\n\n**Reason**: Grep for folder paths alone misses module imports, disabled features, and planned functionality.",
+          "contentHash": "9214f625"
+        },
+        {
+          "id": "review-cleanup-procedures:2026-01-02",
           "title": "2026-01-02",
-          "category": "File/Folder Structure",
+          "category": "Review & Cleanup Procedures",
           "pins": [
             "naming-convention",
             "file-naming",
             "2026-01-02"
           ],
-          "lineStart": 123,
-          "lineEnd": 126,
+          "lineStart": 165,
+          "lineEnd": 168,
           "content": "Use kebab-case for all file names in this project",
           "contentHash": "7d8867df"
         }
@@ -150,9 +169,9 @@
     }
   },
   "stats": {
-    "totalSections": 7,
+    "totalSections": 8,
     "totalRows": 0,
     "specsFiles": 0,
-    "totalPins": 42
+    "totalPins": 47
   }
 }

@@ -102,6 +102,7 @@ show_help() {
     echo ""
     echo "Skills & Learning:"
     echo "  skill-learn          Extract learnings from recent changes"
+    echo "  auto-learn           Auto-learn from session reviews and bug fixes"
     echo "  skill-create <name>  Create a new skill"
     echo "  skill-create --list  List existing skills"
     echo "  skill detect         Detect frameworks in project"
@@ -116,6 +117,22 @@ show_help() {
     echo "  correct list         List recent corrections"
     echo "  aggregate            Aggregate learnings across skills"
     echo "  aggregate --promote  Interactive promotion wizard"
+    echo "  pattern-enforce      Enforce patterns from decisions/app-map"
+    echo ""
+    echo "Code Analysis:"
+    echo "  code-intel analyze   Analyze imports/exports in codebase"
+    echo "  code-intel deps      Show dependency graph"
+    echo "  review               Code review with auto multi-pass detection"
+    echo "  review --multipass   Force multi-pass review mode"
+    echo ""
+    echo "Error Recovery:"
+    echo "  error-recovery analyze  Analyze error output hierarchically"
+    echo "  error-recovery status   Show recovery session status"
+    echo ""
+    echo "Epics:"
+    echo "  epic list            List all epics"
+    echo "  epic show <id>       Show epic details and progress"
+    echo "  epic create          Create a new epic"
     echo ""
     echo "Code Traces:"
     echo "  trace \"<prompt>\"     Generate task-focused code trace"
@@ -435,6 +452,24 @@ case "${1:-}" in
         ;;
     skill-learn)
         node "$SCRIPT_DIR/flow-skill-learn.js" "${@:2}"
+        ;;
+    auto-learn)
+        node "$SCRIPT_DIR/flow-auto-learn.js" "${@:2}"
+        ;;
+    code-intel|code-intelligence)
+        node "$SCRIPT_DIR/flow-code-intelligence.js" "${@:2}"
+        ;;
+    error-recovery)
+        node "$SCRIPT_DIR/flow-error-recovery.js" "${@:2}"
+        ;;
+    epic|epics)
+        node "$SCRIPT_DIR/flow-epics.js" "${@:2}"
+        ;;
+    pattern-enforce)
+        node "$SCRIPT_DIR/flow-pattern-enforcer.js" "${@:2}"
+        ;;
+    review)
+        node "$SCRIPT_DIR/flow-review.js" "${@:2}"
         ;;
     correct)
         node "$SCRIPT_DIR/flow-correct.js" "${@:2}"

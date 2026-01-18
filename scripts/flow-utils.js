@@ -677,7 +677,18 @@ const KNOWN_CONFIG_KEYS = [
   'sessionState',
   // v1.9.0 features
   'priorities',
-  'morningBriefing'
+  'morningBriefing',
+  // v2.0.0 classification system
+  'storyDecomposition',
+  'enforcement',
+  'tasks',
+  'workflow',
+  'loops',
+  'taskQueue',
+  'durableSteps',
+  'suspension',
+  'specificationMode',
+  'validation'
 ];
 
 // Known nested keys for common config sections
@@ -695,7 +706,9 @@ const KNOWN_NESTED_KEYS = {
   sessionState: ['enabled', 'autoRestore', 'maxGapHours', 'trackFiles', 'trackDecisions', 'maxRecentFiles', 'maxRecentDecisions'],
   // v1.9.0 features
   priorities: ['defaultPriority', 'autoBoostDays', 'autoBoostAmount'],
-  morningBriefing: ['enabled', 'showLastSession', 'showChanges', 'showRecommendedTasks', 'generatePrompt']
+  morningBriefing: ['enabled', 'showLastSession', 'showChanges', 'showRecommendedTasks', 'generatePrompt'],
+  // v2.0.0 classification system
+  storyDecomposition: ['autoDetect', 'autoDecompose', 'complexityThreshold', 'minSubTasks', 'edgeCases', 'loadingStates', 'errorStates', 'classification', 'supportEpics', 'propagateProgress']
 };
 
 // Track if we've already warned about config issues this session
@@ -2208,6 +2221,434 @@ function isCodeContent(content) {
 }
 
 // ============================================================
+// Classification System (v2.0.0 - Recursive Enhancements)
+// ============================================================
+
+/**
+ * Classification levels for work items
+ */
+const CLASSIFICATION_LEVELS = {
+  L0: 'epic',      // 15+ files, 3+ stories, new subsystem
+  L1: 'story',     // 5-15 files, 3-10 AC, multi-component
+  L2: 'task',      // 1-5 files, 1-3 AC, single concern
+  L3: 'subtask'    // 1 file, atomic operation
+};
+
+/**
+ * Default classification thresholds (can be overridden in config)
+ */
+const DEFAULT_CLASSIFICATION_THRESHOLDS = {
+  epic: { minFiles: 15, minStories: 3 },
+  story: { minFiles: 5, maxFiles: 15, minCriteria: 3 },
+  task: { minFiles: 1, maxFiles: 5, minCriteria: 1 }
+};
+
+/**
+ * Default classification keywords (can be overridden in config)
+ */
+const DEFAULT_CLASSIFICATION_KEYWORDS = {
+  epic: ['system', 'architecture', 'migration', 'redesign', 'platform', 'infrastructure', 'overhaul'],
+  story: ['feature', 'flow', 'integration', 'module', 'workflow', 'implement'],
+  task: ['add', 'fix', 'update', 'change', 'remove', 'button', 'field', 'tweak']
+};
+
+/**
+ * Estimate the number of files that might be affected by a request
+ * @param {string} request - User's request text
+ * @param {Object} context - Optional context with file hints
+ * @returns {number} Estimated file count
+ */
+function estimateFileCount(request, context = {}) {
+  // If explicit files are mentioned in context, use that
+  if (context.files && Array.isArray(context.files)) {
+    return context.files.length;
+  }
+
+  // Use context hint if provided
+  if (context.estimatedFiles) {
+    return context.estimatedFiles;
+  }
+
+  const lower = request.toLowerCase();
+
+  // Count file path mentions (e.g., src/components/Button.tsx)
+  const filePathPattern = /\b[\w\-./]+\.(ts|tsx|js|jsx|vue|py|go|rs|java|rb)\b/gi;
+  const fileMatches = request.match(filePathPattern) || [];
+
+  // Count component/module mentions
+  const componentPattern = /\b(component|module|service|controller|hook|util|helper|screen|page|modal)s?\b/gi;
+  const componentMatches = request.match(componentPattern) || [];
+
+  // System-level keywords suggest many files
+  if (/\b(architecture|migration|redesign|platform|infrastructure|overhaul|authentication system|authorization system)\b/i.test(request)) {
+    return Math.max(15, fileMatches.length + componentMatches.length * 3);
+  }
+
+  // "system" alone with complexity indicators also suggests many files
+  if (/\bsystem\b/i.test(request) && /\b(complete|full|entire|build|create)\b/i.test(request)) {
+    return Math.max(10, fileMatches.length + componentMatches.length * 2);
+  }
+
+  // Feature keywords suggest medium file count
+  if (/\b(feature|flow|integration|module|workflow)\b/i.test(request)) {
+    return Math.max(5, fileMatches.length + componentMatches.length * 2);
+  }
+
+  // Explicit mentions get priority
+  if (fileMatches.length > 0) {
+    return Math.max(fileMatches.length, componentMatches.length);
+  }
+
+  // Default: estimate based on request complexity
+  const wordCount = request.split(/\s+/).length;
+  if (wordCount > 50) return 5;
+  if (wordCount > 20) return 3;
+  return 1;
+}
+
+/**
+ * Extract mentioned components from request
+ * @param {string} request - User's request text
+ * @returns {string[]} Array of mentioned component names
+ */
+function extractComponents(request) {
+  const components = [];
+
+  // Match PascalCase component names
+  const pascalCasePattern = /\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b/g;
+  const pascalMatches = request.match(pascalCasePattern) || [];
+  components.push(...pascalMatches);
+
+  // Match explicit component references
+  const explicitPattern = /\b([\w]+(?:Component|Button|Modal|Dialog|Form|Card|List|Table|View|Page|Screen))\b/gi;
+  const explicitMatches = request.match(explicitPattern) || [];
+  components.push(...explicitMatches);
+
+  // Dedupe
+  return [...new Set(components)];
+}
+
+/**
+ * Estimate complexity of the request
+ * @param {string} request - User's request text
+ * @returns {'low'|'medium'|'high'} Complexity estimate
+ */
+function estimateComplexity(request) {
+  const lower = request.toLowerCase();
+  const wordCount = request.split(/\s+/).length;
+
+  // High complexity indicators
+  const highIndicators = [
+    'authentication', 'authorization', 'security', 'payment', 'database',
+    'migration', 'architecture', 'infrastructure', 'api', 'integration',
+    'system', 'platform', 'redesign', 'overhaul', 'refactor entire'
+  ];
+  if (highIndicators.some(ind => lower.includes(ind))) {
+    return 'high';
+  }
+
+  // Medium complexity indicators
+  const mediumIndicators = [
+    'feature', 'flow', 'workflow', 'multiple', 'several', 'across',
+    'form validation', 'state management', 'error handling', 'testing'
+  ];
+  if (mediumIndicators.some(ind => lower.includes(ind)) || wordCount > 30) {
+    return 'medium';
+  }
+
+  return 'low';
+}
+
+/**
+ * Analyze a request for classification
+ * @param {string} request - User's request text
+ * @param {Object} context - Optional context
+ * @returns {Object} Analysis results
+ */
+function analyzeRequest(request, context = {}) {
+  const lower = request.toLowerCase();
+  const config = getConfig();
+  const classificationConfig = config.storyDecomposition?.classification || {};
+  const keywords = classificationConfig.keywords || DEFAULT_CLASSIFICATION_KEYWORDS;
+
+  return {
+    estimatedFiles: estimateFileCount(request, context),
+    hasEpicKeywords: keywords.epic.some(kw => lower.includes(kw)),
+    hasStoryKeywords: keywords.story.some(kw => lower.includes(kw)),
+    hasTaskKeywords: keywords.task.some(kw => lower.includes(kw)),
+    mentionedComponents: extractComponents(request),
+    complexity: estimateComplexity(request),
+    wordCount: request.split(/\s+/).length,
+    hasMultipleRequirements: /\b(and|also|additionally|plus)\b/i.test(request) || (request.match(/[,;]/g) || []).length > 2
+  };
+}
+
+/**
+ * Calculate epic score
+ * @param {Object} analysis - Request analysis
+ * @returns {number} Score 0-1
+ */
+function calculateEpicScore(analysis) {
+  const config = getConfig();
+  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
+
+  let score = 0;
+
+  // High file count is strong epic indicator
+  if (analysis.estimatedFiles >= thresholds.epic.minFiles) {
+    score += 0.5;
+  } else if (analysis.estimatedFiles >= thresholds.story.maxFiles) {
+    score += 0.3;
+  }
+
+  // Epic keywords
+  if (analysis.hasEpicKeywords) {
+    score += 0.3;
+  }
+
+  // High complexity
+  if (analysis.complexity === 'high') {
+    score += 0.15;
+  }
+
+  // Many components
+  if (analysis.mentionedComponents.length >= 5) {
+    score += 0.1;
+  }
+
+  return Math.min(1, score);
+}
+
+/**
+ * Calculate story score
+ * @param {Object} analysis - Request analysis
+ * @returns {number} Score 0-1
+ */
+function calculateStoryScore(analysis) {
+  const config = getConfig();
+  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
+
+  let score = 0;
+
+  // Medium file count
+  if (analysis.estimatedFiles >= thresholds.story.minFiles &&
+      analysis.estimatedFiles <= thresholds.story.maxFiles) {
+    score += 0.4;
+  } else if (analysis.estimatedFiles >= thresholds.task.maxFiles) {
+    score += 0.2;
+  }
+
+  // Story keywords
+  if (analysis.hasStoryKeywords) {
+    score += 0.25;
+  }
+
+  // Medium complexity
+  if (analysis.complexity === 'medium') {
+    score += 0.2;
+  }
+
+  // Multiple requirements
+  if (analysis.hasMultipleRequirements) {
+    score += 0.15;
+  }
+
+  // Multiple components
+  if (analysis.mentionedComponents.length >= 2 && analysis.mentionedComponents.length < 5) {
+    score += 0.1;
+  }
+
+  return Math.min(1, score);
+}
+
+/**
+ * Calculate task score
+ * @param {Object} analysis - Request analysis
+ * @returns {number} Score 0-1
+ */
+function calculateTaskScore(analysis) {
+  const config = getConfig();
+  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
+
+  let score = 0;
+
+  // Low file count
+  if (analysis.estimatedFiles >= thresholds.task.minFiles &&
+      analysis.estimatedFiles <= thresholds.task.maxFiles) {
+    score += 0.5;
+  }
+
+  // Task keywords
+  if (analysis.hasTaskKeywords) {
+    score += 0.25;
+  }
+
+  // Low complexity
+  if (analysis.complexity === 'low') {
+    score += 0.15;
+  }
+
+  // Single component
+  if (analysis.mentionedComponents.length === 1) {
+    score += 0.1;
+  }
+
+  return Math.min(1, score);
+}
+
+/**
+ * Calculate subtask score
+ * @param {Object} analysis - Request analysis
+ * @returns {number} Score 0-1
+ */
+function calculateSubtaskScore(analysis) {
+  let score = 0;
+
+  // Single file
+  if (analysis.estimatedFiles === 1) {
+    score += 0.5;
+  }
+
+  // Very low complexity
+  if (analysis.complexity === 'low' && analysis.wordCount < 15) {
+    score += 0.3;
+  }
+
+  // No multiple requirements
+  if (!analysis.hasMultipleRequirements) {
+    score += 0.1;
+  }
+
+  // Short request
+  if (analysis.wordCount < 10) {
+    score += 0.1;
+  }
+
+  return Math.min(1, score);
+}
+
+/**
+ * Classify a work item request
+ * @param {string} request - User's request text
+ * @param {Object} context - Optional context (files mentioned, etc.)
+ * @returns {Object} { level: 'L0'|'L1'|'L2'|'L3', type: string, confidence: number, analysis: Object }
+ */
+function classifyWorkItem(request, context = {}) {
+  const config = getConfig();
+  const classificationConfig = config.storyDecomposition?.classification || {};
+
+  // Check if classification is disabled
+  if (classificationConfig.enabled === false) {
+    return {
+      level: 'L2',
+      type: 'task',
+      confidence: 100,
+      analysis: null,
+      disabled: true
+    };
+  }
+
+  const analysis = analyzeRequest(request, context);
+
+  // Use existing codeComplexityCheck patterns if available
+  const complexityHint = context.complexityHint || null;
+  if (complexityHint === 'high') {
+    analysis.complexity = 'high';
+  } else if (complexityHint === 'low') {
+    analysis.complexity = 'low';
+  }
+
+  const scores = {
+    epic: calculateEpicScore(analysis),
+    story: calculateStoryScore(analysis),
+    task: calculateTaskScore(analysis),
+    subtask: calculateSubtaskScore(analysis)
+  };
+
+  // Return highest scoring classification
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const [type, score] = sorted[0];
+
+  const levelMap = { epic: 'L0', story: 'L1', task: 'L2', subtask: 'L3' };
+
+  return {
+    level: levelMap[type],
+    type,
+    confidence: Math.round(score * 100),
+    analysis,
+    scores
+  };
+}
+
+/**
+ * Normalize a task object to include optional hierarchical fields
+ * Ensures backward compatibility with existing tasks
+ * @param {Object} task - Task object from ready.json
+ * @returns {Object} Normalized task with all optional fields
+ */
+function normalizeTask(task) {
+  if (!task || typeof task === 'string') {
+    return task; // Can't normalize string IDs (legacy format)
+  }
+
+  return {
+    ...task,
+    // Default level based on type if not set
+    level: task.level || (task.type === 'epic' ? 'L0' : task.type === 'story' ? 'L1' : 'L2'),
+    // Use existing parent field (backward compatible)
+    parent: task.parent || null,
+    // NEW: child task IDs
+    children: task.children || [],
+    // NEW: progress tracking for hierarchical items
+    progress: task.progress || null
+  };
+}
+
+/**
+ * Find all tasks with a given parent ID
+ * @param {Object} readyData - Ready.json data
+ * @param {string} parentId - Parent task ID
+ * @returns {Object[]} Array of child tasks
+ */
+function findAllWithParent(readyData, parentId) {
+  const children = [];
+  const lists = ['ready', 'inProgress', 'blocked', 'recentlyCompleted'];
+
+  for (const listName of lists) {
+    const list = readyData[listName] || [];
+    for (const task of list) {
+      if (task && typeof task !== 'string' && task.parent === parentId) {
+        children.push(task);
+      }
+    }
+  }
+
+  return children;
+}
+
+/**
+ * Find a task in all lists by ID
+ * @param {Object} readyData - Ready.json data
+ * @param {string} taskId - Task ID to find
+ * @returns {Object|null} Task object or null
+ */
+function findTaskInAllLists(readyData, taskId) {
+  const lists = ['ready', 'inProgress', 'blocked', 'recentlyCompleted'];
+
+  for (const listName of lists) {
+    const list = readyData[listName] || [];
+    for (const task of list) {
+      const id = typeof task === 'string' ? task : task.id;
+      if (id === taskId) {
+        return typeof task === 'string' ? { id: task } : task;
+      }
+    }
+  }
+
+  return null;
+}
+
+// ============================================================
 // Spec File Path Resolution (v1.0.4 Migration Support)
 // ============================================================
 
@@ -2413,6 +2854,17 @@ module.exports = {
   SPEC_FILE_MAP,
   getSpecFilePath,
   checkSpecMigration,
+
+  // Classification System (v2.0.0)
+  CLASSIFICATION_LEVELS,
+  DEFAULT_CLASSIFICATION_THRESHOLDS,
+  DEFAULT_CLASSIFICATION_KEYWORDS,
+  classifyWorkItem,
+  normalizeTask,
+  findAllWithParent,
+  findTaskInAllLists,
+  analyzeRequest,
+  estimateComplexity,
 };
 
 // ============================================================
