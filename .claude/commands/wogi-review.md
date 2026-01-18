@@ -465,6 +465,169 @@ To review recent commits: /wogi-review --commits 3
 To review specific files: Please stage them first with git add
 ```
 
+## Phase 3: Post-Review Workflow
+
+After AI review completes, execute the fix-and-verify loop:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  POST-REVIEW WORKFLOW                                        │
+├─────────────────────────────────────────────────────────────┤
+│  1. TRACK: Convert issues to TodoWrite items                 │
+│     → Critical/High: Individual todos                        │
+│     → Medium/Low: Grouped by category                        │
+│  2. FIX LOOP: For each issue:                                │
+│     → Mark todo in_progress                                  │
+│     → Apply fix                                              │
+│     → Run targeted verification (lint/typecheck on file)     │
+│     → Mark todo completed                                    │
+│  3. RE-VERIFY: Run full verification gates again             │
+│     → All gates must pass                                    │
+│     → If new issues found, add to todo list                  │
+│  4. ARCHIVE: Save review report to .workflow/reviews/        │
+│  5. SIGN-OFF: User approves review complete                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Step 1: Issue Tracking
+
+After consolidating review results, convert to TodoWrite items:
+
+```javascript
+// Critical/High issues get individual todos
+{ content: "Fix unbounded recursion in cascadeCompletion()", status: "pending" }
+{ content: "Fix progress value inconsistency (0-1 vs 0-100)", status: "pending" }
+
+// Medium/Low can be grouped
+{ content: "Fix 3 DRY violations in file parsing", status: "pending" }
+{ content: "Remove 2 unused imports", status: "pending" }
+```
+
+**Priority order for fixes:**
+1. Critical (blocks functionality or security risk)
+2. High (significant bugs or vulnerabilities)
+3. Medium (code quality, maintainability)
+4. Low (style, minor improvements)
+
+### Step 2: Fix Loop
+
+For each issue, follow this cycle:
+
+```
+┌──────────────────────────────────────┐
+│  Mark todo: in_progress              │
+│              ↓                       │
+│  Read relevant file(s)               │
+│              ↓                       │
+│  Apply fix                           │
+│              ↓                       │
+│  Run targeted verification:          │
+│    node --check <file>  (syntax)     │
+│    npx eslint <file>    (lint)       │
+│    npx tsc --noEmit     (types)      │
+│              ↓                       │
+│  If PASS → Mark todo: completed      │
+│  If FAIL → Fix and retry             │
+└──────────────────────────────────────┘
+```
+
+**Important**: Don't batch fixes. Complete and verify each fix before moving to the next.
+
+### Step 3: Re-Verification
+
+After all issues are fixed, run full verification again:
+
+```bash
+# Run all verification gates
+npm run lint 2>&1 | head -50
+npm run typecheck 2>&1 | head -50
+npm run test 2>&1 | head -50
+
+# Syntax check all modified files
+node --check scripts/flow-*.js
+```
+
+If new issues are discovered during re-verification:
+1. Add them to the todo list
+2. Continue the fix loop
+3. Re-verify again
+
+### Step 4: Archive Review Report
+
+Save the review report to `.workflow/reviews/`:
+
+```
+.workflow/reviews/
+└── YYYY-MM-DD-HHMMSS-review.md
+```
+
+Report format:
+```markdown
+# Code Review Report
+
+**Date**: YYYY-MM-DD HH:MM
+**Files Reviewed**: N
+**Review Mode**: parallel | multi-pass
+
+## Verification Gates
+- Lint: ✓/✗
+- TypeCheck: ✓/✗
+- Tests: ✓/✗
+
+## Issues Found
+| # | Severity | Issue | File:Line | Status |
+|---|----------|-------|-----------|--------|
+| 1 | Critical | ... | ... | Fixed |
+| 2 | High | ... | ... | Fixed |
+
+## Summary
+- Issues found: N
+- Issues fixed: N
+- Gates passing: Y/Y
+```
+
+### Step 5: Sign-Off Gate
+
+Before completing the review, ask for user approval:
+
+```
+═══════════════════════════════════════
+REVIEW COMPLETE
+═══════════════════════════════════════
+Issues Found: 15
+Issues Fixed: 15
+Verification: All gates passing
+
+Review report saved to: .workflow/reviews/2026-01-18-143022-review.md
+
+Ready to proceed? (User approval required)
+```
+
+The review is not complete until the user confirms. This ensures:
+- User is aware of all changes made
+- User can request additional fixes
+- User can reject fixes that change behavior unexpectedly
+
+## Auto-Fix Suggestions
+
+For certain issue types, offer automated fixes:
+
+| Issue Type | Auto-Fix Available |
+|------------|-------------------|
+| Unused imports | Yes - remove automatically |
+| Missing try-catch | Yes - wrap in try-catch |
+| Console.log in prod | Yes - remove or convert to logger |
+| Missing null check | Suggest - show options |
+| Logic bugs | No - require manual review |
+
+When auto-fix is available:
+```
+⚠ Issue: Unused import 'color' in flow-plan.js:21
+
+Auto-fix available: Remove unused import
+Apply fix? [Y/n]
+```
+
 ## Integration with Other Commands
 
 - After `/wogi-done` - Optionally suggest review

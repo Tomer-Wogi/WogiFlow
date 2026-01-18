@@ -150,6 +150,10 @@ const PATHS = {
   bugs: path.join(WORKFLOW_DIR, 'bugs'),
   archive: path.join(WORKFLOW_DIR, 'archive'),
   specs: path.join(WORKFLOW_DIR, 'specs'),
+  // Hierarchical work item directories (v3.2)
+  epics: path.join(WORKFLOW_DIR, 'epics'),
+  features: path.join(WORKFLOW_DIR, 'features'),
+  plans: path.join(WORKFLOW_DIR, 'plans'),
   // Additional workflow directories
   runs: path.join(WORKFLOW_DIR, 'runs'),
   checkpoints: path.join(WORKFLOW_DIR, 'checkpoints'),
@@ -298,9 +302,56 @@ function info(message) {
  * generateTaskId('Fix login bug') // => 'wf-a1b2c3d4'
  */
 function generateTaskId(title) {
-  const input = `${title}${Date.now()}${Math.random()}`;
+  // Use crypto.randomBytes for secure entropy instead of Math.random()
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  const input = `${title}${Date.now()}${randomHex}`;
   const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
   return `wf-${hash}`;
+}
+
+/**
+ * Generate a hash-based epic ID
+ * Format: ep-XXXXXXXX (8-char hex hash)
+ *
+ * @param {string} title - Epic title
+ * @returns {string} Epic ID in format ep-XXXXXXXX
+ */
+function generateEpicId(title) {
+  // Use crypto.randomBytes for secure entropy instead of Math.random()
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  const input = `epic-${title}${Date.now()}${randomHex}`;
+  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
+  return `ep-${hash}`;
+}
+
+/**
+ * Generate a hash-based feature ID
+ * Format: ft-XXXXXXXX (8-char hex hash)
+ *
+ * @param {string} title - Feature title
+ * @returns {string} Feature ID in format ft-XXXXXXXX
+ */
+function generateFeatureId(title) {
+  // Use crypto.randomBytes for secure entropy instead of Math.random()
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  const input = `feature-${title}${Date.now()}${randomHex}`;
+  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
+  return `ft-${hash}`;
+}
+
+/**
+ * Generate a hash-based plan ID
+ * Format: pl-XXXXXXXX (8-char hex hash)
+ *
+ * @param {string} title - Plan title
+ * @returns {string} Plan ID in format pl-XXXXXXXX
+ */
+function generatePlanId(title) {
+  // Use crypto.randomBytes for secure entropy instead of Math.random()
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  const input = `plan-${title}${Date.now()}${randomHex}`;
+  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
+  return `pl-${hash}`;
 }
 
 /**
@@ -1095,6 +1146,57 @@ async function saveReadyDataAsync(data) {
 }
 
 /**
+ * Archive overflow completed tasks to a log file (v3.2)
+ * When recentlyCompleted exceeds 10 items, archive the overflow
+ * instead of losing them.
+ *
+ * @param {Array} tasks - Array of tasks to archive
+ */
+function archiveCompletedTasksToLog(tasks) {
+  if (!tasks || tasks.length === 0) return;
+
+  try {
+    const archiveLogPath = path.join(PATHS.state, 'completed-archive.json');
+    let archive = [];
+
+    if (fs.existsSync(archiveLogPath)) {
+      try {
+        archive = JSON.parse(fs.readFileSync(archiveLogPath, 'utf-8'));
+      } catch {
+        archive = [];
+      }
+    }
+
+    const timestamp = new Date().toISOString();
+    for (const task of tasks) {
+      const taskId = typeof task === 'string' ? task : task.id;
+      const entry = {
+        id: taskId,
+        title: typeof task === 'object' ? task.title : null,
+        archivedAt: timestamp
+      };
+      archive.push(entry);
+    }
+
+    // Keep archive manageable (max 1000 entries)
+    if (archive.length > 1000) {
+      archive = archive.slice(-1000);
+    }
+
+    fs.writeFileSync(archiveLogPath, JSON.stringify(archive, null, 2));
+
+    if (process.env.DEBUG) {
+      console.log(`[DEBUG] Archived ${tasks.length} completed task(s) to completed-archive.json`);
+    }
+  } catch (err) {
+    // Silent failure - don't break task movement
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] archiveCompletedTasksToLog: ${err.message}`);
+    }
+  }
+}
+
+/**
  * Find a task in ready.json by ID
  * Returns { task, list, index } or null
  */
@@ -1147,7 +1249,12 @@ function moveTask(taskId, fromList, toList) {
 
   if (toList === 'recentlyCompleted') {
     to.unshift(task);
-    data[toList] = to.slice(0, 10); // Keep last 10
+    // v3.2: Archive overflow instead of truncating
+    if (to.length > 10) {
+      const overflow = to.splice(10);
+      archiveCompletedTasksToLog(overflow);
+    }
+    data[toList] = to;
   } else {
     to.push(task);
     data[toList] = to;
@@ -1192,7 +1299,12 @@ async function moveTaskAsync(taskId, fromList, toList) {
 
     if (toList === 'recentlyCompleted') {
       to.unshift(task);
-      data[toList] = to.slice(0, 10); // Keep last 10
+      // v3.2: Archive overflow instead of truncating
+      if (to.length > 10) {
+        const overflow = to.splice(10);
+        archiveCompletedTasksToLog(overflow);
+      }
+      data[toList] = to;
     } else {
       to.push(task);
       data[toList] = to;
@@ -2570,11 +2682,31 @@ function classifyWorkItem(request, context = {}) {
   const [type, score] = sorted[0];
 
   const levelMap = { epic: 'L0', story: 'L1', task: 'L2', subtask: 'L3' };
+  const actionMap = {
+    epic: 'create_epic',
+    story: 'create_story',
+    task: 'create_story',  // Tasks are still created as stories but simpler
+    subtask: 'create_story'
+  };
+
+  // Determine parent suggestion based on context
+  let parentSuggestion = null;
+  if (context.parentId) {
+    // Explicit parent provided
+    const parentPrefix = context.parentId.substring(0, 2);
+    const parentTypeMap = { 'ep': 'epic', 'ft': 'feature', 'wf': 'story', 'pl': 'plan' };
+    parentSuggestion = {
+      type: parentTypeMap[parentPrefix] || 'unknown',
+      id: context.parentId
+    };
+  }
 
   return {
     level: levelMap[type],
     type,
     confidence: Math.round(score * 100),
+    suggestedAction: actionMap[type],
+    parentSuggestion,
     analysis,
     scores
   };
@@ -2768,6 +2900,11 @@ module.exports = {
   generateTaskId,
   validateTaskId,
   isLegacyTaskId,
+
+  // Hierarchical Work Item ID Generation (v3.2)
+  generateEpicId,
+  generateFeatureId,
+  generatePlanId,
 
   // JSON Output & CLI Flags (v1.9.0)
   outputJson,

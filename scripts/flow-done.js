@@ -16,6 +16,7 @@ const {
   moveTaskAsync,
   findTask,
   readFile,
+  readJson,
   writeJson,
   color,
   success,
@@ -46,7 +47,19 @@ const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 const { Checkpoint } = require('./flow-checkpoint');
 
 // v3.0 epic progress propagation
-const { updateEpicProgress, listEpics } = require('./flow-epics');
+const { updateEpicProgress, listEpics, getEpic } = require('./flow-epics');
+
+// v3.2 hierarchical work item management
+let flowFeature;
+let flowPlan;
+try {
+  flowFeature = require('./flow-feature');
+  flowPlan = require('./flow-plan');
+} catch (err) {
+  // Modules optional - graceful degradation
+  flowFeature = null;
+  flowPlan = null;
+}
 
 // v3.1 spec verification gate
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
@@ -301,7 +314,7 @@ function archiveChangeSpec(taskId) {
   const archiveDir = path.join(PATHS.workflow, 'archive', 'specs');
 
   if (!fs.existsSync(changesDir)) {
-    return { archived: [], archivedFolder: null };
+    return { archived: [], archivedFolder: null, skipped: [] };
   }
 
   // Get current year-month for archive folder
@@ -310,10 +323,13 @@ function archiveChangeSpec(taskId) {
   const targetDir = path.join(archiveDir, yearMonth);
 
   const archived = [];
+  const skipped = []; // Track files that don't match standard naming
   let archivedFolder = null;
   // SECURITY: Escape special regex characters to prevent ReDoS attacks
   const escapedTaskId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const taskPattern = new RegExp(`^${escapedTaskId}(-\\d+)?\\.md$`, 'i');
+  // Standard naming pattern: wf-XXXXXXXX.md or wf-XXXXXXXX-NN.md
+  const standardPattern = /^wf-[a-f0-9]{8}(-\d+)?\.md$/i;
 
   try {
     const entries = fs.readdirSync(changesDir, { withFileTypes: true });
@@ -339,31 +355,472 @@ function archiveChangeSpec(taskId) {
           archived.push({ from: `${entry.name}/`, to: path.join(yearMonth, entry.name) + '/', isFolder: true });
 
           // Don't continue checking flat files if we found a folder
-          return { archived, archivedFolder };
+          return { archived, archivedFolder, skipped };
         }
       }
     }
 
-    // Second pass: check for flat files matching taskId
+    // Second pass: check for flat files matching taskId, track non-conforming files
     for (const entry of entries) {
-      if (entry.isFile() && taskPattern.test(entry.name)) {
-        const sourcePath = path.join(changesDir, entry.name);
+      if (entry.isFile() && entry.name.endsWith('.md') && entry.name !== 'README.md') {
+        if (taskPattern.test(entry.name)) {
+          const sourcePath = path.join(changesDir, entry.name);
 
-        // Ensure archive directory exists
-        if (!fs.existsSync(targetDir)) {
-          fs.mkdirSync(targetDir, { recursive: true });
+          // Ensure archive directory exists
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+
+          const targetPath = path.join(targetDir, entry.name);
+          fs.renameSync(sourcePath, targetPath);
+          archived.push({ from: entry.name, to: path.join(yearMonth, entry.name) });
+        } else if (!standardPattern.test(entry.name)) {
+          // Track non-conforming files (don't match wf-XXXXXXXX pattern)
+          skipped.push(entry.name);
         }
-
-        const targetPath = path.join(targetDir, entry.name);
-        fs.renameSync(sourcePath, targetPath);
-        archived.push({ from: entry.name, to: path.join(yearMonth, entry.name) });
       }
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] archiveChangeSpec: ${err.message}`);
   }
 
-  return { archived, archivedFolder };
+  return { archived, archivedFolder, skipped };
+}
+
+// ============================================================
+// Cascade Completion (v3.2)
+// ============================================================
+
+/**
+ * Find parent feature for a story
+ * @param {string} storyId - Story ID (wf-XXXXXXXX)
+ * @returns {Object|null} Feature object or null
+ */
+function findParentFeature(storyId) {
+  if (!flowFeature) return null;
+
+  try {
+    const features = flowFeature.listFeatures();
+    for (const feature of features) {
+      if (feature.stories && feature.stories.includes(storyId)) {
+        return feature;
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] findParentFeature: ${err.message}`);
+  }
+  return null;
+}
+
+/**
+ * Find parent epic for a feature
+ * @param {string} featureId - Feature ID (ft-XXXXXXXX)
+ * @returns {Object|null} Epic object or null
+ */
+function findParentEpic(featureId) {
+  try {
+    const epics = listEpics();
+    for (const epic of epics) {
+      if (epic.features && epic.features.includes(featureId)) {
+        return epic;
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] findParentEpic: ${err.message}`);
+  }
+  return null;
+}
+
+/**
+ * Find parent plan for an epic
+ * @param {string} epicId - Epic ID (ep-XXXXXXXX)
+ * @returns {Object|null} Plan object or null
+ */
+function findParentPlan(epicId) {
+  if (!flowPlan) return null;
+
+  try {
+    const plans = flowPlan.listPlans();
+    for (const plan of plans) {
+      if (plan.epics && plan.epics.includes(epicId)) {
+        return plan;
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] findParentPlan: ${err.message}`);
+  }
+  return null;
+}
+
+/**
+ * Check if all stories in a feature are complete
+ * @param {Object} feature - Feature object
+ * @returns {boolean} True if all stories are complete
+ */
+function allStoriesComplete(feature) {
+  if (!feature.stories || feature.stories.length === 0) {
+    return false;  // No stories = not complete
+  }
+
+  try {
+    const readyData = readJson(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
+
+    for (const storyId of feature.stories) {
+      // Story must be in recentlyCompleted to be considered complete
+      const isComplete = (readyData.recentlyCompleted || []).some(
+        t => (typeof t === 'string' ? t : t.id) === storyId
+      );
+      if (!isComplete) {
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] allStoriesComplete: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Check if all features in an epic are complete
+ * @param {Object} epic - Epic object
+ * @returns {boolean} True if all features are complete
+ */
+function allFeaturesComplete(epic) {
+  if (!flowFeature) return false;
+  if (!epic.features || epic.features.length === 0) {
+    // If epic has no features, check stories directly
+    if (!epic.stories || epic.stories.length === 0) {
+      return false;
+    }
+    // Check if all direct stories are complete
+    try {
+      const readyData = readJson(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
+      for (const storyId of epic.stories) {
+        const isComplete = (readyData.recentlyCompleted || []).some(
+          t => (typeof t === 'string' ? t : t.id) === storyId
+        );
+        if (!isComplete) return false;
+      }
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  try {
+    for (const featureId of epic.features) {
+      const feature = flowFeature.getFeature(featureId);
+      if (!feature || feature.status !== 'completed') {
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] allFeaturesComplete: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Check if all epics in a plan are complete
+ * @param {Object} plan - Plan object
+ * @returns {boolean} True if all epics are complete
+ */
+function allEpicsComplete(plan) {
+  if (!plan.epics || plan.epics.length === 0) {
+    // Check standalone features in the plan
+    if (!flowFeature || !plan.features || plan.features.length === 0) {
+      return false;
+    }
+    for (const featureId of plan.features) {
+      const feature = flowFeature.getFeature(featureId);
+      if (!feature || feature.status !== 'completed') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  try {
+    for (const epicId of plan.epics) {
+      const epic = getEpic(epicId);
+      if (!epic || epic.status !== 'completed') {
+        return false;
+      }
+    }
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] allEpicsComplete: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Mark a feature as complete and optionally archive
+ * @param {string} featureId - Feature ID
+ * @param {boolean} archive - Whether to archive (default: true)
+ */
+function markFeatureComplete(featureId, archive = true) {
+  if (!flowFeature) return;
+
+  try {
+    flowFeature.updateFeatureFile(featureId, { status: 'completed', progress: 100 });
+    const index = flowFeature.loadFeaturesIndex();
+    if (index.features[featureId]) {
+      index.features[featureId].status = 'completed';
+      index.features[featureId].progress = 100;
+      flowFeature.saveFeaturesIndex(index);
+    }
+    console.log(color('green', `  ✓ Feature ${featureId} auto-completed (all stories done)`));
+
+    // Archive the completed feature
+    if (archive) {
+      archiveCompletedParent(featureId, 'feature');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] markFeatureComplete: ${err.message}`);
+  }
+}
+
+/**
+ * Mark an epic as complete and optionally archive
+ * @param {string} epicId - Epic ID
+ * @param {boolean} archive - Whether to archive (default: true)
+ */
+function markEpicComplete(epicId, archive = true) {
+  try {
+    const { updateEpicFile, loadEpicsState, saveEpicsState } = require('./flow-epics');
+    updateEpicFile(epicId, { status: 'completed', progress: 100 });
+    const state = loadEpicsState();
+    if (state.epics[epicId]) {
+      state.epics[epicId].status = 'completed';
+      state.epics[epicId].progress = 1;  // 0-1 range in epics.json
+      saveEpicsState(state);
+    }
+    console.log(color('green', `  ✓ Epic ${epicId} auto-completed (all features/stories done)`));
+
+    // Archive the completed epic
+    if (archive) {
+      archiveCompletedParent(epicId, 'epic');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] markEpicComplete: ${err.message}`);
+  }
+}
+
+/**
+ * Mark a plan as complete and optionally archive
+ * @param {string} planId - Plan ID
+ * @param {boolean} archive - Whether to archive (default: true)
+ */
+function markPlanComplete(planId, archive = true) {
+  if (!flowPlan) return;
+
+  try {
+    flowPlan.updatePlanFile(planId, { status: 'completed', progress: 100 });
+    const index = flowPlan.loadPlansIndex();
+    if (index.plans[planId]) {
+      index.plans[planId].status = 'completed';
+      index.plans[planId].progress = 100;
+      flowPlan.savePlansIndex(index);
+    }
+    console.log(color('green', `  ✓ Plan ${planId} auto-completed (all epics done)`));
+
+    // Archive the completed plan
+    if (archive) {
+      archiveCompletedParent(planId, 'plan');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] markPlanComplete: ${err.message}`);
+  }
+}
+
+// ============================================================
+// Type-Aware Archive System (v3.2)
+// ============================================================
+
+/**
+ * Archive a work item by type
+ * Routes to correct archive directory based on item type
+ *
+ * | Type    | Source                | Destination                        |
+ * |---------|----------------------|-------------------------------------|
+ * | story   | .workflow/changes/   | .workflow/archive/specs/YYYY-MM/    |
+ * | feature | .workflow/features/  | .workflow/archive/features/YYYY-MM/ |
+ * | epic    | .workflow/epics/     | .workflow/archive/epics/YYYY-MM/    |
+ * | plan    | .workflow/plans/     | .workflow/archive/plans/YYYY-MM/    |
+ *
+ * @param {string} itemId - Item ID to archive
+ * @param {string} itemType - Type: 'story', 'feature', 'epic', 'plan'
+ * @returns {Object} Archive result
+ */
+function archiveByType(itemId, itemType) {
+  const now = new Date();
+  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const typeConfig = {
+    story: {
+      sourceDir: path.join(PATHS.workflow, 'changes'),
+      archiveDir: path.join(PATHS.workflow, 'archive', 'specs', yearMonth),
+      pattern: /^wf-[a-f0-9]{8}/i
+    },
+    feature: {
+      sourceDir: path.join(PATHS.workflow, 'features'),
+      archiveDir: path.join(PATHS.workflow, 'archive', 'features', yearMonth),
+      pattern: /^ft-[a-f0-9]{8}/i
+    },
+    epic: {
+      sourceDir: path.join(PATHS.workflow, 'epics'),
+      archiveDir: path.join(PATHS.workflow, 'archive', 'epics', yearMonth),
+      pattern: /^ep-[a-f0-9]{8}/i
+    },
+    plan: {
+      sourceDir: path.join(PATHS.workflow, 'plans'),
+      archiveDir: path.join(PATHS.workflow, 'archive', 'plans', yearMonth),
+      pattern: /^pl-[a-f0-9]{8}/i
+    }
+  };
+
+  const config = typeConfig[itemType];
+  if (!config) {
+    return { error: `Unknown item type: ${itemType}` };
+  }
+
+  const fileName = `${itemId}.md`;
+  const sourcePath = path.join(config.sourceDir, fileName);
+
+  if (!fs.existsSync(sourcePath)) {
+    return { skipped: true, reason: 'Source file not found' };
+  }
+
+  try {
+    // Ensure archive directory exists
+    if (!fs.existsSync(config.archiveDir)) {
+      fs.mkdirSync(config.archiveDir, { recursive: true });
+    }
+
+    const targetPath = path.join(config.archiveDir, fileName);
+    fs.renameSync(sourcePath, targetPath);
+
+    return {
+      archived: true,
+      from: sourcePath,
+      to: targetPath,
+      itemId,
+      itemType,
+      yearMonth
+    };
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] archiveByType: ${err.message}`);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Archive completed parent work item and update indices
+ * Called when cascade completion marks a parent as complete
+ *
+ * @param {string} itemId - Item ID to archive
+ * @param {string} itemType - Type: 'feature', 'epic', 'plan'
+ */
+function archiveCompletedParent(itemId, itemType) {
+  try {
+    const result = archiveByType(itemId, itemType);
+
+    if (result.archived) {
+      console.log(color('dim', `  📦 Archived ${itemType} ${itemId} to ${result.yearMonth}/`));
+
+      // Update the appropriate index
+      if (itemType === 'feature' && flowFeature) {
+        const index = flowFeature.loadFeaturesIndex();
+        if (index.features[itemId]) {
+          index.features[itemId].archived = true;
+          index.features[itemId].archivedAt = new Date().toISOString();
+          flowFeature.saveFeaturesIndex(index);
+        }
+      } else if (itemType === 'epic') {
+        const { loadEpicsState, saveEpicsState } = require('./flow-epics');
+        const state = loadEpicsState();
+        if (state.epics[itemId]) {
+          state.epics[itemId].archived = true;
+          state.epics[itemId].archivedAt = new Date().toISOString();
+          saveEpicsState(state);
+        }
+      } else if (itemType === 'plan' && flowPlan) {
+        const index = flowPlan.loadPlansIndex();
+        if (index.plans[itemId]) {
+          index.plans[itemId].archived = true;
+          index.plans[itemId].archivedAt = new Date().toISOString();
+          flowPlan.savePlansIndex(index);
+        }
+      }
+    }
+
+    return result;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] archiveCompletedParent: ${err.message}`);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Maximum recursion depth for cascade completion
+ * Hierarchy is: story → feature → epic → plan (max 4 levels)
+ * Adding buffer for safety
+ */
+const CASCADE_MAX_DEPTH = 10;
+
+/**
+ * Cascade completion up the hierarchy
+ * When a work item completes, check if parent can be auto-completed
+ *
+ * @param {string} itemId - Completed item ID
+ * @param {string} itemType - Type: 'subtask', 'story', 'feature', 'epic'
+ * @param {number} depth - Current recursion depth (for safety limit)
+ */
+function cascadeCompletion(itemId, itemType, depth = 0) {
+  if (!itemId || !itemType) return;
+
+  // Safety check: prevent infinite recursion
+  if (depth >= CASCADE_MAX_DEPTH) {
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] cascadeCompletion: Max depth (${CASCADE_MAX_DEPTH}) reached, stopping cascade`);
+    }
+    warn(`Cascade completion stopped at depth ${depth} - possible circular reference`);
+    return;
+  }
+
+  try {
+    if (itemType === 'subtask' || itemType === 'story') {
+      // Check if parent feature can be completed
+      const feature = findParentFeature(itemId);
+      if (feature && allStoriesComplete(feature)) {
+        markFeatureComplete(feature.id);
+        cascadeCompletion(feature.id, 'feature', depth + 1);
+      }
+    }
+
+    if (itemType === 'feature') {
+      // Check if parent epic can be completed
+      const epic = findParentEpic(itemId);
+      if (epic && allFeaturesComplete(epic)) {
+        markEpicComplete(epic.id);
+        cascadeCompletion(epic.id, 'epic', depth + 1);
+      }
+    }
+
+    if (itemType === 'epic') {
+      // Check if parent plan can be completed
+      const plan = findParentPlan(itemId);
+      if (plan && allEpicsComplete(plan)) {
+        markPlanComplete(plan.id);
+        // Plan is the top level, no further cascade needed
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] cascadeCompletion: ${err.message}`);
+  }
 }
 
 /**
@@ -682,6 +1139,17 @@ async function main() {
     if (process.env.DEBUG) console.error(`[DEBUG] Epic progress propagation: ${err.message}`);
   }
 
+  // v3.2: Cascade completion up the hierarchy
+  // When a story completes, auto-complete parent feature if all stories done
+  // When a feature completes, auto-complete parent epic if all features done
+  // When an epic completes, auto-complete parent plan if all epics done
+  try {
+    const taskType = result.task?.type || 'story';
+    cascadeCompletion(taskId, taskType);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Cascade completion: ${err.message}`);
+  }
+
   // v2.3: Archive change spec and update implementation timeline
   try {
     const taskTitle = result.task?.title || taskId;
@@ -690,6 +1158,15 @@ async function main() {
       console.log(color('dim', `📦 Archived feature folder: ${specArchive.archivedFolder}/`));
     } else if (specArchive.archived.length > 0) {
       console.log(color('dim', `📦 Archived ${specArchive.archived.length} spec file(s)`));
+    }
+
+    // Warn about orphaned files that don't follow naming convention
+    if (specArchive.skipped && specArchive.skipped.length > 0) {
+      console.log('');
+      console.log(color('yellow', '⚠️  Found files in .workflow/changes/ that don\'t follow naming convention:'));
+      specArchive.skipped.forEach(f => console.log(color('yellow', `   • ${f}`)));
+      console.log(color('dim', '   Expected format: wf-XXXXXXXX.md or wf-XXXXXXXX-NN.md'));
+      console.log(color('dim', '   Run: flow health --fix to clean up, or manually archive to .workflow/archive/specs/'));
     }
 
     const timelineResult = updateImplementationTimeline(taskId, taskTitle);

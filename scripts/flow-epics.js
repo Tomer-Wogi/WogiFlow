@@ -28,7 +28,8 @@ const {
   info,
   findAllWithParent,
   normalizeTask,
-  CLASSIFICATION_LEVELS
+  CLASSIFICATION_LEVELS,
+  generateEpicId
 } = require('./flow-utils');
 
 // ============================================================
@@ -36,6 +37,7 @@ const {
 // ============================================================
 
 const EPICS_STATE_PATH = path.join(PATHS.state, 'epics.json');
+const EPICS_DIR = PATHS.epics;
 
 const STATUS_WEIGHTS = {
   completed: 1.0,
@@ -89,6 +91,163 @@ function loadReadyData() {
 }
 
 // ============================================================
+// Epic File Operations
+// ============================================================
+
+/**
+ * Generate epic markdown template
+ * @param {string} epicId - Epic ID
+ * @param {string} title - Epic title
+ * @param {Object} options - Options (description, stories)
+ * @returns {string} Markdown content
+ */
+function generateEpicTemplate(epicId, title, options = {}) {
+  const { description = '', stories = [] } = options;
+  const now = new Date().toISOString();
+  const storiesContent = stories.length > 0
+    ? stories.map(s => `- ${s}`).join('\n')
+    : '<!-- No stories yet. Add with: flow epics add-story ' + epicId + ' wf-XXXXXXXX -->';
+
+  return `# Epic: ${title}
+
+## Overview
+<!-- PIN: overview -->
+${description || '[Describe the strategic goal and scope of this epic]'}
+
+## Success Metrics
+<!-- PIN: success-metrics -->
+- [ ] [Key result 1]
+- [ ] [Key result 2]
+- [ ] [Key result 3]
+
+## Features
+<!-- PIN: features -->
+<!-- Features that belong to this epic -->
+
+## Stories
+<!-- PIN: stories -->
+${storiesContent}
+
+## Dependencies
+<!-- PIN: dependencies -->
+- None
+
+## Status: ready
+## Progress: 0%
+## Created: ${now}
+## Updated: ${now}
+`;
+}
+
+/**
+ * Create epic markdown file
+ * @param {string} epicId - Epic ID
+ * @param {string} title - Epic title
+ * @param {Object} options - Options
+ * @returns {string} File path
+ */
+function createEpicFile(epicId, title, options = {}) {
+  ensureDir(EPICS_DIR);
+  const filePath = path.join(EPICS_DIR, `${epicId}.md`);
+  const content = generateEpicTemplate(epicId, title, options);
+  fs.writeFileSync(filePath, content);
+  return filePath;
+}
+
+/**
+ * Parse epic markdown file
+ * @param {string} epicId - Epic ID
+ * @returns {Object|null} Epic data or null
+ */
+function parseEpicFile(epicId) {
+  const filePath = path.join(EPICS_DIR, `${epicId}.md`);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const epic = {
+      id: epicId,
+      title: '',
+      description: '',
+      features: [],
+      stories: [],
+      status: 'ready',
+      progress: 0
+    };
+
+    // Parse title
+    const titleMatch = content.match(/^# Epic: (.+)$/m);
+    if (titleMatch) {
+      epic.title = titleMatch[1].trim();
+    }
+
+    // Parse features
+    const featureMatches = content.matchAll(/- (ft-[a-f0-9]{8})/gi);
+    for (const match of featureMatches) {
+      epic.features.push(match[1]);
+    }
+
+    // Parse stories
+    const storyMatches = content.matchAll(/- (wf-[a-f0-9]{8})/gi);
+    for (const match of storyMatches) {
+      epic.stories.push(match[1]);
+    }
+
+    // Parse status
+    const statusMatch = content.match(/^## Status: (\w+)/m);
+    if (statusMatch) {
+      epic.status = statusMatch[1];
+    }
+
+    // Parse progress
+    const progressMatch = content.match(/^## Progress: (\d+)%/m);
+    if (progressMatch) {
+      epic.progress = parseInt(progressMatch[1], 10);
+    }
+
+    return epic;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] parseEpicFile: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Update epic markdown file
+ * @param {string} epicId - Epic ID
+ * @param {Object} updates - Fields to update
+ * @returns {boolean} Success
+ */
+function updateEpicFile(epicId, updates) {
+  const filePath = path.join(EPICS_DIR, `${epicId}.md`);
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+
+  try {
+    let content = fs.readFileSync(filePath, 'utf-8');
+
+    if (updates.status !== undefined) {
+      content = content.replace(/^## Status: \w+/m, `## Status: ${updates.status}`);
+    }
+
+    if (updates.progress !== undefined) {
+      content = content.replace(/^## Progress: \d+%/m, `## Progress: ${updates.progress}%`);
+    }
+
+    content = content.replace(/^## Updated: .+/m, `## Updated: ${new Date().toISOString()}`);
+
+    fs.writeFileSync(filePath, content);
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] updateEpicFile: ${err.message}`);
+    return false;
+  }
+}
+
+// ============================================================
 // Epic Operations
 // ============================================================
 
@@ -102,7 +261,8 @@ function createEpic(epicId, options = {}) {
   const {
     title = 'Untitled Epic',
     description = '',
-    stories = []
+    stories = [],
+    createFile = true  // v3.2: Also create markdown file
   } = options;
 
   const state = loadEpicsState();
@@ -118,6 +278,7 @@ function createEpic(epicId, options = {}) {
     level: 'L0',
     type: 'epic',
     stories: stories.map(s => typeof s === 'string' ? s : s.id),
+    features: [],  // v3.2: Features that belong to this epic
     status: 'ready',
     progress: 0,
     createdAt: new Date().toISOString(),
@@ -126,6 +287,13 @@ function createEpic(epicId, options = {}) {
 
   state.epics[epicId] = epic;
   saveEpicsState(state);
+
+  // v3.2: Create markdown file for the epic
+  let filePath = null;
+  if (createFile) {
+    filePath = createEpicFile(epicId, title, { description, stories });
+    epic.filePath = filePath;
+  }
 
   return epic;
 }
@@ -170,6 +338,66 @@ function removeStoryFromEpic(epicId, storyId) {
   const idx = epic.stories.indexOf(storyId);
   if (idx >= 0) {
     epic.stories.splice(idx, 1);
+    epic.updatedAt = new Date().toISOString();
+    saveEpicsState(state);
+  }
+
+  return epic;
+}
+
+/**
+ * Add feature to epic (v3.2)
+ * @param {string} epicId - Epic ID
+ * @param {string} featureId - Feature ID to add
+ * @returns {Object} Updated epic
+ */
+function addFeatureToEpic(epicId, featureId) {
+  const state = loadEpicsState();
+  const epic = state.epics[epicId];
+
+  if (!epic) {
+    return { error: `Epic ${epicId} not found` };
+  }
+
+  if (!featureId || !featureId.startsWith('ft-')) {
+    return { error: 'Invalid feature ID format. Expected ft-XXXXXXXX' };
+  }
+
+  // Initialize features array if not present (backward compatibility)
+  if (!epic.features) {
+    epic.features = [];
+  }
+
+  if (!epic.features.includes(featureId)) {
+    epic.features.push(featureId);
+    epic.updatedAt = new Date().toISOString();
+    saveEpicsState(state);
+  }
+
+  return epic;
+}
+
+/**
+ * Remove feature from epic (v3.2)
+ * @param {string} epicId - Epic ID
+ * @param {string} featureId - Feature ID to remove
+ * @returns {Object} Updated epic
+ */
+function removeFeatureFromEpic(epicId, featureId) {
+  const state = loadEpicsState();
+  const epic = state.epics[epicId];
+
+  if (!epic) {
+    return { error: `Epic ${epicId} not found` };
+  }
+
+  if (!epic.features) {
+    return epic;
+  }
+
+  const idx = epic.features.indexOf(featureId);
+  if (idx >= 0) {
+    epic.features.splice(idx, 1);
     epic.updatedAt = new Date().toISOString();
     saveEpicsState(state);
   }
@@ -571,9 +799,17 @@ module.exports = {
   createEpic,
   addStoryToEpic,
   removeStoryFromEpic,
+  addFeatureToEpic,      // v3.2: Feature management
+  removeFeatureFromEpic, // v3.2: Feature management
   getEpic,
   listEpics,
   deleteEpic,
+
+  // Epic file operations (v3.2)
+  createEpicFile,
+  parseEpicFile,
+  updateEpicFile,
+  generateEpicTemplate,
 
   // Progress propagation
   calculateTaskProgress,
@@ -590,7 +826,8 @@ module.exports = {
   formatEpicsList,
 
   // Constants
-  EPICS_STATE_PATH
+  EPICS_STATE_PATH,
+  EPICS_DIR  // v3.2: Directory path
 };
 
 // ============================================================
