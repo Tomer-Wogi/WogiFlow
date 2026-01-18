@@ -33,7 +33,35 @@
     "recheckAfterFix": true,
     "blockExitUntilComplete": true,
     "autoInferVerification": true,
-    "maxRetries": 5
+    "maxRetries": 5,
+    "requireSpecVerification": true,
+    "specVerification": {
+      "validateSyntax": true,
+      "allowSkipWithFlag": true,
+      "parsePatterns": ["tables", "code-blocks", "lists"]
+    }
+  },
+  "errorRecovery": {
+    "enabled": true,
+    "hierarchicalAnalysis": true,
+    "autoSuggestFixes": true,
+    "trackSuccessfulStrategies": true,
+    "maxAttemptsPerLevel": 3,
+    "recursive": {
+      "enabled": false,
+      "maxDepth": 3,
+      "maxHypotheses": 5,
+      "timeout": 300000
+    },
+    "hypothesisGeneration": {
+      "usePatterns": true,
+      "useAI": false,
+      "aiModel": "haiku"
+    },
+    "learning": {
+      "recordSuccessfulFixes": true,
+      "recordFailedHypotheses": true
+    }
   },
   "workflow": {
     "planningStyle": "feature-based",
@@ -92,7 +120,44 @@
   },
   "phases": {
     "enabled": false,
-    "definitions": []
+    "autoSuggestForStories": true,
+    "definitions": [
+      {
+        "id": "contract",
+        "name": "Contract",
+        "description": "Define interfaces, types, API contracts",
+        "focus": ["types", "interfaces", "contracts"],
+        "output": "Type definitions and API contracts"
+      },
+      {
+        "id": "skeleton",
+        "name": "Skeleton",
+        "description": "Create file structure, stub implementations",
+        "focus": ["structure", "stubs", "scaffolding"],
+        "output": "File structure with stub implementations"
+      },
+      {
+        "id": "core",
+        "name": "Core Logic",
+        "description": "Implement main business logic",
+        "focus": ["logic", "implementation", "happy-path"],
+        "output": "Working happy-path implementation"
+      },
+      {
+        "id": "edge-cases",
+        "name": "Edge Cases",
+        "description": "Handle edge cases and error states",
+        "focus": ["errors", "edge-cases", "validation"],
+        "output": "Robust error handling"
+      },
+      {
+        "id": "polish",
+        "name": "Polish",
+        "description": "Optimization, cleanup, documentation",
+        "focus": ["optimization", "cleanup", "docs"],
+        "output": "Production-ready code"
+      }
+    ]
   },
   "mandatorySteps": {
     "afterTask": [],
@@ -136,7 +201,35 @@
     "minSubTasks": 5,
     "edgeCases": true,
     "loadingStates": true,
-    "errorStates": true
+    "errorStates": true,
+    "classification": {
+      "enabled": true,
+      "autoClassify": true,
+      "warnOnMismatch": true,
+      "thresholds": {
+        "epic": { "minFiles": 15, "minStories": 3 },
+        "story": { "minFiles": 5, "maxFiles": 15, "minCriteria": 3 },
+        "task": { "minFiles": 1, "maxFiles": 5, "minCriteria": 1 }
+      },
+      "keywords": {
+        "epic": ["system", "architecture", "migration", "redesign", "platform", "infrastructure", "overhaul"],
+        "story": ["feature", "flow", "integration", "module", "workflow", "implement"],
+        "task": ["add", "fix", "update", "change", "remove", "button", "field", "tweak"]
+      }
+    },
+    "supportEpics": true,
+    "propagateProgress": true
+  },
+  "epics": {
+    "enabled": true,
+    "autoUpdateProgress": true,
+    "showInReady": true,
+    "progressWeights": {
+      "completed": 1.0,
+      "inProgress": 0.5,
+      "ready": 0.0,
+      "blocked": 0.0
+    }
   },
   "specificationMode": {
     "enabled": true,
@@ -421,6 +514,27 @@
     "maxContextTokens": 2000,
     "chunkSize": 500,
     "autoRetrieve": false
+  },
+  "context": {
+    "compaction": {
+      "enabled": true,
+      "thresholds": {
+        "warnAt": 50000,
+        "compactAt": 80000,
+        "maxExpanded": 20000
+      },
+      "summary": {
+        "rootMaxLength": 200,
+        "sectionMaxLength": 500,
+        "detailMaxLength": 1000
+      },
+      "relevanceDecay": {
+        "enabled": true,
+        "decayPerTurn": 0.05
+      },
+      "autoCleanup": true,
+      "savePath": ".workflow/state/context-tree.json"
+    }
   },
   "autoContext": {
     "enabled": true,
@@ -1018,6 +1132,33 @@
   "corrections": {
     "mode": "inline",
     "detailPath": ".workflow/corrections"
+  },
+  "review": {
+    "multiPass": {
+      "enabled": true,
+      "earlyExitOnCritical": true,
+      "passForward": true,
+      "passes": {
+        "structure": {
+          "enabled": true,
+          "model": "haiku"
+        },
+        "logic": {
+          "enabled": true,
+          "model": "sonnet"
+        },
+        "security": {
+          "enabled": true,
+          "model": "sonnet",
+          "conditional": true
+        },
+        "integration": {
+          "enabled": true,
+          "model": "sonnet",
+          "conditional": true
+        }
+      }
+    }
   },
   "workflowSteps": {
     "regressionTest": {

@@ -45,6 +45,12 @@ const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 // v2.5 checkpoint system
 const { Checkpoint } = require('./flow-checkpoint');
 
+// v3.0 epic progress propagation
+const { updateEpicProgress, listEpics } = require('./flow-epics');
+
+// v3.1 spec verification gate
+const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
+
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
 
@@ -451,15 +457,58 @@ function commitChanges(commitMsg, taskType = 'feature') {
 async function main() {
   const taskId = process.argv[2];
   const commitMsg = process.argv[3] || `Complete ${taskId}`;
+  const skipSpecCheck = process.argv.includes('--skip-spec-check');
+  const forceComplete = process.argv.includes('--force');
 
   if (!taskId) {
-    console.log('Usage: flow done <task-id> [commit-message]');
+    console.log('Usage: flow done <task-id> [commit-message] [--skip-spec-check] [--force]');
     process.exit(1);
   }
 
   if (!fileExists(PATHS.ready)) {
     error('No ready.json found');
     process.exit(1);
+  }
+
+  // v3.1: Spec verification gate - verify all promised deliverables exist
+  const doneConfig = getConfig();
+  const requireSpecVerification = doneConfig.tasks?.requireSpecVerification !== false;
+
+  if (requireSpecVerification || !skipSpecCheck) {
+    console.log(color('cyan', 'Running spec verification...'));
+    const specResult = verifySpecDeliverables(taskId, { skipCheck: skipSpecCheck });
+
+    if (specResult.hasSpec && !specResult.passed && !specResult.skipped) {
+      console.log('');
+      console.log(formatVerificationResults(specResult));
+
+      // Save failure artifact
+      try {
+        writeJson(LAST_FAILURE_PATH, {
+          taskId,
+          timestamp: new Date().toISOString(),
+          type: 'spec-verification',
+          specPath: specResult.specPath,
+          missing: specResult.missing,
+          invalid: specResult.invalid
+        });
+      } catch (err) {
+        if (process.env.DEBUG) console.error(`[DEBUG] Failed to save spec failure: ${err.message}`);
+      }
+
+      if (forceComplete) {
+        warn('Spec verification failed but continuing with --force');
+      } else {
+        error('Spec verification failed. Implement missing deliverables or use --skip-spec-check');
+        console.log(color('dim', 'Missing files must be created before task can be completed.'));
+        process.exit(1);
+      }
+    } else if (specResult.hasSpec && specResult.passed) {
+      success(`Spec verification passed (${specResult.verified}/${specResult.totalFiles} deliverables)`);
+    } else if (specResult.skipped && specResult.warning) {
+      warn(specResult.warning);
+    }
+    console.log('');
   }
 
   // Run quality gates
@@ -544,6 +593,31 @@ async function main() {
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Auto-archive: ${err.message}`);
+  }
+
+  // v3.0: Propagate progress to parent epics if applicable
+  try {
+    const config = getConfig();
+    if (config.storyDecomposition?.propagateProgress !== false) {
+      const epics = listEpics();
+      for (const epic of epics) {
+        // Update epic progress if this task is part of it
+        if (epic.stories?.includes(taskId) || epic.stories?.some(s => {
+          // Check if task is a child of any story in this epic
+          const readyData = require('./flow-utils').readJson(PATHS.ready) || {};
+          const allTasks = [...(readyData.ready || []), ...(readyData.inProgress || []), ...(readyData.recentlyCompleted || [])];
+          return allTasks.some(t => t && typeof t === 'object' && t.parent === s && t.id === taskId);
+        })) {
+          const progressResult = updateEpicProgress(epic.id);
+          if (progressResult.epic && !progressResult.error) {
+            const pct = Math.round(progressResult.epic.progress * 100);
+            console.log(color('dim', `📊 Epic "${epic.title}" progress: ${pct}%`));
+          }
+        }
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Epic progress propagation: ${err.message}`);
   }
 
   // v2.3: Archive change spec and update implementation timeline
