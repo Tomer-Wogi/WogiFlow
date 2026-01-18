@@ -18,7 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const {
   PATHS,
   getConfig,
@@ -26,7 +26,8 @@ const {
   warn,
   error,
   info,
-  color
+  color,
+  safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================
@@ -122,29 +123,47 @@ function findSpecFile(taskId) {
 
   // Check subdirectories
   if (fs.existsSync(changesDir)) {
-    const subdirs = fs.readdirSync(changesDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name);
+    try {
+      const subdirs = fs.readdirSync(changesDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
 
-    for (const subdir of subdirs) {
-      const subPath = path.join(changesDir, subdir, `${taskId}.md`);
-      if (fs.existsSync(subPath)) {
-        return subPath;
+      for (const subdir of subdirs) {
+        const subPath = path.join(changesDir, subdir, `${taskId}.md`);
+        if (fs.existsSync(subPath)) {
+          return subPath;
+        }
       }
+    } catch (err) {
+      // readdirSync failed (permission error, etc.)
+      if (process.env.DEBUG) console.error(`[DEBUG] Failed to read changes dir: ${err.message}`);
     }
   }
 
   // Check for *-spec.md files that might reference the task
-  const specPattern = new RegExp(`${taskId}|${taskId.replace('wf-', '')}`, 'i');
+  // Escape taskId to prevent ReDoS
+  const escapedTaskId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedTaskIdShort = taskId.replace('wf-', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const specPattern = new RegExp(`${escapedTaskId}|${escapedTaskIdShort}`, 'i');
   if (fs.existsSync(changesDir)) {
-    const files = fs.readdirSync(changesDir)
-      .filter(f => f.endsWith('-spec.md') || f.endsWith('-spec-final.md'));
+    try {
+      const files = fs.readdirSync(changesDir)
+        .filter(f => f.endsWith('-spec.md') || f.endsWith('-spec-final.md'));
 
-    for (const file of files) {
-      const content = fs.readFileSync(path.join(changesDir, file), 'utf-8');
-      if (specPattern.test(content)) {
-        return path.join(changesDir, file);
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(changesDir, file), 'utf-8');
+          if (specPattern.test(content)) {
+            return path.join(changesDir, file);
+          }
+        } catch (err) {
+          // File read failed (race condition, permission), skip this file
+          if (process.env.DEBUG) console.error(`[DEBUG] Failed to read ${file}: ${err.message}`);
+        }
       }
+    } catch (err) {
+      // readdirSync failed
+      if (process.env.DEBUG) console.error(`[DEBUG] Failed to read changes dir: ${err.message}`);
     }
   }
 
@@ -196,7 +215,14 @@ function parseSpecDeliverables(specPath) {
     return { error: `Spec file not found: ${specPath}`, files: [] };
   }
 
-  const content = fs.readFileSync(specPath, 'utf-8');
+  // Wrap in try-catch per security pattern #1 (race conditions, permissions)
+  let content;
+  try {
+    content = fs.readFileSync(specPath, 'utf-8');
+  } catch (err) {
+    return { error: `Failed to read spec file: ${err.message}`, files: [] };
+  }
+
   const deliverables = {
     specPath,
     newFiles: [],
@@ -445,19 +471,22 @@ function verifyFile(filePath, options = {}) {
 
     if (ext === '.js' || ext === '.mjs' || ext === '.cjs') {
       try {
-        execSync(`node --check "${filePath}"`, { stdio: 'pipe' });
+        // Use execFileSync with array args to prevent command injection
+        execFileSync('node', ['--check', filePath], { stdio: 'pipe' });
         result.syntaxValid = true;
       } catch (err) {
         result.syntaxValid = false;
         result.error = `Syntax error: ${err.message.split('\n')[0]}`;
       }
     } else if (ext === '.json') {
-      try {
-        JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-        result.syntaxValid = true;
-      } catch (err) {
+      // Use safeJsonParse per security pattern (prototype pollution protection)
+      const parsed = safeJsonParse(filePath, null);
+      if (parsed === null) {
+        // safeJsonParse returns null on error
         result.syntaxValid = false;
-        result.error = `Invalid JSON: ${err.message}`;
+        result.error = 'Invalid JSON or failed to parse';
+      } else {
+        result.syntaxValid = true;
       }
     } else if (ext === '.ts' || ext === '.tsx') {
       // For TypeScript, just check file is non-empty

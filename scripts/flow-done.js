@@ -474,7 +474,7 @@ async function main() {
   const doneConfig = getConfig();
   const requireSpecVerification = doneConfig.tasks?.requireSpecVerification !== false;
 
-  if (requireSpecVerification || !skipSpecCheck) {
+  if (requireSpecVerification && !skipSpecCheck) {
     console.log(color('cyan', 'Running spec verification...'));
     const specResult = verifySpecDeliverables(taskId, { skipCheck: skipSpecCheck });
 
