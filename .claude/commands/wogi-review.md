@@ -10,7 +10,31 @@ Comprehensive code review with verification gates and 3 parallel AI agents.
 /wogi-review --staged         # Only staged changes
 /wogi-review --skip-verify    # Skip verification gates (AI only)
 /wogi-review --verify-only    # Only run verification gates
+/wogi-review --multipass      # Use sequential multi-pass review mode
 ```
+
+## Review Modes
+
+### Parallel Mode (Default)
+Runs 3 AI agents simultaneously for faster results. Best for quick reviews.
+
+### Multi-Pass Mode (--multipass)
+Runs 4 sequential passes with context isolation. Best for thorough reviews:
+
+```
+Pass 1: Structure (Haiku)      → File organization, naming, anti-patterns
+Pass 2: Logic (Sonnet)         → Business logic, edge cases
+Pass 3: Security (Sonnet)*     → OWASP, injection, credentials
+Pass 4: Integration (Sonnet)*  → Breaking changes, contracts
+
+* = Conditional - only runs if patterns detected
+```
+
+Multi-pass advantages:
+- Each pass starts with fresh context (no bias from previous findings)
+- Later passes can focus on files flagged by earlier passes
+- Early exit on critical issues saves resources
+- Better for large codebases or security-sensitive changes
 
 ## How It Works
 
@@ -19,8 +43,9 @@ Comprehensive code review with verification gates and 3 parallel AI agents.
 │  /wogi-review                                                │
 ├─────────────────────────────────────────────────────────────┤
 │  1. Identify changed files (git diff)                        │
-│  2. VERIFY: Run verification gates (lint, typecheck, test)   │
-│     → Fast tool-based checks catch obvious issues            │
+│  2. VERIFY: Run verification gates                           │
+│     → Spec verification (all deliverables exist?)            │
+│     → Lint, typecheck, test checks                           │
 │  3. REVIEW: Launch 3 parallel AI agents                      │
 │     → Deep analysis for subtle issues                        │
 │  4. Consolidate results into single report                   │
@@ -30,6 +55,18 @@ Comprehensive code review with verification gates and 3 parallel AI agents.
 ## Phase 1: Verification Gates
 
 Run automated tools first to catch obvious issues quickly:
+
+### Spec Verification (if task has spec)
+
+If reviewing a task with a spec file, run spec verification FIRST:
+
+```bash
+node scripts/flow-spec-verifier.js verify wf-XXXXXXXX
+```
+
+This ensures all files promised in the spec actually exist before reviewing code quality.
+
+### Standard Verification Gates
 
 ```bash
 # Run configured verification commands
@@ -43,6 +80,7 @@ npm run test 2>&1 | head -50  # If tests exist
 ═══════════════════════════════════════
 VERIFICATION GATES
 ═══════════════════════════════════════
+✓ Spec: 5/5 deliverables exist
 ✓ Lint: passed
 ✗ TypeCheck: 2 errors
   → src/utils.ts:45 - Property 'x' does not exist
@@ -52,7 +90,7 @@ VERIFICATION GATES
 Gate Summary: 1 failed (typecheck)
 ```
 
-If critical gate failures exist, report them immediately before AI review.
+If spec verification or critical gate failures exist, report them immediately before AI review.
 
 ## Phase 2: AI Review (3 Parallel Agents)
 
@@ -151,10 +189,11 @@ When `/wogi-review` is invoked:
    ```
 
 2. **Run verification gates** (unless --skip-verify):
+   - **Spec verification** (if task has spec file) - verify all deliverables exist
    - Lint check
    - TypeScript type check
    - Test run (if configured)
-   - Report any failures immediately
+   - Report any failures immediately (spec failures are blockers)
 
 3. **Launch 3 agents in parallel** (single message with 3 Task tool calls):
    - Agent 1: Code & Logic (subagent_type=Explore)
@@ -178,6 +217,7 @@ Files Reviewed: N
 ═══════════════════════════════════════════════════════════
 VERIFICATION GATES
 ═══════════════════════════════════════════════════════════
+✓ Spec: 5/5 deliverables exist
 ✓ Lint: passed
 ✓ TypeCheck: passed
 ✓ Tests: 15/15 passed
@@ -206,13 +246,118 @@ ARCHITECTURE & CONFLICTS
 ═══════════════════════════════════════════════════════════
 SUMMARY
 ═══════════════════════════════════════════════════════════
-Verification: 3/3 gates passed
+Verification: 4/4 gates passed (spec, lint, typecheck, tests)
 AI Review: N issues (X critical, Y high, Z medium, W low)
 
 Top Recommendations:
 1. [Most important fix]
 2. [Second most important]
 3. [Third most important]
+```
+
+## Multi-Pass Mode Execution
+
+When `--multipass` is specified, use the sequential pass system instead of parallel agents:
+
+### Multi-Pass Execution Steps
+
+1. **Get changed files** (same as parallel mode)
+
+2. **Run verification gates** (same as parallel mode)
+
+3. **Execute passes sequentially** using the review pass modules:
+
+   ```javascript
+   // Load pass modules
+   const { runMultiPassReview, PASS_DEFINITIONS } = require('./scripts/flow-review-passes');
+
+   // Or run via CLI
+   node scripts/flow-review-passes --files file1.js,file2.js
+   ```
+
+4. **Pass 1: Structure** (Haiku model - fast/cheap)
+   - File organization check
+   - Naming convention validation
+   - Anti-pattern detection from decisions.md
+   - Output: `filesToExamine[]`, `structuralIssues[]`
+
+5. **Pass 2: Logic** (Sonnet model)
+   - Only examines files flagged by Pass 1
+   - Business logic correctness
+   - Error handling patterns
+   - Async/await issues
+   - Output: `logicIssues[]`, `testGaps[]`
+
+6. **Pass 3: Security** (Sonnet, CONDITIONAL)
+   - Only runs if: security patterns detected OR high-risk file types
+   - OWASP Top 10 checks
+   - Credential exposure scan
+   - Injection risk analysis
+   - Output: `vulnerabilities[]`
+
+7. **Pass 4: Integration** (Sonnet, CONDITIONAL)
+   - Only runs if: 5+ files OR API changes detected
+   - Breaking change analysis
+   - Contract drift detection
+   - Circular dependency check
+   - Output: `breakingChanges[]`, `conflicts[]`
+
+### Multi-Pass Output Format
+
+```
+╔══════════════════════════════════════════════════════════╗
+║  Multi-Pass Code Review                                   ║
+╚══════════════════════════════════════════════════════════╝
+
+Files Reviewed: N
+
+═══════════════════════════════════════════════════════════
+PASS 1: STRUCTURE [Haiku] ✓
+═══════════════════════════════════════════════════════════
+Duration: 2.3s | Files flagged: 3
+• Naming issue: useGetData.ts should be use-get-data.ts
+• Anti-pattern: console.log in production code (api.ts:45)
+
+═══════════════════════════════════════════════════════════
+PASS 2: LOGIC [Sonnet] ✓
+═══════════════════════════════════════════════════════════
+Duration: 5.1s | Issues: 2
+• Missing null check: user.profile accessed without guard (user.ts:23)
+• Async issue: Promise not awaited (api.ts:67)
+
+═══════════════════════════════════════════════════════════
+PASS 3: SECURITY [Sonnet] ✓
+═══════════════════════════════════════════════════════════
+Duration: 4.2s | Triggered by: API file detected
+• No critical vulnerabilities found
+
+═══════════════════════════════════════════════════════════
+PASS 4: INTEGRATION [Sonnet] ⊘ SKIPPED
+═══════════════════════════════════════════════════════════
+Reason: < 5 files, no API contract changes
+
+═══════════════════════════════════════════════════════════
+SUMMARY
+═══════════════════════════════════════════════════════════
+Passes: 3/4 executed (1 skipped)
+Total Issues: 4 (0 critical, 1 high, 2 medium, 1 low)
+```
+
+### Pass Module API
+
+The pass modules in `scripts/flow-review-passes/` can be used programmatically:
+
+```javascript
+const { runMultiPassReview } = require('./scripts/flow-review-passes');
+
+const results = await runMultiPassReview({
+  files: [{ path: 'src/api.ts', content: '...' }],
+  config: {
+    passes: ['structure', 'logic', 'security', 'integration'],
+    earlyExitOnCritical: true,
+    passForward: true  // Pass results to subsequent passes
+  }
+});
 ```
 
 ## Options
@@ -225,6 +370,9 @@ Top Recommendations:
 | `--verify-only` | Only run verification gates, no AI review |
 | `--security-only` | Only run security agent |
 | `--quick` | Faster review with reduced thoroughness |
+| `--multipass` | Use sequential multi-pass mode instead of parallel |
+| `--no-early-exit` | Don't stop on critical issues (multi-pass only) |
+| `--passes=<list>` | Specific passes to run (e.g., `structure,logic`) |
 
 ## When No Changes Found
 

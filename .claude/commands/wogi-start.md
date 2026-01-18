@@ -35,7 +35,8 @@ This command implements a **structured execution loop**:
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Any bugs or regressions?          │  │
 │  └───────────────────────────────────────────────────┘  │
-│  6. VERIFY PHASE: Run all quality gates                 │
+│  6. VERIFY PHASE: Spec verification + quality gates     │
+│     → MANDATORY: Verify all spec deliverables exist     │
 │  7. Save final verification artifact                    │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Does this match user request?     │  │
@@ -143,7 +144,42 @@ For each acceptance criteria:
 
 ### Step 4: Run Quality Gates + Final Verification
 
-Read `config.json` → `qualityGates` for task type and verify:
+**MANDATORY FIRST CHECK - Spec Verification Gate:**
+
+Before running any other quality gates, verify all deliverables from the spec exist:
+
+```bash
+node scripts/flow-spec-verifier.js verify wf-XXXXXXXX
+```
+
+This checks:
+1. Parse the task's spec file (`.workflow/changes/wf-XXXXXXXX.md`)
+2. Extract all promised files from Technical Notes / Components sections
+3. Verify each file exists
+4. Verify JS/JSON files have valid syntax
+
+**Output:**
+```
+═══════════════════════════════════════════════════
+  Spec Verification
+═══════════════════════════════════════════════════
+Spec: .workflow/changes/wf-abc123.md
+
+✓ Spec verification passed (5/5 deliverables)
+```
+
+**If spec verification fails:**
+```
+✗ Spec verification FAILED (3/5 deliverables)
+
+Missing files:
+  ✗ scripts/flow-missing-feature.js
+    (listed in: Technical Notes → Components)
+```
+→ **STOP. Create the missing files before proceeding.**
+→ Do NOT skip this check. This prevents implementation gaps.
+
+**After spec verification passes**, read `config.json` → `qualityGates` for task type and verify:
 
 - `tests`: Run test command if configured, ensure passing
 - `requestLogEntry`: Verify entry exists in request-log.md
@@ -230,7 +266,10 @@ Beginning structured execution loop...
 
 **End:**
 ```
-[VERIFY] Running final quality gates...
+[VERIFY] Running spec verification...
+  ✓ Spec verification passed (5/5 deliverables)
+
+[VERIFY] Running quality gates...
   ✓ tests passed (12/12)
   ✓ lint passed
   ✓ typecheck passed
@@ -291,6 +330,26 @@ Only run verification without implementation (for debugging):
 /wogi-start wf-XXXXXXXX --verify-only
 ```
 
+### `--phased`
+Enable phased execution mode (Contract → Skeleton → Core → Edge Cases → Polish):
+```
+/wogi-start wf-XXXXXXXX --phased
+```
+
+This breaks implementation into focused phases with context isolation:
+1. **Contract**: Define interfaces, types, API contracts (NO implementation)
+2. **Skeleton**: Create file structure, stub implementations (NO logic)
+3. **Core Logic**: Implement happy path only (assume valid inputs)
+4. **Edge Cases**: Handle errors and validation (NO core logic changes)
+5. **Polish**: Optimization, cleanup, documentation
+
+Each phase has constraints to prevent scope creep. Use for complex tasks.
+
+Phase commands:
+- `flow phase complete <taskId>` - Complete current phase
+- `flow phase skip <taskId>` - Skip current phase
+- `flow phase status <taskId>` - Show phase status
+
 ## When Things Go Wrong
 
 ### Scenario keeps failing after max retries
@@ -312,5 +371,6 @@ Only run verification without implementation (for debugging):
 
 - **TodoWrite is mandatory**: Use it to track progress through scenarios
 - **Self-verification is mandatory**: Don't mark scenarios done without checking they work
+- **Spec verification is mandatory**: All files promised in spec must exist before completion
 - **Quality gates are mandatory**: Task isn't done until gates pass
 - **Commits preserve progress**: Even if you stop mid-task, work is saved
