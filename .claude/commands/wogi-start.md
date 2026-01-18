@@ -35,6 +35,8 @@ This command implements a **structured execution loop**:
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Any bugs or regressions?          │  │
 │  └───────────────────────────────────────────────────┘  │
+│  5.5 CRITERIA CHECK: Re-read spec, verify EACH done     │
+│     → If ANY not done: implement it, loop back          │
 │  6. VERIFY PHASE: Spec verification + quality gates     │
 │     → MANDATORY: Verify all spec deliverables exist     │
 │  7. Save final verification artifact                    │
@@ -141,6 +143,49 @@ For each acceptance criteria:
   "allPassed": true
 }
 ```
+
+### Step 3.5: Criteria Completion Verification (MANDATORY)
+
+**This is the enforcement loop that ensures everything was actually done.**
+
+After implementing all scenarios, BEFORE running quality gates:
+
+1. **Re-read the original acceptance criteria** from the spec file
+2. **For EACH criterion**, verify it was actually implemented:
+   ```
+   ┌─────────────────────────────────────────────────────────┐
+   │  CRITERIA COMPLETION CHECK                              │
+   ├─────────────────────────────────────────────────────────┤
+   │  Re-reading acceptance criteria from spec...            │
+   │                                                         │
+   │  □ Criterion 1: Given X, When Y, Then Z                │
+   │    → Check: Does the code actually do Z when Y?         │
+   │    → Status: ✓ IMPLEMENTED / ✗ NOT DONE                │
+   │                                                         │
+   │  □ Criterion 2: Given A, When B, Then C                │
+   │    → Check: Does the code actually do C when B?         │
+   │    → Status: ✓ IMPLEMENTED / ✗ NOT DONE                │
+   │                                                         │
+   │  ... for ALL criteria                                   │
+   └─────────────────────────────────────────────────────────┘
+   ```
+
+3. **If ANY criterion is NOT implemented**:
+   - Add it back to TodoWrite as in_progress
+   - Implement it
+   - Verify it works
+   - Return to step 3.5 and re-check ALL criteria again
+
+4. **Only proceed when ALL criteria show ✓ IMPLEMENTED**
+
+**This is NOT optional. This is what prevents "claiming done when not done."**
+
+The key question for each criterion:
+> "If I run the code right now, does it actually do what this criterion describes?"
+
+Not "did I write code for this" but "does the code WORK as specified?"
+
+---
 
 ### Step 4: Run Quality Gates + Final Verification
 
@@ -266,6 +311,13 @@ Beginning structured execution loop...
 
 **End:**
 ```
+[CRITERIA CHECK] Re-reading acceptance criteria from spec...
+  ✓ Criterion 1: "Given X, When Y, Then Z" - IMPLEMENTED
+  ✓ Criterion 2: "Given A, When B, Then C" - IMPLEMENTED
+  ✓ Criterion 3: "Error handling for invalid input" - IMPLEMENTED
+  ✓ Criterion 4: "Config option to disable feature" - IMPLEMENTED
+  → All 4/4 criteria verified as implemented
+
 [VERIFY] Running spec verification...
   ✓ Spec verification passed (5/5 deliverables)
 
@@ -371,6 +423,7 @@ Phase commands:
 
 - **TodoWrite is mandatory**: Use it to track progress through scenarios
 - **Self-verification is mandatory**: Don't mark scenarios done without checking they work
+- **Criteria completion check is mandatory**: After implementing, re-read ALL criteria and verify EACH one actually works. If any is not done, implement it and check again. This is the loop that prevents "claiming done when not done."
 - **Spec verification is mandatory**: All files promised in spec must exist before completion
 - **Quality gates are mandatory**: Task isn't done until gates pass
 - **Commits preserve progress**: Even if you stop mid-task, work is saved
