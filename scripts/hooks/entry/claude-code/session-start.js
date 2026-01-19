@@ -9,7 +9,7 @@
 
 const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { setCliSessionId, clearStaleCurrentTask } = require('../../../flow-session-state');
+const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 
 async function main() {
   try {
@@ -37,8 +37,9 @@ async function main() {
 
     // Clear stale currentTask if it's already in recentlyCompleted
     // Fixes bug where completed tasks show as "in progress" in morning briefing
+    // Uses async version with locking for concurrent safety
     try {
-      clearStaleCurrentTask();
+      await clearStaleCurrentTaskAsync();
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Failed to clear stale task: ${err.message}`);

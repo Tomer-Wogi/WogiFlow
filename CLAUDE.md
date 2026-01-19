@@ -36,14 +36,21 @@ Check `.workflow/state/ready.json` for existing tasks.
 - If **YES** with **2+ ready tasks** → Check for parallel execution (Step 2.5)
 - If **NO** → Continue to Step 3
 
-### Step 2.5: Consider Parallel Execution
+### Step 2.5: Consider Parallel Execution (Auto-Detected)
 
-When multiple tasks are ready, run `/wogi-ready` to check if they can run in parallel.
+Parallel execution is **automatically detected** at:
+- Session start (shown in context)
+- When running `/wogi-ready`
+- After story decomposition creates sub-tasks
+- At the start of `/wogi-start`
 
-**If parallel execution is available:**
-- Look for "⚡ PARALLEL EXECUTION AVAILABLE" in output
-- Tasks without dependencies can run simultaneously in isolated git worktrees
-- Each task gets its own branch, merged when complete
+**You will see this notification when parallel execution is available:**
+```
+⚡ PARALLEL EXECUTION AVAILABLE
+  3 tasks can run in parallel (no dependencies)
+  Tasks: wf-001, wf-002, wf-003
+  ✓ Worktree isolation enabled
+```
 
 **Decision criteria:**
 - **Use parallel** when: Tasks are independent (different files/features), user wants speed

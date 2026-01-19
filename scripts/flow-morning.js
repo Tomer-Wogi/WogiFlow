@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -146,17 +146,28 @@ function getGitChangesSinceSession(lastActiveTimestamp) {
     const sinceDate = new Date(lastActiveTimestamp);
     const since = sinceDate.toISOString();
 
-    // Get commits since last session
-    const logCmd = `git log --oneline --since="${since}" --all 2>/dev/null || echo ""`;
-    const logOutput = execSync(logCmd, { encoding: 'utf-8', cwd: PATHS.root }).trim();
+    // Get commits since last session using execFileSync for safety (no shell injection)
+    let logOutput = '';
+    try {
+      logOutput = execFileSync('git', ['log', '--oneline', `--since=${since}`, '--all'], {
+        encoding: 'utf-8',
+        cwd: PATHS.root,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }).trim();
+    } catch {
+      // Git command may fail on some systems or if no commits match
+    }
     const commits = logOutput ? logOutput.split('\n').filter(Boolean) : [];
 
     // Get files changed since last session using --since with diff
     // Note: git diff doesn't support --since, so we use git log instead
     let filesChanged = [];
     try {
-      const diffCmd = `git log --name-only --since="${since}" --format="" --all 2>/dev/null || echo ""`;
-      const diffOutput = execSync(diffCmd, { encoding: 'utf-8', cwd: PATHS.root }).trim();
+      const diffOutput = execFileSync('git', ['log', '--name-only', `--since=${since}`, '--format=', '--all'], {
+        encoding: 'utf-8',
+        cwd: PATHS.root,
+        stdio: ['pipe', 'pipe', 'pipe']
+      }).trim();
       // Deduplicate file list
       filesChanged = [...new Set(diffOutput.split('\n').filter(Boolean))];
     } catch {
@@ -299,7 +310,7 @@ function collectBriefingData() {
     ? getGitChangesSinceSession(sessionState.lastActive)
     : { commits: 0, commitDetails: [], newBugs: 0, filesChanged: [] };
 
-  // Determine current task - prioritize in-progress tasks from ready.json over stale session-state
+  // Determine current task - prioritize in-progress tasks from ready.json (source of truth)
   let currentTask = null;
   const readyData = getReadyData();
   const inProgressTasks = readyData.inProgress || [];
@@ -316,23 +327,12 @@ function collectBriefingData() {
     }
   } else if (sessionState.currentTask) {
     // Fallback to session state only if no in-progress tasks in ready.json
-    // But first verify the task isn't already completed (stale session state)
-    const sessionTaskId = typeof sessionState.currentTask === 'object'
-      ? sessionState.currentTask.id
-      : sessionState.currentTask;
-
-    const recentlyCompleted = readyData.recentlyCompleted || [];
-    const isAlreadyCompleted = recentlyCompleted.some(task =>
-      (typeof task === 'object' ? task.id : task) === sessionTaskId
-    );
-
-    if (!isAlreadyCompleted) {
-      currentTask = typeof sessionState.currentTask === 'object'
-        ? sessionState.currentTask
-        : { id: sessionState.currentTask };
-      currentTask.files = sessionState.recentFiles || [];
-    }
-    // If task was already completed, currentTask remains null (correct behavior)
+    // Note: Stale task cleanup is already done by clearStaleCurrentTaskAsync() at session start
+    // This is a simplified check - if session state has a task, use it (should be valid)
+    currentTask = typeof sessionState.currentTask === 'object'
+      ? sessionState.currentTask
+      : { id: sessionState.currentTask };
+    currentTask.files = sessionState.recentFiles || [];
   }
 
   // Get key context

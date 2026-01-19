@@ -23,7 +23,8 @@ const {
   parseFlags,
   outputJson,
   withLock,
-  safeJsonParse
+  safeJsonParse,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // Import context orchestrator for product context
@@ -302,6 +303,12 @@ async function createStory(title, options = {}) {
     // Create feature folder for decomposed stories
     featureFolder = slugify(title);
     targetDir = path.join(CHANGES_DIR, featureFolder);
+
+    // Security: Validate path is within project (defense against path traversal)
+    if (!isPathWithinProject(targetDir, PROJECT_ROOT)) {
+      throw new Error(`Security: Target directory "${targetDir}" is outside project root`);
+    }
+
     fs.mkdirSync(targetDir, { recursive: true });
   }
 

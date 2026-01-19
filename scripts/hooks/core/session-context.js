@@ -67,11 +67,13 @@ function getCurrentTask() {
  * @returns {Array} Key decisions
  */
 function getKeyDecisions(maxEntries = 5) {
-  try {
-    if (!fs.existsSync(PATHS.decisions)) {
-      return [];
-    }
+  if (!fs.existsSync(PATHS.decisions)) {
+    return [];
+  }
 
+  try {
+    // Wrap in try-catch per security-patterns.md Rule #1
+    // Race conditions/permission changes can cause fs.readFileSync to fail even after existsSync
     const content = fs.readFileSync(PATHS.decisions, 'utf-8');
     const decisions = [];
 
@@ -103,11 +105,13 @@ function getKeyDecisions(maxEntries = 5) {
  * @returns {Array} Recent activity
  */
 function getRecentActivity(maxEntries = 3) {
-  try {
-    if (!fs.existsSync(PATHS.requestLog)) {
-      return [];
-    }
+  if (!fs.existsSync(PATHS.requestLog)) {
+    return [];
+  }
 
+  try {
+    // Wrap in try-catch per security-patterns.md Rule #1
+    // Race conditions/permission changes can cause fs.readFileSync to fail even after existsSync
     const content = fs.readFileSync(PATHS.requestLog, 'utf-8');
     const entries = [];
 
@@ -245,7 +249,10 @@ function gatherSessionContext(options = {}) {
       }
     }
   } catch (err) {
-    // Non-critical - don't fail session start
+    // Non-critical - don't fail session start, but log for debugging
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Parallel detection failed: ${err.message}`);
+    }
   }
 
   return {

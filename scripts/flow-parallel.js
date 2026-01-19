@@ -313,6 +313,44 @@ async function executeParallel(tasks, executor, options = {}) {
 }
 
 /**
+ * Detect parallel execution potential and return standardized info object
+ * Centralizes the parallel detection logic used by multiple modules
+ *
+ * @param {Array} tasks - Array of task objects to check
+ * @param {Object} options - Optional settings
+ * @param {Object} options.config - Optional config (uses getConfig if not provided)
+ * @returns {Object|null} Parallel info object or null if not available
+ */
+function detectParallelInfo(tasks, options = {}) {
+  try {
+    const parallelConfig = getParallelConfig();
+    if (!parallelConfig.enabled) return null;
+
+    if (!tasks || tasks.length < 2) return null;
+
+    const parallelizable = findParallelizable(tasks);
+    if (parallelizable.length < 2) return null;
+
+    // Get worktree config
+    const config = options.config || getConfig();
+
+    return {
+      available: true,
+      count: parallelizable.length,
+      taskIds: parallelizable.map(t => t.id || t),
+      tasks: parallelizable,
+      worktreeEnabled: config.worktree?.enabled || false,
+      suggestion: `${parallelizable.length} tasks can run in parallel with worktree isolation`
+    };
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-parallel] detectParallelInfo failed: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+/**
  * Check if user approval is needed for parallel execution
  */
 function needsApproval(tasks, config = null) {
@@ -352,6 +390,7 @@ module.exports = {
   detectDependencies,
   findParallelizable,
   canRunInParallel,
+  detectParallelInfo,
 
   // Execution
   executeParallel,

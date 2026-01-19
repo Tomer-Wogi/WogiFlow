@@ -17,6 +17,7 @@ const {
   findTask,
   readFile,
   readJson,
+  safeJsonParse,
   writeJson,
   color,
   success,
@@ -463,7 +464,8 @@ function allStoriesComplete(feature) {
   }
 
   try {
-    const readyData = readJson(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
+    // Use safeJsonParse per security-patterns.md Rule #2 (protects against prototype pollution)
+    const readyData = safeJsonParse(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
 
     for (const storyId of feature.stories) {
       // Story must be in recentlyCompleted to be considered complete
@@ -766,10 +768,17 @@ function archiveCompletedParent(itemId, itemType) {
 
 /**
  * Maximum recursion depth for cascade completion
- * Hierarchy is: story → feature → epic → plan (max 4 levels)
- * Adding buffer for safety
+ * Hierarchy is: subtask/story → feature → epic → plan (max 4 levels)
+ * Set to 10 as safety buffer to handle edge cases like nested sub-stories.
+ * In normal operation, cascade should never exceed depth 4.
  */
 const CASCADE_MAX_DEPTH = 10;
+
+/**
+ * Valid item types for cascade completion
+ * Used to validate input and prevent silent failures on typos
+ */
+const VALID_CASCADE_TYPES = ['subtask', 'story', 'feature', 'epic'];
 
 /**
  * Cascade completion up the hierarchy
@@ -781,6 +790,14 @@ const CASCADE_MAX_DEPTH = 10;
  */
 function cascadeCompletion(itemId, itemType, depth = 0) {
   if (!itemId || !itemType) return;
+
+  // Validate itemType to catch typos/invalid values early
+  if (!VALID_CASCADE_TYPES.includes(itemType)) {
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] cascadeCompletion: Invalid itemType "${itemType}", expected one of: ${VALID_CASCADE_TYPES.join(', ')}`);
+    }
+    return;
+  }
 
   // Safety check: prevent infinite recursion
   if (depth >= CASCADE_MAX_DEPTH) {

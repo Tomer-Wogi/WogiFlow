@@ -254,7 +254,23 @@ function trackTaskStart(taskId, taskTitle, metadata = {}) {
 }
 
 /**
- * Track task completion
+ * Track task completion (async version with locking)
+ * @param {string} taskId - Task ID being completed
+ * @returns {Promise<Object>} Updated session state
+ */
+async function trackTaskCompleteAsync(taskId) {
+  return saveSessionStateAsync({
+    currentTask: null,
+    metrics: {
+      ...(loadSessionState().metrics || {}),
+      tasksCompleted: ((loadSessionState().metrics?.tasksCompleted) || 0) + 1
+    }
+  });
+}
+
+/**
+ * Track task completion (sync version for backward compatibility)
+ * @deprecated Use trackTaskCompleteAsync for concurrent safety
  */
 function trackTaskComplete(taskId) {
   const state = loadSessionState();
@@ -280,7 +296,65 @@ function getCurrentTask() {
 /**
  * Clear stale current task if it's already completed
  * Called on session start to prevent showing completed tasks as "in progress"
+ * Uses async version with locking for concurrent safety
+ * @returns {Promise<boolean>} True if a stale task was cleared
+ */
+async function clearStaleCurrentTaskAsync() {
+  return withLock(SESSION_PATH, async () => {
+    const state = loadSessionState();
+    if (!state.currentTask) return false;
+
+    const taskId = typeof state.currentTask === 'object'
+      ? state.currentTask.id
+      : state.currentTask;
+
+    if (!taskId) return false;
+
+    // Check ready.json for this task
+    try {
+      const { getReadyData } = require('./flow-utils');
+      const readyData = getReadyData();
+
+      // Check if task is in recentlyCompleted
+      const recentlyCompleted = readyData.recentlyCompleted || [];
+      const isCompleted = recentlyCompleted.some(task =>
+        (typeof task === 'object' ? task.id : task) === taskId
+      );
+
+      // Also check it's not in inProgress (shouldn't happen, but defensive)
+      const inProgress = readyData.inProgress || [];
+      const isInProgress = inProgress.some(task =>
+        (typeof task === 'object' ? task.id : task) === taskId
+      );
+
+      // Invariant check: task should not be in both places
+      if (isCompleted && isInProgress && process.env.DEBUG) {
+        console.error(`[session-state] BUG: Task ${taskId} in both recentlyCompleted AND inProgress`);
+      }
+
+      if (isCompleted) {
+        // Task was completed but session state wasn't updated - fix it now
+        writeJson(SESSION_PATH, { ...state, currentTask: null, lastActive: new Date().toISOString() });
+        if (process.env.DEBUG) {
+          console.error(`[session-state] Cleared stale currentTask: ${taskId}`);
+        }
+        return true;
+      }
+    } catch (err) {
+      // Non-critical - don't fail session start
+      if (process.env.DEBUG) {
+        console.error(`[session-state] clearStaleCurrentTask error: ${err.message}`);
+      }
+    }
+
+    return false;
+  });
+}
+
+/**
+ * Clear stale current task (sync wrapper for backward compatibility)
  * @returns {boolean} True if a stale task was cleared
+ * @deprecated Use clearStaleCurrentTaskAsync for concurrent safety
  */
 function clearStaleCurrentTask() {
   const state = loadSessionState();
@@ -292,25 +366,15 @@ function clearStaleCurrentTask() {
 
   if (!taskId) return false;
 
-  // Check ready.json for this task
   try {
     const { getReadyData } = require('./flow-utils');
     const readyData = getReadyData();
-
-    // Check if task is in recentlyCompleted
     const recentlyCompleted = readyData.recentlyCompleted || [];
     const isCompleted = recentlyCompleted.some(task =>
       (typeof task === 'object' ? task.id : task) === taskId
     );
 
-    // Also check it's not in inProgress (shouldn't happen, but defensive)
-    const inProgress = readyData.inProgress || [];
-    const isInProgress = inProgress.some(task =>
-      (typeof task === 'object' ? task.id : task) === taskId
-    );
-
-    if (isCompleted && !isInProgress) {
-      // Task was completed but session state wasn't updated - fix it now
+    if (isCompleted) {
       saveSessionState({ currentTask: null });
       if (process.env.DEBUG) {
         console.error(`[session-state] Cleared stale currentTask: ${taskId}`);
@@ -318,7 +382,6 @@ function clearStaleCurrentTask() {
       return true;
     }
   } catch (err) {
-    // Non-critical - don't fail session start
     if (process.env.DEBUG) {
       console.error(`[session-state] clearStaleCurrentTask error: ${err.message}`);
     }
@@ -724,8 +787,10 @@ module.exports = {
   // Task tracking
   trackTaskStart,
   trackTaskComplete,
+  trackTaskCompleteAsync,
   getCurrentTask,
   clearStaleCurrentTask,
+  clearStaleCurrentTaskAsync,
 
   // File tracking
   trackFileModified,

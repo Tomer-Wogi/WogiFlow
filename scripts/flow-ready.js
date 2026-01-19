@@ -118,19 +118,29 @@ function main() {
   };
 
   // Check for parallel execution potential
+  // Get config once and reuse (avoid duplicate getConfig calls)
+  const config = getConfig();
   const parallelConfig = getParallelConfig();
   let parallelInfo = null;
-  if (parallelConfig.enabled && ready.length >= 2) {
-    const parallelizable = findParallelizable(ready);
-    if (parallelizable.length >= 2) {
-      const config = getConfig();
-      parallelInfo = {
-        available: true,
-        count: parallelizable.length,
-        taskIds: parallelizable.map(t => t.id || t),
-        worktreeEnabled: config.worktree?.enabled || false,
-        suggestion: `${parallelizable.length} tasks can run in parallel with worktree isolation`
-      };
+  let parallelizableTasks = []; // Store for reuse in display section
+
+  try {
+    if (parallelConfig.enabled && ready.length >= 2) {
+      parallelizableTasks = findParallelizable(ready);
+      if (parallelizableTasks.length >= 2) {
+        parallelInfo = {
+          available: true,
+          count: parallelizableTasks.length,
+          taskIds: parallelizableTasks.map(t => t.id || t),
+          worktreeEnabled: config.worktree?.enabled || false,
+          suggestion: `${parallelizableTasks.length} tasks can run in parallel with worktree isolation`
+        };
+      }
+    }
+  } catch (err) {
+    // Non-critical - log for debugging but don't fail
+    if (process.env.DEBUG) {
+      console.error(`[flow-ready] Parallel detection failed: ${err.message}`);
     }
   }
 
@@ -200,27 +210,23 @@ function main() {
     console.log('');
   }
 
-  // Parallel execution detection (reuse parallelInfo computed earlier)
-  if (parallelInfo && parallelConfig.autoSuggest) {
-    const parallelizable = findParallelizable(ready);
-    if (parallelizable.length >= 2) {
-      console.log('');
-      console.log(color('cyan', '⚡ PARALLEL EXECUTION AVAILABLE'));
-      console.log(`  ${parallelizable.length} tasks can run in parallel (no dependencies between them)`);
-      console.log(`  Tasks: ${parallelizable.map(t => t.id || t).join(', ')}`);
-      if (parallelConfig.requireWorktree) {
-        const config = getConfig();
-        if (config.worktree?.enabled) {
-          console.log(color('green', '  ✓ Worktree isolation enabled - safe for parallel execution'));
-        } else {
-          console.log(color('yellow', '  ⚠ Enable worktree for safe parallel execution: flow worktree enable'));
-        }
+  // Parallel execution detection (reuse parallelizableTasks computed earlier - no duplicate call)
+  if (parallelInfo && parallelConfig.autoSuggest && parallelizableTasks.length >= 2) {
+    console.log('');
+    console.log(color('cyan', '⚡ PARALLEL EXECUTION AVAILABLE'));
+    console.log(`  ${parallelizableTasks.length} tasks can run in parallel (no dependencies between them)`);
+    console.log(`  Tasks: ${parallelizableTasks.map(t => t.id || t).join(', ')}`);
+    if (parallelConfig.requireWorktree) {
+      if (config.worktree?.enabled) {
+        console.log(color('green', '  ✓ Worktree isolation enabled - safe for parallel execution'));
+      } else {
+        console.log(color('yellow', '  ⚠ Enable worktree for safe parallel execution: flow worktree enable'));
       }
-      console.log('');
-      console.log(color('dim', '  To run in parallel: These tasks can be worked on simultaneously in separate'));
-      console.log(color('dim', '  git worktrees. Each task gets its own isolated branch, merged when complete.'));
-      console.log('');
     }
+    console.log('');
+    console.log(color('dim', '  To run in parallel: These tasks can be worked on simultaneously in separate'));
+    console.log(color('dim', '  git worktrees. Each task gets its own isolated branch, merged when complete.'));
+    console.log('');
   }
 
   // Summary
