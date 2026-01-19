@@ -15,6 +15,7 @@ const fs = require('fs');
 // Import from parent scripts directory
 const { getConfig, PATHS, getReadyData, safeJsonParse } = require('../../flow-utils');
 const setupCheck = require('./setup-check');
+const { findParallelizable, getParallelConfig } = require('../../flow-parallel');
 
 /**
  * Check if session context is enabled
@@ -225,6 +226,28 @@ function gatherSessionContext(options = {}) {
     context.setupRequired = setupContext;
   }
 
+  // Parallel execution detection
+  try {
+    const parallelConfig = getParallelConfig();
+    if (parallelConfig.enabled && parallelConfig.autoSuggest) {
+      const readyData = getReadyData();
+      const readyTasks = readyData.ready || [];
+      if (readyTasks.length >= 2) {
+        const parallelizable = findParallelizable(readyTasks);
+        if (parallelizable.length >= 2) {
+          context.parallelExecution = {
+            available: true,
+            count: parallelizable.length,
+            taskIds: parallelizable.map(t => t.id || t),
+            worktreeEnabled: config.worktree?.enabled || false
+          };
+        }
+      }
+    }
+  } catch (err) {
+    // Non-critical - don't fail session start
+  }
+
   return {
     enabled: true,
     context
@@ -273,6 +296,19 @@ function formatContextForInjection(context) {
       output += `Title: ${ctx.currentTask.title}\n`;
     }
     output += '\n';
+  }
+
+  // Parallel execution available
+  if (ctx.parallelExecution && ctx.parallelExecution.available) {
+    output += `### ⚡ Parallel Execution Available\n`;
+    output += `**${ctx.parallelExecution.count} tasks** can run in parallel (no dependencies).\n`;
+    output += `Tasks: ${ctx.parallelExecution.taskIds.join(', ')}\n`;
+    if (ctx.parallelExecution.worktreeEnabled) {
+      output += `Worktree isolation: ✓ enabled\n`;
+    } else {
+      output += `Worktree isolation: ⚠️ disabled (enable for safe parallel execution)\n`;
+    }
+    output += `\nConsider running these tasks in parallel for faster completion.\n\n`;
   }
 
   // Key decisions

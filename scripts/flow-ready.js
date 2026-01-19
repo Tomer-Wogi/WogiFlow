@@ -14,6 +14,7 @@ const {
   PATHS,
   fileExists,
   getReadyData,
+  getConfig,
   parseFlags,
   outputJson,
   color,
@@ -21,6 +22,9 @@ const {
   error,
   warn
 } = require('./flow-utils');
+
+// Parallel execution detection
+const { findParallelizable, getParallelConfig } = require('./flow-parallel');
 
 /**
  * Priority order for sorting (P0 highest, P4 lowest)
@@ -113,6 +117,23 @@ function main() {
     recentlyCompleted: completed.length
   };
 
+  // Check for parallel execution potential
+  const parallelConfig = getParallelConfig();
+  let parallelInfo = null;
+  if (parallelConfig.enabled && ready.length >= 2) {
+    const parallelizable = findParallelizable(ready);
+    if (parallelizable.length >= 2) {
+      const config = getConfig();
+      parallelInfo = {
+        available: true,
+        count: parallelizable.length,
+        taskIds: parallelizable.map(t => t.id || t),
+        worktreeEnabled: config.worktree?.enabled || false,
+        suggestion: `${parallelizable.length} tasks can run in parallel with worktree isolation`
+      };
+    }
+  }
+
   // JSON output - exit after to avoid human-readable output
   if (flags.json) {
     outputJson({
@@ -123,7 +144,8 @@ function main() {
         blocked,
         recentlyCompleted: completed
       },
-      summary
+      summary,
+      parallel: parallelInfo
     });
     return; // Exit early for JSON mode
   }
@@ -176,6 +198,29 @@ function main() {
       console.log(`  • ${id}: ${title}`);
     }
     console.log('');
+  }
+
+  // Parallel execution detection (reuse parallelInfo computed earlier)
+  if (parallelInfo && parallelConfig.autoSuggest) {
+    const parallelizable = findParallelizable(ready);
+    if (parallelizable.length >= 2) {
+      console.log('');
+      console.log(color('cyan', '⚡ PARALLEL EXECUTION AVAILABLE'));
+      console.log(`  ${parallelizable.length} tasks can run in parallel (no dependencies between them)`);
+      console.log(`  Tasks: ${parallelizable.map(t => t.id || t).join(', ')}`);
+      if (parallelConfig.requireWorktree) {
+        const config = getConfig();
+        if (config.worktree?.enabled) {
+          console.log(color('green', '  ✓ Worktree isolation enabled - safe for parallel execution'));
+        } else {
+          console.log(color('yellow', '  ⚠ Enable worktree for safe parallel execution: flow worktree enable'));
+        }
+      }
+      console.log('');
+      console.log(color('dim', '  To run in parallel: These tasks can be worked on simultaneously in separate'));
+      console.log(color('dim', '  git worktrees. Each task gets its own isolated branch, merged when complete.'));
+      console.log('');
+    }
   }
 
   // Summary

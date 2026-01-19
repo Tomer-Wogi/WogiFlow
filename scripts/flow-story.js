@@ -34,6 +34,9 @@ try {
   // Context orchestrator not available - continue without it
 }
 
+// Import parallel execution detection
+const { findParallelizable, getParallelConfig } = require('./flow-parallel');
+
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const CHANGES_DIR = path.join(WORKFLOW_DIR, 'changes');
@@ -392,6 +395,32 @@ async function createStory(title, options = {}) {
     }
 
     result.decomposed = true;
+
+    // Check if sub-tasks can run in parallel
+    try {
+      const parallelConfig = getParallelConfig();
+      if (parallelConfig.enabled && result.subTasks.length >= 2) {
+        // Build task objects for parallel detection
+        const taskObjects = result.subTasks.map((sub, idx) => ({
+          id: sub.id,
+          title: sub.objective,
+          dependencies: idx > 0 ? [result.subTasks[idx - 1].id] : []
+        }));
+
+        const parallelizable = findParallelizable(taskObjects);
+        if (parallelizable.length >= 2) {
+          const config = getConfig();
+          result.parallelExecution = {
+            available: true,
+            count: parallelizable.length,
+            taskIds: parallelizable.map(t => t.id),
+            worktreeEnabled: config.worktree?.enabled || false
+          };
+        }
+      }
+    } catch (err) {
+      // Non-critical - continue without parallel info
+    }
   }
 
   return result;
@@ -488,6 +517,19 @@ Examples:
     if (result.addedToReady) {
       console.log('');
       log('green', '✓ Added parent and sub-tasks to ready.json');
+    }
+
+    // Show parallel execution info
+    if (result.parallelExecution && result.parallelExecution.available) {
+      console.log('');
+      log('cyan', `⚡ PARALLEL EXECUTION AVAILABLE`);
+      log('white', `   ${result.parallelExecution.count} sub-tasks can run in parallel (no dependencies)`);
+      log('dim', `   Tasks: ${result.parallelExecution.taskIds.join(', ')}`);
+      if (result.parallelExecution.worktreeEnabled) {
+        log('green', '   ✓ Worktree isolation enabled - safe for parallel execution');
+      } else {
+        log('yellow', '   ⚠ Enable worktree for safe parallel: flow worktree enable');
+      }
     }
   } else if (result.decompositionSuggested) {
     console.log('');

@@ -32,8 +32,32 @@ If **YES** → Continue to Step 2.
 
 Check `.workflow/state/ready.json` for existing tasks.
 
-- If **YES** → Use `/wogi-start TASK-XXX`
+- If **YES** with **1 task** → Use `/wogi-start TASK-XXX`
+- If **YES** with **2+ ready tasks** → Check for parallel execution (Step 2.5)
 - If **NO** → Continue to Step 3
+
+### Step 2.5: Consider Parallel Execution
+
+When multiple tasks are ready, run `/wogi-ready` to check if they can run in parallel.
+
+**If parallel execution is available:**
+- Look for "⚡ PARALLEL EXECUTION AVAILABLE" in output
+- Tasks without dependencies can run simultaneously in isolated git worktrees
+- Each task gets its own branch, merged when complete
+
+**Decision criteria:**
+- **Use parallel** when: Tasks are independent (different files/features), user wants speed
+- **Use sequential** when: Tasks share files, need to see results of one before starting another, prefer careful review
+
+**If parallel is appropriate:**
+- Tasks run in isolated worktrees (safe, no conflicts)
+- Faster completion for independent work
+- Use `flow parallel check` for detailed analysis
+
+**If sequential is preferred:**
+- Run `/wogi-start TASK-1`, complete it
+- Then `/wogi-start TASK-2`, etc.
+- Or use `/wogi-bulk` for automatic sequential execution
 
 ### Step 3: Assess task size
 

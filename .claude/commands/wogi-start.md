@@ -15,6 +15,8 @@ This command implements a **structured execution loop**:
 ┌─────────────────────────────────────────────────────────┐
 │  /wogi-start wf-XXXXXXXX                                │
 ├─────────────────────────────────────────────────────────┤
+│  0.5 PARALLEL CHECK: Are other tasks parallelizable?    │
+│     → If yes: Show parallel option before proceeding    │
 │  1. Load context + Match skills (auto-invoke)           │
 │  2. Generate specification (if medium/large task)       │
 │  3. SPEC PHASE: Plan implementation steps               │
@@ -48,6 +50,40 @@ This command implements a **structured execution loop**:
 │  10. ✓ Task complete                                    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Step 0.5: Parallel Execution Check (Automatic)
+
+**Before starting, automatically check if parallel execution is available:**
+
+1. Read `.workflow/state/ready.json`
+2. Check if there are 2+ tasks in the `ready` array
+3. If yes, run parallel detection:
+   ```bash
+   node scripts/flow-parallel.js check
+   ```
+   Or programmatically check `findParallelizable(readyTasks)`
+
+4. **If parallelizable tasks exist**, display:
+   ```
+   ⚡ PARALLEL EXECUTION AVAILABLE
+   Note: X other tasks could run in parallel with this one.
+   Tasks: wf-002, wf-003 (no dependencies with wf-001)
+
+   Options:
+   - Continue with wf-001 (sequential execution)
+   - Run wf-001, wf-002, wf-003 in parallel (faster, isolated worktrees)
+   ```
+
+5. **Decision criteria** (agent should consider):
+   - **Use parallel** when: Tasks are independent, user wants speed, tasks don't share files
+   - **Use sequential** when: Tasks share files, need to review each result, prefer careful approach
+
+6. If parallel is chosen: Use `flow parallel` with worktree isolation
+7. If sequential: Continue with this task normally
+
+**This check happens automatically at the start of every `/wogi-start`**
+
+---
 
 ### Step 1: Load Context + Match Skills
 

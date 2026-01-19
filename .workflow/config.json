@@ -719,7 +719,7 @@
     "generateDiagrams": true
   },
   "worktree": {
-    "enabled": false,
+    "enabled": true,
     "autoCleanupHours": 24,
     "keepOnFailure": false,
     "squashOnMerge": true
