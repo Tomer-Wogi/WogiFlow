@@ -1093,15 +1093,26 @@ async function main() {
   }
 
   // v1.7.0: Track task completion in session state and memory blocks
+  // v3.2.1: Improved error handling - don't silently swallow failures
   try {
     trackTaskComplete(taskId);
-    clearCurrentTask();
+  } catch (err) {
+    warn(`Session state update failed: ${err.message}`);
+    if (process.env.DEBUG) console.error(`[DEBUG] trackTaskComplete: ${err.stack}`);
+  }
 
+  try {
+    clearCurrentTask();
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] clearCurrentTask: ${err.message}`);
+  }
+
+  try {
     // Add completion as a key fact
     const taskTitle = result.task?.title || taskId;
     addKeyFact(`Completed: ${taskTitle}`);
   } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${err.message}`);
+    if (process.env.DEBUG) console.error(`[DEBUG] addKeyFact: ${err.message}`);
   }
 
   // v1.7.0: Auto-archive request log if threshold exceeded

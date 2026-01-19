@@ -316,10 +316,23 @@ function collectBriefingData() {
     }
   } else if (sessionState.currentTask) {
     // Fallback to session state only if no in-progress tasks in ready.json
-    currentTask = typeof sessionState.currentTask === 'object'
-      ? sessionState.currentTask
-      : { id: sessionState.currentTask };
-    currentTask.files = sessionState.recentFiles || [];
+    // But first verify the task isn't already completed (stale session state)
+    const sessionTaskId = typeof sessionState.currentTask === 'object'
+      ? sessionState.currentTask.id
+      : sessionState.currentTask;
+
+    const recentlyCompleted = readyData.recentlyCompleted || [];
+    const isAlreadyCompleted = recentlyCompleted.some(task =>
+      (typeof task === 'object' ? task.id : task) === sessionTaskId
+    );
+
+    if (!isAlreadyCompleted) {
+      currentTask = typeof sessionState.currentTask === 'object'
+        ? sessionState.currentTask
+        : { id: sessionState.currentTask };
+      currentTask.files = sessionState.recentFiles || [];
+    }
+    // If task was already completed, currentTask remains null (correct behavior)
   }
 
   // Get key context

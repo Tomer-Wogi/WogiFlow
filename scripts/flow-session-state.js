@@ -277,6 +277,56 @@ function getCurrentTask() {
   return state.currentTask;
 }
 
+/**
+ * Clear stale current task if it's already completed
+ * Called on session start to prevent showing completed tasks as "in progress"
+ * @returns {boolean} True if a stale task was cleared
+ */
+function clearStaleCurrentTask() {
+  const state = loadSessionState();
+  if (!state.currentTask) return false;
+
+  const taskId = typeof state.currentTask === 'object'
+    ? state.currentTask.id
+    : state.currentTask;
+
+  if (!taskId) return false;
+
+  // Check ready.json for this task
+  try {
+    const { getReadyData } = require('./flow-utils');
+    const readyData = getReadyData();
+
+    // Check if task is in recentlyCompleted
+    const recentlyCompleted = readyData.recentlyCompleted || [];
+    const isCompleted = recentlyCompleted.some(task =>
+      (typeof task === 'object' ? task.id : task) === taskId
+    );
+
+    // Also check it's not in inProgress (shouldn't happen, but defensive)
+    const inProgress = readyData.inProgress || [];
+    const isInProgress = inProgress.some(task =>
+      (typeof task === 'object' ? task.id : task) === taskId
+    );
+
+    if (isCompleted && !isInProgress) {
+      // Task was completed but session state wasn't updated - fix it now
+      saveSessionState({ currentTask: null });
+      if (process.env.DEBUG) {
+        console.error(`[session-state] Cleared stale currentTask: ${taskId}`);
+      }
+      return true;
+    }
+  } catch (err) {
+    // Non-critical - don't fail session start
+    if (process.env.DEBUG) {
+      console.error(`[session-state] clearStaleCurrentTask error: ${err.message}`);
+    }
+  }
+
+  return false;
+}
+
 // ============================================================
 // File Tracking
 // ============================================================
@@ -675,6 +725,7 @@ module.exports = {
   trackTaskStart,
   trackTaskComplete,
   getCurrentTask,
+  clearStaleCurrentTask,
 
   // File tracking
   trackFileModified,
