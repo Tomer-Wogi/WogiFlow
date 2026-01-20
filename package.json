@@ -11,7 +11,8 @@
     "flow": "./scripts/flow",
     "test": "node mcp-memory-server/test.js",
     "memory-server": "node mcp-memory-server/index.js",
-    "postinstall": "node scripts/postinstall.js"
+    "postinstall": "node scripts/postinstall.js",
+    "preuninstall": "node scripts/preuninstall.js"
   },
   "files": [
     "bin/",
