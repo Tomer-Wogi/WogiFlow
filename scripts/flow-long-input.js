@@ -7553,6 +7553,177 @@ function main() {
       console.log(`${c.dim}Run '/wogi-ready' to see all available tasks${c.reset}`);
       break;
 
+    // ============================================
+    // Zero-Loss Extraction Commands
+    // ============================================
+
+    case 'extract-zero-loss':
+    case 'zero-loss': {
+      const subCommand = args[1];
+      const zeroLossExtraction = require('./flow-zero-loss-extraction');
+      const extractionReview = require('./flow-extraction-review');
+
+      switch (subCommand) {
+        case 'start': {
+          // Start zero-loss extraction
+          let textToExtract;
+          if (!args[2] || args[2] === '-') {
+            textToExtract = fs.readFileSync(0, 'utf8');
+          } else {
+            textToExtract = fs.readFileSync(args[2], 'utf8');
+          }
+
+          console.log(`${c.cyan}Starting zero-loss extraction...${c.reset}\n`);
+
+          const extractionResult = zeroLossExtraction.extractZeroLoss(textToExtract);
+          extractionReview.initializeReview(extractionResult);
+
+          console.log(`${c.green}✓ Zero-loss extraction complete${c.reset}\n`);
+          console.log(`${c.dim}Input:${c.reset} ${extractionResult.input.word_count} words, ${extractionResult.input.line_count} lines`);
+          console.log(`${c.dim}Extracted:${c.reset} ${extractionResult.extraction.raw_statements} statements`);
+          console.log(`${c.dim}After dedup:${c.reset} ${extractionResult.extraction.after_dedup} unique items`);
+          console.log();
+          console.log(`${c.cyan}Confidence breakdown:${c.reset}`);
+          console.log(`  ${c.green}High:${c.reset} ${extractionResult.review.summary.high_confidence} items`);
+          console.log(`  ${c.yellow}Medium:${c.reset} ${extractionResult.review.summary.medium_confidence} items`);
+          console.log(`  ${c.dim}Low:${c.reset} ${extractionResult.review.summary.low_confidence} items`);
+          console.log(`  ${c.dim}Filler:${c.reset} ${extractionResult.review.summary.potential_filler} items`);
+          console.log();
+          console.log(`${c.yellow}⚠ REVIEW REQUIRED${c.reset}`);
+          console.log(`${c.dim}Nothing is filtered - all items captured for your review.${c.reset}`);
+          console.log(`${c.dim}Use 'flow long-input zero-loss show pending' to see items.${c.reset}`);
+          break;
+        }
+
+        case 'status':
+          console.log(extractionReview.formatReviewStatus());
+          break;
+
+        case 'show': {
+          const filter = args[2] || 'pending';
+          const limit = parseInt(args[3]) || 10;
+          console.log(extractionReview.formatItemsForReview(filter, limit));
+          break;
+        }
+
+        case 'confirm': {
+          if (!args[2]) {
+            console.error(`${c.red}Usage: zero-loss confirm <item-id> [notes]${c.reset}`);
+            process.exit(1);
+          }
+          extractionReview.confirmItem(args[2], args[3]);
+          console.log(`${c.green}✓ Confirmed: ${args[2]}${c.reset}`);
+          break;
+        }
+
+        case 'remove': {
+          if (!args[2] || !args[3]) {
+            console.error(`${c.red}Usage: zero-loss remove <item-id> <reason>${c.reset}`);
+            console.error(`${c.dim}Reason is REQUIRED - nothing is silently filtered.${c.reset}`);
+            process.exit(1);
+          }
+          extractionReview.removeItem(args[2], args.slice(3).join(' '));
+          console.log(`${c.red}✗ Removed: ${args[2]}${c.reset}`);
+          break;
+        }
+
+        case 'merge': {
+          if (!args[2] || !args[3]) {
+            console.error(`${c.red}Usage: zero-loss merge <source-id> <target-id>${c.reset}`);
+            process.exit(1);
+          }
+          extractionReview.mergeItems(args[2], args[3]);
+          console.log(`${c.blue}⊕ Merged: ${args[2]} → ${args[3]}${c.reset}`);
+          break;
+        }
+
+        case 'confirm-high':
+          extractionReview.confirmAllHighConfidence();
+          console.log(`${c.green}✓ All high-confidence items confirmed${c.reset}`);
+          console.log(extractionReview.formatReviewStatus());
+          break;
+
+        case 'dismiss-filler':
+          extractionReview.dismissFiller();
+          console.log(`${c.yellow}✓ Filler items dismissed${c.reset}`);
+          console.log(extractionReview.formatReviewStatus());
+          break;
+
+        case 'complete': {
+          const completeResult = extractionReview.confirmCompleteness();
+          if (completeResult.success) {
+            console.log(`${c.green}✓ Review complete!${c.reset}`);
+            console.log(`  Confirmed tasks: ${completeResult.summary.confirmed_tasks}`);
+            console.log(`  Removed items: ${completeResult.summary.removed_items}`);
+            console.log(`  Merged items: ${completeResult.summary.merged_items}`);
+            console.log();
+            console.log(`${c.dim}Confirmed tasks are ready for topic extraction.${c.reset}`);
+            console.log(`${c.dim}Run 'flow long-input topics' to continue.${c.reset}`);
+          } else {
+            console.error(`${c.red}✗ ${completeResult.error}${c.reset}`);
+            if (completeResult.pending_items) {
+              console.error(`\n${c.yellow}Pending items:${c.reset}`);
+              for (const item of completeResult.pending_items) {
+                console.error(`  ${item.id}: "${item.text}..."`);
+              }
+            }
+          }
+          break;
+        }
+
+        case 'tasks': {
+          try {
+            const tasks = extractionReview.getConfirmedTasks();
+            if (args.includes('--json')) {
+              console.log(JSON.stringify(tasks, null, 2));
+            } else {
+              console.log(`${c.green}${tasks.length} confirmed tasks:${c.reset}\n`);
+              for (const task of tasks) {
+                console.log(`${c.cyan}[${task.id}]${c.reset} ${task.text}`);
+                if (task.user_notes) {
+                  console.log(`  ${c.dim}Note: ${task.user_notes}${c.reset}`);
+                }
+              }
+            }
+          } catch (err) {
+            console.error(`${c.red}✗ ${err.message}${c.reset}`);
+          }
+          break;
+        }
+
+        default:
+          console.log(`
+${c.cyan}Zero-Loss Extraction${c.reset}
+
+${c.bold}100% task capture rate - nothing is auto-filtered.${c.reset}
+
+${c.dim}Commands:${c.reset}
+  start <file|->              Extract from file or stdin
+  status                      Show review progress
+  show <filter> [limit]       Show items (pending|confirmed|removed|high|medium|low|filler)
+  confirm <id> [notes]        Confirm item as a task
+  remove <id> <reason>        Remove item (reason REQUIRED)
+  merge <src-id> <tgt-id>     Merge item into another
+  confirm-high                Bulk confirm all high-confidence items
+  dismiss-filler              Bulk dismiss filler items
+  complete                    Confirm review is complete (MANDATORY before proceeding)
+  tasks [--json]              Get confirmed tasks
+
+${c.dim}Workflow:${c.reset}
+  1. Start extraction:  flow long-input zero-loss start < transcript.txt
+  2. Quick confirm:     flow long-input zero-loss confirm-high
+  3. Review medium:     flow long-input zero-loss show medium
+  4. Review low:        flow long-input zero-loss show low
+  5. Dismiss filler:    flow long-input zero-loss dismiss-filler
+  6. Complete review:   flow long-input zero-loss complete
+  7. Continue:          flow long-input topics
+
+${c.yellow}⚠ User must explicitly confirm the task list is complete before proceeding.${c.reset}
+`);
+      }
+      break;
+    }
+
     case 'help':
     default:
       console.log(`
