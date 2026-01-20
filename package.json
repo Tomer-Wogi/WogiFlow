@@ -25,6 +25,10 @@
     ".workflow/lib/",
     ".workflow/state/*.template",
     ".workflow/specs/*.template",
+    ".claude/commands/",
+    ".claude/docs/",
+    ".claude/rules/",
+    ".claude/skills/",
     "README.md",
     "LICENSE"
   ],
