@@ -13,6 +13,8 @@ const componentCheck = require('./component-check');
 const sessionContext = require('./session-context');
 const setupCheck = require('./setup-check');
 const setupHandler = require('./setup-handler');
+const implementationGate = require('./implementation-gate');
+const todoWriteGate = require('./todowrite-gate');
 
 module.exports = {
   // Task Gating
@@ -41,5 +43,13 @@ module.exports = {
 
   // Setup Handler (Claude Code 2.1.10+)
   ...setupHandler,
-  setupHandler
+  setupHandler,
+
+  // Implementation Gate (blocks implementation requests without active task)
+  ...implementationGate,
+  implementationGate,
+
+  // TodoWrite Gate (blocks implementation todos without active task)
+  ...todoWriteGate,
+  todoWriteGate
 };

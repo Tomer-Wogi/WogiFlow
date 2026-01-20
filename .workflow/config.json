@@ -1121,6 +1121,14 @@
         "enabled": true,
         "autoOnboard": false,
         "maintenanceTasks": ["healthCheck", "cleanupLocks"]
+      },
+      "implementationGate": {
+        "enabled": true,
+        "softMode": false
+      },
+      "todoWriteGate": {
+        "enabled": true,
+        "blockImplementationWithoutTask": true
       }
     },
     "claudeCode": {

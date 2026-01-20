@@ -21,6 +21,7 @@ const { PATHS } = require('../../flow-utils');
 const HOOK_TIMEOUTS = {
   SESSION_START: 10,      // Session initialization
   SETUP: 30,              // Project setup/onboarding
+  USER_PROMPT_SUBMIT: 5,  // Implementation gate check
   PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
   POST_TOOL_USE: 60,      // Validation (linting, type checking)
   STOP: 5,                // Loop enforcement check
@@ -117,6 +118,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformStop(coreResult);
       case 'SessionEnd':
         return this.transformSessionEnd(coreResult);
+      case 'UserPromptSubmit':
+        return this.transformUserPromptSubmit(coreResult);
       default:
         return { continue: true };
     }
@@ -322,6 +325,46 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform UserPromptSubmit result (implementation gate)
+   */
+  transformUserPromptSubmit(coreResult) {
+    // Blocked - prevent prompt processing with clear message
+    if (coreResult.blocked) {
+      return {
+        continue: false, // Block the prompt
+        systemMessage: coreResult.message || 'Implementation request blocked by Wogi Flow',
+        hookSpecificOutput: {
+          hookEventName: 'UserPromptSubmit',
+          decision: 'block',
+          reason: coreResult.reason,
+          suggestedAction: coreResult.suggestedAction
+        }
+      };
+    }
+
+    // Warning - allow but show message
+    if (coreResult.message && !coreResult.blocked) {
+      return {
+        continue: true,
+        systemMessage: coreResult.message,
+        hookSpecificOutput: {
+          hookEventName: 'UserPromptSubmit',
+          decision: 'warn',
+          reason: coreResult.reason
+        }
+      };
+    }
+
+    // Allowed
+    return {
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'UserPromptSubmit'
+      }
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot) {
@@ -350,12 +393,24 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       }];
     }
 
-    // PreToolUse hooks for Edit/Write
+    // UserPromptSubmit hook (implementation gate)
+    if (rules.implementationGate?.enabled !== false) {
+      hooks.UserPromptSubmit = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'user-prompt-submit.js')}"`,
+          timeout: HOOK_TIMEOUTS.USER_PROMPT_SUBMIT
+        }]
+      }];
+    }
+
+    // PreToolUse hooks for Edit/Write/TodoWrite
     const preToolUseMatchers = [];
 
-    if (rules.taskGating?.enabled !== false) {
+    // Task gating for Edit/Write + TodoWrite gating
+    if (rules.taskGating?.enabled !== false || rules.todoWriteGate?.enabled !== false) {
       preToolUseMatchers.push({
-        matcher: 'Edit|Write',
+        matcher: 'Edit|Write|TodoWrite',
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'pre-tool-use.js')}"`,
