@@ -5,10 +5,11 @@
  *
  * Runs after npm install to:
  * 1. Create minimal directory structure
- * 2. Create pending-setup.json marker for AI to detect
- * 3. Print instructions to start AI assistant
+ * 2. Copy .claude/commands/ (slash commands) - ESSENTIAL for immediate use
+ * 3. Create pending-setup.json marker for AI to detect
+ * 4. Print instructions to start AI assistant
  *
- * All actual setup is done by the AI via /wogi-init command.
+ * Full setup (config, skills, etc.) is done by the AI via /wogi-init command.
  */
 
 const fs = require('fs');
@@ -16,6 +17,9 @@ const path = require('path');
 
 // Get project root (where npm install was run, not node_modules/wogiflow)
 const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();
+
+// Package root (where wogiflow is installed in node_modules)
+const PACKAGE_ROOT = path.resolve(__dirname, '..');
 
 // Directory structure (relative to project root)
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -94,6 +98,60 @@ function createPendingSetupMarker() {
 }
 
 /**
+ * Recursively copy a directory
+ * @param {string} src - Source directory
+ * @param {string} dest - Destination directory
+ */
+function copyDir(src, dest) {
+  fs.mkdirSync(dest, { recursive: true, mode: DIR_MODE });
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+      fs.chmodSync(destPath, FILE_MODE);
+    }
+  }
+}
+
+/**
+ * Copy essential .claude/ resources from package to project
+ * This ensures commands are available immediately after npm install
+ */
+function copyClaudeResources() {
+  const claudeDir = path.join(PROJECT_ROOT, '.claude');
+  fs.mkdirSync(claudeDir, { recursive: true, mode: DIR_MODE });
+
+  // Copy commands (essential for slash commands to work)
+  const packageCommands = path.join(PACKAGE_ROOT, '.claude', 'commands');
+  const projectCommands = path.join(claudeDir, 'commands');
+  if (fs.existsSync(packageCommands) && !fs.existsSync(projectCommands)) {
+    copyDir(packageCommands, projectCommands);
+  }
+
+  // Copy docs (knowledge base)
+  const packageDocs = path.join(PACKAGE_ROOT, '.claude', 'docs');
+  const projectDocs = path.join(claudeDir, 'docs');
+  if (fs.existsSync(packageDocs) && !fs.existsSync(projectDocs)) {
+    copyDir(packageDocs, projectDocs);
+  }
+
+  // Copy rules (coding patterns)
+  const packageRules = path.join(PACKAGE_ROOT, '.claude', 'rules');
+  const projectRules = path.join(claudeDir, 'rules');
+  if (fs.existsSync(packageRules) && !fs.existsSync(projectRules)) {
+    copyDir(packageRules, projectRules);
+  }
+
+  // Note: skills/ is NOT copied here - /wogi-init will set up project-specific skills
+}
+
+/**
  * Check if we should be completely silent (CI only)
  */
 function shouldBeSilent() {
@@ -115,6 +173,10 @@ function isAlreadyInitialized() {
 function main() {
   // Always create minimal structure first
   createMinimalStructure();
+
+  // Copy essential .claude/ resources (commands, docs, rules)
+  // This ensures slash commands are available immediately
+  copyClaudeResources();
 
   // Create marker for AI to detect (unless already initialized)
   createPendingSetupMarker();
