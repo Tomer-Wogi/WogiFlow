@@ -38,8 +38,15 @@ const DIRS_TO_REMOVE = [
 const CLAUDE_COMMANDS_DIR = path.join(PROJECT_ROOT, '.claude', 'commands');
 const CLAUDE_MD_PATH = path.join(PROJECT_ROOT, 'CLAUDE.md');
 
-// WogiFlow marker in CLAUDE.md
-const WOGIFLOW_MARKER = 'WogiFlow';
+// WogiFlow marker in CLAUDE.md - more explicit to avoid false positives
+const WOGIFLOW_MARKER = 'WogiFlow methodology';
+
+// Debug logging helper
+function debugLog(message) {
+  if (process.env.DEBUG || process.env.WOGIFLOW_DEBUG) {
+    process.stderr.write(`[preuninstall] ${message}\n`);
+  }
+}
 
 /**
  * Recursively remove a directory
@@ -66,6 +73,7 @@ function removeWogiCommands() {
   }
 
   const removed = [];
+  const skipped = [];
   try {
     const files = fs.readdirSync(CLAUDE_COMMANDS_DIR);
     for (const file of files) {
@@ -75,25 +83,24 @@ function removeWogiCommands() {
           fs.unlinkSync(filePath);
           removed.push(file);
         } catch (err) {
-          // Ignore individual file errors
+          debugLog(`Failed to remove ${file}: ${err.message}`);
+          skipped.push(file);
         }
       }
     }
   } catch (err) {
-    // Ignore directory read errors
+    debugLog(`Failed to read commands directory: ${err.message}`);
   }
 
-  return { count: removed.length, files: removed };
+  return { count: removed.length, files: removed, skipped };
 }
 
 /**
  * Remove CLAUDE.md if it contains WogiFlow marker
+ * Note: Per security-patterns.md Rule #1, we don't use existsSync before readFileSync
+ * as it creates race conditions. The try-catch handles "file not found" gracefully.
  */
 function removeClaudeMd() {
-  if (!fs.existsSync(CLAUDE_MD_PATH)) {
-    return { removed: false, reason: 'not found' };
-  }
-
   try {
     const content = fs.readFileSync(CLAUDE_MD_PATH, 'utf-8');
     if (content.includes(WOGIFLOW_MARKER)) {
@@ -102,35 +109,55 @@ function removeClaudeMd() {
     }
     return { removed: false, reason: 'not a WogiFlow file' };
   } catch (err) {
+    if (err.code === 'ENOENT') {
+      return { removed: false, reason: 'not found' };
+    }
+    debugLog(`Failed to process CLAUDE.md: ${err.message}`);
     return { removed: false, reason: err.message };
   }
 }
 
 /**
  * Clean up empty .claude directory if nothing left
+ * Returns info about what was preserved (for user visibility)
  */
 function cleanupClaudeDir() {
   const claudeDir = path.join(PROJECT_ROOT, '.claude');
-  if (!fs.existsSync(claudeDir)) {
-    return;
-  }
+  const result = { removed: false, preserved: [] };
 
   try {
     const remaining = fs.readdirSync(claudeDir);
+
     // Only remove if empty or only contains 'commands' with no files
     if (remaining.length === 0) {
       fs.rmdirSync(claudeDir);
+      result.removed = true;
     } else if (remaining.length === 1 && remaining[0] === 'commands') {
       const commandsDir = path.join(claudeDir, 'commands');
       const commandFiles = fs.readdirSync(commandsDir);
       if (commandFiles.length === 0) {
         fs.rmdirSync(commandsDir);
         fs.rmdirSync(claudeDir);
+        result.removed = true;
+      } else {
+        // Log non-WogiFlow files being preserved
+        result.preserved = commandFiles.filter(f => !f.startsWith('wogi-'));
+        if (result.preserved.length > 0) {
+          debugLog(`Preserving non-WogiFlow commands: ${result.preserved.join(', ')}`);
+        }
       }
+    } else {
+      // Other content in .claude - log what's being preserved
+      result.preserved = remaining;
+      debugLog(`Preserving .claude contents: ${remaining.join(', ')}`);
     }
   } catch (err) {
-    // Ignore cleanup errors
+    if (err.code !== 'ENOENT') {
+      debugLog(`Cleanup error: ${err.message}`);
+    }
   }
+
+  return result;
 }
 
 /**
@@ -165,7 +192,7 @@ function main() {
   results.claudeMd = removeClaudeMd();
 
   // Clean up empty .claude directory
-  cleanupClaudeDir();
+  results.claudeDir = cleanupClaudeDir();
 
   // Output summary
   if (!silent) {
@@ -185,6 +212,11 @@ function main() {
 
       if (results.claudeMd.removed) {
         process.stderr.write(`  \x1b[31m✗\x1b[0m Removed CLAUDE.md\n`);
+      }
+
+      // Show preserved files (user's custom content)
+      if (results.claudeDir && results.claudeDir.preserved && results.claudeDir.preserved.length > 0) {
+        process.stderr.write(`\n\x1b[33mPreserved:\x1b[0m ${results.claudeDir.preserved.join(', ')} (not WogiFlow files)\n`);
       }
 
       process.stderr.write('\n\x1b[2mWogiFlow has been uninstalled. Your git history is preserved.\x1b[0m\n\n');
