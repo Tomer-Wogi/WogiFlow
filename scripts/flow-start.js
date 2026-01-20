@@ -88,6 +88,16 @@ try {
 // v2.7 Registry relevance detection - import from semantic matching
 const { SEMANTIC_KEYWORDS } = require('./flow-semantic-match');
 
+// v4.0 Clarifying questions (optional - graceful degradation)
+let clarifyingModule = null;
+try {
+  clarifyingModule = require('./flow-clarifying-questions');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-clarifying-questions not available: ${err.message}`);
+}
+const generateQuestions = clarifyingModule?.generateQuestions || (() => []);
+const formatQuestions = clarifyingModule?.formatQuestions || (() => '');
+
 // Flatten semantic keywords for simple task detection
 const FUNCTION_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.functions || {}).flat();
 const API_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.apis || {}).flat();
@@ -396,6 +406,25 @@ async function main() {
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Context compact: ${err.message}`);
+    }
+  }
+
+  // v4.0: Generate clarifying questions for medium/large tasks
+  if (config.clarifyingQuestions?.enabled !== false) {
+    try {
+      const questionContext = {
+        taskDescription,
+        taskType: result.task?.type || 'feature',
+        matchedFiles: [] // Will be populated from auto-context if available
+      };
+
+      const questions = generateQuestions(questionContext);
+      if (questions.length > 0) {
+        const formatted = formatQuestions(questions);
+        console.log(formatted);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Clarifying questions: ${err.message}`);
     }
   }
 

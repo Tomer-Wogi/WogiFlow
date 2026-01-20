@@ -96,6 +96,47 @@ This command implements a **structured execution loop**:
 5. Check `.workflow/state/app-map.md` for components mentioned
 6. Check `.workflow/state/decisions.md` for relevant patterns
 7. **Auto-invoke skills** based on task context:
+
+### Step 1.2: Clarifying Questions (NEW)
+
+**BEFORE generating specifications**, ask clarifying questions to catch assumptions early:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❓ Clarifying Questions
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Before implementation, consider clarifying:
+
+🎯 Scope Validation
+   1. Found X related files. Should I modify all of them?
+
+💡 Assumption Surfacing
+   2. Should I assume [pattern] for this task?
+
+🔀 Edge Cases
+   3. What should happen when [error condition]?
+
+Note: You can proceed without answering, but clarification may prevent rework.
+```
+
+**Question Categories:**
+- **Scope Validation**: "Found X components. Are we changing all?"
+- **Assumption Surfacing**: "Should I assume [pattern] for this task?"
+- **Edge Cases**: "What about [similar scenario]?"
+- **Integration Points**: "This touches [component]. Dependency concerns?"
+- **Implementation Preferences**: "Any specific approach you prefer?"
+
+**Config**: Controlled by `config.clarifyingQuestions`:
+- `enabled`: true/false
+- `maxQuestions`: max questions to ask (default: 5)
+- `skipForSmallTasks`: skip for small tasks (default: true)
+- `smallTaskThreshold`: files count threshold (default: 2)
+
+**Skipped for**: Small tasks (≤2 files), bugfixes, tasks with explicit specs
+
+---
+
+**Skill Matching Output:**
    - Run skill matcher against task description
    - Load matched skills (patterns.md, anti-patterns.md, learnings.md)
    - Display matched skills with scores

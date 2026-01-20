@@ -225,9 +225,23 @@ function updateFeedbackPatterns(brief, taskId, skillName) {
 }
 
 /**
+ * Validate skill name to prevent path traversal
+ */
+function isValidSkillName(skillName) {
+  // Allow only alphanumeric, dashes, and underscores
+  return /^[a-zA-Z0-9_-]+$/.test(skillName);
+}
+
+/**
  * Update skill learnings if skill is specified
  */
 function updateSkillLearnings(skillName, data) {
+  // Validate skill name to prevent path traversal
+  if (!isValidSkillName(skillName)) {
+    warn(`Invalid skill name: ${skillName}`);
+    return false;
+  }
+
   const skillDir = path.join(PROJECT_ROOT, '.claude', 'skills', skillName, 'knowledge');
   const learningsPath = path.join(skillDir, 'learnings.md');
 
@@ -415,6 +429,127 @@ function listCorrections() {
 }
 
 // ============================================================
+// Auto-Triggered Correction Prompt
+// ============================================================
+
+/**
+ * Check if a failure should prompt for correction recording
+ * Returns context for Claude to ask the user
+ *
+ * @param {Object} context - Failure context
+ * @param {string} context.type - Type: 'lint', 'typecheck', 'test', 'review', 'tech-debt'
+ * @param {string} context.error - Error message
+ * @param {string} context.expected - What was expected
+ * @param {string} context.actual - What actually happened
+ * @param {string[]} context.files - Files involved
+ * @param {string} context.taskId - Task ID if available
+ * @returns {Object} Prompt context for Claude
+ */
+function promptForCorrection(context) {
+  const { type, error: errorMsg, expected, actual, files = [], taskId } = context;
+
+  // Don't prompt for trivial issues
+  const trivialPatterns = [
+    /missing semicolon/i,
+    /trailing comma/i,
+    /extra newline/i,
+    /whitespace/i
+  ];
+
+  if (trivialPatterns.some(p => p.test(errorMsg || ''))) {
+    return { shouldPrompt: false };
+  }
+
+  // Build message based on type
+  let message = '';
+  let severity = 'medium';
+
+  switch (type) {
+    case 'lint':
+      message = `Lint error detected:\n${errorMsg}`;
+      severity = 'low';
+      break;
+    case 'typecheck':
+      message = `TypeScript error detected:\n${errorMsg}`;
+      severity = 'medium';
+      break;
+    case 'test':
+      message = `Test failure detected:\n${errorMsg}`;
+      severity = 'high';
+      break;
+    case 'review':
+      message = `Critical review finding:\n${errorMsg}`;
+      severity = 'high';
+      break;
+    case 'tech-debt':
+      message = `Repeated tech debt (3+ occurrences):\n${errorMsg}`;
+      severity = 'medium';
+      break;
+    default:
+      message = `Error detected:\n${errorMsg}`;
+  }
+
+  return {
+    shouldPrompt: true,
+    type,
+    severity,
+    message: `⚠️ ${message}\n\nWould you like to record this as a correction for future learning?\nThis helps avoid similar mistakes.`,
+    context: {
+      type,
+      expected: expected || '',
+      actual: actual || '',
+      error: errorMsg || '',
+      files,
+      taskId: taskId || ''
+    },
+    // Pre-filled correction data
+    correctionData: {
+      brief: errorMsg ? errorMsg.split('\n')[0].slice(0, 60) : `${type} error`,
+      whatHappened: actual || errorMsg || '',
+      whatShouldHappen: expected || '',
+      rootCause: '',
+      taskId: taskId || '',
+      skillName: '',
+      files,
+      tags: [type]
+    }
+  };
+}
+
+/**
+ * Create correction from auto-trigger prompt
+ * Called after user approves correction recording
+ *
+ * @param {Object} data - Correction data from promptForCorrection
+ * @returns {Object} Created correction info
+ */
+function createAutoCorrection(data) {
+  const id = getNextCorrectionId();
+  const correctionData = {
+    id,
+    ...data,
+    // Ensure all required fields
+    whatHappened: data.whatHappened || '',
+    whatShouldHappen: data.whatShouldHappen || '',
+    rootCause: data.rootCause || '',
+    taskId: data.taskId || '',
+    skillName: data.skillName || '',
+    files: data.files || [],
+    tags: data.tags || []
+  };
+
+  const filePath = createCorrectionFile(correctionData);
+  const count = updateFeedbackPatterns(correctionData.brief, correctionData.taskId, correctionData.skillName);
+
+  return {
+    id,
+    filePath,
+    patternCount: count,
+    shouldPromote: count >= 3
+  };
+}
+
+// ============================================================
 // Main
 // ============================================================
 
@@ -455,4 +590,15 @@ function main() {
   }
 }
 
-main();
+// Run only when executed directly
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  promptForCorrection,
+  createAutoCorrection,
+  createCorrectionFile,
+  getNextCorrectionId,
+  runQuick
+};

@@ -708,6 +708,73 @@ Keep state in sync when multiple agents work on different branches.
 
 ---
 
+### Phase 7: Visual Review Session
+
+**Status:** Deferred
+**Created:** 2026-01-20
+**Depends On:** None
+
+**Assumes:**
+- ffmpeg available for audio/video processing
+- OpenAI API key available for Whisper transcription
+- Existing long-input-gate patterns can be extended for task detection
+
+**Problem:**
+When reviewing designs (Figma, browser, etc.), users speak feedback and tasks aloud. Currently employees manually write down every comment, transcripts alone lack visual context ("this button" = which button?), and there's no automated task extraction.
+
+**Solution:**
+Record screen + audio → Extract tasks with visual context → Generate WogiFlow stories
+
+**Key Files:**
+- `scripts/flow-visual-review.js` - Main orchestrator
+- `scripts/flow-visual-review-media.js` - Audio/frame extraction (ffmpeg)
+- `scripts/flow-visual-review-transcribe.js` - Whisper API integration
+- `scripts/flow-visual-review-correlate.js` - Timestamp alignment
+- `scripts/flow-visual-review-detect.js` - Task detection (extends long-input patterns)
+- `scripts/flow-visual-review-confirm.js` - Interactive confirmation (figma-confirm pattern)
+- `.claude/commands/wogi-visual-review.md` - Command documentation
+- `.claude/skills/visual-review/skill.md` - Skill definition
+
+**Modifications to Existing:**
+- `flow-long-input-parsing.js` - Export pattern constants for reuse
+- `flow-story.js` - Add `visualReferences` field support
+- `flow-utils.js` - Add PATHS for visual review assets
+- `.workflow/config.json` - Add `visualReview` config section
+
+**Storage Structure:**
+```
+.workflow/
+├── assets/visual-review-{sessionId}/    # Screenshots
+├── changes/visual-review-{sessionId}/   # Stories
+└── tmp/visual-review/{sessionId}/       # Processing temp files
+```
+
+**Config Schema:**
+```json
+{
+  "visualReview": {
+    "enabled": true,
+    "transcriptionBackend": "openai",
+    "confidenceThresholds": { "autoAdd": 0.85, "confirm": 0.6 },
+    "keyframeInterval": 2000,
+    "maxScreenshotsPerTask": 3
+  }
+}
+```
+
+**Implementation Phases:**
+1. Foundation: Orchestrator, audio extraction, Whisper transcription, frame extraction
+2. Task Detection: Extend long-input patterns, timestamp correlation, confidence scoring
+3. Interactive Confirmation: Readline-based flow (approve/edit/skip/combine)
+4. Story Generation: Extend flow-story.js, embed screenshots, update ready.json
+5. Live Capture (Future): Browser extension integration, real-time capture
+
+**Dependencies:**
+- Required: `ffmpeg`, OpenAI API key
+- Optional: `whisper-cpp` (local transcription), Claude browser extension (live capture)
+
+---
+
 ---
 
 ## Ideas (Exploration)
@@ -758,6 +825,32 @@ A formal system for creating, tracking, and cleaning up implementation plans.
 ### Move npm to @wogi Organization
 
 **Why deferred**: Current `wogiflow` package works fine. Migration adds complexity (scoped package, update all docs). Consider when team grows or branding matters.
+
+---
+
+### `/wogi-learn` - Learning Opportunity Command
+
+**Priority**: Low
+**Status**: Idea
+
+Explain current work using 80/20 rule for non-technical PMs learning as they build.
+
+**Input**: None (uses current context)
+**Output**: Simple explanation of what we're building and why
+
+**Use Case**: PMs who are "vibe coding" often don't fully understand what's being built. This command provides educational context about:
+- What the current task is doing
+- Why we're making these changes
+- Key concepts being used (80/20 rule - most important 20% of concepts)
+- How it fits into the bigger picture
+
+**Implementation Ideas**:
+- Analyze current task context
+- Identify key technical concepts
+- Generate beginner-friendly explanations
+- Highlight architectural decisions
+
+**Why Deferred**: Lower priority than core workflow features.
 
 ---
 

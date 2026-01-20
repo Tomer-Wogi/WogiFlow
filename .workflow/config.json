@@ -231,6 +231,12 @@
       "blocked": 0.0
     }
   },
+  "clarifyingQuestions": {
+    "enabled": true,
+    "maxQuestions": 5,
+    "skipForSmallTasks": true,
+    "smallTaskThreshold": 2
+  },
   "specificationMode": {
     "enabled": true,
     "mandatory": true,
@@ -1132,6 +1138,16 @@
   "corrections": {
     "mode": "inline",
     "detailPath": ".workflow/corrections"
+  },
+  "peerReview": {
+    "enabled": true,
+    "provider": "api",
+    "models": ["openai:gpt-4o-mini"],
+    "apiKeys": {
+      "openai": "${OPENAI_API_KEY}",
+      "google": "${GOOGLE_API_KEY}",
+      "anthropic": "${ANTHROPIC_API_KEY}"
+    }
   },
   "review": {
     "multiPass": {

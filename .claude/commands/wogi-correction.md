@@ -9,6 +9,51 @@ Based on `config.json` corrections mode:
 - **hybrid**: Use for significant/complex fixes
 - **always-detailed**: Use for every fix
 
+## Auto-Triggered Corrections (NEW)
+
+Corrections can be automatically prompted when failures are detected:
+
+**Trigger Points:**
+- Lint/TypeScript failures after file edit
+- Test failures after implementation
+- Critical review findings (severity "critical")
+- Repeated tech debt (3+ occurrences)
+
+**When triggered, you'll see:**
+```
+⚠️ TypeScript error detected:
+Property 'x' does not exist on type 'Y'
+
+Would you like to record this as a correction for future learning?
+This helps avoid similar mistakes.
+
+[Yes, record correction] [No, skip]
+```
+
+**If user selects Yes:**
+1. Create correction file with pre-filled context
+2. Update feedback-patterns.md with pattern count
+3. If pattern count >= 3, prompt for promotion to decisions.md
+
+**API for scripts:**
+```javascript
+const { promptForCorrection, createAutoCorrection } = require('./flow-correct');
+
+// Check if should prompt
+const prompt = promptForCorrection({
+  type: 'typecheck',
+  error: 'Property x does not exist',
+  files: ['src/api.ts'],
+  taskId: 'wf-abc123'
+});
+
+if (prompt.shouldPrompt) {
+  // Ask user via AskUserQuestion
+  // If yes, create correction:
+  createAutoCorrection(prompt.correctionData);
+}
+```
+
 ## Steps
 
 1. Read `config.json` to check corrections mode

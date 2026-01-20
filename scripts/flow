@@ -56,6 +56,7 @@ show_help() {
     echo "  story <title> --deep Create story with automatic decomposition"
     echo "  new-feature <n>   Create new feature"
     echo "  bug <title>          Create bug report"
+    echo "  capture <title>      Quick capture idea/bug without interrupting flow"
     echo ""
     echo "Roadmap & Planning:"
     echo "  roadmap              Show project roadmap"
@@ -363,6 +364,9 @@ case "${1:-}" in
     bug)
         node "$SCRIPT_DIR/flow-bug.js" "${@:2}"
         ;;
+    capture)
+        node "$SCRIPT_DIR/flow-capture.js" "${@:2}"
+        ;;
     status)
         node "$SCRIPT_DIR/flow-status.js" "${@:2}"
         ;;
@@ -471,6 +475,9 @@ case "${1:-}" in
     review)
         node "$SCRIPT_DIR/flow-review.js" "${@:2}"
         ;;
+    peer-review)
+        node "$SCRIPT_DIR/flow-peer-review.js" "${@:2}"
+        ;;
     correct)
         node "$SCRIPT_DIR/flow-correct.js" "${@:2}"
         ;;
@@ -488,6 +495,9 @@ case "${1:-}" in
         ;;
     context)
         "$SCRIPT_DIR/flow-context" "${@:2}"
+        ;;
+    clarifying-questions|clarify)
+        node "$SCRIPT_DIR/flow-clarifying-questions.js" "${@:2}"
         ;;
     links)
         node "$SCRIPT_DIR/flow-links.js" "${@:2}"
