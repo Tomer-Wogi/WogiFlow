@@ -49,6 +49,17 @@ When compacting, the system automatically:
 2. Stores summaries at multiple levels (root → sections → details)
 3. Applies relevance decay to older items
 4. Enables on-demand expansion when details are needed later
+5. **Cleans up completed plan files** from `.claude/plans/`
+
+### Plan File Cleanup
+
+Compaction automatically cleans up plan files that appear to be complete:
+- Plans with "Complete" in the title
+- Plans containing "can be deleted"
+- Plans with "all completed"
+- Very short/empty plan files
+
+This prevents stale plan files from accumulating and being shown after context restoration.
 
 ## Format for Context Summary
 

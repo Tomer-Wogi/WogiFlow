@@ -93,12 +93,74 @@ function checkPressure() {
 }
 
 /**
+ * Clean up completed plan files from .claude/plans/
+ * Plan files that are marked complete or empty are archived or deleted
+ * @returns {Object} Cleanup result
+ */
+function cleanupPlanFiles() {
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  const result = { cleaned: 0, archived: 0, files: [] };
+
+  // Get user's home directory and .claude/plans path
+  const homeDir = os.homedir();
+  const plansDir = path.join(homeDir, '.claude', 'plans');
+
+  if (!fs.existsSync(plansDir)) {
+    return result;
+  }
+
+  try {
+    const files = fs.readdirSync(plansDir);
+
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+
+      const filePath = path.join(plansDir, file);
+      let content;
+
+      try {
+        content = fs.readFileSync(filePath, 'utf-8');
+      } catch (err) {
+        continue; // Skip files we can't read
+      }
+
+      // Check if plan appears to be complete
+      const isComplete =
+        /^#\s*Plan:\s*Complete/im.test(content) ||
+        /can be deleted/i.test(content) ||
+        /all.*completed/i.test(content) ||
+        content.trim().length < 100; // Very short/empty plans
+
+      if (isComplete) {
+        try {
+          fs.unlinkSync(filePath);
+          result.cleaned++;
+          result.files.push(file);
+        } catch (err) {
+          // Couldn't delete - that's okay
+        }
+      }
+    }
+  } catch (err) {
+    // Error reading plans directory - non-critical
+  }
+
+  return result;
+}
+
+/**
  * Compact the context (collapse all expansions, optionally prune tree)
  * @param {Object} options - Compaction options
  * @returns {Object} Compaction result
  */
 function compact(options = {}) {
   const { pruneOldNodes = false, maxAge = 7 } = options;
+
+  // Clean up completed plan files
+  const planCleanup = cleanupPlanFiles();
 
   // Collapse all expansions
   const collapseResult = expander.collapseAll();
@@ -140,6 +202,7 @@ function compact(options = {}) {
   return {
     collapsed: collapseResult.count,
     pruned: pruneResult.pruned,
+    plansCleaned: planCleanup.cleaned,
     pressure: checkPressure()
   };
 }
@@ -218,6 +281,7 @@ module.exports = {
   getStats,
   clearAll,
   getSerializedTree,
+  cleanupPlanFiles,
 
   // Low-level modules
   summaryTree,
