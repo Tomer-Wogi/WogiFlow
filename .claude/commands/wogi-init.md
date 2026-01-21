@@ -509,9 +509,6 @@ This file tracks all changes made to the project.
 **Files**: .workflow/*, .claude/*
 ```
 
-**roadmap.md** (future work):
-Copy from `templates/roadmap.md` to `.workflow/roadmap.md`
-
 #### 4.4 Create Spec Files
 
 **stack.md** in `.workflow/specs/`:

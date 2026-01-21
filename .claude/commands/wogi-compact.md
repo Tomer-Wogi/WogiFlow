@@ -15,6 +15,21 @@ Root (overview)
     └── File changes (expandable)
 ```
 
+## CRITICAL: Task Queue Check
+
+**Before ANY compaction**, you MUST:
+
+1. Read `.workflow/state/ready.json`
+2. Note pending tasks in your summary
+3. **NEVER claim "nothing pending" without checking ready.json**
+
+If tasks exist:
+- **In Progress** (`inProgress` in ready.json): List task IDs currently being worked on
+- **Ready** (`ready` in ready.json): Count + list task IDs awaiting work
+- **Blocked** (`blocked` in ready.json): Count blocked tasks
+
+This ensures task awareness survives context compaction.
+
 ## Before Compacting
 
 1. **Update progress.md** with:
@@ -48,7 +63,12 @@ Provide this information for the compaction system:
 - [Task/change 1]
 - [Task/change 2]
 
-**In Progress**:
+**Pending Tasks** (REQUIRED - from ready.json):
+- In Progress: [task IDs or "none"]
+- Ready: [count] tasks - [first 5 task IDs]
+- Blocked: [count] tasks
+
+**In Progress (Current)**:
 - TASK-XXX: [description] - [current state, what's left]
 
 **Key Decisions**:
@@ -65,6 +85,8 @@ Provide this information for the compaction system:
 
 **Context to Preserve**:
 - [Important context that should survive compaction]
+
+**ON RESUME**: Check `.workflow/state/ready.json` for pending work.
 ```
 
 ## Context Pressure Monitoring

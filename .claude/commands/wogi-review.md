@@ -608,6 +608,159 @@ The review is not complete until the user confirms. This ensures:
 - User can request additional fixes
 - User can reject fixes that change behavior unexpectedly
 
+## Phase 4: Store Findings & Create Tasks
+
+After review completes, store findings and create actionable tasks.
+
+### Step 1: Store Each Finding as Bug
+
+Save each finding to `.workflow/bugs/` using the bug template:
+
+```bash
+# For each finding, create a bug file
+# wf-XXXXXXXX.md (8-char hash of finding description)
+```
+
+Bug file format:
+```markdown
+# Bug: [Issue title]
+
+**ID**: wf-XXXXXXXX
+**Severity**: Critical | High | Medium | Low
+**Discovered**: review-YYYYMMDD-HHMMSS
+**File**: path/to/file.ts:line
+**Status**: open
+
+## Description
+[Issue description from review]
+
+## Reproduction
+Found during code review of [files reviewed]
+
+## Fix
+[Recommendation from review]
+```
+
+### Step 2: Create Tasks (Severity-Based Aggregation)
+
+Apply smart aggregation based on severity and regression risk:
+
+| Severity | Regression Risk | Action |
+|----------|-----------------|--------|
+| Critical | Any | Individual task (P0) |
+| High | High risk | Individual task (P1) |
+| High | Low risk | Aggregate with medium (P1) |
+| Medium | Any | Aggregate together (P2) |
+| Low | Any | Aggregate together (P3) |
+
+**Regression risk indicators** (treat as High risk):
+- Changes to shared utilities/helpers
+- Changes to API contracts or types
+- Changes to authentication/authorization
+- Changes to data persistence
+- Changes affecting multiple consumers
+
+**Result**:
+- Critical/high-risk issues → Individual tasks per issue
+- Low-risk issues → One aggregated "Fix N low-risk review findings" task
+
+### Step 3: Present Options to User
+
+```
+═══════════════════════════════════════
+TASKS CREATED FROM REVIEW
+═══════════════════════════════════════
+Found 8 issues:
+• 2 critical/high-risk → 2 separate tasks created
+  - wf-abc12345: Fix SQL injection in user query (P0)
+  - wf-def67890: Fix missing auth check in API (P1)
+• 6 low-risk → 1 aggregated task created
+  - wf-ghi11111: Fix 6 low-risk review findings (P2)
+
+Options:
+[1] Fix all - Start all tasks (/wogi-bulk)
+[2] Fix critical first - Start critical/high tasks only
+[3] Review tasks - Show in /wogi-ready, start manually
+```
+
+Use AskUserQuestion to present these options.
+
+## Phase 5: Learning Loop
+
+After presenting findings, trigger self-reflection to prevent future issues.
+
+### Step 1: Self-Reflection Prompt
+
+For each category of findings, ask:
+
+```
+═══════════════════════════════════════
+LEARNING OPPORTUNITY
+═══════════════════════════════════════
+Review found patterns that could be prevented.
+
+Analyzing what can be updated to prevent these in future...
+```
+
+### Step 2: Check Each Finding Against Knowledge Base
+
+For each finding, evaluate:
+
+| Finding Type | Check Against | Potential Update |
+|--------------|---------------|------------------|
+| Code pattern issue | `decisions.md` | Add new coding rule |
+| Security issue | `.claude/rules/security/` | Add security pattern |
+| Missing validation | skill patterns | Add anti-pattern |
+| Component misuse | `app-map.md` | Add usage notes |
+| Repeated mistake | `feedback-patterns.md` | Track for promotion |
+
+### Step 3: Create Corrections
+
+For preventable patterns, create correction records:
+
+```bash
+# Automatically create correction in .workflow/corrections/
+# This feeds into feedback-patterns.md
+```
+
+Example correction:
+```markdown
+### CORR-XXX | 2026-01-21
+
+**Pattern**: Missing try-catch around file reads
+**Frequency**: Found in 3 places this review
+**Prevention**: Add to security-patterns.md rule
+
+**Action taken**: Updated .claude/rules/security/security-patterns.md
+```
+
+### Step 4: Check for Promotion Opportunities
+
+If a pattern has occurred 3+ times in feedback-patterns.md:
+
+```
+═══════════════════════════════════════
+PATTERN PROMOTION AVAILABLE
+═══════════════════════════════════════
+Pattern "missing-try-catch-file-reads" has occurred 4 times.
+
+Promote to decisions.md as permanent coding rule? [Y/n]
+```
+
+### Step 5: Learning Summary
+
+```
+═══════════════════════════════════════
+LEARNING CAPTURED
+═══════════════════════════════════════
+• Created correction: CORR-047 (missing null checks)
+• Updated: .claude/rules/security/security-patterns.md
+• Pattern "null-check-before-access" at 3 occurrences
+  → Promoted to decisions.md ✓
+
+Future reviews will check for these patterns.
+```
+
 ## Auto-Fix Suggestions
 
 For certain issue types, offer automated fixes:

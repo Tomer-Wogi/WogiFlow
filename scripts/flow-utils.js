@@ -207,6 +207,43 @@ const colors = {
   bgBlue: '\x1b[44m',
 };
 
+// Task list to status mapping (extracted to avoid DRY violation)
+const LIST_TO_STATUS_MAP = {
+  'ready': 'ready',
+  'inProgress': 'in_progress',
+  'blocked': 'blocked',
+  'recentlyCompleted': 'completed'
+};
+
+// Standard limits for task/context operations (extracted magic numbers)
+const TASK_LIMITS = {
+  MAX_READY_TASK_IDS: 10,           // Max task IDs to show in session context
+  MAX_READY_TASK_IDS_MEMORY: 20,    // Max task IDs to capture in memory blocks
+  MAX_RECENTLY_COMPLETED: 10,       // Max completed tasks before archiving
+  MAX_KEY_FACTS: 10,                // Max key facts in memory blocks
+  MAX_MODIFIED_FILES: 20,           // Max modified files to track
+  MAX_DECISIONS: 10,                // Max decisions to show
+  MAX_RECENT_ACTIVITY: 3            // Max recent activity entries
+};
+
+/**
+ * Sync task status and timestamps when moving between lists
+ * @param {object} task - The task object to update
+ * @param {string} toList - The target list name
+ */
+function syncTaskStatusOnMove(task, toList) {
+  if (typeof task !== 'object' || !task) return;
+
+  task.status = LIST_TO_STATUS_MAP[toList] || task.status;
+
+  // Add timestamps for tracking
+  if (toList === 'inProgress' && !task.startedAt) {
+    task.startedAt = new Date().toISOString();
+  } else if (toList === 'recentlyCompleted') {
+    task.completedAt = new Date().toISOString();
+  }
+}
+
 /**
  * Colorize text for terminal output
  */
@@ -1247,6 +1284,9 @@ function moveTask(taskId, fromList, toList) {
 
   from.splice(taskIndex, 1);
 
+  // Use shared helper to sync status and timestamps (DRY fix)
+  syncTaskStatusOnMove(task, toList);
+
   if (toList === 'recentlyCompleted') {
     to.unshift(task);
     // v3.2: Archive overflow instead of truncating
@@ -1296,6 +1336,10 @@ async function moveTaskAsync(taskId, fromList, toList) {
     }
 
     from.splice(taskIndex, 1);
+
+    // Sync status field when moving between lists
+    // Use shared helper to sync status and timestamps (DRY fix)
+    syncTaskStatusOnMove(task, toList);
 
     if (toList === 'recentlyCompleted') {
       to.unshift(task);
@@ -2058,6 +2102,12 @@ function isAstGrepAvailable() {
   }
 }
 
+// Allowed languages for ast-grep to prevent command injection (Security Rule 8)
+const ALLOWED_AST_GREP_LANGUAGES = new Set([
+  'typescript', 'javascript', 'tsx', 'jsx', 'python', 'go', 'rust',
+  'java', 'c', 'cpp', 'csharp', 'ruby', 'swift', 'kotlin', 'html', 'css'
+]);
+
 /**
  * Search codebase using ast-grep for structural patterns
  * @param {string} pattern - AST pattern (e.g., "useState($INIT)")
@@ -2072,6 +2122,14 @@ function astGrepSearch(pattern, options = {}) {
     searchDir = 'src'
   } = options;
 
+  // Validate lang parameter to prevent command injection (Security Rule 8)
+  if (!ALLOWED_AST_GREP_LANGUAGES.has(lang)) {
+    if (process.env.DEBUG) {
+      console.error(`[ast-grep] Invalid language: ${lang}. Allowed: ${[...ALLOWED_AST_GREP_LANGUAGES].join(', ')}`);
+    }
+    return null;
+  }
+
   // Check if ast-grep is available
   if (!isAstGrepAvailable()) {
     return null;
@@ -2083,6 +2141,7 @@ function astGrepSearch(pattern, options = {}) {
   }
 
   try {
+    // Use validated lang parameter - now safe from injection
     const result = execSync(
       `sg --pattern "${pattern.replace(/"/g, '\\"')}" --lang ${lang} --json "${searchPath}"`,
       {
@@ -2873,6 +2932,8 @@ module.exports = {
   LOCK_MAX_RETRIES,
   MAX_SESSION_HISTORY,
   MAX_WORKFLOW_ITERATIONS,
+  TASK_LIMITS,
+  LIST_TO_STATUS_MAP,
 
   // CLI Session ID (CLI-Agnostic)
   getSessionId,

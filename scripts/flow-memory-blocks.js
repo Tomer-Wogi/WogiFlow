@@ -47,6 +47,14 @@ const BLOCK_END = '<!-- MEMORY-BLOCKS-END -->';
 function getDefaultBlocks() {
   return {
     currentTask: null,
+    taskQueueSnapshot: {
+      readyCount: 0,
+      inProgressCount: 0,
+      blockedCount: 0,
+      readyTaskIds: [],
+      inProgressTaskIds: [],
+      capturedAt: null
+    },
     sessionContext: {
       filesModified: [],
       decisionsThisSession: [],
@@ -134,7 +142,13 @@ function readMemoryBlocks() {
       return null;
     }
 
-    return JSON.parse(jsonMatch[1].trim());
+    // Use safe JSON parsing to prevent prototype pollution (Security Rule 2)
+    const parsed = JSON.parse(jsonMatch[1].trim());
+    // Basic validation - memory blocks should have expected structure
+    if (typeof parsed !== 'object' || parsed === null) {
+      return null;
+    }
+    return parsed;
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[DEBUG] Failed to read memory blocks: ${err.message}`);
@@ -190,8 +204,16 @@ ${BLOCK_END}`;
     }
   }
 
-  fs.writeFileSync(PROGRESS_PATH, content);
-  return true;
+  // Wrap in try-catch per Security Rule 1
+  try {
+    fs.writeFileSync(PROGRESS_PATH, content);
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[memory-blocks] Failed to write: ${err.message}`);
+    }
+    return false;
+  }
 }
 
 /**
@@ -204,6 +226,45 @@ function getOrCreateBlocks() {
     writeMemoryBlocks(blocks);
   }
   return blocks;
+}
+
+/**
+ * Capture current task queue state to memory blocks
+ * Called before compaction to preserve task awareness across context resets
+ * @returns {Object} Updated memory blocks
+ */
+function captureTaskQueueSnapshot() {
+  const blocks = getOrCreateBlocks();
+  try {
+    const { getReadyData } = require('./flow-utils');
+    const readyData = getReadyData();
+
+    blocks.taskQueueSnapshot = {
+      readyCount: (readyData.ready || []).length,
+      inProgressCount: (readyData.inProgress || []).length,
+      blockedCount: (readyData.blocked || []).length,
+      readyTaskIds: (readyData.ready || []).slice(0, 20).map(t => typeof t === 'object' ? t.id : t),
+      inProgressTaskIds: (readyData.inProgress || []).map(t => typeof t === 'object' ? t.id : t),
+      capturedAt: new Date().toISOString()
+    };
+
+    writeMemoryBlocks(blocks);
+    return blocks;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[memory-blocks] Task queue capture failed: ${err.message}`);
+    }
+    return blocks;
+  }
+}
+
+/**
+ * Get task queue snapshot from memory blocks
+ * @returns {Object|null} Task queue snapshot or null
+ */
+function getTaskQueueSnapshot() {
+  const blocks = readMemoryBlocks();
+  return blocks?.taskQueueSnapshot || null;
 }
 
 // ============================================================
@@ -637,6 +698,10 @@ module.exports = {
   setCurrentTask,
   clearCurrentTask,
   getCurrentTask,
+
+  // Task queue snapshot (for compaction survival)
+  captureTaskQueueSnapshot,
+  getTaskQueueSnapshot,
 
   // Key facts
   addKeyFact,

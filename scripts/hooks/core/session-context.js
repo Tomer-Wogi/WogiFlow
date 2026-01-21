@@ -62,6 +62,30 @@ function getCurrentTask() {
 }
 
 /**
+ * Get pending task summary (always shown, not just for parallel)
+ * Ensures task queue awareness survives context compaction
+ * @returns {Object|null} Task queue summary
+ */
+function getPendingTaskSummary() {
+  try {
+    const readyData = getReadyData();
+    const ready = readyData.ready || [];
+    const inProgress = readyData.inProgress || [];
+    const blocked = readyData.blocked || [];
+
+    return {
+      readyCount: ready.length,
+      inProgressCount: inProgress.length,
+      blockedCount: blocked.length,
+      readyTaskIds: ready.slice(0, 10).map(t => typeof t === 'object' ? t.id : t),
+      inProgressTaskIds: inProgress.map(t => typeof t === 'object' ? t.id : t)
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
  * Get key decisions from decisions.md
  * @param {number} maxEntries - Max number of decisions to return
  * @returns {Array} Key decisions
@@ -115,17 +139,21 @@ function getRecentActivity(maxEntries = 3) {
     const content = fs.readFileSync(PATHS.requestLog, 'utf-8');
     const entries = [];
 
-    // Parse request log entries (### R-XXX format)
-    // Use [\s\S]*? instead of [^]*? for better performance and compatibility
-    const entryRegex = /^###\s+R-(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2}[\s\S]*?)(?=^###\s+R-|$)/gm;
-    let match;
+    // Split-then-parse pattern to avoid ReDoS risk (safer than [\s\S]*? regex)
+    // Split by section headers first, then parse each section
+    const sections = content.split(/^###\s+R-/m).slice(1); // Remove empty first element
 
-    while ((match = entryRegex.exec(content)) !== null && entries.length < maxEntries) {
-      const id = `R-${match[1]}`;
-      const body = match[2];
+    for (const section of sections) {
+      if (entries.length >= maxEntries) break;
+
+      // Parse section header: "XXX | 2026-01-21..."
+      const headerMatch = section.match(/^(\d+)\s*\|\s*(\d{4}-\d{2}-\d{2})/);
+      if (!headerMatch) continue;
+
+      const id = `R-${headerMatch[1]}`;
 
       // Extract request line
-      const requestMatch = body.match(/\*\*Request\*\*:\s*"?([^"\n]+)"?/);
+      const requestMatch = section.match(/\*\*Request\*\*:\s*"?([^"\n]+)"?/);
       const request = requestMatch ? requestMatch[1] : 'Unknown';
 
       entries.push({ id, request });
@@ -230,6 +258,12 @@ function gatherSessionContext(options = {}) {
     context.setupRequired = setupContext;
   }
 
+  // Pending task summary (always include - survives compaction)
+  const pendingTasks = getPendingTaskSummary();
+  if (pendingTasks && (pendingTasks.readyCount > 0 || pendingTasks.inProgressCount > 0)) {
+    context.pendingTasks = pendingTasks;
+  }
+
   // Parallel execution detection
   try {
     const parallelConfig = getParallelConfig();
@@ -305,6 +339,28 @@ function formatContextForInjection(context) {
     output += '\n';
   }
 
+  // Pending work summary (always show if tasks exist - survives compaction)
+  if (ctx.pendingTasks) {
+    const p = ctx.pendingTasks;
+    if (p.readyCount > 0 || p.inProgressCount > 0 || p.blockedCount > 0) {
+      output += `### 📋 Pending Work\n`;
+      if (p.inProgressCount > 0) {
+        output += `- **In Progress**: ${p.inProgressCount} task(s) - ${p.inProgressTaskIds.join(', ')}\n`;
+      }
+      if (p.readyCount > 0) {
+        output += `- **Ready**: ${p.readyCount} task(s)`;
+        if (p.readyCount <= 5) {
+          output += ` - ${p.readyTaskIds.join(', ')}`;
+        }
+        output += `\n`;
+      }
+      if (p.blockedCount > 0) {
+        output += `- **Blocked**: ${p.blockedCount} task(s)\n`;
+      }
+      output += `\nRun \`/wogi-ready\` for full task list.\n\n`;
+    }
+  }
+
   // Parallel execution available
   if (ctx.parallelExecution && ctx.parallelExecution.available) {
     output += `### ⚡ Parallel Execution Available\n`;
@@ -343,6 +399,7 @@ module.exports = {
   isSessionContextEnabled,
   getSuspendedTask,
   getCurrentTask,
+  getPendingTaskSummary,
   getKeyDecisions,
   getRecentActivity,
   getSessionState,

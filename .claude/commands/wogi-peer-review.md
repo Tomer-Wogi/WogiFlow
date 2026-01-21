@@ -154,6 +154,48 @@ Respond with:
 - For learning different perspectives
 - When stuck on architecture decisions
 
+## Phase: Post-Review Actions
+
+After peer review completes, optionally create tasks from actionable improvements.
+
+### Store & Create Tasks
+
+Unlike `/wogi-review` (which finds bugs), peer review finds **improvement opportunities**. These are optional enhancements, not required fixes.
+
+**Task creation rules:**
+- Strong agreements (2+ models) → Create task if user approves
+- Single-model suggestions → Note in tech-debt.json for future
+- Disagreements → Document in review report, no task
+
+**Present options:**
+```
+═══════════════════════════════════════
+ACTIONABLE IMPROVEMENTS
+═══════════════════════════════════════
+3 improvements with strong agreement:
+• Extract repeated logic to helper (readability)
+• Add memoization for expensive computation (performance)
+• Use early return pattern (readability)
+
+Options:
+[1] Create tasks - Add as improvement tasks (P3)
+[2] Add to tech-debt - Track for future
+[3] Skip - Just log the review
+```
+
+### Learning Loop
+
+For recurring suggestions across reviews:
+
+1. If same improvement suggested 3+ times → Consider adding to decisions.md
+2. If pattern disagreement resolved consistently → Document the resolution
+
+Example:
+```
+Pattern "prefer-early-return" suggested 4 times across reviews.
+Add to coding standards? [Y/n]
+```
+
 ## Options
 
 - `--provider <name>` - Override configured provider
@@ -162,3 +204,4 @@ Respond with:
 - `--task <id>` - Review task changes
 - `--json` - Output JSON for automation
 - `--verbose` - Show full model responses
+- `--create-tasks` - Auto-create tasks for strong agreements

@@ -138,8 +138,17 @@ See `.claude/docs/commands.md` for complete command reference.
 | "check health", "workflow health", "is everything ok" | `/wogi-health` |
 | "wrap up", "end session", "that's all" | `/wogi-session-end` |
 | "compact context", "save context", "running low on context" | `/wogi-compact` |
+| "add to roadmap", "defer this", "do this later", "phase 2", "future work" | Add to `.workflow/roadmap.md` |
+| "fix all", "fix everything", "fix all issues", "fix the findings" | Start tasks from recent review (see below) |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
+
+**Fix All phrases**: When user says "fix all" or similar after a review:
+1. Check `.workflow/state/ready.json` for tasks with `discoveredFrom` containing "review-"
+2. If found, run `/wogi-bulk` on those tasks
+3. If no review tasks found, inform user: "No review tasks found. Run `/wogi-review` first to identify issues."
+
+**Roadmap phrases** (not a command - an action): When user says things like "let's do this later", "defer this", "add to the roadmap", "we'll tackle this in phase 2" - add the item to `.workflow/roadmap.md` using the standard template structure. Create the file from template if it doesn't exist.
 
 ## Session Startup
 
