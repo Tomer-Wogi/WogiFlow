@@ -33,6 +33,18 @@ const DEFAULT_REFACTOR_KEYWORDS = [
   'restructure', 'rearchitect', 'modernize', 'upgrade'
 ];
 
+// Valid task ID pattern - prevents path traversal attacks (Security Rule)
+const VALID_TASK_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Validate task ID to prevent path traversal
+ * @param {string} taskId - Task ID to validate
+ * @returns {boolean} True if valid
+ */
+function isValidTaskId(taskId) {
+  return typeof taskId === 'string' && VALID_TASK_ID_PATTERN.test(taskId);
+}
+
 /**
  * Get smart compaction config from config.json
  * @returns {Object} Smart compaction configuration
@@ -59,29 +71,51 @@ function getSmartCompactionConfig() {
  * @returns {string|null} Spec content or null
  */
 function readSpecFile(taskId) {
+  // Validate taskId to prevent path traversal (Security Rule)
+  if (!isValidTaskId(taskId)) {
+    return null;
+  }
+
   const specPath = path.join(PATHS.root, '.workflow', 'specs', `${taskId}.md`);
 
-  if (fs.existsSync(specPath)) {
-    try {
-      return fs.readFileSync(specPath, 'utf-8');
-    } catch (err) {
-      return null;
+  // Use try-catch only, no existsSync (prevents TOCTOU race condition)
+  try {
+    return fs.readFileSync(specPath, 'utf-8');
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      // Log unexpected errors in DEBUG mode
+      if (process.env.DEBUG) {
+        console.error(`[context-estimator] Warning reading spec: ${err.code}`);
+      }
     }
+    // Fall through to check changes directory
   }
 
   // Also check changes directory
   const changesDir = path.join(PATHS.root, '.workflow', 'changes');
-  if (fs.existsSync(changesDir)) {
-    try {
-      const dirs = fs.readdirSync(changesDir);
-      for (const dir of dirs) {
-        const changePath = path.join(changesDir, dir, `${taskId}.md`);
-        if (fs.existsSync(changePath)) {
-          return fs.readFileSync(changePath, 'utf-8');
+  try {
+    const entries = fs.readdirSync(changesDir, { withFileTypes: true });
+    for (const entry of entries) {
+      // Skip non-directories and symlinks (security measure)
+      if (!entry.isDirectory() || entry.isSymbolicLink()) {
+        continue;
+      }
+      const changePath = path.join(changesDir, entry.name, `${taskId}.md`);
+      try {
+        return fs.readFileSync(changePath, 'utf-8');
+      } catch (readErr) {
+        // File doesn't exist in this subdir, continue searching
+        if (readErr.code !== 'ENOENT') {
+          if (process.env.DEBUG) {
+            console.error(`[context-estimator] Warning reading change: ${readErr.code}`);
+          }
         }
       }
-    } catch (err) {
-      // Ignore errors
+    }
+  } catch (err) {
+    // Changes directory doesn't exist or can't be read - that's fine
+    if (err.code !== 'ENOENT' && process.env.DEBUG) {
+      console.error(`[context-estimator] Warning reading changes dir: ${err.code}`);
     }
   }
 
@@ -408,6 +442,14 @@ if (require.main === module) {
   if (command === 'estimate' && args[1]) {
     // Estimate for a specific task
     const taskId = args[1];
+
+    // Validate taskId to prevent path traversal
+    if (!isValidTaskId(taskId)) {
+      console.error(`Invalid task ID format: ${taskId}`);
+      console.error('Task IDs must contain only alphanumeric characters, hyphens, and underscores.');
+      process.exit(1);
+    }
+
     const readyPath = path.join(PATHS.state, 'ready.json');
     const readyData = safeJsonParse(readyPath, { ready: [], inProgress: [] });
 
@@ -445,6 +487,14 @@ if (require.main === module) {
   } else if (command === 'check' && args[1] && args[2]) {
     // Check if compaction needed: check <taskId> <currentPercent>
     const taskId = args[1];
+
+    // Validate taskId to prevent path traversal
+    if (!isValidTaskId(taskId)) {
+      console.error(`Invalid task ID format: ${taskId}`);
+      console.error('Task IDs must contain only alphanumeric characters, hyphens, and underscores.');
+      process.exit(1);
+    }
+
     const currentPercent = parseFloat(args[2]) / 100;
 
     const readyPath = path.join(PATHS.state, 'ready.json');
@@ -502,5 +552,7 @@ module.exports = {
   shouldCompactForNonTaskWork,
   formatEstimationResult,
   extractCriteriaCount,
-  extractFileCount
+  extractFileCount,
+  isValidTaskId,
+  VALID_TASK_ID_PATTERN
 };
