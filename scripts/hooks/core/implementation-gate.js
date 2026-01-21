@@ -288,15 +288,12 @@ function checkImplementationGate(options = {}) {
  * Generate warning message (soft mode)
  */
 function generateWarningMessage(prompt, confidence, matches) {
-  const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
-  return `Warning: Implementation request detected (${confidence} confidence), but no WogiFlow task is active.
+  const truncatedPrompt = prompt.length > 80 ? prompt.slice(0, 80) + '...' : prompt;
+  return `Warning: No active WogiFlow task.
 
-Detected: ${matches.slice(0, 3).join(', ')}
+Consider: /wogi-start "${truncatedPrompt}"
 
-Consider using:
-- /wogi-ready to see available tasks
-- /wogi-start wf-XXXXXXXX to start an existing task
-- /wogi-story "${truncatedPrompt}" to create a new task`;
+This will execute directly (git/npm/deploy) or create a story first (features/fixes).`;
 }
 
 /**
@@ -305,22 +302,16 @@ Consider using:
 function generateBlockMessage(prompt, confidence, matches) {
   const truncatedPrompt = prompt.length > 80 ? prompt.slice(0, 80) + '...' : prompt;
 
-  return `BLOCKED: Implementation request detected, but no WogiFlow task is active.
+  return `BLOCKED: No active WogiFlow task.
 
-Detected implementation intent (${confidence} confidence):
-${matches.slice(0, 3).map(m => `  - "${m}"`).join('\n')}
+To proceed, run:
+  /wogi-start "${truncatedPrompt}"
 
-To proceed, use the WogiFlow workflow:
-1. /wogi-ready - see available tasks
-2. /wogi-start wf-XXXXXXXX - start an existing task
-3. /wogi-story "${truncatedPrompt}" - create a new task
+This will either:
+- Execute directly (if operational: git, npm, deploy, build)
+- Create a story first (if implementation: add, fix, build features)
 
-Why? WogiFlow ensures nothing gets missed:
-- Acceptance criteria are tracked
-- Changes are logged
-- Quality gates are enforced
-
-Copy your request and use: /wogi-story "your request"`;
+Or see existing tasks: /wogi-ready`;
 }
 
 module.exports = {

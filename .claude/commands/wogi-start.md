@@ -1,5 +1,100 @@
 Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXXXX`
 
+## Request Triage (NEW)
+
+When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start "update github and npm"`), first determine what type of request this is:
+
+### Step 0: Detect Request Type
+
+**Is this a task ID or a quoted request?**
+- Task ID format: `wf-XXXXXXXX` (letters, numbers, hyphens) → Skip triage, go to Structured Execution
+- Quoted request: `"anything in quotes"` → Continue with triage below
+
+### Operational Commands (Execute Directly)
+
+These are release/deploy/maintenance actions that don't require task tracking:
+
+| Category | Examples | Action |
+|----------|----------|--------|
+| **Version Control** | push, pull, fetch, merge, sync, commit | Execute git command |
+| **Publishing** | publish to npm/pypi, deploy to prod/staging | Run publish/deploy |
+| **Build/CI** | run tests, build, lint, format, typecheck | Run the command |
+| **Maintenance** | update dependencies, bump version | Run maintenance |
+
+**Examples that execute directly:**
+- `"update github and npm"` → `git push && npm publish`
+- `"push to origin"` → `git push origin`
+- `"push to bitbucket"` → `git push`
+- `"deploy to production"` → Run deploy script
+- `"bump version"` → `npm version patch`
+- `"run tests"` → `npm test`
+- `"sync with remote"` → `git pull && git push`
+
+**Action**: Execute the commands directly. No task/story needed.
+
+### Implementation Requests (Create Task First)
+
+These involve changing application code/behavior and need planning:
+
+| Category | Examples | Action |
+|----------|----------|--------|
+| **Features** | add, create, build, implement new functionality | Create story |
+| **Bug fixes** | fix, repair, resolve issues | Create story |
+| **Refactoring** | refactor, restructure, reorganize code | Create story |
+| **Code Changes** | modify, update, change existing behavior | Create story |
+
+**Examples that need a task:**
+- `"add dark mode toggle"` → Run `/wogi-story "add dark mode toggle"` first
+- `"fix the login bug"` → Run `/wogi-story "fix the login bug"` first
+- `"refactor auth system"` → Run `/wogi-story "refactor auth system"` first
+- `"update the login form"` → Run `/wogi-story "update the login form"` first
+
+**Action**: Run `/wogi-story "[request]"` to create story with acceptance criteria, wait for approval, then start implementation.
+
+### Decision Logic
+
+Use Claude's understanding (not regex) to decide:
+
+1. **Does request mention git/npm/docker/deploy/build operations without code changes?**
+   - YES → **Operational** → Execute directly
+   - NO → Continue to step 2
+
+2. **Does request involve changing application code/behavior?**
+   - YES → **Implementation** → Create story first
+   - NO → Continue to step 3
+
+3. **Is it a simple, isolated command (run X, check Y)?**
+   - YES → **Operational** → Execute directly
+   - NO → **Implementation** → Create story first
+
+**Key question**: "Does this request require writing/modifying application code?"
+- YES → Create story first (track acceptance criteria, quality gates)
+- NO → Just execute it (git, npm, deploy are infrastructure, not code)
+
+### Triage Output
+
+**Operational:**
+```
+Request: "update github and npm"
+Category: OPERATIONAL (version control + publishing)
+Action: Executing directly...
+
+→ git push origin master
+→ npm publish
+✓ Done
+```
+
+**Implementation:**
+```
+Request: "add dark mode toggle"
+Category: IMPLEMENTATION (new feature)
+Action: Creating story first...
+
+→ Running /wogi-story "add dark mode toggle"
+```
+
+---
+
 ## Structured Execution (v2.2)
 
 This command implements a **structured execution loop**:
