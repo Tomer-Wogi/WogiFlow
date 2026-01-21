@@ -79,6 +79,21 @@ const KNOWN_PROVIDERS = {
 };
 
 /**
+ * Check for dangerous keys that could cause prototype pollution
+ * @param {Object} obj - Object to check
+ * @returns {boolean} True if dangerous keys found
+ */
+function hasDangerousKeys(obj) {
+  if (!obj || typeof obj !== 'object') return false;
+  const dangerous = ['__proto__', 'constructor', 'prototype'];
+  for (const key of Object.keys(obj)) {
+    if (dangerous.includes(key)) return true;
+    if (typeof obj[key] === 'object' && hasDangerousKeys(obj[key])) return true;
+  }
+  return false;
+}
+
+/**
  * Read config file
  * @returns {Object} Config object
  */
@@ -170,6 +185,12 @@ function getEnabledModels() {
  * @param {boolean} [options.enabled] - Enable/disable provider
  */
 function addProvider(providerName, options = {}) {
+  // Validate provider name against known providers to prevent injection
+  const validProviders = Object.keys(KNOWN_PROVIDERS);
+  if (!validProviders.includes(providerName)) {
+    throw new Error(`Unknown provider: ${providerName}. Allowed: ${validProviders.join(', ')}`);
+  }
+
   const modelsConfig = getModelsConfig();
   const knownProvider = KNOWN_PROVIDERS[providerName];
 
@@ -215,17 +236,49 @@ function removeProvider(providerName) {
 }
 
 /**
+ * Validate environment variable name format
+ * @param {string} name - Variable name to validate
+ * @returns {boolean} True if valid
+ */
+function isValidEnvVarName(name) {
+  // Must start with letter or underscore, contain only alphanumeric and underscore
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
+}
+
+/**
+ * Escape value for .env file (quote if needed)
+ * @param {string} value - Value to escape
+ * @returns {string} Escaped value
+ */
+function escapeEnvValue(value) {
+  if (!value) return '';
+  // If value contains special chars, newlines, or spaces, quote it
+  if (/[\s"'`$\\#\n\r]/.test(value)) {
+    // Escape backslashes and double quotes, then wrap in double quotes
+    return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+  return value;
+}
+
+/**
  * Update .env file with API key
  * @param {string} keyName - Environment variable name
  * @param {string} keyValue - API key value
  */
 function updateEnvFile(keyName, keyValue) {
+  // Validate env variable name to prevent injection
+  if (!isValidEnvVarName(keyName)) {
+    throw new Error(`Invalid environment variable name: ${keyName}`);
+  }
+
   let envContent = '';
 
   try {
     envContent = fs.readFileSync(ENV_PATH, 'utf-8');
   } catch (err) {
-    // .env doesn't exist, will create
+    if (process.env.DEBUG) {
+      console.log(`[model-config] .env doesn't exist, will create`);
+    }
   }
 
   // Parse existing env vars
@@ -238,14 +291,15 @@ function updateEnvFile(keyName, keyValue) {
       comments.push(line);
     } else {
       const [key, ...valueParts] = line.split('=');
-      if (key) {
+      if (key && isValidEnvVarName(key.trim())) {
+        // Store raw value (may be quoted)
         envVars[key.trim()] = valueParts.join('=').trim();
       }
     }
   }
 
-  // Update or add the key
-  envVars[keyName] = keyValue;
+  // Update or add the key with proper escaping
+  envVars[keyName] = escapeEnvValue(keyValue);
 
   // Rebuild .env content
   let newContent = '';
@@ -262,9 +316,9 @@ function updateEnvFile(keyName, keyValue) {
     newContent += `${key}=${value}\n`;
   }
 
-  fs.writeFileSync(ENV_PATH, newContent);
+  fs.writeFileSync(ENV_PATH, newContent, { mode: 0o600 });
 
-  // Also set in current process
+  // Also set in current process (use raw value, not escaped)
   process.env[keyName] = keyValue;
 }
 
@@ -400,8 +454,8 @@ async function testCloudProvider(providerName, endpoint, apiKey) {
         headers = { 'Authorization': `Bearer ${apiKey}` };
         break;
       case 'google':
-        url = new URL(`/v1beta/models?key=${apiKey}`, endpoint);
-        headers = {};
+        url = new URL('/v1beta/models', endpoint);
+        headers = { 'x-goog-api-key': apiKey };
         break;
       case 'anthropic':
         // Anthropic doesn't have a models list endpoint, just test with a simple check
@@ -419,6 +473,13 @@ async function testCloudProvider(providerName, endpoint, apiKey) {
         if (res.statusCode === 200) {
           try {
             const parsed = JSON.parse(data);
+
+            // Check for prototype pollution in API response
+            if (hasDangerousKeys(parsed)) {
+              resolve({ success: false, message: 'Invalid API response (security check failed)' });
+              return;
+            }
+
             let models = [];
 
             if (providerName === 'openai') {
@@ -580,9 +641,16 @@ function readSessionState() {
  * @param {Object} state - State to write
  */
 function writeSessionState(state) {
-  const stateDir = path.dirname(SESSION_STATE_PATH);
-  fs.mkdirSync(stateDir, { recursive: true });
-  fs.writeFileSync(SESSION_STATE_PATH, JSON.stringify(state, null, 2));
+  try {
+    const stateDir = path.dirname(SESSION_STATE_PATH);
+    fs.mkdirSync(stateDir, { recursive: true });
+    fs.writeFileSync(SESSION_STATE_PATH, JSON.stringify(state, null, 2), { mode: 0o600 });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[model-config] Failed to write session state: ${err.message}`);
+    }
+    // Don't throw - session state is non-critical
+  }
 }
 
 /**
@@ -627,11 +695,9 @@ function clearSessionModels() {
  * @returns {boolean}
  */
 function hasSessionModels(feature) {
-  const models = getSessionModels(feature);
-  if (Array.isArray(models)) {
-    return models.length > 0;
-  }
-  return !!models;
+  const state = readSessionState();
+  const models = state.selectedModels?.[feature];
+  return Array.isArray(models) ? models.length > 0 : !!models;
 }
 
 // CLI interface

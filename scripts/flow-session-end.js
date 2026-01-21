@@ -55,7 +55,9 @@ let modelConfig = null;
 try {
   modelConfig = require('./flow-model-config');
 } catch (err) {
-  // Model config module not available
+  if (process.env.DEBUG) {
+    console.error(`[session-end] Model config module not available: ${err.message}`);
+  }
 }
 
 /**
