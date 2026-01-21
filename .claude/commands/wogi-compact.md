@@ -91,7 +91,19 @@ Provide this information for the compaction system:
 
 ## Context Pressure Monitoring
 
-Check context pressure status:
+### Smart Compaction (v2.2)
+
+With smart compaction enabled (`config.smartCompaction.enabled`), context is managed intelligently:
+
+- **Before task start**: `/wogi-start` estimates task's context needs
+- **Proactive compaction**: Only compacts if `current + estimated > 95%`
+- **Emergency threshold**: Always compacts if context exceeds 95%
+
+This means fixed thresholds are less relevant - compaction happens when actually needed based on the specific task.
+
+### Legacy Fixed Thresholds
+
+If smart compaction is disabled, check context pressure status:
 - **Normal**: Under 50k tokens - no action needed
 - **Warning**: 50k-80k tokens - consider compacting soon
 - **Critical**: Over 80k tokens - compact immediately

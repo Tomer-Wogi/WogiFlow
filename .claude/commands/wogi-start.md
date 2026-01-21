@@ -1,6 +1,6 @@
 Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXXXX`
 
-## Structured Execution (v2.1)
+## Structured Execution (v2.2)
 
 This command implements a **structured execution loop**:
 - **Model-invoked skills**: Auto-loads relevant skills based on task context
@@ -15,6 +15,9 @@ This command implements a **structured execution loop**:
 ┌─────────────────────────────────────────────────────────┐
 │  /wogi-start wf-XXXXXXXX                                │
 ├─────────────────────────────────────────────────────────┤
+│  0.25 CONTEXT CHECK: Will this task fit in context?     │
+│     → Estimate task's context needs                     │
+│     → If current + estimated > 95% → Compact first      │
 │  0.5 PARALLEL CHECK: Are other tasks parallelizable?    │
 │     → If yes: Show parallel option before proceeding    │
 │  1. Load context + Match skills (auto-invoke)           │
@@ -50,6 +53,70 @@ This command implements a **structured execution loop**:
 │  10. ✓ Task complete                                    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+### Step 0.25: Pre-Task Context Check (Automatic)
+
+**Before loading full task context, estimate if the task will fit:**
+
+1. Get current context usage percentage (from status line or estimate)
+2. Load task metadata from ready.json (just ID, title, type - not full spec yet)
+3. Estimate task's context needs using `flow-context-estimator.js`:
+   - Count acceptance criteria → ~3% each
+   - Count expected files → ~2% each
+   - Check for refactor/migration keywords → +10% buffer
+   - If parent task with subtasks → multiply by (1 + subtasks × 0.3)
+   - Fallback to defaults: small=10%, medium=25%, large=40%
+
+4. Calculate: `projected_total = current + estimated`
+
+5. **Decision:**
+   - If `projected_total > 95%` → **Compact first**, then resume
+   - If `current >= 95%` → **Emergency compact** (always, regardless of task)
+   - Otherwise → **Proceed** without compaction
+
+**Example outputs:**
+
+```
+📊 Context Check: Proceeding without compaction
+   Current: 60%
+   Task estimate: +25%
+   Projected: 85%
+   Safe threshold: 95%
+   Factors: 4 criteria, 3 files
+```
+
+```
+📊 Context Check: Compaction needed before task
+   Current: 75%
+   Task estimate: +30%
+   Projected: 105%
+   Safe threshold: 95%
+   Factors: 8 criteria, 6 files, +refactor buffer
+
+→ Running /wogi-compact before starting task...
+```
+
+**Why this approach?**
+- Traditional fixed thresholds (compact at 80%) are arbitrary
+- A task needing 15% context shouldn't trigger compaction at 70%
+- This approach compacts only when actually necessary
+- Large tasks at low context proceed; small tasks at high context compact
+
+**Config**: Controlled by `config.smartCompaction`:
+```json
+{
+  "enabled": true,
+  "safeThreshold": 0.95,
+  "emergencyThreshold": 0.95,
+  "estimation": {
+    "perFile": 0.02,
+    "perCriterion": 0.03,
+    "refactorBuffer": 0.10
+  }
+}
+```
+
+---
 
 ### Step 0.5: Parallel Execution Check (Automatic)
 
@@ -492,8 +559,9 @@ Phase commands:
 - If can't fix after 3 attempts, stop and report
 
 ### Context getting too large
-- After 3+ scenarios, check context size
-- If getting large, commit current progress and suggest `/wogi-compact`
+- **Pre-task check** estimates context needs and compacts proactively if needed
+- After 3+ scenarios, re-check context size
+- If getting large mid-task, commit current progress and suggest `/wogi-compact`
 - Progress is preserved in files and ready.json
 
 ## Important

@@ -542,6 +542,21 @@
       "savePath": ".workflow/state/context-tree.json"
     }
   },
+  "smartCompaction": {
+    "enabled": true,
+    "safeThreshold": 0.95,
+    "emergencyThreshold": 0.95,
+    "estimation": {
+      "perFile": 0.02,
+      "perCriterion": 0.03,
+      "perSpecChars": 0.002,
+      "refactorBuffer": 0.10,
+      "defaultSmallTask": 0.10,
+      "defaultMediumTask": 0.25,
+      "defaultLargeTask": 0.40
+    },
+    "refactorKeywords": ["refactor", "migration", "overhaul", "redesign", "rewrite", "restructure", "rearchitect"]
+  },
   "autoContext": {
     "enabled": true,
     "strategy": "dynamic",
