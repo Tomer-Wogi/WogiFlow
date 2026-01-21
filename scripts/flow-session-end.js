@@ -50,6 +50,14 @@ try {
   // Session learning module not available
 }
 
+// v2.6.0 model selection persistence
+let modelConfig = null;
+try {
+  modelConfig = require('./flow-model-config');
+} catch (err) {
+  // Model config module not available
+}
+
 /**
  * Prompt user for input
  */
@@ -259,6 +267,25 @@ function saveSessionSummaryToState() {
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Session save: ${err.message}`);
     warn('Could not save session state');
+  }
+}
+
+/**
+ * v2.6.0: Clear session model selections
+ * Resets peer review and hybrid model choices for next session
+ */
+function clearSessionModelSelections() {
+  if (!modelConfig) return;
+
+  try {
+    if (modelConfig.hasSessionModels('peerReview') || modelConfig.hasSessionModels('hybrid')) {
+      modelConfig.clearSessionModels();
+      if (process.env.DEBUG) {
+        console.log(color('dim', '  Cleared session model selections'));
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Clear models: ${err.message}`);
   }
 }
 
@@ -749,6 +776,9 @@ async function main() {
 
   // v1.7.0: Save session summary
   saveSessionSummaryToState();
+
+  // v2.6.0: Clear session model selections
+  clearSessionModelSelections();
 
   // v1.7.0: Auto-archive request log
   archiveRequestLogIfNeeded();

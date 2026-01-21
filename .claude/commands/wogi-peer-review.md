@@ -1,10 +1,10 @@
 Run a multi-model peer review where different AI models review the same code.
 
-## Step 0: Model Selection (Every Run)
+## Step 0: Model Selection (Session Persistent)
 
-**Before starting the review, check for configured models and let user select:**
+**Models are selected once per session and remembered for subsequent runs.**
 
-### Check Configuration
+### Check Session State First
 
 ```javascript
 const modelConfig = require('./scripts/flow-model-config');
@@ -12,13 +12,22 @@ const modelConfig = require('./scripts/flow-model-config');
 // Run migration if needed (handles old config formats)
 modelConfig.migrateOldConfig();
 
-// Get enabled models
-const models = modelConfig.getEnabledModels();
+// Check if models already selected this session
+const sessionModels = modelConfig.getSessionModels('peerReview');
+
+if (sessionModels && sessionModels.length > 0 && !args.includes('--select-models')) {
+  // Use session models - show brief note
+  console.log(`Using models: ${sessionModels.join(', ')}`);
+  console.log(`(Run with --select-models to change)`);
+  // Proceed with review using sessionModels
+} else {
+  // Need to select models - continue to selection flow
+}
 ```
 
 ### If No Models Configured
 
-If `models.length === 0`:
+If `modelConfig.getEnabledModels().length === 0`:
 
 ```
 No external models configured for peer review.
@@ -37,7 +46,9 @@ Then either:
 
 ### Model Selection Dialog
 
-If models are configured, show selection dialog using AskUserQuestion:
+Show selection dialog when:
+- First run of session (no session models set)
+- User passes `--select-models` flag
 
 ```javascript
 {
@@ -62,10 +73,12 @@ If models are configured, show selection dialog using AskUserQuestion:
 
 ### After Selection
 
-Save the selection for future runs (optional):
+Save the selection to session state:
 ```javascript
-modelConfig.setDefaultModels('peerReview', selectedModels);
+modelConfig.setSessionModels('peerReview', selectedModels);
 ```
+
+This persists until `/wogi-session-end` is called, which clears the selection.
 
 Then proceed with the review using selected models.
 
@@ -99,9 +112,11 @@ Then proceed with the review using selected models.
 ## Usage
 
 ```bash
-/wogi-peer-review                    # Review staged changes
+/wogi-peer-review                    # Review staged changes (uses session models)
 /wogi-peer-review --files src/*.ts   # Review specific files
 /wogi-peer-review --task wf-abc123   # Review task changes
+/wogi-peer-review --select-models    # Force model re-selection
+/wogi-peer-review --manual           # Manual mode (no API keys needed)
 ```
 
 ## Provider Configuration
@@ -299,6 +314,8 @@ Add to coding standards? [Y/n]
 
 ## Options
 
+- `--select-models` - Force model re-selection (overrides session selection)
+- `--manual` - Manual mode (copy prompt to another AI, paste response back)
 - `--provider <name>` - Override configured provider
 - `--model <name>` - Specify secondary model
 - `--files <glob>` - Review specific files

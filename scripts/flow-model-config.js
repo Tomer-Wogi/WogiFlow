@@ -37,6 +37,7 @@ const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
 const ENV_PATH = path.join(PROJECT_ROOT, '.env');
+const SESSION_STATE_PATH = path.join(WORKFLOW_DIR, 'state', 'session-state.json');
 
 /**
  * Known provider configurations
@@ -562,6 +563,77 @@ function hasConfiguredModels() {
   return providers.some(p => p.enabled && p.apiKeySet && p.models.length > 0);
 }
 
+// ============================================================
+// Session State (for model selection persistence within session)
+// ============================================================
+
+/**
+ * Read session state file
+ * @returns {Object} Session state object
+ */
+function readSessionState() {
+  return safeJsonParse(SESSION_STATE_PATH, {});
+}
+
+/**
+ * Write session state file
+ * @param {Object} state - State to write
+ */
+function writeSessionState(state) {
+  const stateDir = path.dirname(SESSION_STATE_PATH);
+  fs.mkdirSync(stateDir, { recursive: true });
+  fs.writeFileSync(SESSION_STATE_PATH, JSON.stringify(state, null, 2));
+}
+
+/**
+ * Get models selected for current session
+ * @param {string} feature - 'peerReview' or 'hybrid'
+ * @returns {string|string[]|null} Selected models or null if not set
+ */
+function getSessionModels(feature) {
+  const state = readSessionState();
+  return state.selectedModels?.[feature] || null;
+}
+
+/**
+ * Set models for current session
+ * @param {string} feature - 'peerReview' or 'hybrid'
+ * @param {string|string[]} models - Model(s) to set
+ */
+function setSessionModels(feature, models) {
+  const state = readSessionState();
+  if (!state.selectedModels) {
+    state.selectedModels = {};
+  }
+  state.selectedModels[feature] = models;
+  writeSessionState(state);
+}
+
+/**
+ * Clear all session model selections
+ * Called by /wogi-session-end
+ */
+function clearSessionModels() {
+  const state = readSessionState();
+  if (state.selectedModels) {
+    delete state.selectedModels;
+    writeSessionState(state);
+  }
+}
+
+/**
+ * Check if models are selected for a feature in current session
+ * @param {string} feature - 'peerReview' or 'hybrid'
+ * @returns {boolean}
+ */
+function hasSessionModels(feature) {
+  const models = getSessionModels(feature);
+  if (Array.isArray(models)) {
+    return models.length > 0;
+  }
+  return !!models;
+}
+
 // CLI interface
 if (require.main === module) {
   const args = process.argv.slice(2);
@@ -637,6 +709,12 @@ module.exports = {
   // Defaults
   getDefaultModels,
   setDefaultModels,
+
+  // Session state (model selection persistence)
+  getSessionModels,
+  setSessionModels,
+  clearSessionModels,
+  hasSessionModels,
 
   // Migration
   migrateOldConfig,

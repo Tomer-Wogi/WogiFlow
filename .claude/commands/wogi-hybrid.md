@@ -34,19 +34,30 @@ For hybrid-specific configuration only:
 node scripts/flow-hybrid-interactive.js
 ```
 
-### Model Selection
+### Model Selection (Session Persistent)
 
-If models are already configured (via `/wogi-models-setup`), you can select which one to use:
+The executor model is selected once per session and remembered for subsequent runs.
 
 ```javascript
 const modelConfig = require('./scripts/flow-model-config');
-const models = modelConfig.getEnabledModels();
 
-// Show selection if multiple models available
-if (models.length > 1) {
+// Check if model already selected this session
+const sessionModel = modelConfig.getSessionModels('hybrid');
+
+if (sessionModel && !args.includes('--select-model')) {
+  // Use session model - show brief note
+  console.log(`Using executor: ${sessionModel}`);
+  console.log(`(Run with --select-model to change)`);
+  // Proceed with hybrid mode using sessionModel
+} else {
+  // Show selection if multiple models available
+  const models = modelConfig.getEnabledModels();
   // Use AskUserQuestion to let user select
+  // Then save: modelConfig.setSessionModels('hybrid', selectedModel);
 }
 ```
+
+Selection persists until `/wogi-session-end` is called.
 
 ## How Hybrid Mode Works
 
@@ -69,6 +80,7 @@ Typical savings: **20-60%** (depending on task complexity)
 - `/wogi-hybrid-off` - Disable hybrid mode
 - `/wogi-hybrid-status` - Check current configuration
 - `/wogi-hybrid-edit` - Modify plan before execution
+- `/wogi-hybrid --select-model` - Change executor model for this session
 
 ## Supported Models
 
