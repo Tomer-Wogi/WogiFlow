@@ -278,14 +278,15 @@ function checkImplementationGate(options = {}) {
     };
   }
 
-  // Hard block
+  // Route through /wogi-start instead of blocking
+  // /wogi-start will intelligently decide: execute directly (operational) or create story (implementation)
   return {
-    allowed: false,
-    blocked: true,
-    message: generateBlockMessage(prompt),
-    reason: 'no_active_task',
+    allowed: true,
+    blocked: false,
+    message: generateRoutingMessage(prompt),
+    reason: 'route_to_wogi_start',
     confidence,
-    suggestedAction: 'create-story',
+    suggestedAction: 'wogi-start',
     matches
   };
 }
@@ -302,19 +303,24 @@ This will execute directly (git/npm/deploy) or create a story first (features/fi
 }
 
 /**
- * Generate block message (hard mode)
+ * Generate routing message - instructs Claude to use /wogi-start
+ * /wogi-start will intelligently decide what to do
+ */
+function generateRoutingMessage(prompt) {
+  return `Route this request through /wogi-start.
+
+Use: /wogi-start "${truncatePrompt(prompt)}"
+
+/wogi-start will intelligently decide:
+- Execute directly if operational (git, npm, deploy, review, commit)
+- Create a story first if implementation (add feature, fix bug, refactor)`;
+}
+
+/**
+ * Generate block message (hard mode) - kept for backwards compatibility
  */
 function generateBlockMessage(prompt) {
-  return `BLOCKED: No active WogiFlow task.
-
-To proceed, run:
-  /wogi-start "${truncatePrompt(prompt)}"
-
-This will either:
-- Execute directly (if operational: git, npm, deploy, build)
-- Create a story first (if implementation: add, fix, build features)
-
-Or see existing tasks: /wogi-ready`;
+  return generateRoutingMessage(prompt);
 }
 
 module.exports = {
@@ -325,6 +331,7 @@ module.exports = {
   detectImplementationIntent,
   checkImplementationGate,
   generateWarningMessage,
+  generateRoutingMessage,
   generateBlockMessage,
   truncatePrompt,
   IMPLEMENTATION_PATTERNS,
