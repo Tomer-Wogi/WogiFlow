@@ -101,8 +101,9 @@ function createPendingSetupMarker() {
  * Recursively copy a directory
  * @param {string} src - Source directory
  * @param {string} dest - Destination directory
+ * @param {boolean} mergeMode - If true, only copy files that don't exist in dest
  */
-function copyDir(src, dest) {
+function copyDir(src, dest, mergeMode = false) {
   fs.mkdirSync(dest, { recursive: true, mode: DIR_MODE });
   const entries = fs.readdirSync(src, { withFileTypes: true });
 
@@ -111,8 +112,12 @@ function copyDir(src, dest) {
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath);
+      copyDir(srcPath, destPath, mergeMode);
     } else {
+      // In merge mode, skip files that already exist
+      if (mergeMode && fs.existsSync(destPath)) {
+        continue;
+      }
       fs.copyFileSync(srcPath, destPath);
       fs.chmodSync(destPath, FILE_MODE);
     }
@@ -122,30 +127,37 @@ function copyDir(src, dest) {
 /**
  * Copy essential .claude/ resources from package to project
  * This ensures commands are available immediately after npm install
+ *
+ * Uses merge mode: new commands are added, existing ones are NOT overwritten
+ * This preserves user customizations while ensuring new commands are available
  */
 function copyClaudeResources() {
   const claudeDir = path.join(PROJECT_ROOT, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true, mode: DIR_MODE });
 
   // Copy commands (essential for slash commands to work)
+  // Use merge mode to add new commands without overwriting customizations
   const packageCommands = path.join(PACKAGE_ROOT, '.claude', 'commands');
   const projectCommands = path.join(claudeDir, 'commands');
-  if (fs.existsSync(packageCommands) && !fs.existsSync(projectCommands)) {
-    copyDir(packageCommands, projectCommands);
+  if (fs.existsSync(packageCommands)) {
+    const alreadyExists = fs.existsSync(projectCommands);
+    copyDir(packageCommands, projectCommands, alreadyExists);
   }
 
-  // Copy docs (knowledge base)
+  // Copy docs (knowledge base) - merge mode
   const packageDocs = path.join(PACKAGE_ROOT, '.claude', 'docs');
   const projectDocs = path.join(claudeDir, 'docs');
-  if (fs.existsSync(packageDocs) && !fs.existsSync(projectDocs)) {
-    copyDir(packageDocs, projectDocs);
+  if (fs.existsSync(packageDocs)) {
+    const alreadyExists = fs.existsSync(projectDocs);
+    copyDir(packageDocs, projectDocs, alreadyExists);
   }
 
-  // Copy rules (coding patterns)
+  // Copy rules (coding patterns) - merge mode
   const packageRules = path.join(PACKAGE_ROOT, '.claude', 'rules');
   const projectRules = path.join(claudeDir, 'rules');
-  if (fs.existsSync(packageRules) && !fs.existsSync(projectRules)) {
-    copyDir(packageRules, projectRules);
+  if (fs.existsSync(packageRules)) {
+    const alreadyExists = fs.existsSync(projectRules);
+    copyDir(packageRules, projectRules, alreadyExists);
   }
 
   // Note: skills/ is NOT copied here - /wogi-init will set up project-specific skills
