@@ -93,9 +93,13 @@ function checkPressure() {
 }
 
 /**
- * Clean up completed plan files from .claude/plans/
- * Plan files that are marked complete or empty are archived or deleted
- * @returns {Object} Cleanup result
+ * Clean up completed plan files from ~/.claude/plans/
+ * Plan files that are explicitly marked complete are deleted.
+ *
+ * Safety: Only deletes files that explicitly contain completion markers.
+ * Path traversal protection: Validates resolved paths stay within plansDir.
+ *
+ * @returns {Object} Cleanup result with cleaned count and file list
  */
 function cleanupPlanFiles() {
   const fs = require('fs');
@@ -112,27 +116,47 @@ function cleanupPlanFiles() {
     return result;
   }
 
+  // Resolve to absolute path for security comparison
+  const realPlansDir = path.resolve(plansDir);
+
   try {
     const files = fs.readdirSync(plansDir);
 
     for (const file of files) {
+      // Only process .md files
       if (!file.endsWith('.md')) continue;
 
-      const filePath = path.join(plansDir, file);
-      let content;
+      // Skip files with path separators (potential traversal)
+      if (file.includes('/') || file.includes('\\')) continue;
 
+      const filePath = path.join(plansDir, file);
+
+      // Path traversal protection: ensure resolved path is within plansDir
+      const realFilePath = path.resolve(filePath);
+      if (!realFilePath.startsWith(realPlansDir + path.sep) && realFilePath !== realPlansDir) {
+        continue; // Skip files outside target directory
+      }
+
+      // Skip symlinks (security measure)
+      try {
+        const stats = fs.lstatSync(filePath);
+        if (stats.isSymbolicLink()) continue;
+      } catch (err) {
+        continue;
+      }
+
+      let content;
       try {
         content = fs.readFileSync(filePath, 'utf-8');
       } catch (err) {
         continue; // Skip files we can't read
       }
 
-      // Check if plan appears to be complete
+      // Check if plan is EXPLICITLY marked complete
+      // More restrictive patterns to avoid accidental deletion
       const isComplete =
-        /^#\s*Plan:\s*Complete/im.test(content) ||
-        /can be deleted/i.test(content) ||
-        /all.*completed/i.test(content) ||
-        content.trim().length < 100; // Very short/empty plans
+        /^#\s*Plan:\s*Complete/im.test(content) ||  // Title starts with "Plan: Complete"
+        /^This plan (file )?can be deleted\.?$/im.test(content);  // Explicit deletion marker
 
       if (isComplete) {
         try {
@@ -141,11 +165,17 @@ function cleanupPlanFiles() {
           result.files.push(file);
         } catch (err) {
           // Couldn't delete - that's okay
+          if (process.env.DEBUG) {
+            console.error(`[cleanupPlanFiles] Failed to delete ${file}: ${err.message}`);
+          }
         }
       }
     }
   } catch (err) {
     // Error reading plans directory - non-critical
+    if (process.env.DEBUG) {
+      console.error(`[cleanupPlanFiles] Error: ${err.message}`);
+    }
   }
 
   return result;
