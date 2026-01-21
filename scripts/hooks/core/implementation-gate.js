@@ -79,6 +79,20 @@ const WOGI_COMMAND_PATTERNS = [
   /\brun\s+(\/)?wogi-/i
 ];
 
+// Maximum length for prompt display (DRY helper)
+const MAX_DISPLAY_LENGTH = 80;
+
+/**
+ * Truncate prompt for display in messages
+ * @param {string} prompt - The prompt to truncate
+ * @param {number} maxLength - Maximum length (default: 80)
+ * @returns {string} Truncated prompt with ellipsis if needed
+ */
+function truncatePrompt(prompt, maxLength = MAX_DISPLAY_LENGTH) {
+  if (!prompt || typeof prompt !== 'string') return '';
+  return prompt.length > maxLength ? prompt.slice(0, maxLength) + '...' : prompt;
+}
+
 /**
  * Check if implementation gate should be enforced
  * @returns {boolean}
@@ -159,17 +173,9 @@ function detectImplementationIntent(prompt) {
     return { isImplementation: false, confidence: 'low', matches: [] };
   }
 
-  // Determine confidence based on number and quality of matches
-  let confidence = 'low';
-  if (matches.length >= 3) {
-    confidence = 'high';
-  } else if (matches.length >= 1) {
-    // Check for strong signals
-    const hasStrongSignal = matches.some(m =>
-      /\b(add|create|implement|fix|build)\b/i.test(m)
-    );
-    confidence = hasStrongSignal ? 'high' : 'medium';
-  }
+  // Determine confidence based on number of matches
+  // Simplified: any match from IMPLEMENTATION_PATTERNS is a strong signal
+  const confidence = matches.length >= 2 ? 'high' : 'medium';
 
   return { isImplementation: true, confidence, matches };
 }
@@ -183,7 +189,7 @@ function detectImplementationIntent(prompt) {
  * @returns {Object} Result: { allowed, blocked, message, reason, confidence, suggestedAction }
  */
 function checkImplementationGate(options = {}) {
-  const { prompt, source: _source } = options;
+  const { prompt } = options;
 
   // Empty or invalid prompt - allow
   if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -264,7 +270,7 @@ function checkImplementationGate(options = {}) {
     return {
       allowed: true,
       blocked: false,
-      message: generateWarningMessage(prompt, confidence, matches),
+      message: generateWarningMessage(prompt),
       reason: 'warn_only',
       confidence,
       suggestedAction: 'create-story',
@@ -276,7 +282,7 @@ function checkImplementationGate(options = {}) {
   return {
     allowed: false,
     blocked: true,
-    message: generateBlockMessage(prompt, confidence, matches),
+    message: generateBlockMessage(prompt),
     reason: 'no_active_task',
     confidence,
     suggestedAction: 'create-story',
@@ -287,11 +293,10 @@ function checkImplementationGate(options = {}) {
 /**
  * Generate warning message (soft mode)
  */
-function generateWarningMessage(prompt, confidence, matches) {
-  const truncatedPrompt = prompt.length > 80 ? prompt.slice(0, 80) + '...' : prompt;
+function generateWarningMessage(prompt) {
   return `Warning: No active WogiFlow task.
 
-Consider: /wogi-start "${truncatedPrompt}"
+Consider: /wogi-start "${truncatePrompt(prompt)}"
 
 This will execute directly (git/npm/deploy) or create a story first (features/fixes).`;
 }
@@ -299,13 +304,11 @@ This will execute directly (git/npm/deploy) or create a story first (features/fi
 /**
  * Generate block message (hard mode)
  */
-function generateBlockMessage(prompt, confidence, matches) {
-  const truncatedPrompt = prompt.length > 80 ? prompt.slice(0, 80) + '...' : prompt;
-
+function generateBlockMessage(prompt) {
   return `BLOCKED: No active WogiFlow task.
 
 To proceed, run:
-  /wogi-start "${truncatedPrompt}"
+  /wogi-start "${truncatePrompt(prompt)}"
 
 This will either:
 - Execute directly (if operational: git, npm, deploy, build)
@@ -323,6 +326,7 @@ module.exports = {
   checkImplementationGate,
   generateWarningMessage,
   generateBlockMessage,
+  truncatePrompt,
   IMPLEMENTATION_PATTERNS,
   EXPLORATION_PATTERNS
 };

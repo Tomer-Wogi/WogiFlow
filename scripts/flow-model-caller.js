@@ -260,9 +260,34 @@ async function callModel(modelString, prompt, options = {}) {
 
 /**
  * Get list of configured models for peer review
+ * Checks unified config first, falls back to legacy peerReview config
  */
 function getConfiguredModels() {
   const config = getConfig();
+
+  // Check unified models config first (new format)
+  if (config.models?.providers) {
+    const models = [];
+    for (const [provider, providerConfig] of Object.entries(config.models.providers)) {
+      if (providerConfig.enabled !== false && providerConfig.models?.length > 0) {
+        // Check if API key is available (or local provider)
+        const apiKeyEnv = providerConfig.apiKeyEnv;
+        const hasApiKey = !apiKeyEnv || process.env[apiKeyEnv];
+
+        if (hasApiKey || provider === 'local') {
+          for (const model of providerConfig.models) {
+            models.push(`${provider}:${model}`);
+          }
+        }
+      }
+    }
+
+    if (models.length > 0) {
+      return models;
+    }
+  }
+
+  // Fall back to legacy peerReview config
   const peerReviewConfig = config.peerReview || {};
 
   if (peerReviewConfig.models && Array.isArray(peerReviewConfig.models)) {
@@ -274,6 +299,7 @@ function getConfiguredModels() {
 
 /**
  * Check if model calling is available
+ * Checks unified config first, falls back to legacy peerReview config
  */
 function isModelCallingAvailable() {
   const config = getConfig();
@@ -284,7 +310,25 @@ function isModelCallingAvailable() {
     return { available: false, reason: 'Manual mode configured' };
   }
 
-  // Check for at least one API key
+  // Check unified config first
+  if (config.models?.providers) {
+    for (const [provider, providerConfig] of Object.entries(config.models.providers)) {
+      if (providerConfig.enabled !== false) {
+        // Local providers don't need API keys
+        if (provider === 'local') {
+          return { available: true };
+        }
+
+        // Cloud providers need API keys
+        const apiKeyEnv = providerConfig.apiKeyEnv;
+        if (apiKeyEnv && process.env[apiKeyEnv]) {
+          return { available: true };
+        }
+      }
+    }
+  }
+
+  // Fall back to legacy peerReview config
   const models = getConfiguredModels();
 
   for (const modelStr of models) {
@@ -301,7 +345,7 @@ function isModelCallingAvailable() {
 
   return {
     available: false,
-    reason: 'No API keys configured. Set environment variables or configure in peerReview.apiKeys'
+    reason: 'No models configured. Run /wogi-models-setup to configure external models.'
   };
 }
 

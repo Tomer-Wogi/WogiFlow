@@ -1,5 +1,74 @@
 Run a multi-model peer review where different AI models review the same code.
 
+## Step 0: Model Selection (Every Run)
+
+**Before starting the review, check for configured models and let user select:**
+
+### Check Configuration
+
+```javascript
+const modelConfig = require('./scripts/flow-model-config');
+
+// Run migration if needed (handles old config formats)
+modelConfig.migrateOldConfig();
+
+// Get enabled models
+const models = modelConfig.getEnabledModels();
+```
+
+### If No Models Configured
+
+If `models.length === 0`:
+
+```
+No external models configured for peer review.
+
+Run /wogi-models-setup to configure:
+- OpenAI (GPT-4o)
+- Google (Gemini)
+- Local LLM (Ollama)
+
+Or use --manual flag for manual mode.
+```
+
+Then either:
+- Auto-launch `/wogi-models-setup` wizard
+- Or use `--manual` mode if user prefers
+
+### Model Selection Dialog
+
+If models are configured, show selection dialog using AskUserQuestion:
+
+```javascript
+{
+  question: "Select models for peer review (multiple allowed):",
+  header: "Models",
+  multiSelect: true,
+  options: [
+    // Dynamically populated from configured models
+    { label: "openai:gpt-4o", description: "Best quality reasoning" },
+    { label: "openai:gpt-4o-mini", description: "Faster, cheaper" },
+    { label: "google:gemini-2.0-flash", description: "Fast, good at code" },
+    { label: "local:qwen2.5-coder", description: "Free, runs locally" }
+    // ... other configured models
+  ]
+}
+```
+
+**Show only models that:**
+1. Are configured in `models.providers`
+2. Have `enabled: true`
+3. Have API key set (check `process.env[apiKeyEnv]`) or are local
+
+### After Selection
+
+Save the selection for future runs (optional):
+```javascript
+modelConfig.setDefaultModels('peerReview', selectedModels);
+```
+
+Then proceed with the review using selected models.
+
 ## How It Works
 
 1. **Primary model (Claude)** reviews the changes for improvements
@@ -37,39 +106,71 @@ Run a multi-model peer review where different AI models review the same code.
 
 ## Provider Configuration
 
-Configure in `.workflow/config.json` under `peerReview`:
+### Recommended: Use `/wogi-models-setup`
 
-### Option A: API Keys (Default)
+The easiest way to configure models is the setup wizard:
+```
+/wogi-models-setup
+```
+
+This creates a unified configuration used by both peer review and hybrid mode.
+
+### Config Location
+
+Models are configured in `.workflow/config.json` under `models`:
+
 ```json
+{
+  "models": {
+    "providers": {
+      "openai": {
+        "apiKeyEnv": "OPENAI_API_KEY",
+        "enabled": true,
+        "models": ["gpt-4o", "gpt-4o-mini"]
+      },
+      "google": {
+        "apiKeyEnv": "GOOGLE_API_KEY",
+        "enabled": true,
+        "models": ["gemini-2.0-flash"]
+      },
+      "local": {
+        "endpoint": "http://localhost:11434",
+        "provider": "ollama",
+        "enabled": true,
+        "models": ["qwen2.5-coder"]
+      }
+    },
+    "defaults": {
+      "peerReview": ["openai:gpt-4o", "google:gemini-2.0-flash"]
+    }
+  }
+}
+```
+
+API keys are stored in `.env` (not in config):
+```
+OPENAI_API_KEY=sk-proj-...
+GOOGLE_API_KEY=AIza...
+```
+
+### Legacy Config (Auto-Migrated)
+
+Old format configs are automatically migrated on first use:
+```json
+// Old format (still supported, auto-migrates)
 "peerReview": {
-  "enabled": true,
-  "provider": "api",
-  "models": ["openai:gpt-4o", "google:gemini-pro"],
   "apiKeys": {
-    "openai": "${OPENAI_API_KEY}",
-    "google": "${GOOGLE_API_KEY}"
-  }
+    "openai": "${OPENAI_API_KEY}"
+  },
+  "models": ["openai:gpt-4o"]
 }
 ```
 
-### Option B: MCP Integration
-```json
-"peerReview": {
-  "enabled": true,
-  "provider": "mcp",
-  "mcpServers": {
-    "openai": "mcp-openai",
-    "google": "mcp-gemini"
-  }
-}
-```
+### Manual Mode
 
-### Option C: Manual Mode
-```json
-"peerReview": {
-  "enabled": true,
-  "provider": "manual"
-}
+For manual review (no API keys needed):
+```
+/wogi-peer-review --manual
 ```
 
 When manual:

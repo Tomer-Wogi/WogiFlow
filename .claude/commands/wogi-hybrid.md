@@ -14,12 +14,38 @@ Let me check what's available on your system:
 node scripts/flow-hybrid-detect.js providers
 ```
 
-## Step 2: Interactive Setup
+## Step 2: Choose Setup Method
 
-Running the interactive setup wizard:
+### Option A: Use Unified Model Setup (Recommended)
+
+If you want to configure multiple providers at once (for both hybrid and peer review):
+
+```
+/wogi-models-setup
+```
+
+This configures all your models in one place.
+
+### Option B: Hybrid-Specific Setup
+
+For hybrid-specific configuration only:
 
 ```bash
 node scripts/flow-hybrid-interactive.js
+```
+
+### Model Selection
+
+If models are already configured (via `/wogi-models-setup`), you can select which one to use:
+
+```javascript
+const modelConfig = require('./scripts/flow-model-config');
+const models = modelConfig.getEnabledModels();
+
+// Show selection if multiple models available
+if (models.length > 1) {
+  // Use AskUserQuestion to let user select
+}
 ```
 
 ## How Hybrid Mode Works
