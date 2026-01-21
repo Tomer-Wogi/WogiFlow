@@ -6,8 +6,9 @@
  * Runs after npm install to:
  * 1. Create minimal directory structure
  * 2. Copy .claude/commands/ (slash commands) - ESSENTIAL for immediate use
- * 3. Create pending-setup.json marker for AI to detect
- * 4. Print instructions to start AI assistant
+ * 3. Copy scripts/ (workflow scripts) - ensures scripts are updated on npm update
+ * 4. Create pending-setup.json marker for AI to detect
+ * 5. Print instructions to start AI assistant
  *
  * Full setup (config, skills, etc.) is done by the AI via /wogi-init command.
  */
@@ -193,6 +194,41 @@ function copyClaudeResources() {
 }
 
 /**
+ * Copy scripts from package to project (for npm update scenario)
+ * This ensures scripts are updated on npm install/update
+ *
+ * Uses merge mode: new scripts are added, existing ones are NOT overwritten
+ * This preserves user customizations while ensuring new scripts are available
+ */
+function copyScriptsFromPackage() {
+  const packageScripts = path.join(PACKAGE_ROOT, 'scripts');
+  const projectScripts = path.join(PROJECT_ROOT, 'scripts');
+
+  if (!fs.existsSync(packageScripts)) {
+    if (process.env.DEBUG) {
+      console.error('[postinstall] Package scripts not found');
+    }
+    return;
+  }
+
+  // Use merge mode to add new scripts without overwriting customizations
+  const alreadyExists = fs.existsSync(projectScripts);
+  copyDir(packageScripts, projectScripts, alreadyExists);
+
+  // Make flow script executable
+  const flowScript = path.join(projectScripts, 'flow');
+  if (fs.existsSync(flowScript)) {
+    try {
+      fs.chmodSync(flowScript, 0o755);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[postinstall] chmod flow script failed: ${err.message}`);
+      }
+    }
+  }
+}
+
+/**
  * Check if we should be completely silent (CI only)
  */
 function shouldBeSilent() {
@@ -218,6 +254,10 @@ function main() {
   // Copy essential .claude/ resources (commands, docs, rules)
   // This ensures slash commands are available immediately
   copyClaudeResources();
+
+  // Copy scripts (for npm update scenario)
+  // This ensures scripts are updated when running npm install/update
+  copyScriptsFromPackage();
 
   // Create marker for AI to detect (unless already initialized)
   createPendingSetupMarker();
