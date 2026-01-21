@@ -12,12 +12,16 @@ const modelConfig = require('./scripts/flow-model-config');
 // Run migration if needed (handles old config formats)
 modelConfig.migrateOldConfig();
 
+// Check if Claude should also review
+const includeClaude = modelConfig.shouldIncludeClaude();
+
 // Check if models already selected this session
 const sessionModels = modelConfig.getSessionModels('peerReview');
 
 if (sessionModels && sessionModels.length > 0 && !args.includes('--select-models')) {
   // Use session models - show brief note
-  console.log(`Using models: ${sessionModels.join(', ')}`);
+  const claudeNote = includeClaude ? ' + Claude' : '';
+  console.log(`Using models: ${sessionModels.join(', ')}${claudeNote}`);
   console.log(`(Run with --select-models to change)`);
   // Proceed with review using sessionModels
 } else {
@@ -56,6 +60,8 @@ Show selection dialog when:
   header: "Models",
   multiSelect: true,
   options: [
+    // Claude option (when includeClaude is enabled in config)
+    { label: "Claude (current session)", description: "Reviews using current conversation context" },
     // Dynamically populated from configured models
     { label: "openai:gpt-4o", description: "Best quality reasoning" },
     { label: "openai:gpt-4o-mini", description: "Faster, cheaper" },
@@ -66,7 +72,11 @@ Show selection dialog when:
 }
 ```
 
-**Show only models that:**
+**Show Claude option when:**
+- `modelConfig.shouldIncludeClaude()` returns `true`
+- Claude is shown first (recommended) as it has full context
+
+**Show external models that:**
 1. Are configured in `models.providers`
 2. Have `enabled: true`
 3. Have API key set (check `process.env[apiKeyEnv]`) or are local
@@ -84,12 +94,23 @@ Then proceed with the review using selected models.
 
 ## How It Works
 
-1. **Primary model (Claude)** reviews the changes for improvements
-2. **Secondary model(s)** review the same changes
-3. **Findings are compared** and disagreements surfaced
-4. **Primary model responds** to peer feedback:
+### When `includeClaude` is enabled (recommended):
+1. **Claude reviews first** using the same improvement-focused prompt as external models
+2. **External model(s)** review the same changes via API
+3. **All findings compared** (Claude + external models)
+4. **Claude synthesizes** all perspectives and responds to disagreements
+
+### When `includeClaude` is disabled:
+1. **External model(s)** review the changes via API
+2. **Findings are compared** across external models
+3. **Claude synthesizes** findings and responds to peer feedback:
    - Defends decisions with context
    - OR acknowledges valid alternatives
+
+**Why include Claude?**
+- Provides additional perspective alongside external models
+- Has full conversation context (knows why certain decisions were made)
+- Catches things external models might miss due to context limitations
 
 ## Key Difference from `/wogi-review`
 
@@ -156,7 +177,8 @@ Models are configured in `.workflow/config.json` under `models`:
       }
     },
     "defaults": {
-      "peerReview": ["openai:gpt-4o", "google:gemini-2.0-flash"]
+      "peerReview": ["openai:gpt-4o", "google:gemini-2.0-flash"],
+      "includeClaude": true
     }
   }
 }
@@ -202,16 +224,51 @@ When manual:
 ├─────────────────────────────────────────────────────────┤
 │  1. Collect code changes (git diff or specified files)   │
 │  2. Generate improvement-focused prompt                  │
-│  3. Claude reviews for improvements                      │
-│  4. Secondary model(s) review                            │
-│  5. Compare findings:                                    │
-│     • Both agree → Strong suggestion                     │
-│     • Disagree → Present both perspectives               │
-│  6. Claude responds to peer feedback:                    │
+│  3. If includeClaude enabled:                            │
+│     • Launch Claude review (Task agent, Explore type)   │
+│     • Claude reviews using same prompt as external       │
+│  4. External model(s) review via API                     │
+│  5. Collect all results                                  │
+│  6. Compare findings:                                    │
+│     • All agree → Strong suggestion                      │
+│     • Partial agree → Present perspectives               │
+│     • Disagree → Surface disagreement                    │
+│  7. Claude synthesizes and responds to feedback:         │
 │     • "I have more context, here's why X is better..."   │
 │     • "Valid point, Y would be an improvement..."        │
-│  7. Output final synthesis                               │
+│  8. Output final synthesis                               │
 └─────────────────────────────────────────────────────────┘
+```
+
+### Claude Review Implementation
+
+When `includeClaude` is enabled, launch a Task agent to perform Claude's review:
+
+```javascript
+// In wogi-peer-review execution
+const modelConfig = require('./scripts/flow-model-config');
+
+if (modelConfig.shouldIncludeClaude()) {
+  // Launch Task agent with subagent_type=Explore
+  // Use the same improvement-focused prompt as external models
+  // The agent reviews the code and returns findings
+  // Add Claude's results to the comparison alongside external model results
+}
+```
+
+**Task agent prompt for Claude review:**
+```
+Review this code for IMPROVEMENT OPPORTUNITIES (not bugs):
+
+1. Optimization: Can this be faster/more efficient?
+2. Alternatives: Are there better approaches?
+3. Patterns: Does this follow best practices?
+4. Readability: Could this be clearer/simpler?
+5. Extensibility: Will this be easy to extend?
+
+[code changes]
+
+Return structured findings with specific suggestions.
 ```
 
 ## Review Prompt Template
@@ -243,21 +300,30 @@ Respond with:
 🔍 Peer Review Results
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ Agreement (2/2 models):
+Reviewers: Claude, GPT-4o, Gemini 2.0 Flash
+
+✅ Agreement (3/3 models):
    • Consider using early return for readability
    • Extract repeated logic to helper function
 
+⚖️ Partial Agreement (2/3 models):
+   • Claude + Gemini: Add input validation at boundary
+   • GPT-4o: Not necessary for internal function
+
 ⚖️ Disagreement:
    • Claude: Prefer inline styling for this case
-   • GPT-4: Recommend extracting to CSS module
+   • GPT-4o: Recommend extracting to CSS module
+   • Gemini: No strong opinion
    → Resolution: Context-dependent, current approach is valid
 
 💡 Unique Insights:
-   • [GPT-4] Consider memoization for expensive computation
    • [Claude] Current architecture handles edge case X well
+   • [GPT-4o] Consider memoization for expensive computation
+   • [Gemini] Similar pattern used in popular library Y
 
 📊 Summary:
-   3 actionable improvements identified
+   Reviewers: 3 (Claude + 2 external)
+   4 actionable improvements identified
    1 disagreement resolved
    Code quality: Good, with minor optimization opportunities
 ```

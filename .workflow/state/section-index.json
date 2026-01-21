@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-01-18T19:07:32.532Z",
+  "generatedAt": "2026-01-21T12:20:52.602Z",
   "sources": {
     "decisions.md": {
       "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/decisions.md",
-      "lastModified": "2026-01-16T09:09:05.930Z",
-      "contentHash": "f6048b7d",
+      "lastModified": "2026-01-18T19:11:45.333Z",
+      "contentHash": "d8d284a1",
       "sections": [
         {
           "id": "component-architecture:component-reuse-policy",
@@ -14,6 +14,7 @@
           "pins": [
             "component-creation",
             "component-reuse",
+            "task-create",
             "component",
             "reuse",
             "policy",
@@ -58,6 +59,9 @@
             "prototype-pollution",
             "path-traversal",
             "input-validation",
+            "project-exports",
+            "code-patterns",
+            "project-context",
             "security",
             "patterns",
             "2026-01-11",
@@ -77,6 +81,9 @@
             "error-handling",
             "component-naming",
             "file-naming",
+            "task-create",
+            "code-patterns",
+            "project-context",
             "code",
             "quality",
             "patterns",
@@ -94,6 +101,7 @@
           "category": "Architecture Decisions",
           "pins": [
             "model-architecture",
+            "available-imports",
             "model",
             "management",
             "architecture",
@@ -104,6 +112,25 @@
           "lineEnd": 107,
           "content": "**Context**: Phase 1 introduced model registry and stats system alongside existing model-adapter.\n\n**Two Model Systems**:\n1. **flow-model-adapter.js** - Prompt adaptation system\n   - `getCurrentModel()` returns normalized model name (string)\n   - Focus: Per-model prompt adjustments, learning, and corrections\n   - Imports: Used by flow-knowledge-router.js\n\n2. **flow-models.js** - Registry and stats system\n   - `getCurrentModel()` returns `{name, info, source}` object\n   - Focus: Model listing, routing recommendations, cost tracking\n   - Standalone CLI commands: `flow models [subcommand]`\n\n**Design Decision**: Keep them separate because:\n- Different return types serve different consumers\n- Adapter system needs just the name for pattern matching\n- Registry system needs full model metadata for display/routing\n- Merging would create unnecessary coupling\n\n**Future Consideration**: Could extract shared model detection logic into a common utility if they drift apart.",
           "contentHash": "c121be1d"
+        },
+        {
+          "id": "architecture-decisions:spec-verification-gate-2026-01-18",
+          "title": "Spec Verification Gate (2026-01-18)",
+          "category": "Architecture Decisions",
+          "pins": [
+            "file-safety",
+            "component-creation",
+            "task-create",
+            "spec",
+            "verification",
+            "gate",
+            "2026-01-18",
+            "spec-verification-gate-2026-01-18"
+          ],
+          "lineStart": 109,
+          "lineEnd": 129,
+          "content": "**Context**: Implementation gap discovered where spec listed files that were never created, but task was marked complete.\n\n**Problem**: When a spec promises deliverables (files to create), there was no automated verification that those files were actually created before marking the task as done.\n\n**Solution**: Added spec verification gate to `/wogi-done` that:\n1. Finds spec file matching task ID in `.workflow/changes/`\n2. Parses spec to extract promised files (tables, lists, code blocks)\n3. Verifies each file exists and has valid syntax\n4. Blocks completion if deliverables are missing\n\n**Implementation**:\n- `scripts/flow-spec-verifier.js` - Parses specs, verifies deliverables\n- `scripts/flow-done.js` - Runs verification before quality gates\n- Config: `tasks.requireSpecVerification` (default: true)\n\n**Bypass Options**:\n- `--skip-spec-check` - Skip with warning (use for false positives)\n- `--force` - Force completion (use with caution)\n\n**Lesson Learned**: When claiming work is \"done\", verify with evidence, not just \"seems done\". Automated verification catches gaps that manual review misses.",
+          "contentHash": "ff03c278"
         },
         {
           "id": "architecture-decisions:json-safety-pattern-2026-01-11",
@@ -121,8 +148,8 @@
             "2026-01-11",
             "json-safety-pattern-2026-01-11"
           ],
-          "lineStart": 109,
-          "lineEnd": 115,
+          "lineStart": 131,
+          "lineEnd": 137,
           "content": "**Rule**: Use `safeJsonParse()` pattern for external/user-modifiable JSON files.\n- Check for `__proto__` and `constructor\"` strings before parsing\n- Validate parsed result is object (not null/array for config files)\n- Located in: `scripts/flow-models.js` (can be extracted if needed elsewhere)",
           "contentHash": "585e4d23"
         },
@@ -134,14 +161,17 @@
             "fs-read",
             "file-safety",
             "file-naming",
+            "task-integrate",
+            "available-imports",
+            "project-exports",
             "deletion",
             "review",
             "gate",
             "2026-01-16",
             "deletion-review-gate-2026-01-16"
           ],
-          "lineStart": 125,
-          "lineEnd": 163,
+          "lineStart": 147,
+          "lineEnd": 185,
           "content": "**Source**: Near-miss where checkpoint and prompts folders were incorrectly flagged for deletion\n\n**Rule**: Before recommending deletion of ANY file/folder, complete this checklist:\n\n1. **Search for direct path references**\n   - `grep -r \"folder-name\" scripts/`\n\n2. **Search for module imports** (for .js files)\n   - `grep -r \"require.*module-name\" scripts/`\n   - `grep -r \"from.*module-name\" scripts/`\n\n3. **Read the actual file/script** to understand its purpose\n   - Check file header comments for usage documentation\n   - Look for `module.exports` to see what it provides\n\n4. **Check if it's wired into CLI**\n   - Search in `scripts/flow` for command registration\n   - Check if there's a corresponding `/wogi-*` skill\n\n5. **Check config.json for related configuration**\n   - Feature may be implemented but disabled/not configured\n\n6. **Verify with installer/templates**\n   - Check `lib/installer.js` for folder purposes\n   - Check `templates/` for related template files\n\n**Only recommend deletion if ALL checks show no usage.**\n\n**Present findings as:**\n```\nKEEP: [reason - what uses it]\nREMOVE: [reason - verified unused by checks 1-6]\nDISCONNECTED: [built but not wired - consider connecting vs removing]\n```\n\n**Reason**: Grep for folder paths alone misses module imports, disabled features, and planned functionality.",
           "contentHash": "9214f625"
         },
@@ -154,8 +184,8 @@
             "file-naming",
             "2026-01-02"
           ],
-          "lineStart": 165,
-          "lineEnd": 168,
+          "lineStart": 187,
+          "lineEnd": 190,
           "content": "Use kebab-case for all file names in this project",
           "contentHash": "7d8867df"
         }
@@ -166,12 +196,817 @@
       "lastModified": "2025-12-22T16:30:52.000Z",
       "contentHash": "71a9204e",
       "rows": []
+    },
+    "task-types/create.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/task-types/create.md",
+      "lastModified": "2026-01-21T12:13:01.819Z",
+      "contentHash": "ba295cc0",
+      "sections": [
+        {
+          "id": "create:description",
+          "title": "Description",
+          "source": "create.md",
+          "pins": [
+            "task-create-desc",
+            "task-create",
+            "task-type",
+            "create",
+            "component-creation",
+            "description"
+          ],
+          "lineStart": 7,
+          "lineEnd": 14,
+          "content": "Creating new files/components from scratch. This includes:\n- New React components\n- New utility functions\n- New hooks\n- New services/API clients\n- New test files",
+          "contentHash": "a8de97d1"
+        },
+        {
+          "id": "create:required-context",
+          "title": "Required Context",
+          "source": "create.md",
+          "pins": [
+            "task-create-context",
+            "task-create",
+            "task-type",
+            "create",
+            "required",
+            "context",
+            "required-context"
+          ],
+          "lineStart": 16,
+          "lineEnd": 18,
+          "content": "Essential context for successful creation:",
+          "contentHash": "62e01e16"
+        },
+        {
+          "id": "create:always-include",
+          "title": "Always Include",
+          "source": "create.md",
+          "pins": [
+            "task-create",
+            "task-type",
+            "create",
+            "component-reuse",
+            "available-imports",
+            "code-patterns",
+            "always",
+            "include",
+            "always-include"
+          ],
+          "lineStart": 20,
+          "lineEnd": 24,
+          "content": "- **app-map.md**: Existing components to avoid duplication\n- **Similar component example**: Reference for patterns and style\n- **Type definitions**: Full prop types and interfaces\n- **Import patterns**: Available imports with exact paths",
+          "contentHash": "c64016af"
+        },
+        {
+          "id": "create:based-on-task",
+          "title": "Based on Task",
+          "source": "create.md",
+          "pins": [
+            "task-create",
+            "task-type",
+            "create",
+            "api-pattern",
+            "code-patterns",
+            "project-context",
+            "based",
+            "task",
+            "based-on-task"
+          ],
+          "lineStart": 26,
+          "lineEnd": 29,
+          "content": "- **Style system**: Theme tokens, CSS conventions\n- **State management**: Context patterns, store structure\n- **API patterns**: Data fetching conventions",
+          "contentHash": "6d29bed6"
+        },
+        {
+          "id": "create:context-loading-priority",
+          "title": "Context Loading Priority",
+          "source": "create.md",
+          "pins": [
+            "task-create-priority",
+            "task-create",
+            "task-type",
+            "create",
+            "available-imports",
+            "code-patterns",
+            "project-context",
+            "context",
+            "loading",
+            "priority",
+            "context-loading-priority"
+          ],
+          "lineStart": 31,
+          "lineEnd": 37,
+          "content": "1. Import map (available imports)\n2. Type definitions for target area\n3. 1-2 similar component examples\n4. Project patterns from decisions.md\n5. Full file of closest similar component (if rich context)",
+          "contentHash": "f6215155"
+        },
+        {
+          "id": "create:success-indicators",
+          "title": "Success Indicators",
+          "source": "create.md",
+          "pins": [
+            "task-create-success",
+            "task-create",
+            "task-type",
+            "create",
+            "file-safety",
+            "available-imports",
+            "project-exports",
+            "code-patterns",
+            "success",
+            "indicators",
+            "success-indicators"
+          ],
+          "lineStart": 39,
+          "lineEnd": 47,
+          "content": "A successful create task produces:\n- File created at correct path\n- Exports match requirements\n- Types are correct and complete\n- Follows existing patterns\n- Passes linting and type-checking\n- No hallucinated imports",
+          "contentHash": "81c089f3"
+        },
+        {
+          "id": "create:common-failures",
+          "title": "Common Failures",
+          "source": "create.md",
+          "pins": [
+            "task-create-failures",
+            "task-create",
+            "task-type",
+            "create",
+            "error-handling",
+            "fs-read",
+            "fs-write",
+            "file-safety",
+            "model-learning",
+            "available-imports",
+            "common",
+            "failures",
+            "common-failures"
+          ],
+          "lineStart": 49,
+          "lineEnd": 56,
+          "content": "| Failure Type | Cause | Prevention |\n|--------------|-------|------------|\n| Wrong imports | Missing import map | Always include available imports |\n| Type errors | Incomplete type defs | Include full interface definitions |\n| Style mismatch | No example provided | Include similar component |\n| Wrong location | Unclear structure | Specify exact file path |",
+          "contentHash": "84af04ad"
+        },
+        {
+          "id": "create:model-specific-adjustments",
+          "title": "Model-Specific Adjustments",
+          "source": "create.md",
+          "pins": [
+            "task-create-models",
+            "task-create",
+            "task-type",
+            "create",
+            "model-profile",
+            "model-specific",
+            "adjustments",
+            "model-specific-adjustments"
+          ],
+          "lineStart": 58,
+          "lineEnd": 62,
+          "content": "- **Low-context models**: Include 2-3 complete component examples\n- **High-context models**: Pattern hints sufficient, 1 example\n- **Local LLMs**: Maximum context, explicit everything",
+          "contentHash": "387cf008"
+        }
+      ]
+    },
+    "task-types/fix.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/task-types/fix.md",
+      "lastModified": "2026-01-21T12:13:02.368Z",
+      "contentHash": "5819a16d",
+      "sections": [
+        {
+          "id": "fix:description",
+          "title": "Description",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-desc",
+            "task-fix",
+            "task-type",
+            "fix",
+            "description"
+          ],
+          "lineStart": 7,
+          "lineEnd": 15,
+          "content": "Bug fixes and error resolution. This includes:\n- Runtime errors\n- Type errors\n- Logic bugs\n- Edge case handling\n- Performance issues\n- Regression fixes",
+          "contentHash": "69d98417"
+        },
+        {
+          "id": "fix:required-context",
+          "title": "Required Context",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-context",
+            "task-fix",
+            "task-type",
+            "fix",
+            "required",
+            "context",
+            "required-context"
+          ],
+          "lineStart": 17,
+          "lineEnd": 19,
+          "content": "Essential context for successful bug fixing:",
+          "contentHash": "1e95b77c"
+        },
+        {
+          "id": "fix:always-include",
+          "title": "Always Include",
+          "source": "fix.md",
+          "pins": [
+            "task-fix",
+            "task-type",
+            "fix",
+            "always",
+            "include",
+            "always-include"
+          ],
+          "lineStart": 21,
+          "lineEnd": 25,
+          "content": "- **Error message/stack trace**: Exact error details\n- **Reproduction steps**: How to trigger the bug\n- **Related code**: File and function where bug occurs\n- **Expected behavior**: What should happen",
+          "contentHash": "f503cc3a"
+        },
+        {
+          "id": "fix:based-on-task",
+          "title": "Based on Task",
+          "source": "fix.md",
+          "pins": [
+            "task-fix",
+            "task-type",
+            "fix",
+            "based",
+            "task",
+            "based-on-task"
+          ],
+          "lineStart": 27,
+          "lineEnd": 30,
+          "content": "- **Data flow**: How data reaches the bug location\n- **Edge cases**: Input that triggers the bug\n- **Related tests**: Test that should catch this",
+          "contentHash": "ec037912"
+        },
+        {
+          "id": "fix:context-loading-priority",
+          "title": "Context Loading Priority",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-priority",
+            "task-fix",
+            "task-type",
+            "fix",
+            "error-handling",
+            "context",
+            "loading",
+            "priority",
+            "context-loading-priority"
+          ],
+          "lineStart": 32,
+          "lineEnd": 38,
+          "content": "1. Exact error message and stack trace\n2. Full file containing the bug\n3. Reproduction steps or failing test\n4. Related code (data sources, callers)\n5. Expected vs actual behavior",
+          "contentHash": "8356965e"
+        },
+        {
+          "id": "fix:success-indicators",
+          "title": "Success Indicators",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-success",
+            "task-fix",
+            "task-type",
+            "fix",
+            "component-creation",
+            "task-create",
+            "success",
+            "indicators",
+            "success-indicators"
+          ],
+          "lineStart": 40,
+          "lineEnd": 47,
+          "content": "A successful fix task produces:\n- Error no longer occurs\n- Original behavior restored\n- No new bugs introduced\n- Root cause addressed (not just symptom)\n- Test added to prevent regression",
+          "contentHash": "42d272b4"
+        },
+        {
+          "id": "fix:common-failures",
+          "title": "Common Failures",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-failures",
+            "task-fix",
+            "task-type",
+            "fix",
+            "model-learning",
+            "common",
+            "failures",
+            "common-failures"
+          ],
+          "lineStart": 49,
+          "lineEnd": 56,
+          "content": "| Failure Type | Cause | Prevention |\n|--------------|-------|------------|\n| Symptom fix | Missing root cause | Include data flow context |\n| New bug | Incomplete understanding | Show full related code |\n| Partial fix | Edge cases missed | Include edge case examples |\n| Wrong location | Unclear stack trace | Provide full trace |",
+          "contentHash": "f6525453"
+        },
+        {
+          "id": "fix:model-specific-adjustments",
+          "title": "Model-Specific Adjustments",
+          "source": "fix.md",
+          "pins": [
+            "task-fix-models",
+            "task-fix",
+            "task-type",
+            "fix",
+            "model-profile",
+            "code-patterns",
+            "project-context",
+            "model-specific",
+            "adjustments",
+            "model-specific-adjustments"
+          ],
+          "lineStart": 58,
+          "lineEnd": 62,
+          "content": "- **Low-context models**: Focus on exact error location + context\n- **High-context models**: Can analyze broader codebase\n- **Local LLMs**: Include explicit error patterns to avoid",
+          "contentHash": "92349e24"
+        }
+      ]
+    },
+    "task-types/integrate.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/task-types/integrate.md",
+      "lastModified": "2026-01-21T12:13:02.537Z",
+      "contentHash": "e2b0ade2",
+      "sections": [
+        {
+          "id": "integrate:description",
+          "title": "Description",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-desc",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "description"
+          ],
+          "lineStart": 7,
+          "lineEnd": 15,
+          "content": "Connecting systems, services, or components together. This includes:\n- API integration\n- Third-party service connection\n- Component composition\n- State management wiring\n- Event handling setup\n- Data pipeline connection",
+          "contentHash": "50f7f068"
+        },
+        {
+          "id": "integrate:required-context",
+          "title": "Required Context",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-context",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "required",
+            "context",
+            "required-context"
+          ],
+          "lineStart": 17,
+          "lineEnd": 19,
+          "content": "Essential context for successful integration:",
+          "contentHash": "fe983bda"
+        },
+        {
+          "id": "integrate:always-include",
+          "title": "Always Include",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "api-pattern",
+            "code-patterns",
+            "always",
+            "include",
+            "always-include"
+          ],
+          "lineStart": 21,
+          "lineEnd": 25,
+          "content": "- **API documentation**: Endpoints, parameters, responses\n- **Connection patterns**: How similar integrations work\n- **Both endpoints**: Source and target of integration\n- **Type definitions**: Data shapes at each end",
+          "contentHash": "1865ba90"
+        },
+        {
+          "id": "integrate:based-on-task",
+          "title": "Based on Task",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "error-handling",
+            "based",
+            "task",
+            "based-on-task"
+          ],
+          "lineStart": 27,
+          "lineEnd": 30,
+          "content": "- **Authentication**: How auth works for the service\n- **Error handling**: Expected errors and recovery\n- **Rate limits**: Constraints on API usage",
+          "contentHash": "8471c463"
+        },
+        {
+          "id": "integrate:context-loading-priority",
+          "title": "Context Loading Priority",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-priority",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "error-handling",
+            "code-patterns",
+            "project-context",
+            "context",
+            "loading",
+            "priority",
+            "context-loading-priority"
+          ],
+          "lineStart": 32,
+          "lineEnd": 38,
+          "content": "1. API documentation or interface specs\n2. Existing integration patterns in codebase\n3. Type definitions for data exchange\n4. Authentication/configuration setup\n5. Error handling patterns",
+          "contentHash": "962d5cfb"
+        },
+        {
+          "id": "integrate:success-indicators",
+          "title": "Success Indicators",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-success",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "error-handling",
+            "success",
+            "indicators",
+            "success-indicators"
+          ],
+          "lineStart": 40,
+          "lineEnd": 48,
+          "content": "A successful integration task produces:\n- Systems communicate correctly\n- Data flows as expected\n- Errors handled gracefully\n- Types match on both ends\n- Authentication works\n- Rate limits respected",
+          "contentHash": "643be07e"
+        },
+        {
+          "id": "integrate:common-failures",
+          "title": "Common Failures",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-failures",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "error-handling",
+            "api-pattern",
+            "model-learning",
+            "code-patterns",
+            "common",
+            "failures",
+            "common-failures"
+          ],
+          "lineStart": 50,
+          "lineEnd": 57,
+          "content": "| Failure Type | Cause | Prevention |\n|--------------|-------|------------|\n| Type mismatch | API types don't match code | Include full API types |\n| Auth failure | Wrong auth pattern | Include auth examples |\n| Missing error handling | Undocumented errors | Include error patterns |\n| Wrong endpoint | Outdated API docs | Verify API version |",
+          "contentHash": "01f61612"
+        },
+        {
+          "id": "integrate:model-specific-adjustments",
+          "title": "Model-Specific Adjustments",
+          "source": "integrate.md",
+          "pins": [
+            "task-integrate-models",
+            "task-integrate",
+            "task-type",
+            "integrate",
+            "error-handling",
+            "model-profile",
+            "model-specific",
+            "adjustments",
+            "model-specific-adjustments"
+          ],
+          "lineStart": 59,
+          "lineEnd": 63,
+          "content": "- **Low-context models**: Step-by-step: auth first, then data, then errors\n- **High-context models**: Can handle full integration at once\n- **Local LLMs**: Break into connection, data, error handling phases",
+          "contentHash": "a35080c4"
+        }
+      ]
+    },
+    "task-types/modify.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/task-types/modify.md",
+      "lastModified": "2026-01-21T12:13:01.998Z",
+      "contentHash": "b3b627cb",
+      "sections": [
+        {
+          "id": "modify:description",
+          "title": "Description",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-desc",
+            "task-modify",
+            "task-type",
+            "modify",
+            "component-creation",
+            "component-reuse",
+            "task-create",
+            "description"
+          ],
+          "lineStart": 7,
+          "lineEnd": 14,
+          "content": "Editing existing files to add, change, or update functionality. This includes:\n- Adding new props or features to components\n- Updating function behavior\n- Changing UI elements\n- Adding new methods to services\n- Updating configuration",
+          "contentHash": "7d0bfcec"
+        },
+        {
+          "id": "modify:required-context",
+          "title": "Required Context",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-context",
+            "task-modify",
+            "task-type",
+            "modify",
+            "required",
+            "context",
+            "required-context"
+          ],
+          "lineStart": 16,
+          "lineEnd": 18,
+          "content": "Essential context for successful modification:",
+          "contentHash": "48fbc732"
+        },
+        {
+          "id": "modify:always-include",
+          "title": "Always Include",
+          "source": "modify.md",
+          "pins": [
+            "task-modify",
+            "task-type",
+            "modify",
+            "available-imports",
+            "always",
+            "include",
+            "always-include"
+          ],
+          "lineStart": 20,
+          "lineEnd": 24,
+          "content": "- **Full current file**: Complete file being modified\n- **Clear diff markers**: What to change and where\n- **Type definitions**: Existing and new types\n- **Related imports**: Any new imports needed",
+          "contentHash": "d71240ba"
+        },
+        {
+          "id": "modify:based-on-task",
+          "title": "Based on Task",
+          "source": "modify.md",
+          "pins": [
+            "task-modify",
+            "task-type",
+            "modify",
+            "based",
+            "task",
+            "based-on-task"
+          ],
+          "lineStart": 26,
+          "lineEnd": 29,
+          "content": "- **Dependent files**: Files that import the modified file\n- **Usage examples**: How the file is currently used\n- **Test files**: Existing tests to update",
+          "contentHash": "4f36c985"
+        },
+        {
+          "id": "modify:context-loading-priority",
+          "title": "Context Loading Priority",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-priority",
+            "task-modify",
+            "task-type",
+            "modify",
+            "available-imports",
+            "code-patterns",
+            "context",
+            "loading",
+            "priority",
+            "context-loading-priority"
+          ],
+          "lineStart": 31,
+          "lineEnd": 37,
+          "content": "1. Full content of file being modified\n2. Exact change specification\n3. Type definitions for changed areas\n4. Related file context (if touching imports)\n5. Usage patterns from dependent files",
+          "contentHash": "9d3d8267"
+        },
+        {
+          "id": "modify:success-indicators",
+          "title": "Success Indicators",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-success",
+            "task-modify",
+            "task-type",
+            "modify",
+            "success",
+            "indicators",
+            "success-indicators"
+          ],
+          "lineStart": 39,
+          "lineEnd": 47,
+          "content": "A successful modify task produces:\n- Changes applied at correct location\n- Existing functionality preserved\n- New functionality works as specified\n- Types updated correctly\n- No breaking changes to dependents\n- Tests still pass",
+          "contentHash": "d65aee2f"
+        },
+        {
+          "id": "modify:common-failures",
+          "title": "Common Failures",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-failures",
+            "task-modify",
+            "task-type",
+            "modify",
+            "fs-read",
+            "fs-write",
+            "file-safety",
+            "model-learning",
+            "common",
+            "failures",
+            "common-failures"
+          ],
+          "lineStart": 49,
+          "lineEnd": 56,
+          "content": "| Failure Type | Cause | Prevention |\n|--------------|-------|------------|\n| Wrong location | Unclear change spec | Specify exact line/function |\n| Breaking changes | Missing dependent context | Include usage examples |\n| Lost code | Incomplete file view | Include full file content |\n| Type mismatches | Outdated type defs | Include current types |",
+          "contentHash": "40f6b2f6"
+        },
+        {
+          "id": "modify:model-specific-adjustments",
+          "title": "Model-Specific Adjustments",
+          "source": "modify.md",
+          "pins": [
+            "task-modify-models",
+            "task-modify",
+            "task-type",
+            "modify",
+            "model-profile",
+            "model-specific",
+            "adjustments",
+            "model-specific-adjustments"
+          ],
+          "lineStart": 58,
+          "lineEnd": 62,
+          "content": "- **Low-context models**: Include full file + clear markers\n- **High-context models**: Can work with excerpts\n- **Local LLMs**: Full file always, explicit markers",
+          "contentHash": "905e49b7"
+        }
+      ]
+    },
+    "task-types/refactor.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/task-types/refactor.md",
+      "lastModified": "2026-01-21T12:13:02.188Z",
+      "contentHash": "cf7cbd02",
+      "sections": [
+        {
+          "id": "refactor:description",
+          "title": "Description",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-desc",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "component-creation",
+            "component-naming",
+            "file-naming",
+            "description"
+          ],
+          "lineStart": 7,
+          "lineEnd": 15,
+          "content": "Structural changes that maintain behavior but improve code quality. This includes:\n- Extracting components/functions\n- Renaming across files\n- Moving files to new locations\n- Simplifying complex code\n- Improving type safety\n- Reducing duplication",
+          "contentHash": "94de4f19"
+        },
+        {
+          "id": "refactor:required-context",
+          "title": "Required Context",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-context",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "required",
+            "context",
+            "required-context"
+          ],
+          "lineStart": 17,
+          "lineEnd": 19,
+          "content": "Essential context for successful refactoring:",
+          "contentHash": "a943ef97"
+        },
+        {
+          "id": "refactor:always-include",
+          "title": "Always Include",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "always",
+            "include",
+            "always-include"
+          ],
+          "lineStart": 21,
+          "lineEnd": 25,
+          "content": "- **Dependency map**: All files that reference the target\n- **Before/after examples**: Clear expectation of change\n- **Full files involved**: Every file that will change\n- **Test coverage**: Existing tests to verify behavior",
+          "contentHash": "44c92208"
+        },
+        {
+          "id": "refactor:based-on-task",
+          "title": "Based on Task",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "code-patterns",
+            "based",
+            "task",
+            "based-on-task"
+          ],
+          "lineStart": 27,
+          "lineEnd": 30,
+          "content": "- **Import graph**: How files connect\n- **Usage patterns**: How the code is called\n- **Type relationships**: Interface inheritance",
+          "contentHash": "a2b526b2"
+        },
+        {
+          "id": "refactor:context-loading-priority",
+          "title": "Context Loading Priority",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-priority",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "available-imports",
+            "project-context",
+            "context",
+            "loading",
+            "priority",
+            "context-loading-priority"
+          ],
+          "lineStart": 32,
+          "lineEnd": 38,
+          "content": "1. Full dependency map (who imports what)\n2. All files that will be modified\n3. Clear before/after specification\n4. Test files for verification\n5. Pattern guidance for new structure",
+          "contentHash": "e877aa92"
+        },
+        {
+          "id": "refactor:success-indicators",
+          "title": "Success Indicators",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-success",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "task-modify",
+            "success",
+            "indicators",
+            "success-indicators"
+          ],
+          "lineStart": 40,
+          "lineEnd": 48,
+          "content": "A successful refactor task produces:\n- Behavior unchanged (tests pass)\n- Structure improved as specified\n- All references updated\n- No orphaned code\n- Types remain correct\n- Cleaner/simpler result",
+          "contentHash": "45596294"
+        },
+        {
+          "id": "refactor:common-failures",
+          "title": "Common Failures",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-failures",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "model-learning",
+            "available-imports",
+            "common",
+            "failures",
+            "common-failures"
+          ],
+          "lineStart": 50,
+          "lineEnd": 57,
+          "content": "| Failure Type | Cause | Prevention |\n|--------------|-------|------------|\n| Broken imports | Missing dependency map | Include full import graph |\n| Lost behavior | Incomplete test coverage | Run tests before/after |\n| Partial update | Missing reference files | Include all affected files |\n| Wrong pattern | Unclear target structure | Show before/after example |",
+          "contentHash": "e17301aa"
+        },
+        {
+          "id": "refactor:model-specific-adjustments",
+          "title": "Model-Specific Adjustments",
+          "source": "refactor.md",
+          "pins": [
+            "task-refactor-models",
+            "task-refactor",
+            "task-type",
+            "refactor",
+            "model-profile",
+            "model-specific",
+            "adjustments",
+            "model-specific-adjustments"
+          ],
+          "lineStart": 59,
+          "lineEnd": 63,
+          "content": "- **Low-context models**: Step-by-step refactor, one file at a time\n- **High-context models**: Can handle multi-file in one pass\n- **Local LLMs**: Break into smaller steps, verify each",
+          "contentHash": "9a38eb49"
+        }
+      ]
     }
   },
   "stats": {
-    "totalSections": 8,
+    "totalSections": 49,
     "totalRows": 0,
     "specsFiles": 0,
-    "totalPins": 47
+    "modelProfiles": 0,
+    "taskTypes": 5,
+    "contextFiles": 0,
+    "totalPins": 121
   }
 }

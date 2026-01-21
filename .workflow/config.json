@@ -38,7 +38,11 @@
     "specVerification": {
       "validateSyntax": true,
       "allowSkipWithFlag": true,
-      "parsePatterns": ["tables", "code-blocks", "lists"]
+      "parsePatterns": [
+        "tables",
+        "code-blocks",
+        "lists"
+      ]
     }
   },
   "errorRecovery": {
@@ -126,35 +130,55 @@
         "id": "contract",
         "name": "Contract",
         "description": "Define interfaces, types, API contracts",
-        "focus": ["types", "interfaces", "contracts"],
+        "focus": [
+          "types",
+          "interfaces",
+          "contracts"
+        ],
         "output": "Type definitions and API contracts"
       },
       {
         "id": "skeleton",
         "name": "Skeleton",
         "description": "Create file structure, stub implementations",
-        "focus": ["structure", "stubs", "scaffolding"],
+        "focus": [
+          "structure",
+          "stubs",
+          "scaffolding"
+        ],
         "output": "File structure with stub implementations"
       },
       {
         "id": "core",
         "name": "Core Logic",
         "description": "Implement main business logic",
-        "focus": ["logic", "implementation", "happy-path"],
+        "focus": [
+          "logic",
+          "implementation",
+          "happy-path"
+        ],
         "output": "Working happy-path implementation"
       },
       {
         "id": "edge-cases",
         "name": "Edge Cases",
         "description": "Handle edge cases and error states",
-        "focus": ["errors", "edge-cases", "validation"],
+        "focus": [
+          "errors",
+          "edge-cases",
+          "validation"
+        ],
         "output": "Robust error handling"
       },
       {
         "id": "polish",
         "name": "Polish",
         "description": "Optimization, cleanup, documentation",
-        "focus": ["optimization", "cleanup", "docs"],
+        "focus": [
+          "optimization",
+          "cleanup",
+          "docs"
+        ],
         "output": "Production-ready code"
       }
     ]
@@ -207,14 +231,49 @@
       "autoClassify": true,
       "warnOnMismatch": true,
       "thresholds": {
-        "epic": { "minFiles": 15, "minStories": 3 },
-        "story": { "minFiles": 5, "maxFiles": 15, "minCriteria": 3 },
-        "task": { "minFiles": 1, "maxFiles": 5, "minCriteria": 1 }
+        "epic": {
+          "minFiles": 15,
+          "minStories": 3
+        },
+        "story": {
+          "minFiles": 5,
+          "maxFiles": 15,
+          "minCriteria": 3
+        },
+        "task": {
+          "minFiles": 1,
+          "maxFiles": 5,
+          "minCriteria": 1
+        }
       },
       "keywords": {
-        "epic": ["system", "architecture", "migration", "redesign", "platform", "infrastructure", "overhaul"],
-        "story": ["feature", "flow", "integration", "module", "workflow", "implement"],
-        "task": ["add", "fix", "update", "change", "remove", "button", "field", "tweak"]
+        "epic": [
+          "system",
+          "architecture",
+          "migration",
+          "redesign",
+          "platform",
+          "infrastructure",
+          "overhaul"
+        ],
+        "story": [
+          "feature",
+          "flow",
+          "integration",
+          "module",
+          "workflow",
+          "implement"
+        ],
+        "task": [
+          "add",
+          "fix",
+          "update",
+          "change",
+          "remove",
+          "button",
+          "field",
+          "tweak"
+        ]
       }
     },
     "supportEpics": true,
@@ -225,10 +284,10 @@
     "autoUpdateProgress": true,
     "showInReady": true,
     "progressWeights": {
-      "completed": 1.0,
+      "completed": 1,
       "inProgress": 0.5,
-      "ready": 0.0,
-      "blocked": 0.0
+      "ready": 0,
+      "blocked": 0
     }
   },
   "clarifyingQuestions": {
@@ -545,17 +604,25 @@
   "smartCompaction": {
     "enabled": true,
     "safeThreshold": 0.95,
-    "emergencyThreshold": 0.90,
+    "emergencyThreshold": 0.9,
     "estimation": {
       "perFile": 0.02,
       "perCriterion": 0.03,
       "perSpecChars": 0.002,
-      "refactorBuffer": 0.10,
-      "defaultSmallTask": 0.10,
+      "refactorBuffer": 0.1,
+      "defaultSmallTask": 0.1,
       "defaultMediumTask": 0.25,
-      "defaultLargeTask": 0.40
+      "defaultLargeTask": 0.4
     },
-    "refactorKeywords": ["refactor", "migration", "overhaul", "redesign", "rewrite", "restructure", "rearchitect"]
+    "refactorKeywords": [
+      "refactor",
+      "migration",
+      "overhaul",
+      "redesign",
+      "rewrite",
+      "restructure",
+      "rearchitect"
+    ]
   },
   "autoContext": {
     "enabled": true,
@@ -1135,7 +1202,10 @@
       "setup": {
         "enabled": true,
         "autoOnboard": false,
-        "maintenanceTasks": ["healthCheck", "cleanupLocks"]
+        "maintenanceTasks": [
+          "healthCheck",
+          "cleanupLocks"
+        ]
       },
       "implementationGate": {
         "enabled": true,
@@ -1165,7 +1235,9 @@
   "peerReview": {
     "enabled": true,
     "provider": "api",
-    "models": ["openai:gpt-4o-mini"],
+    "models": [
+      "openai:gpt-4o-mini"
+    ],
     "apiKeys": {
       "openai": "${OPENAI_API_KEY}",
       "google": "${GOOGLE_API_KEY}",
@@ -1311,5 +1383,11 @@
   "planning": {
     "plansDirectory": ".workflow/plans",
     "exemptFromTaskGating": true
+  },
+  "models": {
+    "providers": {},
+    "defaults": {
+      "includeClaude": false
+    }
   }
 }

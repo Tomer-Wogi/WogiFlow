@@ -83,7 +83,25 @@ const PIN_KEYWORDS = {
   'api-pattern': ['api', 'endpoint', 'route', 'controller'],
 
   // UI/UX
-  'variant-naming': ['variant', 'size', 'intent', 'state', 'primary', 'secondary']
+  'variant-naming': ['variant', 'size', 'intent', 'state', 'primary', 'secondary'],
+
+  // Model profiles (Hybrid Mode Intelligence)
+  'model-profile': ['profile', 'model', 'llm', 'executor'],
+  'model-learning': ['learning', 'failure', 'retry', 'missing'],
+  'model-settings': ['settings', 'optimal', 'example', 'context-density'],
+
+  // Task types (Hybrid Mode Intelligence)
+  'task-create': ['create', 'new', 'add', 'implement', 'build'],
+  'task-modify': ['modify', 'update', 'change', 'edit', 'alter'],
+  'task-refactor': ['refactor', 'restructure', 'reorganize', 'extract'],
+  'task-fix': ['fix', 'bug', 'error', 'issue', 'broken', 'debug'],
+  'task-integrate': ['integrate', 'connect', 'wire', 'combine', 'api'],
+
+  // Context generation (Hybrid Mode Intelligence)
+  'available-imports': ['import', 'available', 'imports', 'import-map'],
+  'project-exports': ['export', 'exports', 'available-components'],
+  'code-patterns': ['pattern', 'patterns', 'convention', 'style'],
+  'project-context': ['context', 'project', 'codebase', 'structure']
 };
 
 // ============================================================
@@ -533,6 +551,53 @@ function scanSpecsDirectory() {
   return results;
 }
 
+/**
+ * Scan a directory for markdown files with PIN markers
+ * Generic version of scanSpecsDirectory for any directory
+ * @param {string} dirPath - Directory path to scan
+ * @param {string} sourceName - Source name for logging
+ * @returns {Object[]} - Array of { name, path, sections }
+ */
+function scanPinnedDirectory(dirPath, sourceName = 'directory') {
+  const results = [];
+
+  if (!dirExists(dirPath)) {
+    return results;
+  }
+
+  try {
+    const files = fs.readdirSync(dirPath);
+
+    for (const file of files) {
+      if (!file.endsWith('.md')) continue;
+      if (file.startsWith('_')) continue; // Skip templates
+
+      const filePath = path.join(dirPath, file);
+      try {
+        const content = readFile(filePath);
+
+        // Parse as pinned document (always, to extract sections)
+        const sections = parsePinnedDocument(content, file);
+        if (sections.length > 0) {
+          results.push({
+            name: file,
+            path: filePath,
+            lastModified: fs.statSync(filePath).mtime.toISOString(),
+            contentHash: hashContent(content),
+            sections
+          });
+        }
+      } catch (err) {
+        warn(`Error parsing ${sourceName}/${file}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    warn(`Error scanning ${sourceName} directory: ${err.message}`);
+  }
+
+  return results;
+}
+
 // ============================================================
 // Index Generation
 // ============================================================
@@ -591,15 +656,57 @@ function generateIndex() {
     };
   }
 
+  // Parse model-profiles/*.md files (Hybrid Mode Intelligence)
+  const modelProfilesDir = path.join(PATHS.state, 'model-profiles');
+  const modelProfileFiles = scanPinnedDirectory(modelProfilesDir, 'model-profiles');
+  for (const profileFile of modelProfileFiles) {
+    index.sources[`model-profiles/${profileFile.name}`] = {
+      path: profileFile.path,
+      lastModified: profileFile.lastModified,
+      contentHash: profileFile.contentHash,
+      sections: profileFile.sections
+    };
+  }
+
+  // Parse task-types/*.md files (Hybrid Mode Intelligence)
+  const taskTypesDir = path.join(PATHS.state, 'task-types');
+  const taskTypeFiles = scanPinnedDirectory(taskTypesDir, 'task-types');
+  for (const taskFile of taskTypeFiles) {
+    index.sources[`task-types/${taskFile.name}`] = {
+      path: taskFile.path,
+      lastModified: taskFile.lastModified,
+      contentHash: taskFile.contentHash,
+      sections: taskFile.sections
+    };
+  }
+
+  // Parse context/*.md files (Hybrid Mode Intelligence)
+  const contextDir = path.join(PATHS.state, 'context');
+  const contextFiles = scanPinnedDirectory(contextDir, 'context');
+  for (const contextFile of contextFiles) {
+    index.sources[`context/${contextFile.name}`] = {
+      path: contextFile.path,
+      lastModified: contextFile.lastModified,
+      contentHash: contextFile.contentHash,
+      sections: contextFile.sections
+    };
+  }
+
   // Calculate stats
   const decisionsSections = index.sources['decisions.md']?.sections?.length || 0;
   const appMapRows = index.sources['app-map.md']?.rows?.length || 0;
   const specsSections = specsFiles.reduce((sum, f) => sum + f.sections.length, 0);
+  const modelProfilesSections = modelProfileFiles.reduce((sum, f) => sum + f.sections.length, 0);
+  const taskTypeSections = taskTypeFiles.reduce((sum, f) => sum + f.sections.length, 0);
+  const contextSections = contextFiles.reduce((sum, f) => sum + f.sections.length, 0);
 
   index.stats = {
-    totalSections: decisionsSections + specsSections,
+    totalSections: decisionsSections + specsSections + modelProfilesSections + taskTypeSections + contextSections,
     totalRows: appMapRows,
     specsFiles: specsFiles.length,
+    modelProfiles: modelProfileFiles.length,
+    taskTypes: taskTypeFiles.length,
+    contextFiles: contextFiles.length,
     totalPins: countUniquePins(index)
   };
 
@@ -877,7 +984,9 @@ module.exports = {
   parseAppMapRows,
   parsePinnedDocument,
   scanSpecsDirectory,
-  INDEX_PATH
+  scanPinnedDirectory,
+  INDEX_PATH,
+  PIN_KEYWORDS
 };
 
 // Run if called directly

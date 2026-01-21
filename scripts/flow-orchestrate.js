@@ -96,6 +96,23 @@ const {
 // v2.0: Import durable session for unified step tracking
 const durableSession = require('./flow-durable-session');
 
+// v2.1: Import Hybrid Mode Intelligence modules
+const {
+  getModelProfile,
+  updateModelProfile,
+  getInstructionRichness: getProfileBasedRichness
+} = require('./flow-model-profile');
+
+const {
+  classifyTask,
+  getTaskTypeContext
+} = require('./flow-task-classifier');
+
+const {
+  learnFromFailure,
+  enhancePromptWithLearning
+} = require('./flow-failure-learning');
+
 // ============================================================
 // Configuration
 // ============================================================
@@ -2685,6 +2702,23 @@ class Orchestrator {
       log('dim', `   Path: ${step.params.path}`);
     }
 
+    // v2.1: Classify task type and load model profile
+    const taskDescription = step.description || step.title || '';
+    const affectedFiles = step.params?.path ? [step.params.path] : [];
+    const taskClassification = classifyTask(taskDescription, affectedFiles);
+    const taskType = taskClassification.type;
+
+    log('dim', `   Task type: ${taskType} (${taskClassification.confidence} confidence)`);
+
+    // Load model profile for intelligent context loading
+    const modelProfile = getModelProfile(this.config.model, taskType);
+    const profileRichness = getProfileBasedRichness(this.config.model, taskType, this.config.maxTokens || 8192);
+
+    // Store for use during retries
+    result.taskType = taskType;
+    result.modelProfile = modelProfile;
+    result.profileRichness = profileRichness;
+
     const templateName = step.template || step.type;
 
     // Load project-specific context from app-map and config
@@ -2775,6 +2809,9 @@ class Orchestrator {
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt++) {
       result.attempts = attempt + 1;
 
+      // Initialize cleanOutput for this iteration (will be set after LLM generation)
+      let cleanOutput = '';
+
       // Smart retry: Check if we're stuck in a loop
       if (consecutiveSameError >= 3) {
         log('red', `   ⚠️ Same error repeated ${consecutiveSameError} times - escalating`);
@@ -2820,7 +2857,7 @@ class Orchestrator {
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
         log('dim', `   Generated in ${duration}s`);
 
-        let cleanOutput = this.cleanOutput(output);
+        cleanOutput = this.cleanOutput(output);
 
         const outputPath = step.params?.path;
 
@@ -2924,6 +2961,16 @@ class Orchestrator {
             success: true
           });
 
+          // v2.1: Update model profile with success
+          try {
+            updateModelProfile(this.config.model, {
+              taskType: result.taskType || taskType,
+              success: true
+            });
+          } catch (profileErr) {
+            // Non-critical, continue
+          }
+
           // ADAPTIVE LEARNING: If we had failures before success, record what we learned
           if (errorHistory.length > 0) {
             // Use cached failure analyses from errorHistory (already analyzed during retry loop)
@@ -2973,6 +3020,30 @@ class Orchestrator {
 
           // Store analysis in errorHistory for later use (avoid duplicate analysis)
           errorHistory[errorHistory.length - 1].analysis = failureAnalysis;
+
+          // v2.1: Enhanced failure learning - ask executor what was missing
+          try {
+            const failureLearning = await learnFromFailure(
+              this.config.model,
+              result.taskType || taskType,
+              cleanOutput || '',
+              failedCheck.message,
+              {
+                executor: this.executor,
+                taskDescription: taskDescription,
+                prompt: originalPrompt
+              }
+            );
+
+            // If we got enhanced prompt suggestions, use them
+            if (failureLearning.enhancedPrompt && result.attempts < this.config.maxRetries - 1) {
+              prompt = failureLearning.enhancedPrompt;
+              log('dim', `   📚 Applied learning from failure: ${failureLearning.learning?.category || 'unknown'}`);
+              continue; // Skip default refinement, use learning-based enhancement
+            }
+          } catch (learnErr) {
+            // Non-critical, fall back to standard refinement
+          }
 
           // Use cached analyses from previous errors
           const previousFailures = errorHistory.slice(0, -1)

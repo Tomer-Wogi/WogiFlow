@@ -616,6 +616,29 @@ function setDefaultModels(feature, models) {
 }
 
 /**
+ * Check if Claude should be included in peer reviews
+ * When enabled, Claude performs its own review alongside external models
+ * @returns {boolean} True if Claude should participate in peer review
+ */
+function shouldIncludeClaude() {
+  const modelsConfig = getModelsConfig();
+  return modelsConfig.defaults?.includeClaude === true;
+}
+
+/**
+ * Set whether Claude should be included in peer reviews
+ * @param {boolean} include - Whether to include Claude
+ */
+function setIncludeClaude(include) {
+  const modelsConfig = getModelsConfig();
+  if (!modelsConfig.defaults) {
+    modelsConfig.defaults = {};
+  }
+  modelsConfig.defaults.includeClaude = include;
+  updateModelsConfig(modelsConfig);
+}
+
+/**
  * Check if any models are configured
  * @returns {boolean}
  */
@@ -775,6 +798,10 @@ module.exports = {
   // Defaults
   getDefaultModels,
   setDefaultModels,
+
+  // Claude inclusion for peer review
+  shouldIncludeClaude,
+  setIncludeClaude,
 
   // Session state (model selection persistence)
   getSessionModels,

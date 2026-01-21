@@ -143,6 +143,39 @@ Ask user about default preferences:
 }
 ```
 
+### Step 3.5: Include Claude in Peer Reviews (Optional)
+
+Ask if Claude should also participate as a reviewer:
+
+```javascript
+{
+  question: "Include Claude as a peer reviewer?",
+  header: "Claude Review",
+  multiSelect: false,
+  options: [
+    {
+      label: "Yes (Recommended)",
+      description: "Claude also reviews alongside external models for an extra perspective"
+    },
+    {
+      label: "No",
+      description: "Only use external models for peer review"
+    }
+  ]
+}
+```
+
+Save to config:
+```javascript
+const modelConfig = require('./scripts/flow-model-config');
+modelConfig.setIncludeClaude(userSelectedYes);
+```
+
+**Why include Claude?**
+- Provides additional perspective from the orchestrating model
+- Can leverage full conversation context when reviewing
+- Catches things external models might miss due to context limitations
+
 ### Step 4: Summary
 
 Display configuration summary:
@@ -161,6 +194,7 @@ API Keys stored in: .env
 Config saved to: .workflow/config.json
 
 Default for peer review: gpt-4o, gemini-2.0-flash
+Include Claude in reviews: Yes ✓
 Default for hybrid mode: local:qwen2.5-coder
 
 You can now use:

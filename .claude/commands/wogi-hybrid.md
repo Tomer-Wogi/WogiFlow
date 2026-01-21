@@ -89,4 +89,74 @@ Recommended models for code generation:
 - **Qwen3-Coder 30B** - Best code quality
 - **DeepSeek Coder** - Good balance
 
+## Hybrid Mode Intelligence (v2.1)
+
+Hybrid mode now includes intelligent features that learn from each execution:
+
+### Model Learning Profiles
+
+Each executor model gets its own learning profile at `.workflow/state/model-profiles/`.
+The system learns:
+- What context each model needs for success
+- Common failure patterns to avoid
+- Optimal example count and instruction richness
+
+```bash
+# View model profiles
+node scripts/flow-model-profile.js list
+
+# Get profile for specific model
+node scripts/flow-model-profile.js get qwen3-coder
+
+# Get instruction richness recommendation
+node scripts/flow-model-profile.js richness qwen3-coder create --json
+```
+
+### Task Type Classification
+
+Tasks are automatically classified as:
+- **create** - New files/components
+- **modify** - Edit existing files
+- **refactor** - Structural changes
+- **fix** - Bug fixes
+- **integrate** - Connect systems
+
+Each type loads specific context and follows learned patterns.
+
+```bash
+# Classify a task
+node scripts/flow-task-classifier.js classify "Add user authentication"
+
+# Get context for task type
+node scripts/flow-task-classifier.js context create
+```
+
+### Failure Learning
+
+When execution fails, the system:
+1. Asks the executor what information was missing
+2. Updates the model profile with learnings
+3. Retries with enhanced context
+
+```bash
+# View learning statistics
+node scripts/flow-failure-learning.js stats
+
+# View recent learnings
+node scripts/flow-failure-learning.js recent qwen3-coder
+```
+
+### Cheaper Context Generation
+
+Context is generated using the cheapest appropriate model:
+- **Scripts**: File listing, export extraction (free)
+- **Haiku**: Import mapping, PIN generation (cheap)
+- **Sonnet**: Pattern identification (moderate)
+- **Opus**: Architecture analysis (only when needed)
+
+```bash
+# Generate project context
+node scripts/flow-context-generator.js generate --verbose
+```
+
 Let me detect your local LLM setup now...
