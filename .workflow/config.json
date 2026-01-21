@@ -545,7 +545,7 @@
   "smartCompaction": {
     "enabled": true,
     "safeThreshold": 0.95,
-    "emergencyThreshold": 0.95,
+    "emergencyThreshold": 0.90,
     "estimation": {
       "perFile": 0.02,
       "perCriterion": 0.03,

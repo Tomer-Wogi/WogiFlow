@@ -56,7 +56,8 @@ function getSmartCompactionConfig() {
   return {
     enabled: smartConfig.enabled !== false,
     safeThreshold: smartConfig.safeThreshold || 0.95,
-    emergencyThreshold: smartConfig.emergencyThreshold || 0.95,
+    // Emergency triggers earlier than safe threshold (before estimation matters)
+    emergencyThreshold: smartConfig.emergencyThreshold || 0.90,
     estimation: {
       ...DEFAULT_ESTIMATION_CONFIG,
       ...(smartConfig.estimation || {})
@@ -132,8 +133,8 @@ function extractCriteriaCount(specContent) {
 
   let count = 0;
 
-  // Count Given/When/Then patterns
-  const gwtMatches = specContent.match(/\bGiven\b.*?\bWhen\b.*?\bThen\b/gis);
+  // Count Given/When/Then patterns (use [\s\S] to match across newlines)
+  const gwtMatches = specContent.match(/\bGiven\b[\s\S]*?\bWhen\b[\s\S]*?\bThen\b/gi);
   if (gwtMatches) {
     count += gwtMatches.length;
   }
@@ -164,10 +165,10 @@ function extractFileCount(specContent) {
   let files = new Set();
 
   // Find file paths (common patterns)
+  // Note: Removed overly broad pattern that matched any word.extension
   const filePatterns = [
     /[`"]([a-zA-Z0-9_\-/.]+\.(ts|tsx|js|jsx|json|md|css|scss))[`"]/g,
-    /(?:src|lib|scripts|components|pages)\/[\w\-/]+\.\w+/g,
-    /\b(\w+)\.(ts|tsx|js|jsx)\b/g
+    /(?:src|lib|scripts|components|pages)\/[\w\-/]+\.\w+/g
   ];
 
   for (const pattern of filePatterns) {
@@ -283,6 +284,32 @@ function estimateTaskContextNeeds(task, configOverride = null) {
 }
 
 /**
+ * Check emergency threshold - shared logic for task and non-task work
+ * @param {number} currentContextPercent - Current context usage (0-1)
+ * @param {Object} config - Smart compaction config
+ * @returns {Object|null} Emergency result if triggered, null otherwise
+ */
+function checkEmergencyThreshold(currentContextPercent, config) {
+  if (currentContextPercent >= config.emergencyThreshold) {
+    return {
+      shouldCompact: true,
+      reason: `Emergency threshold reached (${Math.round(currentContextPercent * 100)}% >= ${Math.round(config.emergencyThreshold * 100)}%)`,
+      current: currentContextPercent,
+      currentPercent: Math.round(currentContextPercent * 100),
+      estimated: null,
+      estimatedPercent: null,
+      projected: null,
+      projectedPercent: null,
+      threshold: config.emergencyThreshold,
+      thresholdPercent: Math.round(config.emergencyThreshold * 100),
+      emergency: true,
+      config
+    };
+  }
+  return null;
+}
+
+/**
  * Check if compaction is needed before starting a task
  * @param {Object} task - Task object
  * @param {number} currentContextPercent - Current context usage (0-1)
@@ -299,18 +326,10 @@ function shouldCompactBeforeTask(task, currentContextPercent) {
     };
   }
 
-  // Emergency threshold - always compact if above this, regardless of task
-  if (currentContextPercent >= config.emergencyThreshold) {
-    return {
-      shouldCompact: true,
-      reason: `Emergency threshold reached (${Math.round(currentContextPercent * 100)}% >= ${Math.round(config.emergencyThreshold * 100)}%)`,
-      current: currentContextPercent,
-      estimated: null,
-      projected: null,
-      threshold: config.emergencyThreshold,
-      emergency: true,
-      config
-    };
+  // Check emergency threshold first (extracted for DRY)
+  const emergencyResult = checkEmergencyThreshold(currentContextPercent, config);
+  if (emergencyResult) {
+    return emergencyResult;
   }
 
   // Estimate task needs
@@ -355,18 +374,10 @@ function shouldCompactForNonTaskWork(currentContextPercent) {
     };
   }
 
-  // Emergency threshold
-  if (currentContextPercent >= config.emergencyThreshold) {
-    return {
-      shouldCompact: true,
-      reason: `Emergency threshold reached (${Math.round(currentContextPercent * 100)}% >= ${Math.round(config.emergencyThreshold * 100)}%)`,
-      current: currentContextPercent,
-      estimated: null,
-      projected: null,
-      threshold: config.emergencyThreshold,
-      emergency: true,
-      config
-    };
+  // Check emergency threshold first (extracted for DRY)
+  const emergencyResult = checkEmergencyThreshold(currentContextPercent, config);
+  if (emergencyResult) {
+    return emergencyResult;
   }
 
   // Use default small task estimate for non-task work

@@ -102,24 +102,53 @@ function createPendingSetupMarker() {
  * @param {string} src - Source directory
  * @param {string} dest - Destination directory
  * @param {boolean} mergeMode - If true, only copy files that don't exist in dest
+ * @param {number} depth - Current recursion depth (for infinite loop protection)
  */
-function copyDir(src, dest, mergeMode = false) {
+function copyDir(src, dest, mergeMode = false, depth = 0) {
+  // Prevent infinite recursion via symlinks
+  const MAX_DEPTH = 10;
+  if (depth > MAX_DEPTH) {
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] Max directory depth exceeded: ${src}`);
+    }
+    return;
+  }
+
   fs.mkdirSync(dest, { recursive: true, mode: DIR_MODE });
   const entries = fs.readdirSync(src, { withFileTypes: true });
 
   for (const entry of entries) {
+    // Skip symbolic links (security measure - prevents traversal attacks)
+    if (entry.isSymbolicLink()) {
+      continue;
+    }
+
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
-      copyDir(srcPath, destPath, mergeMode);
+      copyDir(srcPath, destPath, mergeMode, depth + 1);
     } else {
       // In merge mode, skip files that already exist
       if (mergeMode && fs.existsSync(destPath)) {
         continue;
       }
-      fs.copyFileSync(srcPath, destPath);
-      fs.chmodSync(destPath, FILE_MODE);
+      try {
+        fs.copyFileSync(srcPath, destPath);
+        try {
+          fs.chmodSync(destPath, FILE_MODE);
+        } catch (chmodErr) {
+          // chmod failure is non-critical on some filesystems (e.g., Windows)
+          if (process.env.DEBUG) {
+            console.error(`[postinstall] chmod failed: ${chmodErr.message}`);
+          }
+        }
+      } catch (copyErr) {
+        // Log but continue - one file failure shouldn't stop the entire install
+        if (process.env.DEBUG) {
+          console.error(`[postinstall] Failed to copy ${entry.name}: ${copyErr.message}`);
+        }
+      }
     }
   }
 }
