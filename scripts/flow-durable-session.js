@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir } = require('./flow-utils');
+const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
 const { validatePathWithinProject } = require('./flow-security');
 
@@ -138,7 +138,7 @@ function createDurableSession(taskId, taskType, steps = []) {
  * @param {Array} steps - Array of step definitions
  * @returns {Promise<Object>} Created or existing session
  */
-async function createDurableSessionAsync(taskId, taskType, steps = []) {
+async function createDurableSessionAsync(taskId, taskType, steps = [], options = {}) {
   const sessionPath = getSessionPath();
 
   return withLock(sessionPath, () => {
@@ -152,7 +152,7 @@ async function createDurableSessionAsync(taskId, taskType, steps = []) {
     // Clean up legacy hybrid-session.json if present (migration to v2.0)
     cleanupLegacyHybridSession();
 
-    const session = createSessionObject(taskId, taskType, steps);
+    const session = createSessionObject(taskId, taskType, steps, options);
     saveDurableSession(session);
     return session;
   });
@@ -160,8 +160,13 @@ async function createDurableSessionAsync(taskId, taskType, steps = []) {
 
 /**
  * Create a session object (internal helper)
+ * @param {string} taskId - Task identifier
+ * @param {string} taskType - Type: "task", "loop", "bulk"
+ * @param {Array} steps - Array of step definitions
+ * @param {Object} options - Additional options
+ * @param {Object} options.filesToChange - File scope from spec (create/modify/delete arrays)
  */
-function createSessionObject(taskId, taskType, steps = []) {
+function createSessionObject(taskId, taskType, steps = [], options = {}) {
   return {
     version: SESSION_VERSION,
     sessionId: `sess-${Date.now()}`,
@@ -201,7 +206,10 @@ function createSessionObject(taskId, taskType, steps = []) {
       source: null,        // How queue was created: "bulk", "natural", "manual"
       queuedAt: null,
       completedTasks: []   // Track completed task IDs
-    }
+    },
+
+    // v4.0: File scope for runtime enforcement (from spec's filesToChange)
+    filesToChange: options.filesToChange || null
   };
 }
 
@@ -261,8 +269,8 @@ function loadDurableSession() {
   }
 
   try {
-    const content = fs.readFileSync(sessionPath, 'utf-8');
-    const session = JSON.parse(content);
+    // Use safeJsonParse to prevent prototype pollution
+    const session = safeJsonParse(sessionPath, null);
 
     // Validate session structure
     if (!session || typeof session !== 'object') {
@@ -307,6 +315,16 @@ function loadDurableSession() {
 }
 
 /**
+ * Get file scope from current durable session
+ * Used by scope-gate for runtime enforcement
+ * @returns {Object|null} filesToChange object or null if no scope defined
+ */
+function getSessionFileScope() {
+  const session = loadDurableSession();
+  return session?.filesToChange || null;
+}
+
+/**
  * Save the durable session
  * @param {Object} session - Session to save
  */
@@ -344,11 +362,9 @@ function archiveDurableSession(status = 'completed') {
   let history = [];
 
   if (fs.existsSync(historyPath)) {
-    try {
-      history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
-    } catch {
-      history = [];
-    }
+    // Use safeJsonParse to prevent prototype pollution
+    const parsed = safeJsonParse(historyPath, []);
+    history = Array.isArray(parsed) ? parsed : [];
   }
 
   history.push(session);
@@ -964,7 +980,15 @@ function checkFileCondition(config) {
   // If expected content specified, check it
   if (config.expectedContent) {
     try {
-      const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      // Use safeJsonParse to prevent prototype pollution
+      const content = safeJsonParse(filePath, null);
+      if (!content) {
+        return {
+          canResume: false,
+          reason: 'file-parse-error',
+          error: 'Could not parse file content'
+        };
+      }
       const matches = deepEqual(content, config.expectedContent);
 
       if (matches) {
@@ -1184,7 +1208,9 @@ function getSessionStats() {
   }
 
   try {
-    const history = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
+    // Use safeJsonParse to prevent prototype pollution
+    const parsed = safeJsonParse(historyPath, []);
+    const history = Array.isArray(parsed) ? parsed : [];
     const completed = history.filter(h => h.status === 'completed').length;
     const failed = history.filter(h => h.status === 'failed').length;
     const avgSteps = history.length > 0
@@ -1408,6 +1434,7 @@ module.exports = {
   loadDurableSession,
   saveDurableSession,
   archiveDurableSession,
+  getSessionFileScope,  // v4.0: Get file scope for runtime enforcement
 
   // Step management
   getNextPendingStep,

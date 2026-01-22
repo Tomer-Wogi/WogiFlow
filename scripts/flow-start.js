@@ -66,6 +66,14 @@ const {
   STEP_STATUS
 } = require('./flow-durable-session');
 
+// Spec loader for scope enforcement (optional - graceful degradation)
+let loadSpec = null;
+try {
+  loadSpec = require('./flow-spec-generator').loadSpec;
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-spec-generator not available: ${err.message}`);
+}
+
 // v3.0 phased task execution (recursive enhancements)
 const {
   initializePhasedTask,
@@ -288,8 +296,29 @@ async function main() {
       const steps = Array.isArray(acceptanceCriteria) ? acceptanceCriteria : [];
       const sessionSteps = steps.length > 0 ? steps : [taskTitle || taskId];
 
+      // v4.0: Load spec to get filesToChange for scope enforcement
+      let filesToChange = null;
+      if (loadSpec) {
+        try {
+          const spec = loadSpec(taskId);
+          if (spec?.sections?.filesToChange) {
+            filesToChange = spec.sections.filesToChange;
+            if (process.env.DEBUG) {
+              const fileCount = (filesToChange.create?.length || 0) +
+                               (filesToChange.modify?.length || 0) +
+                               (filesToChange.delete?.length || 0);
+              console.log(color('dim', `[DEBUG] Loaded scope: ${fileCount} files from spec`));
+            }
+          }
+        } catch (err) {
+          if (process.env.DEBUG) console.error(`[DEBUG] Spec load for scope: ${err.message}`);
+        }
+      }
+
       // Use async version with file locking to prevent race conditions
-      const session = await createDurableSessionAsync(taskId, 'task', sessionSteps);
+      const session = await createDurableSessionAsync(taskId, 'task', sessionSteps, {
+        filesToChange
+      });
 
       if (steps.length > 0) {
         console.log(color('cyan', `📋 Durable session initialized with ${steps.length} steps`));

@@ -4,10 +4,12 @@
  * Wogi Flow - Claude Code PreToolUse Hook
  *
  * Called before Edit/Write/TodoWrite tool execution.
- * Enforces task gating, component reuse checking, and TodoWrite gating.
+ * Enforces task gating, scope validation, component reuse checking, and TodoWrite gating.
+ *
+ * v4.0: Added scope gating to validate edits are within task's declared scope
  */
 
-const { checkTaskGate } = require('../../core/task-gate');
+const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
@@ -61,14 +63,15 @@ async function main() {
 
     let coreResult = { allowed: true, blocked: false };
 
-    // Task gating check (for Edit and Write)
+    // Task + scope gating check (for Edit and Write)
+    // v4.0: checkScopeGate wraps checkTaskGate and adds scope validation
     if (toolName === 'Edit' || toolName === 'Write') {
-      coreResult = checkTaskGate({
+      coreResult = checkScopeGate({
         filePath,
         operation: toolName.toLowerCase()
       });
 
-      // If blocked by task gating, return early
+      // If blocked by task or scope gating, return early
       if (coreResult.blocked) {
         const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
         console.log(JSON.stringify(output));

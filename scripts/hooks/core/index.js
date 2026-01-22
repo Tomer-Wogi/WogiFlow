@@ -7,6 +7,7 @@
  */
 
 const taskGate = require('./task-gate');
+const scopeGate = require('./scope-gate');
 const validation = require('./validation');
 const loopCheck = require('./loop-check');
 const componentCheck = require('./component-check');
@@ -20,6 +21,10 @@ module.exports = {
   // Task Gating
   ...taskGate,
   taskGate,
+
+  // Scope Gating (v4.0 - validates edits are within task scope)
+  ...scopeGate,
+  scopeGate,
 
   // Validation
   ...validation,

@@ -1177,6 +1177,18 @@
         "enabled": true,
         "blockWithoutTask": true
       },
+      "scopeGating": {
+        "enabled": true,
+        "mode": "warn",
+        "exemptPatterns": [
+          ".workflow/state/**",
+          ".workflow/specs/**",
+          ".workflow/plans/**",
+          "package.json",
+          "package-lock.json",
+          "tsconfig.json"
+        ]
+      },
       "validation": {
         "enabled": true,
         "runAfterEdit": true
