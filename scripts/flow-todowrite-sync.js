@@ -115,21 +115,27 @@ function parseAcceptanceCriteria(task, spec = null) {
     // Handle array format
     if (Array.isArray(ac)) {
       ac.forEach((item, index) => {
-        criteria.push({
-          id: `ac-${index + 1}`,
-          content: typeof item === 'string' ? item : item.content || item.description || String(item),
-          status: TODO_STATUS.PENDING
-        });
+        const content = typeof item === 'string' ? item : item.content || item.description || '';
+        if (content) {
+          criteria.push({
+            id: `ac-${index + 1}`,
+            content,
+            status: TODO_STATUS.PENDING
+          });
+        }
       });
     }
     // Handle object format with scenarios
     else if (ac.scenarios) {
       ac.scenarios.forEach((scenario, index) => {
-        criteria.push({
-          id: `scenario-${index + 1}`,
-          content: scenario.title || scenario.description || `Scenario ${index + 1}`,
-          status: TODO_STATUS.PENDING
-        });
+        const content = scenario.title || scenario.description || '';
+        if (content) {
+          criteria.push({
+            id: `ac-${index + 1}`,
+            content,
+            status: TODO_STATUS.PENDING
+          });
+        }
       });
     }
   }
@@ -147,11 +153,15 @@ function parseAcceptanceCriteria(task, spec = null) {
     for (const source of sources) {
       if (Array.isArray(source) && source.length > 0) {
         source.forEach((item, index) => {
-          criteria.push({
-            id: `criterion-${index + 1}`,
-            content: typeof item === 'string' ? item : item.content || item.description || item.title || String(item),
-            status: TODO_STATUS.PENDING
-          });
+          if (!item) return; // Skip null/undefined
+          const content = typeof item === 'string' ? item : item.content || item.description || item.title || '';
+          if (content) {
+            criteria.push({
+              id: `ac-${index + 1}`,
+              content,
+              status: TODO_STATUS.PENDING
+            });
+          }
         });
         break;
       }
@@ -209,7 +219,7 @@ function formatTodoWriteInit(taskId, criteria) {
   // Format output message
   let output = '\n';
   output += '━'.repeat(50) + '\n';
-  output += '📋 Task Acceptance Criteria\n';
+  output += 'Task Acceptance Criteria\n';
   output += '━'.repeat(50) + '\n';
   output += `Task: ${taskId}\n`;
   output += `Criteria: ${criteria.length}\n\n`;
@@ -403,8 +413,8 @@ function formatTodoWriteStatsForReport() {
   if (stats.criteria && stats.criteria.length > 0) {
     output += '\n#### Criteria Status\n\n';
     stats.criteria.forEach((c, i) => {
-      const icon = c.status === 'completed' ? '✅' :
-                   c.status === 'in_progress' ? '🔧' : '⬜';
+      const icon = c.status === 'completed' ? '[x]' :
+                   c.status === 'in_progress' ? '[~]' : '[ ]';
       output += `${i + 1}. ${icon} ${c.content}\n`;
     });
   }
@@ -417,6 +427,7 @@ function formatTodoWriteStatsForReport() {
 // ============================================================================
 
 module.exports = {
+  // Public API
   TODO_STATUS,
   parseAcceptanceCriteria,
   formatTodoWriteInit,
@@ -425,10 +436,7 @@ module.exports = {
   markCriterionCompleted,
   getTodoWriteStats,
   formatTodoWriteStatsForReport,
-  loadTodoWriteState,
-  saveTodoWriteState,
-  clearTodoWriteState,
-  toActiveForm
+  clearTodoWriteState  // Used by flow-done.js for cleanup
 };
 
 // ============================================================================
