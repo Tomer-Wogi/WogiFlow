@@ -77,7 +77,7 @@ function createBugContent(bug) {
 
   const date = createdAt.split('T')[0];
   const discoveredSection = discoveredFrom
-    ? `**Discovered From**: ${discoveredFrom}\n**Discovered During**: ${discoveredDuring}\n`
+    ? `**Discovered From**: ${discoveredFrom}\n**Discovered During**: ${discoveredDuring || 'implementation'}\n`
     : '';
 
   return `# ${id}: ${title}
@@ -88,30 +88,120 @@ function createBugContent(bug) {
 **Priority**: ${priority}
 **Tags**: #bug
 ${discoveredSection}
-## Description
-[Clear description of the bug]
+## Bug Summary
+[1-2 sentences: What is broken and what is the impact?]
 
-## Steps to Reproduce
+## Reproduction
+
+### Steps to Reproduce
 1. [Step 1]
 2. [Step 2]
 3. [Step 3]
 
-## Expected Behavior
+### Expected Behavior
 [What should happen]
 
-## Actual Behavior
+### Actual Behavior
 [What actually happens]
 
-## Environment
-- Browser:
-- OS:
-- Version:
+### Environment
+- Browser: [if applicable]
+- OS: [if applicable]
+- Version: [app version]
+- Node/Runtime: [if applicable]
 
-## Screenshots
-[If applicable]
+### Screenshots/Logs
+[Attach screenshots, error logs, or stack traces]
 
-## Possible Fix
-[If you have ideas about what's causing it or how to fix]
+---
+
+## Root Cause Analysis
+
+### What Went Wrong?
+[Technical explanation of the bug - what part of the code/logic is failing and why]
+
+### Why Did This Happen?
+[Choose one or more]
+- [ ] Logic error in implementation
+- [ ] Missing edge case handling
+- [ ] Incorrect assumption about inputs/state
+- [ ] Race condition / timing issue
+- [ ] External dependency failure
+- [ ] Configuration/environment issue
+- [ ] Prompt/instruction unclear or ambiguous
+- [ ] Other: [explain]
+
+### Source of the Problem
+<!-- For AI-assisted development, this helps us learn -->
+- **Prompt issue**: [Was the original request ambiguous or missing context?]
+- **Logic gap**: [What reasoning led to the bug?]
+- **Missing context**: [What information would have prevented this?]
+
+---
+
+## Fix Approaches
+
+### Approach 1: [Name] (Recommended)
+**Description**: [How this approach fixes the bug]
+**Pros**: [Benefits]
+**Cons**: [Drawbacks]
+**Files affected**: [List files]
+
+### Approach 2: [Name] (Alternative)
+**Description**: [How this approach fixes the bug]
+**Pros**: [Benefits]
+**Cons**: [Drawbacks]
+**Files affected**: [List files]
+
+### Chosen Approach
+[Which approach and why]
+
+---
+
+## Acceptance Criteria
+
+### Scenario 1: Bug is fixed
+**Given** [the conditions that previously triggered the bug]
+**When** [the action that caused the bug]
+**Then** [the expected correct behavior]
+
+### Scenario 2: No regression
+**Given** [related functionality]
+**When** [normal usage]
+**Then** [existing behavior is preserved]
+
+### Scenario 3: Edge case handling
+**Given** [edge case conditions]
+**When** [edge case action]
+**Then** [graceful handling]
+
+---
+
+## Test Strategy
+- [ ] Unit test: [What to test]
+- [ ] Integration test: [What to test]
+- [ ] Manual verification: [Steps to verify fix]
+
+## Verification Checklist
+<!-- Quick steps to confirm the bug is fixed -->
+1. [ ] [Step to verify the bug no longer occurs]
+2. [ ] [Step to verify no regression]
+3. [ ] [Step to verify edge cases]
+
+---
+
+## Prevention & Learning
+
+### How to Prevent Similar Bugs
+[What changes to process, prompts, or code patterns would prevent this?]
+
+### Learnings to Capture
+<!-- These should be added to decisions.md or skill learnings -->
+- [ ] Pattern to add to decisions.md: [describe]
+- [ ] Skill learning to record: [describe]
+- [ ] Prompt improvement: [describe]
+
+---
 
 ## Related
 - [Related request-log entries]
@@ -119,9 +209,11 @@ ${discoveredSection}
 ${discoveredFrom ? `- Discovered while working on: ${discoveredFrom}` : ''}
 
 ## Resolution
-[Fill in when fixed]
-- Fixed in: [commit/PR]
-- Root cause: [explanation]
+<!-- Fill in when fixed -->
+- **Fixed in**: [commit hash or PR]
+- **Root cause confirmed**: [yes/no - was initial analysis correct?]
+- **Learnings applied**: [what was added to decisions.md/skills?]
+- **Tests added**: [what tests were added?]
 `;
 }
 
