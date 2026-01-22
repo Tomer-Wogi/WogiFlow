@@ -13,6 +13,7 @@ const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { markSkillPending } = require('../../../flow-durable-session');
 
 // Maximum stdin size to prevent DoS (100KB should be enough for tool inputs)
 const MAX_STDIN_SIZE = 100 * 1024;
@@ -91,6 +92,18 @@ async function main() {
         console.log(JSON.stringify(output));
         process.exit(0);
         return;
+      }
+    }
+
+    // v4.1: Skill execution tracking (for Skill tool)
+    // Catches natural language skill invocations (e.g., "do the bulk tasks")
+    if (toolName === 'Skill') {
+      const skillName = toolInput.skill;
+      if (typeof skillName === 'string' && /^wogi-(bulk|start)$/i.test(skillName)) {
+        markSkillPending(skillName.toLowerCase(), { args: toolInput.args });
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Marked skill ${skillName} as pending (via Skill tool)`);
+        }
       }
     }
 

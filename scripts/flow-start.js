@@ -63,7 +63,8 @@ const {
   getSuspensionStatus,
   resumeSession,
   isSuspended,
-  STEP_STATUS
+  STEP_STATUS,
+  clearPendingSkill  // v4.1: Clear pending skill state when task starts
 } = require('./flow-durable-session');
 
 // Spec loader for scope enforcement (optional - graceful degradation)
@@ -319,6 +320,10 @@ async function main() {
       const session = await createDurableSessionAsync(taskId, 'task', sessionSteps, {
         filesToChange
       });
+
+      // v4.1: Clear pending skill state now that task has started
+      // This signals to the stop hook that the skill has been executed
+      clearPendingSkill();
 
       if (steps.length > 0) {
         console.log(color('cyan', `📋 Durable session initialized with ${steps.length} steps`));

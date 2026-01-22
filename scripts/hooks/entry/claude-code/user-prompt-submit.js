@@ -9,6 +9,7 @@
 
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { markSkillPending } = require('../../../flow-durable-session');
 
 // Maximum stdin size to prevent DoS (100KB should be more than enough for prompts)
 const MAX_STDIN_SIZE = 100 * 1024;
@@ -50,6 +51,19 @@ async function main() {
 
     const prompt = parsedInput.prompt;
     const source = parsedInput.source;
+
+    // v4.1: Detect skill commands that need execution tracking
+    // This prevents premature exit when /wogi-bulk or /wogi-start is entered
+    if (typeof prompt === 'string') {
+      const skillMatch = prompt.match(/^\/(wogi-bulk|wogi-start)\b/i);
+      if (skillMatch) {
+        const skillName = skillMatch[1].toLowerCase();
+        markSkillPending(skillName, { prompt });
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Marked /${skillName} as pending execution`);
+        }
+      }
+    }
 
     // Check implementation gate
     const coreResult = checkImplementationGate({

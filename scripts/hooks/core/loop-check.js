@@ -14,7 +14,7 @@ const fs = require('fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');
-const { checkQueueContinuation, advanceTaskQueue } = require('../../flow-durable-session');
+const { checkQueueContinuation, advanceTaskQueue, checkPendingSkillExecution } = require('../../flow-durable-session');
 
 /**
  * Check if loop enforcement is enabled
@@ -113,6 +113,19 @@ function checkLoopExit() {
   const session = getActiveLoopSession();
 
   if (!session) {
+    // v4.1: Check if a skill is pending execution before allowing exit
+    // This fixes the bug where /wogi-bulk loads but Claude stops before executing
+    const pendingSkill = checkPendingSkillExecution();
+    if (pendingSkill.hasPendingSkill) {
+      return {
+        canExit: false,
+        blocked: true,
+        message: pendingSkill.message,
+        reason: 'skill_pending_execution',
+        skillName: pendingSkill.skillName
+      };
+    }
+
     return {
       canExit: true,
       blocked: false,

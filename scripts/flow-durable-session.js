@@ -145,8 +145,53 @@ async function createDurableSessionAsync(taskId, taskType, steps = [], options =
     // Check if session already exists for this task (inside lock)
     const existing = loadDurableSession();
     if (existing && existing.taskId === taskId) {
-      // Return existing session for resume
+      // v4.1: If existing is a bulk session and we're starting a task, upgrade it
+      // This preserves the task queue when transitioning from /wogi-bulk to /wogi-start
+      if (existing.taskType === 'bulk' && taskType === 'task') {
+        if (process.env.DEBUG) {
+          console.log(`[Session] Upgrading bulk session to task session for ${taskId}`);
+        }
+        // Preserve queue data
+        const preservedQueue = existing.taskQueue;
+
+        // Create new task session
+        const session = createSessionObject(taskId, taskType, steps, options);
+
+        // Restore queue data
+        if (preservedQueue && preservedQueue.enabled) {
+          session.taskQueue = preservedQueue;
+        }
+
+        saveDurableSession(session);
+        return session;
+      }
+
+      // Return existing session for resume (non-bulk case)
       return existing;
+    }
+
+    // v4.1: Check if there's an existing session with a different taskId but an active queue
+    // that includes this taskId - preserve the queue data
+    if (existing && existing.taskQueue?.enabled) {
+      const queuedTasks = existing.taskQueue.tasks || [];
+      if (queuedTasks.includes(taskId)) {
+        if (process.env.DEBUG) {
+          console.log(`[Session] Preserving queue data when switching to task ${taskId}`);
+        }
+        // Create new session for new task but preserve queue
+        const preservedQueue = { ...existing.taskQueue };
+        // Update queue index to point to this task
+        const taskIndex = queuedTasks.indexOf(taskId);
+        if (taskIndex >= 0) {
+          preservedQueue.currentIndex = taskIndex;
+        }
+
+        cleanupLegacyHybridSession();
+        const session = createSessionObject(taskId, taskType, steps, options);
+        session.taskQueue = preservedQueue;
+        saveDurableSession(session);
+        return session;
+      }
     }
 
     // Clean up legacy hybrid-session.json if present (migration to v2.0)
@@ -1243,9 +1288,20 @@ function getSessionStats() {
  * @returns {Object} Updated session
  */
 function initTaskQueue(taskIds, source = 'manual') {
-  const session = loadDurableSession();
+  let session = loadDurableSession();
+
+  // v4.1: Create a bulk session if none exists
+  // This fixes the chicken-and-egg problem where /wogi-bulk needs to
+  // initialize the queue BEFORE starting the first task
   if (!session) {
-    throw new Error('No active session to initialize queue');
+    if (!taskIds || taskIds.length === 0) {
+      throw new Error('Cannot initialize empty queue without active session');
+    }
+    // Create a minimal bulk session for the first task
+    session = createSessionObject(taskIds[0], 'bulk', [], {});
+    if (process.env.DEBUG) {
+      console.log(`[Queue] Created bulk session for first task: ${taskIds[0]}`);
+    }
   }
 
   session.taskQueue = {
@@ -1257,9 +1313,13 @@ function initTaskQueue(taskIds, source = 'manual') {
     completedTasks: []
   };
 
-  // Ensure first task matches current session
+  // Ensure first task matches current session (if session existed)
   if (taskIds[0] && session.taskId !== taskIds[0]) {
-    console.warn(`[Queue] First task ${taskIds[0]} doesn't match current session ${session.taskId}`);
+    // Update session to match first task in queue
+    session.taskId = taskIds[0];
+    if (process.env.DEBUG) {
+      console.log(`[Queue] Updated session taskId to match first queued task: ${taskIds[0]}`);
+    }
   }
 
   session.updatedAt = new Date().toISOString();
@@ -1417,6 +1477,139 @@ function checkQueueContinuation() {
 }
 
 // ============================================================================
+// Skill Execution Tracking (v4.1)
+// ============================================================================
+
+const PENDING_SKILL_FILE = 'pending-skill.json';
+
+/**
+ * Get path to pending skill state file
+ */
+function getPendingSkillPath() {
+  const projectRoot = getProjectRoot();
+  return path.join(projectRoot, '.workflow', 'state', PENDING_SKILL_FILE);
+}
+
+/**
+ * Mark a skill as pending execution
+ * Called when a skill is loaded but not yet executed
+ * @param {string} skillName - Name of the skill (e.g., "wogi-bulk", "wogi-start")
+ * @param {Object} context - Optional context (taskIds for bulk, etc.)
+ * @returns {boolean} Success
+ */
+function markSkillPending(skillName, context = {}) {
+  if (!skillName || typeof skillName !== 'string') {
+    return false;
+  }
+
+  const pendingPath = getPendingSkillPath();
+
+  try {
+    ensureDir(path.dirname(pendingPath));
+    const state = {
+      skillName,
+      markedAt: new Date().toISOString(),
+      context,
+      status: 'pending'
+    };
+    writeJson(pendingPath, state);
+    if (process.env.DEBUG) {
+      console.log(`[Skill] Marked ${skillName} as pending`);
+    }
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Skill] Failed to mark skill pending: ${err.message}`);
+    }
+    return false;
+  }
+}
+
+/**
+ * Mark a skill as executed (clear pending state)
+ * Called when skill execution begins (e.g., when /wogi-start creates a session)
+ * @returns {boolean} Success
+ */
+function clearPendingSkill() {
+  const pendingPath = getPendingSkillPath();
+
+  try {
+    if (fs.existsSync(pendingPath)) {
+      fs.unlinkSync(pendingPath);
+      if (process.env.DEBUG) {
+        console.log('[Skill] Cleared pending skill state');
+      }
+    }
+    return true;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Skill] Failed to clear pending skill: ${err.message}`);
+    }
+    return false;
+  }
+}
+
+/**
+ * Check if a skill is pending execution
+ * Used by stop hook to prevent premature exit
+ * @returns {Object|null} Pending skill info or null
+ */
+function getPendingSkill() {
+  const pendingPath = getPendingSkillPath();
+
+  if (!fs.existsSync(pendingPath)) {
+    return null;
+  }
+
+  try {
+    const state = safeJsonParse(pendingPath, null);
+    if (!state || state.status !== 'pending') {
+      return null;
+    }
+
+    // Check for stale pending state (older than 5 minutes = likely abandoned)
+    const markedAt = new Date(state.markedAt);
+    const ageMs = Date.now() - markedAt.getTime();
+    const maxAgeMs = 5 * 60 * 1000; // 5 minutes
+
+    if (ageMs > maxAgeMs) {
+      // Stale - clean up and return null
+      if (process.env.DEBUG) {
+        console.log(`[Skill] Cleaning up stale pending skill (age: ${Math.round(ageMs / 1000)}s)`);
+      }
+      clearPendingSkill();
+      return null;
+    }
+
+    return state;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Skill] Failed to read pending skill: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+/**
+ * Check if execution should be blocked due to pending skill
+ * @returns {Object} { hasPendingSkill, skillName, message }
+ */
+function checkPendingSkillExecution() {
+  const pending = getPendingSkill();
+
+  if (!pending) {
+    return { hasPendingSkill: false };
+  }
+
+  return {
+    hasPendingSkill: true,
+    skillName: pending.skillName,
+    context: pending.context,
+    message: `Skill /${pending.skillName} is pending execution. Complete it before stopping.`
+  };
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -1481,7 +1674,13 @@ module.exports = {
   getQueueStatus,
   advanceTaskQueue,
   clearTaskQueue,
-  checkQueueContinuation
+  checkQueueContinuation,
+
+  // Skill Execution Tracking (v4.1)
+  markSkillPending,
+  clearPendingSkill,
+  getPendingSkill,
+  checkPendingSkillExecution
 };
 
 // ============================================================================
