@@ -47,6 +47,16 @@ const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 // v2.5 checkpoint system
 const { Checkpoint } = require('./flow-checkpoint');
 
+// v5.0: TodoWrite sync for completion reports (optional - graceful degradation)
+let todoWriteSync = null;
+try {
+  todoWriteSync = require('./flow-todowrite-sync');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-todowrite-sync not available: ${err.message}`);
+}
+const getTodoWriteStats = todoWriteSync?.getTodoWriteStats || (() => null);
+const clearTodoWriteState = todoWriteSync?.clearTodoWriteState || (() => {});
+
 // v3.0 epic progress propagation
 const { updateEpicProgress, listEpics, getEpic } = require('./flow-epics');
 
@@ -1095,6 +1105,37 @@ async function main() {
   }
 
   console.log(color('green', `✓ Completed: ${taskId}`));
+
+  // v5.0: Show TodoWrite completion stats if available
+  if (todoWriteSync) {
+    try {
+      const todoStats = getTodoWriteStats();
+      if (todoStats && todoStats.taskId === taskId) {
+        const { stats, completionPercent } = todoStats;
+        console.log('');
+        console.log(color('cyan', '━'.repeat(40)));
+        console.log(color('cyan', '📋 Progress Summary'));
+        console.log(color('cyan', '━'.repeat(40)));
+        console.log(`Criteria: ${stats.completed}/${stats.total} completed (${completionPercent}%)`);
+
+        if (todoStats.criteria && todoStats.criteria.length > 0) {
+          todoStats.criteria.forEach((c, i) => {
+            const icon = c.status === 'completed' ? color('green', '●') :
+                         c.status === 'in_progress' ? color('yellow', '◐') : color('dim', '○');
+            const statusColor = c.status === 'completed' ? 'green' :
+                               c.status === 'in_progress' ? 'yellow' : 'dim';
+            console.log(`  ${icon} ${color(statusColor, c.content)}`);
+          });
+        }
+        console.log(color('cyan', '━'.repeat(40)));
+
+        // Clear the TodoWrite state now that task is complete
+        clearTodoWriteState();
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] TodoWrite stats: ${err.message}`);
+    }
+  }
 
   // v2.0: Archive durable session if one exists for this task
   try {

@@ -76,6 +76,16 @@ try {
   if (process.env.DEBUG) console.error(`[DEBUG] flow-spec-generator not available: ${err.message}`);
 }
 
+// v5.0: TodoWrite sync for Claude Code integration (optional - graceful degradation)
+let todoWriteSync = null;
+try {
+  todoWriteSync = require('./flow-todowrite-sync');
+} catch (err) {
+  if (process.env.DEBUG) console.error(`[DEBUG] flow-todowrite-sync not available: ${err.message}`);
+}
+const parseAcceptanceCriteria = todoWriteSync?.parseAcceptanceCriteria || (() => []);
+const formatTodoWriteInit = todoWriteSync?.formatTodoWriteInit || (() => ({ output: '', state: null }));
+
 // v3.0 phased task execution (recursive enhancements)
 const {
   initializePhasedTask,
@@ -397,6 +407,34 @@ async function main() {
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Durable session init: ${err.message}`);
+    }
+  }
+
+  // v5.0: Initialize TodoWrite sync for Claude Code integration
+  // This parses acceptance criteria and formats them for progress tracking
+  if (todoWriteSync) {
+    try {
+      // Load spec if available for detailed acceptance criteria
+      let spec = null;
+      if (loadSpec) {
+        try {
+          spec = loadSpec(taskId);
+        } catch (err) {
+          // Spec not available, will fall back to task object
+          if (process.env.DEBUG) console.error(`[DEBUG] Spec load for TodoWrite: ${err.message}`);
+        }
+      }
+
+      const criteria = parseAcceptanceCriteria(result.task, spec);
+      if (criteria.length > 0) {
+        const { output } = formatTodoWriteInit(taskId, criteria);
+        if (output) {
+          console.log(output);
+        }
+      }
+    } catch (err) {
+      // TodoWrite sync is best-effort; don't block task start on failure
+      if (process.env.DEBUG) console.error(`[DEBUG] TodoWrite sync: ${err.message}`);
     }
   }
 
