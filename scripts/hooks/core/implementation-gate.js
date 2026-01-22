@@ -278,15 +278,41 @@ function checkImplementationGate(options = {}) {
     };
   }
 
-  // Route through /wogi-start instead of blocking
-  // /wogi-start will intelligently decide: execute directly (operational) or create story (implementation)
+  // v4.2: Block and route through /wogi-start
+  // /wogi-start will triage: operational (execute directly), small fix (execute + log), or implementation (create task)
+  const config = getConfig();
+  const mode = config.hooks?.rules?.implementationGate?.mode || 'block';
+
+  if (mode === 'off') {
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'gate_mode_off'
+    };
+  }
+
+  if (mode === 'warn') {
+    return {
+      allowed: true,
+      blocked: false,
+      message: generateRoutingMessage(prompt),
+      reason: 'route_to_wogi_start',
+      confidence,
+      suggestedAction: 'wogi-start',
+      matches
+    };
+  }
+
+  // Default: mode === 'block' - strict enforcement
   return {
-    allowed: true,
-    blocked: false,
-    message: generateRoutingMessage(prompt),
+    allowed: false,
+    blocked: true,
+    message: generateBlockingMessage(prompt),
     reason: 'route_to_wogi_start',
     confidence,
     suggestedAction: 'wogi-start',
+    suggestedCommand: `/wogi-start "${truncatePrompt(prompt)}"`,
     matches
   };
 }
@@ -323,6 +349,22 @@ function generateBlockMessage(prompt) {
   return generateRoutingMessage(prompt);
 }
 
+/**
+ * Generate blocking message (v4.2 strict enforcement)
+ * This message appears when implementation is detected without active task
+ */
+function generateBlockingMessage(prompt) {
+  return `Implementation request detected without active task.
+
+To proceed, run:
+  /wogi-start "${truncatePrompt(prompt)}"
+
+WogiFlow will triage and decide:
+- If operational (git/npm/deploy) → execute directly
+- If small fix → execute + log for learning
+- If larger task → create story/bug first`;
+}
+
 module.exports = {
   isImplementationGateEnabled,
   isSoftModeEnabled,
@@ -333,6 +375,7 @@ module.exports = {
   generateWarningMessage,
   generateRoutingMessage,
   generateBlockMessage,
+  generateBlockingMessage,
   truncatePrompt,
   IMPLEMENTATION_PATTERNS,
   EXPLORATION_PATTERNS

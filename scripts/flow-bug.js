@@ -27,6 +27,8 @@ const {
   outputJson,
   getConfig,
   getConfigValue,
+  safeJsonParse,
+  withLock,
   color,
   success,
   warn,
@@ -126,7 +128,7 @@ ${discoveredFrom ? `- Discovered while working on: ${discoveredFrom}` : ''}
 /**
  * Main function
  */
-function main() {
+async function main() {
   const { flags, positional } = parseFlags(process.argv.slice(2));
 
   // Handle help
@@ -215,12 +217,52 @@ Examples:
   const content = createBugContent(bug);
   writeFile(bugPath, content);
 
+  // v4.2: Add bug to ready.json so it can be started with /wogi-start
+  let addedToReady = false;
+  try {
+    await withLock(PATHS.ready, async () => {
+      const ready = safeJsonParse(PATHS.ready, { ready: [], inProgress: [], completed: [] });
+
+      // Check if already exists (duplicate prevention)
+      const exists = ready.ready?.some(t => t.id === id) ||
+                     ready.inProgress?.some(t => t.id === id) ||
+                     ready.completed?.some(t => t.id === id);
+
+      if (!exists) {
+        if (!Array.isArray(ready.ready)) {
+          ready.ready = [];
+        }
+
+        ready.ready.push({
+          id,
+          title,
+          type: 'bug',
+          priority,
+          severity,
+          discoveredFrom,
+          status: 'ready',
+          createdAt,
+          specPath: bugPath
+        });
+
+        fs.writeFileSync(PATHS.ready, JSON.stringify(ready, null, 2), 'utf-8');
+        addedToReady = true;
+      }
+    });
+  } catch (lockErr) {
+    // Non-fatal: bug file was created, just couldn't add to ready.json
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] Could not add to ready.json: ${lockErr.message}`);
+    }
+  }
+
   // Output result
   if (flags.json) {
     outputJson({
       success: true,
       bug,
-      file: bugPath
+      file: bugPath,
+      addedToReady
     });
   } else {
     console.log('');
@@ -234,6 +276,12 @@ Examples:
       console.log(`Discovered from: ${color('yellow', discoveredFrom)}`);
     }
 
+    if (addedToReady) {
+      console.log('');
+      console.log(color('green', `✓ Added to ready.json`));
+      console.log(`Start with: ${color('cyan', `/wogi-start ${id}`)}`);
+    }
+
     console.log('');
     info('Edit the file to add description, steps to reproduce, etc.');
   }
@@ -241,7 +289,10 @@ Examples:
 
 // Run only when executed directly
 if (require.main === module) {
-  main();
+  main().catch(err => {
+    error(err.message);
+    process.exit(1);
+  });
 }
 
 module.exports = { main, createBugContent, getCurrentTask };

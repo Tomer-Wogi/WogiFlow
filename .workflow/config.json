@@ -1221,7 +1221,8 @@
       },
       "implementationGate": {
         "enabled": true,
-        "softMode": false
+        "softMode": false,
+        "mode": "block"
       },
       "todoWriteGate": {
         "enabled": true,

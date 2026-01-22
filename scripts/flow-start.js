@@ -156,16 +156,78 @@ function getRegistrySummary(registryPath, type) {
   return null;
 }
 
+/**
+ * Triage a request that isn't a task ID
+ * Outputs classification context for the agent (Claude) to decide what to do
+ * @param {string} prompt - The user's request
+ */
+function triageRequest(prompt) {
+  console.log('');
+  console.log(color('cyan', '━'.repeat(60)));
+  console.log(color('cyan', '  REQUEST TRIAGE'));
+  console.log(color('cyan', '━'.repeat(60)));
+  console.log('');
+  console.log(`Request: "${prompt}"`);
+  console.log('');
+  console.log(color('yellow', 'Decide based on your understanding:'));
+  console.log('');
+  console.log(color('green', 'OPERATIONAL') + ' (execute directly, no task needed):');
+  console.log('  - Version control: push, pull, fetch, merge, commit');
+  console.log('  - Publishing: deploy, publish to any platform');
+  console.log('  - Build/CI: run tests, build, lint, format');
+  console.log('  - Maintenance: update deps, bump version');
+  console.log('  - Reviews: code review, check something');
+  console.log('');
+  console.log(color('yellow', 'SMALL FIX') + ' (execute + log for learning):');
+  console.log('  - Trivial changes: typo, color, text');
+  console.log('  - Single line changes');
+  console.log('  - No behavioral change');
+  console.log('');
+  console.log(color('red', 'IMPLEMENTATION') + ' (create task first):');
+  console.log('  - New features: add, create, build');
+  console.log('  - Bug fixes: fix errors, resolve issues');
+  console.log('  - Refactoring: restructure, reorganize');
+  console.log('');
+  console.log(color('cyan', '━'.repeat(60)));
+  console.log('');
+  console.log(color('dim', 'Based on your classification:'));
+  console.log(`  ${color('green', 'OPERATIONAL')} → Proceed with the request directly`);
+  console.log(`  ${color('yellow', 'SMALL FIX')} → Execute, then add to request-log.md with #quick-fix tag`);
+  console.log(`  ${color('red', 'IMPLEMENTATION')} → Use /wogi-bug or /wogi-story first`);
+  console.log('');
+
+  // Return triage mode indicator for programmatic use
+  return {
+    triageMode: true,
+    prompt,
+    awaitingClassification: true
+  };
+}
+
 async function main() {
-  const taskId = process.argv[2];
+  const taskIdArg = process.argv[2];
   const forceResume = process.argv.includes('--force-resume');
   const skipSuspensionCheck = process.argv.includes('--skip-suspension');
   const usePhasedMode = process.argv.includes('--phased');
 
-  if (!taskId) {
+  if (!taskIdArg) {
     console.log('Usage: flow start <task-id> [--force-resume] [--skip-suspension] [--phased]');
+    console.log('       flow start "<request>" - Triage a request (agent decides)');
     process.exit(1);
   }
+
+  // v4.2: Check if this is a quoted request or non-task-ID input
+  // Task IDs match pattern: wf-XXXXXXXX (hex hash)
+  const isTaskId = /^wf-[a-f0-9]+$/i.test(taskIdArg);
+
+  if (!isTaskId) {
+    // This is a quoted request, not a task ID - run triage
+    const prompt = taskIdArg.replace(/^["']|["']$/g, ''); // Remove surrounding quotes if any
+    triageRequest(prompt);
+    process.exit(0);
+  }
+
+  const taskId = taskIdArg;
 
   // v1.7.0: Check for session resume context
   const config = getConfig();
