@@ -22,6 +22,7 @@ const {
   fileExists,
   dirExists,
   writeFile,
+  writeJson,
   generateTaskId,
   parseFlags,
   outputJson,
@@ -56,7 +57,10 @@ function getCurrentTask() {
   try {
     const sessionState = loadSessionState();
     return sessionState.currentTask || null;
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] getCurrentTask error: ${err.message}`);
+    }
     return null;
   }
 }
@@ -337,14 +341,14 @@ Examples:
           specPath: bugPath
         });
 
-        fs.writeFileSync(PATHS.ready, JSON.stringify(ready, null, 2), 'utf-8');
+        writeJson(PATHS.ready, ready);
         addedToReady = true;
       }
     });
-  } catch (lockErr) {
+  } catch (err) {
     // Non-fatal: bug file was created, just couldn't add to ready.json
     if (process.env.DEBUG) {
-      console.error(`[DEBUG] Could not add to ready.json: ${lockErr.message}`);
+      console.error(`[DEBUG] Could not add to ready.json: ${err.message}`);
     }
   }
 

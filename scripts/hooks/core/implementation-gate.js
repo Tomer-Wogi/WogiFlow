@@ -113,12 +113,11 @@ function isImplementationGateEnabled() {
   return true;
 }
 
-/**
- * Check if soft mode is enabled (warn instead of block)
- * @returns {boolean}
- */
+// NOTE: softMode is deprecated. Use hooks.rules.implementationGate.mode = 'warn' instead.
+// Kept for backwards compatibility - maps to mode='warn'
 function isSoftModeEnabled() {
   const config = getConfig();
+  // Check legacy softMode, map to mode='warn'
   return config.hooks?.rules?.implementationGate?.softMode === true ||
          config.enforcement?.softMode === true;
 }
@@ -264,24 +263,15 @@ function checkImplementationGate(options = {}) {
   }
 
   // No active task and implementation intent detected
-  const softMode = isSoftModeEnabled();
-
-  if (softMode) {
-    return {
-      allowed: true,
-      blocked: false,
-      message: generateWarningMessage(prompt),
-      reason: 'warn_only',
-      confidence,
-      suggestedAction: 'create-story',
-      matches
-    };
-  }
-
-  // v4.2: Block and route through /wogi-start
-  // /wogi-start will triage: operational (execute directly), small fix (execute + log), or implementation (create task)
+  // v4.2: Use 'mode' config as canonical control (softMode is deprecated fallback)
   const config = getConfig();
-  const mode = config.hooks?.rules?.implementationGate?.mode || 'block';
+  let mode = config.hooks?.rules?.implementationGate?.mode;
+
+  // Backward compatibility: if mode not set, check legacy softMode
+  if (!mode) {
+    const softMode = isSoftModeEnabled();
+    mode = softMode ? 'warn' : 'block';
+  }
 
   if (mode === 'off') {
     return {
@@ -343,10 +333,10 @@ Use: /wogi-start "${truncatePrompt(prompt)}"
 }
 
 /**
- * Generate block message (hard mode) - kept for backwards compatibility
+ * @deprecated Use generateBlockingMessage instead. Kept for backwards compatibility.
  */
 function generateBlockMessage(prompt) {
-  return generateRoutingMessage(prompt);
+  return generateBlockingMessage(prompt);
 }
 
 /**

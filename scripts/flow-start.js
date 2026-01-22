@@ -16,7 +16,8 @@ const {
   findTask,
   color,
   error,
-  getConfig
+  getConfig,
+  safeJsonParse
 } = require('./flow-utils');
 // Auto-context module (optional - graceful degradation)
 let autoContext = null;
@@ -49,7 +50,7 @@ try {
 const assessTaskComplexity = complexityModule?.assessTaskComplexity || (() => ({ level: 'unknown' }));
 
 // v1.7.0 context memory management
-const { warnIfContextHigh, checkContextHealth } = require('./flow-context-monitor');
+const { warnIfContextHigh } = require('./flow-context-monitor');
 const { setCurrentTask } = require('./flow-memory-blocks');
 const { trackTaskStart, checkAndDisplayResumeContext } = require('./flow-session-state');
 
@@ -137,20 +138,22 @@ function getRegistrySummary(registryPath, type) {
   try {
     if (!fs.existsSync(registryPath)) return null;
 
-    const content = fs.readFileSync(registryPath, 'utf-8');
+    // Use safeJsonParse for prototype pollution protection
+    const registry = safeJsonParse(registryPath, null);
+    if (!registry) return null;
+
     if (type === 'function') {
-      const registry = JSON.parse(content);
       const count = registry.functions?.length || 0;
       const categories = Object.keys(registry.categories || {});
       return { count, categories };
     } else if (type === 'api') {
-      const registry = JSON.parse(content);
       const funcCount = registry.clientFunctions?.length || 0;
       const endpointCount = registry.endpoints?.length || 0;
       const services = Object.keys(registry.services || {});
       return { funcCount, endpointCount, services };
     }
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Registry read error: ${err.message}`);
     return null;
   }
   return null;
