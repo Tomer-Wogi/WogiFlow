@@ -137,6 +137,34 @@ See `.claude/docs/commands.md` for complete command reference.
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
 
+## CRITICAL: Universal Entry Point
+
+**ALL implementation requests MUST go through `/wogi-start`:**
+
+```
+User: "add a logout button"
+You: /wogi-start "add a logout button"
+```
+
+**Do NOT:**
+- Jump straight to editing files for implementation requests
+- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
+- Rationalize that "this is quick, I'll skip the workflow"
+
+**ALWAYS:**
+- Route implementation requests through /wogi-start
+- Let it classify and decide the appropriate action
+- Follow its routing decision
+
+**/wogi-start will intelligently route:**
+- **Exploration** (questions, reading) → Proceed without task
+- **Operational** (git, npm, deploy) → Execute directly
+- **Quick fix** (typo, text) → Execute + log
+- **Bug report** → Route to /wogi-bug
+- **Implementation** → Route to /wogi-story
+
+The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
+
 ## Session Startup
 
 ```bash

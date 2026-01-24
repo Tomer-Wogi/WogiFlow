@@ -32,52 +32,30 @@ If **YES** → Continue to Step 2.
 
 Check `.workflow/state/ready.json` for existing tasks.
 
-- If **YES** with **1 task** → Use `/wogi-start TASK-XXX`
-- If **YES** with **2+ ready tasks** → Check for parallel execution (Step 2.5)
+- If **YES** → Use `/wogi-start TASK-XXX`
 - If **NO** → Continue to Step 3
-
-### Step 2.5: Consider Parallel Execution (Auto-Detected)
-
-Parallel execution is **automatically detected** at:
-- Session start (shown in context)
-- When running `/wogi-ready`
-- After story decomposition creates sub-tasks
-- At the start of `/wogi-start`
-
-**You will see this notification when parallel execution is available:**
-```
-⚡ PARALLEL EXECUTION AVAILABLE
-  3 tasks can run in parallel (no dependencies)
-  Tasks: wf-001, wf-002, wf-003
-  ✓ Worktree isolation enabled
-```
-
-**Decision criteria:**
-- **Use parallel** when: Tasks are independent (different files/features), user wants speed
-- **Use sequential** when: Tasks share files, need to see results of one before starting another, prefer careful review
-
-**If parallel is appropriate:**
-- Tasks run in isolated worktrees (safe, no conflicts)
-- Faster completion for independent work
-- Use `flow parallel check` for detailed analysis
-
-**If sequential is preferred:**
-- Run `/wogi-start TASK-1`, complete it
-- Then `/wogi-start TASK-2`, etc.
-- Or use `/wogi-bulk` for automatic sequential execution
 
 ### Step 3: Assess task size
 
-| Size | Criteria | Action |
-|------|----------|--------|
-| **Small** | < 3 files, < 1 hour, obvious scope | Create task inline, proceed with `/wogi-start` |
-| **Medium** | 3-10 files, 1-4 hours, some complexity | **STOP** - Create story first |
-| **Large** | > 10 files, > 4 hours, new feature | **STOP** - Create story first |
+| Level | Type | Files | Criteria | Action |
+|-------|------|-------|----------|--------|
+| L3 | **Subtask** | 1 | Atomic operation, trivial | Execute inline |
+| L2 | **Task** | 1-5 | Single concern, 1-3 AC | Create task, proceed with `/wogi-start` |
+| L1 | **Story** | 5-15 | Multi-component, 3-10 AC | **STOP** - Create story first |
+| L0 | **Epic** | 15+ | New subsystem, 3+ stories | **STOP** - Create epic, decompose to stories |
 
-### For Medium/Large Tasks:
+**Classification Keywords:**
+- Epic indicators: system, architecture, migration, redesign, platform
+- Story indicators: feature, flow, integration, module, workflow
+- Task indicators: add, fix, update, change, remove
 
+Note: WogiFlow can auto-classify requests. If unsure, default to creating a story for medium+ requests.
+
+### For Story/Epic Requests:
+
+**For Stories (L1):**
 ```
-This looks like a medium/large task.
+This looks like a story-level feature (5-15 files).
 
 Before I start implementing, I need to create a story with acceptance criteria.
 
@@ -90,6 +68,22 @@ Then:
 1. Run `/wogi-story "[title]"` to create acceptance criteria
 2. **WAIT for user approval** on the story
 3. Only then proceed with `/wogi-start`
+
+**For Epics (L0):**
+```
+This is a large feature that qualifies as an Epic (15+ files, multiple stories).
+
+I'll need to decompose this into stories first.
+
+**Proposed epic:** "[title based on request]"
+
+Should I create this epic and decompose it into stories for your approval?
+```
+
+Then:
+1. Run `/wogi-epic "[title]"` to create the epic with story breakdown
+2. **WAIT for user approval** on the epic structure
+3. Start with the first story using `/wogi-start`
 
 **This is NON-NEGOTIABLE when strict mode is enabled.**
 
@@ -123,6 +117,7 @@ npx flow onboard
 | `/wogi-story "title"` | Create story with acceptance criteria |
 | `/wogi-status` | Project overview |
 | `/wogi-health` | Check workflow health |
+| `/wogi-roadmap` | View/manage deferred work |
 
 See `.claude/docs/commands.md` for complete command reference.
 
@@ -138,17 +133,37 @@ See `.claude/docs/commands.md` for complete command reference.
 | "check health", "workflow health", "is everything ok" | `/wogi-health` |
 | "wrap up", "end session", "that's all" | `/wogi-session-end` |
 | "compact context", "save context", "running low on context" | `/wogi-compact` |
-| "add to roadmap", "defer this", "do this later", "phase 2", "future work" | Add to `.workflow/roadmap.md` |
-| "fix all", "fix everything", "fix all issues", "fix the findings" | Start tasks from recent review (see below) |
+| "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
 
-**Fix All phrases**: When user says "fix all" or similar after a review:
-1. Check `.workflow/state/ready.json` for tasks with `discoveredFrom` containing "review-"
-2. If found, run `/wogi-bulk` on those tasks
-3. If no review tasks found, inform user: "No review tasks found. Run `/wogi-review` first to identify issues."
+## CRITICAL: Universal Entry Point
 
-**Roadmap phrases** (not a command - an action): When user says things like "let's do this later", "defer this", "add to the roadmap", "we'll tackle this in phase 2" - add the item to `.workflow/roadmap.md` using the standard template structure. Create the file from template if it doesn't exist.
+**ALL implementation requests MUST go through `/wogi-start`:**
+
+```
+User: "add a logout button"
+You: /wogi-start "add a logout button"
+```
+
+**Do NOT:**
+- Jump straight to editing files for implementation requests
+- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
+- Rationalize that "this is quick, I'll skip the workflow"
+
+**ALWAYS:**
+- Route implementation requests through /wogi-start
+- Let it classify and decide the appropriate action
+- Follow its routing decision
+
+**/wogi-start will intelligently route:**
+- **Exploration** (questions, reading) → Proceed without task
+- **Operational** (git, npm, deploy) → Execute directly
+- **Quick fix** (typo, text) → Execute + log
+- **Bug report** → Route to /wogi-bug
+- **Implementation** → Route to /wogi-story
+
+The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
 
 ## Session Startup
 
@@ -213,6 +228,29 @@ After EVERY request that changes files:
 2. Search codebase for existing
 3. Priority: Use existing → Add variant → Extend → Create new (last resort)
 
+## Function & API Reuse
+
+**Before creating ANY new utility function or API call:**
+
+1. **Check `function-map.md`** for existing utilities
+   - Search by purpose (date formatting, validation, parsing)
+   - Check if extending an existing function makes sense
+
+2. **Check `api-map.md`** for existing API endpoints
+   - Search by entity type (users, products, orders)
+   - Check if existing endpoint can be parameterized
+
+3. **Evaluate**: Can you extend an existing item instead of creating new?
+   - Same intent? → Extend with variant/parameter
+   - Similar but different? → Create new, reference existing
+   - Completely new? → Create and register
+
+**Decision criteria**: Does extending require LESS effort AND make logical sense?
+
+**After creating new functions/APIs:**
+- Run `flow function-index scan` to update the function registry
+- Run `flow api-index scan` to update the API registry
+
 {{#if skills}}
 ## Installed Skills
 
@@ -231,8 +269,11 @@ Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 | Tasks | `.workflow/state/ready.json` |
 | Logs | `.workflow/state/request-log.md` |
 | Components | `.workflow/state/app-map.md` |
+| Functions | `.workflow/state/function-map.md` |
+| APIs | `.workflow/state/api-map.md` |
 | Rules | `.workflow/state/decisions.md` |
 | Progress | `.workflow/state/progress.md` |
+| Roadmap | `.workflow/roadmap.md` |
 
 ## Commit Behavior
 
@@ -264,6 +305,102 @@ Check `config.json → qualityGates` before closing any task:
 "qualityGates": {
   "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
 }
+```
+
+## Handling Large Requests (IMPORTANT)
+
+When a user requests work that would require:
+- More than 5 distinct tasks or files
+- Multiple logical phases
+- Work that spans beyond a reasonable session
+- A "build me X" request for a substantial system
+
+**You MUST:**
+
+### Step 1: Acknowledge and Break Down
+Break the request into logical phases. Present it clearly:
+
+```
+This is a substantial feature. Let me break it down:
+
+**Phase 1 (Implement Now):**
+- [Core foundation tasks]
+
+**Phase 2 (Defer to Roadmap):**
+- [Tasks that depend on Phase 1]
+
+**Phase 3 (Defer to Roadmap):**
+- [Future enhancements]
+```
+
+### Step 2: Ask User
+```
+Should I:
+1. Implement Phase 1 now and add Phases 2-3 to your roadmap?
+2. Create stories for all phases (you choose when to implement)?
+3. Just implement Phase 1 (forget the rest)?
+```
+
+### Step 3: If User Chooses Option 1 (Recommended)
+1. Create stories for Phase 1
+2. Add remaining phases to `.workflow/roadmap.md` using this format:
+
+```markdown
+### [Phase Name]: [Feature]
+
+**Status:** Deferred
+**Created:** [TODAY]
+**Depends On:** [Parent phase]
+
+**Assumes:**
+- [Key assumptions from current implementation]
+- [Architectural decisions that must remain true]
+
+**Key Files:**
+- `path/to/file.ts` - [Why this file matters]
+
+**Context When Deferred:**
+[Brief description of current project state]
+
+**Implementation Plan:**
+1. [Step 1]
+2. [Step 2]
+```
+
+3. Inform user: "Added N items to your roadmap. Run `/wogi-roadmap` to see them."
+
+### Before Implementing Roadmap Items
+
+When user asks to implement something from the roadmap:
+
+1. **Find the item**: Check `.workflow/roadmap.md`
+2. **Validate dependencies**:
+   - Is "Depends On" complete?
+   - Do "Key Files" still exist?
+   - Do "Assumes" still hold true?
+3. **If validation fails**:
+   ```
+   ⚠️ This roadmap item may be outdated.
+
+   Issue: [What changed]
+
+   Options:
+   1. Update this item to match current architecture
+   2. Remove this item (no longer relevant)
+   3. Proceed anyway (you take responsibility)
+   ```
+4. **If validation passes**: Proceed with implementation
+
+### When Modifying Code That Roadmap Items Depend On
+
+If you're about to modify a file listed in any roadmap item's "Key Files":
+
+```
+Note: This change may affect roadmap items:
+- [Item 1 name]
+- [Item 2 name]
+
+Should I review and update those items after this change?
 ```
 
 ## Context Management

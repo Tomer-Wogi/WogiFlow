@@ -71,6 +71,39 @@ const EXPLORATION_PATTERNS = [
 ];
 
 /**
+ * Operational patterns (execute directly, no task needed)
+ * These are release/deploy/maintenance actions
+ */
+const OPERATIONAL_PATTERNS = [
+  /\b(push|pull|fetch|merge|rebase|commit|checkout)\b/i,
+  /\bgit\s+(push|pull|status|diff|log|branch)/i,
+  /\b(publish|deploy|release)\s+(to|on)?\s*(npm|pypi|docker|prod|staging)?/i,
+  /\bnpm\s+(publish|test|run|build|install)/i,
+  /\b(run|execute)\s+(the\s+)?(tests?|build|lint|format)/i,
+  /\b(update|bump)\s+(the\s+)?(deps?|dependencies|version)/i,
+  /\bsync\s+(with\s+)?(remote|origin|upstream)/i
+];
+
+/**
+ * Bug patterns (route to /wogi-bug)
+ */
+const BUG_PATTERNS = [
+  /\bbug\b/i,
+  /\b(broken|not\s+working|doesn't\s+work|fails?|crash)/i,
+  /\b(should|supposed\s+to)\s+but\s+(doesn't|isn't|won't)/i,
+  /\berror\s+(in|when|while)/i
+];
+
+/**
+ * Quick fix patterns (auto-create task + execute)
+ */
+const QUICK_FIX_PATTERNS = [
+  /\b(typo|typos|spelling)/i,
+  /\b(change|update)\s+(the\s+)?(text|label|title|color)/i,
+  /\bsimple\s+(fix|change)/i
+];
+
+/**
  * WogiFlow command patterns that should always be allowed
  */
 const WOGI_COMMAND_PATTERNS = [
@@ -82,6 +115,9 @@ const WOGI_COMMAND_PATTERNS = [
 // Maximum length for prompt display (DRY helper)
 const MAX_DISPLAY_LENGTH = 80;
 
+// Confidence threshold for high confidence classification
+const HIGH_CONFIDENCE_MATCH_THRESHOLD = 2;
+
 /**
  * Truncate prompt for display in messages
  * @param {string} prompt - The prompt to truncate
@@ -91,6 +127,33 @@ const MAX_DISPLAY_LENGTH = 80;
 function truncatePrompt(prompt, maxLength = MAX_DISPLAY_LENGTH) {
   if (!prompt || typeof prompt !== 'string') return '';
   return prompt.length > maxLength ? prompt.slice(0, maxLength) + '...' : prompt;
+}
+
+/**
+ * Check if prompt matches any pattern in an array (DRY helper)
+ * @param {string} prompt - The prompt to test
+ * @param {RegExp[]} patterns - Array of regex patterns
+ * @returns {boolean} True if any pattern matches
+ */
+function matchesAnyPattern(prompt, patterns) {
+  if (!prompt || !patterns) return false;
+  try {
+    return patterns.some(p => p.test(prompt));
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Pattern match error: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Calculate confidence based on match count
+ * @param {number} matchCount - Number of pattern matches
+ * @returns {string} 'high', 'medium', or 'low'
+ */
+function calculateConfidence(matchCount) {
+  if (matchCount >= HIGH_CONFIDENCE_MATCH_THRESHOLD) return 'high';
+  if (matchCount >= 1) return 'medium';
+  return 'low';
 }
 
 /**
@@ -141,10 +204,11 @@ function isExplorationRequest(prompt) {
   if (!prompt || typeof prompt !== 'string') return false;
 
   // Check if it matches exploration patterns
-  const matchesExploration = EXPLORATION_PATTERNS.some(pattern => pattern.test(prompt));
+  const matchesExploration = matchesAnyPattern(prompt, EXPLORATION_PATTERNS);
 
   // Short prompts that are questions are exploratory
-  const isQuestion = prompt.trim().endsWith('?') && prompt.length < 200;
+  // Check length BEFORE calling trim() to avoid processing long strings
+  const isQuestion = prompt.length < 200 && prompt.trim().endsWith('?');
 
   return matchesExploration || isQuestion;
 }
@@ -161,20 +225,24 @@ function detectImplementationIntent(prompt) {
 
   const matches = [];
 
-  for (const pattern of IMPLEMENTATION_PATTERNS) {
-    const match = prompt.match(pattern);
-    if (match) {
-      matches.push(match[0]);
+  try {
+    for (const pattern of IMPLEMENTATION_PATTERNS) {
+      const match = prompt.match(pattern);
+      if (match) {
+        matches.push(match[0]);
+      }
     }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Pattern match error: ${err.message}`);
+    return { isImplementation: false, confidence: 'low', matches: [] };
   }
 
   if (matches.length === 0) {
     return { isImplementation: false, confidence: 'low', matches: [] };
   }
 
-  // Determine confidence based on number of matches
-  // Simplified: any match from IMPLEMENTATION_PATTERNS is a strong signal
-  const confidence = matches.length >= 2 ? 'high' : 'medium';
+  // Use standardized confidence calculation
+  const confidence = calculateConfidence(matches.length);
 
   return { isImplementation: true, confidence, matches };
 }
@@ -355,18 +423,101 @@ WogiFlow will triage and decide:
 - If larger task → create story/bug first`;
 }
 
+/**
+ * Classify a request into categories for auto-routing
+ * Used by /wogi-start to decide how to handle a request
+ *
+ * @param {string} prompt - The user's request
+ * @returns {{category: string, confidence: string, action: string, matches?: string[]}}
+ *   - category: 'exploration'|'operational'|'bug'|'quick-fix'|'implementation'|'unknown'
+ *   - confidence: 'high'|'medium'|'low'
+ *   - action: 'proceed'|'execute'|'create-bug'|'auto-task'|'create-story'|'ask'
+ *   - matches: Array of matched pattern strings (only for 'implementation' category)
+ *
+ * @example
+ * classifyRequest("add a logout button")
+ * // => { category: 'implementation', confidence: 'medium', action: 'create-story', matches: ['add a logout'] }
+ *
+ * classifyRequest("push to github")
+ * // => { category: 'operational', confidence: 'high', action: 'execute', matches: [] }
+ */
+function classifyRequest(prompt) {
+  // Return consistent structure with matches array for all categories
+  const makeResult = (category, confidence, action, matches = []) => ({
+    category,
+    confidence,
+    action,
+    matches
+  });
+
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    return makeResult('unknown', 'low', 'ask');
+  }
+
+  // Truncate overly long prompts for safety
+  const processedPrompt = prompt.length > MAX_PROMPT_LENGTH
+    ? prompt.slice(0, MAX_PROMPT_LENGTH)
+    : prompt;
+
+  // Priority order: exploration > operational > bug > quick-fix > implementation
+
+  // 1. Exploration requests - proceed without task
+  if (isExplorationRequest(processedPrompt)) {
+    return makeResult('exploration', 'high', 'proceed');
+  }
+
+  // 2. Operational commands - execute directly
+  if (matchesAnyPattern(processedPrompt, OPERATIONAL_PATTERNS)) {
+    return makeResult('operational', 'high', 'execute');
+  }
+
+  // 3. Bug reports - route to /wogi-bug
+  if (matchesAnyPattern(processedPrompt, BUG_PATTERNS)) {
+    return makeResult('bug', 'medium', 'create-bug');
+  }
+
+  // 4. Quick fixes - auto-create task and execute
+  if (matchesAnyPattern(processedPrompt, QUICK_FIX_PATTERNS)) {
+    return makeResult('quick-fix', 'medium', 'auto-task');
+  }
+
+  // 5. Implementation requests - route to /wogi-story
+  const impl = detectImplementationIntent(processedPrompt);
+  if (impl.isImplementation) {
+    return makeResult('implementation', impl.confidence, 'create-story', impl.matches);
+  }
+
+  // Unknown - ask for clarification
+  return makeResult('unknown', 'low', 'ask');
+}
+
 module.exports = {
+  // Classification functions
+  classifyRequest,
+  detectImplementationIntent,
+  isExplorationRequest,
+  checkImplementationGate,
+
+  // Gate status functions
   isImplementationGateEnabled,
   isSoftModeEnabled,
   isWogiCommand,
-  isExplorationRequest,
-  detectImplementationIntent,
-  checkImplementationGate,
+
+  // Message generators
   generateWarningMessage,
   generateRoutingMessage,
-  generateBlockMessage,
+  generateBlockMessage,  // @deprecated - use generateBlockingMessage
   generateBlockingMessage,
+
+  // Utilities
   truncatePrompt,
+  matchesAnyPattern,
+  calculateConfidence,
+
+  // Pattern arrays (for testing and extension)
   IMPLEMENTATION_PATTERNS,
-  EXPLORATION_PATTERNS
+  EXPLORATION_PATTERNS,
+  OPERATIONAL_PATTERNS,
+  BUG_PATTERNS,
+  QUICK_FIX_PATTERNS
 };

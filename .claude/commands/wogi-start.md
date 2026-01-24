@@ -1,96 +1,110 @@
 Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXXXX`
 
-## Request Triage (NEW)
+**UNIVERSAL ENTRY POINT**: This is the single entry point for ALL requests. Route everything through `/wogi-start` - it will intelligently classify and route to the appropriate action.
 
-When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start "update github and npm"`), first determine what type of request this is:
+## Request Triage (Auto-Routing v4.3)
+
+When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start "update github and npm"`), the system automatically classifies and routes the request.
 
 ### Step 0: Detect Request Type
 
 **Is this a task ID or a quoted request?**
 - Task ID format: `wf-XXXXXXXX` (letters, numbers, hyphens) → Skip triage, go to Structured Execution
-- Quoted request: `"anything in quotes"` → Continue with triage below
+- Quoted request: `"anything in quotes"` → Auto-classify and route
 
-### Operational Commands (Execute Directly)
+### Classification Categories
 
-These are release/deploy/maintenance actions that don't require task tracking:
+| Category | Patterns | Action | Guilt Message |
+|----------|----------|--------|---------------|
+| **Exploration** | what, how, why, show me, explain | Proceed directly | No |
+| **Operational** | push, pull, deploy, publish, run tests | Execute directly | No |
+| **Quick Fix** | typo, text change, simple fix | Execute + log | No |
+| **Bug** | bug, broken, not working, crashes | Route to /wogi-bug | Yes |
+| **Implementation** | add, create, fix, refactor, update | Route to /wogi-story | Yes |
 
-| Category | Examples | Action |
-|----------|----------|--------|
-| **Version Control** | push, pull, fetch, merge, sync, commit | Execute git command |
-| **Publishing** | publish to npm/pypi, deploy to prod/staging | Run publish/deploy |
-| **Build/CI** | run tests, build, lint, format, typecheck | Run the command |
-| **Maintenance** | update dependencies, bump version | Run maintenance |
+### Pattern Details
 
-**Examples that execute directly:**
-- `"update github and npm"` → `git push && npm publish`
-- `"push to origin"` → `git push origin`
-- `"push to bitbucket"` → `git push`
-- `"deploy to production"` → Run deploy script
-- `"bump version"` → `npm version patch`
-- `"run tests"` → `npm test`
-- `"sync with remote"` → `git pull && git push`
+**Exploration** (proceed without task):
+- Questions: "what does X do?", "how does Y work?"
+- Reading: "show me the code for...", "explain..."
+- Analysis: "analyze", "review", "check"
 
-**Action**: Execute the commands directly. No task/story needed.
+**Operational** (execute directly):
+- Version control: push, pull, fetch, merge, rebase, commit
+- Publishing: publish to npm/pypi, deploy to prod/staging
+- Build/CI: run tests, build, lint, format
+- Maintenance: update deps, bump version, sync with remote
 
-### Implementation Requests (Create Task First)
+**Quick Fix** (execute + log):
+- Typos, spelling fixes
+- Text/label/title changes
+- Simple single-line changes
 
-These involve changing application code/behavior and need planning:
+**Bug** (route to /wogi-bug):
+- "bug" keyword
+- "broken", "not working", "doesn't work"
+- "should X but doesn't Y"
+- "error when..."
 
-| Category | Examples | Action |
-|----------|----------|--------|
-| **Features** | add, create, build, implement new functionality | Create story |
-| **Bug fixes** | fix, repair, resolve issues | Create story |
-| **Refactoring** | refactor, restructure, reorganize code | Create story |
-| **Code Changes** | modify, update, change existing behavior | Create story |
+**Implementation** (route to /wogi-story):
+- New features: add, create, build, implement
+- Code changes: modify, update, change behavior
+- Refactoring: restructure, reorganize
 
-**Examples that need a task:**
-- `"add dark mode toggle"` → Run `/wogi-story "add dark mode toggle"` first
-- `"fix the login bug"` → Run `/wogi-story "fix the login bug"` first
-- `"refactor auth system"` → Run `/wogi-story "refactor auth system"` first
-- `"update the login form"` → Run `/wogi-story "update the login form"` first
+### Auto-Routing Examples
 
-**Action**: Run `/wogi-story "[request]"` to create story with acceptance criteria, wait for approval, then start implementation.
-
-### Decision Logic
-
-Use Claude's understanding (not regex) to decide:
-
-1. **Does request mention git/npm/docker/deploy/build operations without code changes?**
-   - YES → **Operational** → Execute directly
-   - NO → Continue to step 2
-
-2. **Does request involve changing application code/behavior?**
-   - YES → **Implementation** → Create story first
-   - NO → Continue to step 3
-
-3. **Is it a simple, isolated command (run X, check Y)?**
-   - YES → **Operational** → Execute directly
-   - NO → **Implementation** → Create story first
-
-**Key question**: "Does this request require writing/modifying application code?"
-- YES → Create story first (track acceptance criteria, quality gates)
-- NO → Just execute it (git, npm, deploy are infrastructure, not code)
-
-### Triage Output
-
-**Operational:**
 ```
-Request: "update github and npm"
-Category: OPERATIONAL (version control + publishing)
-Action: Executing directly...
-
-→ git push origin master
-→ npm publish
-✓ Done
+/wogi-start "how does authentication work?"
+→ Category: EXPLORATION (high confidence)
+→ Action: Answer the question directly
 ```
 
-**Implementation:**
 ```
-Request: "add dark mode toggle"
-Category: IMPLEMENTATION (new feature)
-Action: Creating story first...
+/wogi-start "push to github"
+→ Category: OPERATIONAL (high confidence)
+→ Action: Execute git push
+```
 
-→ Running /wogi-story "add dark mode toggle"
+```
+/wogi-start "fix the typo in header"
+→ Category: QUICK-FIX (medium confidence)
+→ Action: Fix it, log to request-log.md with #quick-fix
+```
+
+```
+/wogi-start "login is broken"
+→ Category: BUG (medium confidence)
+→ Action: Route to /wogi-bug "login is broken"
+⚠️ WORKFLOW REMINDER: [guilt message]
+```
+
+```
+/wogi-start "add dark mode toggle"
+→ Category: IMPLEMENTATION (high confidence)
+→ Action: Route to /wogi-story "add dark mode toggle"
+⚠️ WORKFLOW REMINDER: [guilt message]
+```
+
+### Guilt Messaging
+
+For bug reports and implementation requests, a random guilt message appears to reinforce workflow discipline:
+
+- "The user trusts you to follow WogiFlow."
+- "Without a task, this work is untracked and unverifiable."
+- "Skipping the workflow signals that process doesn't matter."
+- "Every bypassed story becomes invisible technical debt."
+- "The user will notice. Follow the process."
+
+### Unknown Classification
+
+If the request can't be confidently classified:
+```
+→ Request unclear. Please clarify what you want to do.
+
+Is this:
+  Operational (git/npm/deploy) → Execute directly
+  Quick fix (typo, text) → Fix and log it
+  Feature/Bug (code change) → Create story first
 ```
 
 ---

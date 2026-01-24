@@ -122,6 +122,9 @@ const formatQuestions = clarifyingModule?.formatQuestions || (() => '');
 const FUNCTION_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.functions || {}).flat();
 const API_KEYWORDS = Object.values(SEMANTIC_KEYWORDS.apis || {}).flat();
 
+// v4.3: Import classifyRequest and truncatePrompt for auto-routing
+const { classifyRequest, truncatePrompt } = require('./hooks/core/implementation-gate');
+
 /**
  * Check if task description suggests working with utility functions
  */
@@ -170,50 +173,127 @@ function getRegistrySummary(registryPath, type) {
 }
 
 /**
+ * Sanitize prompt for display to prevent information disclosure
+ * Redacts common secret patterns and strips ANSI codes
+ * @param {string} text - Text to sanitize
+ * @returns {string} Sanitized text
+ */
+function sanitizeForDisplay(text) {
+  if (!text || typeof text !== 'string') return '';
+  return text
+    // Redact common secret patterns
+    .replace(/([a-zA-Z_]+_?KEY|TOKEN|SECRET|PASSWORD)\s*[=:]\s*[^\s]+/gi, '$1=***')
+    .replace(/sk-[a-zA-Z0-9-]+/g, 'sk-***')        // OpenAI keys
+    .replace(/ghp_[a-zA-Z0-9]+/g, 'ghp_***')       // GitHub tokens
+    .replace(/xoxb-[a-zA-Z0-9-]+/g, 'xoxb-***')    // Slack tokens
+    .replace(/\x1b\[[0-9;]*m/g, '');               // Strip ANSI codes
+}
+
+/**
+ * Generate workflow enforcement reminder message
+ * @returns {string} A randomly selected workflow reminder
+ */
+function generateWorkflowReminder() {
+  const messages = [
+    'WORKFLOW REMINDER: The user trusts you to follow WogiFlow.',
+    'Without a task, this work is untracked and unverifiable.',
+    'Skipping the workflow signals that process does not matter.',
+    'Every bypassed story becomes invisible technical debt.',
+    'The user will notice. Follow the process.'
+  ];
+  const index = Math.min(Math.floor(Math.random() * messages.length), messages.length - 1);
+  return messages[index] || messages[0];
+}
+
+/**
  * Triage a request that isn't a task ID
- * Outputs classification context for the agent (Claude) to decide what to do
+ * v4.3: Auto-routes based on request classification
  * @param {string} prompt - The user's request
+ * @returns {{triageMode: boolean, prompt: string, category: string, confidence: string, action: string, matches?: string[]}}
  */
 function triageRequest(prompt) {
+  const result = classifyRequest(prompt);
+
+  // Validate classification result
+  if (!result || !result.category || !result.action) {
+    error('Failed to classify request');
+    return {
+      triageMode: true,
+      prompt,
+      category: 'unknown',
+      confidence: 'low',
+      action: 'ask',
+      matches: []
+    };
+  }
+
   console.log('');
   console.log(color('cyan', '━'.repeat(60)));
   console.log(color('cyan', '  REQUEST TRIAGE'));
   console.log(color('cyan', '━'.repeat(60)));
   console.log('');
-  console.log(`Request: "${prompt}"`);
+
+  // Sanitize and truncate prompt for display
+  const displayPrompt = sanitizeForDisplay(truncatePrompt(prompt, 80));
+  console.log(`Request: "${displayPrompt}"`);
+  console.log(`Category: ${color('yellow', result.category.toUpperCase())} (${result.confidence} confidence)`);
   console.log('');
-  console.log(color('yellow', 'Decide based on your understanding:'));
-  console.log('');
-  console.log(color('green', 'OPERATIONAL') + ' (execute directly, no task needed):');
-  console.log('  - Version control: push, pull, fetch, merge, commit');
-  console.log('  - Publishing: deploy, publish to any platform');
-  console.log('  - Build/CI: run tests, build, lint, format');
-  console.log('  - Maintenance: update deps, bump version');
-  console.log('  - Reviews: code review, check something');
-  console.log('');
-  console.log(color('yellow', 'SMALL FIX') + ' (execute + log for learning):');
-  console.log('  - Trivial changes: typo, color, text');
-  console.log('  - Single line changes');
-  console.log('  - No behavioral change');
-  console.log('');
-  console.log(color('red', 'IMPLEMENTATION') + ' (create task first):');
-  console.log('  - New features: add, create, build');
-  console.log('  - Bug fixes: fix errors, resolve issues');
-  console.log('  - Refactoring: restructure, reorganize');
+
+  switch (result.action) {
+    case 'proceed':
+      console.log(color('dim', '-> Exploration request. Proceed without task.'));
+      console.log('');
+      console.log(color('green', 'ACTION: Answer the question or explore as requested.'));
+      break;
+
+    case 'execute':
+      console.log(color('green', '-> Operational command. Execute directly.'));
+      console.log('');
+      console.log(color('green', 'ACTION: Execute the operational command (git/npm/deploy/etc).'));
+      break;
+
+    case 'create-bug':
+      console.log(color('red', '-> Bug report detected. Creating bug report...'));
+      console.log('');
+      console.log(color('yellow', generateWorkflowReminder()));
+      console.log('');
+      console.log(color('cyan', 'ACTION: Run /wogi-bug to create a bug report with proper tracking.'));
+      console.log(`  Suggested: /wogi-bug "${displayPrompt}"`);
+      break;
+
+    case 'auto-task':
+      console.log(color('yellow', '-> Quick fix detected. Auto-creating task...'));
+      console.log('');
+      console.log(color('green', 'ACTION: Execute the quick fix, then log to request-log.md with #quick-fix tag.'));
+      break;
+
+    case 'create-story':
+      console.log(color('magenta', '-> Implementation request. Story required.'));
+      console.log('');
+      console.log(color('yellow', generateWorkflowReminder()));
+      console.log('');
+      console.log(color('cyan', 'ACTION: Run /wogi-story to create a story with acceptance criteria.'));
+      console.log(`  Suggested: /wogi-story "${displayPrompt}"`);
+      break;
+
+    default:
+      console.log(color('dim', '-> Request unclear. Please clarify what you want to do.'));
+      console.log('');
+      console.log('Is this:');
+      console.log(`  ${color('green', 'Operational')} (git/npm/deploy) -> Execute directly`);
+      console.log(`  ${color('yellow', 'Quick fix')} (typo, text change) -> Fix and log it`);
+      console.log(`  ${color('magenta', 'Feature/Bug')} (code change) -> Create story first`);
+  }
+
   console.log('');
   console.log(color('cyan', '━'.repeat(60)));
   console.log('');
-  console.log(color('dim', 'Based on your classification:'));
-  console.log(`  ${color('green', 'OPERATIONAL')} → Proceed with the request directly`);
-  console.log(`  ${color('yellow', 'SMALL FIX')} → Execute, then add to request-log.md with #quick-fix tag`);
-  console.log(`  ${color('red', 'IMPLEMENTATION')} → Use /wogi-bug or /wogi-story first`);
-  console.log('');
 
-  // Return triage mode indicator for programmatic use
+  // Return classification result for programmatic use
   return {
     triageMode: true,
     prompt,
-    awaitingClassification: true
+    ...result
   };
 }
 
@@ -235,7 +315,8 @@ async function main() {
 
   if (!isTaskId) {
     // This is a quoted request, not a task ID - run triage
-    const prompt = taskIdArg.replace(/^["']|["']$/g, ''); // Remove surrounding quotes if any
+    // Only strip quotes if BOTH opening and closing quotes are present
+    const prompt = taskIdArg.replace(/^(["'])(.*)(\1)$/, '$2');
     triageRequest(prompt);
     process.exit(0);
   }
