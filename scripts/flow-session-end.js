@@ -34,6 +34,9 @@ const { autoArchiveIfNeeded, getLogStats } = require('./flow-log-manager');
 // v2.5.0 stale task cleanup
 const { getReadyData, saveReadyData } = require('./flow-utils');
 
+// v2.6.1: Use centralized state cleanup module
+const { cleanupStaleState } = require('./flow-state-cleanup');
+
 // v1.8.0 automatic memory management
 let memoryDb = null;
 try {
@@ -623,6 +626,9 @@ async function offerDebtCleanup() {
   }
 }
 
+// Note: cleanupStaleState is now imported from flow-state-cleanup.js
+// Session end calls it without cleanupStaleTasks option (that's done by morning briefing)
+
 /**
  * v2.5.0: Clean up stale auto-created tasks
  *
@@ -760,6 +766,12 @@ async function main() {
 
   // Check requirements
   checkRequirements();
+
+  // v2.6.1: Clean up stale workflow state (session-state, task-queue, durable-session)
+  const cleanedState = cleanupStaleState();
+  if (cleanedState.length > 0) {
+    console.log(color('dim', `  Cleaned stale state: ${cleanedState.join(', ')}`));
+  }
 
   // v2.5.0: Clean up stale auto-created tasks first
   await cleanupStaleTasks();

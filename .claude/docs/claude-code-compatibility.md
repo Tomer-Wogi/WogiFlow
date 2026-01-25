@@ -60,12 +60,36 @@ flow parallel check  # See available parallel tasks
 |-----------|-------------|-------|
 | 1.0.40+ | 2.1.0+ | Full compatibility |
 | 1.0.44+ | 2.1.7+ | TodoWrite sync, OOM fixes |
+| 1.0.45+ | 2.1.19+ | Native task system awareness |
+
+### Environment Variables (2.1.19+)
+
+#### CLAUDE_CODE_ENABLE_TASKS
+
+Claude Code 2.1.19 introduced an environment variable to disable native task features:
+
+```bash
+CLAUDE_CODE_ENABLE_TASKS=false  # Disables native task UI
+```
+
+**Impact on Wogi Flow:**
+- If set to `false`, TodoWrite sync output may not render in Claude Code's UI
+- Wogi Flow's core workflow features continue to work independently
+- Acceptance criteria still tracked in `.workflow/state/todowrite-state.json`
+
+**Recommendation:** Leave native tasks enabled (default) for best experience with Wogi Flow.
 
 ### Required Claude Code Fixes (2.1.7+)
 
 - **OOM with subagents**: Fixed - parallel execution now safe
 - **Windows path escapes**: Fixed - temp directory paths handled correctly
 - **Context remaining after /compact**: Fixed - accurate context display
+
+### Fixes in 2.1.19+
+
+- **Worktree session handling**: Sessions now update correctly when resuming from git worktrees
+- **Backgrounded hooks**: Hooks that spawn background processes no longer block the session
+- **Skills without permissions**: Skills that don't require extra permissions run without approval prompts
 
 ## Best Practices
 
@@ -169,6 +193,12 @@ To disable (not recommended):
 | `/wogi-status` | Show current task state |
 | `flow todowrite-sync stats` | Show TodoWrite state |
 
+## Keybindings (2.1.18+)
+
+Claude Code 2.1.18 introduced customizable keyboard shortcuts. See `.claude/keybindings.json` for recommended Wogi Flow keybindings.
+
+Run `/keybindings` in Claude Code to customize your shortcuts.
+
 ---
 
-*Last updated: 2026-01-22*
+*Last updated: 2026-01-24*

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://code.claude.com/schemas/keybindings.json",
+  "_comment": "Recommended keybindings for Wogi Flow. Copy desired bindings to your user keybindings via /keybindings command.",
+  "recommended": [
+    {
+      "key": "ctrl+shift+s",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-start" },
+      "when": "inputFocused",
+      "description": "Start a task or quick request"
+    },
+    {
+      "key": "ctrl+shift+r",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-ready" },
+      "when": "inputFocused",
+      "description": "Show available tasks"
+    },
+    {
+      "key": "ctrl+shift+t",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-status" },
+      "when": "inputFocused",
+      "description": "Show project status"
+    },
+    {
+      "key": "ctrl+shift+e",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-session-end" },
+      "when": "inputFocused",
+      "description": "End current session properly"
+    },
+    {
+      "key": "ctrl+shift+c",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-compact" },
+      "when": "inputFocused",
+      "description": "Compact conversation context"
+    },
+    {
+      "key": "ctrl+shift+h",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-health" },
+      "when": "inputFocused",
+      "description": "Check workflow health"
+    },
+    {
+      "key": "ctrl+shift+m",
+      "command": "runSlashCommand",
+      "args": { "command": "/wogi-morning" },
+      "when": "inputFocused",
+      "description": "Morning briefing"
+    }
+  ],
+  "notes": {
+    "installation": "Run /keybindings in Claude Code to open the keybindings editor. Copy the bindings you want from the 'recommended' array above.",
+    "conflicts": "These bindings use Ctrl+Shift prefix to avoid conflicts with common editor shortcuts. Adjust if they conflict with your setup.",
+    "context": "All bindings use 'inputFocused' context - they only work when the input field is focused."
+  }
+}

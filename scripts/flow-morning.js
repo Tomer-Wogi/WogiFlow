@@ -18,10 +18,8 @@ const {
   PATHS,
   PROJECT_ROOT,
   fileExists,
-  readJson,
   readFile,
   getConfig,
-  getConfigValue,
   getReadyData,
   getGitStatus,
   isGitRepo,
@@ -34,6 +32,12 @@ const {
 
 // Use centralized session state module
 const { loadSessionState } = require('./flow-session-state');
+
+// v2.6.1: Use centralized state cleanup module
+const { cleanupStaleState } = require('./flow-state-cleanup');
+
+// Note: cleanupStaleState is now imported from flow-state-cleanup.js
+// Morning briefing calls it with { cleanupStaleTasks: true } to also clean stale auto-created tasks
 
 /**
  * Priority order for sorting (P0 highest, P4 lowest)
@@ -605,6 +609,14 @@ function main() {
     console.log(color('yellow', 'Morning briefing is disabled.'));
     console.log(color('dim', 'Enable it in .workflow/config.json: morningBriefing.enabled: true'));
     process.exit(0);
+  }
+
+  // v2.6.1: Clean up stale state before briefing (safety net)
+  // Morning briefing also cleans up stale auto-created tasks older than 24h
+  const cleanedState = cleanupStaleState({ cleanupStaleTasks: true });
+  if (cleanedState.length > 0 && !flags.json) {
+    console.log(color('dim', `  (Cleaned stale state: ${cleanedState.join(', ')})`));
+    console.log('');
   }
 
   // Collect briefing data
