@@ -98,3 +98,4 @@ mcp-memory-server/node_modules/
 .claude/docs/architecture.md
 .claude/docs/stack.md
 .claude/docs/testing.md
+.workflow/state/task-queue.json

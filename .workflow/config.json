@@ -1222,7 +1222,7 @@
       "implementationGate": {
         "enabled": true,
         "softMode": false,
-        "mode": "block"
+        "mode": "warn"
       },
       "todoWriteGate": {
         "enabled": true,
