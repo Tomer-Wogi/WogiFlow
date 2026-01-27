@@ -30,15 +30,24 @@ show_help() {
     echo "  --skip-rules       Don't import rules (.claude/rules/)"
     echo "  --skip-templates   Don't import templates"
     echo ""
-    echo "Scan Mode (NEW):"
+    echo "Scan Mode:"
     echo "  --scan <folder>       Scan another project folder for patterns"
+    echo "  --strict              Enable strict adherence mode (follow source 100%)"
     echo "  --resolve-conflicts   Interactive conflict resolution (with --scan)"
     echo "  --analysis-mode MODE  Analysis depth: balanced (default), deep"
+    echo ""
+    echo "Strict Mode (NEW):"
+    echo "  When --strict is used with --scan:"
+    echo "  - Extracts operational standards (package manager, ports, commands)"
+    echo "  - Enables strict adherence mode in config"
+    echo "  - AI is BLOCKED from deviating (auto-corrects to source patterns)"
+    echo "  - User code review shows WARNINGS for deviations"
     echo ""
     echo "Examples:"
     echo "  flow import-profile team-frontend.zip"
     echo "  flow import-profile team-frontend.zip --backup"
     echo "  flow import-profile --scan /path/to/other/project"
+    echo "  flow import-profile --scan ../my-other-app --strict"
     echo "  flow import-profile --scan ../my-other-app --resolve-conflicts"
 }
 
@@ -58,6 +67,7 @@ SCAN_MODE=false
 SCAN_PATH=""
 RESOLVE_CONFLICTS=false
 ANALYSIS_MODE="balanced"
+STRICT_MODE=false
 PROFILE_FILE=""
 
 # Determine scripts directory
@@ -94,6 +104,9 @@ while [ $# -gt 0 ]; do
         --analysis-mode)
             shift
             ANALYSIS_MODE="$1"
+            ;;
+        --strict)
+            STRICT_MODE=true
             ;;
         -*)
             echo -e "${RED}Unknown option: $1${NC}"
@@ -180,6 +193,29 @@ if [ "$SCAN_MODE" = true ]; then
     echo ""
     echo -e "  ${GREEN}✓${NC} Detected: $FRAMEWORK"
     echo -e "  ${GREEN}✓${NC} Extracted: $PATTERN_COUNT patterns"
+
+    # Run operational scanner if --strict mode
+    OPERATIONAL_FILE=""
+    if [ "$STRICT_MODE" = true ]; then
+        echo ""
+        echo -e "${YELLOW}Scanning operational standards (--strict mode)...${NC}"
+        OPERATIONAL_FILE="$TEMP_DIR/operational.json"
+
+        if node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
+            PKG_MANAGER=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.operational?.packageManager?.tool || 'unknown')" || echo "unknown")
+            DEV_PORT=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.operational?.devServer?.port || 3000)" || echo "3000")
+            FILE_NAMING=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.patterns?.fileNaming?.style || 'unknown')" || echo "unknown")
+            API_STYLE=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.patterns?.apiRoutes?.style || 'unknown')" || echo "unknown")
+
+            echo -e "  ${GREEN}✓${NC} Package manager: $PKG_MANAGER"
+            echo -e "  ${GREEN}✓${NC} Dev server port: $DEV_PORT"
+            echo -e "  ${GREEN}✓${NC} File naming: $FILE_NAMING"
+            echo -e "  ${GREEN}✓${NC} API route style: $API_STYLE"
+        else
+            echo -e "  ${YELLOW}!${NC} Operational scanning failed (continuing without strict mode)"
+            STRICT_MODE=false
+        fi
+    fi
 
     # Handle conflicts
     RESOLVED_FILE=""
@@ -306,6 +342,96 @@ if [ "$SCAN_MODE" = true ]; then
         cp "$RESOLVED_FILE" "$WORKFLOW_DIR/extracted/imported-resolutions.json"
     fi
 
+    # Save operational standards and enable strict adherence (if --strict mode)
+    if [ "$STRICT_MODE" = true ] && [ -n "$OPERATIONAL_FILE" ] && [ -f "$OPERATIONAL_FILE" ]; then
+        echo -e "  ${GREEN}✓${NC} project-standards.json"
+        cp "$OPERATIONAL_FILE" "$WORKFLOW_DIR/state/project-standards.json"
+
+        # Enable strict adherence in config.json
+        if [ -f "$WORKFLOW_DIR/config.json" ]; then
+            # Use Node.js to safely update config
+            node -e '
+                const fs = require("fs");
+                const configPath = process.argv[1];
+                const sourcePath = process.argv[2];
+                try {
+                    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+                    config.strictAdherence = {
+                        enabled: true,
+                        aiMode: "block",
+                        userReviewMode: "warn",
+                        sourceProject: sourcePath,
+                        scanDepth: "full",
+                        categories: {
+                            packageManager: true,
+                            devCommands: true,
+                            ports: true,
+                            apiPatterns: true,
+                            namingConventions: true,
+                            all: true
+                        },
+                        allowAdditions: false,
+                        overrideLog: ".workflow/state/adherence-overrides.json"
+                    };
+                    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+                } catch (e) {
+                    console.error("Failed to update config:", e.message);
+                    process.exit(1);
+                }
+            ' "$WORKFLOW_DIR/config.json" "$SCAN_PATH"
+            echo -e "  ${GREEN}✓${NC} Strict adherence ENABLED in config.json"
+        fi
+
+        # Add operational standards to decisions.md
+        OPERATIONAL_CONTENT=$(node -e '
+            const fs = require("fs");
+            const data = JSON.parse(fs.readFileSync(process.argv[1], "utf-8"));
+            const lines = [];
+
+            lines.push("### Operational Standards (Auto-detected)");
+            lines.push("<!-- PIN: operational-standards -->");
+            lines.push("");
+            lines.push("**Source**: " + process.argv[2]);
+            lines.push("**Imported**: " + new Date().toISOString().split("T")[0]);
+            lines.push("");
+
+            if (data.operational?.packageManager?.tool) {
+                lines.push("**Package Manager**: " + data.operational.packageManager.tool);
+                lines.push("- ALWAYS use `" + data.operational.packageManager.tool + "` for package operations");
+                lines.push("- NEVER use other package managers (npm, yarn, pnpm, bun)");
+                lines.push("");
+            }
+
+            if (data.operational?.devServer?.port) {
+                lines.push("**Development Server**: Port " + data.operational.devServer.port);
+                lines.push("- Run dev server on localhost:" + data.operational.devServer.port);
+                lines.push("- NEVER use default ports (3000, 5173) unless that IS the configured port");
+                lines.push("");
+            }
+
+            if (data.patterns?.apiRoutes?.style) {
+                lines.push("**API Routes**: " + data.patterns.apiRoutes.style);
+                if (data.patterns.apiRoutes.examples?.length > 0) {
+                    lines.push("- Examples: " + data.patterns.apiRoutes.examples.slice(0, 3).join(", "));
+                }
+                lines.push("");
+            }
+
+            if (data.patterns?.fileNaming?.style) {
+                lines.push("**File Naming**: " + data.patterns.fileNaming.style);
+                lines.push("");
+            }
+
+            console.log(lines.join("\\n"));
+        ' "$OPERATIONAL_FILE" "$SCAN_PATH")
+
+        if [ -f "$WORKFLOW_DIR/state/decisions.md" ]; then
+            echo "" >> "$WORKFLOW_DIR/state/decisions.md"
+            echo "$OPERATIONAL_CONTENT" >> "$WORKFLOW_DIR/state/decisions.md"
+            echo -e "  ${GREEN}✓${NC} Operational standards added to decisions.md"
+        fi
+    fi
+
     # Cleanup
     rm -rf "$TEMP_DIR"
 
@@ -315,6 +441,21 @@ if [ "$SCAN_MODE" = true ]; then
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "${DIM}Imported $PATTERN_COUNT patterns from $SCAN_PATH${NC}"
+
+    if [ "$STRICT_MODE" = true ]; then
+        echo ""
+        echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${CYAN}║  ⚡ STRICT ADHERENCE MODE ENABLED                        ║${NC}"
+        echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "AI actions will be ${YELLOW}BLOCKED${NC} if they deviate from source patterns."
+        echo -e "User code will show ${YELLOW}WARNINGS${NC} during review."
+        echo ""
+        echo -e "${DIM}To check status: node scripts/flow-strict-adherence.js${NC}"
+        echo -e "${DIM}To override: flow strict-override --reason \"Your reason\"${NC}"
+    fi
+
+    echo ""
     echo -e "${DIM}Restart Claude CLI to apply changes.${NC}"
 
     exit 0

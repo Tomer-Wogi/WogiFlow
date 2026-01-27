@@ -90,6 +90,53 @@ Then:
 ---
 {{/if}}
 
+{{#if config.strictAdherence.enabled}}
+## Operational Standards (STRICT MODE)
+
+⚠️ **This project uses strict adherence mode.** You MUST follow the source project's patterns exactly.
+
+{{#if config.strictAdherence.operational.packageManager.tool}}
+**Package Manager**: `{{config.strictAdherence.operational.packageManager.tool}}`
+- Install: `{{config.strictAdherence.operational.packageManager.tool}} install`
+- Add package: `{{config.strictAdherence.operational.packageManager.tool}} add <package>`
+- Run script: `{{config.strictAdherence.operational.packageManager.tool}} <script>`
+- ⛔ NEVER use other package managers (npm, yarn, pnpm, bun)
+{{/if}}
+
+{{#if config.strictAdherence.operational.devServer.port}}
+**Dev Server**: `localhost:{{config.strictAdherence.operational.devServer.port}}`
+- ALWAYS use port {{config.strictAdherence.operational.devServer.port}} for development
+- ⛔ NEVER use default ports unless that IS the configured port
+{{/if}}
+
+{{#if config.strictAdherence.patterns.fileNaming.style}}
+**File Naming**: `{{config.strictAdherence.patterns.fileNaming.style}}`
+{{/if}}
+
+{{#if config.strictAdherence.patterns.apiRoutes.style}}
+**API Routes**: `{{config.strictAdherence.patterns.apiRoutes.style}}`
+{{/if}}
+
+### Strict Mode Rules
+
+1. **AI Actions are BLOCKED** if they deviate from source patterns
+   - Wrong package manager → Auto-corrected to correct one
+   - Wrong port → Auto-corrected to configured port
+   - Wrong naming → Auto-corrected to source pattern
+
+2. **User Code Review shows WARNINGS** for deviations
+   - Deviations are flagged but not blocked
+   - User is informed of inconsistency with source patterns
+
+3. **Override requires explicit reason**
+   - Use: `flow strict-override --reason "Your reason"`
+   - Overrides are logged for transparency
+
+**When unsure, ASK the user rather than deviate from source patterns.**
+
+---
+{{/if}}
+
 ## Quick Start
 
 ```bash

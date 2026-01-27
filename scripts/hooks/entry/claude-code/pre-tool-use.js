@@ -15,6 +15,20 @@ const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 
+// Lazy-load strict adherence to avoid circular deps and startup cost
+let _strictAdherence = null;
+function getStrictAdherence() {
+  if (!_strictAdherence) {
+    try {
+      _strictAdherence = require('../../../flow-strict-adherence');
+    } catch (err) {
+      // Module not available - strict adherence disabled
+      _strictAdherence = { isEnabled: () => false, validateCommand: () => ({ valid: true }) };
+    }
+  }
+  return _strictAdherence;
+}
+
 // Maximum stdin size to prevent DoS (100KB should be enough for tool inputs)
 const MAX_STDIN_SIZE = 100 * 1024;
 
@@ -107,6 +121,33 @@ async function main() {
       }
     }
 
+    // Strict adherence check (for Bash commands)
+    // v5.0: Block AI from using wrong package manager or port
+    if (toolName === 'Bash') {
+      const command = toolInput.command;
+      if (command) {
+        const strictAdherence = getStrictAdherence();
+        if (strictAdherence.isEnabled()) {
+          const cmdResult = strictAdherence.validateCommand(command);
+          if (cmdResult.blocked) {
+            // Return with auto-corrected command suggestion
+            coreResult = {
+              allowed: false,
+              blocked: true,
+              reason: `Strict adherence: ${cmdResult.reason}`,
+              message: cmdResult.autoCorrect
+                ? `⚠️ BLOCKED: ${cmdResult.reason}\n\n✅ Auto-correcting to: ${cmdResult.autoCorrect}`
+                : `⚠️ BLOCKED: ${cmdResult.reason}\n\n💡 ${cmdResult.suggestion || 'Please use the correct pattern.'}`
+            };
+            const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+            console.log(JSON.stringify(output));
+            process.exit(0);
+            return;
+          }
+        }
+      }
+    }
+
     // Component reuse check (for Write only)
     if (toolName === 'Write' && filePath) {
       const componentResult = checkComponentReuse({
@@ -123,6 +164,28 @@ async function main() {
           allowed: !componentResult.blocked,
           blocked: componentResult.blocked
         };
+      }
+
+      // Strict adherence: File naming check (for Write)
+      // v5.0: Block AI from creating files with wrong naming convention
+      if (!coreResult.blocked) {
+        const strictAdherence = getStrictAdherence();
+        if (strictAdherence.isEnabled()) {
+          // Determine file type from path
+          const isComponent = /components?|ui/i.test(filePath);
+          const isApi = /api|routes/i.test(filePath);
+          const fileType = isComponent ? 'component' : isApi ? 'api' : 'generic';
+
+          const fileResult = strictAdherence.validateFileName(filePath, fileType);
+          if (fileResult.blocked) {
+            coreResult = {
+              allowed: false,
+              blocked: true,
+              reason: `Strict adherence: ${fileResult.reason}`,
+              message: `⚠️ BLOCKED: ${fileResult.reason}\n\n💡 ${fileResult.suggestion || 'Please use the correct naming convention.'}`
+            };
+          }
+        }
       }
     }
 
