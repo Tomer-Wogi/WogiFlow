@@ -130,6 +130,16 @@ ${productSection}
 **When** [invalid action or error condition]
 **Then** [error handling behavior]
 
+### WIRING (Required for UI components)
+**IMPORTANT**: If this feature creates new components, specify where they wire into:
+
+- **Component**: [NewComponent.tsx]
+- **Wires into**: [ParentComponent.tsx]
+- **Triggered by**: [onClick on table row / button click / route navigation]
+- **Verification**: [Component is imported AND rendered when trigger fires]
+
+*Delete this section if no new UI components are created.*
+
 ## Technical Notes
 - **Components**:
   - Use existing: [check app-map.md]
@@ -163,6 +173,17 @@ function generateSubTaskTemplate(parentId, subNum, objective, doneCriteria, deps
     ? deps.map(d => `- ${d}`).join('\n')
     : '- None (can start immediately)';
 
+  // Check if this looks like a UI component task
+  const isUIComponent = /component|ui|layout|modal|panel|dialog|form|page|screen/i.test(objective);
+
+  const wiringSection = isUIComponent ? `
+## Wiring Requirements
+- **Component file**: [path to created component]
+- **Wires into**: [parent component that imports this]
+- **Triggered by**: [user action that renders this component]
+- **Verification**: Component is imported AND rendered when triggered
+` : '';
+
   return {
     id: subTaskId,
     content: `# [${subTaskId}] ${objective}
@@ -172,10 +193,11 @@ ${objective}
 
 ## Done Criteria
 ${doneCriteria.map(c => `- [ ] ${c}`).join('\n')}
+${isUIComponent ? '- [ ] **WIRING**: Component is imported in parent\n- [ ] **WIRING**: Component renders when triggered' : ''}
 
 ## Dependencies
 ${depStr}
-
+${wiringSection}
 ## Scope
 S - Single focused objective
 
@@ -236,10 +258,11 @@ function analyzeForDecomposition(title) {
     );
   } else if (detectedPatterns.includes('ui')) {
     suggestedSubTasks.push(
-      { objective: 'Create component structure', criteria: ['Component renders', 'Props typed correctly'] },
+      { objective: 'Create component structure', criteria: ['Component renders', 'Props typed correctly'], isUIComponent: true },
       { objective: 'Add styling and variants', criteria: ['Styles applied', 'Variants work'] },
       { objective: 'Add interactivity', criteria: ['Events handled', 'State updates'] },
-      { objective: 'Handle edge cases', criteria: ['Empty state works', 'Error state works', 'Loading state works'] }
+      { objective: 'Handle edge cases', criteria: ['Empty state works', 'Error state works', 'Loading state works'] },
+      { objective: 'Wire component into parent', criteria: ['Component imported in parent', 'Component renders when triggered', 'User can access the component'], isWiringTask: true }
     );
   }
 
@@ -343,7 +366,8 @@ async function createStory(title, options = {}) {
     const subTaskIds = [];
 
     for (const sub of analysis.suggestedSubTasks) {
-      const deps = subNum > 1 ? [`${taskId}-${String(subNum - 1).padStart(2, '0')}`] : [];
+      // Use previous ID from array for clarity (avoids recalculating)
+      const deps = subTaskIds.length > 0 ? [subTaskIds[subTaskIds.length - 1]] : [];
       const subTask = generateSubTaskTemplate(taskId, subNum, sub.objective, sub.criteria, deps);
 
       const subTaskFile = path.join(targetDir, `${subTask.id}.md`);
@@ -353,7 +377,10 @@ async function createStory(title, options = {}) {
       result.subTasks.push({
         id: subTask.id,
         objective: sub.objective,
-        file: subTaskFile
+        file: subTaskFile,
+        // Propagate wiring flags from analysis
+        isUIComponent: sub.isUIComponent || false,
+        isWiringTask: sub.isWiringTask || false
       });
       subNum++;
     }
@@ -379,7 +406,7 @@ async function createStory(title, options = {}) {
           // Add sub-tasks with new format
           for (let i = 0; i < result.subTasks.length; i++) {
             const sub = result.subTasks[i];
-            ready.ready.push({
+            const taskEntry = {
               id: sub.id,
               title: sub.objective,
               type: 'sub-task',
@@ -388,7 +415,15 @@ async function createStory(title, options = {}) {
               priority,
               dependencies: i > 0 ? [result.subTasks[i - 1].id] : [],
               createdAt: new Date().toISOString()
-            });
+            };
+
+            // Add wiring metadata for UI components
+            if (sub.isUIComponent || sub.isWiringTask) {
+              taskEntry.requiresWiring = true;
+              taskEntry.wiringNotes = 'Component must be imported and rendered in parent';
+            }
+
+            ready.ready.push(taskEntry);
           }
 
           ready.lastUpdated = new Date().toISOString();

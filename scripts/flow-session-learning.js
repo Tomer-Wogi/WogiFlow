@@ -26,6 +26,9 @@ const {
   safeJsonParse
 } = require('./flow-utils');
 
+// Import shared parsing functions from log manager (DRY - avoid duplication)
+const { parseEntries } = require('./flow-log-manager');
+
 // ============================================================
 // Constants
 // ============================================================
@@ -79,41 +82,7 @@ function getSessionLearningConfig() {
 // Data Gathering
 // ============================================================
 
-/**
- * Parse request-log.md entries
- * Reuses pattern from flow-log-manager.js
- */
-function parseRequestLogEntries(content) {
-  const entries = [];
-  const entryRegex = /### (R-\d+)\s*\|\s*([^\n]+)\n([\s\S]*?)(?=### R-|\Z|$)/g;
-  let match;
-
-  while ((match = entryRegex.exec(content)) !== null) {
-    const id = match[1];
-    const dateStr = match[2].trim();
-    const body = match[3];
-
-    entries.push({
-      id,
-      date: dateStr,
-      type: extractField(body, 'Type'),
-      tags: extractField(body, 'Tags'),
-      request: extractField(body, 'Request'),
-      result: extractField(body, 'Result'),
-      files: extractField(body, 'Files')
-    });
-  }
-
-  return entries;
-}
-
-/**
- * Extract a field value from entry body
- */
-function extractField(text, field) {
-  const match = text.match(new RegExp(`\\*\\*${field}\\*\\*:\\s*(.+)`, 'i'));
-  return match ? match[1].trim() : null;
-}
+// Note: parseEntries is imported from flow-log-manager.js to avoid code duplication
 
 /**
  * Filter entries to today only
@@ -142,7 +111,7 @@ function gatherSessionData() {
   if (fileExists(REQUEST_LOG_PATH)) {
     try {
       const content = readFile(REQUEST_LOG_PATH, '');
-      const allEntries = parseRequestLogEntries(content);
+      const allEntries = parseEntries(content);
       data.requestLogEntries = filterTodayEntries(allEntries);
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Parse request-log: ${err.message}`);
@@ -324,6 +293,174 @@ function detectReviewPatterns(findings) {
       });
     }
   }
+
+  return patterns;
+}
+
+// ============================================================
+// Cross-Session Pattern Detection (v6.0)
+// ============================================================
+
+// Lazy-load dependencies to avoid circular imports
+let _getAllRequestEntries = null;
+let _calculateCombinedSimilarity = null;
+
+function getLogManager() {
+  if (!_getAllRequestEntries) {
+    const logManager = require('./flow-log-manager');
+    _getAllRequestEntries = logManager.getAllRequestEntries;
+    // Validate the export exists and is a function
+    if (typeof _getAllRequestEntries !== 'function') {
+      throw new Error('flow-log-manager.getAllRequestEntries is not available or not a function');
+    }
+  }
+  return _getAllRequestEntries;
+}
+
+function getSemanticMatch() {
+  if (!_calculateCombinedSimilarity) {
+    try {
+      const semanticMatch = require('./flow-semantic-match');
+      // Wrap to return 0-1 scale (original returns 0-100 percentage)
+      _calculateCombinedSimilarity = (a, b) => {
+        const result = semanticMatch.calculateCombinedSimilarity(a, b);
+        // Handle both object result and raw number
+        const score = typeof result === 'object' ? result.combined : result;
+        return score / 100; // Convert to 0-1 scale
+      };
+    } catch (err) {
+      // Fallback to simple string matching if semantic module not available
+      _calculateCombinedSimilarity = (a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        if (aLower === bLower) return 1.0;
+        if (aLower.includes(bLower) || bLower.includes(aLower)) return 0.7;
+        return 0;
+      };
+    }
+  }
+  return _calculateCombinedSimilarity;
+}
+
+/**
+ * Normalize request text for comparison
+ * Removes quotes, punctuation, and normalizes whitespace
+ */
+function normalizeRequest(text) {
+  if (!text) return '';
+  return text
+    .replace(/^["']|["']$/g, '')  // Remove surrounding quotes
+    .replace(/[^\w\s:/.@-]/g, ' ')  // Keep technical punctuation (:, /, ., @, -)
+    .replace(/\s+/g, ' ')         // Normalize whitespace
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Group similar requests together using semantic matching
+ */
+function groupSimilarRequests(entries, similarityThreshold = 0.7) {
+  const calculateSimilarity = getSemanticMatch();
+  const groups = [];
+  const used = new Set();
+
+  for (let i = 0; i < entries.length; i++) {
+    if (used.has(i)) continue;
+
+    const entry = entries[i];
+    const normalizedRequest = normalizeRequest(entry.request);
+    if (!normalizedRequest) continue;
+
+    const group = {
+      representativeRequest: entry.request,
+      normalizedRequest,
+      entries: [entry],
+      dates: [entry.date],
+      ids: [entry.id]
+    };
+
+    // Find similar entries
+    for (let j = i + 1; j < entries.length; j++) {
+      if (used.has(j)) continue;
+
+      const otherEntry = entries[j];
+      const otherNormalized = normalizeRequest(otherEntry.request);
+      if (!otherNormalized) continue;
+
+      const similarity = calculateSimilarity(normalizedRequest, otherNormalized);
+
+      if (similarity >= similarityThreshold) {
+        group.entries.push(otherEntry);
+        group.dates.push(otherEntry.date);
+        group.ids.push(otherEntry.id);
+        used.add(j);
+      }
+    }
+
+    used.add(i);
+    groups.push(group);
+  }
+
+  return groups;
+}
+
+/**
+ * Detect patterns across multiple sessions
+ *
+ * Scans request-log entries across lookback period and groups similar requests.
+ * Returns patterns that occurred minOccurrences or more times.
+ *
+ * @param {Object} options - Configuration
+ * @param {number} options.lookbackDays - How many days to scan (default: 30)
+ * @param {number} options.minOccurrences - Minimum occurrences to report (default: 3)
+ * @param {number} options.similarityThreshold - Semantic similarity threshold (default: 0.7)
+ * @returns {Array} Array of cross-session patterns
+ */
+function detectCrossSessionPatterns(options = {}) {
+  const config = getConfig();
+  const crossSessionConfig = config?.crossSessionLearning || {};
+
+  const {
+    lookbackDays = crossSessionConfig.lookbackDays || 30,
+    minOccurrences = crossSessionConfig.minOccurrences || 3,
+    similarityThreshold = crossSessionConfig.similarityThreshold || 0.7
+  } = options;
+
+  // Get all entries within lookback period
+  const getAllEntries = getLogManager();
+  const entries = getAllEntries({ lookbackDays, includeArchives: true });
+
+  if (entries.length === 0) {
+    return [];
+  }
+
+  // Group similar requests
+  const groups = groupSimilarRequests(entries, similarityThreshold);
+
+  // Filter to patterns with enough occurrences
+  const patterns = [];
+
+  for (const group of groups) {
+    if (group.entries.length >= minOccurrences) {
+      // Count unique sessions (by date)
+      const uniqueDates = new Set(group.dates.map(d => d?.slice(0, 10))).size;
+
+      patterns.push({
+        representativeRequest: group.representativeRequest,
+        normalizedRequest: group.normalizedRequest,
+        count: group.entries.length,
+        sessionCount: uniqueDates,
+        firstSeen: group.dates[group.dates.length - 1], // Oldest
+        lastSeen: group.dates[0], // Most recent
+        entryIds: group.ids,
+        confidence: calculateConfidence(group.entries.length),
+        type: 'cross-session-request'
+      });
+    }
+  }
+
+  // Sort by count descending
+  patterns.sort((a, b) => b.count - a.count);
 
   return patterns;
 }
@@ -763,6 +900,7 @@ module.exports = {
   analyzeSessionLearnings,
   gatherSessionData,
   detectPatterns,
+  detectCrossSessionPatterns,  // v6.0 cross-session analysis
   generateLearnings,
   applyLearnings,
   displayLearnings,

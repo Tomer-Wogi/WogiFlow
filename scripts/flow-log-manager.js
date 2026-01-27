@@ -361,6 +361,126 @@ function matchesQuery(entry, queryLower) {
   return searchable.includes(queryLower);
 }
 
+/**
+ * Get all request entries within a lookback period
+ * Used for cross-session pattern detection
+ *
+ * @param {Object} options - Configuration options
+ * @param {number} options.lookbackDays - How many days back to scan (default: 30)
+ * @param {boolean} options.includeArchives - Whether to search archives (default: true)
+ * @returns {Array} Array of entries with { id, date, request, type, tags, result, files, source }
+ */
+function getAllRequestEntries(options = {}) {
+  const {
+    lookbackDays = 30,
+    includeArchives = true
+  } = options;
+
+  const entries = [];
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
+
+  /**
+   * Parse date string from entry (handles "YYYY-MM-DD" and "YYYY-MM-DD HH:MM")
+   */
+  function parseEntryDate(dateStr) {
+    if (!dateStr) return null;
+    // Extract just the date part (first 10 chars)
+    const datePart = dateStr.trim().slice(0, 10);
+    const parsed = new Date(datePart);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  /**
+   * Check if entry is within lookback period
+   */
+  function isWithinLookback(entry) {
+    const entryDate = parseEntryDate(entry.date);
+    if (!entryDate) {
+      // Log for debugging - helps identify entries with malformed dates
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] Excluding entry with unparseable date: ${entry.id} - "${entry.date}"`);
+      }
+      return false; // Exclude entries with unparseable dates
+    }
+    return entryDate >= cutoffDate;
+  }
+
+  // Load current log
+  if (fileExists(LOG_PATH)) {
+    try {
+      const content = readFile(LOG_PATH, '');
+      const currentEntries = parseEntries(content);
+
+      for (const entry of currentEntries) {
+        if (isWithinLookback(entry)) {
+          entries.push({ ...entry, source: 'current' });
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] Failed to read current log: ${err.message}`);
+      }
+    }
+  }
+
+  // Load archives
+  if (includeArchives && dirExists(ARCHIVE_DIR)) {
+    try {
+      const archiveFiles = fs.readdirSync(ARCHIVE_DIR)
+        .filter(f => f.startsWith('request-log-') && f.endsWith('.md'))
+        .sort()
+        .reverse(); // Most recent first
+
+      for (const file of archiveFiles) {
+        // Quick filter by filename (request-log-YYYY-MM.md)
+        const fileMonth = file.match(/request-log-(\d{4}-\d{2})\.md/);
+        if (fileMonth) {
+          const archiveDate = new Date(fileMonth[1] + '-01');
+          // Skip archives older than lookback + 1 month (buffer for partial months)
+          const archiveCutoff = new Date(cutoffDate);
+          archiveCutoff.setMonth(archiveCutoff.getMonth() - 1);
+          if (archiveDate < archiveCutoff) {
+            continue;
+          }
+        }
+
+        const archivePath = path.join(ARCHIVE_DIR, file);
+        try {
+          const content = readFile(archivePath, '');
+          const archiveEntries = parseEntries(content);
+
+          for (const entry of archiveEntries) {
+            if (isWithinLookback(entry)) {
+              entries.push({ ...entry, source: file });
+            }
+          }
+        } catch (err) {
+          if (process.env.DEBUG) {
+            console.error(`[DEBUG] Failed to read archive ${file}: ${err.message}`);
+          }
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] Failed to read archive directory: ${err.message}`);
+      }
+    }
+  }
+
+  // Sort by date descending (most recent first)
+  entries.sort((a, b) => {
+    const dateA = parseEntryDate(a.date);
+    const dateB = parseEntryDate(b.date);
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    return dateB - dateA;
+  });
+
+  return entries;
+}
+
 // ============================================================
 // Statistics
 // ============================================================
@@ -548,6 +668,9 @@ module.exports = {
   // Search
   searchEntries,
   matchesQuery,
+
+  // Cross-session analysis (v6.0)
+  getAllRequestEntries,
 
   // Statistics
   getLogStats,

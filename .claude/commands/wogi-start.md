@@ -440,6 +440,74 @@ Not "did I write code for this" but "does the code WORK as specified?"
 
 ---
 
+### Step 3.6: Integration Wiring Validation (MANDATORY)
+
+**This step catches "orphan components" - files that exist but aren't wired into the app.**
+
+After criteria verification, BEFORE running quality gates:
+
+```bash
+node scripts/flow-wiring-verifier.js wf-XXXXXXXX
+```
+
+This checks:
+1. **Parse the spec for created files** (components, hooks, utilities)
+2. **For EACH created file**, verify it's actually used:
+   ```
+   ┌─────────────────────────────────────────────────────────┐
+   │  INTEGRATION WIRING CHECK                               │
+   ├─────────────────────────────────────────────────────────┤
+   │                                                         │
+   │  □ src/components/EstimateDetailPanel.tsx               │
+   │    → Imported by: AdminApprovalQueue.tsx                │
+   │    → Status: ✓ WIRED                                    │
+   │                                                         │
+   │  □ src/hooks/useEstimate.ts                             │
+   │    → Imported by: (none)                                │
+   │    → Status: ✗ NOT WIRED - orphan component             │
+   │                                                         │
+   │  □ src/utils/formatEstimate.ts                          │
+   │    → Entry point: No                                    │
+   │    → Imported by: (none)                                │
+   │    → Status: ✗ NOT WIRED - orphan utility               │
+   │                                                         │
+   └─────────────────────────────────────────────────────────┘
+   ```
+
+**Wiring Rules:**
+- Entry points (index.ts, App.tsx, *.config.ts, test files) don't need imports
+- React components MUST be imported in at least one parent
+- Hooks MUST be called from at least one component
+- Utilities MUST be imported somewhere
+
+**If ANY file is NOT wired:**
+1. Identify where it should be imported
+2. Add the import statement
+3. Wire up the usage (onClick handler, render call, etc.)
+4. Re-run wiring verification
+5. Only proceed when ALL files show ✓ WIRED
+
+**Common Wiring Patterns:**
+```typescript
+// Side panel component - wire to parent with state + onClick
+import { EstimateDetailPanel } from './EstimateDetailPanel';
+
+const [selectedEstimate, setSelectedEstimate] = useState(null);
+const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+<TableRow onClick={() => { setSelectedEstimate(estimate); setIsPanelOpen(true); }}>
+
+<EstimateDetailPanel
+  estimate={selectedEstimate}
+  isOpen={isPanelOpen}
+  onClose={() => setIsPanelOpen(false)}
+/>
+```
+
+**This prevents the #1 bug from comprehensive reviews: components created but never accessible.**
+
+---
+
 ### Step 4: Run Quality Gates + Final Verification
 
 **MANDATORY FIRST CHECK - Spec Verification Gate:**

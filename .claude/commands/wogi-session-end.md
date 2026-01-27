@@ -47,3 +47,53 @@ Progress.md handoff format:
 - API endpoint for preferences not ready yet
 - Decided to use shadcn/ui for modal
 ```
+
+## Cross-Session Pattern Detection (v6.0)
+
+At session end, the system analyzes request history across multiple sessions (default: 30 days) to detect repeated patterns.
+
+### What It Detects
+
+- Requests made 3+ times across different sessions
+- Similar requests grouped by semantic matching (e.g., "run on localhost:3000" and "switch to port 3000")
+- Development preferences, code style requests, workflow corrections
+
+### Example Output
+
+```
+--- Cross-Session Patterns Detected ---
+
+1. "Run the development server on localhost:3000"
+   Occurrences: 5 times across 4 session(s)
+   First seen: 2026-01-10, Last seen: 2026-01-27
+   Category: Development Setup
+
+Would you like to enforce any of these patterns as permanent rules?
+
+Tip: Tell Claude "enforce pattern 1" or "enforce all" to make these permanent rules.
+```
+
+### Enforcing Patterns
+
+When you say "enforce pattern 1" or similar:
+1. Rule is added to `decisions.md` under the appropriate category
+2. Rule is synced to `.claude/rules/` for Claude Code to auto-load
+3. Pattern is tracked in `feedback-patterns.md` promotion history
+
+### Configuration
+
+In `.workflow/config.json`:
+```json
+"crossSessionLearning": {
+  "enabled": true,
+  "lookbackDays": 30,
+  "minOccurrences": 3,
+  "similarityThreshold": 0.5,
+  "autoPromptOnSessionEnd": true,
+  "saveTo": "both"  // "decisions", "rules", or "both"
+}
+```
+
+### Disabling
+
+Set `"enabled": false` in the config to disable cross-session pattern detection.

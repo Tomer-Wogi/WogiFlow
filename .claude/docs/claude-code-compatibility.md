@@ -61,6 +61,7 @@ flow parallel check  # See available parallel tasks
 | 1.0.40+ | 2.1.0+ | Full compatibility |
 | 1.0.44+ | 2.1.7+ | TodoWrite sync, OOM fixes |
 | 1.0.45+ | 2.1.19+ | Native task system awareness |
+| 1.0.46+ | 2.1.20+ | Task deletion, improved compaction |
 
 ### Environment Variables (2.1.19+)
 
@@ -90,6 +91,49 @@ CLAUDE_CODE_ENABLE_TASKS=false  # Disables native task UI
 - **Worktree session handling**: Sessions now update correctly when resuming from git worktrees
 - **Backgrounded hooks**: Hooks that spawn background processes no longer block the session
 - **Skills without permissions**: Skills that don't require extra permissions run without approval prompts
+
+### Features in 2.1.20+
+
+- **Task deletion**: Claude Code now supports `status: "deleted"` in TaskUpdate to remove tasks from the task list
+- **Improved compaction**: Session resume now correctly loads compact summary instead of full history
+- **Additional CLAUDE.md loading**: Load rules from multiple directories with `--add-dir` flag (requires `CLAUDE_CODE_ADDITIONAL_DIRECTORIES_CLAUDE_MD=1`)
+- **PR review status**: Prompt footer shows PR state (approved, changes requested, pending, draft)
+- **Background agent permissions**: Agents now prompt for tool permissions before launching (security improvement)
+- **Config backup rotation**: Config backups are timestamped and rotated (keeps 5 most recent)
+
+### Task Deletion: Two Systems
+
+Claude Code and Wogi Flow manage tasks differently:
+
+| System | Scope | Task Deletion Behavior |
+|--------|-------|------------------------|
+| **Claude Code** (TaskCreate/Update) | Single conversation | Safe to delete - ephemeral progress UI |
+| **Wogi Flow** (ready.json) | Cross-session | Use `cancelTask()` to preserve history |
+
+**When to use Claude Code task deletion:**
+- Ephemeral subtasks created during execution
+- Progress indicators that are no longer relevant
+- Cleanup after task completion
+
+**When to use Wogi Flow task cancellation:**
+- Persistent workflow tasks that need history preserved
+- Tasks where work was partially done
+- Tasks superseded by other work
+
+**Wogi Flow cancellation preserves:**
+- Task metadata in `recentlyCompleted`
+- Cancellation reason and timestamp
+- Whether work was done
+- Searchable history for learning
+
+Example:
+```javascript
+const { cancelTask } = require('./flow-utils');
+
+// Cancel a task with preservation
+await cancelTask('wf-123', 'superseded', false);
+// Reasons: 'superseded', 'duplicate', 'requirements_changed', 'user_cancelled'
+```
 
 ## Best Practices
 
@@ -201,4 +245,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-27*

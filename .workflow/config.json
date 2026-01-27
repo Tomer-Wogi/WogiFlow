@@ -327,7 +327,8 @@
         "loopComplete",
         "tests",
         "appMapUpdate",
-        "requestLogEntry"
+        "requestLogEntry",
+        "integrationWiring"
       ],
       "optional": [
         "review",
@@ -348,7 +349,8 @@
       "require": [
         "loopComplete",
         "tests",
-        "noNewFeatures"
+        "noNewFeatures",
+        "smokeTest"
       ],
       "optional": [
         "review"
@@ -526,6 +528,14 @@
     "analyzeReviews": true,
     "analyzeRetries": true,
     "analyzeFixes": true
+  },
+  "crossSessionLearning": {
+    "enabled": true,
+    "lookbackDays": 30,
+    "minOccurrences": 3,
+    "similarityThreshold": 0.5,
+    "autoPromptOnSessionEnd": true,
+    "saveTo": "both"
   },
   "memory": {
     "enabled": true,

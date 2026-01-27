@@ -53,6 +53,14 @@ try {
   // Session learning module not available
 }
 
+// v6.0 cross-session pattern enforcement
+let patternEnforcer = null;
+try {
+  patternEnforcer = require('./flow-pattern-enforcer');
+} catch (err) {
+  // Pattern enforcer module not available
+}
+
 // v2.6.0 model selection persistence
 let modelConfig = null;
 try {
@@ -215,6 +223,12 @@ function analyzeSessionForLearnings() {
       apply: true
     });
 
+    // Validate result structure before accessing properties
+    if (!result || typeof result !== 'object') {
+      if (process.env.DEBUG) console.error('[DEBUG] analyzeSessionLearnings returned invalid result');
+      return;
+    }
+
     if (result.learnings && result.learnings.length > 0) {
       if (result.applied && result.applied.length > 0) {
         success(`Applied ${result.applied.length} high-confidence learning(s)`);
@@ -225,6 +239,56 @@ function analyzeSessionForLearnings() {
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Session learning: ${err.message}`);
+  }
+}
+
+/**
+ * Analyze cross-session patterns (v6.0)
+ * Detects repeated requests across multiple sessions and offers to enforce them
+ *
+ * @returns {Object|null} Patterns to prompt user about, or null if none found
+ */
+function analyzeCrossSessionPatterns() {
+  if (!sessionLearning || !patternEnforcer) return null;
+
+  const config = getConfig();
+  const crossSessionConfig = config.crossSessionLearning || {};
+
+  // Check if enabled (default: true)
+  if (crossSessionConfig.enabled === false) return null;
+
+  try {
+    // Validate and clamp similarity threshold to 0-1 range
+    let threshold = crossSessionConfig.similarityThreshold ?? 0.5;
+    if (typeof threshold !== 'number' || isNaN(threshold) || threshold < 0 || threshold > 1) {
+      threshold = 0.5;
+    }
+
+    const patterns = sessionLearning.detectCrossSessionPatterns({
+      lookbackDays: crossSessionConfig.lookbackDays || 30,
+      minOccurrences: crossSessionConfig.minOccurrences || 3,
+      similarityThreshold: threshold
+    });
+
+    if (patterns.length === 0) {
+      return null;
+    }
+
+    console.log('');
+    console.log(color('yellow', 'Cross-Session Patterns Detected'));
+    console.log(patternEnforcer.formatCrossSessionPatternsForDisplay(patterns));
+
+    // Return patterns for the prompt system to handle
+    return {
+      patterns,
+      promptUser: true,
+      message: 'The above patterns have been detected across multiple sessions. Would you like to enforce any as permanent rules?'
+    };
+  } catch (err) {
+    // Log error at warn level so issues are visible
+    warn(`Cross-session pattern analysis failed: ${err.message}`);
+    if (process.env.DEBUG) console.error(`[DEBUG] Stack: ${err.stack}`);
+    return null;
   }
 }
 
@@ -664,9 +728,25 @@ async function cleanupStaleTasks() {
 
     // Find stale tasks (auto-created with no matching uncommitted files)
     const staleTasks = autoCreatedTasks.filter(task => {
-      // Extract expected filename from title (e.g., "Fix flow-utils.js" -> "flow-utils.js")
-      const match = task.title?.match(/^(?:Fix|Create|Update|Edit)\s+(.+)$/i);
-      if (!match) return false;
+      // Extract expected filename from title
+      // Support multiple patterns: "Fix flow-utils.js", "Update scripts/flow-utils.js", etc.
+      const title = task.title || '';
+
+      // Try common action prefixes first
+      let match = title.match(/^(?:Fix|Create|Update|Edit|Modify|Change|Add|Remove|Delete|Refactor)\s+(.+)$/i);
+
+      // Fallback: extract anything that looks like a file path
+      if (!match) {
+        match = title.match(/([^\s]+\.(js|ts|json|md|css|html|jsx|tsx|yml|yaml))(?:\s|$)/i);
+      }
+
+      if (!match) {
+        // Log skipped tasks for debugging
+        if (process.env.DEBUG) {
+          console.log(`[DEBUG] Skipped task - could not extract filename: "${title}"`);
+        }
+        return false;
+      }
 
       const expectedFilename = match[1].trim();
 
@@ -787,6 +867,15 @@ async function main() {
 
   // v2.4.0: Analyze session for learnings
   analyzeSessionForLearnings();
+
+  // v6.0: Analyze cross-session patterns
+  const crossSessionResult = analyzeCrossSessionPatterns();
+  if (crossSessionResult && crossSessionResult.patterns.length > 0) {
+    // Patterns are displayed by the function
+    // Claude will see this output and can use AskUserQuestion to prompt for enforcement
+    console.log('');
+    console.log(color('dim', 'Tip: Tell Claude "enforce pattern 1" or "enforce all" to make these permanent rules.'));
+  }
 
   // v1.7.0: Save session summary
   saveSessionSummaryToState();

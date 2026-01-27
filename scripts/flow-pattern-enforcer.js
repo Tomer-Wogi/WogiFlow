@@ -21,7 +21,19 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, getConfig } = require('./flow-utils');
+const {
+  getProjectRoot,
+  getConfig,
+  PATHS,
+  fileExists,
+  readFile,
+  writeFile,
+  withLockSync,
+  info,
+  success,
+  warn,
+  error
+} = require('./flow-utils');
 
 // ============================================================
 // Configuration
@@ -41,11 +53,18 @@ const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 function loadDecisionPatterns(projectRoot = PROJECT_ROOT) {
   const decisionsPath = path.join(projectRoot, '.workflow', 'state', 'decisions.md');
 
-  if (!fs.existsSync(decisionsPath)) {
+  // Read file directly in try-catch (no pre-check to avoid TOCTOU race condition)
+  let content;
+  try {
+    content = fs.readFileSync(decisionsPath, 'utf-8');
+  } catch (err) {
+    // File doesn't exist or can't be read - this is normal for new projects
+    if (err.code !== 'ENOENT') {
+      warn(`Could not read decisions.md: ${err.message}`);
+    }
     return [];
   }
 
-  const content = fs.readFileSync(decisionsPath, 'utf-8');
   const patterns = [];
 
   // Extract each section as a pattern category
@@ -77,11 +96,18 @@ function loadDecisionPatterns(projectRoot = PROJECT_ROOT) {
 function loadAppMapComponents(projectRoot = PROJECT_ROOT) {
   const appMapPath = path.join(projectRoot, '.workflow', 'state', 'app-map.md');
 
-  if (!fs.existsSync(appMapPath)) {
+  // Read file directly in try-catch (no pre-check to avoid TOCTOU race condition)
+  let content;
+  try {
+    content = fs.readFileSync(appMapPath, 'utf-8');
+  } catch (err) {
+    // File doesn't exist or can't be read - this is normal for new projects
+    if (err.code !== 'ENOENT') {
+      warn(`Could not read app-map.md: ${err.message}`);
+    }
     return [];
   }
 
-  const content = fs.readFileSync(appMapPath, 'utf-8');
   const components = [];
 
   // Extract table rows (| Component | Variants | ... |)
@@ -151,16 +177,26 @@ function loadSkillPatterns(projectRoot, fileExtension, taskDescription = '') {
 
   const patterns = { skillName, patterns: null, antiPatterns: null };
 
-  // Load patterns
+  // Load patterns (no pre-check to avoid TOCTOU race condition)
   const patternsPath = path.join(skillDir, 'knowledge', 'patterns.md');
-  if (fs.existsSync(patternsPath)) {
+  try {
     patterns.patterns = fs.readFileSync(patternsPath, 'utf-8');
+  } catch (err) {
+    // File doesn't exist - this is normal, skill may not have patterns
+    if (err.code !== 'ENOENT' && process.env.DEBUG) {
+      console.error(`[DEBUG] Failed to read patterns.md: ${err.message}`);
+    }
   }
 
-  // Load anti-patterns
+  // Load anti-patterns (no pre-check to avoid TOCTOU race condition)
   const antiPatternsPath = path.join(skillDir, 'knowledge', 'anti-patterns.md');
-  if (fs.existsSync(antiPatternsPath)) {
+  try {
     patterns.antiPatterns = fs.readFileSync(antiPatternsPath, 'utf-8');
+  } catch (err) {
+    // File doesn't exist - this is normal, skill may not have anti-patterns
+    if (err.code !== 'ENOENT' && process.env.DEBUG) {
+      console.error(`[DEBUG] Failed to read anti-patterns.md: ${err.message}`);
+    }
   }
 
   return patterns;
@@ -496,6 +532,305 @@ function generateSessionSummary(projectRoot = PROJECT_ROOT) {
 }
 
 // ============================================================
+// Cross-Session Pattern Enforcement (v6.0)
+// ============================================================
+
+// Rule categories based on request content keywords
+const CROSS_SESSION_CATEGORY_KEYWORDS = {
+  'Development Setup': ['localhost', 'port', 'server', 'run', 'start', 'dev', 'development', 'npm', 'yarn'],
+  'Code Style': ['naming', 'format', 'style', 'convention', 'lint', 'prettier', 'eslint'],
+  'Security': ['security', 'auth', 'password', 'token', 'secret', 'credential', 'permission'],
+  'Architecture': ['architecture', 'structure', 'pattern', 'module', 'component', 'service'],
+  'Testing': ['test', 'spec', 'jest', 'mocha', 'coverage', 'e2e', 'unit'],
+  'Git & Workflow': ['commit', 'branch', 'merge', 'pr', 'push', 'git']
+};
+
+/**
+ * Detect the best category for a pattern based on its request text
+ */
+function detectCrossSessionCategory(request) {
+  const requestLower = request.toLowerCase();
+
+  for (const [category, keywords] of Object.entries(CROSS_SESSION_CATEGORY_KEYWORDS)) {
+    for (const keyword of keywords) {
+      if (requestLower.includes(keyword)) {
+        return category;
+      }
+    }
+  }
+
+  return 'General';
+}
+
+/**
+ * Generate a rule slug from request text
+ */
+function generateCrossSessionRuleSlug(request) {
+  return request
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, '-')
+    .slice(0, 50)
+    .replace(/-+$/, '');
+}
+
+/**
+ * Generate rule text for decisions.md from a cross-session pattern
+ */
+function generateCrossSessionRule(pattern, userReason = '') {
+  const today = new Date().toISOString().split('T')[0];
+  const category = detectCrossSessionCategory(pattern.representativeRequest);
+  const slug = generateCrossSessionRuleSlug(pattern.representativeRequest);
+
+  const requestText = pattern.representativeRequest
+    .replace(/^["']|["']$/g, '')
+    .trim();
+
+  const rule = `
+### ${slug} (${today})
+**Source**: Cross-session pattern (${pattern.count} occurrences across ${pattern.sessionCount} sessions)
+**Category**: ${category}
+
+${requestText}
+
+${userReason ? `**Reason**: ${userReason}` : ''}
+`.trim();
+
+  return { rule, category, slug };
+}
+
+/**
+ * Add a cross-session rule to decisions.md
+ * Uses file locking to prevent race conditions with concurrent writes
+ */
+function addCrossSessionRuleToDecisions(rule, category) {
+  const decisionsPath = path.join(PATHS.state, 'decisions.md');
+
+  try {
+    // Use file locking to prevent race conditions
+    return withLockSync(decisionsPath, () => {
+      if (!fileExists(decisionsPath)) {
+        const template = `# Project Decisions
+
+This document captures project-level coding rules and patterns.
+
+## Development Setup
+
+## Code Style
+
+## Security
+
+## Architecture
+
+## Testing
+
+## Git & Workflow
+
+## General
+
+`;
+        writeFile(decisionsPath, template);
+      }
+
+      let content = readFile(decisionsPath, '');
+
+      const sectionHeader = `## ${category}`;
+      const sectionIndex = content.indexOf(sectionHeader);
+
+      if (sectionIndex === -1) {
+        // Category doesn't exist - add it with the rule
+        content += `\n${sectionHeader}\n\n${rule}\n`;
+      } else {
+        const afterSection = content.slice(sectionIndex + sectionHeader.length);
+        const nextSectionMatch = afterSection.match(/\n## /);
+
+        if (nextSectionMatch) {
+          const insertPoint = sectionIndex + sectionHeader.length + nextSectionMatch.index;
+          content = content.slice(0, insertPoint) + '\n' + rule + '\n' + content.slice(insertPoint);
+        } else {
+          content += '\n' + rule + '\n';
+        }
+      }
+
+      writeFile(decisionsPath, content);
+      return { success: true };
+    });
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Add a cross-session rule to .claude/rules/ directory
+ * Uses PROJECT_ROOT for consistent path resolution
+ */
+function addCrossSessionRuleToClaudeRules(pattern, category) {
+  try {
+    // Validate pattern has required fields
+    if (!pattern?.representativeRequest) {
+      return { success: false, error: 'Invalid pattern: missing representativeRequest' };
+    }
+
+    const categoryToDir = {
+      'Development Setup': 'workflow',
+      'Code Style': 'code-style',
+      'Security': 'security',
+      'Architecture': 'architecture',
+      'Testing': 'testing',
+      'Git & Workflow': 'workflow',
+      'General': 'general'
+    };
+
+    const subdir = categoryToDir[category] || 'general';
+    // Use PROJECT_ROOT instead of process.cwd() for consistent path resolution
+    const rulesDir = path.join(PROJECT_ROOT, '.claude', 'rules', subdir);
+
+    // Validate path is within project (defense in depth)
+    // Use path.sep check to prevent prefix-matching attacks (e.g., /project vs /project-evil)
+    const resolvedRulesDir = path.resolve(rulesDir);
+    const normalizedRoot = PROJECT_ROOT.endsWith(path.sep) ? PROJECT_ROOT : PROJECT_ROOT + path.sep;
+    if (!resolvedRulesDir.startsWith(normalizedRoot) && resolvedRulesDir !== PROJECT_ROOT) {
+      return { success: false, error: 'Invalid rules directory: outside project' };
+    }
+
+    if (!fs.existsSync(rulesDir)) {
+      fs.mkdirSync(rulesDir, { recursive: true });
+    }
+
+    const slug = generateCrossSessionRuleSlug(pattern.representativeRequest);
+    const rulePath = path.join(rulesDir, `${slug}.md`);
+
+    // Validate rule path is within rules directory
+    // Use path.sep check to prevent prefix-matching attacks
+    const resolvedRulePath = path.resolve(rulePath);
+    const normalizedRulesDir = resolvedRulesDir.endsWith(path.sep) ? resolvedRulesDir : resolvedRulesDir + path.sep;
+    if (!resolvedRulePath.startsWith(normalizedRulesDir) && resolvedRulePath !== resolvedRulesDir) {
+      return { success: false, error: 'Invalid rule path: potential traversal' };
+    }
+
+    // Escape markdown special characters in user content
+    const requestText = pattern.representativeRequest
+      .replace(/^["']|["']$/g, '')
+      .replace(/`/g, '\\`')           // Escape backticks
+      .replace(/</g, '&lt;')          // Escape angle brackets
+      .replace(/>/g, '&gt;')
+      .trim();
+
+    const alwaysApply = ['Development Setup', 'Security'].includes(category);
+
+    // Escape description for YAML frontmatter (handle all YAML special chars)
+    const escapedDescription = requestText
+      .slice(0, 100)
+      .replace(/\\/g, '\\\\')         // Escape backslashes first
+      .replace(/"/g, '\\"')           // Escape double quotes
+      .replace(/\n/g, '\\n')          // Escape newlines
+      .replace(/\r/g, '\\r')          // Escape carriage returns
+      .replace(/\t/g, '\\t');         // Escape tabs
+
+    const content = `---
+alwaysApply: ${alwaysApply}
+description: "${escapedDescription}"
+---
+
+# ${category} Rule
+
+${requestText}
+
+**Source**: Detected from ${pattern.count} occurrences across ${pattern.sessionCount} sessions.
+`;
+
+    writeFile(rulePath, content);
+    return { success: true, path: rulePath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Enforce a cross-session pattern by creating rules
+ *
+ * @param {Object} pattern - The pattern to enforce
+ * @param {Object} options - Enforcement options
+ * @param {string} options.reason - User-provided reason for the rule
+ * @param {string} options.saveTo - Where to save: 'decisions', 'rules', or 'both'
+ * @returns {Object} Result with success status and details
+ */
+function enforceCrossSessionPattern(pattern, options = {}) {
+  const config = getConfig();
+  const crossSessionConfig = config?.crossSessionLearning || {};
+
+  const {
+    reason = '',
+    saveTo = crossSessionConfig.saveTo || 'both'
+  } = options;
+
+  const results = {
+    success: true,
+    errors: [],
+    targets: []
+  };
+
+  const { rule, category } = generateCrossSessionRule(pattern, reason);
+
+  if (saveTo === 'decisions' || saveTo === 'both') {
+    const decisionsResult = addCrossSessionRuleToDecisions(rule, category);
+    if (decisionsResult.success) {
+      results.targets.push('decisions.md');
+      info(`Added rule to decisions.md under "${category}"`);
+    } else {
+      results.errors.push(`decisions.md: ${decisionsResult.error}`);
+    }
+  }
+
+  if (saveTo === 'rules' || saveTo === 'both') {
+    const rulesResult = addCrossSessionRuleToClaudeRules(pattern, category);
+    if (rulesResult.success) {
+      results.targets.push(rulesResult.path);
+      info(`Created rule at ${rulesResult.path}`);
+    } else {
+      results.errors.push(`.claude/rules/: ${rulesResult.error}`);
+    }
+  }
+
+  if (results.errors.length > 0) {
+    results.success = false;
+    for (const err of results.errors) {
+      error(err);
+    }
+  } else {
+    success(`Pattern enforced: "${pattern.representativeRequest.slice(0, 50)}..."`);
+  }
+
+  return results;
+}
+
+/**
+ * Format cross-session patterns for display to user
+ */
+function formatCrossSessionPatternsForDisplay(patterns) {
+  if (patterns.length === 0) {
+    return 'No cross-session patterns detected.';
+  }
+
+  let output = '--- Cross-Session Patterns Detected ---\n\n';
+
+  for (let i = 0; i < patterns.length; i++) {
+    const p = patterns[i];
+    const category = detectCrossSessionCategory(p.representativeRequest);
+
+    output += `${i + 1}. "${p.representativeRequest}"\n`;
+    output += `   Occurrences: ${p.count} times across ${p.sessionCount} session(s)\n`;
+    output += `   First seen: ${p.firstSeen}, Last seen: ${p.lastSeen}\n`;
+    output += `   Category: ${category}\n`;
+    output += '\n';
+  }
+
+  output += 'Would you like to enforce any of these patterns as permanent rules?\n';
+
+  return output;
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -515,7 +850,17 @@ module.exports = {
   validateCitations,
 
   // Session helpers
-  generateSessionSummary
+  generateSessionSummary,
+
+  // Cross-session pattern enforcement (v6.0)
+  CROSS_SESSION_CATEGORY_KEYWORDS,
+  detectCrossSessionCategory,
+  generateCrossSessionRuleSlug,
+  generateCrossSessionRule,
+  addCrossSessionRuleToDecisions,
+  addCrossSessionRuleToClaudeRules,
+  enforceCrossSessionPattern,
+  formatCrossSessionPatternsForDisplay
 };
 
 // ============================================================
@@ -561,7 +906,13 @@ if (require.main === module) {
         process.exit(1);
       }
 
-      const code = fs.readFileSync(filePath, 'utf-8');
+      let code;
+      try {
+        code = fs.readFileSync(filePath, 'utf-8');
+      } catch (err) {
+        console.error(`Error: Could not read file '${filePath}': ${err.message}`);
+        process.exit(1);
+      }
       const patterns = extractRelevantPatterns({ file: filePath, description: '' });
       const result = validateAgainstPatterns(code, patterns, [filePath]);
 

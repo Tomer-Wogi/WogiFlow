@@ -1363,6 +1363,77 @@ async function moveTaskAsync(taskId, fromList, toList) {
 }
 
 /**
+ * Cancel a task with knowledge preservation
+ *
+ * Moves task to recentlyCompleted with cancellation metadata instead of deleting.
+ * This preserves the task history for future reference and learning.
+ *
+ * @param {string} taskId - Task ID to cancel
+ * @param {string} reason - Cancellation reason: 'superseded', 'duplicate', 'requirements_changed', 'user_cancelled'
+ * @param {boolean} workDone - Whether any work was done on this task
+ * @returns {Promise<{success: boolean, task?: object, error?: string}>}
+ */
+async function cancelTask(taskId, reason, workDone = false) {
+  return withLock(PATHS.ready, () => {
+    const data = getReadyData();
+    const lists = ['ready', 'inProgress', 'blocked', 'backlog'];
+
+    let task = null;
+    let fromList = null;
+
+    // Find the task in any active list
+    for (const listName of lists) {
+      const list = data[listName] || [];
+      for (let i = 0; i < list.length; i++) {
+        const t = list[i];
+        const id = typeof t === 'string' ? t : t.id;
+        if (id === taskId) {
+          task = t;
+          fromList = listName;
+          list.splice(i, 1);
+          break;
+        }
+      }
+      if (task) break;
+    }
+
+    if (!task) {
+      return { success: false, error: `Task ${taskId} not found in active lists` };
+    }
+
+    // Ensure task is an object (not just an ID string)
+    // This shouldn't happen in normal operation - tasks should always be objects
+    if (typeof task === 'string') {
+      warn(`Task ${taskId} was stored as string, not object. Converting with minimal data.`);
+      task = { id: task, title: `Task ${task}`, _convertedFromString: true };
+    }
+
+    // Add cancellation metadata
+    task.status = 'cancelled';
+    task.cancelledAt = new Date().toISOString();
+    task.cancelledFrom = fromList;  // Track which list it was in
+    task.cancellationReason = reason;
+    task.workDone = workDone;
+
+    // Move to recentlyCompleted for preservation
+    const completed = data.recentlyCompleted || [];
+    completed.unshift(task);
+
+    // Archive overflow (same as moveTaskAsync)
+    if (completed.length > 10) {
+      const overflow = completed.splice(10);
+      archiveCompletedTasksToLog(overflow);
+    }
+
+    data.recentlyCompleted = completed;
+    const toSave = { ...data, lastUpdated: new Date().toISOString() };
+    writeJson(PATHS.ready, toSave);
+
+    return { success: true, task };
+  });
+}
+
+/**
  * Get task counts
  */
 function getTaskCounts() {
@@ -3008,6 +3079,7 @@ module.exports = {
   findTask,
   moveTask,
   moveTaskAsync,        // Async with locking
+  cancelTask,           // Cancel with preservation (v6.0)
   getTaskCounts,
 
   // Request Log

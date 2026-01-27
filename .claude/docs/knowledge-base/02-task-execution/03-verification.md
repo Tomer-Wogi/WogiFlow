@@ -90,8 +90,41 @@ Quality gates are requirements that must pass before a task can be completed.
 | `appMapUpdate` | New components added to app-map.md |
 | `requestLogEntry` | Task logged in request-log.md |
 | `noNewFeatures` | (Refactor) No new functionality added |
+| `integrationWiring` | Created files are imported/used somewhere (not orphaned) |
+| `smokeTest` | App starts and basic functionality works after changes |
 | `review` | Manual code review completed |
 | `docs` | Documentation updated |
+
+### Integration Wiring Gate
+
+The `integrationWiring` gate prevents "orphan components" - files that exist but are never wired into the application.
+
+**What it checks:**
+- React components are imported in at least one parent
+- Hooks are called from at least one component
+- Utilities are imported somewhere
+- Entry points (index.ts, config files, test files) are exempt
+
+**Why it's important:**
+This gate catches the #1 bug from comprehensive reviews: components created but never accessible to users.
+
+**Run manually:**
+```bash
+node scripts/flow-wiring-verifier.js wf-XXXXXXXX
+```
+
+### Smoke Test Gate
+
+The `smokeTest` gate ensures basic functionality still works after refactoring.
+
+**What it requires:**
+- App starts without errors (`npm run dev` or equivalent)
+- No console errors on initial load
+- Basic navigation works
+
+**When it's required:**
+- Enabled by default for `refactor` tasks
+- Prevents introducing regressions during code restructuring
 
 ### Gate Execution
 
@@ -383,15 +416,25 @@ Task Completion Attempt
 │ 1. Auto-Infer Acceptance Criteria          │
 │    - File exists? Function exports? etc.   │
 ├────────────────────────────────────────────┤
-│ 2. Run Quality Gates                       │
+│ 2. Spec Verification                       │
+│    - All promised files exist              │
+├────────────────────────────────────────────┤
+│ 3. Integration Wiring Check (NEW)          │
+│    - Created files imported somewhere?     │
+│    - Components wired to parents?          │
+├────────────────────────────────────────────┤
+│ 4. Run Quality Gates                       │
 │    - tests, lint, typecheck               │
 ├────────────────────────────────────────────┤
-│ 3. Run Regression Tests (if enabled)       │
+│ 5. Smoke Test (for refactors)              │
+│    - App starts without errors             │
+├────────────────────────────────────────────┤
+│ 6. Run Regression Tests (if enabled)       │
 │    - Sample completed tasks               │
 ├────────────────────────────────────────────┤
-│ 4. Suggest Browser Tests (if UI task)      │
+│ 7. Suggest Browser Tests (if UI task)      │
 ├────────────────────────────────────────────┤
-│ 5. Security Scan (if enabled)              │
+│ 8. Security Scan (if enabled)              │
 └────────────────────────────────────────────┘
          ↓
     All passed? → Complete task
