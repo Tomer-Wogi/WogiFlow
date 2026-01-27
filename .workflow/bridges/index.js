@@ -27,12 +27,48 @@ function loadBridges() {
 
   bridges = {
     'claude-code': () => require('./claude-bridge'),
-    // Add more bridges as they are implemented
-    // 'gemini-cli': () => require('./gemini-bridge'),
-    // 'opencode': () => require('./opencode-bridge'),
+    'gemini-cli': () => require('./gemini-bridge'),
+    'codex': () => require('./codex-bridge'),
+    'opencode': () => require('./opencode-bridge'),
+    'cursor': () => require('./cursor-bridge'),
+    'kimi': () => require('./kimi-bridge'),
   };
 
   return bridges;
+}
+
+/**
+ * Safe JSON parse with prototype pollution protection
+ * @param {string} jsonString - JSON string to parse
+ * @param {*} defaultValue - Default value if parsing fails
+ * @returns {*} Parsed object or default value
+ */
+function safeJsonParse(jsonString, defaultValue = {}) {
+  try {
+    const parsed = JSON.parse(jsonString);
+
+    // Check for prototype pollution keys
+    const checkForDangerousKeys = (obj, depth = 0) => {
+      if (depth > 10 || !obj || typeof obj !== 'object') return false;
+      const dangerous = ['__proto__', 'constructor', 'prototype'];
+
+      for (const key of Object.keys(obj)) {
+        if (dangerous.includes(key)) return true;
+        if (obj[key] && typeof obj[key] === 'object') {
+          if (checkForDangerousKeys(obj[key], depth + 1)) return true;
+        }
+      }
+      return false;
+    };
+
+    if (checkForDangerousKeys(parsed)) {
+      return defaultValue;
+    }
+
+    return parsed;
+  } catch {
+    return defaultValue;
+  }
 }
 
 /**
@@ -48,7 +84,8 @@ function getCliType(projectDir = process.cwd()) {
   }
 
   try {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const configContent = fs.readFileSync(configPath, 'utf-8');
+    const config = safeJsonParse(configContent, {});
     return config.cli?.type || 'claude-code';
   } catch {
     return 'claude-code';
