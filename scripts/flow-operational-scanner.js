@@ -84,9 +84,9 @@ function detectPackageManager(projectRoot) {
   // Check package.json for packageManager field (newer standard)
   const pkgPath = path.join(projectRoot, 'package.json');
   if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-
+    // Use safeJsonParse for prototype pollution protection
+    const pkg = safeJsonParse(pkgPath, null);
+    if (pkg) {
       // packageManager field (e.g., "pnpm@8.15.0")
       if (pkg.packageManager) {
         const match = pkg.packageManager.match(/^(npm|yarn|pnpm|bun)@([\d.]+)/);
@@ -105,8 +105,6 @@ function detectPackageManager(projectRoot) {
           }
         }
       }
-    } catch (err) {
-      // Ignore parse errors
     }
   }
 
@@ -143,6 +141,8 @@ function detectDevServer(projectRoot) {
 
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
+      // Skip overly large config files to prevent ReDoS attacks
+      if (content.length > MAX_CONFIG_FILE_SIZE) continue;
       const match = content.match(pattern);
       if (match) {
         result.port = parseInt(match[1], 10);
@@ -168,16 +168,19 @@ function detectDevServer(projectRoot) {
   if (!result.port) {
     const pkgPath = path.join(projectRoot, 'package.json');
     if (fs.existsSync(pkgPath)) {
-      try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      // Use safeJsonParse for prototype pollution protection
+      const pkg = safeJsonParse(pkgPath, null);
+      if (pkg) {
         const devScript = pkg.scripts?.dev || pkg.scripts?.start || '';
         const portMatch = devScript.match(/--port[=\s]+(\d+)|PORT=(\d+)|-p\s*(\d+)/);
         if (portMatch) {
-          result.port = parseInt(portMatch[1] || portMatch[2] || portMatch[3], 10);
-          result.source = 'package.json#scripts';
+          // Find first non-undefined match group
+          const portValue = portMatch[1] || portMatch[2] || portMatch[3];
+          if (portValue) {
+            result.port = parseInt(portValue, 10);
+            result.source = 'package.json#scripts';
+          }
         }
-      } catch (err) {
-        // Ignore
       }
     }
   }
@@ -202,12 +205,9 @@ function extractScripts(projectRoot) {
   const pkgPath = path.join(projectRoot, 'package.json');
   if (!fs.existsSync(pkgPath)) return {};
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    return pkg.scripts || {};
-  } catch (err) {
-    return {};
-  }
+  // Use safeJsonParse for prototype pollution protection
+  const pkg = safeJsonParse(pkgPath, {});
+  return pkg.scripts || {};
 }
 
 /**
@@ -537,17 +537,31 @@ function detectGitPatterns(projectRoot) {
 // Helper Functions
 // ============================================================
 
+// Maximum file results to prevent memory issues on large codebases
+const MAX_FILE_RESULTS = 1000;
+
+// Maximum config file size for regex matching (prevent ReDoS)
+const MAX_CONFIG_FILE_SIZE = 100 * 1024; // 100KB
+
 /**
  * Recursively find files matching a pattern
+ * @param {string} dir - Directory to search
+ * @param {RegExp} pattern - File pattern to match
+ * @param {number} maxDepth - Maximum directory depth
+ * @param {number} depth - Current depth
+ * @param {Object} state - Shared state for limiting results
  */
-function findFilesRecursive(dir, pattern, maxDepth = 5, depth = 0) {
+function findFilesRecursive(dir, pattern, maxDepth = 5, depth = 0, state = { count: 0 }) {
   const results = [];
   if (depth > maxDepth) return results;
+  if (state.count >= MAX_FILE_RESULTS) return results;
 
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
 
     for (const entry of entries) {
+      if (state.count >= MAX_FILE_RESULTS) break;
+
       const fullPath = path.join(dir, entry.name);
 
       // Skip excluded directories
@@ -555,9 +569,10 @@ function findFilesRecursive(dir, pattern, maxDepth = 5, depth = 0) {
         if (['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', 'coverage'].includes(entry.name)) {
           continue;
         }
-        results.push(...findFilesRecursive(fullPath, pattern, maxDepth, depth + 1));
+        results.push(...findFilesRecursive(fullPath, pattern, maxDepth, depth + 1, state));
       } else if (pattern.test(entry.name)) {
         results.push(fullPath);
+        state.count++;
       }
     }
   } catch (err) {

@@ -58,13 +58,19 @@ class ClaudeBridge extends BaseBridge {
   }
 
   /**
-   * Generate CLAUDE.md from Handlebars template
+   * Generate CLAUDE.md from Handlebars-like template
+   * Supports: {{variable}}, {{config.path}}, {{#if}}, {{#each}}, {{/if}}, {{/each}}
    */
   generateFromTemplate(templatePath, config) {
     const template = fs.readFileSync(templatePath, 'utf-8');
-
-    // Simple template variable replacement (not full Handlebars)
     let content = template;
+
+    // Process {{#if config.path.to.value}}...{{/if}} blocks
+    // Non-greedy match to handle nested conditions
+    content = this.processConditionals(content, config);
+
+    // Process {{#each array}}...{{/each}} blocks
+    content = this.processEachBlocks(content, config);
 
     // Replace {{variable}} patterns
     content = content.replace(/\{\{(\w+)\}\}/g, (match, key) => {
@@ -72,12 +78,69 @@ class ClaudeBridge extends BaseBridge {
     });
 
     // Replace {{config.path.to.value}} patterns
-    content = content.replace(/\{\{config\.([^}]+)\}\}/g, (match, path) => {
-      const value = this.getNestedValue(config, path);
+    content = content.replace(/\{\{config\.([^}]+)\}\}/g, (match, configPath) => {
+      const value = this.getNestedValue(config, configPath);
       return value !== undefined ? String(value) : match;
     });
 
+    // Replace {{timestamp}} with current time
+    content = content.replace(/\{\{timestamp\}\}/g, new Date().toISOString());
+
     return content;
+  }
+
+  /**
+   * Process {{#if condition}}...{{/if}} blocks
+   */
+  processConditionals(content, config) {
+    // Regex to match {{#if path}}...{{/if}} - handles nested by processing innermost first
+    const ifRegex = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
+
+    let lastContent;
+    // Keep processing until no more changes (handles nested conditions)
+    do {
+      lastContent = content;
+      content = content.replace(ifRegex, (match, condition, body) => {
+        // Evaluate condition
+        let value;
+        if (condition.startsWith('config.')) {
+          value = this.getNestedValue(config, condition.replace('config.', ''));
+        } else if (condition === 'skills') {
+          value = config.skills?.installed?.length > 0;
+        } else {
+          value = this.getNestedValue(config, condition);
+        }
+
+        // If truthy, return the body (stripped of the conditionals)
+        // If falsy, return empty string
+        return value ? body : '';
+      });
+    } while (content !== lastContent);
+
+    return content;
+  }
+
+  /**
+   * Process {{#each array}}...{{/each}} blocks
+   */
+  processEachBlocks(content, config) {
+    const eachRegex = /\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
+
+    return content.replace(eachRegex, (match, arrayName, body) => {
+      let array;
+      if (arrayName === 'skills') {
+        array = config.skills?.installed || [];
+      } else {
+        array = config[arrayName] || [];
+      }
+
+      if (!Array.isArray(array) || array.length === 0) {
+        return '';
+      }
+
+      // Replace {{this}} in body with each array item
+      return array.map(item => body.replace(/\{\{this\}\}/g, String(item))).join('');
+    });
   }
 
   /**

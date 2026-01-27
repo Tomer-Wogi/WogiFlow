@@ -178,9 +178,13 @@ function validateCommand(command) {
   // Check for port in dev commands
   const expectedPort = standards.operational?.devServer?.port;
   if (expectedPort) {
-    const portMatch = command.match(/--port[=\s]+(\d+)|-p\s+(\d+)|localhost:(\d+)/);
+    // Extended regex to handle URLs like http://localhost:3000, --port=3000, -p 3000
+    const portMatch = command.match(/--port[=\s]+(\d+)|-p\s+(\d+)|localhost:(\d+)|127\.0\.0\.1:(\d+)|0\.0\.0\.0:(\d+)/);
     if (portMatch) {
-      const usedPort = parseInt(portMatch[1] || portMatch[2] || portMatch[3], 10);
+      // Find the first matched group that has a value
+      const portValue = portMatch[1] || portMatch[2] || portMatch[3] || portMatch[4] || portMatch[5];
+      if (!portValue) return result; // No valid port found, skip validation
+      const usedPort = parseInt(portValue, 10);
       if (usedPort !== expectedPort) {
         result.valid = false;
         result.reason = `Project uses port ${expectedPort}, not ${usedPort}`;
@@ -368,6 +372,10 @@ function validateAPIRoute(routePath) {
   for (const segment of segments) {
     // Skip dynamic segments like [id] or :id
     if (segment.startsWith('[') || segment.startsWith(':')) continue;
+
+    // Skip single-word lowercase segments - they're valid for any style
+    // e.g., "users" is valid for kebab-case, camelCase, etc.
+    if (/^[a-z]+$/.test(segment)) continue;
 
     const isKebab = segment.includes('-');
     const isCamel = /[a-z][A-Z]/.test(segment);
@@ -621,6 +629,11 @@ Flags:
     const cmd = args[1];
     if (!cmd) {
       error('Missing command to validate');
+      process.exit(1);
+    }
+    // Input validation: reject excessively long or suspicious input
+    if (typeof cmd !== 'string' || cmd.length > 2000 || /[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(cmd)) {
+      error('Invalid command input');
       process.exit(1);
     }
     const result = validateCommand(cmd);

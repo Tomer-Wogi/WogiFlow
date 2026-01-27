@@ -123,30 +123,80 @@ while [ $# -gt 0 ]; do
 done
 
 # Safe JSON reading function (prevents file path injection via process.argv)
-# Note: queries are hardcoded in this script, not external input
-# The query is passed via environment variable to avoid shell quoting issues
+# Uses whitelisted query names instead of dynamic Function() for security
 safe_read_json() {
     local file="$1"
-    local query="$2"
-    SAFE_JSON_QUERY="$query" node -e '
+    local query_name="$2"
+    node -e '
         const fs = require("fs");
         const file = process.argv[1];
+        const queryName = process.argv[2];
+
+        // Whitelist of allowed queries - prevents code injection
+        const QUERIES = {
+            "patternCount": (p) => { let c=0; for(const k in p.patterns||{}){c+=(p.patterns[k]||[]).length} return c },
+            "conflictCount": (p) => (p.conflicts ? p.conflicts.length : 0),
+            "framework": (p) => p.meta?.framework || "unknown",
+            "conflicts": (p) => JSON.stringify(p.conflicts || [], null, 2),
+            "patterns": (p) => {
+                const lines = [];
+                for (const category in (p.patterns || {})) {
+                    lines.push("  " + category + ":");
+                    for (const pattern of (p.patterns[category] || []).slice(0, 10)) {
+                        lines.push("    - " + pattern.name + " (" + pattern.frequency + " occurrences)");
+                    }
+                }
+                return lines.join("\\n");
+            },
+            "operationalPackageManager": (p) => p.operational?.packageManager?.tool || "unknown",
+            "operationalDevPort": (p) => p.operational?.devServer?.port || 3000,
+            "patternFileNaming": (p) => p.patterns?.fileNaming?.style || "unknown",
+            "patternApiStyle": (p) => p.patterns?.apiRoutes?.style || "unknown",
+            "decisionsContent": (p, sourcePath) => {
+                const lines = [];
+                lines.push("## Imported Patterns");
+                lines.push("Source: " + (sourcePath || "unknown"));
+                lines.push("Imported: " + new Date().toISOString().split("T")[0]);
+                lines.push("");
+                for (const category in (p.patterns || {})) {
+                    lines.push("### " + category.charAt(0).toUpperCase() + category.slice(1) + " Patterns");
+                    lines.push("");
+                    for (const pattern of (p.patterns[category] || []).slice(0, 10)) {
+                        lines.push("**" + pattern.subcategory + "**: " + pattern.name);
+                        if (pattern.examples && pattern.examples.length > 0) {
+                            lines.push("  Examples: `" + pattern.examples.slice(0, 3).join("`, `") + "`");
+                        }
+                        lines.push("");
+                    }
+                }
+                return lines.join("\\n");
+            }
+        };
+
         try {
             const content = fs.readFileSync(file, "utf-8");
-            // Check for prototype pollution attempts
-            if (/__proto__|constructor\s*["'"'"'`:]|prototype\s*["'"'"'`:]/i.test(content)) {
+
+            // Check for prototype pollution attempts (more comprehensive)
+            if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]|\["__proto__"\]|\["constructor"\]|\["prototype"\]/i.test(content)) {
                 console.error("Suspicious content detected");
                 process.exit(1);
             }
+
             const p = JSON.parse(content);
-            // Query is passed via environment to avoid complex quoting issues
-            const queryFn = new Function("p", process.env.SAFE_JSON_QUERY);
-            queryFn(p);
+
+            // Execute whitelisted query
+            if (!QUERIES[queryName]) {
+                console.error("Unknown query: " + queryName);
+                process.exit(1);
+            }
+
+            const result = QUERIES[queryName](p, process.env.SCAN_PATH);
+            console.log(result);
         } catch(e) {
             console.error(e.message);
             process.exit(1);
         }
-    ' -- "$file" 2>/dev/null
+    ' -- "$file" "$query_name" 2>/dev/null
 }
 
 # ==========================================
@@ -185,10 +235,10 @@ if [ "$SCAN_MODE" = true ]; then
         exit 1
     fi
 
-    # Parse extraction results (using safe JSON parsing instead of require())
-    PATTERN_COUNT=$(safe_read_json "$PATTERNS_FILE" "let c=0; for(const k in p.patterns){c+=p.patterns[k].length} console.log(c)" || echo "0")
-    CONFLICT_COUNT=$(safe_read_json "$PATTERNS_FILE" "console.log(p.conflicts ? p.conflicts.length : 0)" || echo "0")
-    FRAMEWORK=$(safe_read_json "$PATTERNS_FILE" "console.log(p.meta.framework || 'unknown')" || echo "unknown")
+    # Parse extraction results (using safe JSON parsing with whitelisted queries)
+    PATTERN_COUNT=$(safe_read_json "$PATTERNS_FILE" "patternCount" || echo "0")
+    CONFLICT_COUNT=$(safe_read_json "$PATTERNS_FILE" "conflictCount" || echo "0")
+    FRAMEWORK=$(safe_read_json "$PATTERNS_FILE" "framework" || echo "unknown")
 
     echo ""
     echo -e "  ${GREEN}✓${NC} Detected: $FRAMEWORK"
@@ -202,10 +252,10 @@ if [ "$SCAN_MODE" = true ]; then
         OPERATIONAL_FILE="$TEMP_DIR/operational.json"
 
         if node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
-            PKG_MANAGER=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.operational?.packageManager?.tool || 'unknown')" || echo "unknown")
-            DEV_PORT=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.operational?.devServer?.port || 3000)" || echo "3000")
-            FILE_NAMING=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.patterns?.fileNaming?.style || 'unknown')" || echo "unknown")
-            API_STYLE=$(safe_read_json "$OPERATIONAL_FILE" "console.log(p.patterns?.apiRoutes?.style || 'unknown')" || echo "unknown")
+            PKG_MANAGER=$(safe_read_json "$OPERATIONAL_FILE" "operationalPackageManager" || echo "unknown")
+            DEV_PORT=$(safe_read_json "$OPERATIONAL_FILE" "operationalDevPort" || echo "3000")
+            FILE_NAMING=$(safe_read_json "$OPERATIONAL_FILE" "patternFileNaming" || echo "unknown")
+            API_STYLE=$(safe_read_json "$OPERATIONAL_FILE" "patternApiStyle" || echo "unknown")
 
             echo -e "  ${GREEN}✓${NC} Package manager: $PKG_MANAGER"
             echo -e "  ${GREEN}✓${NC} Dev server port: $DEV_PORT"
@@ -223,9 +273,9 @@ if [ "$SCAN_MODE" = true ]; then
         echo -e "  ${YELLOW}!${NC} Found: $CONFLICT_COUNT conflicts"
 
         if [ "$RESOLVE_CONFLICTS" = true ]; then
-            # Extract conflicts for resolver (using safe JSON parsing)
+            # Extract conflicts for resolver (using safe JSON parsing with whitelisted query)
             CONFLICTS_TEMP="$TEMP_DIR/conflicts.json"
-            safe_read_json "$PATTERNS_FILE" "console.log(JSON.stringify(p.conflicts, null, 2))" > "$CONFLICTS_TEMP"
+            safe_read_json "$PATTERNS_FILE" "conflicts" > "$CONFLICTS_TEMP"
 
             echo ""
             RESOLVED_FILE="$TEMP_DIR/resolved.json"
@@ -248,14 +298,7 @@ if [ "$SCAN_MODE" = true ]; then
     if [ "$DRY_RUN" = true ]; then
         echo -e "${YELLOW}Dry run - patterns found:${NC}"
         echo ""
-        safe_read_json "$PATTERNS_FILE" "
-            for (const category in p.patterns) {
-                console.log('  ' + category + ':');
-                for (const pattern of p.patterns[category] || []) {
-                    console.log('    - ' + pattern.name + ' (' + pattern.frequency + ' occurrences)');
-                }
-            }
-        " || true
+        safe_read_json "$PATTERNS_FILE" "patterns" || true
         rm -rf "$TEMP_DIR"
         exit 0
     fi
@@ -287,32 +330,12 @@ if [ "$SCAN_MODE" = true ]; then
     echo -e "${CYAN}Importing patterns...${NC}"
     echo ""
 
-    # Generate decisions.md content from patterns (using safe JSON parsing)
+    # Generate decisions.md content from patterns (using safe JSON parsing with whitelisted query)
     mkdir -p "$WORKFLOW_DIR/state"
 
-    DECISIONS_CONTENT=$(safe_read_json "$PATTERNS_FILE" "
-        const lines = [];
-
-        lines.push('## Imported Patterns');
-        lines.push('Source: $SCAN_PATH');
-        lines.push('Imported: ' + new Date().toISOString().split('T')[0]);
-        lines.push('');
-
-        for (const category in p.patterns) {
-            lines.push('### ' + category.charAt(0).toUpperCase() + category.slice(1) + ' Patterns');
-            lines.push('');
-
-            for (const pattern of (p.patterns[category] || []).slice(0, 10)) {
-                lines.push('**' + pattern.subcategory + '**: ' + pattern.name);
-                if (pattern.examples && pattern.examples.length > 0) {
-                    lines.push('  Examples: \\\\\\\`' + pattern.examples.slice(0, 3).join('\\\\\\\`, \\\\\\\`') + '\\\\\\\`');
-                }
-                lines.push('');
-            }
-        }
-
-        console.log(lines.join('\\n'));
-    ")
+    # Export SCAN_PATH so the query can access it
+    export SCAN_PATH
+    DECISIONS_CONTENT=$(safe_read_json "$PATTERNS_FILE" "decisionsContent")
 
     if [ -f "$WORKFLOW_DIR/state/decisions.md" ]; then
         echo "" >> "$WORKFLOW_DIR/state/decisions.md"
@@ -485,14 +508,44 @@ echo -e "${CYAN}║  Importing Profile                                        �
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
-# Extract profile
+# Extract profile (with path traversal protection)
 unzip -q "$PROFILE_FILE" -d "$TEMP_DIR"
+
+# Validate no path traversal in extracted files
+if find "$TEMP_DIR" -name "*../*" -o -name "*\.\.*" 2>/dev/null | grep -q .; then
+    echo -e "${RED}Error: Profile contains suspicious paths (potential path traversal)${NC}"
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+
+# Check for symlinks that could escape temp dir
+if find "$TEMP_DIR" -type l 2>/dev/null | while read link; do
+    target=$(readlink -f "$link" 2>/dev/null || true)
+    if [ -n "$target" ] && [[ ! "$target" == "$TEMP_DIR"* ]]; then
+        echo "bad"
+        break
+    fi
+done | grep -q "bad"; then
+    echo -e "${RED}Error: Profile contains symlinks pointing outside temp directory${NC}"
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
 
 # Find the profile directory (first directory in zip)
 PROFILE_DIR=$(find "$TEMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
 
+# Validate profile dir is within temp dir
 if [ -z "$PROFILE_DIR" ]; then
     echo -e "${RED}Error: Invalid profile format${NC}"
+    rm -rf "$TEMP_DIR"
+    exit 1
+fi
+
+# Ensure PROFILE_DIR is actually inside TEMP_DIR (defense in depth)
+REAL_PROFILE_DIR=$(cd "$PROFILE_DIR" 2>/dev/null && pwd)
+REAL_TEMP_DIR=$(cd "$TEMP_DIR" 2>/dev/null && pwd)
+if [[ ! "$REAL_PROFILE_DIR" == "$REAL_TEMP_DIR"* ]]; then
+    echo -e "${RED}Error: Profile directory escaped temp directory${NC}"
     rm -rf "$TEMP_DIR"
     exit 1
 fi

@@ -168,15 +168,20 @@ async function main() {
 
       // Strict adherence: File naming check (for Write)
       // v5.0: Block AI from creating files with wrong naming convention
+      // v5.1: Fixed to pass basename instead of full path
       if (!coreResult.blocked) {
         const strictAdherence = getStrictAdherence();
         if (strictAdherence.isEnabled()) {
-          // Determine file type from path
-          const isComponent = /components?|ui/i.test(filePath);
-          const isApi = /api|routes/i.test(filePath);
+          // Determine file type from path (more precise matching)
+          // Only match if path contains /components/, /ui/, /api/, /routes/ directories
+          const isComponent = /\/(components?|ui)\//i.test(filePath) && /\.(tsx|jsx)$/i.test(filePath);
+          const isApi = /\/(api|routes)\//i.test(filePath);
           const fileType = isComponent ? 'component' : isApi ? 'api' : 'generic';
 
-          const fileResult = strictAdherence.validateFileName(filePath, fileType);
+          // Extract basename for validation (validateFileName expects just the filename)
+          const path = require('path');
+          const fileName = path.basename(filePath);
+          const fileResult = strictAdherence.validateFileName(fileName, fileType);
           if (fileResult.blocked) {
             coreResult = {
               allowed: false,
