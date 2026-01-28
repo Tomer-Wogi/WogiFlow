@@ -105,3 +105,8 @@ GEMINI.md
 .claude/docs/stack.md
 .claude/docs/testing.md
 .workflow/state/task-queue.json
+
+# Local CLI folders
+.codex/
+.workflow/plans/
+.workflow/state/research-cache.json
