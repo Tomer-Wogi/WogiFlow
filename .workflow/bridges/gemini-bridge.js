@@ -58,9 +58,9 @@ class GeminiBridge extends BaseBridge {
    * @returns {string} Generated GEMINI.md content
    */
   generateRulesContent(config) {
-    // Check if custom template exists
-    const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'gemini-md.hbs');
-    if (fs.existsSync(templatePath)) {
+    // Use getBestTemplatePath to find the best template (prefers package over outdated project)
+    const templatePath = this.getBestTemplatePath('gemini-md.hbs');
+    if (templatePath) {
       return this.generateFromTemplate(templatePath, config);
     }
 

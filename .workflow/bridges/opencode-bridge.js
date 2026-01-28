@@ -84,8 +84,8 @@ class OpenCodeBridge extends BaseBridge {
       this.registerPartials();
 
       try {
-        const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'opencode-agents-md.hbs');
-        if (fs.existsSync(templatePath)) {
+        const templatePath = this.getBestTemplatePath('opencode-agents-md.hbs');
+        if (templatePath) {
           const templateSource = fs.readFileSync(templatePath, 'utf-8');
           const template = Handlebars.compile(templateSource);
           return template(context);

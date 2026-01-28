@@ -401,12 +401,111 @@ class BaseBridge {
   // ==================== Template Utility Methods ====================
 
   /**
+   * Get the package root directory (where wogiflow is installed)
+   * @returns {string|null} Package root path or null if not found
+   */
+  getPackageRoot() {
+    // Try to find the package by looking up from scripts directory
+    const possibleRoots = [
+      path.resolve(__dirname, '..', '..'),  // From .workflow/bridges/ -> package root
+      path.resolve(__dirname, '..', '..', '..', 'node_modules', 'wogiflow'),  // From project
+    ];
+
+    for (const root of possibleRoots) {
+      const pkgPath = path.join(root, 'package.json');
+      if (fs.existsSync(pkgPath)) {
+        try {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+          if (pkg.name === 'wogiflow') {
+            return root;
+          }
+        } catch {
+          // Continue to next option
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check if a template file is outdated/stub
+   * @param {string} templatePath - Path to template file
+   * @returns {boolean} True if template appears to be outdated
+   */
+  isTemplateOutdated(templatePath) {
+    if (!fs.existsSync(templatePath)) {
+      return true;
+    }
+
+    try {
+      const content = fs.readFileSync(templatePath, 'utf-8');
+
+      // Check for stub/placeholder markers
+      const stubMarkers = [
+        'Full implementation pending',
+        'stub template',
+        'not yet implemented',
+        'TODO: implement',
+        'placeholder template'
+      ];
+
+      for (const marker of stubMarkers) {
+        if (content.toLowerCase().includes(marker.toLowerCase())) {
+          return true;
+        }
+      }
+
+      // Check if template is too short (likely incomplete)
+      if (content.length < 500) {
+        return true;
+      }
+
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * Get template path, preferring package template if project template is outdated
+   * @param {string} templateName - Template filename (e.g., 'gemini-md.hbs')
+   * @returns {string|null} Path to best available template
+   */
+  getBestTemplatePath(templateName) {
+    const projectTemplate = path.join(this.projectDir, this.workflowDir, 'templates', templateName);
+
+    // If project template exists and is not outdated, use it
+    if (!this.isTemplateOutdated(projectTemplate)) {
+      return projectTemplate;
+    }
+
+    // Try to use package template instead
+    const packageRoot = this.getPackageRoot();
+    if (packageRoot) {
+      const packageTemplate = path.join(packageRoot, '.workflow', 'templates', templateName);
+      if (fs.existsSync(packageTemplate)) {
+        this.log(`Using package template for ${templateName} (project template outdated)`);
+        return packageTemplate;
+      }
+    }
+
+    // Fall back to project template even if outdated
+    if (fs.existsSync(projectTemplate)) {
+      return projectTemplate;
+    }
+
+    return null;
+  }
+
+  /**
    * Load a partial template from .workflow/templates/partials/
+   * Checks both project and package directories
    * @param {string} partialName - Name of the partial (without .hbs extension)
    * @returns {string} Partial content or empty string if not found
    */
   loadPartial(partialName) {
-    const partialPath = path.join(
+    // Try project partials first
+    const projectPartialPath = path.join(
       this.projectDir,
       this.workflowDir,
       'templates',
@@ -415,12 +514,33 @@ class BaseBridge {
     );
 
     try {
-      if (fs.existsSync(partialPath)) {
-        return fs.readFileSync(partialPath, 'utf-8');
+      if (fs.existsSync(projectPartialPath)) {
+        return fs.readFileSync(projectPartialPath, 'utf-8');
       }
     } catch (err) {
-      this.log(`Warning: Could not load partial ${partialName}: ${err.message}`);
+      this.log(`Warning: Could not load project partial ${partialName}: ${err.message}`);
     }
+
+    // Try package partials as fallback
+    const packageRoot = this.getPackageRoot();
+    if (packageRoot) {
+      const packagePartialPath = path.join(
+        packageRoot,
+        '.workflow',
+        'templates',
+        'partials',
+        `${partialName}.hbs`
+      );
+
+      try {
+        if (fs.existsSync(packagePartialPath)) {
+          return fs.readFileSync(packagePartialPath, 'utf-8');
+        }
+      } catch (err) {
+        this.log(`Warning: Could not load package partial ${partialName}: ${err.message}`);
+      }
+    }
+
     return '';
   }
 

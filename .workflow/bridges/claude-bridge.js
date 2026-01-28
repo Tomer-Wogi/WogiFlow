@@ -45,11 +45,9 @@ class ClaudeBridge extends BaseBridge {
    * @returns {string} Generated CLAUDE.md content
    */
   generateRulesContent(config) {
-    const projectName = config.projectName || 'Project';
-
-    // Check if custom template exists
-    const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'claude-md.hbs');
-    if (fs.existsSync(templatePath)) {
+    // Use getBestTemplatePath to find the best template (prefers package over outdated project)
+    const templatePath = this.getBestTemplatePath('claude-md.hbs');
+    if (templatePath) {
       return this.generateFromTemplate(templatePath, config);
     }
 

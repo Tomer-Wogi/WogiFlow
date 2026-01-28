@@ -88,11 +88,11 @@ class KimiBridge extends BaseBridge {
 
       try {
         // Try kimi-specific template first, fall back to generic agents-md.hbs
-        let templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'kimi-agents-md.hbs');
-        if (!fs.existsSync(templatePath)) {
-          templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'agents-md.hbs');
+        let templatePath = this.getBestTemplatePath('kimi-agents-md.hbs');
+        if (!templatePath) {
+          templatePath = this.getBestTemplatePath('agents-md.hbs');
         }
-        if (fs.existsSync(templatePath)) {
+        if (templatePath) {
           let templateSource;
           try {
             templateSource = fs.readFileSync(templatePath, 'utf-8');

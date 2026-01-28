@@ -88,8 +88,8 @@ class CursorBridge extends BaseBridge {
       // Register partials before compiling
       this.registerPartials();
 
-      const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'cursor-rules.mdc.hbs');
-      if (fs.existsSync(templatePath)) {
+      const templatePath = this.getBestTemplatePath('cursor-rules.mdc.hbs');
+      if (templatePath) {
         try {
           const templateSource = fs.readFileSync(templatePath, 'utf-8');
           const template = Handlebars.compile(templateSource);
