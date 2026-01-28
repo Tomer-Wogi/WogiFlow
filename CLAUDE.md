@@ -4,7 +4,7 @@ You are an AI development assistant using the WogiFlow methodology v1.0. This is
 
 ---
 
-{{#if config.enforcement.strictMode}}
+
 ## Task Gating (MANDATORY)
 
 **STOP. Before doing ANY implementation work, you MUST follow these steps:**
@@ -86,6 +86,34 @@ Then:
 3. Start with the first story using `/wogi-start`
 
 **This is NON-NEGOTIABLE when strict mode is enabled.**
+
+---
+
+
+
+
+
+
+
+
+
+
+### Strict Mode Rules
+
+1. **AI Actions are BLOCKED** if they deviate from source patterns
+   - Wrong package manager → Auto-corrected to correct one
+   - Wrong port → Auto-corrected to configured port
+   - Wrong naming → Auto-corrected to source pattern
+
+2. **User Code Review shows WARNINGS** for deviations
+   - Deviations are flagged but not blocked
+   - User is informed of inconsistency with source patterns
+
+3. **Override requires explicit reason**
+   - Use: `flow strict-override --reason "Your reason"`
+   - Overrides are logged for transparency
+
+**When unsure, ASK the user rather than deviate from source patterns.**
 
 ---
 {{/if}}
@@ -251,16 +279,16 @@ After EVERY request that changes files:
 - Run `flow function-index scan` to update the function registry
 - Run `flow api-index scan` to update the API registry
 
-{{#if skills}}
+
 ## Installed Skills
 
-{{#each skills}}
-- {{this}}
-{{/each}}
+
+- figma-analyzer
+
 
 Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 
-{{/if}}
+
 ## File Locations
 
 | What | Where |
@@ -441,6 +469,515 @@ When user says to wrap up:
 3. Update progress.md
 4. Commit and push
 
+
+---
+
+## Research Protocol (Zero-Trust)
+
+**When answering questions about capabilities, feasibility, or existence, you MUST follow this protocol.**
+
+### Auto-Trigger Questions
+
+These question types require research verification:
+- **Capability**: "Does X support Y?", "Can X do Y?"
+- **Feasibility**: "Is it possible to...", "Can we..."
+- **Existence**: "Is there a...", "Does X exist?"
+- **Architecture**: "How does X work?"
+- **Integration**: "How to integrate X with Y?"
+
+### Required Actions
+
+1. **Before claiming capabilities**: Web search for current documentation
+2. **Before saying "doesn't exist"**: Perform exhaustive search first
+3. **For external tools**: Assume training data is 2+ years stale
+
+### The Negative Evidence Rule
+
+**FORBIDDEN:**
+- "X is not supported"
+- "There is no Y"
+- "It doesn't exist"
+
+**REQUIRED format:**
+```
+I searched [list sources] and found no evidence of X.
+However, my search may be incomplete. Consider:
+- Check official docs at [URL]
+- Feature may have a different name
+- Feature may be in development
+```
+
+### Assumption Tracking
+
+Before answering, list assumptions:
+```
+## My Assumptions
+1. [VERIFY] Claim → Confidence: LOW (training data)
+2. [OK] Verified fact → Confidence: HIGH (read file)
+```
+
+
+**Strict Mode Enabled**: Claims without citations will be blocked.
+
+
+Use `/wogi-research "question"` for rigorous verification.
+
+
+---
+
+## User Commands
+
+These commands can be invoked by saying their trigger phrases. The AI will follow the corresponding instructions.
+
+### Quick Reference
+
+| To Do This | Say This |
+|------------|----------|
+| Start a task | "start task wf-XXX" or describe what you want to implement |
+| Code review | "code review" or "review what we did" |
+| Morning briefing | "morning briefing" or "what should I work on" |
+| End session | "wrap up" or "end session" |
+| Peer review | "peer review" |
+| Enable hybrid | "enable hybrid mode" |
+| Show tasks | "show tasks" or "what's ready" |
+| Project status | "project status" or "where are we" |
+
+---
+
+### /wogi-start (Universal Entry Point)
+
+**Trigger phrases:** "start task", "work on", any implementation request
+
+This is the universal entry point for ALL implementation requests. It automatically:
+1. Classifies your request (exploration, operational, quick fix, bug, or implementation)
+2. Routes to the appropriate action
+3. Loads context and starts the execution loop
+
+**Request Triage:**
+- **Exploration** (what, how, why, explain) → Proceed directly without task
+- **Operational** (push, pull, deploy, publish) → Execute directly
+- **Quick Fix** (typo, text change) → Execute + log
+- **Bug** (broken, not working, crashes) → Route to bug creation
+- **Implementation** (add, create, fix, refactor) → Create story first
+
+**Example:**
+```
+User: "add a logout button"
+→ Category: IMPLEMENTATION
+→ Action: Create story, then start task execution
+```
+
+---
+
+### /wogi-review (Code Review)
+
+**Trigger phrases:** "code review", "review what we did", "please review"
+
+Comprehensive code review with verification gates and AI analysis.
+
+**How it works:**
+1. Get changed files (git diff)
+2. Run verification gates (lint, typecheck, tests)
+3. Launch AI review agents (Code/Logic, Security, Architecture)
+4. Consolidate results and show summary
+
+**Modes:**
+- **Parallel mode** (default): 3 agents review simultaneously
+- **Multi-pass mode** (auto-enabled for 5+ files or security-sensitive): Sequential passes
+
+**Usage:**
+- Default review: Just say "code review"
+- Staged only: "review staged changes"
+- With commits: "review last 3 commits"
+- Security focus: "security review"
+
+---
+
+### /wogi-morning (Morning Briefing)
+
+**Trigger phrases:** "morning briefing", "what should I work on", "start my day"
+
+Shows everything needed to start your work session:
+- Where you left off (last session context)
+- Pending tasks sorted by priority
+- Key context and blockers
+- Recommended next task
+- Suggested starting prompt
+
+---
+
+### /wogi-session-end (Session End)
+
+**Trigger phrases:** "wrap up", "end session", "that's all"
+
+Properly ends a work session:
+1. Checks that request-log has entries for all changes
+2. Verifies app-map is updated for new components
+3. Updates progress.md with handoff notes
+4. Commits and optionally pushes changes
+5. Detects cross-session patterns for rule promotion
+
+---
+
+### /wogi-peer-review (Multi-Model Peer Review)
+
+**Trigger phrases:** "peer review"
+
+Runs code review with multiple AI models for diverse perspectives.
+
+**How it works:**
+1. Collects code changes
+2. Claude reviews for improvement opportunities
+3. External model(s) review the same changes
+4. Compares findings across models
+5. Synthesizes results with agreements and disagreements
+
+**Key difference from /wogi-review:**
+- `/wogi-review` focuses on correctness, bugs, security
+- `/wogi-peer-review` focuses on improvement opportunities, alternatives, best practices
+
+---
+
+### /wogi-hybrid (Hybrid Mode)
+
+**Trigger phrases:** "enable hybrid mode", "hybrid mode"
+
+Enables hybrid execution where Claude plans and a local LLM executes.
+
+**How it works:**
+1. Claude creates a detailed execution plan
+2. You review and approve the plan
+3. Local LLM executes each step
+4. Failures are escalated back to Claude
+
+**Token savings:** 20-60% depending on task complexity
+
+**Requirements:** Ollama or LM Studio installed with a code model
+
+---
+
+### /wogi-ready (Show Tasks)
+
+**Trigger phrases:** "show tasks", "what's ready", "available tasks"
+
+Shows all tasks available to work on:
+- In-progress tasks (continue these first)
+- Ready tasks (no blockers)
+- Blocked tasks (waiting on dependencies)
+
+---
+
+### /wogi-status (Project Status)
+
+**Trigger phrases:** "project status", "where are we", "show status"
+
+Shows full project overview:
+- Workflow health
+- Active task summary
+- Recent completions
+- Tech debt items
+- Key decisions
+
+---
+
+
+---
+
+## Task Execution Flow (AUTO-INVOKED)
+
+When implementing a task, these features run automatically. You don't need to invoke them manually.
+
+### Task Execution Pipeline
+
+```
+/wogi-start "add feature X"
+    |
+    +-- [AUTO] Request Triage
+    |   - Classify as: exploration, operational, quick-fix, bug, or implementation
+    |   - Route to appropriate action
+    |
+    +-- [AUTO] Pre-Implementation Checks
+    |   - Check app-map.md for existing components
+    |   - Check function-map.md for existing utilities
+    |   - Check api-map.md for existing endpoints
+    |   - Validate request aligns with task scope
+    |
+    +-- [AUTO] Specification Generation (for medium/large tasks)
+    |   - Generate acceptance criteria
+    |   - Identify files to change
+    |   - Set up verification commands
+    |
+    |   FOR EACH FILE EDIT:
+    |   +-- [AUTO] Scope Validation
+    |   |   - Verify file is in task's filesToChange
+    |   |   - Warn or block if out of scope
+    |   |
+    |   +-- [AUTO] Component Reuse Check
+    |   |   - Search app-map for similar components
+    |   |   - Suggest existing component if match > 80%
+    |   |
+    |   +-- [AUTO] Post-Edit Validation
+    |       - Run lint check
+    |       - Run typecheck
+    |       - Report errors immediately
+    |
+    +-- [AUTO] Criteria Completion Check
+    |   - Re-read ALL acceptance criteria
+    |   - Verify EACH criterion is actually implemented
+    |   - Loop back if any criterion incomplete
+    |
+    +-- [AUTO] Integration Wiring Check
+    |   - Verify new components are imported/used
+    |   - Flag orphan files (created but not wired)
+    |
+    +-- [AUTO] Post-Task Updates
+    |   - Update app-map.md with new components
+    |   - Update function-map.md with new utilities
+    |   - Log to request-log.md with tags
+    |   - Commit changes
+    |
+    +-- Task Complete
+```
+
+### What Each Auto-Feature Does
+
+#### Component Reuse Check
+**When:** Before creating any new component
+**What:** Searches app-map.md and codebase for existing similar components
+**Decision tree:**
+1. EXACT MATCH exists? → Use it
+2. SIMILAR exists (>80% match)? → Add variant to existing
+3. PARTIAL match? → Extend existing
+4. NOTHING similar? → Create new (last resort)
+
+#### Function/API Reuse Check
+**When:** Before creating any new utility function or API endpoint
+**What:** Searches function-map.md and api-map.md for existing implementations
+**Benefit:** Prevents duplicate utilities scattered across codebase
+
+#### Scope Validation
+**When:** Before every file edit
+**What:** Verifies the file is listed in the task's `filesToChange` section
+**Behavior:** Warns or blocks edits to files outside task scope
+
+#### Post-Edit Validation
+**When:** After every file edit
+**What:** Runs lint and typecheck on the modified file
+**Rule:** Do NOT edit another file until current file passes validation
+
+#### Criteria Completion Check
+**When:** After implementing all changes
+**What:** Re-reads the spec and verifies each acceptance criterion is actually working
+**Key question:** "If I run the code now, does it do what the criterion describes?"
+
+#### Integration Wiring Check
+**When:** Before completing task
+**What:** Verifies new files are imported and used somewhere
+**Prevents:** "Orphan components" - files that exist but are never accessible
+
+#### Request Logging
+**When:** After any changes to files
+**What:** Appends entry to request-log.md with:
+- Type (new/fix/change/refactor)
+- Tags (#screen:X #component:Y)
+- Files changed
+- Result summary
+
+#### App-Map Updates
+**When:** After creating new components
+**What:** Adds entry to app-map.md with:
+- Component name and path
+- Props/inputs
+- Usage examples
+
+### Configuration
+
+These features are controlled by `.workflow/config.json`:
+
+```json
+{
+  "hooks": {
+    "rules": {
+      "taskGating": { "enabled": true },
+      "scopeGating": { "enabled": true, "mode": "warn" },
+      "validation": { "enabled": true },
+      "componentReuse": { "enabled": true, "threshold": 80 }
+    }
+  }
+}
+```
+
+---
+
+
+---
+
+## Enforcement Rules
+
+These rules are MANDATORY and apply to all implementation work.
+
+---
+
+### Task Gating (MANDATORY)
+
+**Before ANY implementation work, you MUST have an active task.**
+
+#### Step 1: Is this an implementation request?
+
+**YES - Implementation requests:**
+- "Add X to Y"
+- "Fix the bug in..."
+- "Create a component for..."
+- "Implement feature X"
+- "Build me a [system/feature]"
+- Any request that requires writing/modifying code
+
+**NO - Handle normally:**
+- "What does X do?"
+- "How does Y work?"
+- "Show me the code for..."
+- Questions, exploration, reading files
+
+If **NO** → Proceed normally without task gating.
+If **YES** → Continue to Step 2.
+
+#### Step 2: Does a task already exist?
+
+Check `.workflow/state/ready.json` for existing tasks.
+
+- If **YES** → Start that task
+- If **NO** → Continue to Step 3
+
+#### Step 3: Assess and Create
+
+| Size | Files | Action |
+|------|-------|--------|
+| Trivial | 1 | Execute inline with logging |
+| Small | 1-5 | Create task, then proceed |
+| Medium | 5-15 | Create story with AC first, get approval |
+| Large | 15+ | Create epic, decompose to stories |
+
+**This is NON-NEGOTIABLE. The user installed WogiFlow to prevent untracked changes.**
+
+---
+
+### Research Protocol (MANDATORY for Capability Questions)
+
+**When answering questions about capabilities, feasibility, or existence, you MUST verify first.**
+
+#### Auto-Trigger Questions:
+- **Capability**: "Does X support Y?", "Can X do Y?"
+- **Feasibility**: "Is it possible to...", "Can we..."
+- **Existence**: "Is there a...", "Does X exist?"
+- **Architecture**: "How does X work?"
+- **Integration**: "How to integrate X with Y?"
+
+#### Required Steps:
+
+1. **Scope Mapping** - Identify relevant files and sources
+2. **Local Evidence** - Read ALL relevant files (don't skim)
+3. **External Verification** - Web search for current docs
+4. **Assumption Check** - List and verify each assumption
+5. **Synthesis** - Answer with citations and confidence level
+
+#### The Negative Evidence Rule
+
+**FORBIDDEN claims:**
+- "X is not supported"
+- "There is no Y"
+- "It doesn't exist"
+- "X cannot do Y"
+
+**REQUIRED format for negative claims:**
+```
+I searched the following sources and found no evidence of X:
+1. [source 1] - searched for [terms]
+2. [source 2] - searched for [terms]
+3. [official docs URL] - no mention found
+
+However, my search may be incomplete. Before concluding X doesn't exist:
+- Check if there's a different name for this feature
+- Verify with the latest official documentation
+- Consider that the feature may be in development
+```
+
+#### Assumption Tracking
+
+Before answering, list assumptions:
+```
+## My Assumptions
+1. [VERIFY] Claim → Confidence: LOW (training data)
+2. [OK] Verified fact → Confidence: HIGH (read file)
+```
+
+Any assumption with LOW confidence MUST be verified.
+
+---
+
+### Component Reuse (MANDATORY)
+
+**Before creating ANY new component, you MUST check for existing ones.**
+
+#### Required Checks:
+
+1. **Read app-map.md** - Check for existing components
+2. **Search codebase** - Find similar implementations
+3. **Evaluate similarity** - Can you extend instead of create?
+
+#### Decision Tree:
+
+```
+Similar component exists?
+    |
+    +-- EXACT match → USE IT
+    |
+    +-- 80%+ similar → ADD VARIANT to existing
+    |
+    +-- Partial match → EXTEND existing
+    |
+    +-- No match → CREATE NEW (last resort)
+```
+
+**The same applies to:**
+- Utility functions (check function-map.md)
+- API endpoints (check api-map.md)
+- Hooks and helpers
+- Types and interfaces
+
+---
+
+### Post-Edit Validation (MANDATORY)
+
+**After editing ANY code file, you MUST validate before proceeding.**
+
+```bash
+# For TypeScript/JavaScript
+npx tsc --noEmit 2>&1 | head -20
+npx eslint [file] --fix
+```
+
+**Rule: Do NOT edit another file until the current file passes validation.**
+
+---
+
+### Request Logging (MANDATORY)
+
+**After EVERY request that changes files, you MUST log it.**
+
+Add entry to `.workflow/state/request-log.md`:
+
+```markdown
+### R-[XXX] | [YYYY-MM-DD HH:MM]
+**Type**: new | fix | change | refactor
+**Tags**: #screen:[name] #component:[name]
+**Request**: "[what user asked]"
+**Result**: [what was done]
+**Files**: [files changed]
+```
+
+---
+
+
 ---
 
 ## Generated by CLI Bridge
@@ -449,4 +986,4 @@ This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: {{timestamp}}
+Last synced: 2026-01-28T11:39:39.970Z
