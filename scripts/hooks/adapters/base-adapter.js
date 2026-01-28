@@ -93,10 +93,30 @@ const CoreResultSchema = {
   task: Object,         // Active task info
   similar: Array,       // Similar components found
   results: Array,       // Validation results
-  criteriaStatus: Object // Loop criteria status
+  criteriaStatus: Object, // Loop criteria status
+
+  // Research gate fields
+  questionType: String,      // Type of question (feasibility, capability, etc.)
+  suggestedDepth: String,    // Suggested research depth
+  suggestedCommand: String   // Suggested command to run
+};
+
+/**
+ * Research result format from research gate
+ */
+const ResearchResultSchema = {
+  allowed: Boolean,          // Whether to allow without research
+  blocked: Boolean,          // Whether to block for research
+  warning: Boolean,          // Whether to warn (suggest research)
+  message: String,           // Message to show user
+  reason: String,            // Reason code
+  questionType: String,      // Type of question detected
+  suggestedDepth: String,    // Suggested research depth
+  suggestedCommand: String   // Suggested /wogi-research command
 };
 
 module.exports = {
   BaseAdapter,
-  CoreResultSchema
+  CoreResultSchema,
+  ResearchResultSchema
 };

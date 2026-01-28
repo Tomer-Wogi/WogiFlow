@@ -103,7 +103,13 @@ while [ $# -gt 0 ]; do
             ;;
         --analysis-mode)
             shift
-            ANALYSIS_MODE="$1"
+            # Whitelist validation for analysis mode (security: prevent injection)
+            if [[ "$1" =~ ^(balanced|deep)$ ]]; then
+                ANALYSIS_MODE="$1"
+            else
+                echo -e "${RED}Error: Invalid analysis mode '$1'. Use 'balanced' or 'deep'${NC}"
+                exit 1
+            fi
             ;;
         --strict)
             STRICT_MODE=true
@@ -192,8 +198,8 @@ safe_read_json() {
 
             const result = QUERIES[queryName](p, process.env.SCAN_PATH);
             console.log(result);
-        } catch(e) {
-            console.error(e.message);
+        } catch(err) {
+            console.error(err.message);
             process.exit(1);
         }
     ' -- "$file" "$query_name" 2>/dev/null
@@ -227,7 +233,7 @@ if [ "$SCAN_MODE" = true ]; then
     # Run pattern extraction on the source project
     echo -e "${YELLOW}Extracting patterns...${NC}"
 
-    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
+    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode \"$ANALYSIS_MODE\""
 
     if ! node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_FILE" --project "$SCAN_PATH" 2>/dev/null; then
         echo -e "${RED}Error: Pattern extraction failed${NC}"
@@ -518,14 +524,17 @@ if find "$TEMP_DIR" -name "*../*" -o -name "*\.\.*" 2>/dev/null | grep -q .; the
     exit 1
 fi
 
-# Check for symlinks that could escape temp dir
-if find "$TEMP_DIR" -type l 2>/dev/null | while read link; do
+# Check for symlinks that could escape temp dir (early fail - defense in depth at line 553)
+SYMLINK_CHECK_FAILED=false
+while IFS= read -r link; do
     target=$(readlink -f "$link" 2>/dev/null || true)
     if [ -n "$target" ] && [[ ! "$target" == "$TEMP_DIR"* ]]; then
-        echo "bad"
+        SYMLINK_CHECK_FAILED=true
         break
     fi
-done | grep -q "bad"; then
+done < <(find "$TEMP_DIR" -type l 2>/dev/null)
+
+if [ "$SYMLINK_CHECK_FAILED" = true ]; then
     echo -e "${RED}Error: Profile contains symlinks pointing outside temp directory${NC}"
     rm -rf "$TEMP_DIR"
     exit 1

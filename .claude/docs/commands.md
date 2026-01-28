@@ -141,6 +141,15 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-guided-edit` | Guide through multi-file changes step by step. Shows each edit for approval. |
 
+### Research Protocol (Zero-Trust)
+
+| Command | Action |
+|---------|--------|
+| `/wogi-research [question]` | Execute rigorous research before answering capability/feasibility questions. Phases: scope mapping, evidence gathering, external verification, assumption check, synthesis. |
+| `/wogi-research --quick [q]` | Quick research (5K tokens) - 1-2 files, no web search. |
+| `/wogi-research --deep [q]` | Deep research (50K tokens) - full file audit, multiple web searches. |
+| `/wogi-research --exhaustive [q]` | Exhaustive research (100K+ tokens) - everything + user confirmation gates. |
+
 ### Planning & Documentation
 
 | Command | Action |
@@ -312,6 +321,14 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow figma confirm <f>  # Interactive confirmation
 ./scripts/flow figma generate     # Generate code from decisions
 ./scripts/flow figma server       # Start MCP server
+
+# Research Protocol
+./scripts/flow research "q"       # Execute research protocol
+./scripts/flow research --quick   # Quick research (5K tokens)
+./scripts/flow research --deep    # Deep research (50K tokens)
+./scripts/flow research --exhaustive # Full audit (100K+ tokens)
+./scripts/flow research cache     # Show cached verifications
+./scripts/flow research cache clear # Clear verification cache
 ```
 
 ## Command Execution

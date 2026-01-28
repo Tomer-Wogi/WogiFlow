@@ -332,7 +332,21 @@ function checkImplementationGate(options = {}) {
 
   // No active task and implementation intent detected
   // v4.2: Use 'mode' config as canonical control (softMode is deprecated fallback)
-  const config = getConfig();
+  let config;
+  try {
+    config = getConfig();
+    // Defensive: ensure config is an object
+    if (!config || typeof config !== 'object') {
+      config = {};
+    }
+  } catch (err) {
+    // Config load failed - default to warn mode for safety
+    if (process.env.DEBUG) {
+      console.error(`[Implementation Gate] Config load failed: ${err.message}`);
+    }
+    config = {};
+  }
+
   let mode = config.hooks?.rules?.implementationGate?.mode;
 
   // Backward compatibility: if mode not set, check legacy softMode

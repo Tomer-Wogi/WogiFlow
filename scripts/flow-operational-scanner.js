@@ -25,6 +25,12 @@ const { getProjectRoot, safeJsonParse, colors, outputJson } = require('./flow-ut
 // Constants
 // ============================================================
 
+// Maximum file results to prevent memory issues on large codebases
+const MAX_FILE_RESULTS = 1000;
+
+// Maximum config file size for regex matching (prevent ReDoS)
+const MAX_CONFIG_FILE_SIZE = 100 * 1024; // 100KB
+
 const LOCKFILE_TO_MANAGER = {
   'pnpm-lock.yaml': 'pnpm',
   'yarn.lock': 'yarn',
@@ -160,7 +166,10 @@ function detectDevServer(projectRoot) {
         break;
       }
     } catch (err) {
-      // Ignore read errors
+      // Log read errors in debug mode for troubleshooting
+      if (process.env.DEBUG) {
+        console.error(`Debug: Failed to read ${filePath}: ${err.message}`);
+      }
     }
   }
 
@@ -449,7 +458,9 @@ function detectFileNamingConvention(projectRoot) {
     let pascalCount = 0;
     let camelCount = 0;
 
-    for (const name of basenames.slice(0, 50)) {
+    // Sample up to 200 files for more accurate naming convention detection
+    const NAMING_SAMPLE_SIZE = 200;
+    for (const name of basenames.slice(0, NAMING_SAMPLE_SIZE)) {
       if (name === 'index') continue;
       if (name.includes('-')) kebabCount++;
       else if (/^[A-Z]/.test(name)) pascalCount++;
@@ -536,12 +547,6 @@ function detectGitPatterns(projectRoot) {
 // ============================================================
 // Helper Functions
 // ============================================================
-
-// Maximum file results to prevent memory issues on large codebases
-const MAX_FILE_RESULTS = 1000;
-
-// Maximum config file size for regex matching (prevent ReDoS)
-const MAX_CONFIG_FILE_SIZE = 100 * 1024; // 100KB
 
 /**
  * Recursively find files matching a pattern

@@ -1,0 +1,306 @@
+#!/usr/bin/env node
+
+/**
+ * Wogi Flow - Research Gate (Core Module)
+ *
+ * CLI-agnostic research gating logic.
+ * Detects questions that require research verification before answering.
+ *
+ * Returns a standardized result that adapters transform for specific CLIs.
+ */
+
+const {
+  checkResearchGate,
+  isResearchEnabled,
+  getResearchConfig,
+  CONFIDENCE,
+  DEPTHS
+} = require('../../flow-research-protocol');
+
+/**
+ * Check if research gate should block or warn for a prompt
+ *
+ * @param {Object} options
+ * @param {string} options.prompt - User's input prompt
+ * @param {string} [options.source] - Source of prompt (manual, paste, etc.)
+ * @returns {Object} Result: { allowed, blocked, message, reason, questionType, suggestedDepth }
+ */
+function checkResearchRequirement(options = {}) {
+  const { prompt } = options;
+
+  // Empty or invalid prompt - allow
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'empty_prompt'
+    };
+  }
+
+  // CRITICAL: Snapshot config ONCE at the start to avoid race conditions
+  // Multiple reads could return different values if config file changes mid-execution
+  let config;
+  try {
+    config = getResearchConfig();
+    if (!config || typeof config !== 'object') {
+      // Invalid config - graceful degradation
+      return {
+        allowed: true,
+        blocked: false,
+        message: null,
+        reason: 'config_error'
+      };
+    }
+  } catch (err) {
+    // Config load failed - graceful degradation
+    if (process.env.DEBUG) {
+      console.error(`[Research Gate] Config load failed: ${err.message}`);
+    }
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'config_error'
+    };
+  }
+
+  // Check if research is enabled using cached config
+  if (!config.enabled) {
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'research_disabled'
+    };
+  }
+
+  // Check the research gate
+  const gateResult = checkResearchGate(prompt);
+
+  if (!gateResult.required) {
+    // Not required, but may have a suggestion
+    if (gateResult.message) {
+      return {
+        allowed: true,
+        blocked: false,
+        warning: true,
+        message: gateResult.message,
+        reason: 'research_suggested',
+        questionType: gateResult.type,
+        suggestedDepth: gateResult.depth
+      };
+    }
+
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'no_research_needed'
+    };
+  }
+
+  // Research is required - inject protocol steps (don't block)
+  // Use already-cached config (no additional read)
+
+  // Generate the research protocol instructions to inject
+  const protocolSteps = generateResearchProtocolSteps(prompt, gateResult.type, gateResult.depth);
+
+  if (config.strictMode) {
+    // Strict mode: Allow but inject mandatory research protocol
+    return {
+      allowed: true,
+      blocked: false,
+      researchRequired: true,
+      injectProtocol: true,
+      protocolSteps,
+      message: `Research protocol auto-triggered for ${gateResult.type} question.`,
+      reason: 'research_auto_triggered',
+      questionType: gateResult.type,
+      suggestedDepth: gateResult.depth
+    };
+  }
+
+  // Warn mode: Allow with optional research suggestion
+  return {
+    allowed: true,
+    blocked: false,
+    warning: true,
+    message: gateResult.message,
+    reason: 'research_recommended',
+    questionType: gateResult.type,
+    suggestedDepth: gateResult.depth,
+    suggestedCommand: generateResearchCommand(prompt, gateResult.depth)
+  };
+}
+
+/**
+ * Generate the suggested research command
+ * @param {string} prompt - The user's question
+ * @param {string} depth - Suggested depth
+ * @returns {string}
+ */
+function generateResearchCommand(prompt, depth) {
+  const truncated = prompt.length > 60 ? prompt.slice(0, 57) + '...' : prompt;
+  // Escape in correct order: backslashes first, then quotes, then control chars
+  const escaped = truncated
+    .replace(/\\/g, '\\\\')    // Escape backslashes first
+    .replace(/"/g, '\\"')      // Then quotes
+    .replace(/\n/g, ' ')       // Replace newlines with space (cleaner for command)
+    .replace(/\r/g, '')        // Remove carriage returns
+    .replace(/\t/g, ' ');      // Replace tabs with space
+
+  if (depth === DEPTHS.STANDARD) {
+    return `/wogi-research "${escaped}"`;
+  }
+  return `/wogi-research --${depth} "${escaped}"`;
+}
+
+/**
+ * Generate research protocol steps to inject into AI context
+ * @param {string} question - The user's question
+ * @param {string} type - Question type (capability, feasibility, existence, etc.)
+ * @param {string} depth - Research depth
+ * @returns {string} Protocol steps as markdown
+ */
+function generateResearchProtocolSteps(question, type, depth) {
+  const depthLimits = {
+    [DEPTHS.QUICK]: { files: 3, urls: 1, desc: 'Quick verification' },
+    [DEPTHS.STANDARD]: { files: 10, urls: 3, desc: 'Standard research' },
+    [DEPTHS.DEEP]: { files: 25, urls: 5, desc: 'Deep investigation' },
+    [DEPTHS.EXHAUSTIVE]: { files: 50, urls: 10, desc: 'Exhaustive audit' }
+  };
+
+  const limits = depthLimits[depth] || depthLimits[DEPTHS.STANDARD];
+
+  return `## Research Protocol Auto-Triggered
+
+**Question Type**: ${type}
+**Depth**: ${depth} (${limits.desc})
+**Limits**: Up to ${limits.files} files, ${limits.urls} web searches
+
+### BEFORE ANSWERING, YOU MUST:
+
+**Phase 1: Scope Mapping**
+- Identify all relevant local files (use Glob/Grep)
+- Identify external tools/libraries mentioned
+- List documentation sources to check
+
+**Phase 2: Local Evidence Gathering**
+- Read ALL relevant files in scope (don't skim)
+- Extract specific quotes that support or refute claims
+- Note file paths and line numbers
+
+**Phase 3: External Verification**
+- For external tools: Web search "[tool] [feature] documentation ${new Date().getFullYear()}"
+- Read official docs, not just training data
+- Extract quotes with URLs
+
+**Phase 4: Assumption Check**
+- List assumptions you're making
+- Mark each: [VERIFIED] with source or [UNVERIFIED]
+- Go back to Phase 2/3 for unverified items
+
+**Phase 5: Synthesis**
+- Only now answer the question
+- Cite sources for each claim
+- State confidence level (HIGH/MEDIUM/LOW)
+- Acknowledge what you couldn't verify
+
+### FORBIDDEN:
+- Claiming "X doesn't exist" without exhaustive search
+- Using training data for external tool capabilities
+- Skipping verification steps
+
+Proceed with research now.`;
+}
+
+/**
+ * Check if a prompt contains claims that need verification
+ * This is for post-response validation, not blocking
+ *
+ * @param {string} response - The AI's response
+ * @returns {Object} Result with claims that need verification
+ */
+function detectUnverifiedClaims(response) {
+  if (!response || typeof response !== 'string') {
+    return { hasClaims: false, claims: [] };
+  }
+
+  const claimPatterns = [
+    // Capability claims
+    /(?:it|this|that)\s+(does\s*n['o]t|doesn't|cannot|can't)\s+(?:support|have|allow|work)/gi,
+    /(?:is|are)\s+(not\s+supported|unavailable|impossible)/gi,
+
+    // Existence claims (bounded to prevent ReDoS)
+    /there\s+(?:is|are)\s+no\s+[\w\s]{1,50}(?:for|to|in)/gi,
+    /(?:it|this)\s+does\s*n['o]t\s+exist/gi,
+
+    // Certainty claims without citation (already bounded)
+    /(?:definitely|certainly|always|never)\s+[\w\s]{5,30}/gi,
+
+    // Version-specific claims (often stale)
+    /(?:as\s+of|since|in)\s+(?:version|v\.?)\s*[\d.]{1,20}/gi
+  ];
+
+  const claims = [];
+  for (const pattern of claimPatterns) {
+    const matches = response.match(pattern);
+    if (matches) {
+      claims.push(...matches.map(m => ({
+        text: m.trim(),
+        needsVerification: true,
+        confidence: CONFIDENCE.LOW
+      })));
+    }
+  }
+
+  // Deduplicate
+  const seen = new Set();
+  const uniqueClaims = claims.filter(c => {
+    const key = c.text.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return {
+    hasClaims: uniqueClaims.length > 0,
+    claims: uniqueClaims.slice(0, 10) // Limit to 10 claims
+  };
+}
+
+/**
+ * Format verification warning for detected claims
+ * @param {Object[]} claims - Claims that need verification
+ * @returns {string} Warning message
+ */
+function formatClaimWarning(claims) {
+  if (!claims || claims.length === 0) return '';
+
+  const lines = [
+    '**Unverified claims detected:**',
+    ''
+  ];
+
+  for (const claim of claims.slice(0, 5)) {
+    lines.push(`- "${claim.text}"`);
+  }
+
+  if (claims.length > 5) {
+    lines.push(`- ... and ${claims.length - 5} more`);
+  }
+
+  lines.push('');
+  lines.push('Consider verifying with `/wogi-research` before accepting these claims.');
+
+  return lines.join('\n');
+}
+
+module.exports = {
+  checkResearchRequirement,
+  generateResearchCommand,
+  generateResearchProtocolSteps,
+  detectUnverifiedClaims,
+  formatClaimWarning
+};

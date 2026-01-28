@@ -1412,5 +1412,30 @@
     "defaults": {
       "includeClaude": false
     }
+  },
+  "research": {
+    "enabled": true,
+    "defaultDepth": "standard",
+    "strictMode": true,
+    "autoTrigger": true,
+    "maxTokensPerDepth": {
+      "quick": 5000,
+      "standard": 20000,
+      "deep": 50000,
+      "exhaustive": 100000
+    },
+    "requireCitations": true,
+    "cacheVerifications": true,
+    "cacheExpiryHours": 24,
+    "triggers": {
+      "feasibilityQuestions": "deep",
+      "capabilityQuestions": "standard",
+      "existenceQuestions": "standard",
+      "architectureQuestions": "deep",
+      "integrationQuestions": "standard"
+    },
+    "budgetMode": "soft",
+    "negativeEvidenceRule": true,
+    "assumptionTracking": true
   }
 }

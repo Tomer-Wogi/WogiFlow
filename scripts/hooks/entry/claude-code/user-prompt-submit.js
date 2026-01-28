@@ -8,6 +8,7 @@
  */
 
 const { checkImplementationGate } = require('../../core/implementation-gate');
+const { checkResearchRequirement } = require('../../core/research-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 
@@ -65,11 +66,37 @@ async function main() {
       }
     }
 
-    // Check implementation gate
-    const coreResult = checkImplementationGate({
+    // Check research gate first (before implementation gate)
+    // Auto-triggers research protocol for capability/existence/feasibility questions
+    const researchResult = checkResearchRequirement({
       prompt,
       source
     });
+
+    // Check implementation gate
+    let coreResult = checkImplementationGate({
+      prompt,
+      source
+    });
+
+    // If research protocol should be injected, add it to system reminder
+    if (researchResult.injectProtocol && researchResult.protocolSteps) {
+      coreResult = {
+        ...coreResult,
+        systemReminder: researchResult.protocolSteps,
+        researchTriggered: true,
+        questionType: researchResult.questionType,
+        suggestedDepth: researchResult.suggestedDepth
+      };
+    } else if (researchResult.warning && coreResult.allowed) {
+      // Soft warning mode (not strict)
+      coreResult = {
+        ...coreResult,
+        warning: true,
+        researchWarning: researchResult.message,
+        suggestedCommand: researchResult.suggestedCommand
+      };
+    }
 
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('UserPromptSubmit', coreResult);
@@ -98,4 +125,22 @@ async function main() {
 
 // Handle stdin properly
 process.stdin.setEncoding('utf8');
-main();
+
+// Must await async main() to prevent race conditions
+// Without await, Node.js may exit before stdin finishes reading
+(async () => {
+  try {
+    await main();
+  } catch (err) {
+    // Catch any unhandled errors from main
+    if (process.env.DEBUG) {
+      console.error(`[Wogi Flow Hook] Unexpected error: ${err.message}`);
+    }
+    // Exit gracefully - don't block on hook errors
+    console.log(JSON.stringify({
+      continue: true,
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit' }
+    }));
+    process.exit(0);
+  }
+})();

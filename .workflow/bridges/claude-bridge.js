@@ -59,11 +59,20 @@ class ClaudeBridge extends BaseBridge {
 
   /**
    * Generate CLAUDE.md from Handlebars-like template
-   * Supports: {{variable}}, {{config.path}}, {{#if}}, {{#each}}, {{/if}}, {{/each}}
+   * Supports: {{variable}}, {{config.path}}, {{#if}}, {{#each}}, {{/if}}, {{/each}}, {{> partial}}
    */
   generateFromTemplate(templatePath, config) {
-    const template = fs.readFileSync(templatePath, 'utf-8');
+    let template;
+    try {
+      template = fs.readFileSync(templatePath, 'utf-8');
+    } catch (err) {
+      this.log(`Warning: Could not read template ${templatePath}: ${err.message}`);
+      return this.generateDefaultClaudeMd(config);
+    }
     let content = template;
+
+    // Process {{> partial}} includes first (before other processing)
+    content = this.processPartials(content);
 
     // Process {{#if config.path.to.value}}...{{/if}} blocks
     // Non-greedy match to handle nested conditions
@@ -340,24 +349,47 @@ Last synced: ${new Date().toISOString()}
   }
 
   /**
-   * Generate settings.local.json with wildcard permissions
-   * Claude Code 2.1.0+ supports wildcards like Bash(npm *)
+   * Generate settings.local.json with permissions
+   * NOTE: Requires Claude Code 2.1.7+ which fixed wildcard matching of shell operators.
+   * See security-patterns.md rule #6 for details.
    */
   generateSettings(config) {
     const projectDir = this.projectDir;
 
-    // Base wildcard permissions - covers most common use cases
+    // Permission rules - balancing security with workflow convenience
+    // Wildcards are safe in 2.1.7+ (shell operators rejected)
     const wildcardPermissions = [
-      // Package managers
-      'Bash(npm *)',
+      // Package managers - specific safe operations
+      'Bash(npm install *)',
+      'Bash(npm run *)',
+      'Bash(npm test *)',
+      'Bash(npm exec *)',
+      'Bash(npm ci)',
+      'Bash(npm audit *)',
+      'Bash(npm outdated *)',
+      'Bash(npm ls *)',
+      'Bash(npm version *)',
       'Bash(npx *)',
-      'Bash(yarn *)',
-      'Bash(pnpm *)',
-      'Bash(pip *)',
-      'Bash(python *)',
-      'Bash(python3 *)',
+      'Bash(yarn install *)',
+      'Bash(yarn add *)',
+      'Bash(yarn remove *)',
+      'Bash(yarn run *)',
+      'Bash(yarn test *)',
+      'Bash(yarn build *)',
+      'Bash(yarn dev *)',
+      'Bash(pnpm install *)',
+      'Bash(pnpm add *)',
+      'Bash(pnpm remove *)',
+      'Bash(pnpm run *)',
+      'Bash(pnpm test *)',
+      'Bash(pnpm build *)',
+      'Bash(pnpm dev *)',
+      'Bash(pip install *)',
+      'Bash(pip list *)',
+      'Bash(python -m *)',
+      'Bash(python3 -m *)',
 
-      // Git operations
+      // Git operations - all safe read/write operations
       'Bash(git status)',
       'Bash(git status *)',
       'Bash(git diff *)',
@@ -386,18 +418,14 @@ Last synced: ${new Date().toISOString()}
       'Bash(./scripts/flow *)',
       'Bash(./scripts/flow)',
 
-      // Common utilities
+      // Safe read-only utilities
       'Bash(ls *)',
       'Bash(tree *)',
-      'Bash(cat *)',
-      'Bash(head *)',
-      'Bash(tail *)',
       'Bash(wc *)',
-      'Bash(grep *)',
-      'Bash(find *)',
       'Bash(chmod +x *)',  // Only make executable, not arbitrary permissions
-      'Bash(node *)',
-      'Bash(bash *)',
+      'Bash(node --check *)',
+      'Bash(node --version)',
+      'Bash(bash -n *)',  // Syntax check only
       'Bash(open *)',
       'Bash(test *)',
 

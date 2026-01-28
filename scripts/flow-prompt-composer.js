@@ -328,6 +328,16 @@ function composePrompt(params) {
  * @returns {string} Processed string
  */
 function applyTemplate(template, data) {
+  // Guard against null/undefined data
+  if (!data || typeof data !== 'object') {
+    return template;
+  }
+
+  // Guard against null/undefined template
+  if (!template || typeof template !== 'string') {
+    return template || '';
+  }
+
   // Forbidden keys to prevent prototype pollution (case-insensitive)
   const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 

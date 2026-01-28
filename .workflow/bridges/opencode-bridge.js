@@ -51,6 +51,28 @@ class OpenCodeBridge extends BaseBridge {
   }
 
   /**
+   * Register template partials with Handlebars
+   */
+  registerPartials() {
+    if (!Handlebars) return;
+
+    const partialsDir = path.join(this.projectDir, this.workflowDir, 'templates', 'partials');
+    if (!fs.existsSync(partialsDir)) return;
+
+    try {
+      const partialFiles = fs.readdirSync(partialsDir).filter(f => f.endsWith('.hbs'));
+      for (const file of partialFiles) {
+        const partialName = path.basename(file, '.hbs');
+        const partialContent = fs.readFileSync(path.join(partialsDir, file), 'utf-8');
+        Handlebars.registerPartial(partialName, partialContent);
+        this.log(`Registered partial: ${partialName}`);
+      }
+    } catch (err) {
+      this.log(`Warning: Could not register partials: ${err.message}`);
+    }
+  }
+
+  /**
    * Generate AGENTS.md content
    */
   generateRulesContent(config) {
@@ -58,6 +80,9 @@ class OpenCodeBridge extends BaseBridge {
 
     // Try to use Handlebars template with proper error handling
     if (Handlebars) {
+      // Register partials before compiling
+      this.registerPartials();
+
       try {
         const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'opencode-agents-md.hbs');
         if (fs.existsSync(templatePath)) {
@@ -71,7 +96,7 @@ class OpenCodeBridge extends BaseBridge {
       }
     }
 
-    // Fallback to inline generation
+    // Fallback to inline generation (includes partial content directly)
     return this.generateAgentsMdFallback(context);
   }
 

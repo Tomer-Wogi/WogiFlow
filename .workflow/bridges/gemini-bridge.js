@@ -70,7 +70,7 @@ class GeminiBridge extends BaseBridge {
 
   /**
    * Generate GEMINI.md from Handlebars-like template
-   * Supports: {{variable}}, {{config.path}}, {{#if}}, {{#each}}, {{/if}}, {{/each}}
+   * Supports: {{variable}}, {{config.path}}, {{#if}}, {{#each}}, {{/if}}, {{/each}}, {{> partial}}
    */
   generateFromTemplate(templatePath, config) {
     let template;
@@ -81,6 +81,9 @@ class GeminiBridge extends BaseBridge {
       return this.generateDefaultGeminiMd(config);
     }
     let content = template;
+
+    // Process {{> partial}} includes first (before other processing)
+    content = this.processPartials(content);
 
     // Process {{#if config.path.to.value}}...{{/if}} blocks
     content = this.processConditionals(content, config);

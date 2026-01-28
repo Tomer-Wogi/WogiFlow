@@ -1,0 +1,27 @@
+{
+  "$schema": "https://opencode.ai/schema/config.json",
+  "version": "1.0",
+
+  "context": {
+    "files": [
+      "AGENTS.md",
+      ".workflow/state/decisions.md"
+    ]
+  },
+
+  "plugins": {
+    "wogiflow": {
+      "enabled": true,
+      "path": "./plugins/wogiflow.js"
+    }
+  },
+
+  "mcp": {
+    "servers": {}
+  },
+
+  "tools": {
+    "sandbox": false,
+    "allowed": ["file_write", "file_read", "shell_execute"]
+  }
+}

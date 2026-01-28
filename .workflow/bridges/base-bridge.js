@@ -109,17 +109,33 @@ class BaseBridge {
 
   /**
    * Safe JSON parse that checks for prototype pollution (fallback when flow-utils unavailable)
+   *
+   * NOTE: This is a fallback implementation. When flow-utils is available,
+   * safeJsonParse from flow-utils is used instead (it performs recursive
+   * validation of the parsed object). This fallback only does pre-parse
+   * string checking which is less comprehensive but better than nothing.
+   *
    * @param {string} content - JSON string to parse
    * @returns {Object|null} Parsed object or null if invalid
    */
   safeJsonParseContent(content) {
-    // Check for prototype pollution attempts (case-insensitive)
-    const contentLower = content.toLowerCase();
-    if (contentLower.includes('__proto__') ||
-        contentLower.includes('constructor') ||
-        contentLower.includes('prototype')) {
-      this.log('Warning: Potential prototype pollution detected in JSON');
+    if (!content || typeof content !== 'string') {
       return null;
+    }
+
+    // Check for prototype pollution attempts
+    // These patterns look for dangerous keys that could be used for prototype pollution
+    const dangerousPatterns = [
+      /__proto__/i,
+      /"constructor"\s*:/,
+      /"prototype"\s*:/
+    ];
+
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(content)) {
+        this.log('Warning: Potential prototype pollution detected in JSON');
+        return null;
+      }
     }
 
     try {
@@ -127,8 +143,30 @@ class BaseBridge {
       if (parsed === null || typeof parsed !== 'object') {
         return null;
       }
+
+      // Additional check: verify no __proto__ keys in parsed result
+      // (JSON.parse could still create them in some edge cases)
+      const hasProtoKey = (obj) => {
+        if (!obj || typeof obj !== 'object') return false;
+        if (Object.prototype.hasOwnProperty.call(obj, '__proto__')) return true;
+        for (const value of Object.values(obj)) {
+          if (typeof value === 'object' && value !== null && hasProtoKey(value)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      if (hasProtoKey(parsed)) {
+        this.log('Warning: __proto__ key detected in parsed JSON');
+        return null;
+      }
+
       return parsed;
-    } catch {
+    } catch (err) {
+      if (process.env.DEBUG) {
+        this.log(`JSON parse error: ${err.message}`);
+      }
       return null;
     }
   }
@@ -164,7 +202,8 @@ class BaseBridge {
   ensureCliFolder() {
     const cliFolder = path.join(this.projectDir, this.getCliFolder());
     if (!fs.existsSync(cliFolder)) {
-      fs.mkdirSync(cliFolder, { recursive: true });
+      // Use explicit permissions (0o755 = rwxr-xr-x) to avoid relying on umask
+      fs.mkdirSync(cliFolder, { recursive: true, mode: 0o755 });
       this.log(`Created ${this.getCliFolder()}/`);
     }
   }
@@ -181,9 +220,9 @@ class BaseBridge {
       return;
     }
 
-    // Ensure target directory exists
+    // Ensure target directory exists with explicit permissions
     if (!fs.existsSync(targetSkillsDir)) {
-      fs.mkdirSync(targetSkillsDir, { recursive: true });
+      fs.mkdirSync(targetSkillsDir, { recursive: true, mode: 0o755 });
     }
 
     // Copy skills
@@ -214,9 +253,9 @@ class BaseBridge {
   syncRules() {
     const rulesDir = path.join(this.projectDir, this.getRulesPath());
 
-    // Ensure rules directory exists
+    // Ensure rules directory exists with explicit permissions
     if (!fs.existsSync(rulesDir)) {
-      fs.mkdirSync(rulesDir, { recursive: true });
+      fs.mkdirSync(rulesDir, { recursive: true, mode: 0o755 });
     }
 
     // Copy any existing rules from .workflow/rules/ if present
@@ -244,9 +283,9 @@ class BaseBridge {
     // Knowledge files to sync
     const knowledgeFiles = ['stack.md', 'architecture.md', 'testing.md'];
 
-    // Ensure CLI docs directory exists
+    // Ensure CLI docs directory exists with explicit permissions
     if (!fs.existsSync(cliDocsDir)) {
-      fs.mkdirSync(cliDocsDir, { recursive: true });
+      fs.mkdirSync(cliDocsDir, { recursive: true, mode: 0o755 });
     }
 
     let syncedCount = 0;
@@ -359,6 +398,76 @@ class BaseBridge {
     return results;
   }
 
+  // ==================== Template Utility Methods ====================
+
+  /**
+   * Load a partial template from .workflow/templates/partials/
+   * @param {string} partialName - Name of the partial (without .hbs extension)
+   * @returns {string} Partial content or empty string if not found
+   */
+  loadPartial(partialName) {
+    const partialPath = path.join(
+      this.projectDir,
+      this.workflowDir,
+      'templates',
+      'partials',
+      `${partialName}.hbs`
+    );
+
+    try {
+      if (fs.existsSync(partialPath)) {
+        return fs.readFileSync(partialPath, 'utf-8');
+      }
+    } catch (err) {
+      this.log(`Warning: Could not load partial ${partialName}: ${err.message}`);
+    }
+    return '';
+  }
+
+  /**
+   * Process partial includes in template content
+   * Replaces {{> partial-name}} with the partial content
+   * @param {string} content - Template content
+   * @returns {string} Content with partials included
+   */
+  processPartials(content) {
+    // Match {{> partial-name}} pattern
+    const partialRegex = /\{\{>\s*([a-zA-Z0-9_-]+)\s*\}\}/g;
+
+    return content.replace(partialRegex, (match, partialName) => {
+      const partialContent = this.loadPartial(partialName);
+      if (!partialContent) {
+        this.log(`Warning: Partial not found: ${partialName}`);
+        return `<!-- Partial not found: ${partialName} -->`;
+      }
+      return partialContent;
+    });
+  }
+
+  /**
+   * Get nested value from config object using dot notation
+   * @param {Object} obj - The object to search
+   * @param {string} path - Dot-separated path (e.g., 'hooks.rules.taskGating')
+   * @returns {*} The value or undefined
+   */
+  getNestedValue(obj, path) {
+    if (!path || typeof path !== 'string') return undefined;
+
+    const parts = path.split('.');
+    let current = obj;
+
+    for (const part of parts) {
+      if (current === null || current === undefined) return undefined;
+      // Security: skip dangerous property names
+      if (part === '__proto__' || part === 'constructor' || part === 'prototype') {
+        return undefined;
+      }
+      current = current[part];
+    }
+
+    return current;
+  }
+
   // ==================== Utility Methods ====================
 
   /**
@@ -366,7 +475,7 @@ class BaseBridge {
    */
   copyDirRecursive(source, target) {
     if (!fs.existsSync(target)) {
-      fs.mkdirSync(target, { recursive: true });
+      fs.mkdirSync(target, { recursive: true, mode: 0o755 });
     }
 
     const items = fs.readdirSync(source);

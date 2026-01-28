@@ -1,0 +1,164 @@
+## Enforcement Rules
+
+These rules are MANDATORY and apply to all implementation work.
+
+---
+
+### Task Gating (MANDATORY)
+
+**Before ANY implementation work, you MUST have an active task.**
+
+#### Step 1: Is this an implementation request?
+
+**YES - Implementation requests:**
+- "Add X to Y"
+- "Fix the bug in..."
+- "Create a component for..."
+- "Implement feature X"
+- "Build me a [system/feature]"
+- Any request that requires writing/modifying code
+
+**NO - Handle normally:**
+- "What does X do?"
+- "How does Y work?"
+- "Show me the code for..."
+- Questions, exploration, reading files
+
+If **NO** → Proceed normally without task gating.
+If **YES** → Continue to Step 2.
+
+#### Step 2: Does a task already exist?
+
+Check `.workflow/state/ready.json` for existing tasks.
+
+- If **YES** → Start that task
+- If **NO** → Continue to Step 3
+
+#### Step 3: Assess and Create
+
+| Size | Files | Action |
+|------|-------|--------|
+| Trivial | 1 | Execute inline with logging |
+| Small | 1-5 | Create task, then proceed |
+| Medium | 5-15 | Create story with AC first, get approval |
+| Large | 15+ | Create epic, decompose to stories |
+
+**This is NON-NEGOTIABLE. The user installed WogiFlow to prevent untracked changes.**
+
+---
+
+### Research Protocol (MANDATORY for Capability Questions)
+
+**When answering questions about capabilities, feasibility, or existence, you MUST verify first.**
+
+#### Auto-Trigger Questions:
+- **Capability**: "Does X support Y?", "Can X do Y?"
+- **Feasibility**: "Is it possible to...", "Can we..."
+- **Existence**: "Is there a...", "Does X exist?"
+- **Architecture**: "How does X work?"
+- **Integration**: "How to integrate X with Y?"
+
+#### Required Steps:
+
+1. **Scope Mapping** - Identify relevant files and sources
+2. **Local Evidence** - Read ALL relevant files (don't skim)
+3. **External Verification** - Web search for current docs
+4. **Assumption Check** - List and verify each assumption
+5. **Synthesis** - Answer with citations and confidence level
+
+#### The Negative Evidence Rule
+
+**FORBIDDEN claims:**
+- "X is not supported"
+- "There is no Y"
+- "It doesn't exist"
+- "X cannot do Y"
+
+**REQUIRED format for negative claims:**
+```
+I searched the following sources and found no evidence of X:
+1. [source 1] - searched for [terms]
+2. [source 2] - searched for [terms]
+3. [official docs URL] - no mention found
+
+However, my search may be incomplete. Before concluding X doesn't exist:
+- Check if there's a different name for this feature
+- Verify with the latest official documentation
+- Consider that the feature may be in development
+```
+
+#### Assumption Tracking
+
+Before answering, list assumptions:
+```
+## My Assumptions
+1. [VERIFY] Claim → Confidence: LOW (training data)
+2. [OK] Verified fact → Confidence: HIGH (read file)
+```
+
+Any assumption with LOW confidence MUST be verified.
+
+---
+
+### Component Reuse (MANDATORY)
+
+**Before creating ANY new component, you MUST check for existing ones.**
+
+#### Required Checks:
+
+1. **Read app-map.md** - Check for existing components
+2. **Search codebase** - Find similar implementations
+3. **Evaluate similarity** - Can you extend instead of create?
+
+#### Decision Tree:
+
+```
+Similar component exists?
+    |
+    +-- EXACT match → USE IT
+    |
+    +-- 80%+ similar → ADD VARIANT to existing
+    |
+    +-- Partial match → EXTEND existing
+    |
+    +-- No match → CREATE NEW (last resort)
+```
+
+**The same applies to:**
+- Utility functions (check function-map.md)
+- API endpoints (check api-map.md)
+- Hooks and helpers
+- Types and interfaces
+
+---
+
+### Post-Edit Validation (MANDATORY)
+
+**After editing ANY code file, you MUST validate before proceeding.**
+
+```bash
+# For TypeScript/JavaScript
+npx tsc --noEmit 2>&1 | head -20
+npx eslint [file] --fix
+```
+
+**Rule: Do NOT edit another file until the current file passes validation.**
+
+---
+
+### Request Logging (MANDATORY)
+
+**After EVERY request that changes files, you MUST log it.**
+
+Add entry to `.workflow/state/request-log.md`:
+
+```markdown
+### R-[XXX] | [YYYY-MM-DD HH:MM]
+**Type**: new | fix | change | refactor
+**Tags**: #screen:[name] #component:[name]
+**Request**: "[what user asked]"
+**Result**: [what was done]
+**Files**: [files changed]
+```
+
+---

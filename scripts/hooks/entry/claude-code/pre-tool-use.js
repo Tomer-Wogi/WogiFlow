@@ -9,6 +9,7 @@
  * v4.0: Added scope gating to validate edits are within task's declared scope
  */
 
+const path = require('path');
 const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
@@ -179,7 +180,6 @@ async function main() {
           const fileType = isComponent ? 'component' : isApi ? 'api' : 'generic';
 
           // Extract basename for validation (validateFileName expects just the filename)
-          const path = require('path');
           const fileName = path.basename(filePath);
           const fileResult = strictAdherence.validateFileName(fileName, fileType);
           if (fileResult.blocked) {

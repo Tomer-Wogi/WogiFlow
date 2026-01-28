@@ -23,6 +23,19 @@ jobs:
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           PACKAGE_VERSION=$(node -p "require('./package.json').version")
+
+          # Validate package name format (npm naming rules: lowercase, no spaces, alphanumeric with - and _)
+          if ! [[ "$PACKAGE_NAME" =~ ^[a-z0-9][a-z0-9._-]*$ ]]; then
+            echo "Error: Invalid package name format: $PACKAGE_NAME"
+            exit 1
+          fi
+
+          # Validate version format (semver)
+          if ! [[ "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format: $PACKAGE_VERSION"
+            exit 1
+          fi
+
           echo "Checking if $PACKAGE_NAME@$PACKAGE_VERSION exists on npm..."
 
           # Check if version exists (returns 0 if exists, 1 if not)

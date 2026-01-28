@@ -1,0 +1,125 @@
+## Task Execution Flow (AUTO-INVOKED)
+
+When implementing a task, these features run automatically. You don't need to invoke them manually.
+
+### Task Execution Pipeline
+
+```
+/wogi-start "add feature X"
+    |
+    +-- [AUTO] Request Triage
+    |   - Classify as: exploration, operational, quick-fix, bug, or implementation
+    |   - Route to appropriate action
+    |
+    +-- [AUTO] Pre-Implementation Checks
+    |   - Check app-map.md for existing components
+    |   - Check function-map.md for existing utilities
+    |   - Check api-map.md for existing endpoints
+    |   - Validate request aligns with task scope
+    |
+    +-- [AUTO] Specification Generation (for medium/large tasks)
+    |   - Generate acceptance criteria
+    |   - Identify files to change
+    |   - Set up verification commands
+    |
+    |   FOR EACH FILE EDIT:
+    |   +-- [AUTO] Scope Validation
+    |   |   - Verify file is in task's filesToChange
+    |   |   - Warn or block if out of scope
+    |   |
+    |   +-- [AUTO] Component Reuse Check
+    |   |   - Search app-map for similar components
+    |   |   - Suggest existing component if match > 80%
+    |   |
+    |   +-- [AUTO] Post-Edit Validation
+    |       - Run lint check
+    |       - Run typecheck
+    |       - Report errors immediately
+    |
+    +-- [AUTO] Criteria Completion Check
+    |   - Re-read ALL acceptance criteria
+    |   - Verify EACH criterion is actually implemented
+    |   - Loop back if any criterion incomplete
+    |
+    +-- [AUTO] Integration Wiring Check
+    |   - Verify new components are imported/used
+    |   - Flag orphan files (created but not wired)
+    |
+    +-- [AUTO] Post-Task Updates
+    |   - Update app-map.md with new components
+    |   - Update function-map.md with new utilities
+    |   - Log to request-log.md with tags
+    |   - Commit changes
+    |
+    +-- Task Complete
+```
+
+### What Each Auto-Feature Does
+
+#### Component Reuse Check
+**When:** Before creating any new component
+**What:** Searches app-map.md and codebase for existing similar components
+**Decision tree:**
+1. EXACT MATCH exists? → Use it
+2. SIMILAR exists (>80% match)? → Add variant to existing
+3. PARTIAL match? → Extend existing
+4. NOTHING similar? → Create new (last resort)
+
+#### Function/API Reuse Check
+**When:** Before creating any new utility function or API endpoint
+**What:** Searches function-map.md and api-map.md for existing implementations
+**Benefit:** Prevents duplicate utilities scattered across codebase
+
+#### Scope Validation
+**When:** Before every file edit
+**What:** Verifies the file is listed in the task's `filesToChange` section
+**Behavior:** Warns or blocks edits to files outside task scope
+
+#### Post-Edit Validation
+**When:** After every file edit
+**What:** Runs lint and typecheck on the modified file
+**Rule:** Do NOT edit another file until current file passes validation
+
+#### Criteria Completion Check
+**When:** After implementing all changes
+**What:** Re-reads the spec and verifies each acceptance criterion is actually working
+**Key question:** "If I run the code now, does it do what the criterion describes?"
+
+#### Integration Wiring Check
+**When:** Before completing task
+**What:** Verifies new files are imported and used somewhere
+**Prevents:** "Orphan components" - files that exist but are never accessible
+
+#### Request Logging
+**When:** After any changes to files
+**What:** Appends entry to request-log.md with:
+- Type (new/fix/change/refactor)
+- Tags (#screen:X #component:Y)
+- Files changed
+- Result summary
+
+#### App-Map Updates
+**When:** After creating new components
+**What:** Adds entry to app-map.md with:
+- Component name and path
+- Props/inputs
+- Usage examples
+
+### Configuration
+
+These features are controlled by `.workflow/config.json`:
+
+```json
+{
+  "hooks": {
+    "rules": {
+      "taskGating": { "enabled": true },
+      "scopeGating": { "enabled": true, "mode": "warn" },
+      "validation": { "enabled": true },
+      "componentReuse": { "enabled": true, "threshold": 80 }
+    }
+  }
+}
+```
+
+---

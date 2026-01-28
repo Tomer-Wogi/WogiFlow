@@ -56,6 +56,28 @@ class CursorBridge extends BaseBridge {
   }
 
   /**
+   * Register template partials with Handlebars
+   */
+  registerPartials() {
+    if (!Handlebars) return;
+
+    const partialsDir = path.join(this.projectDir, this.workflowDir, 'templates', 'partials');
+    if (!fs.existsSync(partialsDir)) return;
+
+    try {
+      const partialFiles = fs.readdirSync(partialsDir).filter(f => f.endsWith('.hbs'));
+      for (const file of partialFiles) {
+        const partialName = path.basename(file, '.hbs');
+        const partialContent = fs.readFileSync(path.join(partialsDir, file), 'utf-8');
+        Handlebars.registerPartial(partialName, partialContent);
+        this.log(`Registered partial: ${partialName}`);
+      }
+    } catch (err) {
+      this.log(`Warning: Could not register partials: ${err.message}`);
+    }
+  }
+
+  /**
    * Generate rules content (.mdc format with YAML frontmatter)
    */
   generateRulesContent(config) {
@@ -63,6 +85,9 @@ class CursorBridge extends BaseBridge {
 
     // Try to use Handlebars template
     if (Handlebars) {
+      // Register partials before compiling
+      this.registerPartials();
+
       const templatePath = path.join(this.projectDir, this.workflowDir, 'templates', 'cursor-rules.mdc.hbs');
       if (fs.existsSync(templatePath)) {
         try {
@@ -75,7 +100,7 @@ class CursorBridge extends BaseBridge {
       }
     }
 
-    // Fallback to inline generation
+    // Fallback to inline generation (includes partial content directly)
     return this.generateRulesFallback(context);
   }
 

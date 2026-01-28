@@ -38,6 +38,11 @@ const STANDARDS_PATH = path.join(PROJECT_ROOT, '.workflow/state/project-standard
 const OVERRIDES_PATH = path.join(PROJECT_ROOT, '.workflow/state/adherence-overrides.json');
 const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
 
+// Escape special regex characters for safe dynamic regex construction
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Package manager command mappings for auto-correction
 const PACKAGE_COMMANDS = {
   npm: {
@@ -178,13 +183,13 @@ function validateCommand(command) {
   // Check for port in dev commands
   const expectedPort = standards.operational?.devServer?.port;
   if (expectedPort) {
-    // Extended regex to handle URLs like http://localhost:3000, --port=3000, -p 3000
-    const portMatch = command.match(/--port[=\s]+(\d+)|-p\s+(\d+)|localhost:(\d+)|127\.0\.0\.1:(\d+)|0\.0\.0\.0:(\d+)/);
-    if (portMatch) {
-      // Find the first matched group that has a value
-      const portValue = portMatch[1] || portMatch[2] || portMatch[3] || portMatch[4] || portMatch[5];
-      if (!portValue) return result; // No valid port found, skip validation
-      const usedPort = parseInt(portValue, 10);
+    // Unified regex: non-capturing groups for patterns, single capture group for port value
+    // Matches: --port=3000, --port 3000, -p 3000, localhost:3000, 127.0.0.1:3000, 0.0.0.0:3000
+    const portMatch = command.match(/(?:--port[=\s]+|-p\s+|localhost:|127\.0\.0\.1:|0\.0\.0\.0:)(\d+)/);
+    if (portMatch && portMatch[1]) {
+      const usedPort = parseInt(portMatch[1], 10);
+      // Validate port is in valid range
+      if (usedPort < 1 || usedPort > 65535) return result;
       if (usedPort !== expectedPort) {
         result.valid = false;
         result.reason = `Project uses port ${expectedPort}, not ${usedPort}`;
@@ -242,8 +247,8 @@ function convertPackageCommand(command, fromManager, toManager) {
     return `${to.remove} ${packages}`;
   }
 
-  // Generic replacement
-  return command.replace(new RegExp(`^${fromManager}\\b`), toManager);
+  // Generic replacement (escape fromManager for regex safety)
+  return command.replace(new RegExp(`^${escapeRegExp(fromManager)}\\b`), toManager);
 }
 
 // ============================================================

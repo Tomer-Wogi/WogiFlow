@@ -1,36 +1,217 @@
-# {{projectName}} - Gemini CLI Instructions
+# Project Instructions
 
-> **Note**: This is a stub template for Gemini CLI. Full implementation pending.
-> The Gemini bridge is planned but not yet implemented.
-
-## Project Overview
-
-**Project Name**: {{projectName}}
-**Workflow Version**: 1.9
-**Generated**: {{timestamp}}
+You are an AI development assistant using the WogiFlow methodology v1.0. This is a self-improving workflow that learns from feedback and adapts to your team's preferences.
 
 ---
 
-## Wogi Flow Integration
+{{#if config.enforcement.strictMode}}
+## Task Gating (MANDATORY)
 
-This project uses the Wogi Flow methodology. Key principles:
+**STOP. Before doing ANY implementation work, you MUST follow these steps:**
 
-1. **Task-based development** - All work is tracked as tasks
-2. **Component reuse** - Check app-map before creating
-3. **Request logging** - Log all changes
-4. **Self-improvement** - Learn from feedback
+### Step 1: Is this an implementation request?
 
-## Commands
+**YES - Implementation requests:**
+- "Add X to Y"
+- "Fix the bug in..."
+- "Create a component for..."
+- "Implement feature X"
+- "Build me a [system/feature]"
+- Any request that requires writing/modifying code
 
-The following Wogi Flow commands are available:
+**NO - Handle normally:**
+- "What does X do?"
+- "How does Y work?"
+- "Show me the code for..."
+- Questions, exploration, reading files
 
-| Command | Purpose |
+If **NO** → Proceed normally without task gating.
+If **YES** → Continue to Step 2.
+
+### Step 2: Does a task already exist?
+
+Check `.workflow/state/ready.json` for existing tasks.
+
+- If **YES** → Execute: `./scripts/flow start TASK-XXX`
+- If **NO** → Continue to Step 3
+
+### Step 3: Assess task size
+
+| Level | Type | Files | Criteria | Action |
+|-------|------|-------|----------|--------|
+| L3 | **Subtask** | 1 | Atomic operation, trivial | Execute inline |
+| L2 | **Task** | 1-5 | Single concern, 1-3 AC | Create task, proceed |
+| L1 | **Story** | 5-15 | Multi-component, 3-10 AC | **STOP** - Create story first |
+| L0 | **Epic** | 15+ | New subsystem, 3+ stories | **STOP** - Create epic, decompose to stories |
+
+**This is NON-NEGOTIABLE when strict mode is enabled.**
+
+---
+{{/if}}
+
+{{#if config.strictAdherence.enabled}}
+## Operational Standards (STRICT MODE)
+
+This project uses strict adherence mode. You MUST follow the source project's patterns exactly.
+
+{{#if config.strictAdherence.operational.packageManager.tool}}
+**Package Manager**: `{{config.strictAdherence.operational.packageManager.tool}}`
+- Install: `{{config.strictAdherence.operational.packageManager.tool}} install`
+- Add package: `{{config.strictAdherence.operational.packageManager.tool}} add <package>`
+- Run script: `{{config.strictAdherence.operational.packageManager.tool}} <script>`
+- NEVER use other package managers (npm, yarn, pnpm, bun)
+{{/if}}
+
+{{#if config.strictAdherence.operational.devServer.port}}
+**Dev Server**: `localhost:{{config.strictAdherence.operational.devServer.port}}`
+- ALWAYS use port {{config.strictAdherence.operational.devServer.port}} for development
+{{/if}}
+
+---
+{{/if}}
+
+## Quick Start
+
+```bash
+# Read workflow state at session start
+cat .workflow/config.json      # Read config
+cat .workflow/state/ready.json # Check tasks
+cat .workflow/state/decisions.md # Project rules
+```
+
+## Core Principles
+
+1. **State files are memory** - Read `.workflow/state/` first
+2. **Config drives behavior** - Follow `.workflow/config.json` rules
+3. **Log every change** - Append to `request-log.md`
+4. **Reuse components** - Check `app-map.md` before creating
+5. **Learn from feedback** - Update instructions when corrected
+
+## Essential Commands
+
+| Command | Execute |
 |---------|---------|
-| `flow ready` | Show available tasks |
-| `flow start <id>` | Start working on a task |
-| `flow status` | Project overview |
-| `flow health` | Check workflow health |
+| `/wogi-ready` | `./scripts/flow ready` |
+| `/wogi-start TASK-X` | `./scripts/flow start TASK-X` |
+| `/wogi-story "title"` | `./scripts/flow story "title"` |
+| `/wogi-status` | `./scripts/flow status` |
+| `/wogi-health` | `./scripts/flow health` |
+| `/wogi-roadmap` | `./scripts/flow roadmap` |
 
+## Natural Language Command Detection
+
+**When you recognize these phrases, execute the corresponding command:**
+
+| Phrase Pattern | Execute |
+|----------------|---------|
+| "show tasks", "what's ready", "available tasks" | `./scripts/flow ready` |
+| "project status", "show status", "where are we" | `./scripts/flow status` |
+| "check health", "workflow health", "is everything ok" | `./scripts/flow health` |
+| "wrap up", "end session", "that's all" | `./scripts/flow session-end` |
+| "show roadmap", "what's planned", "future work" | `./scripts/flow roadmap` |
+
+**IMPORTANT**: When a user's message matches one of these patterns, immediately execute the corresponding command. Do not ask for confirmation.
+
+## CRITICAL: Universal Entry Point
+
+**ALL implementation requests MUST go through `/wogi-start`:**
+
+```
+User: "add a logout button"
+You: Execute ./scripts/flow start "add a logout button"
+```
+
+**Do NOT:**
+- Jump straight to editing files for implementation requests
+- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
+- Rationalize that "this is quick, I'll skip the workflow"
+
+**ALWAYS:**
+- Route implementation requests through /wogi-start
+- Let it classify and decide the appropriate action
+- Follow its routing decision
+
+**/wogi-start will intelligently route:**
+- **Exploration** (questions, reading) → Proceed without task
+- **Operational** (git, npm, deploy) → Execute directly
+- **Quick fix** (typo, text) → Execute + log
+- **Bug report** → Route to /wogi-bug
+- **Implementation** → Route to /wogi-story
+
+The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
+
+## Task Execution Rules
+
+**These apply to ALL implementation work:**
+
+### Before Starting:
+1. Check `app-map.md` for existing components
+2. Check `decisions.md` for coding patterns
+3. Load task acceptance criteria
+4. **Dependency Discovery** (for refactors/integrations):
+   - Search for files that REFERENCE the target code
+   - Search for files that ARE REFERENCED BY the target code
+   - Map the full flow/pipeline before making changes
+
+### While Working:
+1. Follow acceptance criteria exactly
+2. Use existing components from app-map
+3. Follow patterns from decisions.md
+4. Validate after EVERY file edit (run lint/typecheck)
+
+### After Completing:
+1. Update `request-log.md` with tags
+2. Update `app-map.md` if new components
+3. Run quality gates (lint, typecheck, test)
+4. Provide completion report
+
+## Auto-Validation (CRITICAL)
+
+After editing ANY TypeScript/JavaScript file:
+```bash
+npx tsc --noEmit 2>&1 | head -20
+npx eslint [file] --fix
+```
+
+**Do NOT edit another file until current file passes validation.**
+
+## Request Logging
+
+After EVERY request that changes files:
+```markdown
+### R-[XXX] | [YYYY-MM-DD HH:MM]
+**Type**: new | fix | change | refactor
+**Tags**: #screen:[name] #component:[name]
+**Request**: "[what user asked]"
+**Result**: [what was done]
+**Files**: [files changed]
+```
+
+## Component Reuse
+
+**Before creating ANY component:**
+1. Check `app-map.md`
+2. Search codebase for existing
+3. Priority: Use existing → Add variant → Extend → Create new (last resort)
+
+## Function & API Reuse
+
+**Before creating ANY new utility function or API call:**
+
+1. **Check `function-map.md`** for existing utilities
+2. **Check `api-map.md`** for existing API endpoints
+3. **Evaluate**: Can you extend an existing item instead of creating new?
+
+{{#if skills}}
+## Installed Skills
+
+{{#each skills}}
+- {{this}}
+{{/each}}
+
+Check `.gemini/skills/[name]/skill.md` for skill-specific guidance.
+
+{{/if}}
 ## File Locations
 
 | What | Where |
@@ -39,14 +220,141 @@ The following Wogi Flow commands are available:
 | Tasks | `.workflow/state/ready.json` |
 | Logs | `.workflow/state/request-log.md` |
 | Components | `.workflow/state/app-map.md` |
-| Decisions | `.workflow/state/decisions.md` |
+| Functions | `.workflow/state/function-map.md` |
+| APIs | `.workflow/state/api-map.md` |
+| Rules | `.workflow/state/decisions.md` |
+| Progress | `.workflow/state/progress.md` |
+| Roadmap | `.workflow/roadmap.md` |
 
-## Notes
+## Commit Behavior
 
-- This template will be expanded when Gemini CLI support is fully implemented
-- For now, use Claude Code for full Wogi Flow functionality
-- Bridge status: **Planned**
+Check `config.json → commits` before committing:
+
+```json
+"commits": {
+  "requireApproval": {
+    "feature": {{config.commits.requireApproval.feature}},
+    "bugfix": {{config.commits.requireApproval.bugfix}},
+    "refactor": {{config.commits.requireApproval.refactor}},
+    "docs": {{config.commits.requireApproval.docs}}
+  },
+  "autoCommitSmallFixes": {{config.commits.autoCommitSmallFixes}},
+  "smallFixThreshold": {{config.commits.smallFixThreshold}}
+}
+```
+
+**Rules:**
+- If `requireApproval[taskType]` is `true` → ASK before committing
+- If task changes > `smallFixThreshold` files → ASK before committing
+- Show git diff and ask: "Ready to commit these changes?"
+- Never commit without user awareness on features/refactors
+
+## Quality Gates
+
+Check `config.json → qualityGates` before closing any task:
+```json
+"qualityGates": {
+  "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
+}
+```
+
+## Context Management
+
+Use `/wogi-compact` when:
+- After completing 2-3 tasks
+- After 15-20 messages
+- Before starting large tasks
+
+Before compacting: Update progress.md, ensure request-log is current, commit work.
+
+## Handling Feedback
+
+When corrected:
+1. Fix it immediately
+2. Run `./scripts/flow correct "brief description"` to record the learning
+3. Determine scope (project-specific vs team vs universal)
+4. Update the appropriate location and commit
+
+## Session End
+
+When user says to wrap up:
+1. Finish current work
+2. Ensure request-log is current
+3. Update progress.md
+4. Commit and push
+
+{{#if config.research.enabled}}
+---
+
+## Research Protocol (Zero-Trust)
+
+**When answering questions about capabilities, feasibility, or existence, you MUST follow this protocol.**
+
+### Auto-Trigger Questions
+
+These question types require research verification:
+- **Capability**: "Does X support Y?", "Can X do Y?"
+- **Feasibility**: "Is it possible to...", "Can we..."
+- **Existence**: "Is there a...", "Does X exist?"
+- **Architecture**: "How does X work?"
+- **Integration**: "How to integrate X with Y?"
+
+### Required Actions
+
+1. **Before claiming capabilities**: Web search for current documentation
+2. **Before saying "doesn't exist"**: Perform exhaustive search first
+3. **For external tools**: Assume training data is 2+ years stale
+
+### The Negative Evidence Rule
+
+**FORBIDDEN:**
+- "X is not supported"
+- "There is no Y"
+- "It doesn't exist"
+
+**REQUIRED format:**
+```
+I searched [list sources] and found no evidence of X.
+However, my search may be incomplete. Consider:
+- Check official docs at [URL]
+- Feature may have a different name
+- Feature may be in development
+```
+
+### Assumption Tracking
+
+Before answering, list assumptions:
+```
+## My Assumptions
+1. [VERIFY] Claim → Confidence: LOW (training data)
+2. [OK] Verified fact → Confidence: HIGH (read file)
+```
+
+{{#if config.research.strictMode}}
+**Strict Mode Enabled**: Claims without citations will be blocked.
+{{/if}}
+
+Use `/wogi-research "question"` (execute: `./scripts/flow research "question"`) for rigorous verification.
+{{/if}}
 
 ---
 
-Generated by Wogi Flow CLI Bridge (stub template)
+{{> user-commands}}
+
+---
+
+{{> auto-features}}
+
+---
+
+{{> enforcement-rules}}
+
+---
+
+## Generated by CLI Bridge
+
+This file was generated by the Wogi Flow CLI bridge for Gemini CLI.
+Edit `.workflow/templates/gemini-md.hbs` to customize.
+Run `./scripts/flow bridge sync` to regenerate.
+
+Last synced: {{timestamp}}

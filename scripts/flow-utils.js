@@ -132,12 +132,14 @@ const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
 const CLAUDE_DIR = path.join(PROJECT_ROOT, '.claude');
+const GEMINI_DIR = path.join(PROJECT_ROOT, '.gemini');
 
 const PATHS = {
   root: PROJECT_ROOT,
   workflow: WORKFLOW_DIR,
   state: STATE_DIR,
   claude: CLAUDE_DIR,
+  gemini: GEMINI_DIR,
   config: path.join(WORKFLOW_DIR, 'config.json'),
   ready: path.join(STATE_DIR, 'ready.json'),
   requestLog: path.join(STATE_DIR, 'request-log.md'),
@@ -182,6 +184,8 @@ const PATHS = {
   specsStack: path.join(WORKFLOW_DIR, 'specs', 'stack.md'),
   specsArchitecture: path.join(WORKFLOW_DIR, 'specs', 'architecture.md'),
   specsTesting: path.join(WORKFLOW_DIR, 'specs', 'testing.md'),
+  // Research Protocol (v1.0.48)
+  researchCache: path.join(STATE_DIR, 'research-cache.json'),
 };
 
 // ============================================================

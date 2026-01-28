@@ -17,6 +17,8 @@ const { PATHS } = require('../../flow-utils');
 // ============================================================
 // Hook Timeout Constants (in seconds)
 // ============================================================
+// These values are used in generateConfig() to set timeouts for Claude Code hooks.
+// They define how long each hook is allowed to run before timing out.
 
 const HOOK_TIMEOUTS = {
   SESSION_START: 10,      // Session initialization
@@ -325,7 +327,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
-   * Transform UserPromptSubmit result (implementation gate)
+   * Transform UserPromptSubmit result (implementation gate + research gate)
    */
   transformUserPromptSubmit(coreResult) {
     // Blocked - prevent prompt processing with clear message
@@ -338,6 +340,17 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
           decision: 'block',
           reason: coreResult.reason,
           suggestedAction: coreResult.suggestedAction
+        }
+      };
+    }
+
+    // Research protocol triggered - inject protocol steps as additional context
+    if (coreResult.systemReminder) {
+      return {
+        continue: true,
+        hookSpecificOutput: {
+          hookEventName: 'UserPromptSubmit',
+          additionalContext: coreResult.systemReminder
         }
       };
     }
