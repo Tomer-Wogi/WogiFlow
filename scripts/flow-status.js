@@ -32,6 +32,10 @@ const {
   color
 } = require('./flow-utils');
 
+const {
+  getBypassTracking
+} = require('./flow-session-state');
+
 /**
  * Collect all status data
  */
@@ -110,6 +114,13 @@ function collectStatus() {
 
   // Recommendation
   status.recommendation = getRecommendation();
+
+  // Bypass tracking (enforcement)
+  try {
+    status.bypassTracking = getBypassTracking();
+  } catch {
+    status.bypassTracking = { count: 0, attempts: [], autoCreatedTasks: [] };
+  }
 
   return status;
 }
@@ -211,6 +222,30 @@ function main() {
     }
   }
 
+  // Bypass warnings (enforcement)
+  if (status.bypassTracking && status.bypassTracking.count > 0) {
+    printSection('⚠️  Workflow Bypasses');
+    console.log(color('yellow', `  ${status.bypassTracking.count} bypass attempt(s) detected this session`));
+
+    if (status.bypassTracking.autoCreatedTasks && status.bypassTracking.autoCreatedTasks.length > 0) {
+      console.log(color('yellow', `  Auto-created tasks: ${status.bypassTracking.autoCreatedTasks.join(', ')}`));
+    }
+
+    // Show recent attempts (last 3)
+    const recentAttempts = (status.bypassTracking.attempts || []).slice(-3);
+    if (recentAttempts.length > 0) {
+      console.log(color('dim', '  Recent attempts:'));
+      for (const attempt of recentAttempts) {
+        const file = attempt.filePath ? path.basename(attempt.filePath) : 'unknown';
+        console.log(color('dim', `    - ${attempt.operation} ${file} (${attempt.reason})`));
+      }
+    }
+
+    console.log('');
+    console.log(color('cyan', '  💡 Use /wogi-start before making changes to follow the workflow.'));
+    console.log('');
+  }
+
   // Action-oriented recommendation (use status.recommendation from collectStatus)
   printSection('📌 Recommended Next Action');
   console.log(`  ${status.recommendation.action}`);
@@ -226,8 +261,6 @@ function main() {
  * Get recommended next action based on current state
  */
 function getRecommendation() {
-  const config = getConfig();
-
   // Check for uncommitted changes first
   const git = getGitStatus();
   if (git.isRepo && git.uncommitted > 0) {

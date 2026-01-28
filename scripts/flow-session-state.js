@@ -19,11 +19,8 @@ const fs = require('fs');
 const path = require('path');
 const {
   getConfig,
-  PATHS,
   STATE_DIR,
-  colors,
   color,
-  warn,
   success,
   error,
   readJson,
@@ -90,7 +87,13 @@ function getDefaultState() {
       errorsEncountered: 0,
       sessionCount: 0
     },
-    lastSessionSummary: null
+    lastSessionSummary: null,
+    // Bypass tracking for enforcement
+    bypassTracking: {
+      count: 0,           // Number of bypasses in this session
+      attempts: [],       // Array of bypass attempt details
+      autoCreatedTasks: [] // Tasks that were auto-created (bypasses)
+    }
   };
 }
 
@@ -242,7 +245,8 @@ function getCliSessionId() {
  * Track task start
  */
 function trackTaskStart(taskId, taskTitle, metadata = {}) {
-  const state = loadSessionState();
+  // Load state to ensure we have latest data before save
+  loadSessionState();
   return saveSessionState({
     currentTask: {
       id: taskId,
@@ -255,10 +259,10 @@ function trackTaskStart(taskId, taskTitle, metadata = {}) {
 
 /**
  * Track task completion (async version with locking)
- * @param {string} taskId - Task ID being completed
+ * @param {string} _taskId - Task ID being completed (unused, kept for API)
  * @returns {Promise<Object>} Updated session state
  */
-async function trackTaskCompleteAsync(taskId) {
+async function trackTaskCompleteAsync(_taskId) {
   return saveSessionStateAsync({
     currentTask: null,
     metrics: {
@@ -272,7 +276,7 @@ async function trackTaskCompleteAsync(taskId) {
  * Track task completion (sync version for backward compatibility)
  * @deprecated Use trackTaskCompleteAsync for concurrent safety
  */
-function trackTaskComplete(taskId) {
+function trackTaskComplete(_taskId) {
   const state = loadSessionState();
   const newMetrics = {
     ...state.metrics,
@@ -613,8 +617,9 @@ function checkAndDisplayResumeContext() {
 
 /**
  * Track an error encountered
+ * @param {string} _errorType - Error type (reserved for future use)
  */
-function trackError(errorType = 'unknown') {
+function trackError(_errorType = 'unknown') {
   const state = loadSessionState();
   const newMetrics = {
     ...state.metrics,
@@ -622,6 +627,120 @@ function trackError(errorType = 'unknown') {
   };
 
   return saveSessionState({ metrics: newMetrics });
+}
+
+// ============================================================
+// Bypass Tracking (Enforcement)
+// ============================================================
+
+/**
+ * Track a workflow bypass attempt
+ * Called when someone tries to edit without /wogi-start
+ *
+ * @param {Object} options
+ * @param {string} options.filePath - File that was being edited
+ * @param {string} options.operation - 'edit' or 'write'
+ * @param {string} options.reason - Why it was considered a bypass
+ * @param {string} options.taskId - Auto-created task ID (if any)
+ */
+function trackBypassAttempt(options = {}) {
+  const state = loadSessionState();
+  const { filePath, operation, reason, taskId } = options;
+
+  const bypassTracking = state.bypassTracking || {
+    count: 0,
+    attempts: [],
+    autoCreatedTasks: []
+  };
+
+  const attempt = {
+    timestamp: new Date().toISOString(),
+    filePath,
+    operation,
+    reason,
+    taskId
+  };
+
+  bypassTracking.count += 1;
+  bypassTracking.attempts.push(attempt);
+
+  // Limit stored attempts to prevent unbounded growth
+  if (bypassTracking.attempts.length > 50) {
+    bypassTracking.attempts = bypassTracking.attempts.slice(-50);
+  }
+
+  // Track auto-created task IDs separately for easy lookup
+  if (taskId && !bypassTracking.autoCreatedTasks.includes(taskId)) {
+    bypassTracking.autoCreatedTasks.push(taskId);
+  }
+
+  return saveSessionState({ bypassTracking });
+}
+
+/**
+ * Get bypass tracking data for the current session
+ * @returns {Object} Bypass tracking data
+ */
+function getBypassTracking() {
+  const state = loadSessionState();
+  return state.bypassTracking || {
+    count: 0,
+    attempts: [],
+    autoCreatedTasks: []
+  };
+}
+
+/**
+ * Check if there were any bypasses in this session
+ * @returns {boolean}
+ */
+function hasWorkflowBypasses() {
+  const tracking = getBypassTracking();
+  return tracking.count > 0;
+}
+
+/**
+ * Get a summary of bypasses for display
+ * @returns {string|null} Summary string or null if no bypasses
+ */
+function getBypassSummary() {
+  const tracking = getBypassTracking();
+  if (tracking.count === 0) return null;
+
+  const lines = [];
+  lines.push(`⚠️ **Workflow Bypasses Detected**: ${tracking.count} attempt(s)`);
+
+  if (tracking.autoCreatedTasks.length > 0) {
+    lines.push(`   Auto-created tasks: ${tracking.autoCreatedTasks.join(', ')}`);
+  }
+
+  // Show recent attempts (last 3)
+  const recentAttempts = tracking.attempts.slice(-3);
+  if (recentAttempts.length > 0) {
+    lines.push(`   Recent:`);
+    for (const attempt of recentAttempts) {
+      const file = attempt.filePath ? path.basename(attempt.filePath) : 'unknown';
+      lines.push(`   - ${attempt.operation} ${file} (${attempt.reason})`);
+    }
+  }
+
+  lines.push('');
+  lines.push('   💡 Use /wogi-start before making changes to follow the workflow.');
+
+  return lines.join('\n');
+}
+
+/**
+ * Clear bypass tracking (e.g., at session end after user acknowledges)
+ */
+function clearBypassTracking() {
+  return saveSessionState({
+    bypassTracking: {
+      count: 0,
+      attempts: [],
+      autoCreatedTasks: []
+    }
+  });
 }
 
 // ============================================================
@@ -814,6 +933,13 @@ module.exports = {
 
   // Error tracking
   trackError,
+
+  // Bypass tracking (enforcement)
+  trackBypassAttempt,
+  getBypassTracking,
+  hasWorkflowBypasses,
+  getBypassSummary,
+  clearBypassTracking,
 
   // Path
   SESSION_PATH

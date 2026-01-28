@@ -16,6 +16,7 @@ const fs = require('fs');
 const { getConfig, PATHS, getReadyData, safeJsonParse } = require('../../flow-utils');
 const setupCheck = require('./setup-check');
 const { findParallelizable, getParallelConfig } = require('../../flow-parallel');
+const { getBypassTracking } = require('../../flow-session-state');
 
 /**
  * Check if session context is enabled
@@ -56,7 +57,7 @@ function getCurrentTask() {
       return typeof task === 'string' ? { id: task } : task;
     }
     return null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -80,7 +81,7 @@ function getPendingTaskSummary() {
       readyTaskIds: ready.slice(0, 10).map(t => typeof t === 'object' ? t.id : t),
       inProgressTaskIds: inProgress.map(t => typeof t === 'object' ? t.id : t)
     };
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -118,7 +119,7 @@ function getKeyDecisions(maxEntries = 5) {
     }
 
     return decisions;
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -160,7 +161,7 @@ function getRecentActivity(maxEntries = 3) {
     }
 
     return entries.reverse(); // Most recent first
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -289,6 +290,26 @@ function gatherSessionContext(options = {}) {
     }
   }
 
+  // Bypass tracking (enforcement reminders)
+  // Only include if warnOnBypass is enabled and there were previous bypasses
+  if (config.enforcement?.warnOnBypass !== false) {
+    try {
+      const bypassTracking = getBypassTracking();
+      if (bypassTracking && bypassTracking.count > 0) {
+        context.bypassReminder = {
+          count: bypassTracking.count,
+          autoCreatedTasks: bypassTracking.autoCreatedTasks || [],
+          recentAttempts: (bypassTracking.attempts || []).slice(-3)
+        };
+      }
+    } catch (err) {
+      // Non-critical - don't fail session start
+      if (process.env.DEBUG) {
+        console.error(`[session-context] Bypass tracking failed: ${err.message}`);
+      }
+    }
+  }
+
   return {
     enabled: true,
     context
@@ -390,6 +411,19 @@ function formatContextForInjection(context) {
       output += `- ${activity.id}: ${activity.request}\n`;
     }
     output += '\n';
+  }
+
+  // Bypass reminder (enforcement)
+  if (ctx.bypassReminder && ctx.bypassReminder.count > 0) {
+    output += `### ⚠️ Workflow Bypass Reminder\n`;
+    output += `**${ctx.bypassReminder.count} bypass attempt(s)** detected in this session.\n`;
+
+    if (ctx.bypassReminder.autoCreatedTasks && ctx.bypassReminder.autoCreatedTasks.length > 0) {
+      output += `Auto-created tasks: ${ctx.bypassReminder.autoCreatedTasks.join(', ')}\n`;
+    }
+
+    output += `\n**Remember:** Always use \`/wogi-start\` before making changes.\n`;
+    output += `The user installed WogiFlow to track all work - bypassing breaks their trust.\n\n`;
   }
 
   return output;

@@ -13,7 +13,7 @@ const path = require('path');
 
 // Import from parent scripts directory
 const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS, safeJsonParse } = require('../../flow-utils');
-const { trackTaskStart } = require('../../flow-session-state');
+const { trackTaskStart, trackBypassAttempt } = require('../../flow-session-state');
 const { setCurrentTask } = require('../../flow-memory-blocks');
 
 /**
@@ -62,7 +62,7 @@ function getActiveTask() {
     }
 
     return null;
-  } catch (err) {
+  } catch (_err) {
     // If we can't read state, assume no active task
     return null;
   }
@@ -200,10 +200,55 @@ function checkTaskGate(options = {}) {
     };
   }
 
-  // Auto-create a quick task instead of blocking
+  // Check if auto-task creation is enabled
+  // Default to false (blocking) when strictMode is enabled
+  const autoCreateEnabled = config.hooks?.rules?.taskGating?.autoCreateTask === true;
+
+  if (!autoCreateEnabled) {
+    // Track the bypass attempt
+    trackBypassAttempt({
+      filePath,
+      operation,
+      reason: 'no_task_auto_create_disabled',
+      taskId: null
+    });
+
+    // Block the edit - require /wogi-start to be used
+    return {
+      allowed: false,
+      blocked: true,
+      message: generateBlockMessage(operation, filePath),
+      reason: 'no_active_task'
+    };
+  }
+
+  // Auto-create a quick task (only when autoCreateTask is explicitly true)
   const autoTask = createQuickTask(filePath, operation);
 
   if (autoTask) {
+    // Track the bypass (auto-created task is still a bypass)
+    trackBypassAttempt({
+      filePath,
+      operation,
+      reason: 'task_auto_created',
+      taskId: autoTask.id
+    });
+
+    // Check if blockAutoTask is enabled (additional enforcement layer)
+    // This allows edits to proceed but will trigger warnings elsewhere
+    const blockAutoTask = config.enforcement?.blockAutoTask === true;
+
+    if (blockAutoTask) {
+      // Still create the task for tracking, but block the edit
+      return {
+        allowed: false,
+        blocked: true,
+        message: `Auto-task created for tracking (${autoTask.id}), but edits are blocked.\n\nTo proceed:\n1. Use /wogi-start ${autoTask.id} to start this task properly\n2. Or use /wogi-start to route your request through the workflow`,
+        task: autoTask,
+        reason: 'auto_task_blocked'
+      };
+    }
+
     return {
       allowed: true,
       blocked: false,
@@ -212,6 +257,14 @@ function checkTaskGate(options = {}) {
       reason: 'task_auto_created'
     };
   }
+
+  // Track the bypass attempt (auto-create failed)
+  trackBypassAttempt({
+    filePath,
+    operation,
+    reason: 'auto_create_failed',
+    taskId: null
+  });
 
   // Fall back to blocking if auto-create failed
   return {
