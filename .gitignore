@@ -54,6 +54,7 @@ mcp-memory-server/node_modules/
 .workflow/state/decisions.md
 .workflow/state/feedback-patterns.md
 .workflow/state/durable-*.json
+.workflow/state/bridge-sync.json
 
 # Digest sessions (transcript processing) - legacy location
 .workflow/state/digests/

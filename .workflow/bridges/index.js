@@ -93,22 +93,52 @@ function getCliType(projectDir = process.cwd()) {
 }
 
 /**
+ * Detect which CLI is currently running based on environment
+ * @param {string} projectDir - Project root directory
+ * @returns {string} Detected CLI type
+ */
+function detectRunningCli(projectDir = process.cwd()) {
+  // Priority 1: Environment variables set by CLI tools
+  if (process.env.CLAUDE_CODE_ENTRY_POINT) return 'claude-code';
+  if (process.env.CURSOR_SESSION_ID) return 'cursor';
+  if (process.env.OPENCODE_SESSION) return 'opencode';
+
+  // Priority 2: Check caller stack for hook path hints
+  try {
+    const stack = new Error().stack || '';
+    if (stack.includes('/claude-code/')) return 'claude-code';
+    if (stack.includes('/gemini-cli/')) return 'gemini-cli';
+    if (stack.includes('/cursor/')) return 'cursor';
+    if (stack.includes('/opencode/')) return 'opencode';
+  } catch {
+    // Ignore stack parsing errors
+  }
+
+  // Priority 3: Config file setting
+  return getCliType(projectDir);
+}
+
+/**
  * Get the bridge instance for the current CLI type
  * @param {Object} options - Options to pass to bridge constructor
  * @param {string} options.projectDir - Project root directory
+ * @param {string} options.cliType - Override CLI type (optional)
  * @param {boolean} options.verbose - Enable verbose logging
  * @returns {BaseBridge} Bridge instance
  */
 function getBridge(options = {}) {
   const projectDir = options.projectDir || process.cwd();
-  const cliType = getCliType(projectDir);
+  // Allow explicit CLI type override, otherwise detect from config
+  const cliType = options.cliType || getCliType(projectDir);
 
   loadBridges();
 
   const BridgeLoader = bridges[cliType];
   if (!BridgeLoader) {
     // If no specific bridge exists, return null (manual mode)
-    console.warn(`No bridge available for CLI type: ${cliType}`);
+    if (options.verbose) {
+      console.warn(`No bridge available for CLI type: ${cliType}`);
+    }
     return null;
   }
 
@@ -122,16 +152,18 @@ function getBridge(options = {}) {
 /**
  * Sync the current CLI bridge
  * @param {Object} options - Options
+ * @param {string} options.cliType - Override CLI type (optional)
  * @returns {Object} Sync result
  */
 async function syncBridge(options = {}) {
   const bridge = getBridge(options);
+  const cliType = options.cliType || getCliType(options.projectDir);
 
   if (!bridge) {
     return {
       success: false,
       error: 'No bridge available for current CLI type',
-      cliType: getCliType(options.projectDir)
+      cliType
     };
   }
 
@@ -161,6 +193,7 @@ module.exports = {
   getBridge,
   syncBridge,
   getCliType,
+  detectRunningCli,
   listAvailableBridges,
   isBridgeAvailable,
   BaseBridge: require('./base-bridge')

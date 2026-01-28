@@ -36,6 +36,43 @@
       },
       "default": []
     },
+    "cli": {
+      "type": "object",
+      "description": "CLI bridge configuration for multi-CLI support",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Primary CLI type for this project",
+          "enum": ["claude-code", "gemini-cli", "cursor", "opencode", "codex", "kimi"],
+          "default": "claude-code"
+        },
+        "enabled": {
+          "type": "array",
+          "description": "List of enabled CLIs for this project (auto-sync generates files for these)",
+          "items": {
+            "type": "string",
+            "enum": ["claude-code", "gemini-cli", "cursor", "opencode", "codex", "kimi"]
+          },
+          "default": ["claude-code"]
+        },
+        "autoSync": {
+          "type": "object",
+          "description": "Auto-sync settings for CLI instruction files",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable auto-sync of CLI instruction files",
+              "default": true
+            },
+            "onSessionStart": {
+              "type": "boolean",
+              "description": "Auto-sync on session start if files are missing or stale",
+              "default": true
+            }
+          }
+        }
+      }
+    },
     "enforcement": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Task gating and strict mode settings",

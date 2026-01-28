@@ -31,6 +31,19 @@ function getSessionState() {
   return sessionState;
 }
 
+// Lazy-load bridge state for auto-sync
+let autoSyncBridge = null;
+function getAutoSyncBridge() {
+  if (!autoSyncBridge) {
+    try {
+      autoSyncBridge = require('../../../flow-bridge-state').autoSyncBridge;
+    } catch {
+      autoSyncBridge = async () => ({ synced: false, reason: 'unavailable' });
+    }
+  }
+  return autoSyncBridge;
+}
+
 /**
  * Read stdin with size limit protection
  * @returns {string} Input data, truncated if over limit
@@ -59,6 +72,16 @@ async function readStdinWithLimit() {
  * Handle session start event
  */
 async function handleSessionStart(input) {
+  // Auto-sync bridge if needed (non-blocking, silent)
+  try {
+    const syncFn = getAutoSyncBridge();
+    await syncFn('cursor', { silent: true });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[cursor/session-start] Bridge auto-sync failed: ${err.message}`);
+    }
+  }
+
   try {
     const parsedInput = cursorAdapter.parseInput(input);
 

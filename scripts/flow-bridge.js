@@ -62,30 +62,44 @@ function listBridges() {
     {
       id: 'claude-code',
       name: 'Claude Code',
-      status: 'implemented',
+      status: 'full',
       folder: '.claude',
       rulesFile: 'CLAUDE.md'
     },
     {
       id: 'gemini-cli',
       name: 'Gemini CLI',
-      status: 'planned',
+      status: 'full',
       folder: '.gemini',
       rulesFile: 'GEMINI.md'
     },
     {
-      id: 'opencode',
-      name: 'OpenCode',
-      status: 'planned',
-      folder: '.opencode',
-      rulesFile: 'OPENCODE.md'
+      id: 'cursor',
+      name: 'Cursor',
+      status: 'full',
+      folder: '.cursor',
+      rulesFile: '.cursor/rules/wogi-flow.mdc'
     },
     {
-      id: 'other',
-      name: 'Other / Manual',
-      status: 'manual',
-      folder: 'N/A',
-      rulesFile: 'N/A'
+      id: 'opencode',
+      name: 'OpenCode',
+      status: 'full',
+      folder: '.opencode',
+      rulesFile: '.opencode/agents.md'
+    },
+    {
+      id: 'codex',
+      name: 'Codex CLI',
+      status: 'soft',
+      folder: '.codex',
+      rulesFile: 'AGENTS.md'
+    },
+    {
+      id: 'kimi',
+      name: 'Kimi CLI',
+      status: 'soft',
+      folder: '.kimi',
+      rulesFile: 'KIMI.md'
     }
   ];
 
@@ -93,12 +107,14 @@ function listBridges() {
 
   for (const bridge of availableBridges) {
     const isCurrent = bridge.id === currentCli;
-    const statusColor = bridge.status === 'implemented' ? colors.green :
-                        bridge.status === 'planned' ? colors.yellow : colors.cyan;
+    const statusColor = bridge.status === 'full' ? colors.green :
+                        bridge.status === 'soft' ? colors.yellow : colors.cyan;
+    const statusLabel = bridge.status === 'full' ? 'full parity (hooks)' :
+                        bridge.status === 'soft' ? 'soft parity (rules only)' : bridge.status;
     const indicator = isCurrent ? `${colors.green}→${colors.reset}` : ' ';
 
     console.log(`  ${indicator} ${colors.bold}${bridge.name}${colors.reset} (${bridge.id})`);
-    console.log(`      Status: ${statusColor}${bridge.status}${colors.reset}`);
+    console.log(`      Status: ${statusColor}${statusLabel}${colors.reset}`);
     console.log(`      Folder: ${bridge.folder}`);
     console.log(`      Rules:  ${bridge.rulesFile}`);
     console.log('');
@@ -151,10 +167,41 @@ function showStatus() {
 }
 
 /**
+ * Normalize CLI type argument to standard format
+ */
+function normalizeCliType(input) {
+  if (!input) return null;
+  const normalized = input.toLowerCase().trim();
+  const aliases = {
+    'gemini': 'gemini-cli',
+    'gemini-cli': 'gemini-cli',
+    'claude': 'claude-code',
+    'claude-code': 'claude-code',
+    'opencode': 'opencode',
+    'cursor': 'cursor',
+    'codex': 'codex',
+    'kimi': 'kimi'
+  };
+  return aliases[normalized] || null;
+}
+
+/**
  * Sync bridge
  */
 async function syncBridge(options = {}) {
   const verbose = options.verbose || process.argv.includes('--verbose') || process.argv.includes('-v');
+
+  // Check for CLI type argument (e.g., "flow bridge sync gemini")
+  const cliTypeArg = process.argv[3];
+  const requestedCliType = normalizeCliType(cliTypeArg);
+
+  if (cliTypeArg && !requestedCliType) {
+    console.error(`${colors.red}Error:${colors.reset} Unknown CLI type: ${cliTypeArg}`);
+    console.error('Available types: claude-code, gemini-cli, cursor, opencode, codex, kimi');
+    process.exit(1);
+  }
+
+  const targetCliType = requestedCliType || getCliType();
 
   console.log(`${colors.cyan}Syncing CLI bridge...${colors.reset}`);
   console.log('');
@@ -170,7 +217,11 @@ async function syncBridge(options = {}) {
       process.exit(1);
     }
 
-    const result = await bridges.syncBridge({ verbose, projectDir: PROJECT_ROOT });
+    const result = await bridges.syncBridge({
+      verbose,
+      projectDir: PROJECT_ROOT,
+      cliType: targetCliType
+    });
 
     if (result.success) {
       console.log(`${colors.green}✓ Bridge sync complete${colors.reset}`);
@@ -213,11 +264,18 @@ switch (command) {
     listBridges();
     break;
   default:
-    console.log('Usage: flow bridge [sync|status|list]');
+    console.log('Usage: flow bridge [sync|status|list] [cli-type]');
     console.log('');
     console.log('Commands:');
-    console.log('  sync    Sync .workflow/ config to CLI-specific folder');
-    console.log('  status  Show current bridge configuration');
-    console.log('  list    List available CLI bridges');
+    console.log('  sync [cli-type]  Sync .workflow/ config to CLI-specific folder');
+    console.log('  status           Show current bridge configuration');
+    console.log('  list             List available CLI bridges');
+    console.log('');
+    console.log('CLI Types:');
+    console.log('  claude-code, gemini-cli (or gemini), cursor, opencode, codex, kimi');
+    console.log('');
+    console.log('Examples:');
+    console.log('  flow bridge sync           # Sync default CLI from config');
+    console.log('  flow bridge sync gemini    # Sync Gemini CLI specifically');
     process.exit(1);
 }

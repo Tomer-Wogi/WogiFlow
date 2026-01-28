@@ -26,12 +26,35 @@ function getSessionState() {
   return sessionState;
 }
 
+// Lazy-load bridge state for auto-sync
+let autoSyncBridge = null;
+function getAutoSyncBridge() {
+  if (!autoSyncBridge) {
+    try {
+      autoSyncBridge = require('../../../flow-bridge-state').autoSyncBridge;
+    } catch {
+      autoSyncBridge = async () => ({ synced: false, reason: 'unavailable' });
+    }
+  }
+  return autoSyncBridge;
+}
+
 /**
  * Handle session start event
  * @param {Object} ctx - OpenCode plugin context
  * @returns {Object} Plugin result with additionalContext
  */
 async function handleSessionStart(ctx) {
+  // Auto-sync bridge if needed (non-blocking, silent)
+  try {
+    const syncFn = getAutoSyncBridge();
+    await syncFn('opencode', { silent: true });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[opencode/session-start] Bridge auto-sync failed: ${err.message}`);
+    }
+  }
+
   try {
     const input = ctx || {};
     const parsedInput = opencodeAdapter.parseInput(input);

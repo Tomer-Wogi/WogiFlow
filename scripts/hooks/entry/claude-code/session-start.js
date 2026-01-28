@@ -11,8 +11,30 @@ const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 
+// Lazy-load bridge state to avoid circular dependencies
+let autoSyncBridge = null;
+function getAutoSyncBridge() {
+  if (!autoSyncBridge) {
+    try {
+      autoSyncBridge = require('../../../flow-bridge-state').autoSyncBridge;
+    } catch {
+      autoSyncBridge = async () => ({ synced: false, reason: 'unavailable' });
+    }
+  }
+  return autoSyncBridge;
+}
+
 async function main() {
   try {
+    // Auto-sync bridge if needed (non-blocking, silent)
+    try {
+      const syncFn = getAutoSyncBridge();
+      await syncFn('claude-code', { silent: true });
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Bridge auto-sync failed: ${err.message}`);
+      }
+    }
     // Read input from stdin
     let inputData = '';
     for await (const chunk of process.stdin) {
