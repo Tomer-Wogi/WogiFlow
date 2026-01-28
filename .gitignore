@@ -110,3 +110,10 @@ GEMINI.md
 .codex/
 .workflow/plans/
 .workflow/state/research-cache.json
+
+# Team state files (deprecated)
+.workflow/state/team-state.json
+.workflow/state/offline-queue.json
+.workflow/state/sync-daemon.*
+.workflow/state/sync-state.json
+.workflow/state/knowledge-sync.json

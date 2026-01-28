@@ -242,20 +242,6 @@ After 3+ similar corrections → promotes to permanent instruction.
 
 ---
 
-## Team Sharing
-
-```bash
-# Export your refined workflow
-flow export-profile "team-v1"
-
-# Share the zip file with team
-
-# Others import
-flow import-profile team-v1.zip
-```
-
----
-
 ## License
 
 AGPL-3.0

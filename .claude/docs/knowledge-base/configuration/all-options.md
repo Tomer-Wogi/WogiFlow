@@ -61,7 +61,7 @@ Configuration lives in `.workflow/config.json`
 | [memory](#memory) | Fact storage |
 | [automaticMemory](#automaticmemory) | Memory management |
 | [automaticPromotion](#automaticpromotion) | Pattern promotion |
-| [knowledgeRouting](#knowledgerouting) | Local vs team knowledge |
+| [knowledgeRouting](#knowledgerouting) | Knowledge routing |
 | [modelAdapters](#modeladapters) | Per-model learning |
 | [prd](#prd) | PRD chunking |
 
@@ -96,7 +96,6 @@ Configuration lives in `.workflow/config.json`
 ### Category 7: Integrations
 | Section | Purpose |
 |---------|---------|
-| [team](#team) | Team sync |
 | [agents](#agents) | Agent personas |
 | [multiApproach](#multiapproach) | Multiple solution analysis |
 | [hooks](#hooks) | CLI hooks (Claude Code, etc.) |
@@ -1231,56 +1230,6 @@ Session persistence configuration.
 
 ---
 
-## team
-
-Team sync configuration.
-
-```json
-{
-  "team": {
-    "enabled": false,
-    "teamId": null,
-    "userId": null,
-    "setupId": null,
-    "projectId": null,
-    "apiKey": null,
-    "backendUrl": "https://api.wogi-flow.com",
-    "syncInterval": 300000,
-    "autoSync": true,
-    "projectScope": true,
-    "sync": {
-      "decisions": true,
-      "appMap": true,
-      "componentIndex": true,
-      "skills": true,
-      "memory": true,
-      "requestLog": "recent",
-      "tasks": false
-    },
-    "conflictResolution": "newest-wins"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable team sync |
-| `teamId` | string | `null` | Team identifier |
-| `userId` | string | `null` | User identifier |
-| `backendUrl` | string | `"https://api.wogi-flow.com"` | Backend URL |
-| `syncInterval` | number | `300000` | Sync interval in ms |
-| `autoSync` | boolean | `true` | Auto-sync enabled |
-| `sync.decisions` | boolean | `true` | Sync decisions |
-| `sync.appMap` | boolean | `true` | Sync app-map |
-| `sync.componentIndex` | boolean | `true` | Sync component index |
-| `sync.skills` | boolean | `true` | Sync skills |
-| `sync.memory` | boolean | `true` | Sync memory |
-| `sync.requestLog` | string | `"recent"` | `"all"`, `"recent"`, or `false` |
-| `sync.tasks` | boolean | `false` | Sync tasks |
-| `conflictResolution` | string | `"newest-wins"` | Conflict resolution strategy |
-
----
-
 ## memory
 
 Fact storage configuration.
@@ -1309,7 +1258,7 @@ Fact storage configuration.
 
 ## knowledgeRouting
 
-Local vs team knowledge configuration.
+Knowledge routing configuration.
 
 ```json
 {
@@ -1408,8 +1357,7 @@ Pattern promotion configuration.
     "threshold": 3,
     "minRelevance": 0.8,
     "destinations": ["decisions.md"],
-    "requireApproval": true,
-    "autoApplyTeamApproved": true
+    "requireApproval": true
   }
 }
 ```
@@ -1421,7 +1369,6 @@ Pattern promotion configuration.
 | `minRelevance` | number | `0.8` | Min relevance score |
 | `destinations` | array | `["decisions.md"]` | Where to promote |
 | `requireApproval` | boolean | `true` | Require user approval |
-| `autoApplyTeamApproved` | boolean | `true` | Auto-apply team approved |
 
 ---
 

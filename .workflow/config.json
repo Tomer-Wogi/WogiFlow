@@ -570,8 +570,7 @@
     "destinations": [
       "decisions.md"
     ],
-    "requireApproval": true,
-    "autoApplyTeamApproved": true
+    "requireApproval": true
   },
   "knowledgeRouting": {
     "autoDetect": true,
@@ -1119,34 +1118,6 @@
     "onBlock": "error",
     "onAsk": "prompt",
     "logging": true
-  },
-  "team": {
-    "enabled": false,
-    "teamId": null,
-    "userId": null,
-    "setupId": null,
-    "projectId": null,
-    "apiKey": null,
-    "backendUrl": "https://api.wogi-flow.com",
-    "syncInterval": 300000,
-    "autoSync": true,
-    "projectScope": true,
-    "sync": {
-      "decisions": true,
-      "appMap": true,
-      "componentIndex": true,
-      "skills": true,
-      "memory": true,
-      "requestLog": "recent",
-      "tasks": false
-    },
-    "conflictResolution": "newest-wins",
-    "aws": {
-      "apiEndpoint": "https://slbche87zj.execute-api.eu-west-1.amazonaws.com/v1",
-      "cognitoUserPool": "eu-west-1_RnQtfENnx",
-      "cognitoClientId": "3fb5530dnciblc1acdkkih2gq8",
-      "region": "eu-west-1"
-    }
   },
   "agents": {
     "enabled": [

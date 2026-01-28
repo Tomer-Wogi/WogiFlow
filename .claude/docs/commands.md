@@ -66,7 +66,7 @@ When user types these commands, execute the corresponding action immediately.
 | Command | Action |
 |---------|--------|
 | `/wogi-export [name]` | Export CLAUDE.md, agents/, config.json to a shareable zip. Ask about including decisions.md. |
-| `/wogi-import [file]` | Import team profile. Merge or replace workflow config. Restart required after. |
+| `/wogi-import [file]` | Import workflow profile. Merge or replace workflow config. Restart required after. |
 | `/wogi-changelog` | Generate CHANGELOG.md from request-log entries. Group by type (added, changed, fixed). |
 
 ### Browser Testing (Claude Extension)
@@ -187,8 +187,8 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow session-learning   # Analyze session for patterns (standalone)
 ./scripts/flow search "#tag"      # Search request-log
 ./scripts/flow context TASK-X     # Load task context
-./scripts/flow export-profile     # Export workflow config for team
-./scripts/flow import-profile     # Import team config
+./scripts/flow export-profile     # Export workflow config as shareable profile
+./scripts/flow import-profile     # Import workflow profile
 ./scripts/flow archive            # Archive old request-log entries
 ./scripts/flow watch              # Run file watcher for auto-validation
 
