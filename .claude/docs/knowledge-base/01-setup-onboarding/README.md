@@ -48,7 +48,6 @@ This analyzes your codebase and populates:
 | [Onboarding](./onboarding-existing.md) | Analyze and configure existing projects |
 | [Component Indexing](./component-indexing.md) | Auto-scan and register components |
 | [Framework Detection](./framework-detection.md) | Auto-detect tech stack and suggest skills |
-| [Team Setup](./team-setup.md) | Configure team sync and shared knowledge |
 
 ---
 

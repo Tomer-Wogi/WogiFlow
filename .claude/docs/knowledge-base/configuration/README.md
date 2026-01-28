@@ -133,25 +133,6 @@ cat .workflow/config.json
 }
 ```
 
-### Team-Optimized
-
-```json
-{
-  "team": {
-    "enabled": true,
-    "sync": {
-      "decisions": true,
-      "skills": true,
-      "componentIndex": true
-    }
-  },
-  "knowledgeRouting": {
-    "autoDetect": true,
-    "modelSpecificLearning": true
-  }
-}
-```
-
 ### Cost-Optimized (Hybrid Mode)
 
 ```json
@@ -225,4 +206,3 @@ See [all-options.md](./all-options.md) for complete configuration reference with
 
 - [All Options](./all-options.md) - Complete reference
 - [Task Execution](../02-task-execution/) - Execution config details
-- [Team Setup](../01-setup-onboarding/team-setup.md) - Team config

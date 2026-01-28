@@ -986,17 +986,12 @@
           "type": "boolean",
           "description": "Require user approval for promotion",
           "default": true
-        },
-        "autoApplyTeamApproved": {
-          "type": "boolean",
-          "description": "Auto-apply team-approved patterns",
-          "default": true
         }
       }
     },
     "knowledgeRouting": {
       "type": "object",
-      "description": "CATEGORY: LEARNING & MEMORY - Local vs team knowledge routing",
+      "description": "CATEGORY: LEARNING & MEMORY - Knowledge routing",
       "properties": {
         "autoDetect": {
           "type": "boolean",
@@ -1012,8 +1007,7 @@
           "type": "string",
           "description": "Default scope for new knowledge",
           "enum": [
-            "local",
-            "team"
+            "local"
           ],
           "default": "local"
         },
@@ -1870,118 +1864,6 @@
           "type": "boolean",
           "description": "Log blocked commands",
           "default": true
-        }
-      }
-    },
-    "team": {
-      "type": "object",
-      "description": "CATEGORY: INTEGRATIONS - Team sync configuration",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Enable team sync",
-          "default": false
-        },
-        "teamId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "userId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "setupId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "projectId": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "apiKey": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "backendUrl": {
-          "type": "string",
-          "description": "Backend URL for team sync",
-          "default": "https://api.wogi-flow.com"
-        },
-        "syncInterval": {
-          "type": "number",
-          "description": "Sync interval in ms",
-          "default": 300000
-        },
-        "autoSync": {
-          "type": "boolean",
-          "description": "Auto-sync enabled",
-          "default": true
-        },
-        "projectScope": {
-          "type": "boolean",
-          "description": "Scope to project",
-          "default": true
-        },
-        "sync": {
-          "type": "object",
-          "description": "What to sync",
-          "properties": {
-            "decisions": {
-              "type": "boolean",
-              "default": true
-            },
-            "appMap": {
-              "type": "boolean",
-              "default": true
-            },
-            "componentIndex": {
-              "type": "boolean",
-              "default": true
-            },
-            "skills": {
-              "type": "boolean",
-              "default": true
-            },
-            "memory": {
-              "type": "boolean",
-              "default": true
-            },
-            "requestLog": {
-              "type": [
-                "string",
-                "boolean"
-              ],
-              "default": "recent"
-            },
-            "tasks": {
-              "type": "boolean",
-              "default": false
-            }
-          }
-        },
-        "conflictResolution": {
-          "type": "string",
-          "description": "Conflict resolution strategy",
-          "enum": [
-            "newest-wins",
-            "oldest-wins",
-            "manual"
-          ],
-          "default": "newest-wins"
-        },
-        "aws": {
-          "type": "object",
-          "description": "AWS configuration for team sync"
         }
       }
     },

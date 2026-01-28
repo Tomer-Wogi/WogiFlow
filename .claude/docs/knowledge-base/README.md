@@ -42,7 +42,7 @@ npx flow onboard
 Unlike feature-by-feature documentation, this knowledge base is organized by **purpose** - what you're trying to accomplish:
 
 ### 1. Setting Up (Once per project)
-Everything in [01-setup-onboarding](./01-setup-onboarding/) helps you get WogiFlow configured for your project. This includes analyzing your codebase, populating decisions and component registries, and setting up team sync.
+Everything in [01-setup-onboarding](./01-setup-onboarding/) helps you get WogiFlow configured for your project. This includes analyzing your codebase and populating decisions and component registries.
 
 ### 2. Executing Tasks (Daily workflow)
 The [02-task-execution](./02-task-execution/) category is the heart of WogiFlow. It explains the entire execution pipeline from task selection through completion, including:
