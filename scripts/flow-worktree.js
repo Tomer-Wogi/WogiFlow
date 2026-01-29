@@ -33,7 +33,19 @@ const { sanitizeCommitMessage } = require('./flow-security');
 // ============================================================
 
 const WORKTREE_PREFIX = 'wogi-task-';
-const WORKTREE_BASE_DIR = path.join(os.tmpdir(), 'wogi-worktrees');
+
+/**
+ * Get user-specific worktree base directory.
+ * Uses UID on Unix, username on Windows, with 'default' fallback.
+ * This prevents permission conflicts on shared systems (CI, multi-user machines).
+ * See: Claude Code 2.1.23 per-user temp directory isolation fix.
+ */
+function getWorktreeBaseDir() {
+  const userId = process.getuid?.() ?? process.env.USER ?? process.env.USERNAME ?? 'default';
+  return path.join(os.tmpdir(), `wogi-worktrees-${userId}`);
+}
+
+const WORKTREE_BASE_DIR = getWorktreeBaseDir();
 
 // ============================================================
 // Helper Functions

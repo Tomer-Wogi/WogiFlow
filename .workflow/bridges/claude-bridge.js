@@ -96,59 +96,8 @@ class ClaudeBridge extends BaseBridge {
     return content;
   }
 
-  /**
-   * Process {{#if condition}}...{{/if}} blocks
-   */
-  processConditionals(content, config) {
-    // Regex to match {{#if path}}...{{/if}} - handles nested by processing innermost first
-    const ifRegex = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
-
-    let lastContent;
-    // Keep processing until no more changes (handles nested conditions)
-    do {
-      lastContent = content;
-      content = content.replace(ifRegex, (match, condition, body) => {
-        // Evaluate condition
-        let value;
-        if (condition.startsWith('config.')) {
-          value = this.getNestedValue(config, condition.replace('config.', ''));
-        } else if (condition === 'skills') {
-          value = config.skills?.installed?.length > 0;
-        } else {
-          value = this.getNestedValue(config, condition);
-        }
-
-        // If truthy, return the body (stripped of the conditionals)
-        // If falsy, return empty string
-        return value ? body : '';
-      });
-    } while (content !== lastContent);
-
-    return content;
-  }
-
-  /**
-   * Process {{#each array}}...{{/each}} blocks
-   */
-  processEachBlocks(content, config) {
-    const eachRegex = /\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
-
-    return content.replace(eachRegex, (match, arrayName, body) => {
-      let array;
-      if (arrayName === 'skills') {
-        array = config.skills?.installed || [];
-      } else {
-        array = config[arrayName] || [];
-      }
-
-      if (!Array.isArray(array) || array.length === 0) {
-        return '';
-      }
-
-      // Replace {{this}} in body with each array item
-      return array.map(item => body.replace(/\{\{this\}\}/g, String(item))).join('');
-    });
-  }
+  // NOTE: processConditionals() and processEachBlocks() are inherited from BaseBridge
+  // Do not override - consolidated per code review to avoid duplication
 
   /**
    * Generate default CLAUDE.md when no template exists
@@ -339,12 +288,8 @@ Last synced: ${new Date().toISOString()}
     // This is already handled by syncSkills() in base class
   }
 
-  /**
-   * Get nested value from object using dot notation
-   */
-  getNestedValue(obj, path) {
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-  }
+  // NOTE: getNestedValue() is inherited from BaseBridge with security checks
+  // Do not override - see security-patterns.md rule #2
 
   /**
    * Generate settings.local.json with permissions
@@ -474,7 +419,7 @@ Last synced: ${new Date().toISOString()}
       }
     }
 
-    return {
+    const settings = {
       permissions: {
         allow: wildcardPermissions,
       },
@@ -483,6 +428,20 @@ Last synced: ${new Date().toISOString()}
       _wogiFlowVersion: '2.0.0',
       _generatedAt: new Date().toISOString(),
     };
+
+    // Add spinnerVerbs if configured (requires Claude Code 2.1.23+)
+    const spinnerVerbs = config.hooks?.claudeCode?.spinnerVerbs;
+    if (Array.isArray(spinnerVerbs) && spinnerVerbs.length > 0) {
+      settings.spinnerVerbs = spinnerVerbs;
+    }
+
+    // Add spinnerTipsEnabled if explicitly set (default is true in Claude Code)
+    const spinnerTipsEnabled = config.hooks?.claudeCode?.spinnerTipsEnabled;
+    if (spinnerTipsEnabled === false) {
+      settings.spinnerTipsEnabled = false;
+    }
+
+    return settings;
   }
 
   /**
@@ -503,7 +462,7 @@ Last synced: ${new Date().toISOString()}
 
     const newSettings = this.generateSettings(config);
 
-    // Merge: keep existing hooks, use new permissions
+    // Merge: keep existing hooks, use new permissions and spinner settings
     const mergedSettings = {
       permissions: newSettings.permissions,
       respectGitignore: newSettings.respectGitignore,
@@ -512,6 +471,16 @@ Last synced: ${new Date().toISOString()}
       _wogiFlowVersion: newSettings._wogiFlowVersion,
       _generatedAt: newSettings._generatedAt,
     };
+
+    // Include spinnerVerbs if configured
+    if (newSettings.spinnerVerbs) {
+      mergedSettings.spinnerVerbs = newSettings.spinnerVerbs;
+    }
+
+    // Include spinnerTipsEnabled if explicitly disabled
+    if (newSettings.spinnerTipsEnabled === false) {
+      mergedSettings.spinnerTipsEnabled = false;
+    }
 
     fs.writeFileSync(settingsPath, JSON.stringify(mergedSettings, null, 2));
     this.log(`Synced settings.local.json with wildcard permissions (${newSettings.permissions.allow.length} rules)`);

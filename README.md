@@ -19,14 +19,16 @@ npx flow bridge sync
 
 WogiFlow works with 6 AI coding CLIs. Use whichever you prefer - the workflow state is shared.
 
-| CLI | Enforcement | Rules File | Guide |
-|-----|-------------|------------|-------|
-| **Claude Code** | Hard (hooks) | `CLAUDE.md` | [Guide](.workflow/docs/cli-guides/claude-code.md) |
-| **Gemini CLI** | Hard (hooks) | `GEMINI.md` | [Guide](.workflow/docs/cli-guides/gemini-cli.md) |
-| **Cursor** | Mixed | `.cursor/rules/wogiflow.mdc` | [Guide](.workflow/docs/cli-guides/cursor.md) |
-| **OpenCode** | Hard (plugins) | `AGENTS.md` | [Guide](.workflow/docs/cli-guides/opencode.md) |
-| **Codex** | Soft (rules) | `AGENTS.md` | [Guide](.workflow/docs/cli-guides/codex.md) |
-| **Kimi** | Soft (rules) | `AGENTS.md` | [Guide](.workflow/docs/cli-guides/kimi.md) |
+| CLI | Enforcement | Rules File | Min Version | Guide |
+|-----|-------------|------------|-------------|-------|
+| **Claude Code** | Hard (hooks) | `CLAUDE.md` | **2.1.23+** | [Guide](.workflow/docs/cli-guides/claude-code.md) |
+| **Gemini CLI** | Hard (hooks) | `GEMINI.md` | - | [Guide](.workflow/docs/cli-guides/gemini-cli.md) |
+| **Cursor** | Mixed | `.cursor/rules/wogiflow.mdc` | - | [Guide](.workflow/docs/cli-guides/cursor.md) |
+| **OpenCode** | Hard (plugins) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/opencode.md) |
+| **Codex** | Soft (rules) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/codex.md) |
+| **Kimi** | Soft (rules) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/kimi.md) |
+
+> **Claude Code 2.1.23+ Recommended**: Includes critical fixes for per-user temp directory isolation (shared systems), async hook cancellation, and ripgrep timeout reporting. Earlier versions may experience silent search failures.
 
 **Enforcement levels:**
 - **Hard**: Blocks operations before execution (best protection)

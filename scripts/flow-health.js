@@ -38,6 +38,39 @@ const {
   checkSpecMigration
 } = require('./flow-utils');
 
+const { execSync } = require('child_process');
+
+/**
+ * Check Claude Code version and compare against minimum recommended (2.1.23)
+ * @returns {{ version: string|null, meetsMinimum: boolean }}
+ */
+function checkClaudeCodeVersion() {
+  try {
+    const output = execSync('claude --version 2>/dev/null || echo ""', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).trim();
+
+    // Parse version from output like "claude 2.1.23" or "Claude Code 2.1.23"
+    const match = output.match(/(\d+\.\d+\.\d+)/);
+    if (!match) {
+      return { version: null, meetsMinimum: true };
+    }
+
+    const version = match[1];
+    const [major, minor, patch] = version.split('.').map(Number);
+
+    // Minimum recommended: 2.1.23
+    const meetsMinimum = major > 2 ||
+      (major === 2 && minor > 1) ||
+      (major === 2 && minor === 1 && patch >= 23);
+
+    return { version, meetsMinimum };
+  } catch {
+    return { version: null, meetsMinimum: true };
+  }
+}
+
 function main() {
   console.log(color('cyan', 'Wogi Flow Health Check'));
   console.log('========================');
@@ -88,6 +121,20 @@ function main() {
   } else {
     console.log(`  ${color('red', '✗')} ${rulesFile.name} - MISSING (${cliType})`);
     issues++;
+  }
+
+  // Check Claude Code version (if applicable)
+  if (cliType === 'claude-code') {
+    const versionCheck = checkClaudeCodeVersion();
+    if (versionCheck.version) {
+      if (versionCheck.meetsMinimum) {
+        console.log(`  ${color('green', '✓')} Claude Code version: ${versionCheck.version}`);
+      } else {
+        console.log(`  ${color('yellow', '○')} Claude Code version: ${versionCheck.version} (2.1.23+ recommended)`);
+        console.log(`    ${color('dim', '→ Older versions may have silent search failures and shared system issues')}`);
+        warnings++;
+      }
+    }
   }
 
   // Check required directories

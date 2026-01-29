@@ -102,6 +102,16 @@
           "description": "Format for pattern citations in code",
           "default": "// Pattern: {pattern}"
         },
+        "blockAutoTask": {
+          "type": "boolean",
+          "description": "Block edits even if auto-task was created. When true, only tasks started via /wogi-start are valid.",
+          "default": true
+        },
+        "warnOnBypass": {
+          "type": "boolean",
+          "description": "Display warnings when workflow bypasses are detected (auto-created tasks, missing /wogi-start)",
+          "default": true
+        },
         "taskSizeThresholds": {
           "type": "object",
           "description": "Thresholds for categorizing task sizes",
@@ -1126,6 +1136,21 @@
           "description": "Maximum grep results to include",
           "default": 10
         },
+        "searchTimeout": {
+          "type": "number",
+          "description": "Search timeout in milliseconds. Before Claude Code 2.1.23, search timeouts returned empty results silently.",
+          "default": 10000
+        },
+        "retryOnTimeout": {
+          "type": "boolean",
+          "description": "Retry search with reduced scope on timeout",
+          "default": true
+        },
+        "warnOnEmptyResults": {
+          "type": "boolean",
+          "description": "Log warning when search returns unexpectedly empty (may indicate timeout)",
+          "default": true
+        },
         "maxComponentMatches": {
           "type": "number",
           "description": "Maximum component matches",
@@ -2031,6 +2056,11 @@
                   "type": "boolean",
                   "description": "Block file edits if no task is active",
                   "default": true
+                },
+                "autoCreateTask": {
+                  "type": "boolean",
+                  "description": "Auto-create a quick task when editing without one. When false, edits are blocked entirely without /wogi-start.",
+                  "default": false
                 }
               }
             },
@@ -2128,6 +2158,22 @@
             "installPath": {
               "type": "string",
               "default": ".claude/settings.local.json"
+            },
+            "spinnerVerbs": {
+              "type": "array",
+              "description": "Customize the action verbs displayed in the spinner while Claude is working (requires Claude Code 2.1.23+). Provide an array of verb strings.",
+              "items": {
+                "type": "string"
+              },
+              "examples": [
+                ["Thinking", "Processing", "Working", "Analyzing"],
+                ["Implementing", "Building", "Creating", "Designing"]
+              ]
+            },
+            "spinnerTipsEnabled": {
+              "type": "boolean",
+              "description": "Show tips in the spinner while Claude is working",
+              "default": true
             }
           }
         },

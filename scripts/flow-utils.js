@@ -676,6 +676,37 @@ function safeJsonParse(filePath, defaultValue = null) {
 }
 
 /**
+ * Safely parse a JSON string with prototype pollution protection
+ * Use this when you already have the JSON content as a string
+ * @param {string} jsonString - JSON string to parse
+ * @param {*} [defaultValue=null] - Default value if parsing fails
+ * @returns {object|null} Parsed JSON or defaultValue on error
+ */
+function safeJsonParseString(jsonString, defaultValue = null) {
+  try {
+    const parsed = JSON.parse(jsonString);
+
+    // Validate it's an object (not array or primitive for config files)
+    if (typeof parsed !== 'object' || parsed === null) {
+      return defaultValue;
+    }
+
+    // Recursive check for prototype pollution in nested objects and arrays
+    const dangerousKeyError = checkForDangerousKeys(parsed);
+    if (dangerousKeyError) {
+      if (process.env.DEBUG) {
+        console.error(`[safeJsonParseString] Prototype pollution attempt: ${dangerousKeyError}`);
+      }
+      return defaultValue;
+    }
+
+    return parsed;
+  } catch {
+    return defaultValue;
+  }
+}
+
+/**
  * Read text file safely
  * @param {string} filePath - Path to text file
  * @param {*} [defaultValue=undefined] - Default value if file doesn't exist
@@ -2994,6 +3025,101 @@ function checkSpecMigration() {
 }
 
 // ============================================================
+// Safe Search Utilities (Claude Code 2.1.23+ compatibility)
+// ============================================================
+
+/**
+ * Perform a safe grep search with proper timeout and error handling.
+ * Returns results and metadata about search status.
+ *
+ * Before Claude Code 2.1.23, ripgrep timeouts would silently return empty results.
+ * This utility provides explicit handling for timeouts and errors.
+ *
+ * @param {string} pattern - Search pattern
+ * @param {Object} options - Search options
+ * @param {string} [options.path] - Directory to search (default: PROJECT_ROOT)
+ * @param {string[]} [options.extensions] - File extensions to include (e.g., ['ts', 'tsx'])
+ * @param {number} [options.timeout] - Timeout in ms (default: 10000)
+ * @param {number} [options.maxResults] - Maximum results to return (default: 50)
+ * @param {boolean} [options.caseInsensitive] - Case insensitive search (default: true)
+ * @returns {{ results: string[], timedOut: boolean, error: string|null }}
+ */
+function safeGrepSearch(pattern, options = {}) {
+  const { spawnSync } = require('child_process');
+
+  const searchPath = options.path || PROJECT_ROOT;
+  const extensions = options.extensions || ['ts', 'tsx', 'js', 'jsx'];
+  const timeout = options.timeout || 10000;
+  const maxResults = options.maxResults || 50;
+  const caseInsensitive = options.caseInsensitive !== false;
+
+  const args = ['-rl'];
+  if (caseInsensitive) args.push('-i');
+
+  // Add include patterns for extensions
+  for (const ext of extensions) {
+    args.push(`--include=*.${ext}`);
+  }
+
+  args.push(pattern, searchPath);
+
+  try {
+    const result = spawnSync('grep', args, {
+      encoding: 'utf-8',
+      timeout,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    // Check for timeout
+    if (result.signal === 'SIGTERM') {
+      return {
+        results: [],
+        timedOut: true,
+        error: `Search timed out after ${timeout}ms`
+      };
+    }
+
+    // Check for error (but exit code 1 just means no matches)
+    if (result.status > 1) {
+      return {
+        results: [],
+        timedOut: false,
+        error: result.stderr?.trim() || `grep exited with code ${result.status}`
+      };
+    }
+
+    const files = (result.stdout || '')
+      .split('\n')
+      .filter(f => f.trim())
+      .slice(0, maxResults);
+
+    return {
+      results: files,
+      timedOut: false,
+      error: null
+    };
+  } catch (err) {
+    // Handle ETIMEDOUT and other errors
+    const isTimeout = err.code === 'ETIMEDOUT' || err.killed;
+    return {
+      results: [],
+      timedOut: isTimeout,
+      error: isTimeout ? `Search timed out after ${timeout}ms` : err.message
+    };
+  }
+}
+
+/**
+ * Configuration defaults for search operations
+ */
+const SEARCH_DEFAULTS = {
+  timeout: 10000,        // 10 seconds
+  maxResults: 50,        // Maximum files to return
+  retryOnTimeout: true,  // Whether to retry with reduced scope on timeout
+  extensions: ['ts', 'tsx', 'js', 'jsx', 'vue', 'svelte']
+};
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -3053,6 +3179,8 @@ module.exports = {
   readJson,
   writeJson,
   safeJsonParse,
+  safeJsonParseString,
+  checkForDangerousKeys,
   readFile,
   writeFile,
   validateJson,
@@ -3139,6 +3267,10 @@ module.exports = {
   findTaskInAllLists,
   analyzeRequest,
   estimateComplexity,
+
+  // Safe Search (Claude Code 2.1.23+ compatibility)
+  safeGrepSearch,
+  SEARCH_DEFAULTS,
 };
 
 // ============================================================
