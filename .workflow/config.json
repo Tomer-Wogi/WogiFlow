@@ -4,7 +4,7 @@
   "projectName": "wogi-flow",
   "cli": {
     "type": "claude-code",
-    "enabled": ["claude-code"],
+    "enabled": ["claude-code", "gemini-cli"],
     "autoSync": {
       "enabled": true,
       "onSessionStart": true
@@ -19,6 +19,8 @@
     "requireStoryForMediumTasks": true,
     "requirePatternCitation": false,
     "citationFormat": "// Pattern: {pattern}",
+    "blockAutoTask": true,
+    "warnOnBypass": true,
     "taskSizeThresholds": {
       "small": {
         "maxFiles": 3,
@@ -1164,7 +1166,8 @@
     "rules": {
       "taskGating": {
         "enabled": true,
-        "blockWithoutTask": true
+        "blockWithoutTask": true,
+        "autoCreateTask": false
       },
       "scopeGating": {
         "enabled": true,
