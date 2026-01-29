@@ -17,6 +17,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// Import canonical safeJsonParse from flow-utils (consolidated per code review)
+const { safeJsonParse } = require('./flow-utils');
+
 // Project paths
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -31,41 +34,18 @@ const CLI_OUTPUT_FILES = {
   'cursor': '.cursor/rules/wogi-flow.mdc',
   'opencode': '.opencode/agents.md',
   'codex': 'AGENTS.md',
-  'kimi': 'KIMI.md'
+  'kimi': 'AGENTS.md'  // Kimi also uses AGENTS.md
 };
 
-/**
- * Safe JSON parse with prototype pollution protection
- * @param {string} filePath - Path to JSON file
- * @param {*} defaultValue - Default value if parsing fails
- * @returns {*} Parsed object or default value
- */
-function safeJsonParse(filePath, defaultValue = {}) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(content);
-
-    // Check for prototype pollution keys
-    const checkDangerous = (obj, depth = 0) => {
-      if (depth > 10 || !obj || typeof obj !== 'object') return false;
-      const dangerous = ['__proto__', 'constructor', 'prototype'];
-      for (const key of Object.keys(obj)) {
-        if (dangerous.includes(key)) return true;
-        if (obj[key] && typeof obj[key] === 'object') {
-          if (checkDangerous(obj[key], depth + 1)) return true;
-        }
-      }
-      return false;
-    };
-
-    if (checkDangerous(parsed)) {
-      return defaultValue;
-    }
-    return parsed;
-  } catch {
-    return defaultValue;
-  }
-}
+// CLI type to template file mapping
+const CLI_TEMPLATES = {
+  'claude-code': 'claude-md.hbs',
+  'gemini-cli': 'gemini-md.hbs',
+  'cursor': 'cursor-rules.mdc.hbs',
+  'opencode': 'opencode-agents-md.hbs',
+  'codex': 'codex-config.hbs',
+  'kimi': 'kimi-agents-md.hbs'
+};
 
 /**
  * Calculate MD5 hash of config.json for staleness detection
@@ -74,6 +54,26 @@ function safeJsonParse(filePath, defaultValue = {}) {
 function getConfigChecksum() {
   try {
     const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
+    return crypto.createHash('md5').update(content).digest('hex');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Calculate MD5 hash of a template file
+ * @param {string} cliType - CLI type
+ * @returns {string} Hash of template content
+ */
+function getTemplateChecksum(cliType) {
+  try {
+    const templateName = CLI_TEMPLATES[cliType];
+    if (!templateName) return '';
+
+    const templatePath = path.join(WORKFLOW_DIR, 'templates', templateName);
+    if (!fs.existsSync(templatePath)) return '';
+
+    const content = fs.readFileSync(templatePath, 'utf-8');
     return crypto.createHash('md5').update(content).digest('hex');
   } catch {
     return '';
@@ -131,15 +131,32 @@ function getLastSyncTime(cliType) {
  * Update sync time for a CLI type
  * @param {string} cliType - CLI type
  * @param {string} configHash - Current config hash
+ * @param {string} templateHash - Current template hash
  */
-function setLastSyncTime(cliType, configHash) {
+function setLastSyncTime(cliType, configHash, templateHash = null) {
   const state = readSyncState();
   if (!state.syncs) state.syncs = {};
+
   state.syncs[cliType] = {
     lastSync: new Date().toISOString(),
-    configHash
+    configHash,
+    templateHash: templateHash || getTemplateChecksum(cliType)
   };
+
+  // Also track last config hash at root level
+  state.lastConfigHash = configHash;
+
   writeSyncState(state);
+}
+
+/**
+ * Mark a CLI as synced (alias for setLastSyncTime with current hashes)
+ * @param {string} cliType - CLI type that was synced
+ */
+function markSynced(cliType) {
+  const configHash = getConfigChecksum();
+  const templateHash = getTemplateChecksum(cliType);
+  setLastSyncTime(cliType, configHash, templateHash);
 }
 
 /**
@@ -166,9 +183,15 @@ function needsSync(cliType) {
     return { needsSync: true, reason: 'never-synced' };
   }
 
-  const currentHash = getConfigChecksum();
-  if (cliState.configHash !== currentHash) {
+  const currentConfigHash = getConfigChecksum();
+  if (cliState.configHash !== currentConfigHash) {
     return { needsSync: true, reason: 'config-changed' };
+  }
+
+  // Check if template has changed since last sync
+  const currentTemplateHash = getTemplateChecksum(cliType);
+  if (currentTemplateHash && cliState.templateHash !== currentTemplateHash) {
+    return { needsSync: true, reason: 'template-changed' };
   }
 
   return { needsSync: false, reason: 'up-to-date' };
@@ -236,9 +259,8 @@ async function autoSyncBridge(cliType, options = {}) {
   try {
     await bridge.sync();
 
-    // Update state
-    const configHash = getConfigChecksum();
-    setLastSyncTime(cliType, configHash);
+    // Update state with config and template hashes
+    markSynced(cliType);
 
     if (!silent) {
       console.error(`[bridge-state] Synced ${cliType} bridge`);
@@ -269,6 +291,47 @@ async function syncAllEnabledClis(options = {}) {
   }
 
   return results;
+}
+
+/**
+ * Check if config has changed since last sync of any CLI
+ * @returns {boolean} True if config changed
+ */
+function hasConfigChanged() {
+  const state = readSyncState();
+  const currentHash = getConfigChecksum();
+  return state.lastConfigHash !== currentHash;
+}
+
+/**
+ * Get sync status for all known CLIs
+ * @returns {Object} Status for each CLI
+ */
+function getSyncStatus() {
+  const status = {};
+  for (const cliType of Object.keys(CLI_OUTPUT_FILES)) {
+    const check = needsSync(cliType);
+    const outputPath = getOutputFilePath(cliType);
+    const templateName = CLI_TEMPLATES[cliType];
+    const templatePath = templateName ? path.join(WORKFLOW_DIR, 'templates', templateName) : null;
+
+    status[cliType] = {
+      ...check,
+      outputExists: outputPath ? fs.existsSync(outputPath) : false,
+      templateExists: templatePath ? fs.existsSync(templatePath) : false,
+      outputPath,
+      templatePath
+    };
+  }
+  return status;
+}
+
+/**
+ * Clear sync state (for debugging/reset)
+ * @returns {void}
+ */
+function clearSyncState() {
+  writeSyncState({ syncs: {}, version: 1 });
 }
 
 /**
@@ -335,6 +398,18 @@ if (require.main === module) {
         break;
       }
 
+      case 'status': {
+        const status = getSyncStatus();
+        console.log(JSON.stringify(status, null, 2));
+        break;
+      }
+
+      case 'clear': {
+        clearSyncState();
+        console.log('Sync state cleared');
+        break;
+      }
+
       default:
         console.log('Usage: flow-bridge-state <command> [options]');
         console.log('');
@@ -342,7 +417,9 @@ if (require.main === module) {
         console.log('  check [cli-type]    Check if sync is needed');
         console.log('  sync [cli-type]     Sync a CLI bridge');
         console.log('  sync-all            Sync all enabled CLIs');
+        console.log('  status              Show sync status for all CLIs');
         console.log('  detect              Detect running CLI type');
+        console.log('  clear               Clear sync state (force refresh)');
         console.log('');
         console.log('Options:');
         console.log('  --force             Force sync even if up-to-date');
@@ -356,12 +433,27 @@ if (require.main === module) {
 }
 
 module.exports = {
+  // Core functions
   needsSync,
   autoSyncBridge,
+  markSynced,
+
+  // Multi-CLI support
   syncAllEnabledClis,
-  detectRunningCli,
+  getSyncStatus,
+
+  // Config tracking
   getConfigChecksum,
+  getTemplateChecksum,
+  hasConfigChanged,
+
+  // Utilities
+  detectRunningCli,
   getLastSyncTime,
   setLastSyncTime,
-  CLI_OUTPUT_FILES
+  clearSyncState,
+
+  // Constants
+  CLI_OUTPUT_FILES,
+  CLI_TEMPLATES
 };

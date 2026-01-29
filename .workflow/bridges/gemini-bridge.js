@@ -108,52 +108,8 @@ class GeminiBridge extends BaseBridge {
     return content;
   }
 
-  /**
-   * Process {{#if condition}}...{{/if}} blocks
-   */
-  processConditionals(content, config) {
-    const ifRegex = /\{\{#if\s+([^}]+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
-
-    let lastContent;
-    do {
-      lastContent = content;
-      content = content.replace(ifRegex, (match, condition, body) => {
-        let value;
-        if (condition.startsWith('config.')) {
-          value = this.getNestedValue(config, condition.replace('config.', ''));
-        } else if (condition === 'skills') {
-          value = config.skills?.installed?.length > 0;
-        } else {
-          value = this.getNestedValue(config, condition);
-        }
-        return value ? body : '';
-      });
-    } while (content !== lastContent);
-
-    return content;
-  }
-
-  /**
-   * Process {{#each array}}...{{/each}} blocks
-   */
-  processEachBlocks(content, config) {
-    const eachRegex = /\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
-
-    return content.replace(eachRegex, (match, arrayName, body) => {
-      let array;
-      if (arrayName === 'skills') {
-        array = config.skills?.installed || [];
-      } else {
-        array = config[arrayName] || [];
-      }
-
-      if (!Array.isArray(array) || array.length === 0) {
-        return '';
-      }
-
-      return array.map(item => body.replace(/\{\{this\}\}/g, String(item))).join('');
-    });
-  }
+  // NOTE: processConditionals() and processEachBlocks() are inherited from BaseBridge
+  // Do not override - consolidated per code review to avoid duplication
 
   /**
    * Generate default GEMINI.md when no template exists
@@ -603,12 +559,8 @@ ${escaped}
     await this.createHookEntryPoints(config);
   }
 
-  /**
-   * Get nested value from object using dot notation
-   */
-  getNestedValue(obj, path) {
-    return path.split('.').reduce((acc, part) => acc && acc[part], obj);
-  }
+  // NOTE: getNestedValue() is inherited from BaseBridge with security checks
+  // Do not override - see security-patterns.md rule #2
 }
 
 module.exports = GeminiBridge;
