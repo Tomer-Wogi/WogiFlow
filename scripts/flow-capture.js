@@ -54,7 +54,7 @@ const BUG_KEYWORDS = [
 ];
 
 // ============================================================
-// Auto-Grouping Configuration
+// Configuration
 // ============================================================
 
 /**
@@ -66,13 +66,157 @@ function getCaptureConfig() {
   const defaults = {
     autoGroup: true,
     groupingThreshold: 0.5,
-    maxGroupSize: 5
+    maxGroupSize: 5,
+    routing: {
+      enabled: true,
+      defaultCertainty: 'certain',
+      autoDetect: true
+    }
   };
 
+  const captureConfig = config.capture || {};
   return {
     ...defaults,
-    ...(config.capture || {})
+    ...captureConfig,
+    routing: {
+      ...defaults.routing,
+      ...(captureConfig.routing || {})
+    }
   };
+}
+
+// ============================================================
+// Certainty Detection & Routing (v2.1)
+// ============================================================
+
+/**
+ * Signals that indicate uncertainty
+ */
+const UNCERTAINTY_SIGNALS = [
+  /\?$/,                    // Ends with question mark
+  /\bmaybe\b/i,            // Contains "maybe"
+  /\bshould we\b/i,        // "Should we..."
+  /\bconsider\b/i,         // Contains "consider"
+  /\bwhat if\b/i,          // "What if..."
+  /\bmight\b/i,            // Contains "might"
+  /\bcould we\b/i,         // Contains "could we"
+  /\bperhaps\b/i,          // Contains "perhaps"
+  /\bwondering\b/i,        // Contains "wondering"
+  /\bthinking about\b/i,   // "Thinking about..."
+];
+
+/**
+ * Detect certainty level from text
+ * @param {string} text - Capture text
+ * @returns {'certain' | 'uncertain'}
+ */
+function detectCertainty(text) {
+  for (const signal of UNCERTAINTY_SIGNALS) {
+    if (signal.test(text)) {
+      return 'uncertain';
+    }
+  }
+  return 'certain';
+}
+
+/**
+ * Add item to discussion queue for uncertain ideas
+ * @param {Object} item - Capture item
+ */
+function addToDiscussionQueue(item) {
+  const fs = require('fs');
+  const path = require('path');
+
+  const queuePath = path.join(PATHS.state, 'discussion-queue.md');
+
+  // Initialize or read existing queue
+  let content;
+  try {
+    content = fs.readFileSync(queuePath, 'utf-8');
+  } catch {
+    content = `# Discussion Queue
+
+Ideas that need review before becoming tasks.
+
+## Pending Review
+
+<!-- New items are added under today's date -->
+
+## Reviewed
+
+<!-- Moved items go here with decision -->
+`;
+  }
+
+  // Format today's date
+  const today = new Date().toISOString().split('T')[0];
+  const time = new Date().toTimeString().slice(0, 5);
+
+  // Find or create today's section
+  const todayHeader = `### ${today}`;
+  const todayEntry = `- [ ] ${item.title} (captured: ${time})${item.groupedFrom ? ` [${item.groupedFrom.length} items]` : ''}`;
+
+  if (content.includes(todayHeader)) {
+    // Add under today's section
+    content = content.replace(
+      new RegExp(`(${todayHeader}\\n)`, 'g'),
+      `$1${todayEntry}\n`
+    );
+  } else {
+    // Create today's section after "## Pending Review"
+    content = content.replace(
+      '## Pending Review\n',
+      `## Pending Review\n\n${todayHeader}\n${todayEntry}\n`
+    );
+  }
+
+  fs.writeFileSync(queuePath, content, 'utf-8');
+}
+
+/**
+ * Add item to roadmap for certain ideas
+ * @param {Object} item - Capture item
+ */
+function addToRoadmap(item) {
+  const fs = require('fs');
+  const path = require('path');
+
+  const roadmapPath = path.join(PATHS.workflow, 'roadmap.md');
+
+  // Initialize or read existing roadmap
+  let content;
+  try {
+    content = fs.readFileSync(roadmapPath, 'utf-8');
+  } catch {
+    content = `# Roadmap
+
+Planned features and improvements.
+
+## Captured Ideas
+
+<!-- Quick captures that have been marked as certain -->
+
+## Future Work
+
+<!-- Deferred work from previous sessions -->
+`;
+  }
+
+  // Format entry
+  const today = new Date().toISOString().split('T')[0];
+  const entry = `\n### ${item.title}\n\n**Captured:** ${today}\n**Type:** ${item.type}\n**Status:** Pending story creation\n${item.groupedFrom ? `**Items:** ${item.groupedFrom.join(', ')}\n` : ''}`;
+
+  // Add under "## Captured Ideas"
+  if (content.includes('## Captured Ideas')) {
+    content = content.replace(
+      '## Captured Ideas\n',
+      `## Captured Ideas\n${entry}`
+    );
+  } else {
+    content += `\n## Captured Ideas\n${entry}`;
+  }
+
+  fs.writeFileSync(roadmapPath, content, 'utf-8');
 }
 
 // ============================================================
@@ -478,25 +622,38 @@ function main() {
 Usage: flow capture "<title>" [options]
 
 Quick capture an idea or bug without interrupting flow.
-v2.0: Now with auto-grouping - related items stay together, unrelated items split.
+v2.1: Auto-grouping + Routing (certain → roadmap, uncertain → discussion queue)
 
 Options:
   --type <type>     Force type: bug or feature (default: auto-detect)
   --tags <tags>     Comma-separated tags to add
   --json            Output JSON
   --no-group        Disable auto-grouping (create separate items)
+  --certain         Force routing to roadmap (create story)
+  --idea            Force routing to discussion queue (uncertain idea)
+  --no-route        Disable routing, just add to backlog
+
+Routing (v2.1):
+  Certain ideas (explicit action) → Roadmap + story creation
+  Uncertain ideas (questions, "maybe") → Discussion queue
+
+  Auto-detected uncertainty signals:
+    - Question marks: "should we add GraphQL?"
+    - Hedging words: "maybe", "might", "could", "perhaps"
+    - Tentative phrases: "what if", "should we", "thinking about"
 
 Examples:
   flow capture "Add dark mode toggle"
-  flow capture "Bug: login fails on Safari"
-  flow capture "Fix broken image" --type bug --tags "#screen:profile"
+  → Certain (explicit action) → Roadmap
 
-Multi-item examples (auto-grouped):
-  flow capture "change send button to blue, change cancel button to blue"
-  → ONE capture: "Update button colors"
+  flow capture "should we maybe use GraphQL?"
+  → Uncertain (question + "maybe") → Discussion queue
 
-  flow capture "fix login bug, add dark mode, update footer"
-  → THREE captures (unrelated items)
+  flow capture "refactor auth" --certain
+  → Forced to roadmap
+
+  flow capture "add caching" --idea
+  → Forced to discussion queue
 `);
     process.exit(0);
   }
@@ -542,8 +699,12 @@ Multi-item examples (auto-grouped):
     tags = [...tags, ...userTags];
   }
 
+  // Determine routing
+  const routingEnabled = captureConfig.routing.enabled && !flags['no-route'];
+
   // Create capture items for each group
   const capturedItems = [];
+  const routingResults = { roadmap: [], discussion: [], backlog: [] };
 
   for (const group of groups) {
     const id = generateCaptureId(existingBacklog);
@@ -551,10 +712,23 @@ Multi-item examples (auto-grouped):
     // Determine type from the group's items
     const type = flags.type || detectType(group.items.join(' '));
 
+    // Determine certainty
+    let certainty;
+    if (flags.certain) {
+      certainty = 'certain';
+    } else if (flags.idea) {
+      certainty = 'uncertain';
+    } else if (captureConfig.routing.autoDetect) {
+      certainty = detectCertainty(group.items.join(' '));
+    } else {
+      certainty = captureConfig.routing.defaultCertainty;
+    }
+
     const item = {
       id,
       title: group.title,
       type,
+      certainty,
       capturedAt: new Date().toISOString(),
       ...(currentTask && { capturedDuring: currentTask.id }),
       ...(tags.length > 0 && { tags }),
@@ -564,7 +738,21 @@ Multi-item examples (auto-grouped):
       })
     };
 
-    addToBacklog(item);
+    // Route based on certainty
+    if (routingEnabled) {
+      if (certainty === 'certain') {
+        addToRoadmap(item);
+        routingResults.roadmap.push(item);
+      } else {
+        addToDiscussionQueue(item);
+        routingResults.discussion.push(item);
+      }
+    } else {
+      // Fallback to backlog
+      addToBacklog(item);
+      routingResults.backlog.push(item);
+    }
+
     capturedItems.push(item);
 
     // Update existingBacklog for next ID generation
@@ -577,24 +765,30 @@ Multi-item examples (auto-grouped):
       success: true,
       captured: capturedItems,
       groupingApplied: groups.some(g => g.grouped),
+      routingApplied: routingEnabled,
+      routing: routingResults,
       totalItems: items.length,
       captureCount: capturedItems.length
     });
   } else {
     if (capturedItems.length === 1) {
       const item = capturedItems[0];
+      const destination = item.certainty === 'certain' ? 'roadmap' : 'discussion queue';
+      const destLabel = routingEnabled ? ` → ${destination}` : '';
       if (item.grouped) {
-        success(`Captured: ${item.title} (${item.type}) - grouped ${item.itemCount} related items`);
+        success(`Captured: ${item.title} (${item.type})${destLabel} - grouped ${item.itemCount} related items`);
       } else {
-        success(`Captured: ${item.title} (${item.type})`);
+        success(`Captured: ${item.title} (${item.type})${destLabel}`);
       }
     } else {
       success(`Captured ${capturedItems.length} items:`);
       for (const item of capturedItems) {
+        const destination = item.certainty === 'certain' ? '→ roadmap' : '→ discussion';
+        const destLabel = routingEnabled ? ` ${destination}` : '';
         if (item.grouped) {
-          console.log(`  • ${item.title} (${item.itemCount} items grouped)`);
+          console.log(`  • ${item.title} (${item.itemCount} items grouped)${destLabel}`);
         } else {
-          console.log(`  • ${item.title}`);
+          console.log(`  • ${item.title}${destLabel}`);
         }
       }
     }
@@ -616,5 +810,9 @@ module.exports = {
   parseMultipleItems,
   analyzeItem,
   groupRelatedItems,
-  calculateSimilarity
+  calculateSimilarity,
+  // Routing exports (v2.1)
+  detectCertainty,
+  addToDiscussionQueue,
+  addToRoadmap
 };

@@ -1,6 +1,6 @@
 Quick capture an idea or bug without interrupting your current work. Provide a brief title: `/wogi-capture Add dark mode toggle`
 
-**v2.0**: Now with **Auto-Grouping** - related ideas stay together, unrelated ideas split into separate captures.
+**v2.1**: Auto-Grouping + **Routing** (certain → roadmap, uncertain → discussion queue)
 
 ## Usage
 
@@ -10,6 +10,42 @@ Quick capture an idea or bug without interrupting your current work. Provide a b
 ```
 
 Just provide a brief title. That's it.
+
+## Routing (v2.1)
+
+Ideas are automatically routed based on certainty:
+
+- **Certain ideas** (clear action) → Added to `roadmap.md`
+- **Uncertain ideas** (questions, "maybe") → Added to `discussion-queue.md`
+
+### Auto-Detection
+
+The system detects uncertainty from:
+- **Question marks**: "should we add GraphQL?"
+- **Hedging words**: "maybe", "might", "could", "perhaps"
+- **Tentative phrases**: "what if", "should we", "thinking about", "wondering"
+
+### Examples
+
+```
+/wogi-capture "add dark mode toggle"
+→ Certain (explicit action) → Roadmap
+
+/wogi-capture "should we maybe use GraphQL?"
+→ Uncertain (question + "maybe") → Discussion queue
+
+/wogi-capture "refactor auth" --certain
+→ Forced to roadmap
+
+/wogi-capture "add caching" --idea
+→ Forced to discussion queue
+```
+
+### Routing Flags
+
+- `--certain` - Force routing to roadmap
+- `--idea` - Force routing to discussion queue
+- `--no-route` - Disable routing, just add to backlog
 
 ## Auto-Grouping (v2.0)
 
@@ -41,51 +77,37 @@ Use `--no-group` to create separate items without grouping:
 → TWO captures (no grouping applied)
 ```
 
-Or disable globally in config:
-```json
-{
-  "capture": {
-    "autoGroup": false
-  }
-}
-```
-
 ## What Happens
 
 1. **Parse input** - Split by commas, "and", numbered lists
 2. **Analyze items** - Extract action type, target component, item type
 3. **Group related** - Combine similar items above threshold
-4. **Auto-detect type** from keywords:
+4. **Detect certainty** - Check for uncertainty signals
+5. **Route** - Certain → roadmap, uncertain → discussion queue
+6. **Auto-detect type** from keywords:
    - "bug", "fix", "broken", "error", "crash", "fails" → `bug`
    - Everything else → `feature`
-5. **Auto-tag** from current context (if a task is in progress)
-6. **Add to backlog** in `ready.json` with minimal metadata
+7. **Auto-tag** from current context (if a task is in progress)
 
-## Backlog Triage
+## Files
 
-Items go to a `backlog` array in ready.json. Use `/wogi-ready` to see them.
+| Certainty | Destination |
+|-----------|-------------|
+| Certain | `.workflow/roadmap.md` |
+| Uncertain | `.workflow/state/discussion-queue.md` |
+| No routing | `.workflow/state/ready.json` (backlog) |
 
-Later you can:
-- Promote to `ready` (use `/wogi-story` to create proper story)
-- Discard if no longer relevant
-- Convert to bug with `/wogi-bug`
+### Discussion Queue Format
 
-## Examples
+```markdown
+## Pending Review
 
-```
-/wogi-capture Add export to PDF
-→ Captured: Add export to PDF (feature)
+### 2026-01-29
+- [ ] Should we refactor the auth system? (captured: 10:30)
+- [ ] Maybe add GraphQL support? (captured: 11:15)
 
-/wogi-capture Bug: form validation not working
-→ Captured: Bug: form validation not working (bug)
-
-/wogi-capture Broken image on profile page
-→ Captured: Broken image on profile page (bug)
-
-/wogi-capture "update header color, update footer color, add logout button"
-→ Captured 2 items:
-  • Update header/footer colors (2 items grouped)
-  • add logout button
+## Reviewed
+<!-- Moved items go here with decision -->
 ```
 
 ## CLI Usage
@@ -93,7 +115,8 @@ Later you can:
 ```bash
 node scripts/flow-capture.js "Add dark mode toggle"
 node scripts/flow-capture.js "Bug: login fails" --json
-node scripts/flow-capture.js "change all buttons" --no-group
+node scripts/flow-capture.js "maybe add caching?" --idea
+node scripts/flow-capture.js "refactor auth" --certain
 ```
 
 ## Options
@@ -102,6 +125,9 @@ node scripts/flow-capture.js "change all buttons" --no-group
 - `--tags <tags>` - Add comma-separated tags
 - `--json` - Output JSON instead of minimal confirmation
 - `--no-group` - Disable auto-grouping (create separate items)
+- `--certain` - Force routing to roadmap
+- `--idea` - Force routing to discussion queue
+- `--no-route` - Disable routing, just add to backlog
 
 ## Configuration
 
@@ -111,7 +137,12 @@ In `config.json`:
   "capture": {
     "autoGroup": true,         // Enable/disable auto-grouping
     "groupingThreshold": 0.5,  // Similarity threshold (0-1)
-    "maxGroupSize": 5          // Max items per group
+    "maxGroupSize": 5,         // Max items per group
+    "routing": {
+      "enabled": true,           // Enable routing
+      "defaultCertainty": "certain", // Default when not detected
+      "autoDetect": true         // Auto-detect from text
+    }
   }
 }
 ```

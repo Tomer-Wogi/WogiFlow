@@ -148,7 +148,12 @@
   "capture": {
     "autoGroup": true,
     "groupingThreshold": 0.5,
-    "maxGroupSize": 5
+    "maxGroupSize": 5,
+    "routing": {
+      "enabled": true,
+      "defaultCertainty": "certain",
+      "autoDetect": true
+    }
   },
   "phases": {
     "enabled": false,

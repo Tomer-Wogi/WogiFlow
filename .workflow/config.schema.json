@@ -879,6 +879,28 @@
           "default": 5,
           "minimum": 2,
           "maximum": 10
+        },
+        "routing": {
+          "type": "object",
+          "description": "Routing configuration for certain vs uncertain ideas",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable routing (certain → roadmap, uncertain → discussion queue)",
+              "default": true
+            },
+            "defaultCertainty": {
+              "type": "string",
+              "description": "Default certainty when not auto-detected",
+              "enum": ["certain", "uncertain"],
+              "default": "certain"
+            },
+            "autoDetect": {
+              "type": "boolean",
+              "description": "Auto-detect uncertainty from text (questions, 'maybe', etc.)",
+              "default": true
+            }
+          }
         }
       }
     },
