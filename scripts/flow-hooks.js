@@ -3,7 +3,7 @@
 /**
  * Wogi Flow - CLI Hooks Manager
  *
- * Multi-CLI hook manager supporting Claude Code, Gemini, Codex, etc.
+ * Hooks manager for Claude Code.
  *
  * Usage:
  *   flow hooks setup           # Install hooks for configured targets

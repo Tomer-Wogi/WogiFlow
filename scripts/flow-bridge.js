@@ -65,41 +65,6 @@ function listBridges() {
       status: 'full',
       folder: '.claude',
       rulesFile: 'CLAUDE.md'
-    },
-    {
-      id: 'gemini-cli',
-      name: 'Gemini CLI',
-      status: 'full',
-      folder: '.gemini',
-      rulesFile: 'GEMINI.md'
-    },
-    {
-      id: 'cursor',
-      name: 'Cursor',
-      status: 'full',
-      folder: '.cursor',
-      rulesFile: '.cursor/rules/wogi-flow.mdc'
-    },
-    {
-      id: 'opencode',
-      name: 'OpenCode',
-      status: 'full',
-      folder: '.opencode',
-      rulesFile: '.opencode/agents.md'
-    },
-    {
-      id: 'codex',
-      name: 'Codex CLI',
-      status: 'soft',
-      folder: '.codex',
-      rulesFile: 'AGENTS.md'
-    },
-    {
-      id: 'kimi',
-      name: 'Kimi CLI',
-      status: 'soft',
-      folder: '.kimi',
-      rulesFile: 'KIMI.md'
     }
   ];
 
@@ -138,30 +103,15 @@ function showStatus() {
 
   // Check if bridge file exists
   const bridgePath = path.join(BRIDGES_DIR, `${cliType.replace('-', '-')}-bridge.js`);
-  const bridgeFileMap = {
-    'claude-code': 'claude-bridge.js',
-    'gemini-cli': 'gemini-bridge.js',
-    'opencode': 'opencode-bridge.js'
-  };
-
-  const bridgeFile = bridgeFileMap[cliType];
-  if (bridgeFile) {
-    const bridgeExists = fs.existsSync(path.join(BRIDGES_DIR, bridgeFile));
-    console.log(`  Bridge File:     ${bridgeExists ? colors.green + '✓ ' + bridgeFile : colors.yellow + '○ not implemented'}${colors.reset}`);
-  }
+  // Check bridge file (Claude Code only)
+  const bridgeFile = 'claude-bridge.js';
+  const bridgeExists = fs.existsSync(path.join(BRIDGES_DIR, bridgeFile));
+  console.log(`  Bridge File:     ${bridgeExists ? colors.green + '✓ ' + bridgeFile : colors.yellow + '○ not found'}${colors.reset}`);
 
   // Check CLI folder status
-  const cliFolders = {
-    'claude-code': '.claude',
-    'gemini-cli': '.gemini',
-    'opencode': '.opencode'
-  };
-
-  const cliFolder = cliFolders[cliType];
-  if (cliFolder) {
-    const folderExists = fs.existsSync(path.join(PROJECT_ROOT, cliFolder));
-    console.log(`  CLI Folder:      ${folderExists ? colors.green + '✓ ' + cliFolder + '/' : colors.yellow + '○ ' + cliFolder + '/ (not created)'}${colors.reset}`);
-  }
+  const cliFolder = '.claude';
+  const folderExists = fs.existsSync(path.join(PROJECT_ROOT, cliFolder));
+  console.log(`  CLI Folder:      ${folderExists ? colors.green + '✓ ' + cliFolder + '/' : colors.yellow + '○ ' + cliFolder + '/ (not created)'}${colors.reset}`);
 
   console.log('');
 }
@@ -172,17 +122,11 @@ function showStatus() {
 function normalizeCliType(input) {
   if (!input) return null;
   const normalized = input.toLowerCase().trim();
-  const aliases = {
-    'gemini': 'gemini-cli',
-    'gemini-cli': 'gemini-cli',
-    'claude': 'claude-code',
-    'claude-code': 'claude-code',
-    'opencode': 'opencode',
-    'cursor': 'cursor',
-    'codex': 'codex',
-    'kimi': 'kimi'
-  };
-  return aliases[normalized] || null;
+  // Only Claude Code is supported
+  if (normalized === 'claude' || normalized === 'claude-code') {
+    return 'claude-code';
+  }
+  return null;
 }
 
 /**
@@ -198,7 +142,7 @@ async function syncBridge(options = {}) {
 
   if (cliTypeArg && !requestedCliType) {
     console.error(`${colors.red}Error:${colors.reset} Unknown CLI type: ${cliTypeArg}`);
-    console.error('Available types: claude-code, gemini-cli, cursor, opencode, codex, kimi');
+    console.error('Only claude-code is supported.');
     process.exit(1);
   }
 
@@ -269,20 +213,18 @@ switch (command) {
     console.log('Usage: flow bridge [sync|status|list] [cli-type]');
     console.log('');
     console.log('Commands:');
-    console.log('  sync [cli-type]  Sync .workflow/ config to CLI-specific folder');
+    console.log('  sync             Sync .workflow/ config to CLAUDE.md');
     console.log('  status           Show current bridge configuration');
     console.log('  list             List available CLI bridges');
     console.log('');
     console.log('Options:');
-    console.log('  --force, -f      Overwrite locally modified rules files (CLAUDE.md, GEMINI.md, etc.)');
+    console.log('  --force, -f      Overwrite locally modified CLAUDE.md');
     console.log('  --verbose, -v    Show detailed output');
     console.log('');
-    console.log('CLI Types:');
-    console.log('  claude-code, gemini-cli (or gemini), cursor, opencode, codex, kimi');
+    console.log('Note: Only Claude Code is supported.');
     console.log('');
     console.log('Examples:');
-    console.log('  flow bridge sync           # Sync default CLI from config');
-    console.log('  flow bridge sync gemini    # Sync Gemini CLI specifically');
+    console.log('  flow bridge sync           # Sync Claude Code bridge');
     console.log('  flow bridge sync --force   # Force overwrite even if locally modified');
     process.exit(1);
 }

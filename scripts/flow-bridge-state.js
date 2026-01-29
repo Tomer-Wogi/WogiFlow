@@ -4,7 +4,7 @@
  * Wogi Flow - Bridge State Tracker
  *
  * Tracks CLI bridge sync state and provides auto-sync functionality.
- * Enables seamless generation of CLI instruction files on session start.
+ * Only Claude Code is supported.
  *
  * Usage:
  *   const { autoSyncBridge, needsSync } = require('./flow-bridge-state');
@@ -27,24 +27,14 @@ const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
 const SYNC_STATE_PATH = path.join(STATE_DIR, 'bridge-sync.json');
 
-// CLI type to output file mapping
+// CLI type to output file mapping (Claude Code only)
 const CLI_OUTPUT_FILES = {
-  'claude-code': 'CLAUDE.md',
-  'gemini-cli': 'GEMINI.md',
-  'cursor': '.cursor/rules/wogi-flow.mdc',
-  'opencode': '.opencode/agents.md',
-  'codex': 'AGENTS.md',
-  'kimi': 'AGENTS.md'  // Kimi also uses AGENTS.md
+  'claude-code': 'CLAUDE.md'
 };
 
-// CLI type to template file mapping
+// CLI type to template file mapping (Claude Code only)
 const CLI_TEMPLATES = {
-  'claude-code': 'claude-md.hbs',
-  'gemini-cli': 'gemini-md.hbs',
-  'cursor': 'cursor-rules.mdc.hbs',
-  'opencode': 'opencode-agents-md.hbs',
-  'codex': 'codex-config.hbs',
-  'kimi': 'kimi-agents-md.hbs'
+  'claude-code': 'claude-md.hbs'
 };
 
 /**
@@ -165,6 +155,11 @@ function markSynced(cliType) {
  * @returns {Object} { needsSync: boolean, reason: string }
  */
 function needsSync(cliType) {
+  // Only support claude-code
+  if (cliType !== 'claude-code') {
+    return { needsSync: false, reason: 'unsupported-cli' };
+  }
+
   // Check if output file exists
   const outputPath = getOutputFilePath(cliType);
   if (!outputPath) {
@@ -199,14 +194,19 @@ function needsSync(cliType) {
 
 /**
  * Auto-sync a CLI bridge if needed
- * @param {string} cliType - CLI type to sync
+ * @param {string} cliType - CLI type to sync (only claude-code supported)
  * @param {Object} options - Options
  * @param {boolean} options.silent - Suppress output
  * @param {boolean} options.force - Force sync even if up-to-date
  * @returns {Object} { synced: boolean, reason: string }
  */
-async function autoSyncBridge(cliType, options = {}) {
+async function autoSyncBridge(cliType = 'claude-code', options = {}) {
   const { silent = false, force = false } = options;
+
+  // Only support claude-code
+  if (cliType !== 'claude-code') {
+    return { synced: false, reason: 'unsupported-cli' };
+  }
 
   // Check if sync is needed
   if (!force) {
@@ -230,27 +230,16 @@ async function autoSyncBridge(cliType, options = {}) {
     return { synced: false, reason: 'bridges-unavailable', error: err.message };
   }
 
-  // Get bridge for the specified CLI type
+  // Get bridge
   let bridge;
   try {
-    // Pass explicit cliType to override config default
     bridge = bridges.getBridge({
       projectDir: PROJECT_ROOT,
-      cliType: cliType,
       verbose: !silent
     });
-
-    // Fallback: Try loading the specific bridge directly
-    if (!bridge) {
-      const BridgeClass = require(path.join(PROJECT_ROOT, '.workflow', 'bridges', `${cliType}-bridge`));
-      bridge = new BridgeClass({
-        projectDir: PROJECT_ROOT,
-        verbose: !silent
-      });
-    }
   } catch (err) {
     if (process.env.DEBUG) {
-      console.error(`[bridge-state] Failed to get bridge for ${cliType}: ${err.message}`);
+      console.error(`[bridge-state] Failed to get bridge: ${err.message}`);
     }
     return { synced: false, reason: 'bridge-load-failed', error: err.message };
   }
@@ -269,32 +258,24 @@ async function autoSyncBridge(cliType, options = {}) {
     return { synced: true, reason: 'success' };
   } catch (err) {
     if (process.env.DEBUG) {
-      console.error(`[bridge-state] Sync failed for ${cliType}: ${err.message}`);
+      console.error(`[bridge-state] Sync failed: ${err.message}`);
     }
     return { synced: false, reason: 'sync-failed', error: err.message };
   }
 }
 
 /**
- * Sync all enabled CLIs
+ * Sync Claude Code (the only supported CLI)
  * @param {Object} options - Options
- * @returns {Object} Results for each CLI
+ * @returns {Object} Results
  */
 async function syncAllEnabledClis(options = {}) {
-  const config = safeJsonParse(CONFIG_PATH, {});
-  const primaryCli = config.cli?.type || 'claude-code';
-  const enabledClis = config.cli?.enabled || [primaryCli];
-
-  const results = {};
-  for (const cliType of enabledClis) {
-    results[cliType] = await autoSyncBridge(cliType, options);
-  }
-
-  return results;
+  const result = await autoSyncBridge('claude-code', options);
+  return { 'claude-code': result };
 }
 
 /**
- * Check if config has changed since last sync of any CLI
+ * Check if config has changed since last sync
  * @returns {boolean} True if config changed
  */
 function hasConfigChanged() {
@@ -304,26 +285,25 @@ function hasConfigChanged() {
 }
 
 /**
- * Get sync status for all known CLIs
- * @returns {Object} Status for each CLI
+ * Get sync status for Claude Code
+ * @returns {Object} Status
  */
 function getSyncStatus() {
-  const status = {};
-  for (const cliType of Object.keys(CLI_OUTPUT_FILES)) {
-    const check = needsSync(cliType);
-    const outputPath = getOutputFilePath(cliType);
-    const templateName = CLI_TEMPLATES[cliType];
-    const templatePath = templateName ? path.join(WORKFLOW_DIR, 'templates', templateName) : null;
+  const cliType = 'claude-code';
+  const check = needsSync(cliType);
+  const outputPath = getOutputFilePath(cliType);
+  const templateName = CLI_TEMPLATES[cliType];
+  const templatePath = templateName ? path.join(WORKFLOW_DIR, 'templates', templateName) : null;
 
-    status[cliType] = {
+  return {
+    'claude-code': {
       ...check,
       outputExists: outputPath ? fs.existsSync(outputPath) : false,
       templateExists: templatePath ? fs.existsSync(templatePath) : false,
       outputPath,
       templatePath
-    };
-  }
-  return status;
+    }
+  };
 }
 
 /**
@@ -335,33 +315,10 @@ function clearSyncState() {
 }
 
 /**
- * Detect which CLI is currently running
- * Based on environment variables and caller context
+ * Detect which CLI is currently running - always returns claude-code
  * @returns {string} CLI type
  */
 function detectRunningCli() {
-  // Priority 1: Environment variables
-  if (process.env.CLAUDE_CODE_ENTRY_POINT) return 'claude-code';
-  if (process.env.GEMINI_API_KEY && !process.env.CLAUDE_CODE_ENTRY_POINT) return 'gemini-cli';
-  if (process.env.CURSOR_SESSION_ID) return 'cursor';
-  if (process.env.OPENCODE_SESSION) return 'opencode';
-
-  // Priority 2: Check caller stack for hook path hints
-  try {
-    const stack = new Error().stack || '';
-    if (stack.includes('/claude-code/')) return 'claude-code';
-    if (stack.includes('/gemini-cli/')) return 'gemini-cli';
-    if (stack.includes('/cursor/')) return 'cursor';
-    if (stack.includes('/opencode/')) return 'opencode';
-  } catch {
-    // Ignore stack parsing errors
-  }
-
-  // Priority 3: Config file setting
-  const config = safeJsonParse(CONFIG_PATH, {});
-  if (config.cli?.type) return config.cli.type;
-
-  // Default
   return 'claude-code';
 }
 
@@ -373,14 +330,14 @@ if (require.main === module) {
   const run = async () => {
     switch (command) {
       case 'check': {
-        const cliType = args[1] || detectRunningCli();
+        const cliType = args[1] || 'claude-code';
         const result = needsSync(cliType);
         console.log(JSON.stringify({ cliType, ...result }, null, 2));
         break;
       }
 
       case 'sync': {
-        const cliType = args[1] || detectRunningCli();
+        const cliType = args[1] || 'claude-code';
         const result = await autoSyncBridge(cliType, { silent: false, force: args.includes('--force') });
         console.log(JSON.stringify({ cliType, ...result }, null, 2));
         break;
@@ -393,8 +350,7 @@ if (require.main === module) {
       }
 
       case 'detect': {
-        const cliType = detectRunningCli();
-        console.log(cliType);
+        console.log('claude-code');
         break;
       }
 
@@ -414,15 +370,15 @@ if (require.main === module) {
         console.log('Usage: flow-bridge-state <command> [options]');
         console.log('');
         console.log('Commands:');
-        console.log('  check [cli-type]    Check if sync is needed');
-        console.log('  sync [cli-type]     Sync a CLI bridge');
-        console.log('  sync-all            Sync all enabled CLIs');
-        console.log('  status              Show sync status for all CLIs');
-        console.log('  detect              Detect running CLI type');
-        console.log('  clear               Clear sync state (force refresh)');
+        console.log('  check             Check if sync is needed');
+        console.log('  sync              Sync Claude Code bridge');
+        console.log('  sync-all          Sync Claude Code bridge');
+        console.log('  status            Show sync status');
+        console.log('  detect            Detect running CLI type (always claude-code)');
+        console.log('  clear             Clear sync state (force refresh)');
         console.log('');
         console.log('Options:');
-        console.log('  --force             Force sync even if up-to-date');
+        console.log('  --force           Force sync even if up-to-date');
     }
   };
 
@@ -438,7 +394,7 @@ module.exports = {
   autoSyncBridge,
   markSynced,
 
-  // Multi-CLI support
+  // Multi-CLI support (kept for backward compatibility)
   syncAllEnabledClis,
   getSyncStatus,
 

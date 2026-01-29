@@ -4,7 +4,6 @@
   "projectName": "wogi-flow",
   "cli": {
     "type": "claude-code",
-    "enabled": ["claude-code", "gemini-cli"],
     "autoSync": {
       "enabled": true,
       "onSessionStart": true
@@ -1246,9 +1245,7 @@
     },
     "claudeCode": {
       "installPath": ".claude/settings.local.json"
-    },
-    "gemini": {},
-    "codex": {}
+    }
   },
   "metrics": {
     "enabled": true,

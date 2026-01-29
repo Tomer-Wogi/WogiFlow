@@ -109,13 +109,8 @@ function main() {
     } catch {}
   }
 
-  const rulesFiles = {
-    'claude-code': { path: path.join(PROJECT_ROOT, 'CLAUDE.md'), name: 'CLAUDE.md' },
-    'gemini-cli': { path: path.join(PROJECT_ROOT, 'GEMINI.md'), name: 'GEMINI.md' },
-    'opencode': { path: path.join(PROJECT_ROOT, '.opencode', 'config.json'), name: '.opencode/config.json' }
-  };
-
-  const rulesFile = rulesFiles[cliType] || rulesFiles['claude-code'];
+  // Only Claude Code is supported
+  const rulesFile = { path: path.join(PROJECT_ROOT, 'CLAUDE.md'), name: 'CLAUDE.md' };
   if (fileExists(rulesFile.path)) {
     console.log(`  ${color('green', '✓')} ${rulesFile.name} (${cliType})`);
   } else {

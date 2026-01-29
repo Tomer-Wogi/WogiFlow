@@ -38,22 +38,13 @@
     },
     "cli": {
       "type": "object",
-      "description": "CLI bridge configuration for multi-CLI support",
+      "description": "CLI bridge configuration (Claude Code only)",
       "properties": {
         "type": {
           "type": "string",
-          "description": "Primary CLI type for this project",
-          "enum": ["claude-code", "gemini-cli", "cursor", "opencode", "codex", "kimi"],
+          "description": "CLI type for this project (only claude-code is supported)",
+          "const": "claude-code",
           "default": "claude-code"
-        },
-        "enabled": {
-          "type": "array",
-          "description": "List of enabled CLIs for this project (auto-sync generates files for these)",
-          "items": {
-            "type": "string",
-            "enum": ["claude-code", "gemini-cli", "cursor", "opencode", "codex", "kimi"]
-          },
-          "default": ["claude-code"]
         },
         "autoSync": {
           "type": "object",
