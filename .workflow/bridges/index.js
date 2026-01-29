@@ -16,6 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 
+// Import canonical safeJsonParseString from flow-utils (consolidated per code review)
+const { safeJsonParseString } = require('../../scripts/flow-utils');
+
 // Lazy-load bridges to avoid circular dependencies
 let bridges = null;
 
@@ -38,40 +41,6 @@ function loadBridges() {
 }
 
 /**
- * Safe JSON parse with prototype pollution protection
- * @param {string} jsonString - JSON string to parse
- * @param {*} defaultValue - Default value if parsing fails
- * @returns {*} Parsed object or default value
- */
-function safeJsonParse(jsonString, defaultValue = {}) {
-  try {
-    const parsed = JSON.parse(jsonString);
-
-    // Check for prototype pollution keys
-    const checkForDangerousKeys = (obj, depth = 0) => {
-      if (depth > 10 || !obj || typeof obj !== 'object') return false;
-      const dangerous = ['__proto__', 'constructor', 'prototype'];
-
-      for (const key of Object.keys(obj)) {
-        if (dangerous.includes(key)) return true;
-        if (obj[key] && typeof obj[key] === 'object') {
-          if (checkForDangerousKeys(obj[key], depth + 1)) return true;
-        }
-      }
-      return false;
-    };
-
-    if (checkForDangerousKeys(parsed)) {
-      return defaultValue;
-    }
-
-    return parsed;
-  } catch {
-    return defaultValue;
-  }
-}
-
-/**
  * Read CLI type from config
  * @param {string} projectDir - Project root directory
  * @returns {string} CLI type (defaults to 'claude-code')
@@ -85,7 +54,7 @@ function getCliType(projectDir = process.cwd()) {
 
   try {
     const configContent = fs.readFileSync(configPath, 'utf-8');
-    const config = safeJsonParse(configContent, {});
+    const config = safeJsonParseString(configContent, {});
     return config.cli?.type || 'claude-code';
   } catch {
     return 'claude-code';
@@ -167,7 +136,8 @@ async function syncBridge(options = {}) {
     };
   }
 
-  return await bridge.sync();
+  // Pass through sync options (e.g., force: true to overwrite locally modified files)
+  return await bridge.sync({ force: options.force });
 }
 
 /**

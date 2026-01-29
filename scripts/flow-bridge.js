@@ -190,6 +190,7 @@ function normalizeCliType(input) {
  */
 async function syncBridge(options = {}) {
   const verbose = options.verbose || process.argv.includes('--verbose') || process.argv.includes('-v');
+  const force = options.force || process.argv.includes('--force') || process.argv.includes('-f');
 
   // Check for CLI type argument (e.g., "flow bridge sync gemini")
   const cliTypeArg = process.argv[3];
@@ -219,6 +220,7 @@ async function syncBridge(options = {}) {
 
     const result = await bridges.syncBridge({
       verbose,
+      force,
       projectDir: PROJECT_ROOT,
       cliType: targetCliType
     });
@@ -271,11 +273,16 @@ switch (command) {
     console.log('  status           Show current bridge configuration');
     console.log('  list             List available CLI bridges');
     console.log('');
+    console.log('Options:');
+    console.log('  --force, -f      Overwrite locally modified rules files (CLAUDE.md, GEMINI.md, etc.)');
+    console.log('  --verbose, -v    Show detailed output');
+    console.log('');
     console.log('CLI Types:');
     console.log('  claude-code, gemini-cli (or gemini), cursor, opencode, codex, kimi');
     console.log('');
     console.log('Examples:');
     console.log('  flow bridge sync           # Sync default CLI from config');
     console.log('  flow bridge sync gemini    # Sync Gemini CLI specifically');
+    console.log('  flow bridge sync --force   # Force overwrite even if locally modified');
     process.exit(1);
 }
