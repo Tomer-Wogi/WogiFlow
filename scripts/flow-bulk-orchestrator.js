@@ -37,12 +37,23 @@ function getOrchestratorConfig() {
     parallelLimit: 3,
     useWorktrees: true,
     onFailure: 'stop-dependent', // 'stop-all', 'stop-dependent', 'retry-then-skip', 'continue'
-    summaryDepth: 'standard' // 'minimal', 'standard', 'detailed'
+    summaryDepth: 'standard', // 'minimal', 'standard', 'detailed'
+    continuous: {
+      enabled: false,
+      idleAction: 'stop', // 'stop' or 'wait'
+      idleTimeout: 60, // seconds to wait before rechecking
+      maxIdleChecks: 3 // max times to check before stopping
+    }
   };
 
+  const orchestratorConfig = config.bulkOrchestrator || {};
   return {
     ...defaults,
-    ...(config.bulkOrchestrator || {})
+    ...orchestratorConfig,
+    continuous: {
+      ...defaults.continuous,
+      ...(orchestratorConfig.continuous || {})
+    }
   };
 }
 
@@ -411,6 +422,152 @@ async function orchestrateBulk(taskIds, options = {}) {
 }
 
 // ============================================================
+// Continuous Work Loop
+// ============================================================
+
+/**
+ * Sleep for specified milliseconds
+ * @param {number} ms - Milliseconds to sleep
+ * @returns {Promise}
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Get ready tasks from ready.json
+ * @returns {Array} Array of task objects in ready status
+ */
+function getReadyTasks() {
+  const readyData = getReadyData();
+  return readyData.ready || [];
+}
+
+/**
+ * Check if continuous mode is enabled
+ * @returns {boolean}
+ */
+function isContinuousEnabled() {
+  const config = getOrchestratorConfig();
+  return config.continuous && config.continuous.enabled === true;
+}
+
+/**
+ * Continuous work loop that keeps checking for new tasks
+ *
+ * This implements Matt Maher's "do-work" pattern where the orchestrator
+ * doesn't stop when the initial queue is empty - it keeps checking
+ * for new work that may have been captured during execution.
+ *
+ * @param {Object} options - Continuous loop options
+ * @param {number} options.idleTimeout - Seconds to wait when idle
+ * @param {string} options.idleAction - 'stop' or 'wait' when idle
+ * @param {number} options.maxIdleChecks - Max idle checks before stopping
+ * @param {Function} options.onBatchComplete - Callback when a batch completes
+ * @param {Function} options.onIdleCheck - Callback when checking for new work
+ * @param {boolean} options.dryRun - If true, only show plans
+ * @returns {Object} Final result with all completed tasks
+ */
+async function continuousWorkLoop(options = {}) {
+  const config = getOrchestratorConfig();
+  const continuousConfig = config.continuous;
+
+  const idleAction = options.idleAction || continuousConfig.idleAction || 'stop';
+  const idleTimeout = options.idleTimeout || continuousConfig.idleTimeout || 60;
+  const maxIdleChecks = options.maxIdleChecks || continuousConfig.maxIdleChecks || 3;
+
+  let idleChecks = 0;
+  let totalCompleted = [];
+  let totalSkipped = [];
+  let shouldStop = false;
+
+  // Handle graceful shutdown
+  const handleShutdown = () => {
+    console.log('\n[continuous] Received shutdown signal. Completing current work...');
+    shouldStop = true;
+  };
+
+  process.on('SIGINT', handleShutdown);
+  process.on('SIGTERM', handleShutdown);
+
+  console.log('\n[continuous] Starting continuous work loop');
+  console.log(`  Idle action: ${idleAction}`);
+  console.log(`  Idle timeout: ${idleTimeout}s`);
+  console.log(`  Max idle checks: ${maxIdleChecks}`);
+
+  while (!shouldStop) {
+    // Get ready tasks
+    const tasks = getReadyTasks();
+
+    if (tasks.length === 0) {
+      idleChecks++;
+
+      if (idleAction === 'stop') {
+        console.log('\n[continuous] Queue empty. Stopping.');
+        break;
+      }
+
+      if (idleChecks >= maxIdleChecks) {
+        console.log(`\n[continuous] No new work after ${maxIdleChecks} checks. Stopping.`);
+        break;
+      }
+
+      console.log(`\n[continuous] Queue empty. Waiting ${idleTimeout}s for new work... (check ${idleChecks}/${maxIdleChecks})`);
+
+      if (options.onIdleCheck) {
+        options.onIdleCheck({ idleChecks, maxIdleChecks, idleTimeout });
+      }
+
+      await sleep(idleTimeout * 1000);
+      continue;
+    }
+
+    // Reset idle counter when work is found
+    idleChecks = 0;
+
+    // Process tasks with orchestrator
+    const taskIds = tasks.map(t => t.id);
+    console.log(`\n[continuous] Found ${tasks.length} ready task(s): ${taskIds.join(', ')}`);
+
+    const result = await orchestrateBulk(taskIds, {
+      dryRun: options.dryRun
+    });
+
+    if (result.success) {
+      // Track completed tasks (in real execution, this would be updated by callbacks)
+      if (options.onBatchComplete) {
+        options.onBatchComplete(result);
+      }
+
+      // For dry run, just track what would be done
+      if (options.dryRun) {
+        const allTasks = result.batches.flatMap(b => b.tasks.map(t => t.id));
+        totalCompleted.push(...allTasks);
+      }
+    }
+
+    // Small delay between cycles to prevent tight loops
+    await sleep(1000);
+  }
+
+  // Cleanup
+  process.removeListener('SIGINT', handleShutdown);
+  process.removeListener('SIGTERM', handleShutdown);
+
+  console.log('\n[continuous] Work loop complete');
+  console.log(`  Total tasks processed: ${totalCompleted.length}`);
+
+  return {
+    success: true,
+    continuous: true,
+    completed: totalCompleted,
+    skipped: totalSkipped,
+    idleChecks,
+    stoppedBy: shouldStop ? 'signal' : 'idle'
+  };
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -418,6 +575,7 @@ module.exports = {
   // Configuration
   getOrchestratorConfig,
   isOrchestratorEnabled,
+  isContinuousEnabled,
 
   // Summary generation
   generateCompletionSummary,
@@ -432,7 +590,11 @@ module.exports = {
   handleTaskFailure,
 
   // Main orchestrator
-  orchestrateBulk
+  orchestrateBulk,
+
+  // Continuous work loop
+  continuousWorkLoop,
+  getReadyTasks
 };
 
 // ============================================================
@@ -474,6 +636,43 @@ if (require.main === module) {
       break;
     }
 
+    case 'continuous': {
+      // Parse flags
+      const idleTimeout = args.includes('--idle-timeout')
+        ? parseInt(args[args.indexOf('--idle-timeout') + 1], 10)
+        : undefined;
+      const dryRun = args.includes('--dry-run');
+
+      continuousWorkLoop({
+        idleTimeout,
+        dryRun,
+        onIdleCheck: ({ idleChecks, maxIdleChecks }) => {
+          console.log(`  [idle check ${idleChecks}/${maxIdleChecks}]`);
+        }
+      })
+        .then(result => {
+          console.log('\n✓ Continuous loop completed');
+          console.log(JSON.stringify(result, null, 2));
+        })
+        .catch(err => {
+          console.error('\n✗ Continuous loop failed:', err.message);
+          process.exit(1);
+        });
+      break;
+    }
+
+    case 'check': {
+      const tasks = getReadyTasks();
+      console.log(`\n📋 Ready tasks: ${tasks.length}`);
+      for (const task of tasks) {
+        console.log(`  • ${task.id} - ${task.title}`);
+      }
+      if (tasks.length === 0) {
+        console.log('  (no tasks ready)');
+      }
+      break;
+    }
+
     default:
       console.log(`
 Wogi Flow - Bulk Orchestrator
@@ -484,12 +683,20 @@ Usage:
   node flow-bulk-orchestrator.js <command> [args]
 
 Commands:
-  config              Show orchestrator configuration
-  plan <ids...>       Show execution plan without running (dry run)
+  config                Show orchestrator configuration
+  plan <ids...>         Show execution plan without running (dry run)
+  continuous            Start continuous work loop
+  check                 Check for ready tasks
+
+Continuous options:
+  --idle-timeout <s>    Override idle timeout (seconds)
+  --dry-run             Show what would be done without executing
 
 Examples:
   node flow-bulk-orchestrator.js config
   node flow-bulk-orchestrator.js plan wf-001 wf-002 wf-003
+  node flow-bulk-orchestrator.js continuous
+  node flow-bulk-orchestrator.js continuous --idle-timeout 30 --dry-run
 `);
   }
 }

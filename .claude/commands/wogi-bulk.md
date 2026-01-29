@@ -124,6 +124,43 @@ When `bulkOrchestrator.enabled: false`:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Continuous Mode (v3.1)
+
+When enabled, the orchestrator keeps checking for new work instead of stopping when the queue is empty. This enables the two-terminal workflow:
+
+- **Terminal 1**: Running `/wogi-bulk --continuous` - continuously processing tasks
+- **Terminal 2**: Capturing ideas with `/wogi-capture` - ideas become ready tasks
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  /wogi-bulk --continuous                                     │
+├─────────────────────────────────────────────────────────────┤
+│  1. Process initial queue (wf-001, wf-002)                  │
+│     → All tasks complete                                     │
+│                                                             │
+│  2. Queue empty - but continuous mode enabled               │
+│     → Wait 60 seconds (configurable)                        │
+│     → Check for new tasks...                                │
+│                                                             │
+│  3. New task found! (wf-003 was captured during wait)       │
+│     → Process wf-003                                        │
+│     → Task complete                                         │
+│                                                             │
+│  4. Queue empty again                                       │
+│     → Wait 60 seconds                                       │
+│     → Check 1/3... no new tasks                             │
+│     → Wait 60 seconds                                       │
+│     → Check 2/3... no new tasks                             │
+│     → Wait 60 seconds                                       │
+│     → Check 3/3... no new tasks                             │
+│                                                             │
+│  5. Max idle checks reached - stop                          │
+│     → Show summary of all completed work                    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Graceful shutdown**: Press `Ctrl+C` to stop the loop. Current task will complete (or checkpoint) before stopping.
+
 ## Output
 
 **Start:**
@@ -168,6 +205,12 @@ Queue Summary:
 - `--on-failure <mode>` - How to handle failures: `stop-all`, `stop-dependent`, `continue`
 - `--summary-depth <level>` - Pass-forward summary detail: `minimal`, `standard`, `detailed`
 
+### Continuous Mode Options (v3.1)
+- `--continuous` - Enable continuous mode (keep checking for new tasks)
+- `--no-continuous` - Disable continuous mode (stop when initial queue is done)
+- `--idle-timeout <N>` - Seconds to wait when idle before rechecking (default: 60)
+- `--idle-action <mode>` - What to do when idle: `stop` or `wait`
+
 ### General Options
 - `--auto` - Don't pause between tasks (default behavior)
 - `--pause` - Pause and ask before each task
@@ -186,7 +229,13 @@ In `config.json`:
     "parallelLimit": 3,        // Max tasks to run in parallel
     "useWorktrees": true,      // Use git worktrees for parallel isolation
     "onFailure": "stop-dependent",  // stop-all | stop-dependent | continue
-    "summaryDepth": "standard" // minimal | standard | detailed
+    "summaryDepth": "standard", // minimal | standard | detailed
+    "continuous": {
+      "enabled": false,        // Enable continuous mode
+      "idleAction": "stop",    // stop | wait when queue is empty
+      "idleTimeout": 60,       // Seconds to wait before rechecking
+      "maxIdleChecks": 3       // Max times to check before stopping
+    }
   }
 }
 ```
