@@ -165,6 +165,74 @@
         }
       }
     },
+    "planMode": {
+      "type": "object",
+      "description": "CATEGORY: TASK & WORKFLOW - Plan Mode settings inspired by Claude Code's safe analysis approach",
+      "properties": {
+        "explorePhase": {
+          "type": "object",
+          "description": "Read-only exploration phase before spec generation",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable Explore Phase for medium/large tasks",
+              "default": true
+            },
+            "minTaskLevel": {
+              "type": "string",
+              "description": "Minimum task level to trigger Explore Phase (L0=Epic, L1=Story, L2=Task, L3=Subtask)",
+              "enum": ["L0", "L1", "L2", "L3"],
+              "default": "L1"
+            },
+            "showRelatedFiles": {
+              "type": "boolean",
+              "description": "Search and display related files",
+              "default": true
+            },
+            "showExistingComponents": {
+              "type": "boolean",
+              "description": "Check app-map.md for existing components",
+              "default": true
+            },
+            "showPatterns": {
+              "type": "boolean",
+              "description": "Check decisions.md for relevant patterns",
+              "default": true
+            },
+            "surfaceAssumptions": {
+              "type": "boolean",
+              "description": "List assumptions that need verification",
+              "default": true
+            }
+          }
+        },
+        "approvalGate": {
+          "type": "object",
+          "description": "Explicit approval required before implementation",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable Explicit Approval Gate for medium/large tasks",
+              "default": true
+            },
+            "minTaskLevel": {
+              "type": "string",
+              "description": "Minimum task level to require approval (L0=Epic, L1=Story, L2=Task, L3=Subtask)",
+              "enum": ["L0", "L1", "L2", "L3"],
+              "default": "L1"
+            },
+            "approvalPhrases": {
+              "type": "array",
+              "description": "Phrases that count as approval",
+              "items": {
+                "type": "string"
+              },
+              "default": ["approved", "proceed", "looks good", "lgtm", "go ahead", "yes"]
+            }
+          }
+        }
+      }
+    },
     "workflow": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - High-level workflow configuration",

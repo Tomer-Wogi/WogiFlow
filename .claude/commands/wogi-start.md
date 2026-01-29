@@ -109,9 +109,10 @@ Is this:
 
 ---
 
-## Structured Execution (v2.2)
+## Structured Execution (v2.3)
 
 This command implements a **structured execution loop**:
+- **Plan Mode integration**: Explore Phase + Approval Gate for L1/L0 tasks
 - **Model-invoked skills**: Auto-loads relevant skills based on task context
 - **Specification mode**: Generates spec before coding (for medium/large tasks)
 - **Four-phase loop**: Spec → Test → Implement → Verify
@@ -130,13 +131,25 @@ This command implements a **structured execution loop**:
 │  0.5 PARALLEL CHECK: Are other tasks parallelizable?    │
 │     → If yes: Show parallel option before proceeding    │
 │  1. Load context + Match skills (auto-invoke)           │
-│  2. Generate specification (if medium/large task)       │
-│  3. SPEC PHASE: Plan implementation steps               │
+│  1.2 CLARIFYING QUESTIONS: Surface assumptions          │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  1.3 EXPLORE PHASE (L1/L0 only, read-only):       │  │
+│  │     → Find related files (Glob/Grep)              │  │
+│  │     → Check app-map, decisions.md                 │  │
+│  │     → Map dependencies                            │  │
+│  │     → Surface assumptions to verify               │  │
+│  └───────────────────────────────────────────────────┘  │
+│  1.5 SPEC PHASE: Generate specification                 │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Does spec fully address needs?    │  │
 │  └───────────────────────────────────────────────────┘  │
-│  4. TEST PHASE: Write/update tests first                │
-│  5. IMPLEMENT PHASE: Code each acceptance criteria      │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  1.6 APPROVAL GATE (L1/L0 only):                  │  │
+│  │     → Display spec and WAIT for user approval     │  │
+│  │     → Do NOT proceed until approved               │  │
+│  └───────────────────────────────────────────────────┘  │
+│  2. Decompose into TodoWrite checklist                  │
+│  3. Execute each scenario (loop)                        │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  FOR EACH scenario:                               │  │
 │  │    → Mark in_progress                             │  │
@@ -149,17 +162,18 @@ This command implements a **structured execution loop**:
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Any bugs or regressions?          │  │
 │  └───────────────────────────────────────────────────┘  │
-│  5.5 CRITERIA CHECK: Re-read spec, verify EACH done     │
+│  3.5 CRITERIA CHECK: Re-read spec, verify EACH done     │
 │     → If ANY not done: implement it, loop back          │
-│  6. VERIFY PHASE: Spec verification + quality gates     │
+│  3.6 WIRING CHECK: Verify all files are imported/used   │
+│  4. VERIFY PHASE: Spec verification + quality gates     │
 │     → MANDATORY: Verify all spec deliverables exist     │
-│  7. Save final verification artifact                    │
+│  5. Save final verification artifact                    │
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Does this match user request?     │  │
 │  └───────────────────────────────────────────────────┘  │
-│  8. Update request-log, app-map, ready.json             │
-│  9. Commit changes                                      │
-│  10. ✓ Task complete                                    │
+│  6. Update request-log, app-map, ready.json             │
+│  7. Commit changes                                      │
+│  8. ✓ Task complete                                     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -312,6 +326,70 @@ Note: You can proceed without answering, but clarification may prevent rework.
 
 ---
 
+### Step 1.3: Explore Phase (Read-Only Analysis)
+
+**For L1 (Story) and L0 (Epic) tasks, perform read-only exploration BEFORE generating specs.**
+
+This step is inspired by Claude Code's Plan Mode, which emphasizes safe analysis before making changes.
+
+**What to do:**
+1. Use **Glob** to find files related to the task keywords
+2. Use **Grep** to search for patterns, function names, component references
+3. **Read** app-map.md and decisions.md for existing components and patterns
+4. Map dependencies: What files REFERENCE the target? What does the target REFERENCE?
+5. Surface assumptions that need verification
+
+**Output Format:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 EXPLORE PHASE (Read-Only Analysis)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📁 Related Files Found: X files
+   - path/to/file1.ts (contains: relevant function)
+   - path/to/file2.ts (imports: target component)
+
+📦 Existing Components (from app-map.md):
+   - ComponentA - Could be reused/extended
+   - ComponentB - Similar functionality exists
+
+📋 Patterns to Follow (from decisions.md):
+   - Pattern 1: [relevant rule]
+   - Pattern 2: [relevant rule]
+
+🔗 Dependency Map:
+   → Files that REFERENCE target: [list]
+   → Files REFERENCED BY target: [list]
+
+⚠️ Assumptions to Verify:
+   1. [Assumption about existing behavior]
+   2. [Assumption about data structure]
+   3. [Assumption about integration point]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**IMPORTANT CONSTRAINTS:**
+- **READ-ONLY**: Do NOT use Edit, Write, or NotebookEdit during this phase
+- **OBSERVE**: Use only Glob, Grep, Read tools
+- **DOCUMENT**: Surface what you find, don't act on it yet
+
+**Config**: Controlled by `config.planMode.explorePhase`:
+```json
+{
+  "enabled": true,
+  "minTaskLevel": "L1",
+  "showRelatedFiles": true,
+  "showExistingComponents": true,
+  "showPatterns": true,
+  "surfaceAssumptions": true
+}
+```
+
+**Skip conditions**: L2 (Task) and L3 (Subtask) skip this phase unless config says otherwise.
+
+---
+
 **Skill Matching Output:**
    - Run skill matcher against task description
    - Load matched skills (patterns.md, anti-patterns.md, learnings.md)
@@ -338,7 +416,6 @@ For medium/large tasks (check `config.json → specificationMode`):
    - Verification commands
 2. Display spec summary
 3. **Reflection checkpoint**: "Does this spec fully address the requirements?"
-4. Wait for implicit approval (continue = approved)
 
 **Spec Output:**
 ```
@@ -353,6 +430,59 @@ Verification Commands: 4 commands
    - Are there any edge cases not covered?
    - Is the scope clear and achievable?
 ```
+
+### Step 1.6: Explicit Approval Gate (Stories/Epics)
+
+**For L1 (Story) and L0 (Epic) tasks, WAIT for explicit user approval before implementation.**
+
+This matches Claude Code's Plan Mode pattern where the user must explicitly approve the plan before execution begins.
+
+**What to do:**
+1. After displaying the spec summary, show the approval prompt
+2. **STOP and WAIT** - do NOT proceed to implementation
+3. Only continue when user provides an approval phrase
+
+**Output Format:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✋ APPROVAL REQUIRED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is a Story/Epic-level task. Before I begin implementation,
+please review the specification above and confirm.
+
+To proceed, respond with one of:
+  • "approved" or "proceed" or "looks good" or "lgtm"
+  • "go ahead" or "yes"
+
+To request changes:
+  • Describe what you'd like modified in the spec
+
+I will wait for your approval before making any code changes.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**CRITICAL**:
+- Do NOT continue to Step 2 until approval is received
+- If user requests changes, update the spec and ask for approval again
+- This prevents wasted implementation effort on misunderstood requirements
+
+**Approval Phrases** (case-insensitive):
+- `approved`, `proceed`, `looks good`, `lgtm`
+- `go ahead`, `yes`, `continue`, `start`
+
+**Config**: Controlled by `config.planMode.approvalGate`:
+```json
+{
+  "enabled": true,
+  "minTaskLevel": "L1",
+  "approvalPhrases": ["approved", "proceed", "looks good", "lgtm", "go ahead", "yes"]
+}
+```
+
+**Skip conditions**: L2 (Task) and L3 (Subtask) skip this gate and proceed immediately.
+
+---
 
 ### Step 2: Decompose into TodoWrite Checklist
 
