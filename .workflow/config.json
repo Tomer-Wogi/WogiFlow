@@ -145,6 +145,11 @@
       "maxIdleChecks": 3
     }
   },
+  "capture": {
+    "autoGroup": true,
+    "groupingThreshold": 0.5,
+    "maxGroupSize": 5
+  },
   "phases": {
     "enabled": false,
     "autoSuggestForStories": true,
