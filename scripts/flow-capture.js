@@ -13,6 +13,8 @@
  *   node scripts/flow-capture.js "<title>" [--type bug|feature] [--tags tag1,tag2] [--json]
  */
 
+const fs = require('fs');
+const path = require('path');
 const {
   PATHS,
   readJson,
@@ -124,9 +126,6 @@ function detectCertainty(text) {
  * @param {Object} item - Capture item
  */
 function addToDiscussionQueue(item) {
-  const fs = require('fs');
-  const path = require('path');
-
   const queuePath = path.join(PATHS.state, 'discussion-queue.md');
 
   // Initialize or read existing queue
@@ -158,8 +157,10 @@ Ideas that need review before becoming tasks.
 
   if (content.includes(todayHeader)) {
     // Add under today's section
+    // Escape special regex characters in todayHeader (date is safe but be defensive)
+    const escapedHeader = todayHeader.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     content = content.replace(
-      new RegExp(`(${todayHeader}\\n)`, 'g'),
+      new RegExp(`(${escapedHeader}\\n)`, 'g'),
       `$1${todayEntry}\n`
     );
   } else {
@@ -170,7 +171,12 @@ Ideas that need review before becoming tasks.
     );
   }
 
-  fs.writeFileSync(queuePath, content, 'utf-8');
+  try {
+    fs.writeFileSync(queuePath, content, 'utf-8');
+  } catch (err) {
+    error(`Failed to write discussion queue: ${err.message}`);
+    throw err;
+  }
 }
 
 /**
@@ -178,9 +184,6 @@ Ideas that need review before becoming tasks.
  * @param {Object} item - Capture item
  */
 function addToRoadmap(item) {
-  const fs = require('fs');
-  const path = require('path');
-
   const roadmapPath = path.join(PATHS.workflow, 'roadmap.md');
 
   // Initialize or read existing roadmap
@@ -216,7 +219,12 @@ Planned features and improvements.
     content += `\n## Captured Ideas\n${entry}`;
   }
 
-  fs.writeFileSync(roadmapPath, content, 'utf-8');
+  try {
+    fs.writeFileSync(roadmapPath, content, 'utf-8');
+  } catch (err) {
+    error(`Failed to write roadmap: ${err.message}`);
+    throw err;
+  }
 }
 
 // ============================================================

@@ -477,8 +477,8 @@ async function continuousWorkLoop(options = {}) {
   const maxIdleChecks = options.maxIdleChecks || continuousConfig.maxIdleChecks || 3;
 
   let idleChecks = 0;
-  let totalCompleted = [];
-  let totalSkipped = [];
+  const totalCompleted = [];
+  const totalSkipped = [];
   let shouldStop = false;
 
   // Handle graceful shutdown
@@ -490,81 +490,83 @@ async function continuousWorkLoop(options = {}) {
   process.on('SIGINT', handleShutdown);
   process.on('SIGTERM', handleShutdown);
 
-  console.log('\n[continuous] Starting continuous work loop');
-  console.log(`  Idle action: ${idleAction}`);
-  console.log(`  Idle timeout: ${idleTimeout}s`);
-  console.log(`  Max idle checks: ${maxIdleChecks}`);
+  try {
+    console.log('\n[continuous] Starting continuous work loop');
+    console.log(`  Idle action: ${idleAction}`);
+    console.log(`  Idle timeout: ${idleTimeout}s`);
+    console.log(`  Max idle checks: ${maxIdleChecks}`);
 
-  while (!shouldStop) {
-    // Get ready tasks
-    const tasks = getReadyTasks();
+    while (!shouldStop) {
+      // Get ready tasks
+      const tasks = getReadyTasks();
 
-    if (tasks.length === 0) {
-      idleChecks++;
+      if (tasks.length === 0) {
+        idleChecks++;
 
-      if (idleAction === 'stop') {
-        console.log('\n[continuous] Queue empty. Stopping.');
-        break;
+        if (idleAction === 'stop') {
+          console.log('\n[continuous] Queue empty. Stopping.');
+          break;
+        }
+
+        if (idleChecks >= maxIdleChecks) {
+          console.log(`\n[continuous] No new work after ${maxIdleChecks} checks. Stopping.`);
+          break;
+        }
+
+        console.log(`\n[continuous] Queue empty. Waiting ${idleTimeout}s for new work... (check ${idleChecks}/${maxIdleChecks})`);
+
+        if (options.onIdleCheck) {
+          options.onIdleCheck({ idleChecks, maxIdleChecks, idleTimeout });
+        }
+
+        await sleep(idleTimeout * 1000);
+        continue;
       }
 
-      if (idleChecks >= maxIdleChecks) {
-        console.log(`\n[continuous] No new work after ${maxIdleChecks} checks. Stopping.`);
-        break;
+      // Reset idle counter when work is found
+      idleChecks = 0;
+
+      // Process tasks with orchestrator
+      const taskIds = tasks.map(t => t.id);
+      console.log(`\n[continuous] Found ${tasks.length} ready task(s): ${taskIds.join(', ')}`);
+
+      const result = await orchestrateBulk(taskIds, {
+        dryRun: options.dryRun
+      });
+
+      if (result.success) {
+        // Track completed tasks (in real execution, this would be updated by callbacks)
+        if (options.onBatchComplete) {
+          options.onBatchComplete(result);
+        }
+
+        // For dry run, just track what would be done
+        if (options.dryRun) {
+          const allTasks = result.batches.flatMap(b => b.tasks.map(t => t.id));
+          totalCompleted.push(...allTasks);
+        }
       }
 
-      console.log(`\n[continuous] Queue empty. Waiting ${idleTimeout}s for new work... (check ${idleChecks}/${maxIdleChecks})`);
-
-      if (options.onIdleCheck) {
-        options.onIdleCheck({ idleChecks, maxIdleChecks, idleTimeout });
-      }
-
-      await sleep(idleTimeout * 1000);
-      continue;
+      // Small delay between cycles to prevent tight loops
+      await sleep(1000);
     }
 
-    // Reset idle counter when work is found
-    idleChecks = 0;
+    console.log('\n[continuous] Work loop complete');
+    console.log(`  Total tasks processed: ${totalCompleted.length}`);
 
-    // Process tasks with orchestrator
-    const taskIds = tasks.map(t => t.id);
-    console.log(`\n[continuous] Found ${tasks.length} ready task(s): ${taskIds.join(', ')}`);
-
-    const result = await orchestrateBulk(taskIds, {
-      dryRun: options.dryRun
-    });
-
-    if (result.success) {
-      // Track completed tasks (in real execution, this would be updated by callbacks)
-      if (options.onBatchComplete) {
-        options.onBatchComplete(result);
-      }
-
-      // For dry run, just track what would be done
-      if (options.dryRun) {
-        const allTasks = result.batches.flatMap(b => b.tasks.map(t => t.id));
-        totalCompleted.push(...allTasks);
-      }
-    }
-
-    // Small delay between cycles to prevent tight loops
-    await sleep(1000);
+    return {
+      success: true,
+      continuous: true,
+      completed: totalCompleted,
+      skipped: totalSkipped,
+      idleChecks,
+      stoppedBy: shouldStop ? 'signal' : 'idle'
+    };
+  } finally {
+    // Cleanup signal listeners even if error occurs
+    process.removeListener('SIGINT', handleShutdown);
+    process.removeListener('SIGTERM', handleShutdown);
   }
-
-  // Cleanup
-  process.removeListener('SIGINT', handleShutdown);
-  process.removeListener('SIGTERM', handleShutdown);
-
-  console.log('\n[continuous] Work loop complete');
-  console.log(`  Total tasks processed: ${totalCompleted.length}`);
-
-  return {
-    success: true,
-    continuous: true,
-    completed: totalCompleted,
-    skipped: totalSkipped,
-    idleChecks,
-    stoppedBy: shouldStop ? 'signal' : 'idle'
-  };
 }
 
 // ============================================================
@@ -638,9 +640,16 @@ if (require.main === module) {
 
     case 'continuous': {
       // Parse flags
-      const idleTimeout = args.includes('--idle-timeout')
-        ? parseInt(args[args.indexOf('--idle-timeout') + 1], 10)
-        : undefined;
+      let idleTimeout;
+      if (args.includes('--idle-timeout')) {
+        const rawValue = args[args.indexOf('--idle-timeout') + 1];
+        const parsed = parseInt(rawValue, 10);
+        if (Number.isNaN(parsed) || parsed <= 0) {
+          console.error('Error: --idle-timeout must be a positive integer');
+          process.exit(1);
+        }
+        idleTimeout = parsed;
+      }
       const dryRun = args.includes('--dry-run');
 
       continuousWorkLoop({
