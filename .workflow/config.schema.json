@@ -463,6 +463,66 @@
         }
       }
     },
+    "bulkOrchestrator": {
+      "type": "object",
+      "description": "CATEGORY: TASK & WORKFLOW - Bulk task orchestration with sub-agent isolation",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable orchestrator mode for /wogi-bulk (each task in fresh context)",
+          "default": true
+        },
+        "parallelLimit": {
+          "type": "number",
+          "description": "Maximum tasks to run in parallel per batch",
+          "default": 3
+        },
+        "useWorktrees": {
+          "type": "boolean",
+          "description": "Use git worktrees for parallel task isolation",
+          "default": true
+        },
+        "onFailure": {
+          "type": "string",
+          "description": "Failure handling mode",
+          "enum": ["stop-all", "stop-dependent", "retry-then-skip", "continue"],
+          "default": "stop-dependent"
+        },
+        "summaryDepth": {
+          "type": "string",
+          "description": "Detail level for pass-forward summaries",
+          "enum": ["minimal", "standard", "detailed"],
+          "default": "standard"
+        },
+        "continuous": {
+          "type": "object",
+          "description": "Continuous work loop settings",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Keep checking for new tasks after queue is empty",
+              "default": false
+            },
+            "idleAction": {
+              "type": "string",
+              "description": "Action when queue is empty",
+              "enum": ["stop", "wait"],
+              "default": "stop"
+            },
+            "idleTimeout": {
+              "type": "number",
+              "description": "Seconds to wait before checking for new tasks",
+              "default": 60
+            },
+            "maxIdleChecks": {
+              "type": "number",
+              "description": "Maximum idle checks before stopping",
+              "default": 3
+            }
+          }
+        }
+      }
+    },
     "phases": {
       "type": "object",
       "description": "CATEGORY: TASK & WORKFLOW - Project phase tracking",

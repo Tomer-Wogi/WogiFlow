@@ -132,6 +132,19 @@
     "autoExecute": false,
     "minTasksForParallel": 2
   },
+  "bulkOrchestrator": {
+    "enabled": true,
+    "parallelLimit": 3,
+    "useWorktrees": true,
+    "onFailure": "stop-dependent",
+    "summaryDepth": "standard",
+    "continuous": {
+      "enabled": false,
+      "idleAction": "stop",
+      "idleTimeout": 60,
+      "maxIdleChecks": 3
+    }
+  },
   "phases": {
     "enabled": false,
     "autoSuggestForStories": true,

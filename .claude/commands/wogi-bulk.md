@@ -1,6 +1,8 @@
 Execute multiple tasks in sequence, following all workflow rules.
 
-**v2.1**: Now uses task queue for automatic continuation between tasks.
+**v3.0**: Now supports **orchestrator mode** where each task executes in a fresh sub-agent context, preventing context pollution. Inspired by Matt Maher's "do-work" pattern.
+
+**v2.1**: Uses task queue for automatic continuation between tasks.
 
 ## Usage
 
@@ -13,7 +15,38 @@ Execute multiple tasks in sequence, following all workflow rules.
 - "do wf-001, wf-002, wf-003"
 - "work on these 3 stories"
 
-## How It Works (v2.1)
+## How It Works (v3.0 - Orchestrator Mode)
+
+**Default behavior** (when `bulkOrchestrator.enabled: true`):
+
+1. **Build Execution Plan**:
+   - Detect dependencies between tasks
+   - Group independent tasks into parallel batches
+   - Order batches to respect dependencies
+
+2. **Execute Each Batch**:
+   - For each batch, spawn sub-agent(s) with **fresh context**
+   - Independent tasks in same batch run in parallel
+   - Dependent tasks wait for their dependencies
+
+3. **Pass-Forward Summaries**:
+   - When Task A completes, generate completion summary
+   - Task B (if dependent on A) receives summary as context
+   - Ensures continuity without context pollution
+
+4. **Failure Handling** (configurable via `onFailure`):
+   - `stop-all`: Stop entire queue on any failure
+   - `stop-dependent`: Skip tasks that depend on failed task, continue others
+   - `continue`: Log failure and continue all remaining tasks
+
+**Benefits over v2.1:**
+- No context pollution between tasks
+- Can run for hours without context exhaustion
+- Each task is atomic and reliable
+
+## How It Works (v2.1 - Legacy Mode)
+
+When `bulkOrchestrator.enabled: false`:
 
 1. **Initialize Queue**:
    - Parse task IDs from arguments or natural language
@@ -36,22 +69,56 @@ Execute multiple tasks in sequence, following all workflow rules.
    - Quality gates and validation
    - Request log and app-map updates
 
-## Execution Flow
+## Execution Flow (v3.0 Orchestrator)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  /wogi-bulk 3                                               │
+│  /wogi-bulk wf-001 wf-002 wf-003                            │
+├─────────────────────────────────────────────────────────────┤
+│  1. Detect dependencies between tasks                       │
+│  2. Build execution batches:                                │
+│     Batch 1: [wf-001, wf-002] (independent, run parallel)   │
+│     Batch 2: [wf-003] (depends on wf-001, run after)        │
+│                                                             │
+│  3. Execute Batch 1:                                        │
+│     ┌─────────────────┐  ┌─────────────────┐                │
+│     │ Sub-Agent A     │  │ Sub-Agent B     │  ← Parallel    │
+│     │ /wogi-start     │  │ /wogi-start     │                │
+│     │ wf-001          │  │ wf-002          │                │
+│     │ (fresh context) │  │ (fresh context) │                │
+│     └────────┬────────┘  └────────┬────────┘                │
+│              │                    │                         │
+│              ▼                    ▼                         │
+│     [Summary A]           [Summary B]                       │
+│                                                             │
+│  4. Execute Batch 2:                                        │
+│     ┌─────────────────────────────────┐                     │
+│     │ Sub-Agent C                     │                     │
+│     │ Context: Summary A (dependency) │  ← Pass-forward     │
+│     │ /wogi-start wf-003              │                     │
+│     │ (fresh context + summary)       │                     │
+│     └─────────────────────────────────┘                     │
+│                                                             │
+│  5. All batches complete - show summary                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Execution Flow (v2.1 Legacy)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  /wogi-bulk 3 --no-orchestrator                             │
 ├─────────────────────────────────────────────────────────────┤
 │  1. Get 3 ready tasks sorted by priority                    │
 │  2. Initialize task queue: [wf-001, wf-002, wf-003]         │
-│  3. Start wf-001 (full loop)                                │
+│  3. Start wf-001 (full loop, SAME context)                  │
 │     → All scenarios implemented and verified                │
 │     → Quality gates pass                                    │
 │     → Committed                                             │
 │  4. Stop hook detects queue has more tasks                  │
-│  5. Auto-continue to wf-002 (full loop)                     │
+│  5. Auto-continue to wf-002 (full loop, SAME context)       │
 │     → ...                                                   │
-│  6. Auto-continue to wf-003 (full loop)                     │
+│  6. Auto-continue to wf-003 (full loop, SAME context)       │
 │     → ...                                                   │
 │  7. Queue empty - stop                                      │
 └─────────────────────────────────────────────────────────────┘
@@ -95,14 +162,36 @@ Queue Summary:
 
 ## Options
 
-- `--auto` - Don't pause between tasks (default behavior in v2.1)
+### Orchestrator Options (v3.0)
+- `--no-orchestrator` - Disable orchestrator mode, use legacy v2.1 behavior (same context)
+- `--parallel-limit <N>` - Max tasks to run in parallel (default: 3)
+- `--on-failure <mode>` - How to handle failures: `stop-all`, `stop-dependent`, `continue`
+- `--summary-depth <level>` - Pass-forward summary detail: `minimal`, `standard`, `detailed`
+
+### General Options
+- `--auto` - Don't pause between tasks (default behavior)
 - `--pause` - Pause and ask before each task
-- `--plan` - Show order without executing
+- `--plan` - Show execution plan without executing (dry run)
 - `--feature <name>` - Only tasks in specified feature
 
 ## Configuration
 
 In `config.json`:
+
+### Orchestrator Configuration (v3.0)
+```json
+{
+  "bulkOrchestrator": {
+    "enabled": true,           // Use sub-agent isolation (false = legacy mode)
+    "parallelLimit": 3,        // Max tasks to run in parallel
+    "useWorktrees": true,      // Use git worktrees for parallel isolation
+    "onFailure": "stop-dependent",  // stop-all | stop-dependent | continue
+    "summaryDepth": "standard" // minimal | standard | detailed
+  }
+}
+```
+
+### Task Queue Configuration (v2.1 Legacy)
 ```json
 {
   "taskQueue": {
