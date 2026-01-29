@@ -140,6 +140,17 @@ function checkTaskGate(options = {}) {
     };
   }
 
+  // Exempt workflow changes (story/spec files) - required for story creation
+  // Without this, you cannot create stories, which creates a bootstrapping problem
+  if (filePath && filePath.includes('.workflow/changes/')) {
+    return {
+      allowed: true,
+      blocked: false,
+      message: null,
+      reason: 'workflow_changes_exempt'
+    };
+  }
+
   // Also exempt plan files (configurable directory + hardcoded fallback for backward compat)
   // Use path.resolve + startsWith for path traversal safety
   if (filePath) {
