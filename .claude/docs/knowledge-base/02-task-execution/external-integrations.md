@@ -1,15 +1,18 @@
 # External Integrations
 
+> **Note**: External integrations (Jira, Linear) are available in WogiFlow Pro.
+> The implementations are archived in `.workflow/archive/paid-features/`.
+
 Import and sync tasks from external project management tools.
 
 ---
 
-## Supported Integrations
+## Supported Integrations (Pro)
 
-| Platform | Script | Commands |
+| Platform | Status | Commands |
 |----------|--------|----------|
-| Jira | `flow-jira-integration.js` | `flow jira list/sync/push/config` |
-| Linear | `flow-linear-integration.js` | `flow linear list/sync/push/config` |
+| Jira | Pro | `flow jira list/sync/push/config` |
+| Linear | Pro | `flow linear list/sync/push/config` |
 
 ---
 

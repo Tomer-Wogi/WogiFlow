@@ -61,6 +61,14 @@ try {
   // Pattern enforcer module not available
 }
 
+// v7.0 learning aggregation
+let aggregation = null;
+try {
+  aggregation = require('./flow-aggregate');
+} catch (err) {
+  // Aggregation module not available
+}
+
 // v2.6.0 model selection persistence
 let modelConfig = null;
 try {
@@ -239,6 +247,49 @@ function analyzeSessionForLearnings() {
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Session learning: ${err.message}`);
+  }
+}
+
+/**
+ * Check for patterns ready for promotion (v7.0)
+ * Aggregates learnings from skills, corrections, and feedback patterns
+ * and surfaces any that have occurred 3+ times.
+ */
+function checkForPromotionCandidates() {
+  if (!aggregation) return;
+
+  try {
+    const status = aggregation.checkPromotionStatus();
+
+    if (!status.hasPromotions) return;
+
+    console.log('');
+    console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
+    console.log(color('cyan', '║  Patterns Ready for Promotion                             ║'));
+    console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
+    console.log('');
+
+    console.log(color('dim', `The following patterns have occurred 3+ times and should become permanent rules:`));
+    console.log('');
+
+    for (const candidate of status.candidates) {
+      const truncated = candidate.pattern.length > 70
+        ? candidate.pattern.slice(0, 70) + '...'
+        : candidate.pattern;
+      console.log(`  ${color('green', '●')} ${truncated}`);
+      console.log(`    ${color('dim', `Count: ${candidate.count} | Last seen: ${candidate.lastSeen} | Type: ${candidate.type}`)}`);
+    }
+
+    if (status.count > 5) {
+      console.log(`  ${color('dim', `... and ${status.count - 5} more`)}`);
+    }
+
+    console.log('');
+    console.log(color('yellow', 'To promote these patterns, run:'));
+    console.log(color('dim', '  flow aggregate --promote'));
+    console.log('');
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Aggregation check: ${err.message}`);
   }
 }
 
@@ -867,6 +918,9 @@ async function main() {
 
   // v2.4.0: Analyze session for learnings
   analyzeSessionForLearnings();
+
+  // v7.0: Check for patterns ready for promotion
+  checkForPromotionCandidates();
 
   // v6.0: Analyze cross-session patterns
   const crossSessionResult = analyzeCrossSessionPatterns();

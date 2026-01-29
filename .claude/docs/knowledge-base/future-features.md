@@ -223,8 +223,8 @@ These were on the backlog but have been completed:
 
 | Feature | Implementation |
 |---------|---------------|
-| Jira Integration | flow-jira-integration.js - `flow jira list/sync/push` |
-| Linear Integration | flow-linear-integration.js - `flow linear list/sync/push` |
+| Jira Integration | **Pro** - archived in `.workflow/archive/paid-features/` |
+| Linear Integration | **Pro** - archived in `.workflow/archive/paid-features/` |
 | Cascade Fallback | flow-cascade.js - `flow cascade status/reset/config` |
 | Background Sync Daemon | flow-sync-daemon.js - `flow sync-daemon start/stop/status` |
 | PRD Management | flow-prd-manager.js - `flow prd load/context/list/clear` |

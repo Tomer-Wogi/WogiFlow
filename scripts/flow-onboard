@@ -1,14 +1,16 @@
 #!/bin/bash
 
 # Wogi Flow - Project Onboarding
-# This script redirects to AI-driven setup
+# This script initializes context, then redirects to AI-driven setup
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKFLOW_DIR=".workflow"
 
 # Colors
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
+DIM='\033[2m'
 NC='\033[0m'
 
 # Check if already initialized
@@ -26,24 +28,52 @@ if [ -f "$WORKFLOW_DIR/state/pending-setup.json" ]; then
     echo ""
 fi
 
-# Direct users to AI assistant
+# Step 1: Auto-detect tech stack and initialize context files
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║${NC}              ${GREEN}WogiFlow Project Onboarding${NC}                     ${CYAN}║${NC}"
 echo -e "${CYAN}╠══════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}  WogiFlow onboarding is handled by your AI assistant.        ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}  The AI will analyze your project and set up context.        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${YELLOW}Step 1: Auto-detecting tech stack...${NC}                       ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}  ${YELLOW}Start your AI assistant:${NC}                                  ${CYAN}║${NC}"
+
+# Run context-init to detect stack
+if [ -f "$SCRIPT_DIR/flow-context-init.js" ]; then
+    STACK_OUTPUT=$(node "$SCRIPT_DIR/flow-context-init.js" 2>/dev/null)
+    if [ $? -eq 0 ]; then
+        echo -e "${CYAN}║${NC}  ${GREEN}✓${NC} Stack detection complete                                 ${CYAN}║${NC}"
+
+        # Try to show detected stack from context file
+        if [ -f "$WORKFLOW_DIR/context/stack.md" ]; then
+            LANG=$(grep -E "^\- \*\*Language\*\*:" "$WORKFLOW_DIR/context/stack.md" 2>/dev/null | sed 's/.*: //' | head -1)
+            FRAMEWORK=$(grep -E "^\- \*\*Full-Stack\*\*:|^\- \*\*Frontend\*\*:|^\- \*\*Backend\*\*:" "$WORKFLOW_DIR/context/stack.md" 2>/dev/null | grep -v "None" | head -1 | sed 's/.*: //')
+
+            if [ -n "$LANG" ] && [ "$LANG" != "Not detected" ]; then
+                echo -e "${CYAN}║${NC}    Language: ${GREEN}$LANG${NC}"
+                printf "${CYAN}║${NC}%54s${CYAN}║${NC}\n" ""
+            fi
+            if [ -n "$FRAMEWORK" ] && [ "$FRAMEWORK" != "None" ]; then
+                echo -e "${CYAN}║${NC}    Framework: ${GREEN}$FRAMEWORK${NC}"
+                printf "${CYAN}║${NC}%54s${CYAN}║${NC}\n" ""
+            fi
+        fi
+    else
+        echo -e "${CYAN}║${NC}  ${DIM}○ Auto-detection skipped (will ask during setup)${NC}          ${CYAN}║${NC}"
+    fi
+else
+    echo -e "${CYAN}║${NC}  ${DIM}○ Auto-detection not available${NC}                             ${CYAN}║${NC}"
+fi
+
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  ${YELLOW}Step 2: Complete setup with your AI assistant${NC}               ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}  Start your AI assistant:                                    ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}    ${GREEN}claude${NC}      (Claude Code)                               ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}    ${GREEN}gemini${NC}      (Gemini CLI)                                ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}    ${GREEN}opencode${NC}    (OpenCode)                                  ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}  Then say: ${YELLOW}\"setup wogiflow\"${NC} or run ${YELLOW}/wogi-init${NC}             ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}  The AI will:                                                ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}    • Detect your tech stack from package.json/configs        ${CYAN}║${NC}"
+echo -e "${CYAN}║${NC}    • Review the auto-detected stack and verify               ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}    • Scan for existing patterns and conventions              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}    • Generate skills and rules for your stack                ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}    • Import patterns from other projects (optional)          ${CYAN}║${NC}"

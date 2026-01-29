@@ -463,6 +463,44 @@ function appendToAgent(agentName, pattern) {
 }
 
 // ============================================================
+// Programmatic API
+// ============================================================
+
+/**
+ * Get aggregated data for programmatic use
+ * @returns {Object} { learnings, patterns, corrections }
+ */
+function getAggregatedData() {
+  return {
+    learnings: collectSkillLearnings(),
+    patterns: parseFeedbackPatterns(),
+    corrections: parseCorrections()
+  };
+}
+
+/**
+ * Get patterns ready for promotion (3+ occurrences)
+ * @returns {Array} Array of promotion candidates
+ */
+function getPromotionCandidates() {
+  const data = getAggregatedData();
+  return findRecurringPatterns(data);
+}
+
+/**
+ * Check if there are patterns ready for promotion
+ * @returns {Object} { hasPromotions, count, candidates }
+ */
+function checkPromotionStatus() {
+  const candidates = getPromotionCandidates();
+  return {
+    hasPromotions: candidates.length > 0,
+    count: candidates.length,
+    candidates: candidates.slice(0, 5) // Top 5 only
+  };
+}
+
+// ============================================================
 // Main
 // ============================================================
 
@@ -472,11 +510,7 @@ function main() {
   const promote = args.includes('--promote');
 
   // Collect all data
-  const data = {
-    learnings: collectSkillLearnings(),
-    patterns: parseFeedbackPatterns(),
-    corrections: parseCorrections()
-  };
+  const data = getAggregatedData();
 
   if (promote) {
     runPromotionWizard(data);
@@ -485,4 +519,16 @@ function main() {
   }
 }
 
-main();
+// Only run main if called directly (not required as module)
+if (require.main === module) {
+  main();
+}
+
+// Export for programmatic use
+module.exports = {
+  getAggregatedData,
+  getPromotionCandidates,
+  checkPromotionStatus,
+  findRecurringPatterns,
+  appendToDecisions
+};

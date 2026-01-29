@@ -978,19 +978,12 @@ case "${1:-}" in
     prd)
         node "$SCRIPT_DIR/flow-prd-manager.js" "${@:2}"
         ;;
-    jira)
-        # Phase 6: Jira Integration
-        node "$SCRIPT_DIR/flow-jira-integration.js" "${@:2}"
-        ;;
-    linear)
-        # Phase 6: Linear Integration
-        node "$SCRIPT_DIR/flow-linear-integration.js" "${@:2}"
-        ;;
-    external-tasks)
-        # Phase 6: List tasks from all integrations
-        echo "Fetching from configured integrations..."
-        node "$SCRIPT_DIR/flow-jira-integration.js" list 2>/dev/null || true
-        node "$SCRIPT_DIR/flow-linear-integration.js" list 2>/dev/null || true
+    # NOTE: Jira and Linear integrations archived for paid version
+    # See .workflow/archive/paid-features/ for implementation
+    jira|linear|external-tasks)
+        echo "This feature is available in WogiFlow Pro."
+        echo "See: .workflow/archive/paid-features/README.md"
+        exit 0
         ;;
     sync-daemon)
         # Phase 6: Background Sync Daemon
