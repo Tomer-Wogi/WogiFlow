@@ -1,19 +1,6 @@
 {
-  "lastUpdated": "2026-01-30T17:38:18.588Z",
-  "inProgress": [
-    {
-      "id": "wf-36d79345",
-      "title": "Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
-      "type": "bug",
-      "priority": "P2",
-      "severity": "medium",
-      "discoveredFrom": null,
-      "status": "in_progress",
-      "createdAt": "2026-01-30T17:38:15.099Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-36d79345.md",
-      "startedAt": "2026-01-30T17:38:18.588Z"
-    }
-  ],
+  "lastUpdated": "2026-01-30T17:39:44.429Z",
+  "inProgress": [],
   "ready": [
     {
       "id": "wf-cc-007",
@@ -27,6 +14,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-36d79345",
+      "title": "Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-01-30T17:38:15.099Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-36d79345.md",
+      "startedAt": "2026-01-30T17:38:18.588Z",
+      "completedAt": "2026-01-30T17:39:44.429Z"
+    },
     {
       "id": "wf-9d449855",
       "title": "Implement browser test execution with Chrome integration and smart failure suggestions",
