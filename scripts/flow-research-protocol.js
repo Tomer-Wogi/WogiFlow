@@ -12,6 +12,11 @@
  * - Phase 3: External Verification - Web search for external tools
  * - Phase 4: Assumption Check - List and verify assumptions
  * - Phase 5: Synthesis - Generate research report with citations
+ * - Phase 6: Recommendation Verification - For comparison research, verify
+ *            each recommendation against local codebase before presenting
+ *
+ * Phase 6 is critical for comparison research ("What can we learn from X?")
+ * to prevent recommending features that already exist in the codebase.
  */
 
 const fs = require('fs');
@@ -101,6 +106,14 @@ const QUESTION_PATTERNS = {
     /\bhow\s+(do|to)\s+(i|we)\s+(integrate|connect|hook|wire)/i,
     /\bcan\s+[\w\s]{1,100}\s+(integrate|work)\s+with/i,  // Bounded
     /\bhow\s+does\s+[\w\s]{1,100}\s+integrate/i  // Bounded
+  ],
+  comparison: [
+    /\bwhat\s+can\s+(we|i)\s+learn\s+from/i,
+    /\bwhat\s+does\s+[\w\s]{1,50}\s+do\s+(better|differently)/i,  // Bounded
+    /\bhow\s+does\s+[\w\s]{1,50}\s+compare\s+to/i,  // Bounded
+    /\bwhat\s+(features?|patterns?)\s+from\s+[\w\s]{1,50}\s+should/i,  // Bounded
+    /\banything\s+(we|i)\s+can\s+(learn|adopt|borrow)\s+from/i,
+    /\bwhat\s+(insights?|lessons?)\s+from\s+[\w\s]{1,50}/i  // Bounded
   ]
 };
 
@@ -135,7 +148,8 @@ function getResearchConfig() {
       capabilityQuestions: DEPTHS.STANDARD,
       existenceQuestions: DEPTHS.STANDARD,
       architectureQuestions: DEPTHS.DEEP,
-      integrationQuestions: DEPTHS.STANDARD
+      integrationQuestions: DEPTHS.STANDARD,
+      comparisonQuestions: DEPTHS.DEEP  // Comparison research needs thorough verification
     },
     budgetMode: research.budgetMode || 'soft',
     negativeEvidenceRule: research.negativeEvidenceRule !== false,
@@ -463,7 +477,8 @@ function createResearchSession(question, depth = DEPTHS.STANDARD) {
       localEvidence: { status: 'pending', completedAt: null },
       externalVerification: { status: 'pending', completedAt: null },
       assumptionCheck: { status: 'pending', completedAt: null },
-      synthesis: { status: 'pending', completedAt: null }
+      synthesis: { status: 'pending', completedAt: null },
+      recommendationVerification: { status: 'pending', completedAt: null, recommendations: [] }
     },
     createdAt: new Date().toISOString(),
     completedAt: null

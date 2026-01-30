@@ -20,6 +20,7 @@ This command is **automatically triggered** (when strict mode is enabled) for:
 3. **Existence Questions**: "Is there a...", "Does X exist?"
 4. **Architecture Questions**: "How does X work?", "How is X structured?"
 5. **Integration Questions**: "How to integrate X with Y?"
+6. **Comparison Questions**: "What can we learn from X?", "How does X compare to Y?"
 
 ## Research Protocol Phases
 
@@ -56,6 +57,32 @@ This command is **automatically triggered** (when strict mode is enabled) for:
   - Confidence level (HIGH/MEDIUM/LOW)
   - Caveats and uncertainties
   - List of searches performed
+
+### Phase 6: Recommendation Verification (Comparison Research)
+
+**When to apply:** For comparison questions ("What can we learn from X?")
+
+Before presenting any recommendation ("We should add X", "Consider implementing Y"):
+
+1. **Search local codebase** for equivalent functionality
+   - Use Glob/Grep with relevant patterns
+   - Search for synonyms and related terms
+2. **Read at least one potentially relevant file**
+   - Don't just search - actually read the code
+3. **Mark each recommendation**:
+   - `EXISTS` - Already implemented (DO NOT recommend)
+   - `PARTIAL` - Partially implemented (recommend enhancement)
+   - `MISSING` - Not implemented (safe to recommend)
+4. **Include verification evidence** in output:
+   ```
+   Searched: [patterns used]
+   Read: [files examined]
+   Status: EXISTS/PARTIAL/MISSING
+   ```
+
+**Only recommend features marked MISSING or PARTIAL.**
+
+This phase prevents recommending features that already exist in the codebase.
 
 ## Critical Rules
 
