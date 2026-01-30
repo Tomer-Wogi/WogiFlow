@@ -293,6 +293,7 @@ function slugify(title) {
  * Create story with optional deep decomposition
  * - Simple stories: flat in .workflow/changes/
  * - Decomposed stories: grouped in feature folder
+ * - Dry-run mode: preview what would be created without writing files
  */
 async function createStory(title, options = {}) {
   // Input validation
@@ -302,13 +303,11 @@ async function createStory(title, options = {}) {
 
   const config = getConfig();
   const decompositionConfig = config.storyDecomposition || {};
+  const dryRun = options.dryRun || false;
 
   // Get priority from options or config
   const defaultPriority = getConfigValue('priorities.defaultPriority', 'P2');
   const priority = options.priority || defaultPriority;
-
-  // Ensure changes directory exists
-  fs.mkdirSync(CHANGES_DIR, { recursive: true });
 
   // Generate hash-based task ID
   const taskId = getTaskId(title);
@@ -332,13 +331,23 @@ async function createStory(title, options = {}) {
       throw new Error(`Security: Target directory "${targetDir}" is outside project root`);
     }
 
-    fs.mkdirSync(targetDir, { recursive: true });
+    // Only create directory in non-dry-run mode
+    if (!dryRun) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
   }
 
-  // Create main story file
+  // Only ensure changes directory exists in non-dry-run mode
+  if (!dryRun) {
+    fs.mkdirSync(CHANGES_DIR, { recursive: true });
+  }
+
+  // Create main story file (or just compute path in dry-run mode)
   const storyContent = generateStoryTemplate(taskId, title);
   const storyFile = path.join(targetDir, `${taskId}.md`);
-  fs.writeFileSync(storyFile, storyContent);
+  if (!dryRun) {
+    fs.writeFileSync(storyFile, storyContent);
+  }
 
   const result = {
     taskId,
@@ -346,7 +355,8 @@ async function createStory(title, options = {}) {
     priority,
     storyFile,
     featureFolder,  // null for flat, folder name for decomposed
-    subTasks: []
+    subTasks: [],
+    dryRun  // Include dry-run flag in result
   };
 
   const shouldSuggest = !options.deep &&
@@ -371,7 +381,9 @@ async function createStory(title, options = {}) {
       const subTask = generateSubTaskTemplate(taskId, subNum, sub.objective, sub.criteria, deps);
 
       const subTaskFile = path.join(targetDir, `${subTask.id}.md`);
-      fs.writeFileSync(subTaskFile, subTask.content);
+      if (!dryRun) {
+        fs.writeFileSync(subTaskFile, subTask.content);
+      }
 
       subTaskIds.push(subTask.id);
       result.subTasks.push({
@@ -386,7 +398,8 @@ async function createStory(title, options = {}) {
     }
 
     // Update ready.json with parent and sub-tasks (with file locking)
-    if (fs.existsSync(READY_PATH)) {
+    // Skip in dry-run mode to avoid polluting the task queue
+    if (!dryRun && fs.existsSync(READY_PATH)) {
       try {
         await withLock(READY_PATH, async () => {
           const ready = safeJsonParse(READY_PATH, { ready: [] });
@@ -434,6 +447,9 @@ async function createStory(title, options = {}) {
         result.addedToReady = false;
         result.readyError = err.message;
       }
+    } else if (dryRun) {
+      result.addedToReady = false;
+      result.wouldAddToReady = true;
     }
 
     result.decomposed = true;
@@ -481,11 +497,13 @@ Usage:
   flow story "<title>"                 Create standard story
   flow story "<title>" --deep          Create with decomposition
   flow story "<title>" --priority P1   Set priority (P0-P4)
+  flow story "<title>" --dry-run       Preview without creating files
   flow story "<title>" --deep --json   All options
 
 Options:
   --deep           Automatically decompose into sub-tasks
   --priority <P>   Priority P0-P4 (default: from config, usually P2)
+  --dry-run        Preview what would be created without writing files
   --json           Output JSON instead of human-readable
 
 Storage:
@@ -527,7 +545,8 @@ Examples:
   // Create story
   const result = await createStory(title, {
     deep: flags.deep,
-    priority
+    priority,
+    dryRun: flags['dry-run'] || flags.dryRun
   });
 
   // JSON output
@@ -541,8 +560,13 @@ Examples:
 
   // Human-readable output
   console.log('');
-  log('green', `✓ Created story: ${result.taskId}`);
-  log('cyan', `  ${result.storyFile}`);
+  if (result.dryRun) {
+    log('yellow', `[DRY RUN] Would create story: ${result.taskId}`);
+    log('cyan', `  Would write: ${result.storyFile}`);
+  } else {
+    log('green', `✓ Created story: ${result.taskId}`);
+    log('cyan', `  ${result.storyFile}`);
+  }
   console.log('');
   log('white', `Title: ${result.title}`);
   log('white', `Priority: ${result.priority}`);
@@ -552,13 +576,16 @@ Examples:
 
   if (result.decomposed) {
     console.log('');
-    log('cyan', `Decomposed into ${result.subTasks.length} sub-tasks:`);
+    log('cyan', `${result.dryRun ? 'Would decompose' : 'Decomposed'} into ${result.subTasks.length} sub-tasks:`);
     result.subTasks.forEach(sub => {
       log('dim', `   ${sub.id}: ${sub.objective}`);
     });
     if (result.addedToReady) {
       console.log('');
       log('green', '✓ Added parent and sub-tasks to ready.json');
+    } else if (result.wouldAddToReady) {
+      console.log('');
+      log('yellow', '[DRY RUN] Would add parent and sub-tasks to ready.json');
     }
 
     // Show parallel execution info
@@ -581,13 +608,20 @@ Examples:
   }
 
   console.log('');
-  log('dim', 'Next steps:');
-  log('dim', '  1. Fill in the story details');
-  log('dim', '  2. Check app-map.md for existing components');
-  if (!result.decomposed) {
-    log('dim', '  3. Add to ready.json when ready to implement');
+  if (result.dryRun) {
+    log('yellow', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('yellow', 'DRY RUN COMPLETE - No files were created');
+    log('yellow', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    log('dim', 'To create for real, run without --dry-run flag');
   } else {
-    log('dim', '  3. Start with: /wogi-start ' + result.subTasks[0].id);
+    log('dim', 'Next steps:');
+    log('dim', '  1. Fill in the story details');
+    log('dim', '  2. Check app-map.md for existing components');
+    if (!result.decomposed) {
+      log('dim', '  3. Add to ready.json when ready to implement');
+    } else {
+      log('dim', '  3. Start with: /wogi-start ' + result.subTasks[0].id);
+    }
   }
   })().catch(err => {
     log('red', `Error: ${err.message}`);
