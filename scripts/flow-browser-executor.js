@@ -19,7 +19,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
+const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse, isPathWithinProject } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const FLOWS_DIR = path.join(PROJECT_ROOT, '.workflow', 'tests', 'flows');
@@ -97,38 +97,31 @@ Once connected, you can run browser tests with:
  * @returns {object|null} - Flow data or null if not found
  */
 function loadFlow(flowName) {
-  const flowPath = path.join(FLOWS_DIR, `${flowName}.json`);
-
-  if (!fs.existsSync(flowPath)) {
+  // Sanitize flow name to prevent path traversal
+  const sanitizedName = flowName.replace(/[^a-zA-Z0-9_-]/g, '');
+  if (sanitizedName !== flowName) {
+    error(`Invalid flow name: ${flowName}`);
     return null;
   }
 
-  try {
-    const content = fs.readFileSync(flowPath, 'utf8');
-    return JSON.parse(content);
-  } catch (err) {
-    error(`Failed to parse flow ${flowName}: ${err.message}`);
+  const flowPath = path.join(FLOWS_DIR, `${sanitizedName}.json`);
+
+  // Verify path is within project
+  if (!isPathWithinProject(flowPath)) {
+    error(`Path traversal attempt detected: ${flowName}`);
     return null;
   }
+
+  // Use safeJsonParse to prevent prototype pollution and handle errors
+  const flow = safeJsonParse(flowPath, null);
+  if (!flow) {
+    error(`Failed to load flow: ${flowName}`);
+  }
+  return flow;
 }
 
-/**
- * List all available test flows
- * @returns {string[]} - Array of flow names
- */
-function listFlows() {
-  if (!fs.existsSync(FLOWS_DIR)) {
-    return [];
-  }
-
-  try {
-    return fs.readdirSync(FLOWS_DIR)
-      .filter(f => f.endsWith('.json'))
-      .map(f => f.replace('.json', ''));
-  } catch (err) {
-    return [];
-  }
-}
+// Import shared listFlows from flow-browser-suggest to avoid duplication
+const { listFlows } = require('./flow-browser-suggest');
 
 // ============================================================
 // Step Execution (Instructions for Claude)
@@ -454,7 +447,7 @@ module.exports = {
   checkChromeConnection,
   getChromeInstructions,
   loadFlow,
-  listFlows,
+  listFlows, // Re-exported from flow-browser-suggest
   getStepInstructions,
   generateExecutionPlan,
   formatExecutionPlan,

@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, safeJsonParse, isPathWithinProject } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -77,12 +77,19 @@ function getTaskFiles(taskId, taskData) {
   if (taskData?.branch) {
     try {
       const { execSync } = require('child_process');
-      const diff = execSync(`git diff --name-only main...${taskData.branch}`, {
-        cwd: PROJECT_ROOT,
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      diff.split('\n').filter(Boolean).forEach(f => files.add(f));
+      // Validate branch name to prevent command injection
+      // Only allow alphanumeric, hyphens, underscores, slashes, and dots
+      const branchName = taskData.branch;
+      if (!/^[a-zA-Z0-9_.\-/]+$/.test(branchName)) {
+        // Invalid branch name, skip git diff
+      } else {
+        const diff = execSync(`git diff --name-only main...${branchName}`, {
+          cwd: PROJECT_ROOT,
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+        diff.split('\n').filter(Boolean).forEach(f => files.add(f));
+      }
     } catch (err) {
       // Git command failed, ignore
     }
@@ -108,8 +115,15 @@ function findMatchingFlows(taskId, taskData) {
 
     for (const flowFile of flowFiles) {
       const flowPath = path.join(FLOWS_DIR, flowFile);
+      // Verify path is within project to prevent path traversal
+      if (!isPathWithinProject(flowPath)) {
+        continue;
+      }
+      const flow = safeJsonParse(flowPath, null);
+      if (!flow) {
+        continue; // Invalid or missing flow file, skip
+      }
       try {
-        const flow = JSON.parse(fs.readFileSync(flowPath, 'utf8'));
         const flowName = flowFile.replace('.json', '');
 
         // Check if flow explicitly references this task
@@ -270,20 +284,16 @@ Test flows are stored in: .workflow/tests/flows/*.json
   // Try to load task data from ready.json
   let taskData = {};
   const readyPath = path.join(STATE_DIR, 'ready.json');
-  if (fs.existsSync(readyPath)) {
-    try {
-      const ready = JSON.parse(fs.readFileSync(readyPath, 'utf8'));
-      const allTasks = [
-        ...(ready.ready || []),
-        ...(ready.inProgress || []),
-        ...(ready.recentlyCompleted || []),
-        ...(ready.blocked || [])
-      ];
-      const task = allTasks.find(t => t.id === taskId);
-      if (task) taskData = task;
-    } catch (err) {
-      // Ignore
-    }
+  const ready = safeJsonParse(readyPath, null);
+  if (ready) {
+    const allTasks = [
+      ...(ready.ready || []),
+      ...(ready.inProgress || []),
+      ...(ready.recentlyCompleted || []),
+      ...(ready.blocked || [])
+    ];
+    const task = allTasks.find(t => t.id === taskId);
+    if (task) taskData = task;
   }
 
   const result = suggestBrowserTests(taskId, taskData);

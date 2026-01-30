@@ -1,6 +1,19 @@
 {
-  "lastUpdated": "2026-01-30T13:45:00.000Z",
-  "inProgress": [],
+  "lastUpdated": "2026-01-30T17:38:18.588Z",
+  "inProgress": [
+    {
+      "id": "wf-36d79345",
+      "title": "Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "discoveredFrom": null,
+      "status": "in_progress",
+      "createdAt": "2026-01-30T17:38:15.099Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-36d79345.md",
+      "startedAt": "2026-01-30T17:38:18.588Z"
+    }
+  ],
   "ready": [
     {
       "id": "wf-cc-007",
