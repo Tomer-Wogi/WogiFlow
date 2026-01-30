@@ -27,9 +27,7 @@ const {
   listDirs,
   color,
   success,
-  warn,
-  info,
-  error
+  warn
 } = require('./flow-utils');
 const { syncDecisionsToRules } = require('./flow-rules-sync');
 
@@ -222,7 +220,7 @@ function findRecurringPatterns(data) {
   }
 
   // Find recurring (3+ times)
-  for (const [key, data] of Object.entries(issueGroups)) {
+  for (const [_key, data] of Object.entries(issueGroups)) {
     if (data.count >= 3) {
       recurring.push({
         pattern: data.original,

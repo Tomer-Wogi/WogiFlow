@@ -31,7 +31,7 @@ const {
 let contextOrchestrator = null;
 try {
   contextOrchestrator = require('./flow-context-orchestrator');
-} catch (err) {
+} catch (_err) {
   // Context orchestrator not available - continue without it
 }
 
@@ -75,10 +75,10 @@ function getProductContextForStory() {
 
   try {
     return contextOrchestrator.getProductOverview();
-  } catch (err) {
+  } catch (_err) {
     // Intentionally silent - product context is optional enhancement
     // Debug: uncomment to diagnose issues
-    // console.error('[getProductContextForStory] Error:', err.message);
+    // console.error('[getProductContextForStory] Error:', _err.message);
     return null;
   }
 }
@@ -476,7 +476,7 @@ async function createStory(title, options = {}) {
           };
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Non-critical - continue without parallel info
     }
   }

@@ -26,10 +26,10 @@ const {
 } = require('./flow-utils');
 
 // v1.7.0 context memory management
-const { showContextBreakdown, checkContextHealth } = require('./flow-context-monitor');
-const { resetSessionContext, getSessionContext, writeMemoryBlocks, readMemoryBlocks } = require('./flow-memory-blocks');
+const { checkContextHealth } = require('./flow-context-monitor');
+const { readMemoryBlocks } = require('./flow-memory-blocks');
 const { saveSessionSummary, loadSessionState } = require('./flow-session-state');
-const { autoArchiveIfNeeded, getLogStats } = require('./flow-log-manager');
+const { autoArchiveIfNeeded } = require('./flow-log-manager');
 
 // v2.5.0 stale task cleanup
 const { getReadyData, saveReadyData } = require('./flow-utils');
@@ -41,7 +41,7 @@ const { cleanupStaleState } = require('./flow-state-cleanup');
 let memoryDb = null;
 try {
   memoryDb = require('./flow-memory-db');
-} catch (err) {
+} catch (_err) {
   // Memory module not available
 }
 
@@ -49,7 +49,7 @@ try {
 let sessionLearning = null;
 try {
   sessionLearning = require('./flow-session-learning');
-} catch (err) {
+} catch (_err) {
   // Session learning module not available
 }
 
@@ -57,7 +57,7 @@ try {
 let patternEnforcer = null;
 try {
   patternEnforcer = require('./flow-pattern-enforcer');
-} catch (err) {
+} catch (_err) {
   // Pattern enforcer module not available
 }
 
@@ -65,7 +65,7 @@ try {
 let aggregation = null;
 try {
   aggregation = require('./flow-aggregate');
-} catch (err) {
+} catch (_err) {
   // Aggregation module not available
 }
 
@@ -478,7 +478,7 @@ async function automaticMemoryManagement() {
     const memoryConfig = { maxLocalFacts: config.memory?.maxLocalFacts || 1000 };
     const entropy = await memoryDb.getEntropyStats(memoryConfig);
 
-    const threshold = memConfig.entropyThreshold || 0.7;
+    const _threshold = memConfig.entropyThreshold || 0.7;  
     const statusColor = entropy.status === 'healthy' ? 'green'
       : entropy.status === 'moderate' ? 'yellow' : 'red';
 
@@ -536,7 +536,7 @@ async function automaticMemoryManagement() {
               // Fallback: tell user to run manually
               console.log('    Run: ./scripts/flow memory-sync --auto');
             }
-          } catch (err) {
+          } catch (_err) {
             // Module not available or error, fall back to manual
             console.log('    Run: ./scripts/flow memory-sync --auto');
           }
