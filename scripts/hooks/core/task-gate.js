@@ -172,6 +172,17 @@ function checkTaskGate(options = {}) {
         reason: 'plan_file_exempt'
       };
     }
+
+    // Also handle user-level Claude plans (absolute path like ~/.claude/plans/)
+    // This is needed for Claude Code's plan mode which stores plans in user home
+    if (resolvedPath.includes('/.claude/plans/')) {
+      return {
+        allowed: true,
+        blocked: false,
+        message: null,
+        reason: 'user_plan_file_exempt'
+      };
+    }
   }
 
 

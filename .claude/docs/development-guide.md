@@ -80,6 +80,79 @@ When testing features that create persistent state:
 
 ---
 
+## Architecture Decisions
+
+### Model Management Architecture (2026-01-11)
+
+WogiFlow has two model systems that should remain separate:
+
+1. **flow-model-adapter.js** - Prompt adaptation system
+   - `getCurrentModel()` returns normalized model name (string)
+   - Focus: Per-model prompt adjustments, learning, and corrections
+   - Used by: flow-knowledge-router.js
+
+2. **flow-models.js** - Registry and stats system
+   - `getCurrentModel()` returns `{name, info, source}` object
+   - Focus: Model listing, routing recommendations, cost tracking
+   - Standalone CLI: `flow models [subcommand]`
+
+**Why keep them separate**:
+- Different return types serve different consumers
+- Adapter needs just the name for pattern matching
+- Registry needs full metadata for display/routing
+- Merging would create unnecessary coupling
+
+### Budget Functions Hard Ceilings (2026-01-11)
+
+When implementing "minimum budget" logic, always add a hard ceiling:
+
+```javascript
+const hardCeiling = tokenBudget * (1 + maxOverflow);
+```
+
+**Reason**: Without a ceiling, forced includes can exceed budget indefinitely, causing OOM or context overflow.
+
+### Spec Verification Gate (2026-01-18)
+
+When a spec promises deliverables (files to create), verify they exist before marking task as done.
+
+**Implementation**:
+- `scripts/flow-spec-verifier.js` - Parses specs, verifies deliverables
+- `scripts/flow-done.js` - Runs verification before quality gates
+- Config: `tasks.requireSpecVerification` (default: true)
+
+**Bypass options**:
+- `--skip-spec-check` - Skip with warning
+- `--force` - Force completion
+
+**Lesson**: When claiming work is "done", verify with evidence, not assumption.
+
+---
+
+## Review Procedures
+
+### Deletion Review Gate (2026-01-16)
+
+Before recommending deletion of ANY file/folder, complete this checklist:
+
+1. **Search for direct path references**: `grep -r "folder-name" scripts/`
+2. **Search for module imports**: `grep -r "require.*module-name" scripts/`
+3. **Read the actual file** - Check header comments for usage documentation
+4. **Check if wired into CLI** - Search `scripts/flow` for command registration
+5. **Check config.json** - Feature may be implemented but disabled
+6. **Verify with installer/templates** - Check `lib/installer.js` for folder purposes
+
+**Only recommend deletion if ALL checks show no usage.**
+
+**Present findings as**:
+```
+KEEP: [reason - what uses it]
+REMOVE: [reason - verified unused by checks 1-6]
+DISCONNECTED: [built but not wired - consider connecting vs removing]
+```
+
+---
+
 ## Adding New Development Rules
 
 When you learn something important about developing WogiFlow:
