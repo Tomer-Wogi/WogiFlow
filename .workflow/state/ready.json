@@ -1,0 +1,133 @@
+{
+  "lastUpdated": "2026-01-30T10:00:00.000Z",
+  "inProgress": [],
+  "ready": [
+    {
+      "id": "wf-400afaf9",
+      "title": "Add metadata task type to model routing for economy tier",
+      "type": "story",
+      "feature": "hybrid-mode",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Add 'metadata' task type to TASK_TYPE_ROUTING that routes to economy tier for simple classification tasks.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-0bff91f3",
+      "title": "Implement permission persistence with session vs permanent choice",
+      "type": "story",
+      "feature": "permissions",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Add permission persistence where user chooses 'this session' or 'always' when granting permissions.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-e444ecc5",
+      "title": "Add auto-generated tool documentation for MCP tools",
+      "type": "story",
+      "feature": "mcp-integration",
+      "status": "ready",
+      "priority": "P3",
+      "description": "Scan MCP servers and generate tool documentation for AI context injection.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-80c41aef",
+      "title": "Add background task execution for non-blocking operations",
+      "type": "story",
+      "feature": "task-management",
+      "status": "ready",
+      "priority": "P3",
+      "description": "Run non-critical tasks (memory compaction, skill learning) in background processes.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-cc-007",
+      "title": "Test WogiFlow on Windows with Claude Code 2.1.7 fixes",
+      "type": "bugfix",
+      "feature": "claude-code-integration",
+      "status": "ready",
+      "priority": "P3",
+      "description": "Claude Code 2.1.7 fixed Windows-specific issues: false 'file modified' errors with cloud sync/antivirus, and bash temp directory path escape sequences. Verify WogiFlow works correctly on Windows with these fixes."
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
+    {
+      "id": "wf-085f189d",
+      "title": "Fix research protocol - add mandatory verification step before recommendations",
+      "type": "story",
+      "feature": "research-protocol",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-01-30T09:25:00.000Z",
+      "startedAt": "2026-01-30T09:30:00.000Z",
+      "completedAt": "2026-01-30T09:45:00.000Z"
+    },
+    {
+      "id": "wf-c0c84151",
+      "title": "Fix lint warnings in changed files",
+      "type": "bugfix",
+      "feature": "code-quality",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-01-30T08:57:21.949Z",
+      "startedAt": "2026-01-30T08:57:30.000Z",
+      "completedAt": "2026-01-30T09:10:00.000Z"
+    },
+    {
+      "id": "wf-f8dd0f51",
+      "title": "Move WogiFlow rules to codebase and fix plan file exemption",
+      "type": "story",
+      "feature": "developer-experience",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Fix hook to exempt user-level plan files (~/.claude/plans/), move WogiFlow-specific rules from decisions.md to codebase, and clean up outdated rules.",
+      "createdAt": "2026-01-30T08:51:09.541Z",
+      "startedAt": "2026-01-30T08:51:30.000Z",
+      "completedAt": "2026-01-30T09:00:00.000Z"
+    },
+    {
+      "id": "wf-b2de7226",
+      "title": "Add WogiFlow development testing rules to codebase",
+      "type": "story",
+      "feature": "developer-experience",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Move test cleanup rules from project-specific decisions.md to WogiFlow codebase itself, so they're available to all sessions developing WogiFlow.",
+      "createdAt": "2026-01-30T08:41:57.109Z",
+      "startedAt": "2026-01-30T08:42:00.000Z",
+      "completedAt": "2026-01-30T08:50:00.000Z"
+    },
+    {
+      "id": "wf-3430d135",
+      "title": "Add --dry-run flag to flow story to prevent test task pollution",
+      "type": "story",
+      "feature": "task-management",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Add a --dry-run flag to flow story command that previews what would be created without writing files or adding to ready.json. This prevents test tasks from polluting the production queue.",
+      "createdAt": "2026-01-30T08:26:53.946Z",
+      "startedAt": "2026-01-30T08:27:00.000Z",
+      "completedAt": "2026-01-30T08:35:00.000Z"
+    },
+    {
+      "id": "wf-integrate-01",
+      "title": "Post-cleanup integration: Wire scripts and enable workflow steps",
+      "type": "story",
+      "feature": "workflow-integration",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Wire flow-aggregate.js to session-end, enable workflow steps (silentFailureHunter, commentAnalyzer, etc.), combine onboard+context-init, archive Jira/Linear",
+      "createdAt": "2026-01-29T17:00:00.000Z",
+      "startedAt": "2026-01-29T17:00:00.000Z",
+      "completedAt": "2026-01-29T18:30:00.000Z"
+    }
+  ],
+  "backlog": []
+}
