@@ -526,58 +526,74 @@ Use `/wogi-compact` when:
 
 Before compacting: Update progress.md, ensure request-log is current, commit work.
 
-## Handling Feedback
+## Continuous Learning Protocol (CRITICAL)
 
-When corrected:
-1. Fix it immediately
-2. Run `/wogi-correct "brief description"` to record the learning
-3. Determine scope (see Improvement Placement below)
-4. Update the appropriate location and commit
+The user installed WogiFlow so the AI learns from mistakes. This requires THREE mandatory behaviors:
 
-**Why record corrections?**
-- Individual records stored in `.workflow/corrections/` for searchable history
-- Aggregated patterns in `feedback-patterns.md` for AI context
+### Part 1: Pre-Task Pattern Check (BEFORE starting any work)
 
-### Repeated Issue Detection (CRITICAL)
+**Before starting ANY task**, check for known issues:
 
-**When you detect user frustration about a repeated issue, you MUST act immediately.**
+1. **Read `feedback-patterns.md`** - Look for patterns related to this task type
+2. **Read relevant sections of `decisions.md`** - Check for documented procedures
+3. **Check `corrections/` directory** - Look for recent corrections in this area
 
-The user may express this in many ways:
+**If you skip this check and make a preventable mistake, that's a learning system failure.**
+
+### Part 2: Post-Failure Capture (AFTER any failure occurs)
+
+**When ANY failure occurs** (code error, process error, wrong assumption, tool misuse, verification skip), you MUST:
+
+1. **STOP** - Don't just fix it and move on
+2. **DIAGNOSE** - Ask yourself:
+   - What exactly went wrong?
+   - What did I do (or not do) that caused this?
+   - Did I check the learning files before starting?
+   - Has this happened before?
+3. **RECORD** - Add to `feedback-patterns.md`:
+   ```
+   | [date] | [pattern-name] | [what went wrong] | 1 | Monitor |
+   ```
+4. **If count >= 3** → Create a rule in `decisions.md` with verification steps
+
+### Part 3: User Frustration Detection (Escalation)
+
+**When user says things like:**
 - "This keeps happening"
 - "I told you this before"
 - "You keep forgetting X"
-- "This failed again"
-- "How many times do I have to tell you"
-- Any indication of a recurring problem or previous instruction being ignored
+- "How many times..."
 
 **Required response:**
+1. **Acknowledge** - Don't be defensive
+2. **Investigate** - Check what learning files should have prevented this
+3. **Diagnose** - Why wasn't the learning system used?
+4. **Fix** - Create/strengthen the rule in `decisions.md`
+5. **Verify** - Test that the fix works
 
-1. **Acknowledge** - Don't be defensive. The user's frustration is valid.
+**This is an escalation** - it means Parts 1-2 failed.
 
-2. **Investigate root cause** - Don't just fix the symptom:
-   - Why did this happen multiple times?
-   - What instruction or rule was missing?
-   - Check `decisions.md` and `feedback-patterns.md` for related issues
+### Self-Diagnosis Questions (After Every Failure)
 
-3. **Persist the fix to `decisions.md`** - This is MANDATORY:
-   - Add a clear rule that prevents recurrence
-   - Include context about why it matters
-   - Add verification steps if applicable
+1. "Did I check feedback-patterns.md before starting?" → If no, that's the root cause
+2. "Did I check decisions.md for existing rules?" → If no, that's the root cause
+3. "Did I follow the documented procedure?" → If no, why not?
+4. "Did I verify my work before claiming done?" → If no, add verification
+5. "Is there a pattern here I've seen before?" → If yes, it needs a rule
 
-4. **Record in `feedback-patterns.md`** - Track the pattern with count and mark as promoted
+### Why This Matters
 
-5. **Verify the fix** - Don't just write the rule; test that it works
-
-**Why this matters**: The user installed WogiFlow expecting an AI that learns and improves. Repeating the same mistakes breaks trust. Every repeated failure is a failure of the learning system itself.
+- **The learning system only works if you USE it**
+- Skipping pre-task checks leads to preventable mistakes
+- Not recording failures means the same mistakes repeat
+- The user loses trust when the AI doesn't learn
 
 ### Improvement Placement
 
 Before implementing, determine scope:
 1. **Project** → Add to `decisions.md`
-2. **Team** → Add to `decisions.md` with `[Team]` prefix (future: suggestion queue)
-3. **Universal** → Add to core templates/agents, bump version
-
-Ask if unclear: "Is this project-specific, team preference, or universal improvement?"
+2. **Team** → Add to `decisions.md` with `[Team]` prefix
+3. **Universal** → Add to core templates, bump version
 
 ## Session End
 
