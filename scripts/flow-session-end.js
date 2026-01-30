@@ -69,6 +69,14 @@ try {
   // Aggregation module not available
 }
 
+// v8.0 permission persistence (Crush research wf-0bff91f3)
+let permissions = null;
+try {
+  permissions = require('./flow-permissions');
+} catch (_err) {
+  // Permissions module not available
+}
+
 // v2.6.0 model selection persistence
 let modelConfig = null;
 try {
@@ -406,6 +414,23 @@ function clearSessionModelSelections() {
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Clear models: ${err.message}`);
+  }
+}
+
+/**
+ * v8.0: Clear session permissions
+ * Clears in-memory session permissions (Crush research wf-0bff91f3)
+ */
+function clearSessionPermissions() {
+  if (!permissions) return;
+
+  try {
+    const result = permissions.clearSessionPermissions();
+    if (result.cleared > 0) {
+      console.log(color('dim', `  Cleared ${result.cleared} session permission(s)`));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Clear permissions: ${err.message}`);
   }
 }
 
@@ -936,6 +961,9 @@ async function main() {
 
   // v2.6.0: Clear session model selections
   clearSessionModelSelections();
+
+  // v8.0: Clear session permissions (Crush research wf-0bff91f3)
+  clearSessionPermissions();
 
   // v1.7.0: Auto-archive request log
   archiveRequestLogIfNeeded();

@@ -319,6 +319,13 @@ show_help() {
     echo "  guided-edit \"task\"       Step-by-step guided multi-file editing"
     echo "  guided-edit status       Show current guided edit session"
     echo ""
+    echo "Permissions:"
+    echo "  permissions list         List all granted permissions"
+    echo "  permissions grant <op>   Grant permission (session|always)"
+    echo "  permissions revoke <op>  Revoke permanent permission"
+    echo "  permissions clear-session Clear all session permissions"
+    echo "  permissions check <op>   Check if permission is granted"
+    echo ""
     echo "Memory & Knowledge (v1.8):"
     echo "  memory search <query>  Search stored facts"
     echo "  memory stats           Show memory statistics"
@@ -995,6 +1002,10 @@ case "${1:-}" in
     long-input|long-input-process|transcript-digest|digest)
         # long-input is the new name, transcript-digest kept for backward compatibility
         node "$SCRIPT_DIR/flow-long-input.js" "${@:2}"
+        ;;
+    permissions)
+        # Permission management (session vs permanent)
+        node "$SCRIPT_DIR/flow-permissions.js" "${@:2}"
         ;;
     version|--version|-v)
         show_version

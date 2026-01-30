@@ -1,41 +1,7 @@
 {
-  "lastUpdated": "2026-01-30T10:30:00.000Z",
-  "inProgress": [
-    {
-      "id": "wf-bcb6ce5e",
-      "title": "Add Phase 0 External Research for comparison questions",
-      "type": "story",
-      "feature": "research-protocol",
-      "status": "in_progress",
-      "priority": "P1",
-      "description": "For external comparison questions, do external research FIRST before local scope mapping.",
-      "createdAt": "2026-01-30T10:30:00.000Z",
-      "startedAt": "2026-01-30T10:30:00.000Z"
-    }
-  ],
+  "lastUpdated": "2026-01-30T11:22:00.000Z",
+  "inProgress": [],
   "ready": [
-    {
-      "id": "wf-400afaf9",
-      "title": "Add metadata task type to model routing for economy tier",
-      "type": "story",
-      "feature": "hybrid-mode",
-      "status": "ready",
-      "priority": "P2",
-      "description": "Add 'metadata' task type to TASK_TYPE_ROUTING that routes to economy tier for simple classification tasks.",
-      "createdAt": "2026-01-30T10:00:00.000Z",
-      "source": "crush-research"
-    },
-    {
-      "id": "wf-0bff91f3",
-      "title": "Implement permission persistence with session vs permanent choice",
-      "type": "story",
-      "feature": "permissions",
-      "status": "ready",
-      "priority": "P2",
-      "description": "Add permission persistence where user chooses 'this session' or 'always' when granting permissions.",
-      "createdAt": "2026-01-30T10:00:00.000Z",
-      "source": "crush-research"
-    },
     {
       "id": "wf-e444ecc5",
       "title": "Add auto-generated tool documentation for MCP tools",
@@ -70,6 +36,41 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-0bff91f3",
+      "title": "Implement permission persistence with session vs permanent choice",
+      "type": "story",
+      "feature": "permissions",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Add permission persistence where user chooses 'this session' or 'always' when granting permissions.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "startedAt": "2026-01-30T10:50:00.000Z",
+      "completedAt": "2026-01-30T11:22:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-400afaf9",
+      "title": "Add metadata task type to model routing for economy tier",
+      "type": "story",
+      "feature": "hybrid-mode",
+      "status": "completed",
+      "priority": "P2",
+      "completedAt": "2026-01-30T10:50:00.000Z",
+      "source": "crush-research"
+    },
+    {
+      "id": "wf-bcb6ce5e",
+      "title": "Add Phase 0 External Research for comparison questions",
+      "type": "story",
+      "feature": "research-protocol",
+      "status": "completed",
+      "priority": "P1",
+      "description": "For external comparison questions, do external research FIRST before local scope mapping.",
+      "createdAt": "2026-01-30T10:30:00.000Z",
+      "startedAt": "2026-01-30T10:30:00.000Z",
+      "completedAt": "2026-01-30T10:40:00.000Z"
+    },
     {
       "id": "wf-87903e05",
       "title": "Enhance research protocol with Phase 6 and comparison question type",
@@ -139,18 +140,6 @@
       "createdAt": "2026-01-30T08:26:53.946Z",
       "startedAt": "2026-01-30T08:27:00.000Z",
       "completedAt": "2026-01-30T08:35:00.000Z"
-    },
-    {
-      "id": "wf-integrate-01",
-      "title": "Post-cleanup integration: Wire scripts and enable workflow steps",
-      "type": "story",
-      "feature": "workflow-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Wire flow-aggregate.js to session-end, enable workflow steps (silentFailureHunter, commentAnalyzer, etc.), combine onboard+context-init, archive Jira/Linear",
-      "createdAt": "2026-01-29T17:00:00.000Z",
-      "startedAt": "2026-01-29T17:00:00.000Z",
-      "completedAt": "2026-01-29T18:30:00.000Z"
     }
   ],
   "backlog": []
