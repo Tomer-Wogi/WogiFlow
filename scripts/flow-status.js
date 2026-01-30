@@ -196,9 +196,7 @@ function main() {
   // CLI status
   printSection('CLI');
   const cliNames = {
-    'claude-code': 'Claude Code',
-    'gemini-cli': 'Gemini CLI',
-    'opencode': 'OpenCode'
+    'claude-code': 'Claude Code'
   };
   const bridgeColors = {
     'configured': 'green',

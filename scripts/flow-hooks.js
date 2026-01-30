@@ -458,9 +458,7 @@ Usage:
   flow hooks test <hook>        Test a hook
 
 Available targets:
-  claude-code    Claude Code CLI (primary)
-  gemini         Gemini CLI (future)
-  codex          Codex CLI (future)
+  claude-code    Claude Code CLI
 
 Configuration:
   Configure hooks in .workflow/config.json under "hooks":

@@ -30,7 +30,7 @@ try {
 
 class BaseBridge {
   /**
-   * @param {string} cliType - The CLI type identifier (e.g., 'claude-code', 'gemini-cli')
+   * @param {string} cliType - The CLI type identifier (e.g., 'claude-code')
    * @param {Object} options - Configuration options
    * @param {string} options.workflowDir - Path to .workflow directory
    * @param {string} options.projectDir - Path to project root
