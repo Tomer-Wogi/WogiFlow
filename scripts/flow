@@ -333,6 +333,13 @@ show_help() {
     echo "  mcp-docs generate        Generate markdown documentation"
     echo "  mcp-docs context [task]  Get relevant MCP tools for a task"
     echo ""
+    echo "Background Tasks:"
+    echo "  background run <task>    Run a task in background"
+    echo "  background status        Show running background tasks"
+    echo "  background list          List available background tasks"
+    echo "  background cancel <id>   Cancel a running task"
+    echo "  background logs [id]     Show task output logs"
+    echo ""
     echo "Memory & Knowledge (v1.8):"
     echo "  memory search <query>  Search stored facts"
     echo "  memory stats           Show memory statistics"
@@ -1017,6 +1024,10 @@ case "${1:-}" in
     mcp-docs)
         # MCP tool documentation generator
         node "$SCRIPT_DIR/flow-mcp-docs.js" "${@:2}"
+        ;;
+    background|bg)
+        # Background task execution
+        node "$SCRIPT_DIR/flow-background.js" "${@:2}"
         ;;
     version|--version|-v)
         show_version

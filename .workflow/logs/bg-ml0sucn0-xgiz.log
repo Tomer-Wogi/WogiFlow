@@ -1,0 +1,32 @@
+=== Background Task Started ===
+Task: mcp-docs (MCP Documentation)
+ID: bg-ml0sucn0-xgiz
+Started: 2026-01-30T11:28:04.479Z
+Script: flow-mcp-docs.js
+Args: scan
+===
+
+[36m══════════════════════════════════════════════════[0m
+[36m        Scanning MCP Servers[0m
+[36m══════════════════════════════════════════════════[0m
+
+[32m✓ Scanned 2 server(s)[0m
+[32m✓ Found 13 tool(s)[0m
+
+[36mindex[0m: 9 tools
+  • remember_fact
+  • recall_facts
+  • forget_fact
+  • propose_team_rule
+  • get_pending_proposals
+  • vote_proposal
+  • store_prd
+  • get_prd_context
+  • get_memory_stats
+[36mfigma[0m: 4 tools
+  • wogi_figma_analyze
+  • wogi_figma_registry
+  • wogi_figma_match
+  • wogi_figma_generate
+
+[2mResults saved to: /Users/tomergilboa/Developer/wogi-flow/.workflow/state/mcp-tools.json[0m

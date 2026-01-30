@@ -1,0 +1,18 @@
+{
+  "runningTasks": {},
+  "completedTasks": [
+    {
+      "id": "bg-ml0sucn0-xgiz",
+      "name": "mcp-docs",
+      "displayName": "MCP Documentation",
+      "pid": 99130,
+      "startedAt": "2026-01-30T11:28:04.479Z",
+      "logFile": "/Users/tomergilboa/Developer/wogi-flow/.workflow/logs/bg-ml0sucn0-xgiz.log",
+      "timeout": 60000,
+      "status": "success",
+      "exitCode": 0,
+      "completedAt": "2026-01-30T11:28:04.544Z"
+    }
+  ],
+  "lastUpdated": "2026-01-30T11:28:04.544Z"
+}

@@ -1,18 +1,7 @@
 {
-  "lastUpdated": "2026-01-30T11:30:00.000Z",
+  "lastUpdated": "2026-01-30T11:38:00.000Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-80c41aef",
-      "title": "Add background task execution for non-blocking operations",
-      "type": "story",
-      "feature": "task-management",
-      "status": "ready",
-      "priority": "P3",
-      "description": "Run non-critical tasks (memory compaction, skill learning) in background processes.",
-      "createdAt": "2026-01-30T10:00:00.000Z",
-      "source": "crush-research"
-    },
     {
       "id": "wf-cc-007",
       "title": "Test WogiFlow on Windows with Claude Code 2.1.7 fixes",
@@ -25,6 +14,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-80c41aef",
+      "title": "Add background task execution for non-blocking operations",
+      "type": "story",
+      "feature": "task-management",
+      "status": "completed",
+      "priority": "P3",
+      "description": "Run non-critical tasks (memory compaction, skill learning) in background processes.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "startedAt": "2026-01-30T11:32:00.000Z",
+      "completedAt": "2026-01-30T11:38:00.000Z",
+      "source": "crush-research"
+    },
     {
       "id": "wf-e444ecc5",
       "title": "Add auto-generated tool documentation for MCP tools",
@@ -118,18 +120,6 @@
       "createdAt": "2026-01-30T08:51:09.541Z",
       "startedAt": "2026-01-30T08:51:30.000Z",
       "completedAt": "2026-01-30T09:00:00.000Z"
-    },
-    {
-      "id": "wf-b2de7226",
-      "title": "Add WogiFlow development testing rules to codebase",
-      "type": "story",
-      "feature": "developer-experience",
-      "status": "completed",
-      "priority": "P2",
-      "description": "Move test cleanup rules from project-specific decisions.md to WogiFlow codebase itself, so they're available to all sessions developing WogiFlow.",
-      "createdAt": "2026-01-30T08:41:57.109Z",
-      "startedAt": "2026-01-30T08:42:00.000Z",
-      "completedAt": "2026-01-30T08:50:00.000Z"
     }
   ],
   "backlog": []
