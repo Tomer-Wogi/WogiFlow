@@ -1,16 +1,16 @@
 {
-  "lastUpdated": "2026-01-30T10:15:00.000Z",
+  "lastUpdated": "2026-01-30T10:30:00.000Z",
   "inProgress": [
     {
-      "id": "wf-87903e05",
-      "title": "Enhance research protocol with Phase 6 and comparison question type",
+      "id": "wf-bcb6ce5e",
+      "title": "Add Phase 0 External Research for comparison questions",
       "type": "story",
       "feature": "research-protocol",
       "status": "in_progress",
       "priority": "P1",
-      "description": "Add Phase 6 (Recommendation Verification) to core protocol and detect comparison questions.",
-      "createdAt": "2026-01-30T10:15:00.000Z",
-      "startedAt": "2026-01-30T10:15:00.000Z"
+      "description": "For external comparison questions, do external research FIRST before local scope mapping.",
+      "createdAt": "2026-01-30T10:30:00.000Z",
+      "startedAt": "2026-01-30T10:30:00.000Z"
     }
   ],
   "ready": [
@@ -70,6 +70,18 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-87903e05",
+      "title": "Enhance research protocol with Phase 6 and comparison question type",
+      "type": "story",
+      "feature": "research-protocol",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Add Phase 6 (Recommendation Verification) to core protocol and detect comparison questions.",
+      "createdAt": "2026-01-30T10:15:00.000Z",
+      "startedAt": "2026-01-30T10:15:00.000Z",
+      "completedAt": "2026-01-30T10:25:00.000Z"
+    },
     {
       "id": "wf-085f189d",
       "title": "Fix research protocol - add mandatory verification step before recommendations",

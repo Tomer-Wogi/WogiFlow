@@ -11,7 +11,7 @@
 
 const {
   checkResearchGate,
-  isResearchEnabled,
+  isResearchEnabled: _isResearchEnabled,
   getResearchConfig,
   CONFIDENCE,
   DEPTHS
@@ -159,7 +159,7 @@ function generateResearchCommand(prompt, depth) {
 /**
  * Generate research protocol steps to inject into AI context
  * @param {string} question - The user's question
- * @param {string} type - Question type (capability, feasibility, existence, etc.)
+ * @param {string} type - Question type (capability, feasibility, existence, comparison, etc.)
  * @param {string} depth - Research depth
  * @returns {string} Protocol steps as markdown
  */
@@ -173,6 +173,12 @@ function generateResearchProtocolSteps(question, type, depth) {
 
   const limits = depthLimits[depth] || depthLimits[DEPTHS.STANDARD];
 
+  // For comparison questions, use the external-first flow
+  if (type === 'comparison') {
+    return generateComparisonProtocolSteps(question, depth, limits);
+  }
+
+  // Standard research flow for other question types
   return `## Research Protocol Auto-Triggered
 
 **Question Type**: ${type}
@@ -207,20 +213,82 @@ function generateResearchProtocolSteps(question, type, depth) {
 - State confidence level (HIGH/MEDIUM/LOW)
 - Acknowledge what you couldn't verify
 
-**Phase 6: Recommendation Verification (for comparison research)**
-If you're about to recommend "Add feature X" or "We should implement Y":
-- FIRST: Search local codebase for equivalent (Glob/Grep)
-- SECOND: Read at least one potentially relevant file
-- THIRD: Mark recommendation as EXISTS/PARTIAL/MISSING
-- ONLY recommend features marked MISSING
-- Include verification evidence: "Searched: [patterns], Read: [files], Status: [EXISTS/PARTIAL/MISSING]"
-
 ### FORBIDDEN:
 - Claiming "X doesn't exist" without exhaustive search
 - Using training data for external tool capabilities
 - Skipping verification steps
 
 Proceed with research now.`;
+}
+
+/**
+ * Generate protocol steps for external comparison research
+ * Key difference: External research happens FIRST (Phase 0)
+ * @param {string} question - The user's question
+ * @param {string} depth - Research depth
+ * @param {Object} limits - Depth limits
+ * @returns {string} Protocol steps as markdown
+ */
+function generateComparisonProtocolSteps(question, depth, limits) {
+  return `## Research Protocol Auto-Triggered (COMPARISON MODE)
+
+**Question Type**: comparison (external-first flow)
+**Depth**: ${depth} (${limits.desc})
+**Limits**: Up to ${limits.files} files, ${limits.urls} web searches
+
+### CRITICAL: For comparison research, do EXTERNAL research FIRST
+
+You're comparing an external tool/project to the local codebase.
+You must understand what the EXTERNAL thing has BEFORE you can search locally.
+
+### BEFORE ANSWERING, YOU MUST:
+
+**Phase 0: External Research (DO THIS FIRST)**
+- Web search the external tool/repository
+- Read their documentation, README, source code
+- List the features, patterns, or approaches they have
+- Extract specific capabilities with evidence
+- **OUTPUT**: A clear list of "External tool X has: [features]"
+
+**Phase 1: Scope Mapping (informed by Phase 0)**
+- For EACH feature found in Phase 0:
+  - Identify local files that might have equivalent functionality
+  - Use search patterns based on what you learned externally
+- Generate targeted search queries
+
+**Phase 2: Local Evidence Gathering**
+- For EACH external feature, search the local codebase
+- Read ALL potentially relevant local files
+- Note specific implementations with file paths and line numbers
+
+**Phase 4: Assumption Check**
+- List assumptions you're making
+- Mark each: [VERIFIED] with source or [UNVERIFIED]
+- Go back to verify any unverified items
+
+**Phase 5: Synthesis**
+- Generate comparison table: External Feature | Local Equivalent | Status
+- Cite sources for each claim
+- State confidence level (HIGH/MEDIUM/LOW)
+
+**Phase 6: Recommendation Verification (MANDATORY)**
+Before presenting ANY recommendation ("We should add X"):
+- FIRST: Search local codebase for equivalent (Glob/Grep)
+- SECOND: Read at least one potentially relevant file
+- THIRD: Mark recommendation status:
+  - **EXISTS**: Already implemented → DO NOT RECOMMEND
+  - **PARTIAL**: Partially implemented → Recommend enhancement
+  - **MISSING**: Not implemented → Safe to recommend
+- Include verification evidence: "Searched: [patterns], Read: [files], Status: [status]"
+- **ONLY recommend features marked MISSING or PARTIAL**
+
+### FORBIDDEN:
+- Starting with local research before understanding the external tool
+- Recommending features without verifying they don't already exist
+- Claiming local codebase lacks something without exhaustive search
+- Skipping Phase 6 verification for ANY recommendation
+
+Proceed with Phase 0 (external research) now.`;
 }
 
 /**

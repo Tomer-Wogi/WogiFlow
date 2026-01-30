@@ -7,16 +7,25 @@
  * gathering before AI agents make claims or answer questions.
  *
  * This module implements the Zero-Trust Research Protocol:
+ *
+ * For EXTERNAL COMPARISON research ("What can we learn from X?"):
+ * - Phase 0: External Research - Understand what X has FIRST
+ * - Phase 1: Scope Mapping - Identify local files to compare (informed by Phase 0)
+ * - Phase 2: Local Evidence Gathering - Read local files for each external finding
+ * - Phase 3: (skipped for comparison - already did external in Phase 0)
+ * - Phase 4: Assumption Check - List and verify assumptions
+ * - Phase 5: Synthesis - Generate research report with citations
+ * - Phase 6: Recommendation Verification - Verify each recommendation doesn't already exist
+ *
+ * For STANDARD research (capability, existence, architecture questions):
  * - Phase 1: Scope Mapping - Identify all relevant files and sources
  * - Phase 2: Local Evidence Gathering - Read all files in scope
  * - Phase 3: External Verification - Web search for external tools
  * - Phase 4: Assumption Check - List and verify assumptions
  * - Phase 5: Synthesis - Generate research report with citations
- * - Phase 6: Recommendation Verification - For comparison research, verify
- *            each recommendation against local codebase before presenting
  *
- * Phase 6 is critical for comparison research ("What can we learn from X?")
- * to prevent recommending features that already exist in the codebase.
+ * Phase 0 is critical for comparison research because you need to know what the
+ * external tool HAS before you can search locally for equivalent features.
  */
 
 const fs = require('fs');
@@ -454,32 +463,89 @@ function addExternalSourcesToScope(scope, sources) {
 // ============================================================
 
 /**
+ * Check if a question is about external comparison
+ * @param {string} question - The question to check
+ * @returns {boolean} True if this is external comparison research
+ */
+function isExternalComparisonQuestion(question) {
+  if (!question || typeof question !== 'string') return false;
+
+  // Check if it matches comparison patterns
+  const isComparison = QUESTION_PATTERNS.comparison.some(p => p.test(question));
+  if (!isComparison) return false;
+
+  // External comparison indicators - mentions external entity
+  const externalIndicators = [
+    /\bfrom\s+[\w-]+/i,           // "from Crush", "from React"
+    /\b(repository|repo|project|tool|library|framework)\b/i,
+    /https?:\/\//i,               // Contains URL
+    /github\.com/i,               // GitHub reference
+    /\btheir\b/i,                 // "their approach"
+    /\b(external|other|another)\b/i
+  ];
+
+  return externalIndicators.some(p => p.test(question));
+}
+
+/**
  * Create a new research session
  * @param {string} question - The research question
  * @param {string} depth - Research depth
+ * @param {Object} options - Optional configuration
+ * @param {string} options.questionType - Pre-classified question type (if known)
  * @returns {Object} Research session
  */
-function createResearchSession(question, depth = DEPTHS.STANDARD) {
+function createResearchSession(question, depth = DEPTHS.STANDARD, options = {}) {
   const scope = createResearchScope(question, depth);
+
+  // Determine if this is external comparison research
+  const isExternalComparison = options.questionType === 'comparison' ||
+    isExternalComparisonQuestion(question);
+
+  // Build phases based on question type
+  const phases = {};
+
+  // Phase 0: External Research (only for external comparison questions)
+  if (isExternalComparison) {
+    phases.externalResearch = {
+      status: 'pending',
+      completedAt: null,
+      findings: [],        // What the external tool/project has
+      externalSources: []  // URLs/repos researched
+    };
+  }
+
+  // Standard phases (1-5)
+  phases.scopeMapping = { status: 'pending', completedAt: null };
+  phases.localEvidence = { status: 'pending', completedAt: null };
+
+  // Phase 3: External Verification - skip for comparison (already did Phase 0)
+  if (!isExternalComparison) {
+    phases.externalVerification = { status: 'pending', completedAt: null };
+  }
+
+  phases.assumptionCheck = { status: 'pending', completedAt: null };
+  phases.synthesis = { status: 'pending', completedAt: null };
+
+  // Phase 6: Recommendation Verification (especially important for comparison)
+  phases.recommendationVerification = {
+    status: 'pending',
+    completedAt: null,
+    recommendations: []
+  };
 
   return {
     id: scope.id,
     question,
     depth,
     scope,
+    isExternalComparison,  // Flag for flow control
     assumptions: [],
     evidence: [],
     findings: [],
     conclusion: null,
     status: 'active',
-    phases: {
-      scopeMapping: { status: 'pending', completedAt: null },
-      localEvidence: { status: 'pending', completedAt: null },
-      externalVerification: { status: 'pending', completedAt: null },
-      assumptionCheck: { status: 'pending', completedAt: null },
-      synthesis: { status: 'pending', completedAt: null },
-      recommendationVerification: { status: 'pending', completedAt: null, recommendations: [] }
-    },
+    phases,
     createdAt: new Date().toISOString(),
     completedAt: null
   };
@@ -994,6 +1060,7 @@ module.exports = {
   // Question Classification
   classifyQuestion,
   shouldAutoTrigger,
+  isExternalComparisonQuestion,
 
   // Assumption Tracking
   createAssumption,

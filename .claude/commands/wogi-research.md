@@ -24,45 +24,74 @@ This command is **automatically triggered** (when strict mode is enabled) for:
 
 ## Research Protocol Phases
 
-### Phase 1: Scope Mapping
+There are two flows depending on question type:
+
+### Standard Flow (Capability, Existence, Architecture Questions)
+
+For questions like "Does X support Y?" or "How does X work?":
+
+**Phase 1: Scope Mapping**
 - Identify all potentially relevant local files
 - Identify external tools/libraries mentioned
 - Generate search keywords
-- Create `research-scope.json`
 
-### Phase 2: Local Evidence Gathering
+**Phase 2: Local Evidence Gathering**
 - Read ALL files identified in scope (not just the first match)
 - Extract relevant code snippets and documentation
-- Log findings to research notes
 - **DO NOT SKIP FILES** - partial reading leads to false conclusions
 
-### Phase 3: External Verification
+**Phase 3: External Verification**
 - For each external tool/library:
   - Web search: "[tool] documentation [feature] [current year]"
   - Read official docs (top 3 results minimum)
-  - Extract quotes with URLs
 - **ASSUME training data is 2+ years stale**
 
-### Phase 4: Assumption Check
+**Phase 4: Assumption Check**
 - List ALL assumptions made during research
-- Tag each assumption:
-  - `[VERIFIED]` with HIGH confidence + source
-  - `[UNVERIFIED]` with LOW confidence - **MUST be verified before proceeding**
+- Tag each: `[VERIFIED]` with source or `[UNVERIFIED]`
 - Loop back to Phase 2/3 for any unverified assumptions
 
-### Phase 5: Synthesis
-- Generate research report with:
-  - Answer to original question
-  - Evidence chain (every claim → source)
-  - Confidence level (HIGH/MEDIUM/LOW)
-  - Caveats and uncertainties
-  - List of searches performed
+**Phase 5: Synthesis**
+- Generate research report with citations
+- State confidence level (HIGH/MEDIUM/LOW)
 
-### Phase 6: Recommendation Verification (Comparison Research)
+---
 
-**When to apply:** For comparison questions ("What can we learn from X?")
+### Comparison Flow (External-First)
 
-Before presenting any recommendation ("We should add X", "Consider implementing Y"):
+For questions like "What can we learn from X?" or "How does X compare to Y?":
+
+**⚠️ CRITICAL: Do external research FIRST**
+
+You're comparing an external tool to your codebase. You must understand what the external tool HAS before you can search locally for equivalents.
+
+**Phase 0: External Research (DO THIS FIRST)**
+- Web search the external tool/repository
+- Read their documentation, README, source code
+- List the features, patterns, or approaches they have
+- **OUTPUT**: A clear list of "External tool X has: [features]"
+
+**Phase 1: Scope Mapping (informed by Phase 0)**
+- For EACH feature found in Phase 0:
+  - Identify local files that might have equivalent functionality
+  - Use search patterns based on what you learned externally
+
+**Phase 2: Local Evidence Gathering**
+- For EACH external feature, search the local codebase
+- Read ALL potentially relevant local files
+- Note specific implementations with file paths
+
+**Phase 4: Assumption Check**
+- List assumptions, mark [VERIFIED] or [UNVERIFIED]
+- Verify anything uncertain
+
+**Phase 5: Synthesis**
+- Generate comparison table: External Feature | Local Equivalent | Status
+- Cite sources for each claim
+
+**Phase 6: Recommendation Verification (MANDATORY)**
+
+Before presenting ANY recommendation ("We should add X"):
 
 1. **Search local codebase** for equivalent functionality
    - Use Glob/Grep with relevant patterns
@@ -70,9 +99,9 @@ Before presenting any recommendation ("We should add X", "Consider implementing 
 2. **Read at least one potentially relevant file**
    - Don't just search - actually read the code
 3. **Mark each recommendation**:
-   - `EXISTS` - Already implemented (DO NOT recommend)
-   - `PARTIAL` - Partially implemented (recommend enhancement)
-   - `MISSING` - Not implemented (safe to recommend)
+   - `EXISTS` - Already implemented → **DO NOT recommend**
+   - `PARTIAL` - Partially implemented → Recommend enhancement
+   - `MISSING` - Not implemented → Safe to recommend
 4. **Include verification evidence** in output:
    ```
    Searched: [patterns used]
@@ -80,7 +109,7 @@ Before presenting any recommendation ("We should add X", "Consider implementing 
    Status: EXISTS/PARTIAL/MISSING
    ```
 
-**Only recommend features marked MISSING or PARTIAL.**
+**ONLY recommend features marked MISSING or PARTIAL.**
 
 This phase prevents recommending features that already exist in the codebase.
 
