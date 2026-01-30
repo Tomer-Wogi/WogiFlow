@@ -1321,17 +1321,17 @@
       }
     },
     "updateKnowledgeBase": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "afterTask"
     },
     "updateChangelog": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "beforeCommit"
     },
     "codeComplexityCheck": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
@@ -1347,13 +1347,14 @@
       }
     },
     "codeSimplifier": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "afterTask",
       "config": {
         "maxFunctionLines": 50,
         "maxNestingDepth": 3,
-        "suggestExtraction": true
+        "suggestExtraction": true,
+        "requireVerificationAfterApply": true
       }
     },
     "codeReview": {
@@ -1382,7 +1383,7 @@
       }
     },
     "silentFailureHunter": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
@@ -1393,7 +1394,7 @@
       }
     },
     "commentAnalyzer": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
