@@ -306,11 +306,77 @@ Test flows are stored in: .workflow/tests/flows/*.json
   }
 }
 
+/**
+ * Format browser test suggestion for display
+ * Used after task completion to suggest relevant tests
+ */
+function formatSuggestion(result, taskId) {
+  if (!result.suggested) {
+    return null;
+  }
+
+  const lines = [
+    '',
+    colors.cyan + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset,
+    colors.cyan + '🧪 Browser Tests Available' + colors.reset,
+    colors.cyan + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset,
+    '',
+    'This task modified UI files. Consider running browser tests',
+    'to verify the changes work correctly.',
+    '',
+    colors.yellow + 'Matching test flows:' + colors.reset
+  ];
+
+  result.flows.forEach(f => {
+    lines.push(`  - ${f}`);
+  });
+
+  lines.push('');
+  lines.push(colors.dim + `Run: /wogi-test-browser ${result.flows[0]}` + colors.reset);
+
+  if (result.flows.length > 1) {
+    lines.push(colors.dim + 'Or run all: /wogi-test-browser all' + colors.reset);
+  }
+
+  lines.push('');
+  lines.push(colors.cyan + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' + colors.reset);
+
+  return lines.join('\n');
+}
+
+/**
+ * Check if browser tests should be suggested after task completion
+ * Called by task completion flow
+ */
+function shouldSuggestAfterTask(taskId, taskData = {}) {
+  const config = getConfig();
+  const browserConfig = config.browserTesting || {};
+
+  // Check if auto-suggestion is enabled
+  if (!browserConfig.enabled || !browserConfig.runOnTaskComplete) {
+    return { suggest: false, reason: 'Auto-suggestion disabled' };
+  }
+
+  const result = suggestBrowserTests(taskId, taskData);
+
+  if (result.suggested) {
+    return {
+      suggest: true,
+      flows: result.flows,
+      formatted: formatSuggestion(result, taskId)
+    };
+  }
+
+  return { suggest: false, reason: result.reason };
+}
+
 // Export for use by other modules
 module.exports = {
   suggestBrowserTests,
   isUITask,
   findMatchingFlows,
   getTaskFiles,
-  listFlows
+  listFlows,
+  formatSuggestion,
+  shouldSuggestAfterTask
 };
