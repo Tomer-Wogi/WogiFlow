@@ -207,6 +207,14 @@ function generateResearchProtocolSteps(question, type, depth) {
 - State confidence level (HIGH/MEDIUM/LOW)
 - Acknowledge what you couldn't verify
 
+**Phase 6: Recommendation Verification (for comparison research)**
+If you're about to recommend "Add feature X" or "We should implement Y":
+- FIRST: Search local codebase for equivalent (Glob/Grep)
+- SECOND: Read at least one potentially relevant file
+- THIRD: Mark recommendation as EXISTS/PARTIAL/MISSING
+- ONLY recommend features marked MISSING
+- Include verification evidence: "Searched: [patterns], Read: [files], Status: [EXISTS/PARTIAL/MISSING]"
+
 ### FORBIDDEN:
 - Claiming "X doesn't exist" without exhaustive search
 - Using training data for external tool capabilities
