@@ -1,18 +1,7 @@
 {
-  "lastUpdated": "2026-01-30T11:22:00.000Z",
+  "lastUpdated": "2026-01-30T11:30:00.000Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-e444ecc5",
-      "title": "Add auto-generated tool documentation for MCP tools",
-      "type": "story",
-      "feature": "mcp-integration",
-      "status": "ready",
-      "priority": "P3",
-      "description": "Scan MCP servers and generate tool documentation for AI context injection.",
-      "createdAt": "2026-01-30T10:00:00.000Z",
-      "source": "crush-research"
-    },
     {
       "id": "wf-80c41aef",
       "title": "Add background task execution for non-blocking operations",
@@ -36,6 +25,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e444ecc5",
+      "title": "Add auto-generated tool documentation for MCP tools",
+      "type": "story",
+      "feature": "mcp-integration",
+      "status": "completed",
+      "priority": "P3",
+      "description": "Scan MCP servers and generate tool documentation for AI context injection.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "startedAt": "2026-01-30T11:28:00.000Z",
+      "completedAt": "2026-01-30T11:30:00.000Z",
+      "source": "crush-research"
+    },
     {
       "id": "wf-0bff91f3",
       "title": "Implement permission persistence with session vs permanent choice",
@@ -128,18 +130,6 @@
       "createdAt": "2026-01-30T08:41:57.109Z",
       "startedAt": "2026-01-30T08:42:00.000Z",
       "completedAt": "2026-01-30T08:50:00.000Z"
-    },
-    {
-      "id": "wf-3430d135",
-      "title": "Add --dry-run flag to flow story to prevent test task pollution",
-      "type": "story",
-      "feature": "task-management",
-      "status": "completed",
-      "priority": "P2",
-      "description": "Add a --dry-run flag to flow story command that previews what would be created without writing files or adding to ready.json. This prevents test tasks from polluting the production queue.",
-      "createdAt": "2026-01-30T08:26:53.946Z",
-      "startedAt": "2026-01-30T08:27:00.000Z",
-      "completedAt": "2026-01-30T08:35:00.000Z"
     }
   ],
   "backlog": []

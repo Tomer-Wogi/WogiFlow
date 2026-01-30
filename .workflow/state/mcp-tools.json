@@ -1,0 +1,254 @@
+{
+  "scannedAt": "2026-01-30T11:25:35.928Z",
+  "servers": {
+    "index": {
+      "path": "mcp-memory-server/index.js",
+      "tools": [
+        {
+          "name": "remember_fact",
+          "description": "Store a fact in memory. Use scope: ",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "recall_facts",
+          "description": "Retrieve facts from memory using semantic search",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "forget_fact",
+          "description": "Remove a fact from memory",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "propose_team_rule",
+          "description": "Propose a new rule for team approval (requires subscription)",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "get_pending_proposals",
+          "description": "Get proposals awaiting approval",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "vote_proposal",
+          "description": "Vote on a proposal (requires subscription)",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "store_prd",
+          "description": "Store project PRD/documentation for context retrieval",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "get_prd_context",
+          "description": "Retrieve relevant PRD context for a task",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        },
+        {
+          "name": "get_memory_stats",
+          "description": "Get statistics about stored memories",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "mcp-memory-server/index.js"
+        }
+      ],
+      "toolCount": 9
+    },
+    "figma": {
+      "path": "scripts/flow-figma-mcp-server.js",
+      "tools": [
+        {
+          "name": "wogi_figma_analyze",
+          "description": "Analyze a Figma screen/component and match against your codebase. Returns components with match suggestions (use existing, add variant, or create new).",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "scripts/flow-figma-mcp-server.js"
+        },
+        {
+          "name": "wogi_figma_registry",
+          "description": "Get or scan the component registry from the codebase. Shows all existing components that can be reused.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "scripts/flow-figma-mcp-server.js"
+        },
+        {
+          "name": "wogi_figma_match",
+          "description": "Match a single extracted Figma component against the registry.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "scripts/flow-figma-mcp-server.js"
+        },
+        {
+          "name": "wogi_figma_generate",
+          "description": "Generate code prompts and imports from confirmed component decisions.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {}
+          },
+          "sourceFile": "scripts/flow-figma-mcp-server.js"
+        }
+      ],
+      "toolCount": 4
+    }
+  },
+  "allTools": [
+    {
+      "name": "remember_fact",
+      "description": "Store a fact in memory. Use scope: ",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "recall_facts",
+      "description": "Retrieve facts from memory using semantic search",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "forget_fact",
+      "description": "Remove a fact from memory",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "propose_team_rule",
+      "description": "Propose a new rule for team approval (requires subscription)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "get_pending_proposals",
+      "description": "Get proposals awaiting approval",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "vote_proposal",
+      "description": "Vote on a proposal (requires subscription)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "store_prd",
+      "description": "Store project PRD/documentation for context retrieval",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "get_prd_context",
+      "description": "Retrieve relevant PRD context for a task",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "get_memory_stats",
+      "description": "Get statistics about stored memories",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "mcp-memory-server/index.js"
+    },
+    {
+      "name": "wogi_figma_analyze",
+      "description": "Analyze a Figma screen/component and match against your codebase. Returns components with match suggestions (use existing, add variant, or create new).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "scripts/flow-figma-mcp-server.js"
+    },
+    {
+      "name": "wogi_figma_registry",
+      "description": "Get or scan the component registry from the codebase. Shows all existing components that can be reused.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "scripts/flow-figma-mcp-server.js"
+    },
+    {
+      "name": "wogi_figma_match",
+      "description": "Match a single extracted Figma component against the registry.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "scripts/flow-figma-mcp-server.js"
+    },
+    {
+      "name": "wogi_figma_generate",
+      "description": "Generate code prompts and imports from confirmed component decisions.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      },
+      "sourceFile": "scripts/flow-figma-mcp-server.js"
+    }
+  ],
+  "totalTools": 13
+}

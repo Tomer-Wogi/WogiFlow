@@ -326,6 +326,13 @@ show_help() {
     echo "  permissions clear-session Clear all session permissions"
     echo "  permissions check <op>   Check if permission is granted"
     echo ""
+    echo "MCP Tool Documentation:"
+    echo "  mcp-docs scan            Scan MCP servers and extract tool info"
+    echo "  mcp-docs list            List discovered MCP tools"
+    echo "  mcp-docs show <tool>     Show details for a specific tool"
+    echo "  mcp-docs generate        Generate markdown documentation"
+    echo "  mcp-docs context [task]  Get relevant MCP tools for a task"
+    echo ""
     echo "Memory & Knowledge (v1.8):"
     echo "  memory search <query>  Search stored facts"
     echo "  memory stats           Show memory statistics"
@@ -1006,6 +1013,10 @@ case "${1:-}" in
     permissions)
         # Permission management (session vs permanent)
         node "$SCRIPT_DIR/flow-permissions.js" "${@:2}"
+        ;;
+    mcp-docs)
+        # MCP tool documentation generator
+        node "$SCRIPT_DIR/flow-mcp-docs.js" "${@:2}"
         ;;
     version|--version|-v)
         show_version
