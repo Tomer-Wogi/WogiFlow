@@ -118,6 +118,11 @@ const TASK_TYPE_ROUTING = {
     preferTier: 'standard',
     capabilities: ['code-gen'],
     description: 'Test writing needs good code generation'
+  },
+  metadata: {
+    preferTier: 'economy',
+    capabilities: ['analysis'],
+    description: 'Simple classification tasks (file types, syntax detection, categorization)'
   }
 };
 

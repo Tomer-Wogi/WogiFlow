@@ -139,7 +139,7 @@ const LANGUAGE_PATTERNS = {
 const CAPABILITY_REQUIREMENTS = {
   'reasoning': ['architecture', 'design', 'system', 'algorithm', 'optimize', 'complex'],
   'code-gen': ['implement', 'create', 'add', 'build', 'feature', 'component'],
-  'analysis': ['review', 'analyze', 'audit', 'evaluate', 'assess'],
+  'analysis': ['review', 'analyze', 'audit', 'evaluate', 'assess', 'classify', 'detect', 'categorize', 'metadata'],
   'structured-output': ['schema', 'json', 'config', 'template', 'format'],
   'vision': ['design', 'figma', 'screenshot', 'mockup', 'ui'],           // Future: multimodal models
   'extended-thinking': ['difficult', 'challenging', 'intricate', 'debug'] // Future: o1-style models
@@ -387,7 +387,11 @@ function estimateTokens(analysis) {
  * @returns {Object} Complete analysis
  */
 function analyzeTask(params) {
-  const { title, description = '', type = 'feature', acceptanceCriteria = [] } = params;
+  // Handle string input (just title/description)
+  const isString = typeof params === 'string';
+  const { title, description = '', type: inputType = 'feature', acceptanceCriteria = [] } = isString
+    ? { title: params, description: '' }
+    : params;
 
   // Combine all text for analysis
   const text = [
@@ -395,6 +399,22 @@ function analyzeTask(params) {
     description,
     ...acceptanceCriteria
   ].join(' ');
+
+  // Auto-detect metadata task type if not explicitly set
+  let type = inputType;
+  if (type === 'feature') {
+    const lowerText = text.toLowerCase();
+    if (
+      lowerText.includes('classify') ||
+      lowerText.includes('detect') ||
+      lowerText.includes('categorize') ||
+      lowerText.includes('metadata') ||
+      lowerText.includes('file type') ||
+      lowerText.includes('syntax detection')
+    ) {
+      type = 'metadata';
+    }
+  }
 
   // Run all analyses
   const complexity = analyzeComplexity(text, type);
@@ -450,12 +470,22 @@ function parseStoryFile(filePath) {
 
     // Extract task type from content
     let type = 'feature';
-    if (content.includes('bugfix') || content.includes('fix bug')) {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('bugfix') || lowerContent.includes('fix bug')) {
       type = 'bugfix';
-    } else if (content.includes('refactor')) {
+    } else if (lowerContent.includes('refactor')) {
       type = 'refactor';
-    } else if (content.includes('architecture')) {
+    } else if (lowerContent.includes('architecture')) {
       type = 'architecture';
+    } else if (
+      lowerContent.includes('classify') ||
+      lowerContent.includes('detect') ||
+      lowerContent.includes('categorize') ||
+      lowerContent.includes('metadata') ||
+      lowerContent.includes('file type') ||
+      lowerContent.includes('syntax detection')
+    ) {
+      type = 'metadata';
     }
 
     return {
