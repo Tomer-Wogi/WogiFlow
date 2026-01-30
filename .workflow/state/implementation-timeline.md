@@ -3,6 +3,7 @@
 ## 2026-01
 
 ### Week 5 (Jan 25-31)
+- [x] wf-917c85b7: Implement Video Methodologies: Prompt Capture, Correction Detection, and Bulk Loop (Jan 30)
 - [x] wf-36d79345: Fix security issues in browser testing: raw JSON.parse, command injection, path traversal (Jan 30)
 
 ### Week 3 (Jan 11-17)

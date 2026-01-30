@@ -69,6 +69,14 @@ try {
   // Aggregation module not available
 }
 
+// v5.1 correction detection and review
+let correctionDetector = null;
+try {
+  correctionDetector = require('./flow-correction-detector');
+} catch (_err) {
+  // Correction detector module not available
+}
+
 // v8.0 permission persistence (Crush research wf-0bff91f3)
 let permissions = null;
 try {
@@ -298,6 +306,67 @@ function checkForPromotionCandidates() {
     console.log('');
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Aggregation check: ${err.message}`);
+  }
+}
+
+/**
+ * Review pending corrections detected during session (v5.1)
+ * Shows corrections that were automatically detected and queued for review
+ */
+function reviewPendingCorrections() {
+  if (!correctionDetector) return;
+
+  try {
+    const pending = correctionDetector.getPendingCorrections();
+
+    if (!pending || pending.length === 0) return;
+
+    console.log('');
+    console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
+    console.log(color('cyan', '║  Detected Corrections This Session                        ║'));
+    console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
+    console.log('');
+
+    console.log(color('dim', `${pending.length} potential correction(s) were detected during this session:`));
+    console.log('');
+
+    for (let i = 0; i < Math.min(pending.length, 5); i++) {
+      const correction = pending[i];
+      const confidenceColor = correction.confidence >= 80 ? 'green' :
+                              correction.confidence >= 60 ? 'yellow' : 'dim';
+
+      const truncatedMsg = correction.userMessage?.length > 60
+        ? correction.userMessage.slice(0, 60) + '...'
+        : correction.userMessage || '(empty)';
+
+      console.log(`  ${i + 1}. ${color(confidenceColor, `[${correction.confidence}%]`)} ${correction.correctionType || 'unknown'}`);
+      console.log(`     "${truncatedMsg}"`);
+
+      if (correction.whatWasWrong) {
+        console.log(`     ${color('dim', `Issue: ${correction.whatWasWrong}`)}`);
+      }
+      if (correction.whatUserWants) {
+        console.log(`     ${color('dim', `Wanted: ${correction.whatUserWants}`)}`);
+      }
+      console.log('');
+    }
+
+    if (pending.length > 5) {
+      console.log(color('dim', `  ... and ${pending.length - 5} more`));
+      console.log('');
+    }
+
+    console.log(color('yellow', 'To save these as permanent corrections, run:'));
+    console.log(color('dim', '  flow correction-detector pending    # View all'));
+    console.log(color('dim', '  /wogi-correct "pattern"             # Save specific pattern'));
+    console.log('');
+
+    // Clear pending corrections after showing them
+    correctionDetector.clearPendingCorrections();
+    console.log(color('dim', '(Pending corrections cleared after review)'));
+
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Correction review: ${err.message}`);
   }
 }
 
@@ -946,6 +1015,9 @@ async function main() {
 
   // v7.0: Check for patterns ready for promotion
   checkForPromotionCandidates();
+
+  // v5.1: Review pending corrections detected during session
+  reviewPendingCorrections();
 
   // v6.0: Analyze cross-session patterns
   const crossSessionResult = analyzeCrossSessionPatterns();

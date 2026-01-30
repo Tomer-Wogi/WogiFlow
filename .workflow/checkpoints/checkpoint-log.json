@@ -1,0 +1,18 @@
+[
+  {
+    "id": "cp-2026-01-30T17-39-44",
+    "timestamp": "2026-01-30T17:39:44.912Z",
+    "step": 0,
+    "message": "Task complete: wf-36d79345 - Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
+    "gitCommit": null,
+    "stateSnapshot": {
+      "state/ready.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/state_ready.json",
+      "state/request-log.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/state_request-log.md",
+      "state/app-map.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/state_app-map.md",
+      "state/decisions.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/state_decisions.md",
+      "state/progress.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/state_progress.md",
+      "config.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/config.json"
+    },
+    "filesTracked": []
+  }
+]

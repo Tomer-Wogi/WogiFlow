@@ -1,10 +1,27 @@
 {
-  "taskId": "wf-cc-005",
-  "timestamp": "2026-01-14T08:22:49.800Z",
-  "failedGates": [
-    "loopComplete"
+  "taskId": "wf-917c85b7",
+  "timestamp": "2026-01-30T22:03:19.756Z",
+  "type": "spec-verification",
+  "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-917c85b7.md",
+  "missing": [
+    {
+      "path": ".workflow/state/prompt-history.json",
+      "type": "new",
+      "section": "## Technical Notes",
+      "error": "File does not exist"
+    },
+    {
+      "path": ".workflow/state/clarifications.md",
+      "type": "new",
+      "section": "## Technical Notes",
+      "error": "File does not exist"
+    },
+    {
+      "path": ".workflow/state/pending-corrections.json",
+      "type": "new",
+      "section": "## Technical Notes",
+      "error": "File does not exist"
+    }
   ],
-  "errors": {
-    "loopComplete": "🚫 LOOP ENFORCEMENT ACTIVE\n────────────────────────────────────────\n\nTask: wf-cc-005\nIteration: 0\nRetries: 0\n\n⏳ Pending (1):\n   • Document MCP auto-search mode behavior in knowledge base\n\n────────────────────────────────────────\n🔄 You must complete all criteria before exiting."
-  }
+  "invalid": []
 }

@@ -41,6 +41,9 @@ const { runSteps, getAllSteps } = require('./flow-workflow-steps');
 // v2.0 durable session support
 const { loadDurableSession, archiveDurableSession } = require('./flow-durable-session');
 
+// v5.1 prompt capture and clarification learning
+const { processTaskCompletion, getRefinementCount } = require('./flow-prompt-capture');
+
 // v2.1 task enforcement as explicit quality gate
 const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
@@ -1148,6 +1151,61 @@ async function main() {
     }
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Durable session archive: ${err.message}`);
+  }
+
+  // v5.1: Process prompt capture and generate clarification learning entry if needed
+  try {
+    const taskTitle = result.task?.title || taskId;
+    const learningResult = processTaskCompletion(taskId, taskTitle);
+
+    if (learningResult.generated) {
+      console.log('');
+      console.log(color('cyan', '━'.repeat(40)));
+      console.log(color('cyan', '📝 Clarification Learning'));
+      console.log(color('cyan', '━'.repeat(40)));
+      console.log(`Refinements during task: ${learningResult.refinementCount}`);
+      console.log(`Learning entry created: ${learningResult.entry.id}`);
+      console.log(color('dim', 'See .workflow/state/clarifications.md for details'));
+
+      // v5.1.1: Flag high-refinement patterns (3+) to feedback-patterns.md
+      if (learningResult.refinementCount >= 3) {
+        try {
+          const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
+          const today = new Date().toISOString().split('T')[0];
+          const truncatedInitial = learningResult.entry.initial?.length > 50
+            ? learningResult.entry.initial.slice(0, 50) + '...'
+            : learningResult.entry.initial || 'unclear request';
+
+          const patternEntry = `| ${today} | high-refinement-request | "${truncatedInitial}" | 1 | Monitor |\n`;
+
+          // Append to feedback-patterns.md
+          if (fileExists(feedbackPath)) {
+            const content = readFile(feedbackPath, '');
+            // Find the auto-captured patterns section or append at end
+            if (content.includes('## Auto-Captured Patterns')) {
+              // Insert after the table header
+              const tableMatch = content.match(/(## Auto-Captured Patterns[\s\S]*?\|---.*?\|)\n/);
+              if (tableMatch) {
+                const insertPoint = tableMatch.index + tableMatch[0].length;
+                const newContent = content.slice(0, insertPoint) + patternEntry + content.slice(insertPoint);
+                fs.writeFileSync(feedbackPath, newContent);
+              }
+            }
+          }
+
+          console.log(color('yellow', `⚠ High-refinement pattern flagged (${learningResult.refinementCount} clarifications needed)`));
+          console.log(color('dim', 'Consider adding clearer guidance to decisions.md'));
+        } catch (flagErr) {
+          if (process.env.DEBUG) console.error(`[DEBUG] High-refinement flagging: ${flagErr.message}`);
+        }
+      }
+
+      console.log(color('cyan', '━'.repeat(40)));
+    } else if (process.env.DEBUG) {
+      console.log(color('dim', `No clarification learning needed: ${learningResult.reason}`));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Clarification learning: ${err.message}`);
   }
 
   // v1.7.0: Track task completion in session state and memory blocks

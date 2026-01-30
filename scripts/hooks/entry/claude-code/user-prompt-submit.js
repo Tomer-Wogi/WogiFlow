@@ -10,7 +10,9 @@
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { markSkillPending } = require('../../../flow-durable-session');
+const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
+const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
+const { processMessageForCorrection } = require('../../../flow-correction-detector');
 
 // Maximum stdin size to prevent DoS (100KB should be more than enough for prompts)
 const MAX_STDIN_SIZE = 100 * 1024;
@@ -62,6 +64,41 @@ async function main() {
         markSkillPending(skillName, { prompt });
         if (process.env.DEBUG) {
           console.error(`[Hook] Marked /${skillName} as pending execution`);
+        }
+      }
+    }
+
+    // v5.0: Capture prompt for learning system (non-blocking)
+    // Captures all user prompts during task execution for refinement detection
+    if (typeof prompt === 'string' && prompt.trim().length > 0) {
+      try {
+        captureCurrentPrompt(prompt);
+      } catch (err) {
+        // Non-blocking - don't fail the hook if capture fails
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Prompt capture failed: ${err.message}`);
+        }
+      }
+    }
+
+    // v5.1: Detect corrections for learning system (non-blocking, fire-and-forget)
+    // Uses regex-only detection in hook (API calls would slow down hook)
+    // Queues corrections for user review at session end
+    if (typeof prompt === 'string' && prompt.trim().length > 0) {
+      try {
+        const session = loadDurableSession();
+        const taskId = session?.taskId || null;
+        // Fire-and-forget - don't await to avoid blocking the hook
+        // Use regex fallback only in hook context for speed
+        processMessageForCorrection(prompt, { taskId }).catch(err => {
+          if (process.env.DEBUG) {
+            console.error(`[Hook] Correction detection failed: ${err.message}`);
+          }
+        });
+      } catch (err) {
+        // Non-blocking - don't fail the hook if detection fails
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Correction detection setup failed: ${err.message}`);
         }
       }
     }

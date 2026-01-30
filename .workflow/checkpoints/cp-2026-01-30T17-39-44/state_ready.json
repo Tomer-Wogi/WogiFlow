@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-01-30T22:03:29.036Z",
+  "lastUpdated": "2026-01-30T17:39:44.429Z",
   "inProgress": [],
   "ready": [
     {
@@ -14,16 +14,6 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
-    {
-      "id": "wf-917c85b7",
-      "title": "Implement Video Methodologies: Prompt Capture, Correction Detection, and Bulk Loop",
-      "type": "story",
-      "feature": "learning-system",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-01-30T21:55:35.632Z",
-      "completedAt": "2026-01-30T22:03:29.035Z"
-    },
     {
       "id": "wf-36d79345",
       "title": "Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
