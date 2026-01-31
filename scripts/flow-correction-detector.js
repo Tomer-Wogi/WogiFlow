@@ -140,17 +140,35 @@ Respond with JSON only (no markdown, no explanation):
 
     // Parse JSON from response
     const content = response.content.trim();
-    // Handle potential markdown code blocks
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    // Handle potential markdown code blocks - use non-greedy match for first complete JSON object
+    const jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
     if (!jsonMatch) {
       return { available: false, reason: 'invalid-json' };
     }
 
-    const result = JSON.parse(jsonMatch[0]);
+    let result;
+    try {
+      result = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      return { available: false, reason: 'json-parse-error' };
+    }
+
+    // Validate expected schema fields
+    if (typeof result.isCorrection !== 'boolean') {
+      return { available: false, reason: 'invalid-schema-isCorrection' };
+    }
+    if (typeof result.confidence !== 'number' || result.confidence < 0 || result.confidence > 100) {
+      return { available: false, reason: 'invalid-schema-confidence' };
+    }
+
     return {
       available: true,
       method: 'semantic',
-      ...result
+      isCorrection: result.isCorrection,
+      confidence: result.confidence,
+      correctionType: result.correctionType || null,
+      whatWasWrong: result.whatWasWrong || null,
+      whatUserWants: result.whatUserWants || null
     };
   } catch (err) {
     if (process.env.DEBUG) {
@@ -302,6 +320,37 @@ function clearPendingCorrections() {
 }
 
 /**
+ * Cleanup stale corrections older than specified age
+ * @param {number} maxAgeMs - Maximum age in milliseconds (default: 7 days)
+ * @returns {Object} Cleanup result with count removed
+ */
+function cleanupStaleCorrections(maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
+  try {
+    const corrections = loadPendingCorrections();
+    const now = Date.now();
+
+    const fresh = corrections.filter(c => {
+      if (!c.timestamp) return false; // Remove entries without timestamp
+      const age = now - new Date(c.timestamp).getTime();
+      return age < maxAgeMs;
+    });
+
+    const removed = corrections.length - fresh.length;
+
+    if (removed > 0) {
+      savePendingCorrections(fresh);
+    }
+
+    return { removed, remaining: fresh.length };
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[DEBUG] cleanupStaleCorrections: ${err.message}`);
+    }
+    return { removed: 0, remaining: 0, error: err.message };
+  }
+}
+
+/**
  * Remove a specific correction from pending
  * @param {string} correctionId - ID of correction to remove
  * @returns {boolean} Success
@@ -440,6 +489,7 @@ module.exports = {
   getPendingCorrections,
   clearPendingCorrections,
   removePendingCorrection,
+  cleanupStaleCorrections,
 
   // High-level API
   processMessageForCorrection,

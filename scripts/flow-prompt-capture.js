@@ -237,9 +237,12 @@ function cleanupOldTasks(history) {
   }
 
   // Sort by startedAt and remove oldest
-  const sorted = taskIds
-    .filter(id => history[id].startedAt)
-    .sort((a, b) => new Date(history[a].startedAt) - new Date(history[b].startedAt));
+  // Tasks without startedAt get epoch 0 (oldest) so they're cleaned first
+  const sorted = taskIds.sort((a, b) => {
+    const dateA = history[a].startedAt ? new Date(history[a].startedAt).getTime() : 0;
+    const dateB = history[b].startedAt ? new Date(history[b].startedAt).getTime() : 0;
+    return dateA - dateB;
+  });
 
   const toRemove = sorted.slice(0, sorted.length - MAX_TASK_HISTORY);
 

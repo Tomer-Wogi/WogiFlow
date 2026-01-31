@@ -510,7 +510,8 @@ function allFeaturesComplete(epic) {
     }
     // Check if all direct stories are complete
     try {
-      const readyData = readJson(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
+      // Use safeJsonParse per security-patterns.md Rule #2
+      const readyData = safeJsonParse(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
       for (const storyId of epic.stories) {
         const isComplete = (readyData.recentlyCompleted || []).some(
           t => (typeof t === 'string' ? t : t.id) === storyId
@@ -1250,7 +1251,8 @@ async function main() {
         // Update epic progress if this task is part of it
         if (epic.stories?.includes(taskId) || epic.stories?.some(s => {
           // Check if task is a child of any story in this epic
-          const readyData = require('./flow-utils').readJson(PATHS.ready) || {};
+          // Use safeJsonParse per security-patterns.md Rule #2
+          const readyData = safeJsonParse(PATHS.ready, {});
           const allTasks = [...(readyData.ready || []), ...(readyData.inProgress || []), ...(readyData.recentlyCompleted || [])];
           return allTasks.some(t => t && typeof t === 'object' && t.parent === s && t.id === taskId);
         })) {

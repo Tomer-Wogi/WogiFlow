@@ -114,12 +114,34 @@ function findNextWork(noCreate = false) {
 }
 
 /**
+ * Safely get array from readyData with validation
+ * @param {Object} readyData - Parsed ready.json data
+ * @param {string} key - Key to extract
+ * @returns {Array} Array or empty array if invalid
+ */
+function getArraySafe(readyData, key) {
+  const value = readyData && readyData[key];
+  return Array.isArray(value) ? value : [];
+}
+
+/**
+ * Parse priority string to number safely
+ * @param {string} priority - Priority like "P0", "P1", etc.
+ * @returns {number} Priority as number (default 2)
+ */
+function parsePriority(priority) {
+  if (!priority || typeof priority !== 'string') return 2;
+  const match = priority.match(/^P(\d)$/i);
+  return match ? parseInt(match[1], 10) : 2;
+}
+
+/**
  * Get in-progress task from ready.json
  */
 function getInProgressTask() {
   try {
     const readyData = safeJsonParse(PATHS.ready, {});
-    const inProgress = readyData.inProgress || [];
+    const inProgress = getArraySafe(readyData, 'inProgress');
     return inProgress.length > 0 ? inProgress[0] : null;
   } catch (err) {
     return null;
@@ -132,15 +154,15 @@ function getInProgressTask() {
 function getNextReadyTask() {
   try {
     const readyData = safeJsonParse(PATHS.ready, {});
-    const ready = readyData.ready || [];
+    const ready = getArraySafe(readyData, 'ready');
 
     if (ready.length === 0) return null;
 
-    // Sort by priority (P0 = highest)
+    // Sort by priority (P0 = highest), using safe parsing
     const sorted = [...ready].sort((a, b) => {
-      const pa = (a.priority || 'P2').replace('P', '');
-      const pb = (b.priority || 'P2').replace('P', '');
-      return parseInt(pa) - parseInt(pb);
+      const pa = parsePriority(a && a.priority);
+      const pb = parsePriority(b && b.priority);
+      return pa - pb;
     });
 
     return sorted[0];
@@ -155,7 +177,7 @@ function getNextReadyTask() {
 function getNextCapture() {
   try {
     const readyData = safeJsonParse(PATHS.ready, {});
-    const backlog = readyData.backlog || [];
+    const backlog = getArraySafe(readyData, 'backlog');
 
     // Look for items that are raw captures (not yet stories)
     const captures = backlog.filter(item =>
@@ -369,6 +391,7 @@ async function runBulkLoop(options = {}) {
   console.log(`Mode: ${config.yolo ? color('yellow', 'YOLO (auto-approve)') : 'Standard'}`);
   console.log(`Max tasks: ${config.maxTasks === Infinity ? 'Unlimited' : config.maxTasks}`);
   console.log(`Max iterations: ${config.maxIterations}`);
+  console.log(`Timeout: ${config.loopTimeout ? formatDuration(config.loopTimeout) : 'None'}`);
   console.log(`Create stories: ${config.noCreate ? 'No' : 'Yes'}`);
   console.log(`Dry run: ${config.dryRun ? 'Yes' : 'No'}`);
   console.log('');
@@ -393,6 +416,12 @@ async function runBulkLoop(options = {}) {
 
     if (consecutiveErrors >= config.errorThreshold) {
       console.log(color('red', '✗ Error threshold exceeded. Stopping.'));
+      break;
+    }
+
+    // Check timeout (if configured)
+    if (config.loopTimeout && (Date.now() - startTime) >= config.loopTimeout) {
+      console.log(color('yellow', `⚠ Timeout reached (${formatDuration(config.loopTimeout)}). Stopping.`));
       break;
     }
 
@@ -504,21 +533,33 @@ function parseArgs(args) {
       case '--max-iterations':
         options.maxIterations = parseInt(args[++i]) || DEFAULT_CONFIG.maxIterations;
         break;
-      case '--poll-interval':
-        options.pollInterval = parseInt(args[++i]) * 1000 || DEFAULT_CONFIG.pollInterval;
+      case '--poll-interval': {
+        const pollVal = parseInt(args[++i], 10);
+        if (!isNaN(pollVal) && pollVal > 0) {
+          options.pollInterval = pollVal * 1000;
+        }
         break;
-      case '--timeout':
-        // Parse timeout like "30m", "1h", "2h"
-        const timeout = args[++i];
-        if (timeout) {
-          const match = timeout.match(/^(\d+)([mh])$/);
+      }
+      case '--timeout': {
+        // Parse timeout like "30m", "1h", "2h" with bounds checking
+        const timeoutArg = args[++i];
+        if (timeoutArg) {
+          const match = timeoutArg.match(/^(\d+)([mh])$/);
           if (match) {
-            const value = parseInt(match[1]);
+            const value = parseInt(match[1], 10);
             const unit = match[2];
-            options.timeout = unit === 'h' ? value * 60 * 60 * 1000 : value * 60 * 1000;
+            // Enforce bounds: 1 minute to 24 hours
+            const maxMinutes = unit === 'h' ? 24 * 60 : 24 * 60;
+            const minutes = unit === 'h' ? value * 60 : value;
+            if (minutes >= 1 && minutes <= maxMinutes) {
+              options.loopTimeout = minutes * 60 * 1000;
+            } else {
+              console.warn(`Warning: timeout must be between 1m and 24h, got ${timeoutArg}`);
+            }
           }
         }
         break;
+      }
       case '--help':
       case '-h':
         showHelp();

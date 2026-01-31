@@ -12,7 +12,8 @@ const { checkResearchRequirement } = require('../../core/research-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
-const { processMessageForCorrection } = require('../../../flow-correction-detector');
+const { detectCorrectionRegex, queuePendingCorrection } = require('../../../flow-correction-detector');
+const { safeJsonParseString } = require('../../../flow-utils');
 
 // Maximum stdin size to prevent DoS (100KB should be more than enough for prompts)
 const MAX_STDIN_SIZE = 100 * 1024;
@@ -39,12 +40,18 @@ async function main() {
       return;
     }
 
-    // Parse JSON safely
+    // Parse JSON safely with prototype pollution protection
     let input;
     try {
-      input = JSON.parse(inputData);
+      input = safeJsonParseString(inputData, null);
+      if (!input) {
+        // Invalid JSON - allow through (graceful degradation)
+        console.log(JSON.stringify({ continue: true, hookSpecificOutput: { hookEventName: 'UserPromptSubmit' } }));
+        process.exit(0);
+        return;
+      }
     } catch (_parseErr) {
-      // Invalid JSON - allow through (graceful degradation)
+      // Parse error - allow through (graceful degradation)
       console.log(JSON.stringify({ continue: true, hookSpecificOutput: { hookEventName: 'UserPromptSubmit' } }));
       process.exit(0);
       return;
@@ -81,24 +88,29 @@ async function main() {
       }
     }
 
-    // v5.1: Detect corrections for learning system (non-blocking, fire-and-forget)
-    // Uses regex-only detection in hook (API calls would slow down hook)
-    // Queues corrections for user review at session end
+    // v5.1: Detect corrections for learning system (non-blocking, regex-only)
+    // Uses regex-only detection in hook context (API calls would slow down hook)
+    // Semantic detection with Haiku deferred to session-end review
     if (typeof prompt === 'string' && prompt.trim().length > 0) {
       try {
-        const session = loadDurableSession();
-        const taskId = session?.taskId || null;
-        // Fire-and-forget - don't await to avoid blocking the hook
-        // Use regex fallback only in hook context for speed
-        processMessageForCorrection(prompt, { taskId }).catch(err => {
-          if (process.env.DEBUG) {
-            console.error(`[Hook] Correction detection failed: ${err.message}`);
-          }
-        });
+        // Use regex detection only in hook context for speed
+        const result = detectCorrectionRegex(prompt);
+        if (result.isCorrection && result.confidence >= 50) {
+          const session = loadDurableSession();
+          queuePendingCorrection({
+            taskId: session?.taskId || null,
+            userMessage: prompt,
+            correctionType: result.correctionType,
+            whatWasWrong: null, // Regex can't determine this
+            whatUserWants: null,
+            confidence: result.confidence,
+            method: 'regex-hook'
+          });
+        }
       } catch (err) {
         // Non-blocking - don't fail the hook if detection fails
         if (process.env.DEBUG) {
-          console.error(`[Hook] Correction detection setup failed: ${err.message}`);
+          console.error(`[Hook] Correction detection failed: ${err.message}`);
         }
       }
     }

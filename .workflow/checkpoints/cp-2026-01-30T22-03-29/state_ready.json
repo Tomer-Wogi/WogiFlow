@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-01-31T08:16:00.000Z",
+  "lastUpdated": "2026-01-30T22:03:29.036Z",
   "inProgress": [],
   "ready": [
     {
@@ -14,17 +14,6 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
-    {
-      "id": "wf-364df165",
-      "title": "Fix code review findings: validation, cleanup, and safety issues",
-      "type": "bug",
-      "priority": "P2",
-      "severity": "medium",
-      "status": "completed",
-      "createdAt": "2026-01-31T07:30:38.322Z",
-      "startedAt": "2026-01-31T07:30:42.434Z",
-      "completedAt": "2026-01-31T08:16:00.000Z"
-    },
     {
       "id": "wf-917c85b7",
       "title": "Implement Video Methodologies: Prompt Capture, Correction Detection, and Bulk Loop",

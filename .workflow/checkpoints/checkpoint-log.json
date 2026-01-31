@@ -14,5 +14,21 @@
       "config.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T17-39-44/config.json"
     },
     "filesTracked": []
+  },
+  {
+    "id": "cp-2026-01-30T22-03-29",
+    "timestamp": "2026-01-30T22:03:29.748Z",
+    "step": 0,
+    "message": "Task complete: wf-917c85b7 - Implement Video Methodologies: Prompt Capture, Correction Detection, and Bulk Loop",
+    "gitCommit": null,
+    "stateSnapshot": {
+      "state/ready.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/state_ready.json",
+      "state/request-log.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/state_request-log.md",
+      "state/app-map.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/state_app-map.md",
+      "state/decisions.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/state_decisions.md",
+      "state/progress.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/state_progress.md",
+      "config.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/config.json"
+    },
+    "filesTracked": []
   }
 ]
