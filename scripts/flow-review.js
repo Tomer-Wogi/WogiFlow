@@ -32,6 +32,14 @@ try {
   multiPassReview = null;
 }
 
+// v4.0 standards compliance checker
+let standardsChecker;
+try {
+  standardsChecker = require('./flow-standards-checker');
+} catch (err) {
+  standardsChecker = null;
+}
+
 // ============================================================
 // Get Changed Files
 // ============================================================
@@ -328,7 +336,7 @@ async function main() {
   // Help
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-Wogi Flow - Code Review
+Wogi Flow - Code Review (v4.0)
 
 Usage: flow review [options]
 
@@ -339,9 +347,22 @@ Options:
   --verify-only     Only run verification gates
   --multipass       Force multi-pass review mode
   --no-multipass    Disable auto multi-pass detection
+  --skip-standards  Skip project standards compliance check
   --task=ID         Task ID for spec verification
   --json            Output as JSON
   -h, --help        Show this help
+
+Phases:
+  1. Verification Gates - lint, typecheck, tests, spec verification
+  2. AI Review - multi-pass code/logic/security/architecture analysis
+  3. Standards Compliance - decisions.md, app-map, naming conventions (STRICT)
+
+Standards compliance (Phase 3) checks:
+  - decisions.md coding rules
+  - app-map.md component reuse (>80% similarity = violation)
+  - function-map.md utility duplication
+  - naming-conventions.md (kebab-case files, 'err' in catch blocks)
+  - security-patterns.md (raw JSON.parse, unprotected fs.readFileSync)
 
 Multi-pass is auto-enabled when:
   - 5+ files changed
@@ -449,6 +470,34 @@ Configure in config.json under review.autoMultiPass.
     });
     console.log('');
     console.log(color('dim', 'Use --multipass for automated multi-pass review.'));
+  }
+
+  // ========================================================================
+  // Phase 3: Standards Compliance Check (v4.0)
+  // ========================================================================
+  const skipStandards = args.includes('--skip-standards');
+
+  if (!skipStandards && standardsChecker) {
+    console.log('');
+    console.log(color('cyan', 'Running project standards compliance check...'));
+
+    const standardsResult = standardsChecker.runStandardsCheck(filesWithContent);
+
+    if (jsonOutput) {
+      console.log(JSON.stringify({ standards: standardsResult }, null, 2));
+    } else {
+      console.log(standardsChecker.formatStandardsResults(standardsResult));
+    }
+
+    // Block if must-fix violations found
+    if (standardsResult.blocked) {
+      console.log('');
+      console.log(color('red', '⛔ Standards violations must be fixed before completing review.'));
+      console.log(color('dim', 'All code must follow the same conventions. Fix the violations above.'));
+      process.exit(1);
+    }
+  } else if (!standardsChecker && !skipStandards) {
+    console.log(color('dim', 'Standards checker not available. Skipping Phase 3.'));
   }
 }
 

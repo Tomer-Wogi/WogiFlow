@@ -1,4 +1,6 @@
-Comprehensive code review with verification gates and AI analysis. Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents) based on file count and security patterns.
+Comprehensive code review with verification gates, AI analysis, and **STRICT project standards enforcement** (v4.0).
+
+Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents) based on file count and security patterns. Includes mandatory standards compliance check that BLOCKS completion if project conventions are violated.
 
 **Triggers**: `/wogi-review`, `/wogi-session-review`, "please review", "review what we did", "code review"
 
@@ -12,6 +14,28 @@ Comprehensive code review with verification gates and AI analysis. Auto-detects 
 /wogi-review --verify-only    # Only run verification gates
 /wogi-review --multipass      # Force multi-pass review mode
 /wogi-review --no-multipass   # Disable auto multi-pass detection
+/wogi-review --skip-standards # Skip project standards compliance check
+```
+
+## Review Phases (v4.0)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  /wogi-review                                                │
+├─────────────────────────────────────────────────────────────┤
+│  Phase 1: Verification Gates                                 │
+│     → Spec verification, lint, typecheck, tests              │
+│                                                              │
+│  Phase 2: AI Review (multi-pass or parallel)                 │
+│     → Code/Logic, Security, Architecture analysis            │
+│                                                              │
+│  Phase 3: Standards Compliance [NEW - STRICT]                │
+│     → decisions.md, app-map.md, naming-conventions.md        │
+│     → BLOCKS completion if violations found                  │
+│                                                              │
+│  Phase 4: Post-Review Workflow                               │
+│     → Fix loop, learning, task creation                      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Review Modes
@@ -465,7 +489,60 @@ To review recent commits: /wogi-review --commits 3
 To review specific files: Please stage them first with git add
 ```
 
-## Phase 3: Post-Review Workflow
+## Phase 3: Standards Compliance (v4.0 - STRICT)
+
+**This phase BLOCKS review completion if violations are found.** "All code must look like the same developer wrote it."
+
+### What It Checks
+
+| Source | What's Checked |
+|--------|----------------|
+| `decisions.md` | All documented coding rules and patterns |
+| `app-map.md` | Component duplication (>80% similarity = violation) |
+| `function-map.md` | Utility function duplication |
+| `api-map.md` | API endpoint overlap |
+| `naming-conventions.md` | File names (kebab-case), catch variables (`err` not `e`) |
+| `security-patterns.md` | Raw JSON.parse, unprotected fs.readFileSync |
+
+### Output Format
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROJECT STANDARDS COMPLIANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ decisions.md: passed
+✗ app-map.md: Component duplication detected [MUST FIX]
+   → Created: UserCard.tsx
+   → Existing: ProfileCard.tsx (85% similar)
+   → Fix: Add variant to ProfileCard instead
+
+✓ function-map.md: passed
+✓ api-map.md: passed
+✗ naming-conventions: 1 violation [MUST FIX]
+   → src/utils.ts:45 - Catch variable "e" should be "err"
+   → Rule: naming-conventions.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 2 VIOLATIONS - Review blocked until fixed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Severity Levels
+
+- **[MUST FIX]**: Blocks review. Must be resolved before completion.
+- **[WARNING]**: Non-blocking but should be addressed.
+
+### Skipping Standards Check
+
+Use `--skip-standards` flag to bypass (not recommended):
+```bash
+/wogi-review --skip-standards
+```
+
+---
+
+## Phase 4: Post-Review Workflow
 
 After AI review completes, execute the fix-and-verify loop:
 

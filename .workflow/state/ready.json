@@ -1,6 +1,18 @@
 {
-  "lastUpdated": "2026-01-31T08:16:00.000Z",
-  "inProgress": [],
+  "lastUpdated": "2026-01-31T09:00:00.000Z",
+  "inProgress": [
+    {
+      "id": "wf-49394857",
+      "title": "Enhanced wogi-review with project standards compliance and solution optimization agents",
+      "type": "story",
+      "feature": "code-review",
+      "status": "in_progress",
+      "priority": "P1",
+      "createdAt": "2026-01-31T09:00:00.000Z",
+      "startedAt": "2026-01-31T09:00:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-49394857.md"
+    }
+  ],
   "ready": [
     {
       "id": "wf-cc-007",

@@ -1,0 +1,696 @@
+#!/usr/bin/env node
+
+/**
+ * Wogi Flow - Standards Compliance Checker
+ *
+ * Verifies code follows project standards defined in:
+ * - decisions.md (coding rules)
+ * - app-map.md (component reuse)
+ * - function-map.md (utility reuse)
+ * - api-map.md (API consolidation)
+ * - .claude/rules/* (naming, security, architecture)
+ *
+ * Enforcement is STRICT - all violations block completion.
+ */
+
+const fs = require('fs');
+const path = require('path');
+const {
+  PATHS,
+  fileExists,
+  readFile,
+  safeJsonParse,
+  color
+} = require('./flow-utils');
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const STANDARDS_FILES = {
+  decisions: path.join(PATHS.state, 'decisions.md'),
+  appMap: path.join(PATHS.state, 'app-map.md'),
+  functionMap: path.join(PATHS.state, 'function-map.md'),
+  apiMap: path.join(PATHS.state, 'api-map.md')
+};
+
+const RULES_DIR = path.join(process.cwd(), '.claude', 'rules');
+
+// Naming convention patterns from naming-conventions.md
+const NAMING_RULES = {
+  catchVariable: {
+    pattern: /catch\s*\(\s*(\w+)\s*\)/g,
+    expected: 'err',
+    message: 'Catch block variable should be "err", not "{found}"'
+  },
+  fileNaming: {
+    pattern: /^[a-z][a-z0-9-]*\.(ts|js|tsx|jsx)$/,
+    message: 'File names should be kebab-case'
+  }
+};
+
+// Component similarity threshold
+const SIMILARITY_THRESHOLD = 0.8;
+
+// ============================================================================
+// Parse Standards Files
+// ============================================================================
+
+/**
+ * Parse decisions.md into structured rules
+ * @returns {Object[]} Array of rules
+ */
+function parseDecisions() {
+  const decisionsPath = STANDARDS_FILES.decisions;
+  if (!fileExists(decisionsPath)) return [];
+
+  const content = readFile(decisionsPath, '');
+  const rules = [];
+
+  // Parse markdown sections as rules
+  const sections = content.split(/^###?\s+/m).filter(Boolean);
+
+  for (const section of sections) {
+    const lines = section.trim().split('\n');
+    const title = lines[0]?.trim();
+    if (!title) continue;
+
+    // Extract rule details
+    const body = lines.slice(1).join('\n').trim();
+
+    // Look for code patterns in the section
+    const codeBlocks = body.match(/```[\s\S]*?```/g) || [];
+    const goodPatterns = [];
+    const badPatterns = [];
+
+    codeBlocks.forEach(block => {
+      if (block.includes('// Good') || block.includes('// Correct')) {
+        goodPatterns.push(block.replace(/```\w*\n?|\n?```/g, '').trim());
+      } else if (block.includes('// Bad') || block.includes('// Wrong') || block.includes('// incorrect')) {
+        badPatterns.push(block.replace(/```\w*\n?|\n?```/g, '').trim());
+      }
+    });
+
+    rules.push({
+      title,
+      body,
+      goodPatterns,
+      badPatterns,
+      source: 'decisions.md'
+    });
+  }
+
+  return rules;
+}
+
+/**
+ * Parse app-map.md into component registry
+ * @returns {Object[]} Array of components
+ */
+function parseAppMap() {
+  const appMapPath = STANDARDS_FILES.appMap;
+  if (!fileExists(appMapPath)) return [];
+
+  const content = readFile(appMapPath, '');
+  const components = [];
+
+  // Parse component entries (typically formatted as tables or lists)
+  // Look for patterns like: | ComponentName | path/to/file | description |
+  const tableRows = content.match(/\|\s*([A-Z][a-zA-Z]+)\s*\|\s*([^\|]+)\s*\|/g) || [];
+
+  for (const row of tableRows) {
+    const match = row.match(/\|\s*([A-Z][a-zA-Z]+)\s*\|\s*([^\|]+)\s*\|/);
+    if (match) {
+      components.push({
+        name: match[1].trim(),
+        path: match[2].trim(),
+        source: 'app-map.md'
+      });
+    }
+  }
+
+  // Also look for markdown list format: - **ComponentName**: description
+  const listItems = content.match(/^-\s+\*\*([A-Z][a-zA-Z]+)\*\*:?\s*([^\n]+)?/gm) || [];
+  for (const item of listItems) {
+    const match = item.match(/-\s+\*\*([A-Z][a-zA-Z]+)\*\*:?\s*([^\n]+)?/);
+    if (match) {
+      components.push({
+        name: match[1].trim(),
+        description: match[2]?.trim() || '',
+        source: 'app-map.md'
+      });
+    }
+  }
+
+  return components;
+}
+
+/**
+ * Parse function-map.md into utility registry
+ * @returns {Object[]} Array of functions
+ */
+function parseFunctionMap() {
+  const functionMapPath = STANDARDS_FILES.functionMap;
+  if (!fileExists(functionMapPath)) return [];
+
+  const content = readFile(functionMapPath, '');
+  const functions = [];
+
+  // Parse function entries
+  const tableRows = content.match(/\|\s*`?([a-zA-Z_][a-zA-Z0-9_]*)`?\s*\|\s*([^\|]+)\s*\|/g) || [];
+
+  for (const row of tableRows) {
+    const match = row.match(/\|\s*`?([a-zA-Z_][a-zA-Z0-9_]*)`?\s*\|\s*([^\|]+)\s*\|/);
+    if (match) {
+      functions.push({
+        name: match[1].trim(),
+        description: match[2].trim(),
+        source: 'function-map.md'
+      });
+    }
+  }
+
+  return functions;
+}
+
+/**
+ * Parse api-map.md into endpoint registry
+ * @returns {Object[]} Array of endpoints
+ */
+function parseApiMap() {
+  const apiMapPath = STANDARDS_FILES.apiMap;
+  if (!fileExists(apiMapPath)) return [];
+
+  const content = readFile(apiMapPath, '');
+  const endpoints = [];
+
+  // Parse API entries (typically: | GET | /api/users | description |)
+  const tableRows = content.match(/\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*([^\|]+)\s*\|/gi) || [];
+
+  for (const row of tableRows) {
+    const match = row.match(/\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*([^\|]+)\s*\|/i);
+    if (match) {
+      endpoints.push({
+        method: match[1].toUpperCase(),
+        path: match[2].trim(),
+        source: 'api-map.md'
+      });
+    }
+  }
+
+  return endpoints;
+}
+
+/**
+ * Load rules from .claude/rules directory
+ * @returns {Object[]} Array of rules from rule files
+ */
+function loadRulesDir() {
+  if (!fs.existsSync(RULES_DIR)) return [];
+
+  const rules = [];
+
+  function scanDir(dir) {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          scanDir(fullPath);
+        } else if (entry.name.endsWith('.md')) {
+          try {
+            const content = fs.readFileSync(fullPath, 'utf-8');
+            rules.push({
+              file: path.relative(RULES_DIR, fullPath),
+              content,
+              source: fullPath
+            });
+          } catch (err) {
+            // Skip unreadable files
+          }
+        }
+      }
+    } catch (err) {
+      // Skip unreadable directories
+    }
+  }
+
+  scanDir(RULES_DIR);
+  return rules;
+}
+
+// ============================================================================
+// Violation Detection
+// ============================================================================
+
+/**
+ * Check for naming convention violations
+ * @param {Object} file - File with path and content
+ * @returns {Object[]} Array of violations
+ */
+function checkNamingConventions(file) {
+  const violations = [];
+
+  // Check file naming (kebab-case)
+  const fileName = path.basename(file.path);
+  if (!NAMING_RULES.fileNaming.pattern.test(fileName) && /\.(ts|js|tsx|jsx)$/.test(fileName)) {
+    // Only flag if it has uppercase or underscores (common violations)
+    if (/[A-Z_]/.test(fileName.replace(/\.(ts|js|tsx|jsx)$/, ''))) {
+      violations.push({
+        type: 'naming-conventions',
+        severity: 'must-fix',
+        file: file.path,
+        line: null,
+        message: `File name "${fileName}" should be kebab-case`,
+        rule: 'naming-conventions.md'
+      });
+    }
+  }
+
+  // Check catch block variable naming
+  const content = file.content || '';
+  let match;
+  const catchRegex = /catch\s*\(\s*(\w+)\s*\)/g;
+
+  while ((match = catchRegex.exec(content)) !== null) {
+    const varName = match[1];
+    if (varName !== 'err' && varName !== '_err' && varName !== '_') {
+      // Find line number
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+
+      violations.push({
+        type: 'naming-conventions',
+        severity: 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message: `Catch variable "${varName}" should be "err"`,
+        rule: 'naming-conventions.md'
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check for component duplication
+ * @param {Object} file - File with path and content
+ * @param {Object[]} existingComponents - Components from app-map
+ * @returns {Object[]} Array of violations
+ */
+function checkComponentDuplication(file, existingComponents) {
+  const violations = [];
+
+  // Only check for new component files
+  if (!file.path.includes('component') && !file.path.includes('Component')) {
+    return violations;
+  }
+
+  // Extract component name from file
+  const fileName = path.basename(file.path, path.extname(file.path));
+  const componentName = fileName.replace(/-/g, '').toLowerCase();
+
+  // Check similarity against existing components
+  for (const existing of existingComponents) {
+    const existingName = existing.name.toLowerCase();
+    const similarity = calculateSimilarity(componentName, existingName);
+
+    if (similarity >= SIMILARITY_THRESHOLD && componentName !== existingName) {
+      violations.push({
+        type: 'component-duplication',
+        severity: 'must-fix',
+        file: file.path,
+        line: null,
+        message: `Component "${fileName}" is ${Math.round(similarity * 100)}% similar to existing "${existing.name}"`,
+        suggestion: `Use existing component or add variant to "${existing.name}" instead`,
+        rule: 'app-map.md / component-reuse.md'
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check for function duplication
+ * @param {Object} file - File with path and content
+ * @param {Object[]} existingFunctions - Functions from function-map
+ * @returns {Object[]} Array of violations
+ */
+function checkFunctionDuplication(file, existingFunctions) {
+  const violations = [];
+  const content = file.content || '';
+
+  // Find function declarations
+  const functionRegex = /(?:function\s+|const\s+|let\s+|var\s+)([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*(?:async\s*)?\(|=\s*function|\()/g;
+  let match;
+
+  while ((match = functionRegex.exec(content)) !== null) {
+    const funcName = match[1];
+    const funcNameLower = funcName.toLowerCase();
+
+    // Check against existing functions
+    for (const existing of existingFunctions) {
+      const existingLower = existing.name.toLowerCase();
+      const similarity = calculateSimilarity(funcNameLower, existingLower);
+
+      if (similarity >= SIMILARITY_THRESHOLD && funcNameLower !== existingLower) {
+        const beforeMatch = content.substring(0, match.index);
+        const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+
+        violations.push({
+          type: 'function-duplication',
+          severity: 'warning',
+          file: file.path,
+          line: lineNumber,
+          message: `Function "${funcName}" may duplicate existing "${existing.name}" (${existing.description})`,
+          suggestion: `Consider using existing function from function-map.md`,
+          rule: 'function-map.md'
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check for security pattern violations
+ * @param {Object} file - File with path and content
+ * @param {Object[]} securityRules - Security rules from rules dir
+ * @returns {Object[]} Array of violations
+ */
+function checkSecurityPatterns(file, securityRules) {
+  const violations = [];
+  const content = file.content || '';
+
+  // Hard-coded security checks from security-patterns.md
+
+  // 1. Raw JSON.parse without try-catch or safeJsonParse
+  const jsonParseMatches = content.matchAll(/JSON\.parse\s*\(/g);
+  for (const match of jsonParseMatches) {
+    const beforeMatch = content.substring(0, match.index);
+    const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+
+    // Check if inside try block (simple heuristic)
+    const lineStart = content.lastIndexOf('\n', match.index) + 1;
+    const linesBefore = content.substring(Math.max(0, match.index - 200), match.index);
+
+    if (!linesBefore.includes('try') && !content.substring(lineStart, match.index).includes('safeJsonParse')) {
+      violations.push({
+        type: 'security',
+        severity: 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message: 'Raw JSON.parse without try-catch - use safeJsonParse from flow-utils.js',
+        rule: 'security-patterns.md #2'
+      });
+    }
+  }
+
+  // 2. fs.readFileSync without try-catch (after fileExists check is still risky)
+  const readFileSyncMatches = content.matchAll(/fs\.readFileSync\s*\(/g);
+  for (const match of readFileSyncMatches) {
+    const beforeMatch = content.substring(0, match.index);
+    const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+    const linesBefore = content.substring(Math.max(0, match.index - 200), match.index);
+
+    if (!linesBefore.includes('try')) {
+      violations.push({
+        type: 'security',
+        severity: 'warning',
+        file: file.path,
+        line: lineNumber,
+        message: 'fs.readFileSync without try-catch - wrap in try-catch per security-patterns.md #1',
+        rule: 'security-patterns.md #1'
+      });
+    }
+  }
+
+  return violations;
+}
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Calculate string similarity (Levenshtein-based)
+ * @param {string} a - First string
+ * @param {string} b - Second string
+ * @returns {number} Similarity score 0-1
+ */
+function calculateSimilarity(a, b) {
+  if (a === b) return 1;
+  if (!a || !b) return 0;
+
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+
+  if (longer.length === 0) return 1;
+
+  // Simple containment check
+  if (longer.includes(shorter) || shorter.includes(longer)) {
+    return shorter.length / longer.length;
+  }
+
+  // Levenshtein distance
+  const distance = levenshteinDistance(a, b);
+  return (longer.length - distance) / longer.length;
+}
+
+/**
+ * Calculate Levenshtein distance
+ */
+function levenshteinDistance(a, b) {
+  const matrix = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+// ============================================================================
+// Main Check Function
+// ============================================================================
+
+/**
+ * Run all standards checks on files
+ * @param {Object[]} files - Files with path and content
+ * @returns {Object} Check results
+ */
+function runStandardsCheck(files) {
+  // Load all standards
+  const decisions = parseDecisions();
+  const components = parseAppMap();
+  const functions = parseFunctionMap();
+  const endpoints = parseApiMap();
+  const rulesFiles = loadRulesDir();
+
+  const allViolations = [];
+  const checksSummary = {
+    'decisions.md': { checked: true, violations: 0 },
+    'app-map.md': { checked: components.length > 0, violations: 0 },
+    'function-map.md': { checked: functions.length > 0, violations: 0 },
+    'api-map.md': { checked: endpoints.length > 0, violations: 0 },
+    'naming-conventions': { checked: true, violations: 0 },
+    'security-patterns': { checked: true, violations: 0 }
+  };
+
+  for (const file of files) {
+    if (!file.content) continue;
+
+    // Naming conventions
+    const namingViolations = checkNamingConventions(file);
+    allViolations.push(...namingViolations);
+    checksSummary['naming-conventions'].violations += namingViolations.length;
+
+    // Component duplication
+    const componentViolations = checkComponentDuplication(file, components);
+    allViolations.push(...componentViolations);
+    checksSummary['app-map.md'].violations += componentViolations.length;
+
+    // Function duplication
+    const functionViolations = checkFunctionDuplication(file, functions);
+    allViolations.push(...functionViolations);
+    checksSummary['function-map.md'].violations += functionViolations.length;
+
+    // Security patterns
+    const securityViolations = checkSecurityPatterns(file, rulesFiles);
+    allViolations.push(...securityViolations);
+    checksSummary['security-patterns'].violations += securityViolations.length;
+  }
+
+  // Count must-fix violations
+  const mustFixCount = allViolations.filter(v => v.severity === 'must-fix').length;
+  const warningCount = allViolations.filter(v => v.severity === 'warning').length;
+
+  return {
+    passed: mustFixCount === 0,
+    blocked: mustFixCount > 0,
+    violations: allViolations,
+    mustFixCount,
+    warningCount,
+    summary: checksSummary
+  };
+}
+
+/**
+ * Format results for display
+ * @param {Object} results - Check results
+ * @returns {string} Formatted output
+ */
+function formatStandardsResults(results) {
+  const lines = [];
+
+  lines.push('');
+  lines.push(color('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  lines.push(color('cyan', '📋 PROJECT STANDARDS COMPLIANCE'));
+  lines.push(color('cyan', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  lines.push('');
+
+  // Summary by source
+  for (const [source, data] of Object.entries(results.summary)) {
+    if (!data.checked) {
+      lines.push(color('dim', `⊘ ${source}: not configured`));
+    } else if (data.violations === 0) {
+      lines.push(color('green', `✓ ${source}: passed`));
+    } else {
+      lines.push(color('red', `✗ ${source}: ${data.violations} violation(s)`));
+    }
+  }
+
+  lines.push('');
+
+  // Show violations
+  if (results.violations.length > 0) {
+    lines.push(color('yellow', 'Violations:'));
+    lines.push('');
+
+    for (const v of results.violations) {
+      const severity = v.severity === 'must-fix'
+        ? color('red', '[MUST FIX]')
+        : color('yellow', '[WARNING]');
+
+      const location = v.line
+        ? `${v.file}:${v.line}`
+        : v.file;
+
+      lines.push(`${severity} ${location}`);
+      lines.push(`   → ${v.message}`);
+      if (v.suggestion) {
+        lines.push(color('dim', `   → Fix: ${v.suggestion}`));
+      }
+      lines.push(color('dim', `   → Rule: ${v.rule}`));
+      lines.push('');
+    }
+  }
+
+  // Final status
+  lines.push('');
+  if (results.blocked) {
+    lines.push(color('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+    lines.push(color('red', `⚠️ ${results.mustFixCount} VIOLATIONS - Review blocked until fixed`));
+    lines.push(color('red', '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  } else if (results.warningCount > 0) {
+    lines.push(color('yellow', `⚠ ${results.warningCount} warnings (non-blocking)`));
+    lines.push(color('green', '✓ Standards check passed'));
+  } else {
+    lines.push(color('green', '✓ All standards checks passed'));
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
+// CLI
+// ============================================================================
+
+if (require.main === module) {
+  const args = process.argv.slice(2);
+
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(`
+Wogi Flow - Standards Compliance Checker
+
+Usage: node flow-standards-checker.js [options] [files...]
+
+Options:
+  --json          Output as JSON
+  -h, --help      Show this help
+
+Examples:
+  node flow-standards-checker.js src/components/MyComponent.tsx
+  node flow-standards-checker.js --json src/**/*.ts
+`);
+    process.exit(0);
+  }
+
+  const jsonOutput = args.includes('--json');
+  const filePaths = args.filter(a => !a.startsWith('-'));
+
+  if (filePaths.length === 0) {
+    console.log('No files specified. Usage: node flow-standards-checker.js [files...]');
+    process.exit(1);
+  }
+
+  // Load file contents
+  const files = filePaths.map(f => {
+    try {
+      const content = fs.readFileSync(f, 'utf-8');
+      return { path: f, content };
+    } catch (err) {
+      return { path: f, content: '', error: err.message };
+    }
+  });
+
+  const results = runStandardsCheck(files);
+
+  if (jsonOutput) {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    console.log(formatStandardsResults(results));
+  }
+
+  process.exit(results.blocked ? 1 : 0);
+}
+
+// ============================================================================
+// Exports
+// ============================================================================
+
+module.exports = {
+  runStandardsCheck,
+  formatStandardsResults,
+  parseDecisions,
+  parseAppMap,
+  parseFunctionMap,
+  parseApiMap,
+  checkNamingConventions,
+  checkComponentDuplication,
+  checkFunctionDuplication,
+  checkSecurityPatterns,
+  calculateSimilarity,
+  STANDARDS_FILES,
+  SIMILARITY_THRESHOLD
+};
