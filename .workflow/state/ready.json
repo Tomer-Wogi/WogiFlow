@@ -1,18 +1,6 @@
 {
-  "lastUpdated": "2026-01-31T09:00:00.000Z",
-  "inProgress": [
-    {
-      "id": "wf-49394857",
-      "title": "Enhanced wogi-review with project standards compliance and solution optimization agents",
-      "type": "story",
-      "feature": "code-review",
-      "status": "in_progress",
-      "priority": "P1",
-      "createdAt": "2026-01-31T09:00:00.000Z",
-      "startedAt": "2026-01-31T09:00:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-49394857.md"
-    }
-  ],
+  "lastUpdated": "2026-02-01T10:00:00.000Z",
+  "inProgress": [],
   "ready": [
     {
       "id": "wf-cc-007",
@@ -26,6 +14,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-49394857",
+      "title": "Enhanced wogi-review with project standards compliance and solution optimization agents",
+      "type": "story",
+      "feature": "code-review",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-01-31T09:00:00.000Z",
+      "startedAt": "2026-01-31T09:00:00.000Z",
+      "completedAt": "2026-02-01T10:00:00.000Z"
+    },
     {
       "id": "wf-364df165",
       "title": "Fix code review findings: validation, cleanup, and safety issues",

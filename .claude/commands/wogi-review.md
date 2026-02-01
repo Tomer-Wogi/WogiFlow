@@ -14,7 +14,8 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 /wogi-review --verify-only    # Only run verification gates
 /wogi-review --multipass      # Force multi-pass review mode
 /wogi-review --no-multipass   # Disable auto multi-pass detection
-/wogi-review --skip-standards # Skip project standards compliance check
+/wogi-review --skip-standards     # Skip project standards compliance check
+/wogi-review --skip-optimization  # Skip solution optimization suggestions
 ```
 
 ## Review Phases (v4.0)
@@ -29,11 +30,15 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 │  Phase 2: AI Review (multi-pass or parallel)                 │
 │     → Code/Logic, Security, Architecture analysis            │
 │                                                              │
-│  Phase 3: Standards Compliance [NEW - STRICT]                │
+│  Phase 3: Standards Compliance [STRICT]                      │
 │     → decisions.md, app-map.md, naming-conventions.md        │
 │     → BLOCKS completion if violations found                  │
 │                                                              │
-│  Phase 4: Post-Review Workflow                               │
+│  Phase 4: Solution Optimization [NON-BLOCKING]               │
+│     → Technical alternatives, UX improvements                │
+│     → Suggestions only - not violations                      │
+│                                                              │
+│  Phase 5: Post-Review Workflow                               │
 │     → Fix loop, learning, task creation                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -542,7 +547,69 @@ Use `--skip-standards` flag to bypass (not recommended):
 
 ---
 
-## Phase 4: Post-Review Workflow
+## Phase 4: Solution Optimization (v4.0 - NON-BLOCKING)
+
+**This phase provides improvement suggestions - they are recommendations, NOT violations.**
+
+Unlike Phase 3 (strict enforcement), Phase 4 suggests ways to make good code even better.
+
+### What It Suggests
+
+| Category | Patterns Detected |
+|----------|-------------------|
+| **Technical** | |
+| Performance | filter+map chains, sequential awaits in loops |
+| Modern JS | var usage, Promise chains vs async/await |
+| Error handling | Empty catch blocks, generic error messages |
+| React | Inline style objects, anonymous function props |
+| **UX** | |
+| Loading states | Async operations without visible feedback |
+| Error messages | Technical errors shown to users |
+| Accessibility | Missing alt attributes, click on div/span |
+| Forms | Missing validation feedback, submit without disabled |
+
+### Output Format
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 SOLUTION OPTIMIZATION SUGGESTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 Technical (2):
+   [Medium] Custom date formatting could use date-fns
+      → utils/formatDate.ts reimplements existing library
+
+   [Low] Array.filter().map() could be Array.reduce()
+      → Minor perf improvement, optional
+
+🎨 UX (2):
+   [High] Form lacks loading state
+      → User has no feedback during submission
+
+   [Medium] Error messages are technical
+      → "Failed to parse JSON" → "Invalid format"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Summary: 1 high, 1 medium, 1 low priority
+These are suggestions only - not blocking.
+```
+
+### Priority Levels
+
+- **[High]**: Strongly recommended improvement (UX impact, significant technical debt)
+- **[Medium]**: Worth considering (maintainability, minor UX)
+- **[Low]**: Nice to have (micro-optimizations, style preferences)
+
+### Skipping Optimization Suggestions
+
+Use `--skip-optimization` flag to skip this phase:
+```bash
+/wogi-review --skip-optimization
+```
+
+---
+
+## Post-Review Workflow
 
 After AI review completes, execute the fix-and-verify loop:
 
@@ -685,7 +752,7 @@ The review is not complete until the user confirms. This ensures:
 - User can request additional fixes
 - User can reject fixes that change behavior unexpectedly
 
-## Phase 4: Store Findings & Create Tasks
+## Store Findings & Create Tasks
 
 After review completes, store findings and create actionable tasks.
 
@@ -762,7 +829,7 @@ Options:
 
 Use AskUserQuestion to present these options.
 
-## Phase 5: Learning Loop
+## Learning Loop
 
 After presenting findings, trigger self-reflection to prevent future issues.
 

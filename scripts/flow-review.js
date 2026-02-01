@@ -40,6 +40,14 @@ try {
   standardsChecker = null;
 }
 
+// v4.0 solution optimizer (Phase 4)
+let solutionOptimizer;
+try {
+  solutionOptimizer = require('./flow-solution-optimizer');
+} catch (err) {
+  solutionOptimizer = null;
+}
+
 // ============================================================
 // Get Changed Files
 // ============================================================
@@ -341,21 +349,23 @@ Wogi Flow - Code Review (v4.0)
 Usage: flow review [options]
 
 Options:
-  --staged          Only review staged changes
-  --commits=N       Include last N commits
-  --skip-verify     Skip verification gates (AI only)
-  --verify-only     Only run verification gates
-  --multipass       Force multi-pass review mode
-  --no-multipass    Disable auto multi-pass detection
-  --skip-standards  Skip project standards compliance check
-  --task=ID         Task ID for spec verification
-  --json            Output as JSON
-  -h, --help        Show this help
+  --staged             Only review staged changes
+  --commits=N          Include last N commits
+  --skip-verify        Skip verification gates (AI only)
+  --verify-only        Only run verification gates
+  --multipass          Force multi-pass review mode
+  --no-multipass       Disable auto multi-pass detection
+  --skip-standards     Skip project standards compliance check
+  --skip-optimization  Skip solution optimization suggestions
+  --task=ID            Task ID for spec verification
+  --json               Output as JSON
+  -h, --help           Show this help
 
 Phases:
   1. Verification Gates - lint, typecheck, tests, spec verification
   2. AI Review - multi-pass code/logic/security/architecture analysis
   3. Standards Compliance - decisions.md, app-map, naming conventions (STRICT)
+  4. Solution Optimization - technical/UX improvement suggestions (NON-BLOCKING)
 
 Standards compliance (Phase 3) checks:
   - decisions.md coding rules
@@ -363,6 +373,12 @@ Standards compliance (Phase 3) checks:
   - function-map.md utility duplication
   - naming-conventions.md (kebab-case files, 'err' in catch blocks)
   - security-patterns.md (raw JSON.parse, unprotected fs.readFileSync)
+
+Solution optimization (Phase 4) suggests:
+  - Technical: simpler libraries, better algorithms, modern JS patterns
+  - UX: loading states, error messages, accessibility concerns
+  - Suggestions are categorized by priority (High/Medium/Low)
+  - NON-BLOCKING: These are recommendations, not violations
 
 Multi-pass is auto-enabled when:
   - 5+ files changed
@@ -498,6 +514,33 @@ Configure in config.json under review.autoMultiPass.
     }
   } else if (!standardsChecker && !skipStandards) {
     console.log(color('dim', 'Standards checker not available. Skipping Phase 3.'));
+  }
+
+  // ========================================================================
+  // Phase 4: Solution Optimization (v4.0)
+  // ========================================================================
+  const skipOptimization = args.includes('--skip-optimization');
+
+  if (!skipOptimization && solutionOptimizer) {
+    console.log('');
+    console.log(color('cyan', 'Running solution optimization analysis...'));
+
+    const optimizationResult = solutionOptimizer.runOptimizationAnalysis(filesWithContent);
+
+    if (jsonOutput) {
+      console.log(JSON.stringify({ optimization: optimizationResult }, null, 2));
+    } else {
+      console.log(solutionOptimizer.formatOptimizationResults(optimizationResult));
+    }
+
+    // Note: Phase 4 is NON-BLOCKING - these are suggestions, not violations
+    if (optimizationResult.total > 0 && optimizationResult.summary.high > 0) {
+      console.log('');
+      console.log(color('yellow', `💡 ${optimizationResult.summary.high} high-priority suggestions found.`));
+      console.log(color('dim', 'These are recommendations - not blocking the review.'));
+    }
+  } else if (!solutionOptimizer && !skipOptimization) {
+    console.log(color('dim', 'Solution optimizer not available. Skipping Phase 4.'));
   }
 }
 
