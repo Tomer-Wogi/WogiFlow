@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-02T09:30:00.000Z",
+  "lastUpdated": "2026-02-02T12:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -14,6 +14,55 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-review-fix-sync",
+      "title": "Sync wogi-review-fix with all wogi-review phases",
+      "type": "task",
+      "feature": "code-review",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Update wogi-review-fix to include Standards Compliance (Phase 3) and Solution Optimization (Phase 4) from wogi-review, plus browser debugging.",
+      "createdAt": "2026-02-02T12:00:00.000Z",
+      "startedAt": "2026-02-02T12:00:00.000Z",
+      "completedAt": "2026-02-02T12:15:00.000Z"
+    },
+    {
+      "id": "wf-review-fix-browser",
+      "title": "Add browser debugging to wogi-review-fix",
+      "type": "task",
+      "feature": "browser-testing",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Update wogi-review-fix command to include browser debugging option for UI issues, similar to wogi-review.",
+      "createdAt": "2026-02-02T11:45:00.000Z",
+      "startedAt": "2026-02-02T11:45:00.000Z",
+      "completedAt": "2026-02-02T11:50:00.000Z"
+    },
+    {
+      "id": "wf-browser-debug",
+      "title": "Implement autonomous browser debugging loop",
+      "type": "story",
+      "feature": "browser-testing",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Create an autonomous debugging system that can navigate to app, read console errors, identify issues, fix code, and loop until resolved. Includes: flow-browser-debug.js, flow-browser-error-patterns.js, flow-browser-nl-parser.js, wogi-debug-browser command, config updates.",
+      "createdAt": "2026-02-02T11:00:00.000Z",
+      "startedAt": "2026-02-02T11:00:00.000Z",
+      "completedAt": "2026-02-02T11:30:00.000Z"
+    },
+    {
+      "id": "wf-6f5c00c4",
+      "title": "Add standards compliance to wogi-start quality gates",
+      "type": "story",
+      "feature": "quality-gates",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Integrate standards compliance checker into wogi-start quality gates with smart scoping, learning integration, and retry feedback.",
+      "createdAt": "2026-02-02T10:00:00.000Z",
+      "startedAt": "2026-02-02T10:00:00.000Z",
+      "completedAt": "2026-02-02T10:30:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-6f5c00c4.md"
+    },
     {
       "id": "wf-research-fix",
       "title": "Fix research protocol enforcement, rules sync automation, and request log database",
