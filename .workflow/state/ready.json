@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-01T10:00:00.000Z",
+  "lastUpdated": "2026-02-02T08:20:29.886Z",
   "inProgress": [],
   "ready": [
     {
@@ -14,6 +14,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-175171e3",
+      "title": "Fix auto-regenerate bug in flow-morning.js - calls bash script with node",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-02-02T08:20:01.551Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-175171e3.md",
+      "startedAt": "2026-02-02T08:20:04.814Z",
+      "completedAt": "2026-02-02T08:20:29.886Z"
+    },
     {
       "id": "wf-49394857",
       "title": "Enhanced wogi-review with project standards compliance and solution optimization agents",

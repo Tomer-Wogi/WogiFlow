@@ -1,5 +1,10 @@
 # Implementation Timeline
 
+## 2026-02
+
+### Week 1 (Feb 1-7)
+- [x] wf-175171e3: Fix auto-regenerate bug in flow-morning.js - calls bash script with node (Feb 2)
+
 ## 2026-01
 
 ### Week 5 (Jan 25-31)

@@ -461,8 +461,8 @@ function printBriefing(briefing) {
         if (morningConfig.autoRegenerateKnowledge !== false) {
           try {
             const { spawnSync } = require('child_process');
-            const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
-            const result = spawnSync('node', [scriptPath, '--update-knowledge'], {
+            const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-knowledge-sync.js');
+            const result = spawnSync('node', [scriptPath, 'regenerate'], {
               cwd: PROJECT_ROOT,
               stdio: 'pipe',
               timeout: 30000
