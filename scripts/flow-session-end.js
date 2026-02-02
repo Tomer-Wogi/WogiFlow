@@ -12,6 +12,7 @@ const path = require('path');
 const {
   PATHS,
   PROJECT_ROOT,
+  STATE_DIR,
   fileExists,
   getConfig,
   getConfigValue,
@@ -92,6 +93,16 @@ try {
 } catch (err) {
   if (process.env.DEBUG) {
     console.error(`[session-end] Model config module not available: ${err.message}`);
+  }
+}
+
+// v9.0 rules sync automation
+let rulesSync = null;
+try {
+  rulesSync = require('./flow-rules-sync');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[session-end] Rules sync module not available: ${err.message}`);
   }
 }
 
@@ -656,6 +667,80 @@ async function automaticMemoryManagement() {
 }
 
 /**
+ * v9.0: Sync rules from decisions.md if changed
+ * Checks hash of decisions.md and triggers sync if different from last sync
+ */
+async function syncRulesIfChanged() {
+  if (!rulesSync) return;
+
+  try {
+    const crypto = require('crypto');
+    const decisionsPath = PATHS.decisions;
+
+    if (!fileExists(decisionsPath)) {
+      if (process.env.DEBUG) console.log('[DEBUG] decisions.md not found, skipping rules sync');
+      return;
+    }
+
+    // Calculate current hash
+    const content = readFile(decisionsPath);
+    const currentHash = crypto.createHash('md5').update(content).digest('hex');
+
+    // Load last hash from state
+    const hashStatePath = path.join(STATE_DIR, 'decisions-hash.json');
+    let lastHash = null;
+    if (fileExists(hashStatePath)) {
+      try {
+        const hashState = JSON.parse(readFile(hashStatePath));
+        lastHash = hashState.hash;
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    // Compare hashes
+    if (currentHash === lastHash) {
+      if (process.env.DEBUG) console.log('[DEBUG] decisions.md unchanged, skipping rules sync');
+      return;
+    }
+
+    // Hash changed - sync rules
+    console.log('');
+    console.log(color('yellow', 'Syncing rules from decisions.md...'));
+
+    const result = rulesSync.syncDecisionsToRules();
+
+    if (result.success) {
+      // Save new hash
+      writeFile(hashStatePath, JSON.stringify({
+        hash: currentHash,
+        lastSynced: new Date().toISOString()
+      }, null, 2));
+
+      if (result.filesCreated.length > 0) {
+        success(`Rules synced: ${result.filesCreated.length} files updated`);
+        if (process.env.DEBUG) {
+          for (const file of result.filesCreated.slice(0, 5)) {
+            console.log(`  - ${file}`);
+          }
+          if (result.filesCreated.length > 5) {
+            console.log(`  ... and ${result.filesCreated.length - 5} more`);
+          }
+        }
+      }
+    } else {
+      warn('Rules sync had errors');
+      for (const err of result.errors) {
+        console.log(`  ${color('red', '✗')} ${err}`);
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Rules sync: ${err.message}`);
+    warn('Could not sync rules');
+  }
+}
+
+/**
  * Offer knowledge sync if drifted (v1.9.1)
  */
 async function offerKnowledgeSync() {
@@ -1045,6 +1130,9 @@ async function main() {
 
   // v1.8.0: Automatic memory management
   await automaticMemoryManagement();
+
+  // v9.0: Sync rules from decisions.md if changed
+  await syncRulesIfChanged();
 
   // v1.9.1: Offer knowledge sync if drifted
   await offerKnowledgeSync();

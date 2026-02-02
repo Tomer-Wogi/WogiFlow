@@ -33,6 +33,17 @@ const {
   printHeader
 } = require('./flow-utils');
 
+// v9.0: Memory database for queryable log storage
+let memoryDb = null;
+try {
+  memoryDb = require('./flow-memory-db');
+} catch (err) {
+  // Memory module not available - fallback to MD-only
+  if (process.env.DEBUG) {
+    console.error(`[log-manager] Memory DB not available: ${err.message}`);
+  }
+}
+
 // ============================================================
 // Constants
 // ============================================================
@@ -261,6 +272,121 @@ Search archives in \`.workflow/archive/\` for full details.
   }
 
   writeFile(SUMMARY_PATH, summary + newSummary);
+}
+
+// ============================================================
+// Dual-Write Operations (v9.0)
+// ============================================================
+
+/**
+ * Add a request log entry with dual-write (MD + DB)
+ * @param {Object} entry - { id, type, tags, request, result, files, taskId }
+ * @returns {Object} - { id, mdWritten, dbWritten }
+ */
+async function addEntry(entry) {
+  const result = { id: entry.id, mdWritten: false, dbWritten: false };
+
+  // Generate ID if not provided
+  if (!entry.id) {
+    const currentCount = countRequestLogEntries() + 1;
+    entry.id = `R-${String(currentCount).padStart(3, '0')}`;
+  }
+
+  // Format for markdown
+  const now = new Date();
+  const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const tagsStr = Array.isArray(entry.tags) ? entry.tags.join(' ') : (entry.tags || '');
+  const filesStr = Array.isArray(entry.files) ? entry.files.join(', ') : (entry.files || '');
+
+  const mdEntry = `### ${entry.id} | ${timestamp}
+**Type**: ${entry.type || 'change'}
+**Tags**: ${tagsStr}
+**Request**: "${entry.request || ''}"
+**Result**: ${entry.result || ''}
+**Files**: ${filesStr}
+
+`;
+
+  // Write to MD
+  try {
+    if (fileExists(LOG_PATH)) {
+      const content = readFile(LOG_PATH, '');
+      // Insert after header (find first ### or append)
+      const insertPoint = content.indexOf('\n## ');
+      if (insertPoint !== -1) {
+        const afterHeaders = content.indexOf('\n### R-');
+        if (afterHeaders !== -1) {
+          // Insert before first entry
+          const newContent = content.slice(0, afterHeaders + 1) + mdEntry + content.slice(afterHeaders + 1);
+          writeFile(LOG_PATH, newContent);
+        } else {
+          // No entries yet, append to end
+          writeFile(LOG_PATH, content + '\n' + mdEntry);
+        }
+      } else {
+        // Simple append
+        writeFile(LOG_PATH, content + '\n' + mdEntry);
+      }
+      result.mdWritten = true;
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[log-manager] MD write failed: ${err.message}`);
+    }
+  }
+
+  // Write to DB
+  if (memoryDb) {
+    try {
+      await memoryDb.addRequestLogEntry({
+        id: entry.id,
+        type: entry.type || 'change',
+        tags: Array.isArray(entry.tags) ? entry.tags : (entry.tags ? entry.tags.split(/\s+/) : []),
+        request: entry.request || '',
+        result: entry.result || '',
+        files: Array.isArray(entry.files) ? entry.files : (entry.files ? entry.files.split(/,\s*/) : []),
+        taskId: entry.taskId || null
+      });
+      result.dbWritten = true;
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[log-manager] DB write failed: ${err.message}`);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Search request log with optional database fallback
+ * @param {Object} options - { query, tag, type, since, useDb, limit }
+ * @returns {Object[]} - Matching entries
+ */
+async function searchEntriesAdvanced(options = {}) {
+  const { useDb = true, ...searchOptions } = options;
+
+  // Try database first if available
+  if (useDb && memoryDb) {
+    try {
+      const dbResults = await memoryDb.searchRequestLog(searchOptions);
+      if (dbResults.length > 0) {
+        return dbResults.map(r => ({ ...r, source: 'database' }));
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[log-manager] DB search failed: ${err.message}`);
+      }
+    }
+  }
+
+  // Fallback to MD search
+  const mdResults = searchEntries(options.query || options.tag || '', {
+    maxResults: options.limit || 20
+  });
+
+  return mdResults;
 }
 
 // ============================================================
@@ -668,6 +794,10 @@ module.exports = {
   // Search
   searchEntries,
   matchesQuery,
+
+  // Dual-write (v9.0)
+  addEntry,
+  searchEntriesAdvanced,
 
   // Cross-session analysis (v6.0)
   getAllRequestEntries,

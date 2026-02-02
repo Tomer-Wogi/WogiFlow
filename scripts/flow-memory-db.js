@@ -215,6 +215,20 @@ async function initDatabase() {
       )
     `);
 
+    // v9.0: Request log table for queryable history
+    db.run(`
+      CREATE TABLE IF NOT EXISTS request_log (
+        id TEXT PRIMARY KEY,
+        timestamp TEXT DEFAULT (datetime('now')),
+        type TEXT CHECK(type IN ('new','fix','change','refactor','other')),
+        tags TEXT,
+        request TEXT,
+        result TEXT,
+        files TEXT,
+        task_id TEXT
+      )
+    `);
+
     // Migrate existing databases - add new columns if they don't exist
     const migrations = [
       'ALTER TABLE facts ADD COLUMN last_accessed TEXT',
@@ -239,6 +253,9 @@ async function initDatabase() {
     try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_source ON sections(source)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_category ON sections(category)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_hash ON sections(content_hash)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_type ON request_log(type)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_timestamp ON request_log(timestamp)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_task_id ON request_log(task_id)'); } catch {}
 
     saveDatabase();
     return db;
@@ -1108,6 +1125,138 @@ async function restoreFromColdStorage(factId) {
 }
 
 // ============================================================
+// Request Log Operations (v9.0)
+// ============================================================
+
+/**
+ * Add a request log entry to the database
+ * @param {Object} entry - { id, type, tags, request, result, files, taskId }
+ * @returns {Object} - { id, stored: boolean }
+ */
+async function addRequestLogEntry(entry) {
+  await initDatabase();
+
+  const id = entry.id || generateId('log');
+  const tags = Array.isArray(entry.tags) ? JSON.stringify(entry.tags) : entry.tags || '[]';
+  const files = Array.isArray(entry.files) ? JSON.stringify(entry.files) : entry.files || '[]';
+
+  db.run(`
+    INSERT INTO request_log (id, type, tags, request, result, files, task_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id,
+    entry.type || 'other',
+    tags,
+    entry.request || '',
+    entry.result || '',
+    files,
+    entry.taskId || null
+  ]);
+
+  saveDatabase();
+  return { id, stored: true };
+}
+
+/**
+ * Search request log entries
+ * @param {Object} options - { query, type, tag, since, limit }
+ * @returns {Object[]} - Matching entries
+ */
+async function searchRequestLog(options = {}) {
+  await initDatabase();
+  const { query, type, tag, since, taskId, limit = 50 } = options;
+
+  let sql = 'SELECT * FROM request_log WHERE 1=1';
+  const params = [];
+
+  if (type) {
+    sql += ' AND type = ?';
+    params.push(type);
+  }
+
+  if (taskId) {
+    sql += ' AND task_id = ?';
+    params.push(taskId);
+  }
+
+  if (tag) {
+    // Search in JSON tags array
+    sql += ' AND tags LIKE ?';
+    params.push(`%${tag}%`);
+  }
+
+  if (since) {
+    sql += ' AND timestamp >= ?';
+    params.push(since);
+  }
+
+  if (query) {
+    sql += ' AND (request LIKE ? OR result LIKE ?)';
+    params.push(`%${query}%`, `%${query}%`);
+  }
+
+  sql += ' ORDER BY timestamp DESC LIMIT ?';
+  params.push(limit);
+
+  const result = db.exec(sql, params);
+  const entries = queryToRows(result);
+
+  // Parse JSON fields
+  return entries.map(e => ({
+    ...e,
+    tags: e.tags ? JSON.parse(e.tags) : [],
+    files: e.files ? JSON.parse(e.files) : []
+  }));
+}
+
+/**
+ * Get request log entry by ID
+ * @param {string} entryId - Entry ID
+ * @returns {Object|null} - Entry or null
+ */
+async function getRequestLogEntry(entryId) {
+  await initDatabase();
+  const result = db.exec('SELECT * FROM request_log WHERE id = ?', [entryId]);
+  const rows = queryToRows(result);
+
+  if (rows.length === 0) return null;
+
+  const entry = rows[0];
+  return {
+    ...entry,
+    tags: entry.tags ? JSON.parse(entry.tags) : [],
+    files: entry.files ? JSON.parse(entry.files) : []
+  };
+}
+
+/**
+ * Get request log statistics
+ * @returns {Object} - Stats about request log
+ */
+async function getRequestLogStats() {
+  await initDatabase();
+
+  function count(sql, params = []) {
+    const result = db.exec(sql, params);
+    if (!result.length || !result[0].values.length) return 0;
+    return result[0].values[0][0];
+  }
+
+  function grouped(sql) {
+    const result = db.exec(sql);
+    if (!result.length) return {};
+    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
+  }
+
+  return {
+    total: count('SELECT COUNT(*) FROM request_log'),
+    byType: grouped('SELECT type, COUNT(*) FROM request_log GROUP BY type'),
+    last7Days: count(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-7 days')`),
+    last30Days: count(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-30 days')`)
+  };
+}
+
+// ============================================================
 // Section Index Operations (Smart Context System)
 // ============================================================
 
@@ -1488,6 +1637,12 @@ module.exports = {
   getSectionsBySource,
   getSectionStats,
   generateSectionEmbeddings,
+
+  // Request Log (v9.0)
+  addRequestLogEntry,
+  searchRequestLog,
+  getRequestLogEntry,
+  getRequestLogStats,
 
   // Paths
   DB_PATH,

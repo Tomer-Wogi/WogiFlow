@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-02T08:20:29.886Z",
+  "lastUpdated": "2026-02-02T09:30:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -14,6 +14,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-research-fix",
+      "title": "Fix research protocol enforcement, rules sync automation, and request log database",
+      "type": "story",
+      "feature": "research-protocol",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Address three gaps: 1) Research protocol enforcement with verification format, 2) Auto-sync rules from decisions.md, 3) Request log database table",
+      "createdAt": "2026-02-02T09:15:00.000Z",
+      "startedAt": "2026-02-02T09:15:00.000Z",
+      "completedAt": "2026-02-02T09:30:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/research-protocol/wf-research-fix.md"
+    },
     {
       "id": "wf-175171e3",
       "title": "Fix auto-regenerate bug in flow-morning.js - calls bash script with node",

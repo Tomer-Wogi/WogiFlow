@@ -213,10 +213,27 @@ function generateResearchProtocolSteps(question, type, depth) {
 - State confidence level (HIGH/MEDIUM/LOW)
 - Acknowledge what you couldn't verify
 
+**Phase 6: Recommendation Verification (if making recommendations)**
+For ANY recommendation ("We should add X", "Consider implementing Y"):
+Use this EXACT format:
+
+\`\`\`
+### Verification: [recommendation title]
+- **Searched**: [Glob/Grep commands used]
+- **Files checked**: [list of files read]
+- **Status**: EXISTS | PARTIAL | MISSING
+- **Evidence**: [quote from code] or "Not found after searching X, Y, Z"
+\`\`\`
+
+If Status = EXISTS → Do NOT recommend (acknowledge it exists)
+If Status = PARTIAL → Recommend enhancement only
+If Status = MISSING → Safe to recommend
+
 ### FORBIDDEN:
 - Claiming "X doesn't exist" without exhaustive search
 - Using training data for external tool capabilities
 - Skipping verification steps
+- Making recommendations without verification block
 
 Proceed with research now.`;
 }
@@ -275,11 +292,21 @@ You must understand what the EXTERNAL thing has BEFORE you can search locally.
 Before presenting ANY recommendation ("We should add X"):
 - FIRST: Search local codebase for equivalent (Glob/Grep)
 - SECOND: Read at least one potentially relevant file
-- THIRD: Mark recommendation status:
-  - **EXISTS**: Already implemented → DO NOT RECOMMEND
-  - **PARTIAL**: Partially implemented → Recommend enhancement
-  - **MISSING**: Not implemented → Safe to recommend
-- Include verification evidence: "Searched: [patterns], Read: [files], Status: [status]"
+- THIRD: Use this EXACT verification format for EACH recommendation:
+
+\`\`\`
+### Verification: [recommendation title]
+- **Searched**: [Glob/Grep commands used]
+- **Files checked**: [list of files read]
+- **Status**: EXISTS | PARTIAL | MISSING
+- **Evidence**: [quote from code] or "Not found after searching X, Y, Z"
+\`\`\`
+
+**CRITICAL RULES:**
+- If Status = **EXISTS** → DO NOT RECOMMEND (acknowledge it exists instead)
+- If Status = **PARTIAL** → Recommend enhancement, cite what exists
+- If Status = **MISSING** → Safe to recommend as new feature
+- Recommendations WITHOUT this verification block are INVALID
 - **ONLY recommend features marked MISSING or PARTIAL**
 
 ### FORBIDDEN:

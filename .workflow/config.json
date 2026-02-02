@@ -1421,6 +1421,7 @@
     "defaultDepth": "standard",
     "strictMode": true,
     "autoTrigger": true,
+    "requireVerificationFormat": true,
     "maxTokensPerDepth": {
       "quick": 5000,
       "standard": 20000,
