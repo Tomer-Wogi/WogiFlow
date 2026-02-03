@@ -165,6 +165,9 @@ This command implements a **structured execution loop**:
 │  3.5 CRITERIA CHECK: Re-read spec, verify EACH done     │
 │     → If ANY not done: implement it, loop back          │
 │  3.6 WIRING CHECK: Verify all files are imported/used   │
+│  3.7 STANDARDS CHECK: Run standards compliance          │
+│     → Scoped by task type (component, utility, etc.)    │
+│     → If violations: fix and retry                      │
 │  4. VERIFY PHASE: Spec verification + quality gates     │
 │     → MANDATORY: Verify all spec deliverables exist     │
 │  5. Save final verification artifact                    │
@@ -635,6 +638,108 @@ const [isPanelOpen, setIsPanelOpen] = useState(false);
 ```
 
 **This prevents the #1 bug from comprehensive reviews: components created but never accessible.**
+
+---
+
+### Step 3.7: Standards Compliance Check (MANDATORY)
+
+**This step catches standards violations before review, enabling shift-left quality.**
+
+After wiring verification, BEFORE running quality gates:
+
+```bash
+node scripts/flow-standards-gate.js wf-XXXXXXXX [changed-files...]
+```
+
+This checks (scoped by task type):
+
+| Task Type | Checks Run |
+|-----------|------------|
+| component | naming, components, security |
+| utility | naming, functions, security |
+| api | naming, api, security |
+| bugfix | naming, security (minimal) |
+| feature | all checks |
+| refactor | all checks |
+
+**Output (passing):**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PROJECT STANDARDS COMPLIANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ naming-conventions: passed
+✓ app-map.md: passed
+✓ security-patterns: passed
+
+Task type: component
+Checks run: naming, components, security
+
+✓ All standards checks passed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Output (violations found):**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ STANDARDS VIOLATIONS FOUND
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Naming Conventions:
+
+  🔴 MUST FIX: scripts/new-feature.js:45
+    → Catch variable "e" should be "err"
+    💡 Fix: Change `catch (e)` to `catch (err)`
+
+📋 Component Duplication:
+
+  🔴 MUST FIX: src/components/UserCard.tsx
+    → Component "UserCard" is 85% similar to existing "UserProfile"
+    💡 Fix: Use existing component or add variant to "UserProfile" instead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Summary: 2 must-fix, 0 warnings
+
+⛔ Task blocked until must-fix violations are resolved.
+
+To proceed:
+  1. Fix each must-fix violation above
+  2. Re-run the standards check
+  3. Continue with task completion
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**If violations found:**
+1. Read the specific fixes suggested
+2. Implement each fix
+3. Re-run standards check
+4. Only proceed when all checks pass
+
+**Learning Integration:**
+When violations are detected, they are automatically:
+1. Recorded to `.workflow/state/feedback-patterns.md`
+2. If same violation type occurs 3+ times, a rule is promoted to `decisions.md`
+3. Future tasks receive prevention prompts based on past violations
+
+**Config**: Controlled by `config.standardsCompliance`:
+```json
+{
+  "standardsCompliance": {
+    "enabled": true,
+    "mode": "block",              // "block" or "warn"
+    "scopeByTaskType": true,      // Use smart scoping
+    "alwaysCheck": ["naming", "security"],
+    "similarityThreshold": 80,
+    "learning": {
+      "enabled": true,
+      "promotionThreshold": 3,
+      "autoSyncRules": true
+    }
+  }
+}
+```
+
+**This catches standards issues early, before they reach code review.**
 
 ---
 

@@ -360,7 +360,8 @@
         "tests",
         "appMapUpdate",
         "requestLogEntry",
-        "integrationWiring"
+        "integrationWiring",
+        "standardsCompliance"
       ],
       "optional": [
         "review",
@@ -371,7 +372,8 @@
       "require": [
         "loopComplete",
         "tests",
-        "requestLogEntry"
+        "requestLogEntry",
+        "standardsCompliance"
       ],
       "optional": [
         "review"
@@ -382,11 +384,25 @@
         "loopComplete",
         "tests",
         "noNewFeatures",
-        "smokeTest"
+        "smokeTest",
+        "standardsCompliance"
       ],
       "optional": [
         "review"
       ]
+    }
+  },
+  "standardsCompliance": {
+    "enabled": true,
+    "mode": "block",
+    "scopeByTaskType": true,
+    "alwaysCheck": ["naming", "security"],
+    "similarityThreshold": 80,
+    "learning": {
+      "enabled": true,
+      "promotionThreshold": 3,
+      "includePreventionPrompts": true,
+      "autoSyncRules": true
     }
   },
   "validation": {
@@ -451,6 +467,26 @@
     "timeout": 30000,
     "screenshotOnFailure": true,
     "baseUrl": "http://localhost:3000"
+  },
+  "browserDebugging": {
+    "enabled": true,
+    "maxIterations": 10,
+    "iterationTimeout": 60000,
+    "screenshotOnEachIteration": true,
+    "autoRefreshAfterFix": true,
+    "hotReloadWaitMs": 2000,
+    "consoleErrorPatterns": true,
+    "saveDebugSession": true,
+    "sessionSavePath": ".workflow/debug-sessions/",
+    "triggers": {
+      "manual": true,
+      "suggestOnBroken": true,
+      "autoOnTestFailure": false
+    },
+    "naturalLanguage": {
+      "enabled": true,
+      "useAppMap": true
+    }
   },
   "componentRules": {
     "preferVariants": true,

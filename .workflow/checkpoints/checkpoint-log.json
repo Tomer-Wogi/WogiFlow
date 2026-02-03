@@ -30,5 +30,21 @@
       "config.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-01-30T22-03-29/config.json"
     },
     "filesTracked": []
+  },
+  {
+    "id": "cp-2026-02-02T08-20-30",
+    "timestamp": "2026-02-02T08:20:30.437Z",
+    "step": 0,
+    "message": "Task complete: wf-175171e3 - Fix auto-regenerate bug in flow-morning.js - calls bash script with node",
+    "gitCommit": null,
+    "stateSnapshot": {
+      "state/ready.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/state_ready.json",
+      "state/request-log.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/state_request-log.md",
+      "state/app-map.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/state_app-map.md",
+      "state/decisions.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/state_decisions.md",
+      "state/progress.md": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/state_progress.md",
+      "config.json": "/Users/tomergilboa/Developer/wogi-flow/.workflow/checkpoints/cp-2026-02-02T08-20-30/config.json"
+    },
+    "filesTracked": []
   }
 ]

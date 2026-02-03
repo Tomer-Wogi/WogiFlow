@@ -48,6 +48,14 @@ try {
   solutionOptimizer = null;
 }
 
+// v4.1 standards gate (for task context awareness)
+let standardsGate;
+try {
+  standardsGate = require('./flow-standards-gate');
+} catch (err) {
+  standardsGate = null;
+}
+
 // ============================================================
 // Get Changed Files
 // ============================================================
@@ -493,24 +501,40 @@ Configure in config.json under review.autoMultiPass.
   // ========================================================================
   const skipStandards = args.includes('--skip-standards');
 
+  // Check if task already passed standards at completion (v4.1)
+  let taskAlreadyPassed = false;
+  if (taskId && standardsGate) {
+    const taskContext = standardsGate.loadTaskContext(taskId);
+    if (taskContext && standardsGate.hasPassedStandards(taskContext)) {
+      taskAlreadyPassed = true;
+    }
+  }
+
   if (!skipStandards && standardsChecker) {
     console.log('');
-    console.log(color('cyan', 'Running project standards compliance check...'));
 
-    const standardsResult = standardsChecker.runStandardsCheck(filesWithContent);
-
-    if (jsonOutput) {
-      console.log(JSON.stringify({ standards: standardsResult }, null, 2));
+    if (taskAlreadyPassed) {
+      // Task already passed standards check at completion
+      console.log(color('green', '✓ Standards check: Passed at task completion (skipping redundant check)'));
+      console.log(color('dim', '  Task passed standards compliance during wogi-start execution.'));
     } else {
-      console.log(standardsChecker.formatStandardsResults(standardsResult));
-    }
+      console.log(color('cyan', 'Running project standards compliance check...'));
 
-    // Block if must-fix violations found
-    if (standardsResult.blocked) {
-      console.log('');
-      console.log(color('red', '⛔ Standards violations must be fixed before completing review.'));
-      console.log(color('dim', 'All code must follow the same conventions. Fix the violations above.'));
-      process.exit(1);
+      const standardsResult = standardsChecker.runStandardsCheck(filesWithContent);
+
+      if (jsonOutput) {
+        console.log(JSON.stringify({ standards: standardsResult }, null, 2));
+      } else {
+        console.log(standardsChecker.formatStandardsResults(standardsResult));
+      }
+
+      // Block if must-fix violations found
+      if (standardsResult.blocked) {
+        console.log('');
+        console.log(color('red', '⛔ Standards violations must be fixed before completing review.'));
+        console.log(color('dim', 'All code must follow the same conventions. Fix the violations above.'));
+        process.exit(1);
+      }
     }
   } else if (!standardsChecker && !skipStandards) {
     console.log(color('dim', 'Standards checker not available. Skipping Phase 3.'));

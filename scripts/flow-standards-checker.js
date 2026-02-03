@@ -52,6 +52,21 @@ const NAMING_RULES = {
 // Component similarity threshold
 const SIMILARITY_THRESHOLD = 0.8;
 
+// Task type to check type mapping for smart scoping
+const TASK_CHECK_MAP = {
+  'component': ['naming', 'components', 'security'],
+  'utility': ['naming', 'functions', 'security'],
+  'api': ['naming', 'api', 'security'],
+  'feature': ['naming', 'components', 'functions', 'api', 'security'],
+  'bugfix': ['naming', 'security'],
+  'refactor': ['naming', 'components', 'functions', 'api', 'security'],
+  'story': ['naming', 'components', 'functions', 'api', 'security'],
+  'default': ['naming', 'components', 'functions', 'api', 'security']
+};
+
+// All available check types
+const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'security'];
+
 // ============================================================================
 // Parse Standards Files
 // ============================================================================
@@ -297,9 +312,10 @@ function checkNamingConventions(file) {
  * Check for component duplication
  * @param {Object} file - File with path and content
  * @param {Object[]} existingComponents - Components from app-map
+ * @param {number} threshold - Similarity threshold (0-1)
  * @returns {Object[]} Array of violations
  */
-function checkComponentDuplication(file, existingComponents) {
+function checkComponentDuplication(file, existingComponents, threshold = SIMILARITY_THRESHOLD) {
   const violations = [];
 
   // Only check for new component files
@@ -316,7 +332,7 @@ function checkComponentDuplication(file, existingComponents) {
     const existingName = existing.name.toLowerCase();
     const similarity = calculateSimilarity(componentName, existingName);
 
-    if (similarity >= SIMILARITY_THRESHOLD && componentName !== existingName) {
+    if (similarity >= threshold && componentName !== existingName) {
       violations.push({
         type: 'component-duplication',
         severity: 'must-fix',
@@ -336,9 +352,10 @@ function checkComponentDuplication(file, existingComponents) {
  * Check for function duplication
  * @param {Object} file - File with path and content
  * @param {Object[]} existingFunctions - Functions from function-map
+ * @param {number} threshold - Similarity threshold (0-1)
  * @returns {Object[]} Array of violations
  */
-function checkFunctionDuplication(file, existingFunctions) {
+function checkFunctionDuplication(file, existingFunctions, threshold = SIMILARITY_THRESHOLD) {
   const violations = [];
   const content = file.content || '';
 
@@ -355,7 +372,7 @@ function checkFunctionDuplication(file, existingFunctions) {
       const existingLower = existing.name.toLowerCase();
       const similarity = calculateSimilarity(funcNameLower, existingLower);
 
-      if (similarity >= SIMILARITY_THRESHOLD && funcNameLower !== existingLower) {
+      if (similarity >= threshold && funcNameLower !== existingLower) {
         const beforeMatch = content.substring(0, match.index);
         const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
 
@@ -495,50 +512,124 @@ function levenshteinDistance(a, b) {
 // ============================================================================
 
 /**
+ * Determine which check types to run based on task type and options
+ * @param {Object} options - Scoping options
+ * @returns {string[]} Array of check types to run
+ */
+function getCheckTypesForTask(options = {}) {
+  const {
+    taskType = null,
+    checkTypes = null,
+    skipComponents = false,
+    skipFunctions = false,
+    skipSecurity = false,
+    skipApi = false
+  } = options;
+
+  // If explicit checkTypes provided, use those
+  if (checkTypes && Array.isArray(checkTypes)) {
+    return checkTypes.filter(t => ALL_CHECK_TYPES.includes(t));
+  }
+
+  // Get checks based on task type
+  let checks = TASK_CHECK_MAP[taskType] || TASK_CHECK_MAP['default'];
+  checks = [...checks]; // Clone to avoid modifying the original
+
+  // Apply skip flags
+  if (skipComponents) checks = checks.filter(c => c !== 'components');
+  if (skipFunctions) checks = checks.filter(c => c !== 'functions');
+  if (skipSecurity) checks = checks.filter(c => c !== 'security');
+  if (skipApi) checks = checks.filter(c => c !== 'api');
+
+  return checks;
+}
+
+/**
+ * Check if a file path matches any of the changed paths (for targeted checks)
+ * @param {string} filePath - File path to check
+ * @param {string[]} changedPaths - Array of changed paths
+ * @returns {boolean} True if file matches
+ */
+function isInChangedPaths(filePath, changedPaths) {
+  if (!changedPaths || changedPaths.length === 0) return true;
+  return changedPaths.some(p => filePath.includes(p) || p.includes(filePath));
+}
+
+/**
  * Run all standards checks on files
  * @param {Object[]} files - Files with path and content
+ * @param {Object} options - Scoping options
+ * @param {string} options.taskType - Task type for smart scoping (component, utility, api, feature, bugfix, refactor)
+ * @param {string[]} options.changedPaths - Paths changed in this task (for targeted checks)
+ * @param {string[]} options.checkTypes - Override: specific check types to run
+ * @param {boolean} options.skipComponents - Skip component duplication check
+ * @param {boolean} options.skipFunctions - Skip function duplication check
+ * @param {boolean} options.skipSecurity - Skip security pattern check
+ * @param {boolean} options.skipApi - Skip API check
+ * @param {number} options.similarityThreshold - Override similarity threshold (0-1)
  * @returns {Object} Check results
  */
-function runStandardsCheck(files) {
-  // Load all standards
+function runStandardsCheck(files, options = {}) {
+  const {
+    changedPaths = [],
+    similarityThreshold = SIMILARITY_THRESHOLD
+  } = options;
+
+  // Determine which checks to run
+  const checksToRun = getCheckTypesForTask(options);
+
+  // Load all standards (lazy load only what's needed)
   const decisions = parseDecisions();
-  const components = parseAppMap();
-  const functions = parseFunctionMap();
-  const endpoints = parseApiMap();
-  const rulesFiles = loadRulesDir();
+  const components = checksToRun.includes('components') ? parseAppMap() : [];
+  const functions = checksToRun.includes('functions') ? parseFunctionMap() : [];
+  const endpoints = checksToRun.includes('api') ? parseApiMap() : [];
+  const rulesFiles = checksToRun.includes('security') ? loadRulesDir() : [];
 
   const allViolations = [];
   const checksSummary = {
     'decisions.md': { checked: true, violations: 0 },
-    'app-map.md': { checked: components.length > 0, violations: 0 },
-    'function-map.md': { checked: functions.length > 0, violations: 0 },
-    'api-map.md': { checked: endpoints.length > 0, violations: 0 },
-    'naming-conventions': { checked: true, violations: 0 },
-    'security-patterns': { checked: true, violations: 0 }
+    'app-map.md': { checked: checksToRun.includes('components') && components.length > 0, violations: 0 },
+    'function-map.md': { checked: checksToRun.includes('functions') && functions.length > 0, violations: 0 },
+    'api-map.md': { checked: checksToRun.includes('api') && endpoints.length > 0, violations: 0 },
+    'naming-conventions': { checked: checksToRun.includes('naming'), violations: 0 },
+    'security-patterns': { checked: checksToRun.includes('security'), violations: 0 }
   };
 
   for (const file of files) {
     if (!file.content) continue;
 
+    // Skip files not in changedPaths if specified
+    if (changedPaths.length > 0 && !isInChangedPaths(file.path, changedPaths)) {
+      continue;
+    }
+
     // Naming conventions
-    const namingViolations = checkNamingConventions(file);
-    allViolations.push(...namingViolations);
-    checksSummary['naming-conventions'].violations += namingViolations.length;
+    if (checksToRun.includes('naming')) {
+      const namingViolations = checkNamingConventions(file);
+      allViolations.push(...namingViolations);
+      checksSummary['naming-conventions'].violations += namingViolations.length;
+    }
 
     // Component duplication
-    const componentViolations = checkComponentDuplication(file, components);
-    allViolations.push(...componentViolations);
-    checksSummary['app-map.md'].violations += componentViolations.length;
+    if (checksToRun.includes('components') && components.length > 0) {
+      const componentViolations = checkComponentDuplication(file, components, similarityThreshold);
+      allViolations.push(...componentViolations);
+      checksSummary['app-map.md'].violations += componentViolations.length;
+    }
 
     // Function duplication
-    const functionViolations = checkFunctionDuplication(file, functions);
-    allViolations.push(...functionViolations);
-    checksSummary['function-map.md'].violations += functionViolations.length;
+    if (checksToRun.includes('functions') && functions.length > 0) {
+      const functionViolations = checkFunctionDuplication(file, functions, similarityThreshold);
+      allViolations.push(...functionViolations);
+      checksSummary['function-map.md'].violations += functionViolations.length;
+    }
 
     // Security patterns
-    const securityViolations = checkSecurityPatterns(file, rulesFiles);
-    allViolations.push(...securityViolations);
-    checksSummary['security-patterns'].violations += securityViolations.length;
+    if (checksToRun.includes('security')) {
+      const securityViolations = checkSecurityPatterns(file, rulesFiles);
+      allViolations.push(...securityViolations);
+      checksSummary['security-patterns'].violations += securityViolations.length;
+    }
   }
 
   // Count must-fix violations
@@ -551,7 +642,9 @@ function runStandardsCheck(files) {
     violations: allViolations,
     mustFixCount,
     warningCount,
-    summary: checksSummary
+    summary: checksSummary,
+    checksRun: checksToRun,
+    taskType: options.taskType || 'default'
   };
 }
 
@@ -691,6 +784,10 @@ module.exports = {
   checkFunctionDuplication,
   checkSecurityPatterns,
   calculateSimilarity,
+  getCheckTypesForTask,
+  isInChangedPaths,
   STANDARDS_FILES,
-  SIMILARITY_THRESHOLD
+  SIMILARITY_THRESHOLD,
+  TASK_CHECK_MAP,
+  ALL_CHECK_TYPES
 };

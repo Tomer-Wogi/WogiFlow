@@ -6,6 +6,7 @@ Execute browser tests using Claude's Chrome integration.
 - `/wogi-test-browser all` - Run all flows
 - `/wogi-test-browser --list` - List available flows
 - `/wogi-test-browser --check` - Check Chrome connection status
+- `/wogi-test-browser --debug [flow-name]` - Run flow with auto-fix on failure
 
 ## Prerequisites
 
@@ -156,8 +157,27 @@ Browser testing settings in `.workflow/config.json`:
 
 When `runOnTaskComplete` is enabled and you complete a task that modified UI files, WogiFlow will suggest running relevant browser tests to verify your changes work correctly.
 
+## Debug Mode
+
+Use `--debug` flag to enable autonomous debugging when a test fails:
+
+```
+/wogi-test-browser --debug login-flow
+```
+
+When debug mode is enabled:
+1. Run the test flow normally
+2. If any step fails, automatically enter debug loop
+3. Read console errors, analyze the failure
+4. Attempt to fix the code
+5. Re-run the flow to verify the fix
+6. Repeat until passing or max iterations reached
+
+This combines the structured test flow with the autonomous debugging capabilities of `/wogi-debug-browser`.
+
 ## Related
 
 - `flow browser-exec <flow>` - CLI command for generating execution plans
 - `flow browser-suggest <task-id>` - Suggest tests for a specific task
+- `/wogi-debug-browser "description"` - Autonomous debugging from natural language
 - `/chrome` - Check Chrome integration status
