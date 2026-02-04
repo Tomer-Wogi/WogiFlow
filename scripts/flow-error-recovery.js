@@ -390,6 +390,12 @@ function recordFixAttempt(level, strategy, newOutput) {
   session.attempts.push(attempt);
   session.currentLevel = newAnalysis.primaryLevel;
 
+  // Check for architectural reassessment trigger (3-strike rule)
+  const reassessmentResult = checkArchitecturalReassessment(session, level, state);
+  if (reassessmentResult.triggered) {
+    session.architecturalReassessment = reassessmentResult;
+  }
+
   if (newAnalysis.totalErrors === 0) {
     session.resolved = true;
     session.status = 'resolved';
@@ -406,6 +412,183 @@ function recordFixAttempt(level, strategy, newOutput) {
   saveErrorState(state);
 
   return session;
+}
+
+/**
+ * Check if architectural reassessment should be triggered (3-strike rule)
+ * @param {Object} session - Current recovery session
+ * @param {string} currentLevel - Current error level being fixed
+ * @param {Object} state - Error recovery state
+ * @returns {Object} Reassessment result
+ */
+function checkArchitecturalReassessment(session, currentLevel, state) {
+  // Get config for architectural reassessment
+  let config;
+  try {
+    config = require('./flow-utils').getConfig();
+  } catch (err) {
+    config = {};
+  }
+
+  const reassessmentConfig = config.errorRecovery?.architecturalReassessment || {};
+  if (!reassessmentConfig.enabled) {
+    return { triggered: false, reason: 'disabled' };
+  }
+
+  const strikeCount = reassessmentConfig.strikeCount || 3;
+
+  // Count consecutive failures at the same error level
+  const recentAttempts = session.attempts.slice(-strikeCount);
+  const consecutiveFailures = recentAttempts.filter(a =>
+    a.level === currentLevel && !a.improved
+  ).length;
+
+  if (consecutiveFailures < strikeCount) {
+    return { triggered: false, consecutiveFailures };
+  }
+
+  // 3 strikes reached - trigger architectural reassessment
+  return {
+    triggered: true,
+    consecutiveFailures,
+    currentLevel,
+    analysis: generateArchitecturalAnalysis(session, currentLevel),
+    recommendation: null, // Will be populated by agent
+    status: 'pending_analysis'
+  };
+}
+
+/**
+ * Generate architectural analysis for reassessment
+ * @param {Object} session - Current recovery session
+ * @param {string} level - Error level that triggered reassessment
+ * @returns {Object} Architectural analysis
+ */
+function generateArchitecturalAnalysis(session, level) {
+  const recentErrors = session.attempts
+    .filter(a => a.level === level)
+    .map(a => a.analysis?.levels?.[level]?.errors || [])
+    .flat()
+    .slice(-5);
+
+  const errorPatterns = {};
+  for (const err of recentErrors) {
+    const pattern = err.classification?.reason || 'unknown';
+    errorPatterns[pattern] = (errorPatterns[pattern] || 0) + 1;
+  }
+
+  return {
+    level,
+    totalAttempts: session.attempts.length,
+    failedAttempts: session.attempts.filter(a => !a.improved).length,
+    errorPatterns,
+    strategiesAttempted: [...new Set(session.attempts.map(a => a.strategy))],
+    questions: [
+      'Is the current approach fundamentally flawed?',
+      'Are there dependencies or assumptions that are incorrect?',
+      'Would a different architectural pattern solve this more cleanly?',
+      'Is this error indicative of a design-level issue?'
+    ]
+  };
+}
+
+/**
+ * Record architectural reassessment decision
+ * @param {string} decision - 'continue' or 'switch'
+ * @param {string} reasoning - Agent's reasoning
+ * @param {Object} alternativeApproach - If switching, the new approach details
+ * @returns {Object} Updated session
+ */
+function recordArchitecturalDecision(decision, reasoning, alternativeApproach = null) {
+  const state = loadErrorState();
+  const session = state.currentSession;
+
+  if (!session || !session.architecturalReassessment) {
+    return { error: 'No active reassessment pending' };
+  }
+
+  session.architecturalReassessment.status = decision === 'continue' ? 'continue_confirmed' : 'switch_proposed';
+  session.architecturalReassessment.decision = decision;
+  session.architecturalReassessment.reasoning = reasoning;
+  session.architecturalReassessment.decidedAt = new Date().toISOString();
+
+  if (decision === 'switch' && alternativeApproach) {
+    session.architecturalReassessment.alternativeApproach = alternativeApproach;
+    session.architecturalReassessment.status = 'awaiting_approval';
+  }
+
+  saveErrorState(state);
+
+  return session;
+}
+
+/**
+ * Record user approval/rejection of alternative approach
+ * @param {boolean} approved - Whether user approved the switch
+ * @returns {Object} Updated session
+ */
+function recordApprovalDecision(approved) {
+  const state = loadErrorState();
+  const session = state.currentSession;
+
+  if (!session?.architecturalReassessment || session.architecturalReassessment.status !== 'awaiting_approval') {
+    return { error: 'No approach awaiting approval' };
+  }
+
+  session.architecturalReassessment.approved = approved;
+  session.architecturalReassessment.approvedAt = new Date().toISOString();
+  session.architecturalReassessment.status = approved ? 'approach_switched' : 'continue_original';
+
+  // Reset attempts counter if switching approach
+  if (approved) {
+    session.switchedApproach = true;
+    session.attemptsSinceSwitch = 0;
+  }
+
+  saveErrorState(state);
+
+  return session;
+}
+
+/**
+ * Format architectural reassessment prompt for display
+ * @param {Object} reassessment - Reassessment data
+ * @returns {string} Formatted prompt
+ */
+function formatArchitecturalReassessment(reassessment) {
+  const lines = [];
+
+  lines.push('');
+  lines.push('━'.repeat(60));
+  lines.push('  ⚠️  ARCHITECTURAL REASSESSMENT TRIGGERED');
+  lines.push('━'.repeat(60));
+  lines.push('');
+  lines.push(`${reassessment.consecutiveFailures} consecutive failures at ${reassessment.currentLevel} level.`);
+  lines.push('');
+  lines.push('This pattern suggests the issue may be architectural rather than');
+  lines.push('a simple bug. The agent should analyze:');
+  lines.push('');
+
+  for (const question of reassessment.analysis?.questions || []) {
+    lines.push(`  • ${question}`);
+  }
+
+  lines.push('');
+  lines.push('Strategies already attempted:');
+  for (const strategy of (reassessment.analysis?.strategiesAttempted || []).slice(0, 5)) {
+    lines.push(`  - ${strategy}`);
+  }
+
+  lines.push('');
+  lines.push('━'.repeat(60));
+  lines.push('');
+  lines.push('NEXT STEPS:');
+  lines.push('1. Analyze if the current approach is fundamentally sound');
+  lines.push('2. If sound: Document reasoning and continue');
+  lines.push('3. If not: Research alternatives, propose new approach for approval');
+  lines.push('');
+
+  return lines.join('\n');
 }
 
 /**
@@ -646,6 +829,13 @@ module.exports = {
   // Suggestions
   getSuggestedFixes,
   getBestStrategy,
+
+  // Architectural reassessment (v5.0 - 3-strike rule)
+  checkArchitecturalReassessment,
+  generateArchitecturalAnalysis,
+  recordArchitecturalDecision,
+  recordApprovalDecision,
+  formatArchitecturalReassessment,
 
   // Formatting
   formatAnalysis,

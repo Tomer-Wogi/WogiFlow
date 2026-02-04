@@ -422,6 +422,10 @@ Configure in config.json under review.autoMultiPass.
   }
   console.log('');
 
+  // Load config early for spec-first gating check
+  const config = getConfig();
+  const specFirstGating = config.review?.specFirstGating !== false;
+
   // Run verification gates
   if (!skipVerify) {
     const gateResults = runVerificationGates(changedFiles, { taskId });
@@ -430,6 +434,24 @@ Configure in config.json under review.autoMultiPass.
 
     if (gateResults.criticalFailed) {
       console.log(color('red', '⛔ Critical verification failed. Fix issues before proceeding.'));
+
+      // v5.0: Spec-first gating - if spec verification failed, skip code quality passes
+      if (specFirstGating) {
+        const specFailed = gateResults.gates.some(g => g.name === 'Spec Verification' && !g.passed);
+        if (specFailed) {
+          console.log('');
+          console.log(color('yellow', '━'.repeat(60)));
+          console.log(color('yellow', '  SPEC-FIRST GATING'));
+          console.log(color('yellow', '━'.repeat(60)));
+          console.log('');
+          console.log('Spec verification must pass before code quality review.');
+          console.log('');
+          console.log('Why: Reviewing code quality on incomplete implementation');
+          console.log('wastes effort. Fix the missing deliverables first.');
+          console.log('');
+          console.log(color('dim', 'To bypass: flow review --skip-verify'));
+        }
+      }
       process.exit(1);
     }
   }
@@ -442,9 +464,6 @@ Configure in config.json under review.autoMultiPass.
 
   // Load file contents for AI review
   const filesWithContent = changedFiles.map(f => loadFileContent(f));
-
-  // Determine if multi-pass should be used (explicit flag or auto-detected)
-  const config = getConfig();
   const noMultipass = args.includes('--no-multipass');
   let useMultiPass = multipass;
   let multiPassReason = 'requested via --multipass flag';

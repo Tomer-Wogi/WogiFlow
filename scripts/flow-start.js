@@ -419,6 +419,68 @@ async function main() {
     process.exit(1);
   }
 
+  // v5.0: Pre-task test baseline check (optional, disabled by default)
+  const skipBaseline = process.argv.includes('--skip-baseline');
+  const baselineConfig = config.qualityGates?.preTaskBaseline;
+  const taskType = found.task?.type || 'feature';
+
+  if (baselineConfig?.enabled && !skipBaseline) {
+    // Check if task type should skip baseline
+    const skipTypes = baselineConfig.skipForTypes || ['bugfix', 'quick-fix'];
+    const shouldSkipForType = skipTypes.includes(taskType);
+
+    if (!shouldSkipForType) {
+      console.log('');
+      console.log(color('cyan', '━'.repeat(60)));
+      console.log(color('cyan', '  PRE-TASK TEST BASELINE CHECK'));
+      console.log(color('cyan', '━'.repeat(60)));
+      console.log('');
+      console.log('Verifying test suite passes before starting work...');
+      console.log('');
+
+      try {
+        const { execFileSync } = require('child_process');
+        const testCommand = baselineConfig.command || 'npm test';
+        const [cmd, ...args] = testCommand.split(' ');
+
+        execFileSync(cmd, args, {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        console.log(color('green', '✓ Test baseline passed - all tests passing'));
+        console.log('');
+      } catch (err) {
+        // Parse test output to count failures
+        const output = err.stdout || err.stderr || '';
+        const failureMatch = output.match(/(\d+)\s+(failing|failed)/i);
+        const failureCount = failureMatch ? parseInt(failureMatch[1], 10) : 1;
+        const threshold = baselineConfig.failureThreshold || 5;
+
+        console.log(color('red', `✗ Test baseline FAILED - ${failureCount} test(s) failing`));
+        console.log('');
+
+        if (failureCount > threshold) {
+          console.log(color('red', '⛔ Too many pre-existing test failures to start task.'));
+          console.log(`   Failures: ${failureCount} (threshold: ${threshold})`);
+          console.log('');
+          console.log('Fix these tests first, or bypass with:');
+          console.log(color('dim', `  flow start ${taskId} --skip-baseline`));
+          console.log('');
+          console.log(color('dim', 'This check ensures you start with a clean slate.'));
+          console.log(color('dim', 'To disable permanently: set qualityGates.preTaskBaseline.enabled = false'));
+          process.exit(1);
+        } else {
+          console.log(color('yellow', `⚠️  ${failureCount} pre-existing test failure(s) (below threshold of ${threshold})`));
+          console.log(color('dim', 'Proceeding, but be aware of existing failures.'));
+          console.log('');
+        }
+      }
+    } else if (process.env.DEBUG) {
+      console.log(color('dim', `[DEBUG] Skipping baseline check for task type: ${taskType}`));
+    }
+  }
+
   // Move task from ready to inProgress (with file locking)
   const result = await moveTaskAsync(taskId, 'ready', 'inProgress');
 

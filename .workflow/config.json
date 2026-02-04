@@ -60,6 +60,12 @@
     "autoSuggestFixes": true,
     "trackSuccessfulStrategies": true,
     "maxAttemptsPerLevel": 3,
+    "architecturalReassessment": {
+      "enabled": true,
+      "strikeCount": 3,
+      "autoResearch": true,
+      "requireApproval": true
+    },
     "recursive": {
       "enabled": false,
       "maxDepth": 3,
@@ -354,6 +360,12 @@
     "autoSuggestTests": true
   },
   "qualityGates": {
+    "preTaskBaseline": {
+      "enabled": false,
+      "failureThreshold": 5,
+      "skipForTypes": ["bugfix", "quick-fix"],
+      "command": "npm test"
+    },
     "feature": {
       "require": [
         "loopComplete",
@@ -1306,6 +1318,7 @@
     }
   },
   "review": {
+    "specFirstGating": true,
     "multiPass": {
       "enabled": true,
       "earlyExitOnCritical": true,

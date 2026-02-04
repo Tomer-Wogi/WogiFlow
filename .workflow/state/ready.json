@@ -1,7 +1,18 @@
 {
-  "lastUpdated": "2026-02-02T12:00:00.000Z",
+  "lastUpdated": "2026-02-04T13:30:00.000Z",
   "inProgress": [],
   "ready": [
+    {
+      "id": "wf-3daad465",
+      "title": "Capture Task tool metrics (token count, tool uses, duration) in flow-metrics.js",
+      "type": "story",
+      "feature": "metrics",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Extend flow-metrics.js to capture subagent metrics (token count, tool uses, duration) from Claude Code 2.1.30+ Task tool results. Add cost estimation and per-task-type aggregation.",
+      "createdAt": "2026-02-04T12:00:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-3daad465.md"
+    },
     {
       "id": "wf-cc-007",
       "title": "Test WogiFlow on Windows with Claude Code 2.1.7 fixes",
@@ -14,6 +25,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-8984278f",
+      "title": "Implement 3 quality improvements from superpowers analysis",
+      "type": "story",
+      "feature": "quality-gates",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Sequential spec-then-quality review, 3-strike architectural reassessment, optional pre-task test baseline",
+      "createdAt": "2026-02-04T13:00:00.000Z",
+      "startedAt": "2026-02-04T13:00:00.000Z",
+      "completedAt": "2026-02-04T13:30:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-8984278f.md"
+    },
     {
       "id": "wf-review-fix-sync",
       "title": "Sync wogi-review-fix with all wogi-review phases",
