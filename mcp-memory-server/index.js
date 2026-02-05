@@ -184,6 +184,7 @@ async function getPrdContext({ taskDescription, maxTokens = 2000 }) {
 
 async function getMemoryStats({}) {
   const stats = await memoryDb.getStats();
+  const obsStats = await memoryDb.getObservationStats();
   return {
     facts: stats.facts,
     proposals: stats.proposals,
@@ -191,8 +192,37 @@ async function getMemoryStats({}) {
       chunks: stats.prds.chunks,
       total: stats.prds.total
     },
+    observations: obsStats,
     teamEnabled: isTeamEnabled()
   };
+}
+
+// ============================================================
+// Observation Tool Implementations (v10.0)
+// ============================================================
+
+async function searchIndex({ query, tool_filter, since, limit }) {
+  return await memoryDb.searchObservationsCompact({
+    query,
+    toolFilter: tool_filter,
+    since,
+    limit: limit || 20
+  });
+}
+
+async function getObservations({ ids, include_full }) {
+  return await memoryDb.getObservationsByIds(ids, {
+    includeFull: include_full !== false
+  });
+}
+
+async function getTimeline({ anchor, before, after, tool_filter }) {
+  return await memoryDb.getTimelineContext({
+    anchor,
+    before: before || 3,
+    after: after || 3,
+    toolFilter: tool_filter
+  });
 }
 
 // ============================================================
@@ -321,6 +351,47 @@ const TOOLS = [
       type: 'object',
       properties: {}
     }
+  },
+  // v10.0: Observation tools for progressive disclosure search
+  {
+    name: 'search_index',
+    description: 'Fast search returning only IDs and compact summaries (~50-100 tokens). Use before get_observations for progressive disclosure - first search to find relevant IDs, then fetch full details only for what you need.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query to match against observation summaries' },
+        tool_filter: { type: 'string', description: 'Filter by tool name (e.g., "Edit", "Bash", "Read")' },
+        since: { type: 'string', description: 'ISO timestamp - only return observations after this time' },
+        limit: { type: 'number', description: 'Maximum results (default: 20)' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'get_observations',
+    description: 'Get full observation details by IDs. Use search_index first to find IDs, then fetch only the ones you need.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ids: { type: 'array', items: { type: 'string' }, description: 'Observation IDs to fetch' },
+        include_full: { type: 'boolean', description: 'Include full input/output content (default: true)' }
+      },
+      required: ['ids']
+    }
+  },
+  {
+    name: 'get_timeline',
+    description: 'Get observations around a specific event. Useful for debugging sequences - see what happened before and after an anchor point.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        anchor: { type: 'string', description: 'Observation ID or ISO timestamp to anchor around' },
+        before: { type: 'number', description: 'Number of observations to get before anchor (default: 3)' },
+        after: { type: 'number', description: 'Number of observations to get after anchor (default: 3)' },
+        tool_filter: { type: 'string', description: 'Filter by tool name' }
+      },
+      required: ['anchor']
+    }
   }
 ];
 
@@ -333,7 +404,11 @@ const TOOL_HANDLERS = {
   vote_proposal: voteProposal,
   store_prd: storePrd,
   get_prd_context: getPrdContext,
-  get_memory_stats: getMemoryStats
+  get_memory_stats: getMemoryStats,
+  // v10.0: Observation tools
+  search_index: searchIndex,
+  get_observations: getObservations,
+  get_timeline: getTimeline
 };
 
 async function main() {
@@ -343,7 +418,7 @@ async function main() {
   const server = new Server(
     {
       name: 'wogi-memory-server',
-      version: '0.2.0',
+      version: '0.3.0',
     },
     {
       capabilities: {
@@ -385,7 +460,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error('Wogi Memory Server v0.2.0 started (using shared database)');
+  console.error('Wogi Memory Server v0.3.0 started (with observation capture)');
 }
 
 main().catch(console.error);

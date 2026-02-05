@@ -229,6 +229,24 @@ async function initDatabase() {
       )
     `);
 
+    // v10.0: Observations table for automatic tool use capture
+    db.run(`
+      CREATE TABLE IF NOT EXISTS observations (
+        id TEXT PRIMARY KEY,
+        session_id TEXT,
+        tool_name TEXT NOT NULL,
+        input_summary TEXT,
+        output_summary TEXT,
+        full_input TEXT,
+        full_output TEXT,
+        timestamp TEXT DEFAULT (datetime('now')),
+        success INTEGER DEFAULT 1,
+        duration_ms INTEGER,
+        context_task_id TEXT,
+        relevance_score REAL DEFAULT 1.0
+      )
+    `);
+
     // Migrate existing databases - add new columns if they don't exist
     const migrations = [
       'ALTER TABLE facts ADD COLUMN last_accessed TEXT',
@@ -256,6 +274,12 @@ async function initDatabase() {
     try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_type ON request_log(type)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_timestamp ON request_log(timestamp)'); } catch {}
     try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_task_id ON request_log(task_id)'); } catch {}
+
+    // Observations indexes
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_session ON observations(session_id)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_tool ON observations(tool_name)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_timestamp ON observations(timestamp)'); } catch {}
+    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_task ON observations(context_task_id)'); } catch {}
 
     saveDatabase();
     return db;
@@ -1257,6 +1281,288 @@ async function getRequestLogStats() {
 }
 
 // ============================================================
+// Observations Operations (v10.0 - Automatic Tool Capture)
+// ============================================================
+
+/**
+ * Store an observation (tool use capture)
+ * @param {Object} options - { sessionId, toolName, inputSummary, outputSummary, fullInput, fullOutput, success, durationMs, contextTaskId }
+ * @returns {Object} - { id, stored: boolean }
+ */
+async function storeObservation(options) {
+  await initDatabase();
+
+  const {
+    sessionId,
+    toolName,
+    inputSummary,
+    outputSummary,
+    fullInput,
+    fullOutput,
+    success = 1,
+    durationMs,
+    contextTaskId
+  } = options;
+
+  const id = generateId('obs');
+
+  db.run(`
+    INSERT INTO observations (id, session_id, tool_name, input_summary, output_summary, full_input, full_output, success, duration_ms, context_task_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, sessionId || null, toolName, inputSummary || null, outputSummary || null, fullInput || null, fullOutput || null, success, durationMs || null, contextTaskId || null]);
+
+  saveDatabase();
+  return { id, stored: true };
+}
+
+/**
+ * Search observations with compact results (progressive disclosure step 1)
+ * Returns only IDs and summaries for ~10x token savings
+ * @param {Object} options - { query, toolFilter, since, limit }
+ * @returns {Object[]} - Compact observation records
+ */
+async function searchObservationsCompact(options = {}) {
+  await initDatabase();
+  const { query, toolFilter, since, limit = 20 } = options;
+
+  let sql = `SELECT id, tool_name, input_summary, output_summary, timestamp, success, context_task_id
+             FROM observations WHERE 1=1`;
+  const params = [];
+
+  if (toolFilter) {
+    sql += ' AND tool_name = ?';
+    params.push(toolFilter);
+  }
+
+  if (since) {
+    sql += ' AND timestamp >= ?';
+    params.push(since);
+  }
+
+  sql += ' ORDER BY timestamp DESC LIMIT ?';
+  params.push(limit);
+
+  const result = db.exec(sql, params);
+  let observations = queryToRows(result);
+
+  // If query provided, filter by text match in summaries
+  if (query) {
+    const queryLower = query.toLowerCase();
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+
+    observations = observations.filter(obs => {
+      const searchText = `${obs.input_summary || ''} ${obs.output_summary || ''} ${obs.tool_name}`.toLowerCase();
+      return queryWords.some(w => searchText.includes(w));
+    });
+  }
+
+  return observations.map(obs => ({
+    id: obs.id,
+    toolName: obs.tool_name,
+    inputSummary: obs.input_summary,
+    outputSummary: obs.output_summary,
+    timestamp: obs.timestamp,
+    success: obs.success === 1,
+    contextTaskId: obs.context_task_id
+  }));
+}
+
+/**
+ * Get full observation details by IDs (progressive disclosure step 2)
+ * @param {string[]} ids - Observation IDs to fetch
+ * @param {Object} options - { includeFull: boolean }
+ * @returns {Object[]} - Full observation records
+ */
+async function getObservationsByIds(ids, options = {}) {
+  await initDatabase();
+  const { includeFull = true } = options;
+
+  if (!ids || ids.length === 0) return [];
+
+  const placeholders = ids.map(() => '?').join(',');
+  const columns = includeFull
+    ? '*'
+    : 'id, session_id, tool_name, input_summary, output_summary, timestamp, success, duration_ms, context_task_id';
+
+  const sql = `SELECT ${columns} FROM observations WHERE id IN (${placeholders})`;
+  const result = db.exec(sql, ids);
+  const observations = queryToRows(result);
+
+  return observations.map(obs => ({
+    id: obs.id,
+    sessionId: obs.session_id,
+    toolName: obs.tool_name,
+    inputSummary: obs.input_summary,
+    outputSummary: obs.output_summary,
+    fullInput: includeFull ? obs.full_input : undefined,
+    fullOutput: includeFull ? obs.full_output : undefined,
+    timestamp: obs.timestamp,
+    success: obs.success === 1,
+    durationMs: obs.duration_ms,
+    contextTaskId: obs.context_task_id,
+    relevanceScore: obs.relevance_score
+  }));
+}
+
+/**
+ * Get timeline context around an anchor point
+ * @param {Object} options - { anchor (ID or timestamp), before, after, toolFilter }
+ * @returns {Object} - { anchor, before: [], after: [] }
+ */
+async function getTimelineContext(options = {}) {
+  await initDatabase();
+  const { anchor, before = 3, after = 3, toolFilter } = options;
+
+  if (!anchor) return { anchor: null, before: [], after: [] };
+
+  // Determine if anchor is an ID or timestamp
+  let anchorTimestamp;
+  let anchorObs = null;
+
+  // Try to find as observation ID first
+  const idResult = db.exec('SELECT timestamp FROM observations WHERE id = ?', [anchor]);
+  const idRows = queryToRows(idResult);
+
+  if (idRows.length > 0) {
+    anchorTimestamp = idRows[0].timestamp;
+    const obsResult = await getObservationsByIds([anchor], { includeFull: false });
+    anchorObs = obsResult[0] || null;
+  } else {
+    // Treat as timestamp
+    anchorTimestamp = anchor;
+  }
+
+  // Build tool filter clause
+  const toolClause = toolFilter ? ' AND tool_name = ?' : '';
+  const toolParams = toolFilter ? [toolFilter] : [];
+
+  // Get observations before anchor
+  const beforeSql = `SELECT id, tool_name, input_summary, output_summary, timestamp, success, context_task_id
+                     FROM observations
+                     WHERE timestamp < ?${toolClause}
+                     ORDER BY timestamp DESC
+                     LIMIT ?`;
+  const beforeResult = db.exec(beforeSql, [anchorTimestamp, ...toolParams, before]);
+  const beforeObs = queryToRows(beforeResult).reverse();
+
+  // Get observations after anchor
+  const afterSql = `SELECT id, tool_name, input_summary, output_summary, timestamp, success, context_task_id
+                    FROM observations
+                    WHERE timestamp > ?${toolClause}
+                    ORDER BY timestamp ASC
+                    LIMIT ?`;
+  const afterResult = db.exec(afterSql, [anchorTimestamp, ...toolParams, after]);
+  const afterObs = queryToRows(afterResult);
+
+  const formatObs = (obs) => ({
+    id: obs.id,
+    toolName: obs.tool_name,
+    inputSummary: obs.input_summary,
+    outputSummary: obs.output_summary,
+    timestamp: obs.timestamp,
+    success: obs.success === 1,
+    contextTaskId: obs.context_task_id
+  });
+
+  return {
+    anchor: anchorObs,
+    anchorTimestamp,
+    before: beforeObs.map(formatObs),
+    after: afterObs.map(formatObs)
+  };
+}
+
+/**
+ * Get recent observations (for dashboard or quick review)
+ * @param {Object} options - { limit, toolFilter, sessionId }
+ * @returns {Object[]} - Recent observations
+ */
+async function getRecentObservations(options = {}) {
+  await initDatabase();
+  const { limit = 20, toolFilter, sessionId } = options;
+
+  let sql = `SELECT id, session_id, tool_name, input_summary, output_summary, timestamp, success, duration_ms, context_task_id
+             FROM observations WHERE 1=1`;
+  const params = [];
+
+  if (toolFilter) {
+    sql += ' AND tool_name = ?';
+    params.push(toolFilter);
+  }
+
+  if (sessionId) {
+    sql += ' AND session_id = ?';
+    params.push(sessionId);
+  }
+
+  sql += ' ORDER BY timestamp DESC LIMIT ?';
+  params.push(limit);
+
+  const result = db.exec(sql, params);
+  const observations = queryToRows(result);
+
+  return observations.map(obs => ({
+    id: obs.id,
+    sessionId: obs.session_id,
+    toolName: obs.tool_name,
+    inputSummary: obs.input_summary,
+    outputSummary: obs.output_summary,
+    timestamp: obs.timestamp,
+    success: obs.success === 1,
+    durationMs: obs.duration_ms,
+    contextTaskId: obs.context_task_id
+  }));
+}
+
+/**
+ * Get observation statistics
+ * @returns {Object} - Stats about observations
+ */
+async function getObservationStats() {
+  await initDatabase();
+
+  function count(sql, params = []) {
+    const result = db.exec(sql, params);
+    if (!result.length || !result[0].values.length) return 0;
+    return result[0].values[0][0];
+  }
+
+  function grouped(sql) {
+    const result = db.exec(sql);
+    if (!result.length) return {};
+    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
+  }
+
+  return {
+    total: count('SELECT COUNT(*) FROM observations'),
+    byTool: grouped('SELECT tool_name, COUNT(*) FROM observations GROUP BY tool_name'),
+    successRate: count('SELECT ROUND(AVG(success) * 100, 1) FROM observations'),
+    last24Hours: count(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-1 day')`),
+    last7Days: count(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-7 days')`),
+    avgDurationMs: count('SELECT ROUND(AVG(duration_ms)) FROM observations WHERE duration_ms IS NOT NULL')
+  };
+}
+
+/**
+ * Purge old observations based on retention policy
+ * @param {number} retentionDays - Days to retain (default: 30)
+ * @returns {Object} - { purged: number }
+ */
+async function purgeOldObservations(retentionDays = 30) {
+  await initDatabase();
+
+  db.run(`
+    DELETE FROM observations
+    WHERE timestamp < datetime('now', '-' || ? || ' days')
+  `, [retentionDays]);
+
+  const purged = db.getRowsModified();
+  saveDatabase();
+
+  return { purged };
+}
+
+// ============================================================
 // Section Index Operations (Smart Context System)
 // ============================================================
 
@@ -1643,6 +1949,15 @@ module.exports = {
   searchRequestLog,
   getRequestLogEntry,
   getRequestLogStats,
+
+  // Observations (v10.0 - Automatic Tool Capture)
+  storeObservation,
+  searchObservationsCompact,
+  getObservationsByIds,
+  getTimelineContext,
+  getRecentObservations,
+  getObservationStats,
+  purgeOldObservations,
 
   // Paths
   DB_PATH,

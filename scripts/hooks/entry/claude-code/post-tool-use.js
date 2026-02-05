@@ -3,14 +3,18 @@
 /**
  * Wogi Flow - Claude Code PostToolUse Hook
  *
- * Called after Edit/Write tool execution.
- * Runs validation (lint, typecheck) on modified files.
+ * Called after tool execution.
+ * - Captures observations for ALL tools (automatic memory)
+ * - Runs validation (lint, typecheck) for Edit/Write only
  */
 
 const { runValidation } = require('../../core/validation');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { captureObservation } = require('../../core/observation-capture');
 
 async function main() {
+  const startTime = Date.now();
+
   try {
     // Read input from stdin
     let inputData = '';
@@ -25,6 +29,23 @@ async function main() {
     const toolInput = parsedInput.toolInput || {};
     const toolResponse = parsedInput.toolResponse;
     const filePath = toolInput.file_path;
+
+    // CAPTURE OBSERVATION FOR ALL TOOLS (non-blocking)
+    // This runs before validation so we capture even if validation fails
+    try {
+      await captureObservation({
+        sessionId: parsedInput.sessionId,
+        toolName,
+        toolInput,
+        toolResponse,
+        duration: Date.now() - startTime
+      });
+    } catch (err) {
+      // Non-blocking - observation capture should never fail the hook
+      if (process.env.DEBUG) {
+        console.error(`[observation-capture] ${err.message}`);
+      }
+    }
 
     // Only run validation for Edit/Write
     if (toolName !== 'Edit' && toolName !== 'Write') {

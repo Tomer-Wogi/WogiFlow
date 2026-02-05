@@ -641,6 +641,13 @@
       "enabled": false,
       "adjustOnOverflow": true,
       "adjustOnFailures": true
+    },
+    "observationCapture": {
+      "enabled": true,
+      "skipTools": [],
+      "maxInputSize": 2000,
+      "maxOutputSize": 2000,
+      "retentionDays": 30
     }
   },
   "automaticPromotion": {
