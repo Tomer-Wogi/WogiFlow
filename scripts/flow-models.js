@@ -64,7 +64,7 @@ const CONFIG = {
   // Valid providers for input validation
   VALID_PROVIDERS: ['anthropic', 'openai', 'google', 'ollama'],
   // Valid capabilities for input validation
-  VALID_CAPABILITIES: ['code-gen', 'reasoning', 'analysis', 'structured-output', 'vision', 'extended-thinking'],
+  VALID_CAPABILITIES: ['code-gen', 'reasoning', 'analysis', 'structured-output', 'vision', 'extended-thinking', 'adaptive-thinking'],
   // Decimal places for cost display (consistent formatting)
   COST_DECIMAL_PLACES: 4,
   // Success rate thresholds for coloring

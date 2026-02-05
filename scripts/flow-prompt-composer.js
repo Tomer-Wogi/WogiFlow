@@ -54,7 +54,9 @@ const COMPOSED_DIR = path.join(PROJECT_ROOT, '.workflow', 'prompts', 'composed')
 
 // Model to CLI mapping (Claude Code only)
 const MODEL_CLI_MAP = {
+  'claude-opus-4-6': 'claude-code',
   'claude-opus-4-5': 'claude-code',
+  'claude-sonnet-4-5': 'claude-code',
   'claude-sonnet-4': 'claude-code',
   'claude-haiku-3-5': 'claude-code'
 };

@@ -64,7 +64,7 @@ const KNOWN_PROVIDERS = {
     envKey: 'ANTHROPIC_API_KEY',
     endpoint: 'https://api.anthropic.com/v1',
     testEndpoint: '/messages',
-    models: ['claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022', 'claude-opus-4-20250514'],
+    models: ['claude-opus-4-6', 'claude-sonnet-4-20250514', 'claude-3-5-haiku-20241022', 'claude-opus-4-5-20251101'],
     defaultModel: 'claude-sonnet-4-20250514'
   },
   local: {

@@ -26,6 +26,19 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-opus46",
+      "title": "Adapt WogiFlow to Claude Opus 4.6",
+      "type": "story",
+      "feature": "model-management",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Update model registry, detection patterns, routing, and documentation across 10 files to support Claude Opus 4.6 and Sonnet 4.5.",
+      "createdAt": "2026-02-05T12:00:00.000Z",
+      "startedAt": "2026-02-05T12:00:00.000Z",
+      "completedAt": "2026-02-05T12:30:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/model-management/wf-opus46.md"
+    },
+    {
       "id": "wf-7f0e95fd",
       "title": "Fix 29 code review issues in memory enhancement (SQL injection, unsafe JSON, DRY violations, missing validation)",
       "type": "bug",

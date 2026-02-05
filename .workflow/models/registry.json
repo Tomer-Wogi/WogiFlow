@@ -1,14 +1,14 @@
 {
   "$schema": "./registry-schema.json",
   "version": "1.0.0",
-  "lastUpdated": "2026-01-11T07:30:00.000Z",
+  "lastUpdated": "2026-02-05T12:00:00.000Z",
 
   "providers": {
     "anthropic": {
       "name": "Anthropic",
       "apiEndpoint": "https://api.anthropic.com/v1",
       "apiKeyEnv": "{env:ANTHROPIC_API_KEY}",
-      "supportedFeatures": ["streaming", "tool-use", "vision", "extended-thinking"],
+      "supportedFeatures": ["streaming", "tool-use", "vision", "extended-thinking", "adaptive-thinking"],
       "rateLimit": {
         "requestsPerMinute": 60,
         "tokensPerMinute": 100000
@@ -81,7 +81,7 @@
       "modelId": "claude-opus-4-5-20251101",
       "displayName": "Claude Opus 4.5",
       "contextWindow": 200000,
-      "maxOutputTokens": 32000,
+      "maxOutputTokens": 64000,
       "costTier": "premium",
       "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "extended-thinking"],
       "languages": {
@@ -106,6 +106,77 @@
         "explicitExamples": false,
         "patternHints": true,
         "minContextForQuality": 0.3
+      }
+    },
+    "claude-opus-4-6": {
+      "provider": "anthropic",
+      "modelId": "claude-opus-4-6",
+      "displayName": "Claude Opus 4.6",
+      "contextWindow": 200000,
+      "contextWindowBeta": 1000000,
+      "maxOutputTokens": 128000,
+      "costTier": "premium",
+      "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "adaptive-thinking"],
+      "languages": {
+        "typescript": 10,
+        "javascript": 10,
+        "python": 10,
+        "go": 9,
+        "rust": 9,
+        "java": 9,
+        "csharp": 9,
+        "ruby": 8,
+        "php": 8
+      },
+      "bestFor": ["complex-reasoning", "architecture", "code-review", "difficult-bugs", "sustained-agentic", "large-codebases"],
+      "pricing": {
+        "inputPer1kTokens": 0.005,
+        "outputPer1kTokens": 0.025,
+        "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "concise",
+        "explicitExamples": false,
+        "patternHints": true,
+        "minContextForQuality": 0.2
+      },
+      "notes": {
+        "contextWindowBetaHeader": "anthropic-beta: max-tokens-1m-2025-02-05",
+        "adaptiveThinking": "GA with effort levels: low, medium, high, max",
+        "agentTeams": "Parallel Claude Code agents supported",
+        "prefillRemoved": "Assistant message prefill returns 400 error"
+      }
+    },
+    "claude-sonnet-4-5": {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-5-20250929",
+      "displayName": "Claude Sonnet 4.5",
+      "contextWindow": 200000,
+      "maxOutputTokens": 16000,
+      "costTier": "standard",
+      "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "extended-thinking"],
+      "languages": {
+        "typescript": 10,
+        "javascript": 10,
+        "python": 10,
+        "go": 9,
+        "rust": 9,
+        "java": 9,
+        "csharp": 9,
+        "ruby": 8,
+        "php": 8
+      },
+      "bestFor": ["general-coding", "refactoring", "documentation", "testing", "code-review"],
+      "pricing": {
+        "inputPer1kTokens": 0.003,
+        "outputPer1kTokens": 0.015,
+        "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "standard",
+        "explicitExamples": true,
+        "patternHints": true,
+        "minContextForQuality": 0.4
       }
     },
     "claude-sonnet-4": {
@@ -262,6 +333,10 @@
     "extended-thinking": {
       "description": "Extended reasoning with visible thought process",
       "requiredFor": ["complex-architecture", "difficult-bugs"]
+    },
+    "adaptive-thinking": {
+      "description": "Adaptive reasoning with effort levels (low, medium, high, max)",
+      "requiredFor": ["complex-architecture", "difficult-bugs", "sustained-agentic"]
     }
   },
 
@@ -279,7 +354,7 @@
     "premium": {
       "description": "High-capability models for complex tasks",
       "maxCostPerTask": 5.00,
-      "preferredModels": ["claude-opus-4-5"]
+      "preferredModels": ["claude-opus-4-6", "claude-opus-4-5"]
     }
   },
 
@@ -287,13 +362,13 @@
     "default": {
       "primary": "claude-sonnet-4",
       "fallback": "claude-haiku-3-5",
-      "escalation": "claude-opus-4-5"
+      "escalation": "claude-opus-4-6"
     },
     "byTaskType": {
       "feature": { "primary": "claude-sonnet-4" },
       "bugfix": { "primary": "claude-sonnet-4" },
       "refactor": { "primary": "claude-sonnet-4" },
-      "architecture": { "primary": "claude-opus-4-5" },
+      "architecture": { "primary": "claude-opus-4-6" },
       "quick-edit": { "primary": "claude-haiku-3-5" },
       "documentation": { "primary": "claude-haiku-3-5" }
     },
