@@ -7,9 +7,25 @@
  * Every tool execution is recorded with smart summarization.
  *
  * Part of v10.0 - Automatic Memory Enhancement
+ * Updated v10.1 - Code review fixes (validation, config caching, DRY)
  */
 
 const path = require('path');
+
+// ============================================================
+// Constants
+// ============================================================
+
+const DEFAULTS = {
+  MAX_INPUT_SIZE: 2000,
+  MAX_OUTPUT_SIZE: 2000,
+  ENABLED: true,
+  SKIP_TOOLS: []
+};
+
+// ============================================================
+// Lazy-loaded Dependencies (avoid circular imports)
+// ============================================================
 
 // Import from parent scripts directory
 const { getConfig } = require('../../flow-utils');
@@ -33,16 +49,31 @@ function getMemoryBlocks() {
 }
 
 // ============================================================
-// Configuration Helpers
+// Configuration Helpers (consolidated - single config read)
 // ============================================================
+
+/**
+ * Get observation capture settings from config
+ * Consolidates multiple getConfig() calls into a single read
+ * @returns {Object} - Observation capture settings
+ */
+function getObservationSettings() {
+  const config = getConfig();
+  const obsConfig = config.automaticMemory?.observationCapture || {};
+  return {
+    enabled: obsConfig.enabled !== false,
+    skipTools: obsConfig.skipTools || DEFAULTS.SKIP_TOOLS,
+    maxInputSize: obsConfig.maxInputSize || DEFAULTS.MAX_INPUT_SIZE,
+    maxOutputSize: obsConfig.maxOutputSize || DEFAULTS.MAX_OUTPUT_SIZE
+  };
+}
 
 /**
  * Check if observation capture is enabled
  * @returns {boolean}
  */
 function isObservationCaptureEnabled() {
-  const config = getConfig();
-  return config.automaticMemory?.observationCapture?.enabled !== false;
+  return getObservationSettings().enabled;
 }
 
 /**
@@ -51,9 +82,8 @@ function isObservationCaptureEnabled() {
  * @returns {boolean}
  */
 function shouldSkipTool(toolName) {
-  const config = getConfig();
-  const skipList = config.automaticMemory?.observationCapture?.skipTools || [];
-  return skipList.includes(toolName);
+  if (!toolName || typeof toolName !== 'string') return true;
+  return getObservationSettings().skipTools.includes(toolName);
 }
 
 /**
@@ -61,8 +91,7 @@ function shouldSkipTool(toolName) {
  * @returns {number}
  */
 function getMaxInputSize() {
-  const config = getConfig();
-  return config.automaticMemory?.observationCapture?.maxInputSize || 2000;
+  return getObservationSettings().maxInputSize;
 }
 
 /**
@@ -70,8 +99,7 @@ function getMaxInputSize() {
  * @returns {number}
  */
 function getMaxOutputSize() {
-  const config = getConfig();
-  return config.automaticMemory?.observationCapture?.maxOutputSize || 2000;
+  return getObservationSettings().maxOutputSize;
 }
 
 // ============================================================
@@ -221,7 +249,17 @@ function summarizeOutput(toolName, toolResponse, success) {
  * @returns {Promise<Object>} - { stored, skipped, id? }
  */
 async function captureObservation(options) {
+  // Input validation - fail fast if options is invalid
+  if (!options || typeof options !== 'object') {
+    return { skipped: true, reason: 'invalid_options' };
+  }
+
   const { sessionId, toolName, toolInput, toolResponse, duration } = options;
+
+  // Validate required fields
+  if (!toolName || typeof toolName !== 'string') {
+    return { skipped: true, reason: 'missing_tool_name' };
+  }
 
   try {
     // Check if capture is enabled
@@ -234,8 +272,12 @@ async function captureObservation(options) {
       return { skipped: true, reason: 'tool_in_skip_list' };
     }
 
-    // Determine success
-    const success = !(toolResponse?.error || toolResponse?.isError);
+    // Determine success - handle various response formats safely
+    const success = !(
+      toolResponse?.error ||
+      toolResponse?.isError ||
+      (typeof toolResponse === 'string' && toolResponse.toLowerCase().startsWith('error:'))
+    );
 
     // Get current task if any
     let contextTaskId = null;

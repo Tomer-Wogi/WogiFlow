@@ -37,15 +37,55 @@ const memoryDb = require('../scripts/flow-memory-db');
 const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
 const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
 
+// Import safeJsonParse from flow-utils if available
+let safeJsonParse;
+try {
+  const flowUtils = require('../scripts/flow-utils');
+  safeJsonParse = flowUtils.safeJsonParse;
+} catch (err) {
+  // Fallback if flow-utils not available
+  safeJsonParse = null;
+}
+
+/**
+ * Get configuration safely
+ * Uses safeJsonParse to prevent prototype pollution attacks
+ * @returns {Object} - Config object or empty object on error
+ */
 function getConfig() {
   try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    if (!fs.existsSync(CONFIG_PATH)) {
+      return {};
     }
-  } catch (e) {
-    // Ignore errors
+
+    // Use safeJsonParse if available (prevents prototype pollution)
+    if (safeJsonParse) {
+      return safeJsonParse(CONFIG_PATH, {});
+    }
+
+    // Fallback: manual safety check
+    const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
+
+    // Check for prototype pollution attempts before parsing
+    if (/__proto__|constructor|prototype/i.test(content)) {
+      console.error('[getConfig] Suspicious content detected in config file');
+      return {};
+    }
+
+    const parsed = JSON.parse(content);
+
+    // Validate it's a plain object
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return {};
+    }
+
+    return parsed;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[getConfig] Error: ${err.message}`);
+    }
+    return {};
   }
-  return {};
 }
 
 function isTeamEnabled() {

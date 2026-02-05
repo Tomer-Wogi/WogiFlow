@@ -15,10 +15,39 @@
  * - Semantic similarity search
  *
  * Part of v1.8.0 - Consolidated memory storage
+ * Updated v10.1 - Code review fixes (SQL safety, DRY, constants)
  */
 
 const fs = require('fs');
 const path = require('path');
+
+// ============================================================
+// Constants (extracted from magic numbers)
+// ============================================================
+
+const DEFAULTS = {
+  CHUNK_SIZE: 500,
+  MIN_CHUNK_LENGTH: 30,
+  MAX_LOCAL_FACTS: 1000,
+  DECAY_RATE: 0.033,                    // ~1/30, decay over 30 days
+  NEVER_ACCESSED_PENALTY: 0.1,
+  RELEVANCE_THRESHOLD: 0.3,
+  COLD_RETENTION_DAYS: 90,
+  MERGE_SIMILARITY_THRESHOLD: 0.95,
+  MIN_PROMOTION_RELEVANCE: 0.8,
+  MIN_PROMOTION_ACCESS_COUNT: 3,
+  MAX_INPUT_SIZE: 2000,
+  MAX_OUTPUT_SIZE: 2000,
+  OBSERVATION_RETENTION_DAYS: 30,
+  DEFAULT_SEARCH_LIMIT: 10,
+  DEFAULT_OBSERVATION_LIMIT: 20,
+  SIMILARITY_THRESHOLD: 0.1,
+  MIN_SECTIONS_BEFORE_FILTER: 3,
+  RELEVANCE_BOOST: 0.1,
+  MAX_RELEVANCE: 1.0,
+  MIN_RELEVANCE: 0.1,
+  NEVER_ACCESSED_AGE_DAYS: 7
+};
 
 // ============================================================
 // Configuration
@@ -30,8 +59,18 @@ const MEMORY_DIR = path.join(WORKFLOW_DIR, 'memory');
 const DB_PATH = path.join(MEMORY_DIR, 'local.db');
 
 // ============================================================
-// Safe JSON Helpers
+// Safe JSON Helpers (using shared flow-utils where available)
 // ============================================================
+
+// Import safeJsonParseString from flow-utils if available
+let safeJsonParseString;
+try {
+  const flowUtils = require('./flow-utils');
+  safeJsonParseString = flowUtils.safeJsonParseString;
+} catch (err) {
+  // Fallback if flow-utils not available (e.g., in MCP server context)
+  safeJsonParseString = null;
+}
 
 /**
  * Safely parse pins JSON with validation
@@ -43,9 +82,18 @@ function safeParsePins(pinsJson) {
   if (!pinsJson || pinsJson === '[]') return [];
 
   try {
-    // Check for prototype pollution attempts
+    // Use shared utility if available
+    if (safeJsonParseString) {
+      const parsed = safeJsonParseString(pinsJson, null);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(p => typeof p === 'string');
+    }
+
+    // Fallback: Check for prototype pollution attempts
     if (/__proto__|constructor|prototype/i.test(pinsJson)) {
-      console.warn('[safeParsePins] Suspicious content detected in pins JSON');
+      if (process.env.DEBUG) {
+        console.warn('[safeParsePins] Suspicious content detected in pins JSON');
+      }
       return [];
     }
 
@@ -55,7 +103,10 @@ function safeParsePins(pinsJson) {
     if (!Array.isArray(parsed)) return [];
 
     return parsed.filter(p => typeof p === 'string');
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[safeParsePins] Parse error: ${err.message}`);
+    }
     return [];
   }
 }
@@ -256,30 +307,50 @@ async function initDatabase() {
       'ALTER TABLE facts ADD COLUMN promoted_to TEXT'
     ];
     for (const migration of migrations) {
-      try { db.run(migration); } catch {}
+      try {
+        db.run(migration);
+      } catch (err) {
+        // Expected error if column already exists - only log unexpected errors
+        if (process.env.DEBUG && !err.message?.includes('duplicate column')) {
+          console.error(`[migration] ${migration}: ${err.message}`);
+        }
+      }
     }
 
-    // Create indexes
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_category ON facts(category)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_scope ON facts(scope)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_model ON facts(model)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_relevance ON facts(relevance_score)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_accessed ON facts(last_accessed)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_facts_cold_archived ON facts_cold(archived_at)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_prd_prd_id ON prd_chunks(prd_id)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_source ON sections(source)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_category ON sections(category)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_sections_hash ON sections(content_hash)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_type ON request_log(type)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_timestamp ON request_log(timestamp)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_request_log_task_id ON request_log(task_id)'); } catch {}
+    // Create indexes - helper to reduce repetition
+    const createIndex = (sql) => {
+      try {
+        db.run(sql);
+      } catch (err) {
+        if (process.env.DEBUG && !err.message?.includes('already exists')) {
+          console.error(`[index] ${sql}: ${err.message}`);
+        }
+      }
+    };
+
+    // Facts indexes
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_category ON facts(category)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_scope ON facts(scope)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_model ON facts(model)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_relevance ON facts(relevance_score)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_accessed ON facts(last_accessed)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_facts_cold_archived ON facts_cold(archived_at)');
+
+    // Other table indexes
+    createIndex('CREATE INDEX IF NOT EXISTS idx_proposals_status ON proposals(status)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_prd_prd_id ON prd_chunks(prd_id)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_sections_source ON sections(source)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_sections_category ON sections(category)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_sections_hash ON sections(content_hash)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_request_log_type ON request_log(type)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_request_log_timestamp ON request_log(timestamp)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_request_log_task_id ON request_log(task_id)');
 
     // Observations indexes
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_session ON observations(session_id)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_tool ON observations(tool_name)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_timestamp ON observations(timestamp)'); } catch {}
-    try { db.run('CREATE INDEX IF NOT EXISTS idx_obs_task ON observations(context_task_id)'); } catch {}
+    createIndex('CREATE INDEX IF NOT EXISTS idx_obs_session ON observations(session_id)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_obs_tool ON observations(tool_name)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_obs_timestamp ON observations(timestamp)');
+    createIndex('CREATE INDEX IF NOT EXISTS idx_obs_task ON observations(context_task_id)');
 
     saveDatabase();
     return db;
@@ -372,8 +443,18 @@ function cosineSimilarity(a, b) {
 // Utility Functions
 // ============================================================
 
+// Counter for additional uniqueness within same millisecond
+let idCounter = 0;
+
+/**
+ * Generate a unique ID with prefix
+ * Uses timestamp + random + counter for guaranteed uniqueness
+ * @param {string} prefix - ID prefix (e.g., 'fact', 'obs')
+ * @returns {string} - Unique ID
+ */
 function generateId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  idCounter = (idCounter + 1) % 1000;
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}_${idCounter.toString().padStart(3, '0')}`;
 }
 
 function embeddingToJson(embedding) {
@@ -383,7 +464,10 @@ function embeddingToJson(embedding) {
 function jsonToEmbedding(json) {
   try {
     return JSON.parse(json);
-  } catch {
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[jsonToEmbedding] Parse error: ${err.message}`);
+    }
     return [];
   }
 }
@@ -396,6 +480,44 @@ function queryToRows(result) {
     columns.forEach((col, i) => { obj[col] = row[i]; });
     return obj;
   });
+}
+
+// ============================================================
+// DRY: Module-level count/grouped helpers (used by multiple functions)
+// ============================================================
+
+/**
+ * Execute a COUNT query and return the result
+ * @param {string} sql - SQL query returning a single count
+ * @param {Array} params - Query parameters
+ * @returns {number} - Count result
+ */
+function dbCount(sql, params = []) {
+  const result = db.exec(sql, params);
+  if (!result.length || !result[0].values.length) return 0;
+  return result[0].values[0][0];
+}
+
+/**
+ * Execute a GROUP BY query and return as object
+ * @param {string} sql - SQL query with GROUP BY returning key-value pairs
+ * @returns {Object} - Key-value mapping
+ */
+function dbGrouped(sql) {
+  const result = db.exec(sql);
+  if (!result.length) return {};
+  return Object.fromEntries(result[0].values.map(row => [row[0] || 'null', row[1]]));
+}
+
+/**
+ * Execute an AVG query and return the result
+ * @param {string} sql - SQL query returning a single average
+ * @returns {number} - Average result
+ */
+function dbAvg(sql) {
+  const result = db.exec(sql);
+  if (!result.length || !result[0].values.length || result[0].values[0][0] === null) return 0;
+  return result[0].values[0][0];
 }
 
 // ============================================================
@@ -840,31 +962,19 @@ async function setSyncState(key, value) {
 async function getStats() {
   await initDatabase();
 
-  function count(sql, params = []) {
-    const result = db.exec(sql, params);
-    if (!result.length || !result[0].values.length) return 0;
-    return result[0].values[0][0];
-  }
-
-  function grouped(sql) {
-    const result = db.exec(sql);
-    if (!result.length) return {};
-    return Object.fromEntries(result[0].values.map(row => [row[0] || 'null', row[1]]));
-  }
-
   return {
     facts: {
-      total: count('SELECT COUNT(*) FROM facts'),
-      byCategory: grouped('SELECT category, COUNT(*) FROM facts GROUP BY category'),
-      byScope: grouped('SELECT scope, COUNT(*) FROM facts GROUP BY scope')
+      total: dbCount('SELECT COUNT(*) FROM facts'),
+      byCategory: dbGrouped('SELECT category, COUNT(*) FROM facts GROUP BY category'),
+      byScope: dbGrouped('SELECT scope, COUNT(*) FROM facts GROUP BY scope')
     },
     proposals: {
-      pending: count('SELECT COUNT(*) FROM proposals WHERE status = ?', ['pending']),
-      total: count('SELECT COUNT(*) FROM proposals')
+      pending: dbCount('SELECT COUNT(*) FROM proposals WHERE status = ?', ['pending']),
+      total: dbCount('SELECT COUNT(*) FROM proposals')
     },
     prds: {
-      total: count('SELECT COUNT(DISTINCT prd_id) FROM prd_chunks'),
-      chunks: count('SELECT COUNT(*) FROM prd_chunks')
+      total: dbCount('SELECT COUNT(DISTINCT prd_id) FROM prd_chunks'),
+      chunks: dbCount('SELECT COUNT(*) FROM prd_chunks')
     }
   };
 }
@@ -878,29 +988,17 @@ async function getStats() {
  */
 async function getEntropyStats(config = {}) {
   await initDatabase();
-  const maxFacts = config.maxLocalFacts || 1000;
+  const maxFacts = config.maxLocalFacts || DEFAULTS.MAX_LOCAL_FACTS;
 
-  function count(sql, params = []) {
-    const result = db.exec(sql, params);
-    if (!result.length || !result[0].values.length) return 0;
-    return result[0].values[0][0];
-  }
-
-  function avg(sql) {
-    const result = db.exec(sql);
-    if (!result.length || !result[0].values.length || result[0].values[0][0] === null) return 0;
-    return result[0].values[0][0];
-  }
-
-  const totalFacts = count('SELECT COUNT(*) FROM facts');
-  const coldFacts = count('SELECT COUNT(*) FROM facts_cold');
-  const neverAccessed = count('SELECT COUNT(*) FROM facts WHERE last_accessed IS NULL');
-  const avgRelevance = avg('SELECT AVG(relevance_score) FROM facts');
-  const avgAgeDays = avg(`
+  const totalFacts = dbCount('SELECT COUNT(*) FROM facts');
+  const coldFacts = dbCount('SELECT COUNT(*) FROM facts_cold');
+  const neverAccessed = dbCount('SELECT COUNT(*) FROM facts WHERE last_accessed IS NULL');
+  const avgRelevance = dbAvg('SELECT AVG(relevance_score) FROM facts');
+  const avgAgeDays = dbAvg(`
     SELECT AVG(julianday('now') - julianday(created_at))
     FROM facts
   `);
-  const lowRelevanceCount = count('SELECT COUNT(*) FROM facts WHERE relevance_score < 0.3');
+  const lowRelevanceCount = dbCount(`SELECT COUNT(*) FROM facts WHERE relevance_score < ${DEFAULTS.RELEVANCE_THRESHOLD}`);
 
   // Calculate entropy score (0-1, higher = needs cleanup)
   const capacityRatio = Math.min(1, totalFacts / maxFacts);
@@ -1260,23 +1358,11 @@ async function getRequestLogEntry(entryId) {
 async function getRequestLogStats() {
   await initDatabase();
 
-  function count(sql, params = []) {
-    const result = db.exec(sql, params);
-    if (!result.length || !result[0].values.length) return 0;
-    return result[0].values[0][0];
-  }
-
-  function grouped(sql) {
-    const result = db.exec(sql);
-    if (!result.length) return {};
-    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
-  }
-
   return {
-    total: count('SELECT COUNT(*) FROM request_log'),
-    byType: grouped('SELECT type, COUNT(*) FROM request_log GROUP BY type'),
-    last7Days: count(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-7 days')`),
-    last30Days: count(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-30 days')`)
+    total: dbCount('SELECT COUNT(*) FROM request_log'),
+    byType: dbGrouped('SELECT type, COUNT(*) FROM request_log GROUP BY type'),
+    last7Days: dbCount(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-7 days')`),
+    last30Days: dbCount(`SELECT COUNT(*) FROM request_log WHERE timestamp >= datetime('now', '-30 days')`)
   };
 }
 
@@ -1379,13 +1465,18 @@ async function getObservationsByIds(ids, options = {}) {
 
   if (!ids || ids.length === 0) return [];
 
-  const placeholders = ids.map(() => '?').join(',');
+  // Validate and sanitize IDs - must be strings, filter out any non-strings
+  const validIds = ids.filter(id => typeof id === 'string' && id.length > 0);
+  if (validIds.length === 0) return [];
+
+  // Use parameterized queries - one placeholder per ID (safe from SQL injection)
+  const placeholders = validIds.map(() => '?').join(',');
   const columns = includeFull
     ? '*'
     : 'id, session_id, tool_name, input_summary, output_summary, timestamp, success, duration_ms, context_task_id';
 
   const sql = `SELECT ${columns} FROM observations WHERE id IN (${placeholders})`;
-  const result = db.exec(sql, ids);
+  const result = db.exec(sql, validIds);
   const observations = queryToRows(result);
 
   return observations.map(obs => ({
@@ -1521,25 +1612,13 @@ async function getRecentObservations(options = {}) {
 async function getObservationStats() {
   await initDatabase();
 
-  function count(sql, params = []) {
-    const result = db.exec(sql, params);
-    if (!result.length || !result[0].values.length) return 0;
-    return result[0].values[0][0];
-  }
-
-  function grouped(sql) {
-    const result = db.exec(sql);
-    if (!result.length) return {};
-    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
-  }
-
   return {
-    total: count('SELECT COUNT(*) FROM observations'),
-    byTool: grouped('SELECT tool_name, COUNT(*) FROM observations GROUP BY tool_name'),
-    successRate: count('SELECT ROUND(AVG(success) * 100, 1) FROM observations'),
-    last24Hours: count(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-1 day')`),
-    last7Days: count(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-7 days')`),
-    avgDurationMs: count('SELECT ROUND(AVG(duration_ms)) FROM observations WHERE duration_ms IS NOT NULL')
+    total: dbCount('SELECT COUNT(*) FROM observations'),
+    byTool: dbGrouped('SELECT tool_name, COUNT(*) FROM observations GROUP BY tool_name'),
+    successRate: dbCount('SELECT ROUND(AVG(success) * 100, 1) FROM observations'),
+    last24Hours: dbCount(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-1 day')`),
+    last7Days: dbCount(`SELECT COUNT(*) FROM observations WHERE timestamp >= datetime('now', '-7 days')`),
+    avgDurationMs: dbCount('SELECT ROUND(AVG(duration_ms)) FROM observations WHERE duration_ms IS NOT NULL')
   };
 }
 
@@ -1824,23 +1903,11 @@ async function getSectionsBySource(source) {
 async function getSectionStats() {
   await initDatabase();
 
-  function count(sql, params = []) {
-    const result = db.exec(sql, params);
-    if (!result.length || !result[0].values.length) return 0;
-    return result[0].values[0][0];
-  }
-
-  function grouped(sql) {
-    const result = db.exec(sql);
-    if (!result.length) return {};
-    return Object.fromEntries(result[0].values.map(row => [row[0] || 'unknown', row[1]]));
-  }
-
   return {
-    total: count('SELECT COUNT(*) FROM sections'),
-    bySource: grouped('SELECT source, COUNT(*) FROM sections GROUP BY source'),
-    byCategory: grouped('SELECT category, COUNT(*) FROM sections GROUP BY category'),
-    neverAccessed: count('SELECT COUNT(*) FROM sections WHERE access_count = 0'),
+    total: dbCount('SELECT COUNT(*) FROM sections'),
+    bySource: dbGrouped('SELECT source, COUNT(*) FROM sections GROUP BY source'),
+    byCategory: dbGrouped('SELECT category, COUNT(*) FROM sections GROUP BY category'),
+    neverAccessed: dbCount('SELECT COUNT(*) FROM sections WHERE access_count = 0'),
     topAccessed: queryToRows(db.exec(`
       SELECT id, title, source, access_count
       FROM sections
