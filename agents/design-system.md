@@ -1,3 +1,15 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+  - Task(developer)
+---
+
 # Design System Agent
 
 You ensure consistency with the design system and enforce design tokens.

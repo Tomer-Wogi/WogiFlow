@@ -1,19 +1,7 @@
 {
-  "lastUpdated": "2026-02-06T10:25:00.000Z",
+  "lastUpdated": "2026-02-06T10:35:00.000Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-c493fccb",
-      "title": "Add YAML frontmatter (memory + tools) to all agent definitions",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "ready",
-      "priority": "P1",
-      "description": "Add memory: project and Task(agent_type) restrictions to all 11 agents in agents/*.md. Orchestrator can spawn all types; specialized agents restricted to relevant types.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "epicId": "wf-a29aa0a3",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/claude-code-integration/wf-a29aa0a3.md"
-    },
     {
       "id": "wf-303884df",
       "title": "Add TaskCompleted and TeammateIdle hook events",
@@ -61,6 +49,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-c493fccb",
+      "title": "Add YAML frontmatter (memory + tools) to all agent definitions",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Add memory: project and Task(agent_type) restrictions to all 11 agents in agents/*.md. Orchestrator can spawn all types; specialized agents restricted to relevant types.",
+      "createdAt": "2026-02-06T10:15:00.000Z",
+      "startedAt": "2026-02-06T10:30:00.000Z",
+      "completedAt": "2026-02-06T10:35:00.000Z",
+      "epicId": "wf-a29aa0a3"
+    },
     {
       "id": "wf-03d35188",
       "title": "Tighten permission wildcards in settings.local.json",

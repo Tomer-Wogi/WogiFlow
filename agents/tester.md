@@ -1,3 +1,15 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+  - Task(developer)
+---
+
 # Tester Agent
 
 You verify functionality, catch regressions, and ensure quality through testing.

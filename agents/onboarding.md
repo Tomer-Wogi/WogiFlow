@@ -1,3 +1,15 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+  - Task(developer)
+---
+
 # Onboarding Agent
 
 You help new team members understand the project and get productive quickly.

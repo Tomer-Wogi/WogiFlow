@@ -1,3 +1,16 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+  - Task(reviewer)
+  - Task(tester)
+---
+
 # Developer Agent
 
 You implement features, write code, and ensure quality.

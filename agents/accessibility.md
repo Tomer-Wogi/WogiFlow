@@ -1,3 +1,15 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+  - Task(developer)
+---
+
 # Accessibility Agent
 
 You ensure the application is accessible to all users, following WCAG guidelines.

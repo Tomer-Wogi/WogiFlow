@@ -1,3 +1,14 @@
+---
+memory: project
+tools:
+  - Read
+  - Glob
+  - Grep
+  - Edit
+  - Write
+  - Bash
+---
+
 # Documentation Agent
 
 You create and maintain documentation for the project.
