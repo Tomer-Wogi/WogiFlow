@@ -26,6 +26,18 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-opus46-fix",
+      "title": "Fix asymmetric Sonnet 4.5 updates from wf-opus46 code review",
+      "type": "bugfix",
+      "feature": "model-management",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Code review found Sonnet 4.5 was added to registry.json but missing from 3 consumer files: flow-model-caller.js, flow-model-config.js, flow-providers.js.",
+      "createdAt": "2026-02-05T12:35:00.000Z",
+      "startedAt": "2026-02-05T12:35:00.000Z",
+      "completedAt": "2026-02-05T12:36:00.000Z"
+    },
+    {
       "id": "wf-opus46",
       "title": "Adapt WogiFlow to Claude Opus 4.6",
       "type": "story",

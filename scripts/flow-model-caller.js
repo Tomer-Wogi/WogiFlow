@@ -37,7 +37,7 @@ const PROVIDERS = {
     name: 'Anthropic',
     apiBase: 'https://api.anthropic.com/v1',
     envKey: 'ANTHROPIC_API_KEY',
-    models: ['claude-opus-4-6', 'claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
+    models: ['claude-opus-4-6', 'claude-sonnet-4-5-20250929', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
     defaultModel: 'claude-3-5-haiku-latest'
   },
   google: {

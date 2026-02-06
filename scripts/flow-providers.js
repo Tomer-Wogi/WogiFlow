@@ -69,6 +69,7 @@ const MODEL_CAPABILITIES = {
   // Cloud models - Full capability
   'claude-opus-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
   'claude-opus-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
+  'claude-sonnet-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'standard' },
   'claude': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000 },
   'gpt-4': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 128000 },
   'gpt-3.5': { codeQuality: 'medium', instructionFollowing: 'high', contextWindow: 16385 },
