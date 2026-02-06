@@ -27,7 +27,9 @@ const HOOK_TIMEOUTS = {
   PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
   POST_TOOL_USE: 60,      // Validation (linting, type checking)
   STOP: 5,                // Loop enforcement check
-  SESSION_END: 10         // Session cleanup/logging
+  SESSION_END: 10,        // Session cleanup/logging
+  TASK_COMPLETED: 10,     // Post-task cleanup (Claude Code 2.1.33+)
+  TEAMMATE_IDLE: 5        // Task dispatch for idle agents (Claude Code 2.1.33+)
 };
 
 /**
@@ -42,7 +44,9 @@ const CLAUDE_CODE_EVENTS = [
   'SubagentStop',
   'SessionEnd',
   'Notification',
-  'UserPromptSubmit'
+  'UserPromptSubmit',
+  'TaskCompleted',   // Claude Code 2.1.33+ - fired when sub-agent task completes
+  'TeammateIdle'     // Claude Code 2.1.33+ - fired when teammate agent becomes idle
 ];
 
 /**
@@ -122,6 +126,10 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformSessionEnd(coreResult);
       case 'UserPromptSubmit':
         return this.transformUserPromptSubmit(coreResult);
+      case 'TaskCompleted':
+        return this.transformTaskCompleted(coreResult);
+      case 'TeammateIdle':
+        return this.transformTeammateIdle(coreResult);
       default:
         return { continue: true };
     }
@@ -378,6 +386,55 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform TaskCompleted result (Claude Code 2.1.33+)
+   */
+  transformTaskCompleted(coreResult) {
+    if (!coreResult.enabled) {
+      return { continue: true };
+    }
+
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message }),
+      hookSpecificOutput: {
+        hookEventName: 'TaskCompleted',
+        completed: coreResult.completed,
+        taskId: coreResult.taskId
+      }
+    };
+  }
+
+  /**
+   * Transform TeammateIdle result (Claude Code 2.1.33+)
+   */
+  transformTeammateIdle(coreResult) {
+    if (!coreResult.enabled) {
+      return { continue: true };
+    }
+
+    if (coreResult.hasTask) {
+      return {
+        continue: true,
+        systemMessage: coreResult.message,
+        hookSpecificOutput: {
+          hookEventName: 'TeammateIdle',
+          hasTask: true,
+          suggestedTaskId: coreResult.suggestedTaskId
+        }
+      };
+    }
+
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message }),
+      hookSpecificOutput: {
+        hookEventName: 'TeammateIdle',
+        hasTask: false
+      }
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot) {
@@ -466,6 +523,28 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
           type: 'command',
           command: `node "${path.join(scriptsDir, 'session-end.js')}"`,
           timeout: HOOK_TIMEOUTS.SESSION_END
+        }]
+      }];
+    }
+
+    // TaskCompleted hook for post-task cleanup (Claude Code 2.1.33+)
+    if (rules.taskCompleted?.enabled !== false) {
+      hooks.TaskCompleted = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'task-completed.js')}"`,
+          timeout: HOOK_TIMEOUTS.TASK_COMPLETED
+        }]
+      }];
+    }
+
+    // TeammateIdle hook for task dispatch (Claude Code 2.1.33+, experimental)
+    if (rules.teammateIdle?.enabled === true) {
+      hooks.TeammateIdle = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'teammate-idle.js')}"`,
+          timeout: HOOK_TIMEOUTS.TEAMMATE_IDLE
         }]
       }];
     }

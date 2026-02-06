@@ -1296,6 +1296,12 @@
       "todoWriteGate": {
         "enabled": true,
         "blockImplementationWithoutTask": true
+      },
+      "taskCompleted": {
+        "enabled": true
+      },
+      "teammateIdle": {
+        "enabled": false
       }
     },
     "claudeCode": {
