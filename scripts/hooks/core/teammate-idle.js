@@ -58,14 +58,8 @@ function handleTeammateIdle(input) {
       backlog: []
     });
 
-    // Find available tasks (not blocked, not in progress)
-    const availableTasks = (ready.ready || []).filter(task => {
-      // Skip tasks that are blocked
-      if (task.status === 'blocked') return false;
-      // Skip tasks that share files with in-progress tasks
-      // (simple check - could be enhanced with file dependency analysis)
-      return true;
-    });
+    // Tasks in the ready array are already not blocked and not in progress
+    const availableTasks = [...(ready.ready || [])];
 
     if (availableTasks.length === 0) {
       result.message = 'No tasks available for parallel execution';

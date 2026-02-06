@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-06T11:00:00.000Z",
+  "lastUpdated": "2026-02-06T09:56:36.619Z",
   "inProgress": [],
   "ready": [
     {
@@ -25,6 +25,18 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-2133",
+      "title": "Fix 3 code review issues from CC 2.1.33 epic",
+      "type": "bugfix",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Fix 3 issues found in code review: (1) task-completed.js ignores input, always picks inProgress[0]; (2) teammate-idle.js has dead filter; (3) session-end.js bypasses three-layer pattern.",
+      "createdAt": "2026-02-06T11:15:00.000Z",
+      "startedAt": "2026-02-06T11:15:00.000Z",
+      "completedAt": "2026-02-06T09:56:36.619Z"
+    },
     {
       "id": "wf-4a337a35",
       "title": "Update skill templates with memory frontmatter field",

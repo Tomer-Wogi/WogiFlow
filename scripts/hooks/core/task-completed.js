@@ -63,8 +63,16 @@ function handleTaskCompleted(input) {
       return result;
     }
 
-    // Find the most recently started in-progress task
-    const completedTask = ready.inProgress[0];
+    // Try to match a specific task from input (supports parallel execution),
+    // fall back to inProgress[0] when no identifying info is available
+    let completedTask;
+    const inputTaskId = input.taskId || input.toolInput?.taskId;
+    if (inputTaskId) {
+      completedTask = ready.inProgress.find(t => t.id === inputTaskId);
+    }
+    if (!completedTask) {
+      completedTask = ready.inProgress[0];
+    }
     result.taskId = completedTask.id;
 
     // Move task to recentlyCompleted
