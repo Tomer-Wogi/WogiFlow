@@ -1,19 +1,7 @@
 {
-  "lastUpdated": "2026-02-06T10:50:00.000Z",
+  "lastUpdated": "2026-02-06T11:00:00.000Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-4a337a35",
-      "title": "Update skill templates with memory frontmatter field",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "ready",
-      "priority": "P3",
-      "description": "Add optional memory: project field to skill template and figma-analyzer skill, aligning with Claude Code 2.1.33 memory support.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "epicId": "wf-a29aa0a3",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/claude-code-integration/wf-a29aa0a3.md"
-    },
     {
       "id": "wf-3daad465",
       "title": "Capture Task tool metrics (token count, tool uses, duration) in flow-metrics.js",
@@ -37,6 +25,19 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-4a337a35",
+      "title": "Update skill templates with memory frontmatter field",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P3",
+      "description": "Add optional memory: project field to skill template and figma-analyzer skill, aligning with Claude Code 2.1.33 memory support.",
+      "createdAt": "2026-02-06T10:15:00.000Z",
+      "startedAt": "2026-02-06T10:55:00.000Z",
+      "completedAt": "2026-02-06T11:00:00.000Z",
+      "epicId": "wf-a29aa0a3"
+    },
     {
       "id": "wf-303884df",
       "title": "Add TaskCompleted and TeammateIdle hook events",

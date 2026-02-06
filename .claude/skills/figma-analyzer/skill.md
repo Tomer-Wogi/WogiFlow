@@ -6,6 +6,7 @@ scope: project
 user-invocable: true
 context: inline
 agent: developer
+memory: project
 allowed-tools:
   - Read
   - Glob

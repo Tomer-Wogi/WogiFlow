@@ -6,6 +6,7 @@ scope: project
 user-invocable: false
 context: inline
 agent: developer
+memory: project
 allowed-tools:
   - Read
   - Glob
@@ -40,6 +41,7 @@ loadable: false
   - user-invocable: true | false (controls /slash command visibility)
   - context: inline | fork (fork = isolated execution context)
   - agent: orchestrator | developer | reviewer | tester (persona mapping)
+  - memory: project | user | local (persistent memory scope, Claude Code 2.1.33+)
   - allowed-tools: YAML list of tools the skill can use
     Example: [Read, Glob, Grep, Edit, Write, Bash(npm *), Bash(git *)]
 
