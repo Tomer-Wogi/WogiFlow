@@ -1627,6 +1627,9 @@ async function getObservationStats() {
  * High-value = successful + non-trivial tool + linked to a completed task.
  * Promotes them to the facts table with category 'solution' and structured context.
  *
+ * Note: Solution facts use category='solution'. Use searchFacts({ category: 'solution' })
+ * to query them specifically, or exclude them from general searches with a different category.
+ *
  * @param {Object} options - { retentionDays, minDurationMs, excludeTools }
  * @returns {Object} - { extracted: number, details: Array }
  */
@@ -1639,8 +1642,14 @@ async function extractHighValueObservations(options = {}) {
     excludeTools = ['Read', 'Glob', 'Grep']  // trivial read-only tools
   } = options;
 
+  // [M2] Input validation - coerce to safe defaults
+  const safeRetentionDays = (typeof retentionDays === 'number' && retentionDays >= 0) ? retentionDays : 30;
+  const safeMinDuration = (typeof minDurationMs === 'number' && minDurationMs >= 0) ? minDurationMs : 100;
+  const safeExcludeTools = Array.isArray(excludeTools) ? excludeTools.filter(t => typeof t === 'string') : [];
+
   // Find observations that are about to expire AND are high-value
-  const excludePlaceholders = excludeTools.map(() => '?').join(',');
+  // Note: If safeExcludeTools is empty, NOT IN () matches all rows (desired)
+  const excludePlaceholders = safeExcludeTools.map(() => '?').join(',');
   const sql = `
     SELECT id, tool_name, input_summary, output_summary, timestamp, duration_ms, context_task_id
     FROM observations
@@ -1652,65 +1661,93 @@ async function extractHighValueObservations(options = {}) {
       AND (duration_ms IS NULL OR duration_ms >= ?)
     ORDER BY timestamp ASC
   `;
-  const params = [retentionDays, ...excludeTools, minDurationMs];
+  const params = [safeRetentionDays, ...safeExcludeTools, safeMinDuration];
   const result = db.exec(sql, params);
   const candidates = queryToRows(result);
 
   if (candidates.length === 0) return { extracted: 0, details: [] };
 
-  // Group by task to build solution context
+  // [M3] Group by task with resource limits to prevent OOM on large tables
+  const MAX_TASK_GROUPS = 500;
+  const MAX_OBS_PER_TASK = 100;
   const taskGroups = {};
+  let taskCount = 0;
+
   for (const obs of candidates) {
     const taskId = obs.context_task_id;
-    if (!taskGroups[taskId]) taskGroups[taskId] = [];
-    taskGroups[taskId].push(obs);
+    if (!taskGroups[taskId]) {
+      if (taskCount >= MAX_TASK_GROUPS) break;
+      taskGroups[taskId] = [];
+      taskCount++;
+    }
+    if (taskGroups[taskId].length < MAX_OBS_PER_TASK) {
+      taskGroups[taskId].push(obs);
+    }
   }
+
+  // [L2] Sensitive data patterns to filter from promoted facts
+  const SENSITIVE_RE = /api[_-]?key|password|secret|token|bearer|authorization/i;
+  const containsSensitive = (text) => text && SENSITIVE_RE.test(text);
 
   const extracted = [];
 
   for (const [taskId, observations] of Object.entries(taskGroups)) {
-    // Build a concise solution summary from the observation chain
-    const toolChain = observations.map(o => o.tool_name);
-    const uniqueTools = [...new Set(toolChain)];
+    // [C1] Wrap each task extraction in try-catch for resilience
+    try {
+      if (observations.length === 0) continue;
 
-    // Build structured solution_context
-    const solutionContext = {
-      taskId,
-      toolsUsed: uniqueTools,
-      stepCount: observations.length,
-      observationIds: observations.map(o => o.id),
-      timestamp: observations[0].timestamp
-    };
+      const toolChain = observations.map(o => o.tool_name);
+      const uniqueTools = [...new Set(toolChain)];
 
-    // Build the fact text from the most informative observations
-    // (Edit and Bash observations carry the most solution value)
-    const keyObs = observations.filter(o =>
-      ['Edit', 'Write', 'Bash', 'Task', 'NotebookEdit'].includes(o.tool_name)
-    );
+      const solutionContext = {
+        taskId,
+        toolsUsed: uniqueTools,
+        stepCount: observations.length,
+        observationIds: observations.map(o => o.id),
+        timestamp: observations[0].timestamp
+      };
 
-    const summaryParts = (keyObs.length > 0 ? keyObs : observations.slice(0, 5))
-      .map(o => `${o.tool_name}: ${o.input_summary || ''}${o.output_summary ? ' → ' + o.output_summary : ''}`)
-      .slice(0, 8); // cap at 8 steps to keep fact concise
+      // Build the fact text from the most informative observations
+      // (Edit and Bash observations carry the most solution value)
+      const keyObs = observations.filter(o =>
+        ['Edit', 'Write', 'Bash', 'Task', 'NotebookEdit'].includes(o.tool_name)
+      );
 
-    const factText = `[Solution for ${taskId}] ${summaryParts.join('; ')}`;
+      // [L2] Filter out observations containing sensitive data
+      const summaryParts = (keyObs.length > 0 ? keyObs : observations.slice(0, 5))
+        .filter(o => !containsSensitive(o.input_summary) && !containsSensitive(o.output_summary))
+        .map(o => `${o.tool_name}: ${o.input_summary || ''}${o.output_summary ? ' → ' + o.output_summary : ''}`)
+        .slice(0, 8);
 
-    // Don't create duplicate solution facts for the same task
-    const existingResult = db.exec(
-      `SELECT id FROM facts WHERE category = 'solution' AND source_context LIKE ?`,
-      [`%"taskId":"${taskId}"%`]
-    );
-    if (queryToRows(existingResult).length > 0) continue;
+      if (summaryParts.length === 0) continue; // all observations were sensitive
 
-    // Store as a fact with category 'solution'
-    const factId = generateId('fact');
-    const embedding = await getEmbedding(factText);
+      const factText = `[Solution for ${taskId}] ${summaryParts.join('; ')}`;
 
-    db.run(`
-      INSERT INTO facts (id, fact, category, scope, model, embedding, source_context, relevance_score)
-      VALUES (?, ?, 'solution', 'local', NULL, ?, ?, 0.7)
-    `, [factId, factText, embeddingToJson(embedding), JSON.stringify(solutionContext)]);
+      // [H1] Dedup check using parameterized json_extract instead of LIKE interpolation
+      const existingResult = db.exec(
+        `SELECT id FROM facts WHERE category = 'solution' AND json_extract(source_context, '$.taskId') = ?`,
+        [taskId]
+      );
+      if (queryToRows(existingResult).length > 0) continue;
 
-    extracted.push({ factId, taskId, toolsUsed: uniqueTools, stepCount: observations.length });
+      // [C1] Handle null/failing embeddings gracefully
+      const factId = generateId('fact');
+      const embedding = await getEmbedding(factText);
+
+      if (!embedding) continue; // skip if embeddings unavailable
+
+      db.run(`
+        INSERT INTO facts (id, fact, category, scope, model, embedding, source_context, relevance_score)
+        VALUES (?, ?, 'solution', 'local', NULL, ?, ?, 0.7)
+      `, [factId, factText, embeddingToJson(embedding), JSON.stringify(solutionContext)]);
+
+      extracted.push({ factId, taskId, toolsUsed: uniqueTools, stepCount: observations.length });
+    } catch (err) {
+      // Continue with next task instead of failing entire extraction
+      if (process.env.DEBUG) {
+        console.error(`[extractHighValueObservations] Failed for ${taskId}:`, err.message);
+      }
+    }
   }
 
   if (extracted.length > 0) saveDatabase();

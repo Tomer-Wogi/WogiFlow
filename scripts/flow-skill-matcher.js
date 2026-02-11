@@ -18,6 +18,16 @@
 
 const fs = require('fs');
 const path = require('path');
+
+// Helpers for SKILL.md standard compatibility (accept both skill.md and SKILL.md)
+function hasSkillFile(dir) {
+  return fs.existsSync(path.join(dir, 'skill.md')) || fs.existsSync(path.join(dir, 'SKILL.md'));
+}
+
+function getSkillFilePath(dir) {
+  const lower = path.join(dir, 'skill.md');
+  return fs.existsSync(lower) ? lower : path.join(dir, 'SKILL.md');
+}
 const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -62,11 +72,7 @@ function discoverNestedSkills(baseDir = SKILLS_DIR, prefix = '', depth = 0) {
       const entryPath = path.join(baseDir, entry.name);
       const skillPath = prefix ? `${prefix}/${entry.name}` : entry.name;
 
-      // Accept both skill.md (WogiFlow) and SKILL.md (open standard)
-      const hasSkillMd = fs.existsSync(path.join(entryPath, 'skill.md'))
-        || fs.existsSync(path.join(entryPath, 'SKILL.md'));
-
-      if (hasSkillMd) {
+      if (hasSkillFile(entryPath)) {
         skills.push(skillPath);
       }
 
@@ -148,10 +154,7 @@ function loadSkillMetadata(skillName) {
   }
 
   const skillDir = getSkillDir(skillName);
-  // Accept both skill.md (WogiFlow) and SKILL.md (open standard)
-  const skillPath = fs.existsSync(path.join(skillDir, 'skill.md'))
-    ? path.join(skillDir, 'skill.md')
-    : path.join(skillDir, 'SKILL.md');
+  const skillPath = getSkillFilePath(skillDir);
 
   if (!fs.existsSync(skillPath)) {
     return null;
@@ -482,9 +485,7 @@ async function loadSkillContext(matchedSkills, options = {}) {
     };
 
     // Load skill.md or SKILL.md (main description)
-    const skillMdPath = fs.existsSync(path.join(skillDir, 'skill.md'))
-      ? path.join(skillDir, 'skill.md')
-      : path.join(skillDir, 'SKILL.md');
+    const skillMdPath = getSkillFilePath(skillDir);
     if (fs.existsSync(skillMdPath)) {
       skillContext.files['skill.md'] = fs.readFileSync(skillMdPath, 'utf-8');
     }

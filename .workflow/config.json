@@ -663,6 +663,7 @@
       "skipTools": [],
       "maxInputSize": 2000,
       "maxOutputSize": 2000,
+      "_comment_retentionDays": "Also defines the extraction window for observationExtraction below",
       "retentionDays": 30
     },
     "observationExtraction": {

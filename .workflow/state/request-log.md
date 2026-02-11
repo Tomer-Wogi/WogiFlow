@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-083 | 2026-02-11 15:15
+**Type**: fix
+**Tags**: #feature:code-quality #review #security #wf-cr-review8
+**Request**: "Fix 8 code review findings from wf-obs-extract and wf-skill-align"
+**Result**: C1-Added try-catch + null embedding check in extraction loop. H1-Replaced LIKE interpolation with json_extract() parameterized query. M1-Added JSDoc documenting solution fact category. M2-Added input validation with safe defaults. M3-Added MAX_TASK_GROUPS=500 and MAX_OBS_PER_TASK=100 resource limits. L1-Extracted hasSkillFile()/getSkillFilePath() helpers replacing 3x duplication. L2-Added sensitive data pattern filtering before fact promotion. L3-Added config comment linking retentionDays to extraction window.
+**Files**: scripts/flow-memory-db.js, scripts/flow-skill-matcher.js, .workflow/config.json
+
 ### R-082 | 2026-02-11 14:30
 **Type**: new
 **Tags**: #feature:claude-code-integration #skills #SKILL-md #standards #wf-skill-align

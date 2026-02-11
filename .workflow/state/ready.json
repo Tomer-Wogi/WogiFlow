@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-11T14:30:00.000Z",
+  "lastUpdated": "2026-02-11T15:15:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-review8",
+      "title": "Fix 8 code review findings from wf-obs-extract and wf-skill-align",
+      "type": "bugfix",
+      "feature": "code-quality",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Fix 8 review findings: C1-null embedding handling, H1-LIKE injection, M1-solution fact docs, M2-input validation, M3-resource limits, L1-SKILL.md helper, L2-sensitive data filter, L3-config docs.",
+      "createdAt": "2026-02-11T15:00:00.000Z",
+      "startedAt": "2026-02-11T15:00:00.000Z",
+      "completedAt": "2026-02-11T15:15:00.000Z"
+    },
     {
       "id": "wf-skill-align",
       "title": "SKILL.md standard alignment (add license/compatibility fields, accept SKILL.md filename)",
