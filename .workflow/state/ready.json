@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-11T12:15:00.000Z",
+  "lastUpdated": "2026-02-11T12:45:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-audit-p2",
+      "title": "Fix Phase 2 data integrity audit findings (stale state, duplicate IDs, agent dirs)",
+      "type": "bugfix",
+      "feature": "code-quality",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Fix data integrity issues: (1) Deduplicate request-log IDs, (2) Update stale progress.md memory block, (3) Consolidate duplicate agent directories, (4) Fix ready.json timestamp inversion, (5) Update stale roadmap items.",
+      "createdAt": "2026-02-11T12:20:00.000Z",
+      "startedAt": "2026-02-11T12:20:00.000Z",
+      "completedAt": "2026-02-11T12:45:00.000Z"
+    },
     {
       "id": "wf-audit-p1",
       "title": "Fix Phase 1 critical audit findings (crashes, security, broken hooks)",
@@ -36,8 +48,8 @@
       "status": "completed",
       "priority": "P1",
       "description": "Integrate with Claude Code Agent Teams: (1) enhance TeammateIdle for rich dispatch with file-conflict avoidance, (2) add lead-goes-rogue prevention, (3) teammate state tracking, (4) parallelizability scoring, (5) competing hypothesis debugging command.",
-      "createdAt": "2026-02-11T12:00:00.000Z",
-      "startedAt": "2026-02-11T12:00:00.000Z",
+      "createdAt": "2026-02-11T10:45:00.000Z",
+      "startedAt": "2026-02-11T10:45:00.000Z",
       "completedAt": "2026-02-11T11:01:04.579Z"
     },
     {

@@ -128,6 +128,67 @@ Cleaner config patterns for secrets and environment variables.
 
 ---
 
+### PR with Media — Auto-Create Rich PRs
+
+**Status:** Deferred
+**Created:** 2026-02-08
+**Depends On:** Story 4: Debug Browser (Playwright fallback + artifact capture)
+
+**Assumes:**
+- Playwright fallback is working with video recording
+- Debug sessions save screenshots and videos to `.workflow/debug-sessions/`
+- `gh` CLI is installed and authenticated
+
+**Problem:**
+PRs are text-only. After implementing a feature, there's no automated way to include before/after screenshots, demo videos, or inline change annotations.
+
+**Solution:**
+Auto-create PRs with rich media:
+- Summary from task spec (acceptance criteria as checklist)
+- Before/after screenshots from debug sessions
+- Demo video from Playwright recording
+- Inline change annotations (what changed and why)
+
+**Key Files:**
+- `scripts/flow-pr-media.js` - New file: PR generation with media
+- `.claude/commands/wogi-pr.md` - New command file
+- `.workflow/debug-sessions/` - Source for screenshots/video
+
+**Implementation Plan:**
+1. Create `flow-pr-media.js` that:
+   - Reads task spec for PR summary
+   - Finds debug session artifacts (screenshots, video)
+   - Uploads media as GitHub release assets or inline base64
+   - Generates PR body with embedded media
+2. Create `/wogi-pr` command that:
+   - Generates PR with `gh pr create`
+   - Attaches task completion report
+   - Embeds before/after screenshots
+   - Links demo video
+3. Add config for media preferences (max screenshots, video format)
+
+**Example PR Body:**
+```markdown
+## Summary
+- [x] Login form validates email format
+- [x] Error messages display below inputs
+- [x] Submit disables during API call
+
+## Demo
+![Demo Video](link-to-recording.webm)
+
+## Screenshots
+| Before | After |
+|--------|-------|
+| ![before](iter-1.png) | ![after](iter-final.png) |
+
+## Changes
+- `src/components/LoginForm.tsx` — Added validation logic
+- `src/api/auth.ts` — Added error response types
+```
+
+---
+
 ## Later (Future Phases)
 
 <!-- Deferred items from large feature breakdowns. Includes dependency tracking. -->
@@ -270,260 +331,100 @@ Installer should ask "Which CLI(s)?" and generate appropriate files.
 
 ### Phase 1.1: Formalized Model Registry
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1: CLI Agnosticism
-
-**Assumes:**
-- CLI agnosticism complete
-- Provider abstraction in place
-
-**Key Files:**
-- `.workflow/models/registry.json` - New file
-- `scripts/flow-models.js` - Registry management
-
-**Context When Deferred:**
-Central registry of all model capabilities, cost tiers, and language support.
-
-**Implementation Plan:**
-1. Define registry.json schema
-2. Populate with known models
-3. Add registry query functions
+**Implemented:** 2026-01-11 (R-042)
+**Files:** `scripts/flow-models.js`, `.workflow/models/registry.json`
 
 ---
 
 ### Phase 1.2: Enhanced Model Stats
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 1.1: Model Registry, Phase 0.2: Failure Categories
-
-**Assumes:**
-- Model registry implemented
-- Failure categories formalized
-
-**Key Files:**
-- `.workflow/models/stats.json` - Stats storage
-- `scripts/flow-models.js` - Stats tracking
-
-**Context When Deferred:**
-Track success rates, latency, failure categories per model and task type.
-
-**Implementation Plan:**
-1. Define stats.json schema
-2. Integrate with task execution
-3. Add stats query commands
+**Implemented:** 2026-01-11 (R-042)
+**Files:** `scripts/flow-models.js`, `.workflow/models/stats.json`
 
 ---
 
 ### Phase 2.1: Multi-Model Mode
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 1.1: Model Registry, Phase 1.2: Model Stats
-
-**Assumes:**
-- Model registry complete
-- Stats tracking operational
-
-**Key Files:**
-- `scripts/flow-multi-model.js` - New file
-- `.workflow/config.json` - Model routing config
-
-**Context When Deferred:**
-Replaces/evolves Hybrid Mode. Multiple models available with intelligent selection.
-
-**Implementation Plan:**
-1. Implement model selection logic
-2. Add routing strategies (task-based, cost-optimized, quality-first)
-3. Create configuration interface
+**Implemented:** 2026-01-11 (R-045)
+**Files:** `scripts/flow-task-analyzer.js`, `scripts/flow-model-router.js`, `scripts/flow-prompt-composer.js`
 
 ---
 
 ### Phase 2.2: Prompt Fragment System
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 1.1: Model Registry, Phase 0.1: CLI Agnosticism
-
-**Assumes:**
-- Model registry knows prompt preferences
-- CLI templates working
-
-**Key Files:**
-- `scripts/flow-prompt-fragments.js` - New file
-- `.workflow/prompts/` - Fragment storage
-
-**Context When Deferred:**
-Different models need different prompts. Composable fragments vs monolithic templates.
-
-**Implementation Plan:**
-1. Define fragment structure
-2. Create model-specific fragments
-3. Implement fragment composition
+**Implemented:** 2026-01-11 (R-045)
+**Files:** `scripts/flow-prompt-composer.js`, `.workflow/prompts/fragments/`
 
 ---
 
 ### Phase 3.1: Task Router
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 2.1: Multi-Model Mode
-
-**Assumes:**
-- Multi-model mode operational
-- Model stats available
-
-**Key Files:**
-- `scripts/flow-task-router.js` - New file
-- `.workflow/config.json` - Routing rules
-
-**Context When Deferred:**
-Route task types to optimal models based on capabilities and history.
-
-**Implementation Plan:**
-1. Implement task analysis
-2. Match tasks to model capabilities
-3. Add routing rules configuration
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-model-router.js`, `scripts/flow-task-analyzer.js`
 
 ---
 
 ### Phase 3.2: Cascade Fallback
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 3.1: Task Router, Phase 0.2: Failure Categories
-
-**Assumes:**
-- Task router operational
-- Failure categories formalized
-
-**Key Files:**
-- `scripts/flow-cascade.js` - New file
-- `.workflow/config.json` - Cascade config
-
-**Context When Deferred:**
-If primary model fails 3x on same error, try alternate model.
-
-**Implementation Plan:**
-1. Track failure patterns
-2. Implement fallback logic
-3. Add escalation configuration
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-cascade.js`
 
 ---
 
 ### Phase 3.3: Tiered Learning Thresholds
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 1.2: Model Stats, Phase 2.1: Multi-Model Mode
-
-**Assumes:**
-- Model stats tracking success rates
-- Multiple models available
-
-**Key Files:**
-- `scripts/flow-adaptive-learning.js` - Update existing
-- `.workflow/config.json` - Threshold config
-
-**Context When Deferred:**
-Smarter auto-application of learned patterns based on confidence tiers.
-
-**Implementation Plan:**
-1. Define learning tiers (AUTO_APPLY, APPLY_WITH_LOG, QUEUE_FOR_REVIEW)
-2. Implement tier-based application
-3. Per-model threshold tracking
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-tiered-learning.js`
 
 ---
 
 ### Phase 4.1: Parallel Dispatch
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 3.1: Task Router
-
-**Assumes:**
-- Task router can identify subtasks
-- Multiple models available
-
-**Key Files:**
-- `scripts/flow-parallel.js` - New file
-
-**Context When Deferred:**
-Execute independent subtasks on multiple models simultaneously.
-
-**Implementation Plan:**
-1. Implement subtask detection
-2. Create parallel execution engine
-3. Add result aggregation
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-parallel-dispatch.js`
 
 ---
 
 ### Phase 4.2: Context Priority Scoring
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 1.1: Model Registry
-
-**Assumes:**
-- Model context windows known from registry
-
-**Key Files:**
-- `scripts/flow-auto-context.js` - Update existing
-
-**Context When Deferred:**
-Smarter context selection based on priority scoring vs "include everything".
-
-**Implementation Plan:**
-1. Define priority weights
-2. Score context items
-3. Select by available context window
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-context-scoring.js`
 
 ---
 
 ### Phase 4.3: Quality Gate Confidence
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** None (benefits from model stats)
-
-**Assumes:**
-- Can detect confidence markers in responses
-
-**Key Files:**
-- `scripts/flow-quality-gates.js` - Update existing
-
-**Context When Deferred:**
-Don't apply low-confidence changes automatically.
-
-**Implementation Plan:**
-1. Define confidence markers
-2. Detect confidence level in responses
-3. Gate auto-application on confidence
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-gate-confidence.js`
 
 ---
 
 ### Phase 5.1: npm Package Distribution
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1: CLI Agnosticism
-
-**Assumes:**
-- CLI agnosticism complete
-- One package works for all CLIs
-
-**Key Files:**
-- `package.json` - npm config
-- `scripts/flow` - Entry point
-
-**Context When Deferred:**
-Global install via `npm install -g wogi-flow` with perfect update stability.
-
-**Implementation Plan:**
-1. Prepare package.json for publication
-2. Create flow upgrade command
-3. Test installation across CLIs
+**Implemented:** 2026-01-12
+**Notes:** Published as `wogiflow` on npm, currently v1.2.0
 
 ---
 
@@ -662,49 +563,19 @@ Web UI for task progress, step status, execution history.
 
 ### Phase 6.2: Jira/Linear Integration
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** None (standalone)
-
-**Assumes:**
-- External PM tool APIs available
-- Task sync desired
-
-**Key Files:**
-- `scripts/flow-integrations.js` - New file
-- `.workflow/config.json` - Integration config
-
-**Context When Deferred:**
-Sync tasks from external project management tools.
-
-**Implementation Plan:**
-1. Implement Jira API client
-2. Implement Linear API client
-3. Add sync commands
-4. Auto-create stories from external
+**Implemented:** 2026-01-11 (R-049)
+**Files:** `scripts/flow-jira-integration.js`, `scripts/flow-linear-integration.js`
 
 ---
 
 ### Phase 6.3: Background Sync Daemon
 
-**Status:** Deferred
+**Status:** Completed
 **Created:** 2026-01-13
-**Depends On:** Phase 4.1: Parallel Dispatch
-
-**Assumes:**
-- Multiple agents work simultaneously
-- File watching needed
-
-**Key Files:**
-- `scripts/flow-daemon.js` - New file
-
-**Context When Deferred:**
-Keep state in sync when multiple agents work on different branches.
-
-**Implementation Plan:**
-1. Implement file watcher
-2. Add branch switch detection
-3. Create heartbeat monitoring
+**Implemented:** 2026-01-11 (R-049)
+**Files:** `scripts/flow-sync-daemon.js`
 
 ---
 
@@ -977,3 +848,61 @@ Before implementing any item, I check:
 - **Key Files**: Do required files exist with expected interfaces?
 
 If validation fails, I'll explain what changed and offer options.
+
+### Phase 0.1.10: Multi-CLI Adapter System (Superpowers-Inspired)
+
+**Status:** Deferred
+**Created:** 2026-02-04
+**Depends On:** Phase 0.1.6: Sync Command
+
+**Assumes:**
+- Sync command working
+- Understanding of how other CLIs inject instructions (researched from superpowers plugin)
+
+**Problem:**
+WogiFlow currently only works with Claude Code. Other CLIs (Gemini CLI, Codex, Cursor, OpenCode) ignore WogiFlow instructions because:
+1. They don't read CLAUDE.md
+2. They have their own instruction mechanisms
+3. Tool names differ (TodoWrite vs update_plan)
+
+**Research (2026-02-04):**
+Superpowers plugin solves this with a 3-layer architecture:
+1. **Shared Core** (`lib/skills-core.js`) - skill discovery, parsing
+2. **CLI-Specific Adapters** - plugin files for each CLI
+3. **Tool Mapping Tables** - explicit translations in bootstrap files
+
+Key mechanism: System prompt injection via hooks (OpenCode uses `experimental.chat.system.transform`)
+
+**Key Files:**
+- `lib/wogi-core.js` - Shared workflow logic (new)
+- `.codex/wogi-bootstrap.md` - Codex adapter with tool mappings
+- `.cursor/.cursorrules` - Generated rules file
+- `.opencode/plugins/wogiflow.js` - OpenCode plugin
+- `.gemini/system.md` - Gemini instruction file
+- `scripts/flow-bootstrap.js` - Universal bootstrap generator
+
+**Tool Mapping Tables (Per CLI):**
+```
+Claude Code → Native (TodoWrite, Task, etc.)
+Codex       → update_plan, spawn_agent
+OpenCode    → update_plan, @mention
+Cursor      → (TBD - research cursor rules)
+Gemini CLI  → (TBD - research gemini hooks)
+```
+
+**Implementation Plan:**
+1. Create `lib/wogi-core.js` with shared workflow logic
+2. Research each CLI's instruction injection mechanism
+3. Create tool mapping tables for each CLI
+4. Implement `flow bootstrap --target=<cli>` command
+5. Create CLI-specific adapters that inject via appropriate mechanism
+6. Test with actual CLIs (need access to Codex, Gemini CLI, etc.)
+
+**Options Considered:**
+- **Option 1: CLI Adapters** (like superpowers) - Most robust, requires maintaining multiple codebases
+- **Option 2: Bootstrap Generator** - Lower effort, generates markdown for any CLI
+- **Option 3: MCP Server** - One server, many clients, but requires MCP support
+
+**Recommended approach:** Start with Option 2 (bootstrap generator), evolve to Option 3 (MCP) as MCP becomes standard.
+
+---

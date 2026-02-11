@@ -192,7 +192,7 @@ Launch a Task agent with subagent_type=Explore focusing on:
 - **Sensitive Data**: Passwords, tokens, PII exposed?
 - **Error Messages**: Do errors leak sensitive info?
 
-Refer to `.workflow/agents/security.md` for OWASP Top 10 checklist.
+Refer to `agents/security.md` for OWASP Top 10 checklist.
 
 Prompt template:
 ```
@@ -248,7 +248,7 @@ Optional agents run when listed in `config.review.agents.optional`.
 
 Enabled when `"performance"` is in `config.review.agents.optional`.
 
-Refer to `.workflow/agents/performance.md` for the full checklist.
+Refer to `agents/performance.md` for the full checklist.
 
 Launch a Task agent with subagent_type=Explore:
 ```

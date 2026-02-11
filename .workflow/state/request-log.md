@@ -13,49 +13,49 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
-### R-051 | 2026-02-06 11:20
+### R-080 | 2026-02-06 11:20
 **Type**: fix
 **Tags**: #feature:claude-code-integration #hooks #code-review #wf-cr-2133
 **Request**: "Fix 3 code review issues from CC 2.1.33 epic"
 **Result**: (1) task-completed.js now uses input.taskId to match specific task instead of always picking inProgress[0] - supports parallel execution. (2) teammate-idle.js dead filter removed - tasks in ready array are already not blocked. (3) session-end.js refactored to three-layer pattern with new core/session-end.js handler.
 **Files**: scripts/hooks/core/task-completed.js, scripts/hooks/core/teammate-idle.js, scripts/hooks/core/session-end.js (new), scripts/hooks/entry/claude-code/session-end.js
 
-### R-050 | 2026-02-06 11:00
+### R-079 | 2026-02-06 11:00
 **Type**: change
 **Tags**: #feature:claude-code-integration #skills #frontmatter #memory #wf-4a337a35
 **Request**: "Update skill templates with memory frontmatter field"
 **Result**: Added `memory: project` field to skill template (_template/skill.md) and figma-analyzer skill between `agent` and `allowed-tools` fields. Updated template documentation comment to include memory field with scope options (project/user/local) per Claude Code 2.1.33.
 **Files**: .claude/skills/_template/skill.md, .claude/skills/figma-analyzer/skill.md
 
-### R-049 | 2026-02-06 10:50
+### R-078 | 2026-02-06 10:50
 **Type**: new
 **Tags**: #feature:claude-code-integration #hooks #task-completed #teammate-idle #wf-303884df
 **Request**: "Add TaskCompleted and TeammateIdle hook events"
 **Result**: Added 2 new Claude Code 2.1.33 hook events. TaskCompleted (enabled by default, 10s timeout) fires when sub-agent tasks complete - moves tasks to recentlyCompleted in ready.json, logs to durable-history.json. TeammateIdle (disabled by default, experimental, 5s timeout) suggests next available task when a teammate agent becomes idle. Created 4 new files (2 core handlers, 2 entry points), updated claude-code adapter (events, timeouts, transforms, generateConfig), and config.json.
 **Files**: scripts/hooks/core/task-completed.js (new), scripts/hooks/core/teammate-idle.js (new), scripts/hooks/entry/claude-code/task-completed.js (new), scripts/hooks/entry/claude-code/teammate-idle.js (new), scripts/hooks/adapters/claude-code.js, .workflow/config.json
 
-### R-048 | 2026-02-06 10:35
+### R-077 | 2026-02-06 10:35
 **Type**: new
 **Tags**: #feature:claude-code-integration #agents #frontmatter #memory #wf-c493fccb
 **Request**: "Add YAML frontmatter (memory + tools) to all agent definitions"
 **Result**: Added YAML frontmatter to all 11 agent files in agents/*.md. Each agent now has `memory: project` for persistent project knowledge. Tool restrictions via `Task(agent_type)`: orchestrator can spawn all 10 types, developer can spawn reviewer+tester, reviewer/tester/story-writer/security/performance/accessibility/design-system/onboarding can spawn developer only, docs agent has no Task spawning.
 **Files**: agents/orchestrator.md, agents/developer.md, agents/reviewer.md, agents/story-writer.md, agents/tester.md, agents/security.md, agents/performance.md, agents/accessibility.md, agents/design-system.md, agents/docs.md, agents/onboarding.md
 
-### R-047 | 2026-02-06 10:25
+### R-076 | 2026-02-06 10:25
 **Type**: fix
 **Tags**: #security #permissions #claude-code-integration #wf-03d35188
 **Request**: "Tighten permission wildcards in settings.local.json"
 **Result**: Removed 2 exposed NPM tokens (CRITICAL), cleaned ~80 accumulated junk entries (__NEW_LINE_* fragments, for-loop fragments, one-off release commands). Replaced broad wildcards: Bash(npm *) → 8 specific subcommands, Bash(node *) → 4 specific patterns. Removed Bash(bash *), Bash(chmod *), Bash(cat/head/tail/grep/find/echo *) (Claude Code has dedicated tools). Reduced from 166 to 84 intentional permission entries. Also cleaned unnecessary WebFetch domains and deduplicated Skill entries.
 **Files**: .claude/settings.local.json
 
-### R-046 | 2026-02-05 12:00
+### R-075 | 2026-02-05 12:00
 **Type**: new
 **Tags**: #feature:model-management #model:opus-4.6 #model:sonnet-4.5 #wf-opus46
 **Request**: "Adapt WogiFlow to Claude Opus 4.6"
 **Result**: Added claude-opus-4-6 and claude-sonnet-4-5 to model registry. Updated detection patterns, routing (escalation/architecture to Opus 4.6), prompt composer CLI map, validation capabilities (adaptive-thinking), provider detection, known providers list, and adapter documentation. Fixed Opus 4.5 maxOutputTokens (32K -> 64K).
 **Files**: .workflow/models/registry.json, scripts/flow-model-adapter.js, scripts/flow-model-caller.js, scripts/flow-prompt-composer.js, .workflow/prompts/fragments/output-format-claude.md, scripts/flow-models.js, scripts/flow-providers.js, scripts/flow-model-config.js, .workflow/model-adapters/claude-opus.md
 
-### R-045 | 2026-02-05 11:00
+### R-074 | 2026-02-05 11:00
 **Type**: new
 **Tags**: #feature:memory #feature:mcp #feature:hooks #wf-fd8d2444
 **Request**: "WogiFlow Memory Enhancement - Automatic Observation Capture"
@@ -86,7 +86,7 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 **Files**: scripts/flow-memory-db.js, scripts/hooks/core/observation-capture.js, scripts/hooks/entry/claude-code/post-tool-use.js, mcp-memory-server/index.js, .workflow/config.json
 
-### R-044 | 2026-02-04 13:30
+### R-073 | 2026-02-04 13:30
 **Type**: new
 **Tags**: #feature:quality-gates #feature:code-review #feature:error-recovery #wf-8984278f
 **Request**: "Implement 3 quality improvements from superpowers analysis"
@@ -115,7 +115,7 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 **Files**: scripts/flow-review.js, scripts/flow-error-recovery.js, scripts/flow-start.js, .workflow/config.json
 
-### R-043 | 2026-02-02 12:15
+### R-072 | 2026-02-02 12:15
 **Type**: change
 **Tags**: #feature:code-review #command:wogi-review-fix #wf-review-fix-sync
 **Request**: "Sync wogi-review-fix with all wogi-review phases"
@@ -141,7 +141,7 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 **Files**: .claude/commands/wogi-review-fix.md
 
-### R-042 | 2026-02-02 11:30
+### R-071 | 2026-02-02 11:30
 **Type**: new
 **Tags**: #feature:browser-debugging #feature:browser-testing #chrome-mcp #wf-browser-debug
 **Request**: "Implement autonomous browser debugging loop"
@@ -171,7 +171,7 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 **Files**: scripts/flow-browser-debug.js (new), scripts/flow-browser-error-patterns.js (new), scripts/flow-browser-nl-parser.js (new), .claude/commands/wogi-debug-browser.md (new), .claude/commands/wogi-test-browser.md, .workflow/config.json, CLAUDE.md
 
-### R-041 | 2026-02-02 10:00
+### R-070 | 2026-02-02 10:00
 **Type**: new
 **Tags**: #feature:quality-gates #feature:standards-compliance #feature:learning-system #wf-6f5c00c4
 **Request**: "Add standards compliance to wogi-start quality gates"
@@ -184,7 +184,7 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 6. **Phase 6**: Updated `flow-review.js` - skips standards check if task already passed at completion
 **Files**: scripts/flow-standards-checker.js, scripts/flow-standards-gate.js (new), scripts/flow-standards-learner.js (new), scripts/flow-review.js, .claude/commands/wogi-start.md, .workflow/config.json
 
-### R-040 | 2026-02-02 09:00
+### R-069 | 2026-02-02 09:00
 **Type**: fix
 **Tags**: #feature:research-protocol #feature:rules-sync #feature:request-log #wf-research-fix
 **Request**: "Fix research protocol enforcement, rules sync automation, and request log database integration"
@@ -883,14 +883,14 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 - .workflow/templates/claude-md.hbs
 - scripts/flow
 
-### R-044 | 2026-02-02 09:20
+### R-068 | 2026-02-02 09:20
 **Type**: fix
 **Tags**: #bugfix #knowledge-sync #morning-briefing
 **Request**: "Fix auto-regenerate bug in flow-morning.js"
 **Result**: Fixed bug where morning briefing tried to run `flow-onboard` (bash script) with `node`, causing SyntaxError. Changed to call `flow-knowledge-sync.js regenerate` instead, which is the correct Node.js script for regenerating knowledge files.
 **Files**: scripts/flow-morning.js
 
-### R-043 | 2026-01-31 00:15
+### R-067 | 2026-01-31 00:15
 **Type**: fix
 **Tags**: #security #validation #code-quality
 **Request**: "Fix all code review issues from /wogi-review"
