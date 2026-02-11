@@ -2247,15 +2247,17 @@ function astGrepSearch(pattern, options = {}) {
   }
 
   try {
-    // Use validated lang parameter - now safe from injection
-    const result = execSync(
-      `sg --pattern "${pattern.replace(/"/g, '\\"')}" --lang ${lang} --json "${searchPath}"`,
-      {
-        encoding: 'utf-8',
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000
-      }
-    );
+    // Use execFileSync with array args to prevent shell injection (Security Rule 8)
+    const { execFileSync } = require('child_process');
+    const result = execFileSync('sg', [
+      '--pattern', pattern,
+      '--lang', lang,
+      '--json', searchPath
+    ], {
+      encoding: 'utf-8',
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 30000
+    });
 
     const matches = JSON.parse(result || '[]');
     return matches.slice(0, maxResults).map(m => ({

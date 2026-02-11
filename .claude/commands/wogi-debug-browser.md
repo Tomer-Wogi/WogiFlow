@@ -7,12 +7,52 @@ Autonomous browser debugging loop that navigates to your app, identifies issues,
 /wogi-debug-browser --url http://localhost:3000 "click Login, expect dashboard"
 ```
 
-## Prerequisites
+## Prerequisites & Pre-Flight Check
 
-**Chrome integration must be active:**
-1. Start Claude Code with: `claude --chrome`
-2. Or run `/chrome` in an existing session
-3. Claude in Chrome extension v1.0.36+ required
+When invoked, run a pre-flight check to determine which browser backend is available:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 PRE-FLIGHT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Checking browser backends...
+
+[1] Chrome MCP: Check if browser_navigate tool is available
+    → If available: Use Chrome MCP (preferred, interactive)
+    → Status: ✓ Available / ✗ Not connected
+
+[2] Playwright: Check if playwright is installed
+    → Run: node -e "require('playwright')" 2>/dev/null
+    → If available: Use Playwright fallback (headless, video recording)
+    → Status: ✓ Installed / ✗ Not installed
+
+[3] Neither available:
+    → Display setup instructions (see below)
+    → Exit gracefully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Backend Priority
+
+1. **Chrome MCP** (preferred): Interactive, visual, works with Claude's built-in Chrome tools
+2. **Playwright** (fallback): Headless by default, supports video recording, runs without Chrome extension
+
+### Setup Instructions (when neither is available)
+
+```
+⚠️ No browser backend available.
+
+Option 1 - Chrome MCP (Recommended):
+  1. Install "Claude in Chrome" extension (v1.0.36+)
+  2. Start Claude Code with: claude --chrome
+  3. Or run /chrome in an existing session
+
+Option 2 - Playwright (Fallback):
+  1. Install playwright: npm install --save-optional playwright
+  2. Install browsers: npx playwright install chromium
+  3. Re-run /wogi-debug-browser
+```
 
 ## How It Works
 
@@ -82,6 +122,70 @@ When executed, follow this autonomous loop:
 │  8. 🔄 Return to step 1                               │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
+```
+
+## Playwright Fallback Mode
+
+When Chrome MCP is unavailable and Playwright is installed, the debug loop uses `scripts/flow-browser-playwright.js` as the browser backend.
+
+**Key differences from Chrome MCP mode:**
+- Runs headless by default (set `config.browserDebugging.playwrightFallback.headed: true` for visible browser)
+- Supports video recording of the debug session
+- Uses Playwright selectors instead of Chrome MCP tools
+- Screenshots saved as PNG files
+
+**Playwright actions map:**
+
+| Debug Loop Step | Chrome MCP | Playwright Fallback |
+|-----------------|-----------|---------------------|
+| Navigate | `browser_navigate` | `page.goto(url)` |
+| Click | `browser_click` | `page.click(selector)` |
+| Type | `browser_type` | `page.fill(selector, text)` |
+| Screenshot | `take_screenshot` | `page.screenshot({ path })` |
+| Console errors | `list_console_messages` | `page.on('console')` listener |
+| Evaluate | `evaluate_script` | `page.evaluate(fn)` |
+
+**Video Recording:**
+When `config.browserDebugging.playwrightFallback.videoRecording` is true:
+- Recording starts automatically at session begin
+- Saved to `.workflow/debug-sessions/{id}/recording.webm`
+- Useful for sharing debug sessions and creating PR media
+
+## Artifact Capture
+
+Every debug session saves artifacts to `.workflow/debug-sessions/{session-id}/`:
+
+```
+.workflow/debug-sessions/
+└── {session-id}/
+    ├── iter-1.png          # Screenshot from iteration 1
+    ├── iter-2.png          # Screenshot from iteration 2
+    ├── console-1.json      # Console errors from iteration 1
+    ├── console-2.json      # Console errors from iteration 2
+    ├── recording.webm      # Video recording (Playwright only)
+    └── session.json        # Session metadata and results
+```
+
+**session.json schema:**
+```json
+{
+  "id": "session-id",
+  "startedAt": "ISO-8601",
+  "completedAt": "ISO-8601",
+  "backend": "chrome-mcp|playwright",
+  "url": "http://localhost:3000",
+  "description": "user's description",
+  "iterations": 3,
+  "result": "pass|fail|blocked",
+  "fixes": [
+    { "file": "path", "line": 45, "description": "Added optional chaining" }
+  ],
+  "artifacts": {
+    "screenshots": ["iter-1.png", "iter-2.png"],
+    "consoleLogs": ["console-1.json"],
+    "video": "recording.webm"
+  }
+}
 ```
 
 ## Exit Conditions
@@ -216,6 +320,16 @@ In `.workflow/config.json`:
     "naturalLanguage": {
       "enabled": true,
       "useAppMap": true
+    },
+    "playwrightFallback": {
+      "enabled": true,
+      "headed": false,
+      "videoRecording": true
+    },
+    "artifacts": {
+      "screenshots": true,
+      "video": true,
+      "consoleLogs": true
     }
   }
 }

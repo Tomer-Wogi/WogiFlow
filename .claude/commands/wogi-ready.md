@@ -34,6 +34,11 @@ BLOCKED
   Tasks: wf-a1b2c3d4, wf-b2c3d4e5, wf-c3d4e5f6
   ✓ Worktree isolation enabled - safe for parallel execution
 
+  Parallelizability Scores:
+    wf-a1b2c3d4: [████████░░] 80/100 (parallel-safe)
+    wf-b2c3d4e5: [██████░░░░] 60/100 (parallelizable)
+    wf-c3d4e5f6: [████████░░] 75/100 (parallel-safe)
+
 RECENTLY COMPLETED
   wf-f6g7h8i9: Setup authentication
 
@@ -57,6 +62,21 @@ When multiple ready tasks have no dependencies between them, the output will sho
 - Tasks execute simultaneously with their own context
 - Changes are merged back when each task completes
 - Conflicts are resolved with AI assistance if needed
+
+**Parallelizability Scores:**
+
+When 2+ ready tasks exist, automatically show parallelizability scores by running:
+```bash
+node scripts/flow-parallel.js scores
+```
+
+This scores each task 0-100 based on file overlap, dependencies, and feature area:
+- **parallel-safe** (80-100): No conflicts, safe for parallel execution
+- **parallelizable** (50-79): Minor overlap, parallel with caution
+- **sequential-preferred** (25-49): Significant overlap, prefer sequential
+- **sequential-only** (0-24): Must run sequentially
+
+The scores help decide which tasks to run in parallel vs sequentially.
 
 **Configuration** (in `.workflow/config.json`):
 ```json

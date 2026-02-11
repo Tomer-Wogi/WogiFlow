@@ -363,7 +363,10 @@
     "preTaskBaseline": {
       "enabled": false,
       "failureThreshold": 5,
-      "skipForTypes": ["bugfix", "quick-fix"],
+      "skipForTypes": [
+        "bugfix",
+        "quick-fix"
+      ],
       "command": "npm test"
     },
     "feature": {
@@ -408,7 +411,10 @@
     "enabled": true,
     "mode": "block",
     "scopeByTaskType": true,
-    "alwaysCheck": ["naming", "security"],
+    "alwaysCheck": [
+      "naming",
+      "security"
+    ],
     "similarityThreshold": 80,
     "learning": {
       "enabled": true,
@@ -498,6 +504,16 @@
     "naturalLanguage": {
       "enabled": true,
       "useAppMap": true
+    },
+    "playwrightFallback": {
+      "enabled": true,
+      "headed": false,
+      "videoRecording": true
+    },
+    "artifacts": {
+      "screenshots": true,
+      "video": true,
+      "consoleLogs": true
     }
   },
   "componentRules": {
@@ -1206,6 +1222,21 @@
     "onAsk": "prompt",
     "logging": true
   },
+  "agentTeams": {
+    "enabled": true,
+    "teammateDispatch": {
+      "mode": "suggest",
+      "includeContext": true,
+      "avoidFileConflicts": true
+    },
+    "leadEnforcement": {
+      "enabled": true,
+      "mode": "warn"
+    },
+    "stateTracking": {
+      "enabled": true
+    }
+  },
   "agents": {
     "enabled": [
       "orchestrator",
@@ -1318,6 +1349,11 @@
     "mode": "inline",
     "detailPath": ".workflow/corrections"
   },
+  "triage": {
+    "enabled": true,
+    "autoSuggestAfterReview": true,
+    "learnFromDismissals": true
+  },
   "peerReview": {
     "enabled": true,
     "provider": "api",
@@ -1332,6 +1368,19 @@
   },
   "review": {
     "specFirstGating": true,
+    "agents": {
+      "core": [
+        "code-logic",
+        "security",
+        "architecture"
+      ],
+      "optional": [
+        "performance"
+      ],
+      "projectRules": true,
+      "projectRulesSource": "decisions.md",
+      "maxParallelAgents": 6
+    },
     "multiPass": {
       "enabled": true,
       "earlyExitOnCritical": true,
@@ -1467,6 +1516,26 @@
         "flagStale": true
       }
     }
+  },
+  "planMode": {
+    "explorePhase": {
+      "enabled": true,
+      "minTaskLevel": "L2"
+    },
+    "researchAgents": {
+      "codebaseAnalyzer": {
+        "enabled": true
+      },
+      "bestPractices": {
+        "enabled": true,
+        "maxWebSearches": 3
+      },
+      "versionVerifier": {
+        "enabled": true
+      }
+    },
+    "researchDepth": "thorough",
+    "deepenPromptThreshold": "L1"
   },
   "planning": {
     "plansDirectory": ".workflow/plans",

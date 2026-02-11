@@ -1,0 +1,33 @@
+{
+  "name": "smoke-test",
+  "description": "Basic smoke test - navigate to base URL and verify page loads",
+  "created": "2026-02-08",
+  "tags": ["#e2e", "#smoke"],
+  "baseUrl": "http://localhost:3000",
+  "note": "Change baseUrl to match your project's dev server (e.g., http://localhost:5173 for Vite)",
+  "steps": [
+    {
+      "action": "navigate",
+      "url": "/",
+      "description": "Navigate to the app root"
+    },
+    {
+      "action": "wait",
+      "selector": "body",
+      "timeout": 10000,
+      "description": "Wait for page body to render"
+    },
+    {
+      "action": "verify",
+      "selector": "body",
+      "exists": true,
+      "description": "Verify page body exists"
+    },
+    {
+      "action": "screenshot",
+      "name": "smoke-test-loaded",
+      "description": "Capture page after load"
+    }
+  ],
+  "expectedResult": "Page loads without errors and body element is visible"
+}

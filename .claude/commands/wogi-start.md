@@ -76,6 +76,10 @@ When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start 
 → Category: BUG (medium confidence)
 → Action: Route to /wogi-bug "login is broken"
 ⚠️ WORKFLOW REMINDER: [guilt message]
+
+💡 TIP: For complex bugs with unclear root cause, consider running
+   /wogi-debug-hypothesis "login is broken" first to investigate
+   competing theories in parallel before implementing a fix.
 ```
 
 ```
@@ -133,11 +137,12 @@ This command implements a **structured execution loop**:
 │  1. Load context + Match skills (auto-invoke)           │
 │  1.2 CLARIFYING QUESTIONS: Surface assumptions          │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │  1.3 EXPLORE PHASE (L1/L0 only, read-only):       │  │
-│  │     → Find related files (Glob/Grep)              │  │
-│  │     → Check app-map, decisions.md                 │  │
-│  │     → Map dependencies                            │  │
-│  │     → Surface assumptions to verify               │  │
+│  │  1.3 EXPLORE PHASE (L2+ tasks, multi-agent):       │  │
+│  │     → Agent 1: Codebase Analyzer (Glob/Grep/Read) │  │
+│  │     → Agent 2: Best Practices (WebSearch)          │  │
+│  │     → Agent 3: Version Verifier (Read/WebSearch)   │  │
+│  │     → All 3 run in parallel as Task agents         │  │
+│  │     → Consolidated research summary displayed      │  │
 │  └───────────────────────────────────────────────────┘  │
 │  1.5 SPEC PHASE: Generate specification                 │
 │  ┌───────────────────────────────────────────────────┐  │
@@ -329,67 +334,185 @@ Note: You can proceed without answering, but clarification may prevent rework.
 
 ---
 
-### Step 1.3: Explore Phase (Read-Only Analysis)
+### Step 1.3: Explore Phase (Multi-Agent Research)
 
-**For L1 (Story) and L0 (Epic) tasks, perform read-only exploration BEFORE generating specs.**
+**For L2+ tasks (configurable via `planMode.explorePhase.minTaskLevel`), launch parallel research sub-agents BEFORE generating specs.**
 
-This step is inspired by Claude Code's Plan Mode, which emphasizes safe analysis before making changes.
+This step invests more tokens up front to get things right. Three specialized agents run in parallel, each focusing on a different research dimension.
 
-**What to do:**
-1. Use **Glob** to find files related to the task keywords
-2. Use **Grep** to search for patterns, function names, component references
-3. **Read** app-map.md and decisions.md for existing components and patterns
-4. Map dependencies: What files REFERENCE the target? What does the target REFERENCE?
-5. Surface assumptions that need verification
+**Research Depth** (controlled by `config.planMode.researchDepth`):
+- `"thorough"` (default): All 3 agents run in parallel
+- `"standard"`: Codebase Analyzer + quick best practices search
+- `"minimal"`: Codebase Analyzer only (legacy behavior)
+
+**Skip conditions**: L3 (Subtask/trivial) tasks always skip this phase.
+
+#### Agent 1: Codebase Analyzer
+
+Launch as `Task` with `subagent_type=Explore`:
+
+```
+Analyze the codebase for task: "[TASK_TITLE]"
+
+1. Use Glob to find files related to: [TASK_KEYWORDS]
+2. Use Grep to search for patterns, function names, component references
+3. Read app-map.md for existing components that could be reused
+4. Read decisions.md for patterns that must be followed
+5. Map dependencies:
+   - Files that REFERENCE the target code
+   - Files REFERENCED BY the target code
+6. Surface assumptions that need verification
+
+Return a structured summary:
+- Related files (path + why it's relevant)
+- Existing components to reuse
+- Patterns to follow
+- Dependency map
+- Assumptions to verify
+```
+
+#### Agent 2: Best Practices Researcher
+
+Launch as `Task` with `subagent_type=Explore` (skipped if `researchDepth: "minimal"`):
+
+```
+Research best practices for: "[TASK_TITLE]"
+
+1. Web search for current best practices related to this task type
+   - Include the current year (2026) in searches for up-to-date results
+   - Search for: "[task type] best practices [year]"
+   - Search for: "[relevant technology] patterns [year]"
+   - Maximum 3 web searches
+2. Look for common pitfalls and anti-patterns
+3. Check if there are established patterns in the ecosystem
+
+Return:
+- Best practices found (with sources)
+- Common pitfalls to avoid
+- Recommended patterns
+```
+
+#### Agent 3: Framework/Version Verifier
+
+Launch as `Task` with `subagent_type=Explore` (skipped if `researchDepth: "minimal"`):
+
+```
+Verify framework versions and API compatibility for: "[TASK_TITLE]"
+
+1. Read package.json to get actual dependency versions
+2. For each relevant dependency:
+   - Web search for "[package]@[version] API documentation"
+   - Verify the APIs we plan to use exist in this version
+   - Flag any deprecated APIs
+3. Check for version-specific gotchas
+
+Return:
+- Dependency versions relevant to this task
+- API compatibility notes
+- Deprecated APIs to avoid
+- Version-specific considerations
+```
+
+#### Launching the Agents
+
+**All 3 agents are launched as parallel `Task` calls in a single message** (established pattern from `/wogi-review`):
+
+```javascript
+// Launch all 3 in parallel (single message, 3 Task tool calls)
+Task(subagent_type=Explore, prompt="Codebase Analyzer: ...")
+Task(subagent_type=Explore, prompt="Best Practices: ...")
+Task(subagent_type=Explore, prompt="Version Verifier: ...")
+```
+
+**After all agents complete**, display a consolidated research summary:
 
 **Output Format:**
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔍 EXPLORE PHASE (Read-Only Analysis)
+🔍 EXPLORE PHASE (Multi-Agent Research)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📁 Related Files Found: X files
+📁 Codebase Analysis:
+   Related Files: X files
    - path/to/file1.ts (contains: relevant function)
    - path/to/file2.ts (imports: target component)
 
-📦 Existing Components (from app-map.md):
+   Existing Components (from app-map.md):
    - ComponentA - Could be reused/extended
-   - ComponentB - Similar functionality exists
 
-📋 Patterns to Follow (from decisions.md):
+   Patterns to Follow (from decisions.md):
    - Pattern 1: [relevant rule]
-   - Pattern 2: [relevant rule]
 
-🔗 Dependency Map:
+   Dependency Map:
    → Files that REFERENCE target: [list]
    → Files REFERENCED BY target: [list]
 
-⚠️ Assumptions to Verify:
+   Assumptions to Verify:
    1. [Assumption about existing behavior]
-   2. [Assumption about data structure]
-   3. [Assumption about integration point]
+
+🌐 Best Practices Research:
+   - [Practice 1] (source: [URL])
+   - [Practice 2] (source: [URL])
+   Pitfalls to Avoid:
+   - [Pitfall 1]
+
+📦 Version Verification:
+   - [package]@[version]: APIs confirmed compatible
+   - [package]@[version]: ⚠️ [deprecated API] - use [alternative]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+#### Deepen Prompt (L1/L0 Tasks)
+
+For L1 (Story) and L0 (Epic) tasks, after displaying the research summary, offer to deepen:
+
+```
+This is a complex task (L1/L0). Want to deepen research further?
+  [1] Proceed with current research (recommended for most tasks)
+  [2] Deepen - exhaustive search, load all relevant skills, scan full dependency tree
+
+Use AskUserQuestion to present this choice.
+```
+
+If user chooses "Deepen":
+- Load all relevant skills (patterns.md, anti-patterns.md, learnings.md)
+- Run additional targeted web searches
+- Scan the full import/export tree for the affected files
+
+#### Graceful Fallback
+
+If web search fails for any agent (network issues, rate limits, timeouts):
+- Log a warning: `⚠️ Web research unavailable for [Agent Name]. Proceeding with codebase analysis only.`
+- The Codebase Analyzer always runs locally and never fails due to network issues
+- If Best Practices agent fails: proceed without best practices (codebase + version verifier only)
+- If Version Verifier agent fails: proceed using local package.json versions only (no web validation)
+- If ALL web-based agents fail: proceed with codebase analysis only, equivalent to `researchDepth: "minimal"`
+- Task proceeds normally without blocking — web research is always best-effort
+
 **IMPORTANT CONSTRAINTS:**
 - **READ-ONLY**: Do NOT use Edit, Write, or NotebookEdit during this phase
-- **OBSERVE**: Use only Glob, Grep, Read tools
+- **OBSERVE**: Agents use only Glob, Grep, Read, WebSearch, WebFetch tools
 - **DOCUMENT**: Surface what you find, don't act on it yet
 
-**Config**: Controlled by `config.planMode.explorePhase`:
+**Config**: Controlled by `config.planMode`:
 ```json
 {
-  "enabled": true,
-  "minTaskLevel": "L1",
-  "showRelatedFiles": true,
-  "showExistingComponents": true,
-  "showPatterns": true,
-  "surfaceAssumptions": true
+  "explorePhase": {
+    "enabled": true,
+    "minTaskLevel": "L2"
+  },
+  "researchAgents": {
+    "codebaseAnalyzer": { "enabled": true },
+    "bestPractices": { "enabled": true, "maxWebSearches": 3 },
+    "versionVerifier": { "enabled": true }
+  },
+  "researchDepth": "thorough",
+  "deepenPromptThreshold": "L1"
 }
 ```
 
-**Skip conditions**: L2 (Task) and L3 (Subtask) skip this phase unless config says otherwise.
+**Backwards compatible**: If `planMode` key is missing in config, falls back to single-agent codebase analysis (legacy behavior).
 
 ---
 
@@ -963,12 +1086,14 @@ Phase commands:
 ### Scenario keeps failing after max retries
 - Stop and report: "Scenario X failed after N attempts. Issue: [description]"
 - Leave task in inProgress
+- **Auto-suggest hypothesis debugging**: When a scenario fails 3+ times, suggest running `/wogi-debug-hypothesis "[failure description]"` to spawn parallel investigation agents that analyze competing theories about the root cause
 - User can investigate and re-run `/wogi-start TASK-XXX` to continue
 
 ### Quality gate keeps failing
 - Report which gate is failing and why
 - Attempt to fix automatically
-- If can't fix after 3 attempts, stop and report
+- If can't fix after 3 attempts, suggest `/wogi-debug-hypothesis "[gate failure description]"` to investigate root cause
+- Stop and report
 
 ### Context getting too large
 - **Pre-task check** estimates context needs and compacts proactively if needed

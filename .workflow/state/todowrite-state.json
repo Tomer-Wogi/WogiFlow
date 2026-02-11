@@ -1,0 +1,18 @@
+{
+  "taskId": "wf-fd8d2444",
+  "criteria": [
+    {
+      "id": "main-task",
+      "content": "WogiFlow Memory Enhancement - Automatic Observation Capture",
+      "status": "pending",
+      "activeForm": "Working on: WogiFlow Memory Enhancement - Automatic Observation Capture"
+    }
+  ],
+  "startedAt": "2026-02-05T10:59:49.604Z",
+  "stats": {
+    "total": 1,
+    "pending": 1,
+    "inProgress": 0,
+    "completed": 0
+  }
+}

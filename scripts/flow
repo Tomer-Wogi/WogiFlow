@@ -380,7 +380,8 @@ case "${1:-}" in
         node "$SCRIPT_DIR/flow-roadmap.js" "${@:2}"
         ;;
     new-feature)
-        "$SCRIPT_DIR/flow-new-feature" "${@:2}"
+        echo "Use 'flow story' or 'flow feature' instead."
+        exit 0
         ;;
     bug)
         node "$SCRIPT_DIR/flow-bug.js" "${@:2}"
@@ -449,7 +450,8 @@ case "${1:-}" in
         node "$SCRIPT_DIR/flow-migrate.js" "${@:2}"
         ;;
     update)
-        "$SCRIPT_DIR/flow-update" "${@:2}"
+        echo "Use 'npm update wogiflow' to update WogiFlow."
+        exit 0
         ;;
     setup-hooks)
         "$SCRIPT_DIR/flow-setup-hooks" "${@:2}"
@@ -969,32 +971,9 @@ case "${1:-}" in
         node "$SCRIPT_DIR/flow-log-manager.js" "${@:2}"
         ;;
     team)
-        case "${2:-status}" in
-            dashboard)
-                # Phase 6: Team Observability Dashboard
-                node "$SCRIPT_DIR/flow-team-dashboard.js" "${@:3}"
-                ;;
-            sync-status)
-                node "$SCRIPT_DIR/flow-team-sync.js" status
-                ;;
-            sync-init)
-                if [ -z "$3" ]; then
-                    echo "Usage: flow team sync-init <team-id>"
-                else
-                    node "$SCRIPT_DIR/flow-team-sync.js" init "$3"
-                fi
-                ;;
-            sync-payload)
-                node "$SCRIPT_DIR/flow-team-sync.js" payload
-                ;;
-            project-id)
-                node "$SCRIPT_DIR/flow-team-sync.js" project-id
-                ;;
-            *)
-                # Delegate to original team handler for other commands
-                node "$SCRIPT_DIR/flow-team.js" "${@:2}"
-                ;;
-        esac
+        echo "Team collaboration features are available in WogiFlow Pro."
+        echo "See: .workflow/archive/paid-features/README.md"
+        exit 0
         ;;
     prd)
         node "$SCRIPT_DIR/flow-prd-manager.js" "${@:2}"
@@ -1007,8 +986,9 @@ case "${1:-}" in
         exit 0
         ;;
     sync-daemon)
-        # Phase 6: Background Sync Daemon
-        node "$SCRIPT_DIR/flow-sync-daemon.js" "${@:2}"
+        echo "Sync daemon is available in WogiFlow Pro."
+        echo "See: .workflow/archive/paid-features/README.md"
+        exit 0
         ;;
     guided-edit)
         node "$SCRIPT_DIR/flow-guided-edit.js" "${@:2}"

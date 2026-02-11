@@ -406,6 +406,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
 
   /**
    * Transform TeammateIdle result (Claude Code 2.1.33+)
+   * Supports both "suggest" mode (task ID only) and "dispatch" mode (full context)
    */
   transformTeammateIdle(coreResult) {
     if (!coreResult.enabled) {
@@ -413,15 +414,25 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     }
 
     if (coreResult.hasTask) {
-      return {
+      const output = {
         continue: true,
-        systemMessage: coreResult.message,
         hookSpecificOutput: {
           hookEventName: 'TeammateIdle',
           hasTask: true,
-          suggestedTaskId: coreResult.suggestedTaskId
+          suggestedTaskId: coreResult.suggestedTaskId,
+          dispatchMode: coreResult.dispatchMode || 'suggest'
         }
       };
+
+      // In dispatch mode, include task context as additional context for the teammate
+      if (coreResult.dispatchMode === 'dispatch' && coreResult.taskContext) {
+        output.hookSpecificOutput.additionalContext = coreResult.message;
+        output.hookSpecificOutput.taskContext = coreResult.taskContext;
+      } else {
+        output.systemMessage = coreResult.message;
+      }
+
+      return output;
     }
 
     return {
@@ -477,10 +488,10 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     // PreToolUse hooks for Edit/Write/TodoWrite
     const preToolUseMatchers = [];
 
-    // Task gating for Edit/Write + TodoWrite gating
+    // Task gating for Edit/Write + TodoWrite gating + Skill tracking + Bash strict adherence
     if (rules.taskGating?.enabled !== false || rules.todoWriteGate?.enabled !== false) {
       preToolUseMatchers.push({
-        matcher: 'Edit|Write|TodoWrite',
+        matcher: 'Edit|Write|TodoWrite|Skill|Bash',
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'pre-tool-use.js')}"`,
@@ -493,10 +504,10 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       hooks.PreToolUse = preToolUseMatchers;
     }
 
-    // PostToolUse hooks for validation
+    // PostToolUse hooks for validation + observation capture (all tools)
     if (rules.validation?.enabled !== false) {
       hooks.PostToolUse = [{
-        matcher: 'Edit|Write',
+        // No matcher - fires for ALL tools so observation capture works universally
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'post-tool-use.js')}"`,

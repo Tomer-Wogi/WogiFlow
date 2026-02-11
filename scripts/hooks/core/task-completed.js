@@ -122,8 +122,22 @@ function handleTaskCompleted(input) {
         });
         fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + '\n', 'utf-8');
       }
-    } catch (err) {
+    } catch {
       // Non-critical - don't fail the hook for history logging
+    }
+
+    // Update teammate state if agent teams tracking is enabled
+    try {
+      const { getAgentTeamsConfig, updateTeammate } = require('../../flow-agent-teams');
+      const agentTeamsConfig = getAgentTeamsConfig();
+      if (agentTeamsConfig.stateTracking.enabled) {
+        const teammateId = input.sessionId || input.source;
+        if (teammateId) {
+          updateTeammate(teammateId, { status: 'idle', taskId: null });
+        }
+      }
+    } catch {
+      // Non-critical - agent teams module may not be available
     }
   } catch (err) {
     result.message = `Task completed handler error: ${err.message}`;

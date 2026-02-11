@@ -134,9 +134,30 @@ Gate Summary: 1 failed (typecheck)
 
 If spec verification or critical gate failures exist, report them immediately before AI review.
 
-## Phase 2: AI Review (3 Parallel Agents)
+## Phase 2: AI Review (Dynamic Agent System)
 
-### Agent 1: Code & Logic Review
+Review agents are organized in three tiers: **core** (always run), **optional** (configurable), and **project-rules** (auto-generated from decisions.md).
+
+**Config**: Controlled by `config.review.agents`:
+```json
+{
+  "review": {
+    "agents": {
+      "core": ["code-logic", "security", "architecture"],
+      "optional": ["performance"],
+      "projectRules": true,
+      "projectRulesSource": "decisions.md",
+      "maxParallelAgents": 6
+    }
+  }
+}
+```
+
+Setting `projectRules: false` gives the legacy 3-agent behavior.
+
+### Core Agents (Always Run)
+
+#### Agent: Code & Logic Review
 Launch a Task agent with subagent_type=Explore focusing on:
 - **Code Quality**: Naming conventions, readability, structure
 - **Logic Correctness**: Algorithm correctness, edge case handling
@@ -156,14 +177,14 @@ Check for:
 4. Error handling - are errors handled appropriately?
 5. Code smells - long methods, deep nesting, magic numbers?
 
-For each issue found, report:
-- File and line number
-- Issue type (quality/logic/dry/error/smell)
-- Severity (critical/high/medium/low)
-- Description and recommendation
+For each issue found, report as JSON:
+{ "id": "finding-NNN", "file": "path", "line": N, "type": "quality|logic|dry|error|smell",
+  "severity": "critical|high|medium|low", "category": "code-logic",
+  "issue": "...", "recommendation": "...", "autoFixable": true|false,
+  "agent": "code-logic" }
 ```
 
-### Agent 2: Security Review
+#### Agent: Security Review
 Launch a Task agent with subagent_type=Explore focusing on:
 - **Input Validation**: User inputs sanitized?
 - **Authentication/Authorization**: Proper access controls?
@@ -171,7 +192,7 @@ Launch a Task agent with subagent_type=Explore focusing on:
 - **Sensitive Data**: Passwords, tokens, PII exposed?
 - **Error Messages**: Do errors leak sensitive info?
 
-Refer to `agents/security.md` for OWASP Top 10 checklist.
+Refer to `.workflow/agents/security.md` for OWASP Top 10 checklist.
 
 Prompt template:
 ```
@@ -185,14 +206,14 @@ Check for OWASP Top 10 vulnerabilities:
 4. Security misconfiguration
 5. Insufficient input validation
 
-For each issue found, report:
-- File and line number
-- Vulnerability type
-- Severity (critical/high/medium/low)
-- Description and remediation
+For each issue found, report as JSON:
+{ "id": "finding-NNN", "file": "path", "line": N, "type": "vulnerability-type",
+  "severity": "critical|high|medium|low", "category": "security",
+  "issue": "...", "recommendation": "...", "autoFixable": true|false,
+  "agent": "security" }
 ```
 
-### Agent 3: Architecture & Conflicts
+#### Agent: Architecture & Conflicts
 Launch a Task agent with subagent_type=Explore focusing on:
 - **Component Reuse**: Check `app-map.md` for existing components
 - **Pattern Consistency**: Check `decisions.md` for coding patterns
@@ -212,12 +233,87 @@ Check:
 4. Look for conflicting code (different approaches to same problem)
 5. Find dead code (unused imports, variables, unreachable code)
 
-For each issue found, report:
-- File and line number
-- Issue type (reuse/pattern/redundancy/conflict/dead-code)
-- Severity (critical/high/medium/low)
-- Description and recommendation
+For each issue found, report as JSON:
+{ "id": "finding-NNN", "file": "path", "line": N, "type": "reuse|pattern|redundancy|conflict|dead-code",
+  "severity": "critical|high|medium|low", "category": "architecture",
+  "issue": "...", "recommendation": "...", "autoFixable": true|false,
+  "agent": "architecture" }
 ```
+
+### Optional Agents (Configurable)
+
+Optional agents run when listed in `config.review.agents.optional`.
+
+#### Agent: Performance Review
+
+Enabled when `"performance"` is in `config.review.agents.optional`.
+
+Refer to `.workflow/agents/performance.md` for the full checklist.
+
+Launch a Task agent with subagent_type=Explore:
+```
+Performance review of the following files:
+[FILE_LIST]
+
+Check for:
+1. N+1 query patterns (loop with individual DB/API calls inside)
+2. Blocking I/O in async contexts
+3. Memory leaks (event listeners not cleaned up, large objects retained)
+4. Sequential awaits that could be Promise.all
+5. Large bundle imports when a small utility suffices
+6. Missing memoization for expensive computations
+
+For each issue found, report as JSON:
+{ "id": "finding-NNN", "file": "path", "line": N, "type": "n-plus-1|blocking-io|memory-leak|sequential-await|bundle-size|memoization",
+  "severity": "critical|high|medium|low", "category": "performance",
+  "issue": "...", "recommendation": "...", "autoFixable": true|false,
+  "agent": "performance" }
+```
+
+### Project-Rules Agents (Auto-Generated from decisions.md)
+
+When `config.review.agents.projectRules` is `true`, additional agents are **automatically generated** from project rules:
+
+**How it works:**
+
+1. Before launching review agents, **read `decisions.md`**
+2. Parse section headers (e.g., "## Component Architecture", "## Coding Standards")
+3. For each category with substantive rules (at least 2 non-empty lines of actual rules), create a focused agent
+4. Skip empty categories or headers without actionable rules
+
+**For each qualifying category**, launch a Task agent with subagent_type=Explore:
+
+```
+Project Standards Review: [CATEGORY_NAME]
+
+Review these files against these specific project rules:
+
+---
+[RULES EXTRACTED FROM decisions.md SECTION]
+---
+
+Files to review:
+[FILE_LIST]
+
+For each violation:
+- File and line number
+- Which rule was violated (quote the exact rule text)
+- Severity: MUST_FIX (explicit mandate in the rule) or SUGGESTION (best practice)
+
+Report as JSON:
+{ "file": "path", "line": N, "type": "project-rule-violation",
+  "severity": "high|medium", "issue": "...", "recommendation": "...",
+  "rule": "quoted rule text", "category": "[CATEGORY_NAME]",
+  "agent": "project-rules-[category-slug]" }
+```
+
+**Agent cap**: Total agents (core + optional + project-rules) is limited by `maxParallelAgents` (default: 6). If there are more project-rules categories than available slots, prioritize categories matching changed file types (e.g., "Security Patterns" for security-related files).
+
+**Example**: If decisions.md has sections "Component Architecture", "Coding Standards", and "UI/UX Decisions" (empty), the review would launch:
+- 3 core agents (code-logic, security, architecture)
+- 1 optional agent (performance)
+- 2 project-rules agents (Component Architecture, Coding Standards)
+- Total: 6 agents (within limit)
 
 ## Execution Steps
 
@@ -250,14 +346,42 @@ When `/wogi-review` is invoked:
 
    **If parallel mode**: Continue with step 4.
 
-4. **Launch 3 agents in parallel** (single message with 3 Task tool calls):
-   - Agent 1: Code & Logic (subagent_type=Explore)
-   - Agent 2: Security (subagent_type=Explore)
-   - Agent 3: Architecture (subagent_type=Explore)
+4. **Determine agent lineup**:
+   - Start with core agents from `config.review.agents.core` (default: code-logic, security, architecture)
+   - Add optional agents from `config.review.agents.optional` (e.g., performance)
+   - If `config.review.agents.projectRules` is true:
+     - Read `decisions.md` using section-resolver PIN system for targeted parsing (avoids expensive full-file parsing for large decisions.md files)
+     - For each category with substantive rules, create a project-rules agent
+     - Cap total agents at `config.review.agents.maxParallelAgents` (default: 6)
 
-5. **Wait for all agents to complete**
+5. **Launch all agents in parallel** (single message with N Task tool calls, subagent_type=Explore)
 
-6. **Consolidate and display results**:
+6. **Wait for all agents to complete**
+
+7. **Persist findings to `.workflow/state/last-review.json`**:
+   ```json
+   {
+     "reviewDate": "ISO-8601 timestamp",
+     "mode": "parallel|multi-pass",
+     "filesReviewed": ["path/to/file1.ts", "..."],
+     "findings": [
+       {
+         "id": "finding-001",
+         "severity": "critical|high|medium|low",
+         "category": "quality|security|architecture|performance|project-rule",
+         "file": "path/to/file.ts",
+         "line": 45,
+         "issue": "Description of the issue",
+         "recommendation": "How to fix it",
+         "autoFixable": false,
+         "agent": "code-logic|security|architecture|performance|project-rules-[slug]"
+       }
+     ],
+     "triaged": false
+   }
+   ```
+
+8. **Consolidate and display results**:
 
 ```
 ╔══════════════════════════════════════════════════════════╗
@@ -308,6 +432,9 @@ Top Recommendations:
 1. [Most important fix]
 2. [Second most important]
 3. [Third most important]
+
+Findings saved to: .workflow/state/last-review.json
+Run /wogi-triage to walk through findings interactively.
 ```
 
 ## Multi-Pass Mode Execution

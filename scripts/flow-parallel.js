@@ -380,6 +380,29 @@ function loadConfig() {
   return getParallelConfig();
 }
 
+/**
+ * Get parallelizability scores for a set of tasks.
+ * Delegates to flow-agent-teams.js for the scoring logic.
+ *
+ * @param {Array} tasks - Tasks to score
+ * @returns {Object} { parallelCount, sequentialCount, summary, scores }
+ */
+function getParallelizabilityScores(tasks) {
+  try {
+    const { getParallelizabilitySummary } = require('./flow-agent-teams');
+    return getParallelizabilitySummary(tasks);
+  } catch {
+    // Fallback if flow-agent-teams not available
+    const parallelizable = findParallelizable(tasks);
+    return {
+      parallelCount: parallelizable.length,
+      sequentialCount: tasks.length - parallelizable.length,
+      summary: `${parallelizable.length} of ${tasks.length} tasks can run in parallel`,
+      scores: []
+    };
+  }
+}
+
 module.exports = {
   // Configuration
   loadConfig,
@@ -391,6 +414,9 @@ module.exports = {
   findParallelizable,
   canRunInParallel,
   detectParallelInfo,
+
+  // Scoring
+  getParallelizabilityScores,
 
   // Execution
   executeParallel,
@@ -448,6 +474,32 @@ if (require.main === module) {
       break;
     }
 
+    case 'scores': {
+      // Show parallelizability scores for ready tasks
+      const scoresReadyPath = path.join(getProjectRoot(), '.workflow', 'state', 'ready.json');
+      if (!fs.existsSync(scoresReadyPath)) {
+        console.log('No ready.json found');
+        process.exit(1);
+      }
+
+      const scoresReady = JSON.parse(fs.readFileSync(scoresReadyPath, 'utf-8'));
+      const scoreTasks = scoresReady.ready || [];
+
+      if (scoreTasks.length < 2) {
+        console.log('\nNeed 2+ ready tasks for scoring');
+        process.exit(0);
+      }
+
+      const summary = getParallelizabilityScores(scoreTasks);
+      console.log('\nParallelizability Scores:\n');
+      for (const s of (summary.scores || [])) {
+        const bar = '\u2588'.repeat(Math.round(s.score / 10)) + '\u2591'.repeat(10 - Math.round(s.score / 10));
+        console.log(`  ${s.taskId}: [${bar}] ${s.score}/100 (${s.label})`);
+      }
+      console.log(`\nSummary: ${summary.summary}`);
+      break;
+    }
+
     default:
       console.log(`
 Wogi Flow - Parallel Execution
@@ -458,10 +510,12 @@ Usage:
 Commands:
   config        Show parallel execution configuration
   check         Analyze tasks for parallel execution potential
+  scores        Show parallelizability scores for ready tasks
 
 Examples:
   node flow-parallel.js config
   node flow-parallel.js check
+  node flow-parallel.js scores
 `);
   }
 }

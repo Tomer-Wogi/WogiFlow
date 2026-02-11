@@ -1,30 +1,45 @@
 {
-  "lastUpdated": "2026-02-06T09:56:36.619Z",
+  "lastUpdated": "2026-02-11T12:15:00.000Z",
   "inProgress": [],
-  "ready": [
-    {
-      "id": "wf-3daad465",
-      "title": "Capture Task tool metrics (token count, tool uses, duration) in flow-metrics.js",
-      "type": "story",
-      "feature": "metrics",
-      "status": "ready",
-      "priority": "P2",
-      "description": "Extend flow-metrics.js to capture subagent metrics (token count, tool uses, duration) from Claude Code 2.1.30+ Task tool results. Add cost estimation and per-task-type aggregation.",
-      "createdAt": "2026-02-04T12:00:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-3daad465.md"
-    },
-    {
-      "id": "wf-cc-007",
-      "title": "Test WogiFlow on Windows with Claude Code 2.1.7 fixes",
-      "type": "bugfix",
-      "feature": "claude-code-integration",
-      "status": "ready",
-      "priority": "P3",
-      "description": "Claude Code 2.1.7 fixed Windows-specific issues: false 'file modified' errors with cloud sync/antivirus, and bash temp directory path escape sequences. Verify WogiFlow works correctly on Windows with these fixes."
-    }
-  ],
+  "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-audit-p1",
+      "title": "Fix Phase 1 critical audit findings (crashes, security, broken hooks)",
+      "type": "bugfix",
+      "feature": "code-quality",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Fix 7 critical issues from Opus 4.6 codebase audit: (1) Remove 4 dead team script references from CLI router, (2) Fix shell injection in astGrepSearch via execFileSync, (3) Register TaskCompleted hook in settings.local.json, (4) Widen PostToolUse matcher for universal observation capture, (5) Widen PreToolUse matcher for Skill/Bash handling, (6) Fix /wogi-session-review -> /wogi-review in CLAUDE.md, (7) Fix /wogi-epic -> /wogi-epics in CLAUDE.md.",
+      "createdAt": "2026-02-11T12:00:00.000Z",
+      "startedAt": "2026-02-11T12:00:00.000Z",
+      "completedAt": "2026-02-11T12:15:00.000Z"
+    },
+    {
+      "id": "wf-agent-wire",
+      "title": "Wire Agent Teams features into existing workflow automation",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Auto-invoke Agent Teams features from existing workflows: (1) parallelizability scores in /wogi-ready, (2) hypothesis debugging in /wogi-start bug routing and error recovery, (3) teammate state in /wogi-status, (4) Agent Teams auto-detection in session-context.js, (5) natural language triggers in CLAUDE.md template.",
+      "createdAt": "2026-02-11T11:15:00.000Z",
+      "startedAt": "2026-02-11T11:15:00.000Z",
+      "completedAt": "2026-02-11T11:30:00.000Z"
+    },
+    {
+      "id": "wf-agent-teams",
+      "title": "Agent Teams integration - enhance dispatch, lead enforcement, state tracking, scoring, hypothesis debugging",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Integrate with Claude Code Agent Teams: (1) enhance TeammateIdle for rich dispatch with file-conflict avoidance, (2) add lead-goes-rogue prevention, (3) teammate state tracking, (4) parallelizability scoring, (5) competing hypothesis debugging command.",
+      "createdAt": "2026-02-11T12:00:00.000Z",
+      "startedAt": "2026-02-11T12:00:00.000Z",
+      "completedAt": "2026-02-11T11:01:04.579Z"
+    },
     {
       "id": "wf-cr-2133",
       "title": "Fix 3 code review issues from CC 2.1.33 epic",
@@ -139,20 +154,19 @@
       "startedAt": "2026-02-05T10:59:49.573Z",
       "completedAt": "2026-02-05T11:05:00.000Z",
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-fd8d2444.md"
-    },
-    {
-      "id": "wf-8984278f",
-      "title": "Implement 3 quality improvements from superpowers analysis",
-      "type": "story",
-      "feature": "quality-gates",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Sequential spec-then-quality review, 3-strike architectural reassessment, optional pre-task test baseline",
-      "createdAt": "2026-02-04T13:00:00.000Z",
-      "startedAt": "2026-02-04T13:00:00.000Z",
-      "completedAt": "2026-02-04T13:30:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-8984278f.md"
     }
   ],
-  "backlog": []
+  "backlog": [
+    {
+      "id": "wf-3daad465",
+      "title": "Add subagent metrics aggregation via memory-db observations",
+      "type": "story",
+      "feature": "metrics",
+      "status": "backlog",
+      "priority": "P2",
+      "description": "Add subagent metrics aggregation to flow-metrics.js by querying existing observation data in memory-db. Observation capture already records Task tool uses with duration. Add aggregation by subagent_type, cost estimation, and CLI command.",
+      "createdAt": "2026-02-04T12:00:00.000Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-3daad465.md"
+    }
+  ]
 }
