@@ -330,9 +330,9 @@ async function runSteps(when, context = {}) {
         console.log(colors.green + `  PASSED` + colors.reset);
       }
 
-    } catch (error) {
-      results[stepName] = { passed: false, error: error.message };
-      console.log(colors.red + `  ERROR: ${error.message}` + colors.reset);
+    } catch (err) {
+      results[stepName] = { passed: false, error: err.message };
+      console.log(colors.red + `  ERROR: ${err.message}` + colors.reset);
 
       if (step.mode === 'block') {
         blocked = true;

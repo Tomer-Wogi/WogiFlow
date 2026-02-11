@@ -57,11 +57,11 @@ async function run(options = {}) {
       message: `Tested ${parsed.tested || sampleSize} completed tasks, all passed`,
     };
 
-  } catch (error) {
+  } catch (err) {
     // Check if it's a test failure or script error
-    if (error.stdout) {
+    if (err.stdout) {
       try {
-        const parsed = JSON.parse(error.stdout);
+        const parsed = JSON.parse(err.stdout);
         if (parsed.failures) {
           return {
             passed: false,
@@ -75,13 +75,13 @@ async function run(options = {}) {
     }
 
     // No completed tasks to test is not a failure
-    if (error.message && error.message.includes('No completed tasks')) {
+    if (err.message && err.message.includes('No completed tasks')) {
       return { passed: true, message: 'No completed tasks to test' };
     }
 
     return {
       passed: false,
-      message: `Regression test error: ${error.message}`,
+      message: `Regression test error: ${err.message}`,
     };
   }
 }

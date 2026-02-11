@@ -520,8 +520,8 @@ function migrateOldSkills(projectRoot) {
       fs.rmdirSync(oldSkillsDir);
     }
 
-  } catch (error) {
-    console.warn(`  Warning: Could not migrate old skills: ${error.message}`);
+  } catch (err) {
+    console.warn(`  Warning: Could not migrate old skills: ${err.message}`);
   }
 
   return { migrated, skipped };

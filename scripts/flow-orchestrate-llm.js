@@ -411,12 +411,12 @@ class CloudExecutor {
         maxTokens: this.config.maxTokens
       });
       return response;
-    } catch (error) {
+    } catch (err) {
       // Enhance error message with cloud-specific context
       const enhancedError = new Error(
-        `Cloud executor error (${this.config.provider}/${this.config.model}): ${error.message}`
+        `Cloud executor error (${this.config.provider}/${this.config.model}): ${err.message}`
       );
-      enhancedError.originalError = error;
+      enhancedError.originalError = err;
       throw enhancedError;
     }
   }

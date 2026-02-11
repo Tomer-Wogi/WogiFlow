@@ -284,17 +284,17 @@ async function executeParallel(tasks, executor, options = {}) {
         }
 
         return { taskId: task.id, success: true, result };
-      } catch (error) {
+      } catch (err) {
         finished.add(task.id); // Mark as finished but NOT succeeded
 
         try {
-          if (tracker) tracker.fail(task.id, error);
-          if (onError) onError(task, error);
+          if (tracker) tracker.fail(task.id, err);
+          if (onError) onError(task, err);
         } catch (callbackError) {
           console.warn(`Error callback error for ${task.id}: ${callbackError.message}`);
         }
 
-        return { taskId: task.id, success: false, error: error.message };
+        return { taskId: task.id, success: false, error: err.message };
       }
     });
 

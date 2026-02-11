@@ -791,6 +791,14 @@
     "checkKnowledgeSync": true,
     "autoRegenerateKnowledge": true
   },
+  "bulkLoop": {
+    "enabled": true,
+    "maxIterations": 100,
+    "pollInterval": 10,
+    "errorThreshold": 3,
+    "contextThreshold": 0.8,
+    "taskTimeout": 1800
+  },
   "techDebt": {
     "enabled": true,
     "promptOnSessionEnd": true,

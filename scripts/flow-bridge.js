@@ -188,8 +188,8 @@ async function syncBridge(options = {}) {
         }
       }
     }
-  } catch (error) {
-    console.error(`${colors.red}Error:${colors.reset} ${error.message}`);
+  } catch (err) {
+    console.error(`${colors.red}Error:${colors.reset} ${err.message}`);
     process.exit(1);
   }
 

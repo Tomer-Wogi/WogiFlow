@@ -749,12 +749,12 @@ class EnhancedStackWizard {
       console.log('To regenerate with different settings:');
       console.log('   /wogi-setup-stack\n');
 
-    } catch (error) {
-      if (error.code === 'MODULE_NOT_FOUND') {
+    } catch (err) {
+      if (err.code === 'MODULE_NOT_FOUND') {
         console.log(c('yellow', '\nSkill generator not found. Creating placeholder...'));
         this.saveSelectionsToFile();
       } else {
-        console.error('\nError generating skills:', error.message);
+        console.error('\nError generating skills:', err.message);
         console.log('\nSaving selections for later processing...');
         this.saveSelectionsToFile();
       }
@@ -770,8 +770,8 @@ class EnhancedStackWizard {
       fs.writeFileSync(selectionsPath, JSON.stringify(this.selections, null, 2));
       console.log(`\nSelections saved to: ${selectionsPath}`);
       console.log('Run skill generation later with: /wogi-setup-stack --generate');
-    } catch (error) {
-      console.error('Failed to save selections:', error.message);
+    } catch (err) {
+      console.error('Failed to save selections:', err.message);
     }
   }
 

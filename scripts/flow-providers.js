@@ -209,8 +209,8 @@ class BaseProvider {
         maxTokens: 10
       });
       return { success: true, response };
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   }
 

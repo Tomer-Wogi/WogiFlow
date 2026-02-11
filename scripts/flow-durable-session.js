@@ -351,9 +351,9 @@ function loadDurableSession() {
     }
 
     return session;
-  } catch (error) {
+  } catch (err) {
     if (process.env.DEBUG) {
-      console.warn(`[DEBUG] Could not parse durable session: ${error.message}`);
+      console.warn(`[DEBUG] Could not parse durable session: ${err.message}`);
     }
     return null;
   }
@@ -964,11 +964,11 @@ function checkPollCondition(config) {
       currentValue: result,
       expectedValue: config.expectedValue
     };
-  } catch (error) {
+  } catch (err) {
     return {
       canResume: false,
       reason: 'poll-command-failed',
-      error: error.message
+      error: err.message
     };
   }
 }
@@ -1046,11 +1046,11 @@ function checkFileCondition(config) {
         expected: config.expectedContent,
         actual: content
       };
-    } catch (error) {
+    } catch (err) {
       return {
         canResume: false,
         reason: 'file-parse-error',
-        error: error.message
+        error: err.message
       };
     }
   }

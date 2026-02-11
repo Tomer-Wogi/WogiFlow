@@ -21,7 +21,6 @@ TASK MANAGEMENT
 ═══════════════════════════════════════════════════════════════
 /wogi-ready              Show tasks by status, recommend next
 /wogi-start [id]         Start task, load context
-/wogi-done [id]          Complete task with quality gates
 /wogi-bulk               Execute multiple tasks in sequence
 /wogi-status             Full project overview
 /wogi-deps [id]          Show task dependency tree

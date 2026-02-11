@@ -636,8 +636,8 @@ async function adaptiveRetry(executeFn, validateFn, originalPrompt, options = {}
       // Failed validation
       lastError = validation.error;
 
-    } catch (error) {
-      lastError = error.message || String(error);
+    } catch (err) {
+      lastError = err.message || String(err);
     }
 
     // Analyze failure

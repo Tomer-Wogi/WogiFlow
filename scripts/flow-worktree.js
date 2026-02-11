@@ -68,9 +68,9 @@ function git(args, options = {}) {
       stdio: silent ? 'pipe' : ['pipe', 'pipe', 'pipe']
     });
     return result.trim();
-  } catch (error) {
+  } catch (err) {
     if (!silent) {
-      throw new Error(`Git command failed: git ${args.join(' ')}\n${error.stderr || error.message}`);
+      throw new Error(`Git command failed: git ${args.join(' ')}\n${err.stderr || err.message}`);
     }
     return null;
   }
@@ -164,8 +164,8 @@ async function createWorktree(options = {}) {
   // Create the worktree with a new branch
   try {
     git(['worktree', 'add', '-b', branchName, worktreePath, base], { cwd: repoRoot });
-  } catch (error) {
-    throw new Error(`Failed to create worktree: ${error.message}`);
+  } catch (err) {
+    throw new Error(`Failed to create worktree: ${err.message}`);
   }
 
   const worktreeInfo = {
@@ -240,10 +240,10 @@ async function commitAndMerge(worktree, commitMessage, options = {}) {
       git(['push', 'origin', baseBranch], { cwd: repoRoot });
     }
 
-  } catch (error) {
+  } catch (err) {
     // Restore original branch on failure
     git(['checkout', originalBranch], { cwd: repoRoot, silent: true });
-    throw new Error(`Merge failed: ${error.message}`);
+    throw new Error(`Merge failed: ${err.message}`);
   }
 
   // Cleanup
@@ -371,13 +371,13 @@ async function runInWorktree(options, fn, fnOptions = {}) {
     }
 
     return { success: true, result, worktree };
-  } catch (error) {
+  } catch (err) {
     if (!keepOnFailure) {
       await discardWorktree(worktree);
     }
     return {
       success: false,
-      error: error.message,
+      error: err.message,
       worktree: keepOnFailure ? worktree : null
     };
   }

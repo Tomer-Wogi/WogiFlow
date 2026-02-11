@@ -440,11 +440,11 @@ function applyDiffs(operations) {
           operation: fs.existsSync(op.path) ? 'modify' : 'create'
         });
       }
-    } catch (error) {
+    } catch (err) {
       results.push({
         path: op.path,
         success: false,
-        error: error.message
+        error: err.message
       });
     }
   }

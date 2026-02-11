@@ -459,9 +459,9 @@ Examples:
     } else {
       await interactiveSync(config);
     }
-  } catch (error) {
-    console.error(color('red', `Error: ${error.message}`));
-    if (process.env.DEBUG) console.error(error.stack);
+  } catch (err) {
+    console.error(color('red', `Error: ${err.message}`));
+    if (process.env.DEBUG) console.error(err.stack);
     process.exit(1);
   } finally {
     memoryDb.closeDatabase();
