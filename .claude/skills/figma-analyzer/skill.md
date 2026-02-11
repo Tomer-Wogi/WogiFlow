@@ -7,6 +7,8 @@ user-invocable: true
 context: inline
 agent: developer
 memory: project
+license: MIT
+compatibility: Claude Code 2.1+, Figma MCP
 allowed-tools:
   - Read
   - Glob

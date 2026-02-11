@@ -61,10 +61,12 @@ function discoverNestedSkills(baseDir = SKILLS_DIR, prefix = '', depth = 0) {
 
       const entryPath = path.join(baseDir, entry.name);
       const skillPath = prefix ? `${prefix}/${entry.name}` : entry.name;
-      const skillMdPath = path.join(entryPath, 'skill.md');
 
-      // If this directory has a skill.md, it's a skill
-      if (fs.existsSync(skillMdPath)) {
+      // Accept both skill.md (WogiFlow) and SKILL.md (open standard)
+      const hasSkillMd = fs.existsSync(path.join(entryPath, 'skill.md'))
+        || fs.existsSync(path.join(entryPath, 'SKILL.md'));
+
+      if (hasSkillMd) {
         skills.push(skillPath);
       }
 
@@ -146,7 +148,10 @@ function loadSkillMetadata(skillName) {
   }
 
   const skillDir = getSkillDir(skillName);
-  const skillPath = path.join(skillDir, 'skill.md');
+  // Accept both skill.md (WogiFlow) and SKILL.md (open standard)
+  const skillPath = fs.existsSync(path.join(skillDir, 'skill.md'))
+    ? path.join(skillDir, 'skill.md')
+    : path.join(skillDir, 'SKILL.md');
 
   if (!fs.existsSync(skillPath)) {
     return null;
@@ -476,8 +481,10 @@ async function loadSkillContext(matchedSkills, options = {}) {
       files: {}
     };
 
-    // Load skill.md (main description)
-    const skillMdPath = path.join(skillDir, 'skill.md');
+    // Load skill.md or SKILL.md (main description)
+    const skillMdPath = fs.existsSync(path.join(skillDir, 'skill.md'))
+      ? path.join(skillDir, 'skill.md')
+      : path.join(skillDir, 'SKILL.md');
     if (fs.existsSync(skillMdPath)) {
       skillContext.files['skill.md'] = fs.readFileSync(skillMdPath, 'utf-8');
     }

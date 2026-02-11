@@ -7,6 +7,8 @@ user-invocable: false
 context: inline
 agent: developer
 memory: project
+license: MIT
+compatibility: Claude Code 2.1+
 allowed-tools:
   - Read
   - Glob
@@ -44,6 +46,10 @@ loadable: false
   - memory: project | user | local (persistent memory scope, Claude Code 2.1.33+)
   - allowed-tools: YAML list of tools the skill can use
     Example: [Read, Glob, Grep, Edit, Write, Bash(npm *), Bash(git *)]
+
+  SKILL.md standard fields (cross-tool compatibility):
+  - license: SPDX identifier (e.g., MIT, Apache-2.0)
+  - compatibility: Environment/tool requirements (e.g., "Claude Code 2.1+")
 
   Optional:
   - lastUpdated: ISO date string

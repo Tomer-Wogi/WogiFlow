@@ -1,9 +1,33 @@
 {
-  "lastUpdated": "2026-02-11T13:10:00.000Z",
+  "lastUpdated": "2026-02-11T14:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-skill-align",
+      "title": "SKILL.md standard alignment (add license/compatibility fields, accept SKILL.md filename)",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P3",
+      "description": "Add optional license and compatibility fields to skill template and figma-analyzer skill. Accept SKILL.md (uppercase) as alternate filename in skill discovery alongside skill.md.",
+      "createdAt": "2026-02-11T14:00:00.000Z",
+      "startedAt": "2026-02-11T14:05:00.000Z",
+      "completedAt": "2026-02-11T14:30:00.000Z"
+    },
+    {
+      "id": "wf-obs-extract",
+      "title": "Observation value extraction pipeline (promote high-value observations to solution facts before purge)",
+      "type": "story",
+      "feature": "memory",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Add extractHighValueObservations() to flow-memory-db.js - runs before observation purge. High-value observations (successful + non-trivial + task-linked) get promoted to facts with category 'solution' and solution_context JSON. Wire into compactor and session-end. Add config keys.",
+      "createdAt": "2026-02-11T14:00:00.000Z",
+      "startedAt": "2026-02-11T14:00:00.000Z",
+      "completedAt": "2026-02-11T13:04:16.826Z"
+    },
     {
       "id": "wf-audit-p3",
       "title": "Fix Phase 3 cleanup audit findings (orphans, naming, config)",
@@ -114,70 +138,6 @@
       "startedAt": "2026-02-06T10:30:00.000Z",
       "completedAt": "2026-02-06T10:35:00.000Z",
       "epicId": "wf-a29aa0a3"
-    },
-    {
-      "id": "wf-03d35188",
-      "title": "Tighten permission wildcards in settings.local.json",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Remove exposed NPM token, clean accumulated cruft (~50 junk entries), replace broad Bash wildcards (npm *, node *, bash *) with specific subcommands per security-patterns.md.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "startedAt": "2026-02-06T10:20:00.000Z",
-      "completedAt": "2026-02-06T10:25:00.000Z",
-      "epicId": "wf-a29aa0a3"
-    },
-    {
-      "id": "wf-opus46-fix",
-      "title": "Fix asymmetric Sonnet 4.5 updates from wf-opus46 code review",
-      "type": "bugfix",
-      "feature": "model-management",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Code review found Sonnet 4.5 was added to registry.json but missing from 3 consumer files: flow-model-caller.js, flow-model-config.js, flow-providers.js.",
-      "createdAt": "2026-02-05T12:35:00.000Z",
-      "startedAt": "2026-02-05T12:35:00.000Z",
-      "completedAt": "2026-02-05T12:36:00.000Z"
-    },
-    {
-      "id": "wf-opus46",
-      "title": "Adapt WogiFlow to Claude Opus 4.6",
-      "type": "story",
-      "feature": "model-management",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Update model registry, detection patterns, routing, and documentation across 10 files to support Claude Opus 4.6 and Sonnet 4.5.",
-      "createdAt": "2026-02-05T12:00:00.000Z",
-      "startedAt": "2026-02-05T12:00:00.000Z",
-      "completedAt": "2026-02-05T12:30:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/model-management/wf-opus46.md"
-    },
-    {
-      "id": "wf-7f0e95fd",
-      "title": "Fix 29 code review issues in memory enhancement (SQL injection, unsafe JSON, DRY violations, missing validation)",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "high",
-      "discoveredFrom": null,
-      "status": "completed",
-      "createdAt": "2026-02-05T11:46:34.877Z",
-      "startedAt": "2026-02-05T11:47:00.000Z",
-      "completedAt": "2026-02-05T12:00:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-7f0e95fd.md"
-    },
-    {
-      "id": "wf-fd8d2444",
-      "title": "WogiFlow Memory Enhancement - Automatic Observation Capture",
-      "type": "story",
-      "feature": "memory",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Add automatic observation capture inspired by claude-mem. Every tool use is automatically captured with smart summarization, enabling progressive disclosure search for ~10x token savings.",
-      "createdAt": "2026-02-05T11:00:00.000Z",
-      "startedAt": "2026-02-05T10:59:49.573Z",
-      "completedAt": "2026-02-05T11:05:00.000Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/wf-fd8d2444.md"
     }
   ],
   "backlog": [

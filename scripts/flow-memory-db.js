@@ -1623,12 +1623,116 @@ async function getObservationStats() {
 }
 
 /**
- * Purge old observations based on retention policy
- * @param {number} retentionDays - Days to retain (default: 30)
- * @returns {Object} - { purged: number }
+ * Extract high-value observations as solution facts before purge.
+ * High-value = successful + non-trivial tool + linked to a completed task.
+ * Promotes them to the facts table with category 'solution' and structured context.
+ *
+ * @param {Object} options - { retentionDays, minDurationMs, excludeTools }
+ * @returns {Object} - { extracted: number, details: Array }
  */
-async function purgeOldObservations(retentionDays = 30) {
+async function extractHighValueObservations(options = {}) {
   await initDatabase();
+
+  const {
+    retentionDays = DEFAULTS.OBSERVATION_RETENTION_DAYS,
+    minDurationMs = 100,
+    excludeTools = ['Read', 'Glob', 'Grep']  // trivial read-only tools
+  } = options;
+
+  // Find observations that are about to expire AND are high-value
+  const excludePlaceholders = excludeTools.map(() => '?').join(',');
+  const sql = `
+    SELECT id, tool_name, input_summary, output_summary, timestamp, duration_ms, context_task_id
+    FROM observations
+    WHERE timestamp < datetime('now', '-' || ? || ' days')
+      AND success = 1
+      AND context_task_id IS NOT NULL
+      AND context_task_id != ''
+      AND tool_name NOT IN (${excludePlaceholders})
+      AND (duration_ms IS NULL OR duration_ms >= ?)
+    ORDER BY timestamp ASC
+  `;
+  const params = [retentionDays, ...excludeTools, minDurationMs];
+  const result = db.exec(sql, params);
+  const candidates = queryToRows(result);
+
+  if (candidates.length === 0) return { extracted: 0, details: [] };
+
+  // Group by task to build solution context
+  const taskGroups = {};
+  for (const obs of candidates) {
+    const taskId = obs.context_task_id;
+    if (!taskGroups[taskId]) taskGroups[taskId] = [];
+    taskGroups[taskId].push(obs);
+  }
+
+  const extracted = [];
+
+  for (const [taskId, observations] of Object.entries(taskGroups)) {
+    // Build a concise solution summary from the observation chain
+    const toolChain = observations.map(o => o.tool_name);
+    const uniqueTools = [...new Set(toolChain)];
+
+    // Build structured solution_context
+    const solutionContext = {
+      taskId,
+      toolsUsed: uniqueTools,
+      stepCount: observations.length,
+      observationIds: observations.map(o => o.id),
+      timestamp: observations[0].timestamp
+    };
+
+    // Build the fact text from the most informative observations
+    // (Edit and Bash observations carry the most solution value)
+    const keyObs = observations.filter(o =>
+      ['Edit', 'Write', 'Bash', 'Task', 'NotebookEdit'].includes(o.tool_name)
+    );
+
+    const summaryParts = (keyObs.length > 0 ? keyObs : observations.slice(0, 5))
+      .map(o => `${o.tool_name}: ${o.input_summary || ''}${o.output_summary ? ' → ' + o.output_summary : ''}`)
+      .slice(0, 8); // cap at 8 steps to keep fact concise
+
+    const factText = `[Solution for ${taskId}] ${summaryParts.join('; ')}`;
+
+    // Don't create duplicate solution facts for the same task
+    const existingResult = db.exec(
+      `SELECT id FROM facts WHERE category = 'solution' AND source_context LIKE ?`,
+      [`%"taskId":"${taskId}"%`]
+    );
+    if (queryToRows(existingResult).length > 0) continue;
+
+    // Store as a fact with category 'solution'
+    const factId = generateId('fact');
+    const embedding = await getEmbedding(factText);
+
+    db.run(`
+      INSERT INTO facts (id, fact, category, scope, model, embedding, source_context, relevance_score)
+      VALUES (?, ?, 'solution', 'local', NULL, ?, ?, 0.7)
+    `, [factId, factText, embeddingToJson(embedding), JSON.stringify(solutionContext)]);
+
+    extracted.push({ factId, taskId, toolsUsed: uniqueTools, stepCount: observations.length });
+  }
+
+  if (extracted.length > 0) saveDatabase();
+
+  return { extracted: extracted.length, details: extracted };
+}
+
+/**
+ * Purge old observations based on retention policy.
+ * Calls extractHighValueObservations first to preserve solution knowledge.
+ * @param {number} retentionDays - Days to retain (default: 30)
+ * @param {Object} extractConfig - Config for extraction (passed to extractHighValueObservations)
+ * @returns {Object} - { purged: number, extracted: number }
+ */
+async function purgeOldObservations(retentionDays = 30, extractConfig = {}) {
+  await initDatabase();
+
+  // Extract high-value observations before purging
+  const extractResult = await extractHighValueObservations({
+    retentionDays,
+    ...extractConfig
+  });
 
   db.run(`
     DELETE FROM observations
@@ -1638,7 +1742,7 @@ async function purgeOldObservations(retentionDays = 30) {
   const purged = db.getRowsModified();
   saveDatabase();
 
-  return { purged };
+  return { purged, extracted: extractResult.extracted };
 }
 
 // ============================================================
@@ -2024,6 +2128,7 @@ module.exports = {
   getTimelineContext,
   getRecentObservations,
   getObservationStats,
+  extractHighValueObservations,
   purgeOldObservations,
 
   // Paths

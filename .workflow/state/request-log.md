@@ -13,6 +13,20 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-082 | 2026-02-11 14:30
+**Type**: new
+**Tags**: #feature:claude-code-integration #skills #SKILL-md #standards #wf-skill-align
+**Request**: "SKILL.md standard alignment - add license/compatibility fields, accept SKILL.md filename"
+**Result**: Added `license: MIT` and `compatibility: Claude Code 2.1+` fields to skill template and figma-analyzer skill frontmatter. Updated flow-skill-matcher.js in 3 locations (discoverNestedSkills, loadSkillMetadata, loadSkillContext) to accept SKILL.md as alternate filename alongside skill.md. Updated template documentation comment with new field descriptions.
+**Files**: .claude/skills/_template/skill.md, .claude/skills/figma-analyzer/skill.md, scripts/flow-skill-matcher.js
+
+### R-081 | 2026-02-11 13:00
+**Type**: new
+**Tags**: #feature:memory #observations #solutions #extraction #wf-obs-extract
+**Request**: "Observation value extraction pipeline - promote high-value observations to solution facts before purge"
+**Result**: Added `extractHighValueObservations()` to flow-memory-db.js that finds expiring observations which are successful, task-linked, and non-trivial, groups them by task, and promotes them to facts with category 'solution' and structured solution_context JSON. Modified `purgeOldObservations()` to call extraction first. Wired into flow-memory-compactor.js fullCompaction() as step 5. Added `observationExtraction` config key.
+**Files**: scripts/flow-memory-db.js, scripts/flow-memory-compactor.js, .workflow/config.json
+
 ### R-080 | 2026-02-06 11:20
 **Type**: fix
 **Tags**: #feature:claude-code-integration #hooks #code-review #wf-cr-2133

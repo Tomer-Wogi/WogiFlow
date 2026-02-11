@@ -106,6 +106,20 @@ async function fullCompaction(config) {
   });
   console.log(`   ${color('green', '✓')} Purged ${results.purge.purged} old facts`);
 
+  // 5. Extract high-value observations before purge
+  const obsExtractConfig = config.automaticMemory?.observationExtraction || {};
+  if (obsExtractConfig.enabled !== false) {
+    console.log(`\n${color('blue', '5. Extracting solution knowledge from expiring observations...')}`);
+    results.obsExtract = await memoryDb.purgeOldObservations(
+      config.automaticMemory?.observationCapture?.retentionDays || 30,
+      {
+        minDurationMs: obsExtractConfig.minDurationMs || 100,
+        excludeTools: obsExtractConfig.excludeTools || ['Read', 'Glob', 'Grep']
+      }
+    );
+    console.log(`   ${color('green', '✓')} Extracted ${results.obsExtract.extracted} solution facts, purged ${results.obsExtract.purged} old observations`);
+  }
+
   // Record metric
   await memoryDb.recordMemoryMetric('full_compact');
 
@@ -120,6 +134,9 @@ async function fullCompaction(config) {
   console.log(`Cold Storage:  ${beforeStats.coldFacts} → ${afterStats.coldFacts}`);
   console.log(`Entropy:       ${formatEntropy(beforeStats.entropy)} → ${formatEntropy(afterStats.entropy)}`);
   console.log(`Avg Relevance: ${Math.round(beforeStats.avgRelevance * 100)}% → ${Math.round(afterStats.avgRelevance * 100)}%`);
+  if (results.obsExtract) {
+    console.log(`Solutions:     ${results.obsExtract.extracted} extracted from observations`);
+  }
 
   console.log(color('green', '\n✓ Compaction complete\n'));
 

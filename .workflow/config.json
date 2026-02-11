@@ -664,6 +664,11 @@
       "maxInputSize": 2000,
       "maxOutputSize": 2000,
       "retentionDays": 30
+    },
+    "observationExtraction": {
+      "enabled": true,
+      "minDurationMs": 100,
+      "excludeTools": ["Read", "Glob", "Grep"]
     }
   },
   "automaticPromotion": {
