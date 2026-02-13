@@ -621,8 +621,7 @@
     "fetchMode": "sequential",
     "contextOverflowPrevention": {
       "maxConcurrentFetches": 1,
-      "compactThreshold": 0.80,
-      "tokensPerLibrary": 5000
+      "compactThreshold": 0.80
     }
   },
   "autoLearning": {

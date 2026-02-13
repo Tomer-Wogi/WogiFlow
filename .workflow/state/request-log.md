@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-085 | 2026-02-13 20:45
+**Type**: fix
+**Tags**: #feature:code-quality #review-fix #wf-cr-0f99c2
+**Request**: "Fix 8 code review findings from wf-18fb7974 skill generation pipeline"
+**Result**: Fixed 8 issues in flow-skill-generator.js and config: (1) TOCTOU race condition - replaced existsSync+readFileSync with try-read pattern, (2) silent catch blocks - added warning logging, (3) missing context7Id format validation - tightened regex to require /org/project format, (4) unprotected patterns.md read - wrapped in try-catch, (5) module.exports ordering - moved function definitions before exports, (6) config redundancy - removed duplicate tokensPerLibrary (covered by maxTokensPerFetch), (7) path traversal guard - added entry.name validation, (8) exit code - changed to exit(1) when no skills found.
+**Files**: scripts/flow-skill-generator.js, .workflow/config.json, .workflow/config.schema.json
+
 ### R-084 | 2026-02-13 17:00
 **Type**: new
 **Tags**: #feature:skill-generation #context7 #skills-sh #context-overflow #wf-18fb7974

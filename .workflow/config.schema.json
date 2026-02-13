@@ -999,8 +999,7 @@
           "type": "object",
           "properties": {
             "maxConcurrentFetches": { "type": "integer", "default": 1 },
-            "compactThreshold": { "type": "number", "default": 0.80, "description": "Suggest compaction when context exceeds this %" },
-            "tokensPerLibrary": { "type": "integer", "default": 5000, "description": "Max tokens to request per library doc fetch" }
+            "compactThreshold": { "type": "number", "default": 0.80, "description": "Suggest compaction when context exceeds this %" }
           }
         }
       }

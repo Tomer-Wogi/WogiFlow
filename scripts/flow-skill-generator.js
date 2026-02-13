@@ -984,6 +984,96 @@ function parseDocumentation(docs) {
 }
 
 // ============================================
+// SKILL DOCUMENTATION FUNCTIONS
+// ============================================
+
+/**
+ * List installed skills that have Context7 IDs and need doc fetching.
+ * @param {string} projectRoot - Absolute path to project root
+ * @returns {Array<{skillId: string, context7Id: string, skillDir: string, hasContent: boolean}>}
+ */
+function listSkillsNeedingDocs(projectRoot) {
+  const skillsDir = path.join(projectRoot, '.claude', 'skills');
+  const results = [];
+
+  if (!fs.existsSync(skillsDir)) return results;
+
+  try {
+    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
+      // Guard against path traversal in directory names
+      if (entry.name.includes('..') || entry.name.includes('/') || entry.name.includes('\\')) continue;
+
+      const entryPath = path.join(skillsDir, entry.name);
+
+      // Try reading skill.md (lowercase first, then uppercase) - avoids TOCTOU
+      let content;
+      try {
+        content = fs.readFileSync(path.join(entryPath, 'skill.md'), 'utf8');
+      } catch {
+        try {
+          content = fs.readFileSync(path.join(entryPath, 'SKILL.md'), 'utf8');
+        } catch {
+          continue; // Neither file readable
+        }
+      }
+
+      try {
+        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!frontmatterMatch) continue;
+
+        const frontmatter = frontmatterMatch[1];
+        // Validate context7 ID format: must start with / and contain org/project
+        const context7Match = frontmatter.match(/context7:\s*['"]?(\/[a-zA-Z0-9\-_.\/]+)['"]?/);
+        if (!context7Match) continue;
+
+        // Check if patterns.md has real content or just placeholders
+        const patternsPath = path.join(entryPath, 'knowledge', 'patterns.md');
+        let hasContent = false;
+        try {
+          const patternsContent = fs.readFileSync(patternsPath, 'utf8');
+          hasContent = !patternsContent.includes('[Name]') && !patternsContent.includes('When fetching documentation');
+        } catch {
+          // patterns.md doesn't exist or unreadable - treat as no content
+        }
+
+        results.push({
+          skillId: entry.name,
+          context7Id: context7Match[1],
+          skillDir: entryPath,
+          hasContent
+        });
+      } catch (err) {
+        console.error(`Warning: Failed to parse skill ${entry.name}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    console.error(`Warning: Failed to read skills directory: ${err.message}`);
+  }
+
+  return results;
+}
+
+/**
+ * Prepare a fetch request description for Claude to execute via Context7 MCP.
+ * Returns human-readable steps because MCP calls execute in Claude's context, not Node.js.
+ * @param {{skillId: string, context7Id: string}} skill
+ * @returns {{skillId: string, context7Id: string, resolveStep: string, fetchStep: string, enhanceStep: string, flushNote: string}}
+ */
+function prepareFetchRequest(skill) {
+  return {
+    skillId: skill.skillId,
+    context7Id: skill.context7Id,
+    resolveStep: `Call mcp__MCP_DOCKER__resolve-library-id with libraryName="${skill.skillId}"`,
+    fetchStep: `Call mcp__MCP_DOCKER__get-library-docs with context7CompatibleLibraryID="${skill.context7Id}", topic="best practices patterns", tokens=5000`,
+    enhanceStep: `Pass the fetched docs to enhanceSkillWithDocs("${skill.skillId}", docs)`,
+    flushNote: 'After enhancing, the doc content can be discarded from context before fetching the next library'
+  };
+}
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -1004,81 +1094,6 @@ module.exports = {
   SKILL_TOPICS,
   TECH_KEYWORDS
 };
-
-/**
- * List installed skills that have Context7 IDs and need doc fetching.
- * Returns array of { skillId, context7Id, skillDir, hasContent }
- */
-function listSkillsNeedingDocs(projectRoot) {
-  const skillsDir = path.join(projectRoot, '.claude', 'skills');
-  const results = [];
-
-  if (!fs.existsSync(skillsDir)) return results;
-
-  try {
-    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
-
-    for (const entry of entries) {
-      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
-
-      const entryPath = path.join(skillsDir, entry.name);
-      const skillMdLower = path.join(entryPath, 'skill.md');
-      const skillMdUpper = path.join(entryPath, 'SKILL.md');
-      const skillMdPath = fs.existsSync(skillMdLower) ? skillMdLower : (fs.existsSync(skillMdUpper) ? skillMdUpper : null);
-
-      if (!skillMdPath) continue;
-
-      try {
-        const content = fs.readFileSync(skillMdPath, 'utf8');
-        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-        if (!frontmatterMatch) continue;
-
-        const frontmatter = frontmatterMatch[1];
-        const context7Match = frontmatter.match(/context7:\s*['"]?([^\s'"]+)/);
-        if (!context7Match || context7Match[1] === 'null') continue;
-
-        // Check if patterns.md has real content or just placeholders
-        const patternsPath = path.join(entryPath, 'knowledge', 'patterns.md');
-        let hasContent = false;
-        if (fs.existsSync(patternsPath)) {
-          const patternsContent = fs.readFileSync(patternsPath, 'utf8');
-          // Placeholder content has "Pattern 1: [Name]" or "When fetching documentation"
-          hasContent = !patternsContent.includes('[Name]') && !patternsContent.includes('When fetching documentation');
-        }
-
-        results.push({
-          skillId: entry.name,
-          context7Id: context7Match[1],
-          skillDir: entryPath,
-          hasContent
-        });
-      } catch {
-        // Skip skills with unreadable files
-      }
-    }
-  } catch {
-    // Skip if skills directory can't be read
-  }
-
-  return results;
-}
-
-/**
- * Fetch docs for a single skill via Context7 MCP (called by Claude).
- * This function prepares the fetch request; Claude executes the MCP calls.
- *
- * Returns an object describing what Claude should do.
- */
-function prepareFetchRequest(skill) {
-  return {
-    skillId: skill.skillId,
-    context7Id: skill.context7Id,
-    resolveStep: `Call mcp__MCP_DOCKER__resolve-library-id with libraryName="${skill.skillId}"`,
-    fetchStep: `Call mcp__MCP_DOCKER__get-library-docs with context7CompatibleLibraryID="${skill.context7Id}", topic="best practices patterns", tokens=5000`,
-    enhanceStep: `Pass the fetched docs to enhanceSkillWithDocs("${skill.skillId}", docs)`,
-    flushNote: 'After enhancing, the doc content can be discarded from context before fetching the next library'
-  };
-}
 
 // CLI support
 if (require.main === module) {
@@ -1108,7 +1123,7 @@ For manual use, run the wizard first: node flow-stack-wizard.js
 
     if (skills.length === 0) {
       console.log('\nNo skills with Context7 IDs found. Run the setup wizard first.');
-      process.exit(0);
+      process.exit(1);
     }
 
     const needsFetch = skills.filter(s => !s.hasContent);
