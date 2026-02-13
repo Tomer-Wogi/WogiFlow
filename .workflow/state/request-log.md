@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-084 | 2026-02-13 17:00
+**Type**: new
+**Tags**: #feature:skill-generation #context7 #skills-sh #context-overflow #wf-18fb7974
+**Request**: "Wire skill generation pipeline: Context7 fetch-extract-flush, skills.sh source, context overflow prevention"
+**Result**: Wired the broken Context7 doc-fetching pipeline with fetch-extract-flush pattern (sequential, 5K token cap per lib). Added skills.sh as alternate skill source with 5 framework mappings (React, Next.js, Vue, NestJS, React Native). Added --fetch-docs CLI handler to flow-skill-generator.js. Rewrote wogi-init.md and wogi-setup-stack.md with proper instructions. Added skillGeneration config key with context overflow prevention settings.
+**Files**: scripts/flow-skill-generator.js, scripts/flow-tech-options.js, .claude/commands/wogi-init.md, .claude/commands/wogi-setup-stack.md, .workflow/config.json, .workflow/config.schema.json
+
 ### R-083 | 2026-02-11 15:15
 **Type**: fix
 **Tags**: #feature:code-quality #review #security #wf-cr-review8

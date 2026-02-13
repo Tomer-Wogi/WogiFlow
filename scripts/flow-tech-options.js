@@ -31,13 +31,13 @@ const FOCUS_AREAS = [
 
 const FRONTEND_FRAMEWORKS = [
   // React Ecosystem
-  { key: '1', value: 'react', label: 'React', context7: '/facebook/react', group: 'React Ecosystem', ecosystem: 'react' },
-  { key: '2', value: 'nextjs', label: 'Next.js', context7: '/vercel/next.js', group: 'React Ecosystem', ecosystem: 'react', recommended: true },
+  { key: '1', value: 'react', label: 'React', context7: '/facebook/react', skillsShId: 'vercel-labs/agent-skills/react-best-practices', group: 'React Ecosystem', ecosystem: 'react' },
+  { key: '2', value: 'nextjs', label: 'Next.js', context7: '/vercel/next.js', skillsShId: 'vercel-labs/next-skills/next-best-practices', group: 'React Ecosystem', ecosystem: 'react', recommended: true },
   { key: '3', value: 'remix', label: 'Remix', context7: '/remix-run/remix', group: 'React Ecosystem', ecosystem: 'react' },
   { key: '4', value: 'gatsby', label: 'Gatsby', context7: '/gatsbyjs/gatsby', group: 'React Ecosystem', ecosystem: 'react' },
 
   // Vue Ecosystem
-  { key: '5', value: 'vue', label: 'Vue 3', context7: '/vuejs/vue', group: 'Vue Ecosystem', ecosystem: 'vue' },
+  { key: '5', value: 'vue', label: 'Vue 3', context7: '/vuejs/vue', skillsShId: 'vuejs-ai/skills', group: 'Vue Ecosystem', ecosystem: 'vue' },
   { key: '6', value: 'nuxt', label: 'Nuxt 3', context7: '/nuxt/nuxt', group: 'Vue Ecosystem', ecosystem: 'vue' },
 
   // Other Frameworks
@@ -57,7 +57,7 @@ const FRONTEND_FRAMEWORKS = [
 const BACKEND_FRAMEWORKS = [
   // Node.js
   { key: '1', value: 'express', label: 'Express', context7: '/expressjs/express', group: 'Node.js', ecosystem: 'node' },
-  { key: '2', value: 'nestjs', label: 'NestJS', context7: '/nestjs/nest', group: 'Node.js', ecosystem: 'nestjs', recommended: true },
+  { key: '2', value: 'nestjs', label: 'NestJS', context7: '/nestjs/nest', skillsShId: 'kadajett/agent-nestjs-skills/nestjs-best-practices', group: 'Node.js', ecosystem: 'nestjs', recommended: true },
   { key: '3', value: 'fastify', label: 'Fastify', context7: '/fastify/fastify', group: 'Node.js', ecosystem: 'node' },
   { key: '4', value: 'hono', label: 'Hono', context7: '/honojs/hono', group: 'Node.js', ecosystem: 'node' },
   { key: '5', value: 'trpc', label: 'tRPC', context7: '/trpc/trpc', group: 'Node.js', ecosystem: 'node' },
@@ -83,7 +83,7 @@ const BACKEND_FRAMEWORKS = [
 // ============================================
 
 const MOBILE_FRAMEWORKS = [
-  { key: '1', value: 'react-native', label: 'React Native', context7: '/facebook/react-native', ecosystem: 'react' },
+  { key: '1', value: 'react-native', label: 'React Native', context7: '/facebook/react-native', skillsShId: 'vercel-labs/agent-skills/react-native-guidelines', ecosystem: 'react' },
   { key: '2', value: 'expo', label: 'Expo', context7: '/expo/expo', ecosystem: 'react', recommended: true },
   { key: '3', value: 'flutter', label: 'Flutter', context7: '/flutter/flutter', ecosystem: 'flutter' },
   { key: '4', value: 'swift', label: 'Swift (iOS native)', context7: '/apple/swift', ecosystem: 'ios' },

@@ -999,9 +999,86 @@ module.exports = {
   generateSpokeSkillMd,
   generateEcosystemLinkMd,
   categorizeLibrary,
+  listSkillsNeedingDocs,
+  prepareFetchRequest,
   SKILL_TOPICS,
   TECH_KEYWORDS
 };
+
+/**
+ * List installed skills that have Context7 IDs and need doc fetching.
+ * Returns array of { skillId, context7Id, skillDir, hasContent }
+ */
+function listSkillsNeedingDocs(projectRoot) {
+  const skillsDir = path.join(projectRoot, '.claude', 'skills');
+  const results = [];
+
+  if (!fs.existsSync(skillsDir)) return results;
+
+  try {
+    const entries = fs.readdirSync(skillsDir, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || entry.name.startsWith('_')) continue;
+
+      const entryPath = path.join(skillsDir, entry.name);
+      const skillMdLower = path.join(entryPath, 'skill.md');
+      const skillMdUpper = path.join(entryPath, 'SKILL.md');
+      const skillMdPath = fs.existsSync(skillMdLower) ? skillMdLower : (fs.existsSync(skillMdUpper) ? skillMdUpper : null);
+
+      if (!skillMdPath) continue;
+
+      try {
+        const content = fs.readFileSync(skillMdPath, 'utf8');
+        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        if (!frontmatterMatch) continue;
+
+        const frontmatter = frontmatterMatch[1];
+        const context7Match = frontmatter.match(/context7:\s*['"]?([^\s'"]+)/);
+        if (!context7Match || context7Match[1] === 'null') continue;
+
+        // Check if patterns.md has real content or just placeholders
+        const patternsPath = path.join(entryPath, 'knowledge', 'patterns.md');
+        let hasContent = false;
+        if (fs.existsSync(patternsPath)) {
+          const patternsContent = fs.readFileSync(patternsPath, 'utf8');
+          // Placeholder content has "Pattern 1: [Name]" or "When fetching documentation"
+          hasContent = !patternsContent.includes('[Name]') && !patternsContent.includes('When fetching documentation');
+        }
+
+        results.push({
+          skillId: entry.name,
+          context7Id: context7Match[1],
+          skillDir: entryPath,
+          hasContent
+        });
+      } catch {
+        // Skip skills with unreadable files
+      }
+    }
+  } catch {
+    // Skip if skills directory can't be read
+  }
+
+  return results;
+}
+
+/**
+ * Fetch docs for a single skill via Context7 MCP (called by Claude).
+ * This function prepares the fetch request; Claude executes the MCP calls.
+ *
+ * Returns an object describing what Claude should do.
+ */
+function prepareFetchRequest(skill) {
+  return {
+    skillId: skill.skillId,
+    context7Id: skill.context7Id,
+    resolveStep: `Call mcp__MCP_DOCKER__resolve-library-id with libraryName="${skill.skillId}"`,
+    fetchStep: `Call mcp__MCP_DOCKER__get-library-docs with context7CompatibleLibraryID="${skill.context7Id}", topic="best practices patterns", tokens=5000`,
+    enhanceStep: `Pass the fetched docs to enhanceSkillWithDocs("${skill.skillId}", docs)`,
+    flushNote: 'After enhancing, the doc content can be discarded from context before fetching the next library'
+  };
+}
 
 // CLI support
 if (require.main === module) {
@@ -1016,11 +1093,63 @@ Usage:
 
 Options:
   --from-selections    Generate from saved stack-selections.json
+  --fetch-docs         List skills needing documentation and show fetch plan
   --help               Show this help
 
 This script is typically called by the Tech Stack Wizard.
 For manual use, run the wizard first: node flow-stack-wizard.js
 `);
+    process.exit(0);
+  }
+
+  if (args.includes('--fetch-docs')) {
+    const projectRoot = process.cwd();
+    const skills = listSkillsNeedingDocs(projectRoot);
+
+    if (skills.length === 0) {
+      console.log('\nNo skills with Context7 IDs found. Run the setup wizard first.');
+      process.exit(0);
+    }
+
+    const needsFetch = skills.filter(s => !s.hasContent);
+    const alreadyPopulated = skills.filter(s => s.hasContent);
+
+    console.log('\n  Skill Documentation Status\n');
+
+    if (alreadyPopulated.length > 0) {
+      console.log(`  Already populated (${alreadyPopulated.length}):`);
+      for (const s of alreadyPopulated) {
+        console.log(`    [ok] ${s.skillId} (${s.context7Id})`);
+      }
+      console.log('');
+    }
+
+    if (needsFetch.length === 0) {
+      console.log('  All skills already have documentation content.');
+      process.exit(0);
+    }
+
+    console.log(`  Need documentation (${needsFetch.length}):`);
+    for (const s of needsFetch) {
+      console.log(`    [ ] ${s.skillId} (${s.context7Id})`);
+    }
+
+    console.log('\n  Fetch Plan (sequential to prevent context overflow):');
+    console.log('  ─────────────────────────────────────────────────────');
+
+    for (let i = 0; i < needsFetch.length; i++) {
+      const req = prepareFetchRequest(needsFetch[i]);
+      console.log(`\n  Step ${i + 1}/${needsFetch.length}: ${req.skillId}`);
+      console.log(`    1. ${req.resolveStep}`);
+      console.log(`    2. ${req.fetchStep}`);
+      console.log(`    3. ${req.enhanceStep}`);
+      if (i < needsFetch.length - 1) {
+        console.log(`    4. ${req.flushNote}`);
+      }
+    }
+
+    console.log('\n  To execute this plan, use: /wogi-setup-stack --fetch-docs');
+    console.log('  Claude will call Context7 MCP sequentially for each skill.\n');
     process.exit(0);
   }
 

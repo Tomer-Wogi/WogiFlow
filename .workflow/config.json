@@ -605,6 +605,26 @@
     "loopRetryThreshold": 3,
     "autoSuggestPatternUpdates": true
   },
+  "skillGeneration": {
+    "sources": {
+      "skillsSh": {
+        "enabled": true,
+        "preferOverContext7": true,
+        "installCommand": "npx skills add"
+      },
+      "context7": {
+        "enabled": true,
+        "maxTokensPerFetch": 5000,
+        "topic": "best practices patterns"
+      }
+    },
+    "fetchMode": "sequential",
+    "contextOverflowPrevention": {
+      "maxConcurrentFetches": 1,
+      "compactThreshold": 0.80,
+      "tokensPerLibrary": 5000
+    }
+  },
   "autoLearning": {
     "enabled": true,
     "captureFrom": {

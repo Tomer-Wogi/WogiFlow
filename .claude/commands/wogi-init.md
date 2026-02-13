@@ -421,34 +421,74 @@ const config = {
 
 Save to `.workflow/config.json`.
 
-#### 4.2 Generate Skills Using Context7
+#### 4.2 Generate Skills (Placeholder + Documentation)
 
-For each selected technology that has a Context7 ID:
+**Step A: Create placeholder skills first (fast, no network)**
 
-1. Call `mcp__MCP_DOCKER__resolve-library-id` to verify the library
-2. Call `mcp__MCP_DOCKER__get-library-docs` with topic "patterns" to fetch best practices
-3. Use `scripts/flow-skill-generator.js` to create skill files
+Run the skill generator to create directory structure with placeholder content:
 
-```javascript
-// For each technology in stack
-const techOptions = require('./scripts/flow-tech-options.js');
-const technologies = techOptions.collectTechnologiesFromSelections(config.stack);
+```bash
+node scripts/flow-skill-generator.js --from-selections
+```
 
-for (const tech of technologies) {
-  if (tech.context7) {
-    // Fetch docs from Context7
-    const docs = await getLibraryDocs(tech.context7, { topic: 'patterns', tokens: 8000 });
+This creates `.claude/skills/<name>/` for each selected technology with `skill.md`, `knowledge/patterns.md`, etc. - all with template content that will be populated in Step B.
 
-    // Generate skill
-    await generateSkill({
-      name: tech.value,
-      label: tech.label,
-      context7Id: tech.context7,
-      content: docs,
-      isFramework: techOptions.getSkillType(tech.value) === 'framework'
-    });
-  }
-}
+**Step B: Check for curated skills on skills.sh**
+
+For each technology, check if it has a `skillsShId` in `flow-tech-options.js`. If so, offer to install the curated skill instead:
+
+```
+For [technology], a curated community skill is available on skills.sh.
+Options:
+  1. Install curated skill (recommended for well-known frameworks)
+  2. Generate from documentation via Context7
+  3. Both (install curated + augment with Context7)
+```
+
+If the user picks skills.sh:
+```bash
+npx skills add <skillsShId> --agent claude-code
+```
+
+If `npx skills` is not available, log a warning and fall back to Context7.
+
+**Step C: Fetch documentation via Context7 (fetch-extract-flush loop)**
+
+IMPORTANT: Fetch docs ONE library at a time to prevent context overflow.
+
+For each skill with a `context7` ID that still has placeholder content:
+
+```
+FOR EACH skill (sequentially, NOT in parallel):
+
+  1. FETCH: Call mcp__MCP_DOCKER__resolve-library-id
+     with libraryName="<skill name>"
+
+  2. FETCH: Call mcp__MCP_DOCKER__get-library-docs
+     with context7CompatibleLibraryID="<context7 ID>"
+     topic="best practices patterns"
+     tokens=5000
+
+  3. EXTRACT: Pass fetched docs to the skill enhancer:
+     const { enhanceSkillWithDocs } = require('./scripts/flow-skill-generator.js');
+     enhanceSkillWithDocs('<skillId>', fetchedDocs);
+
+  4. FLUSH: The doc content is now written to disk.
+     Do NOT hold it in context. Move to the next library.
+
+  5. CHECK: If context usage > 80%, consider compacting
+     before fetching the next library.
+```
+
+If Context7 MCP is not available, log a warning and skip:
+```
+Context7 MCP not available. Skills created with placeholder content.
+Run /wogi-setup-stack --fetch-docs later to populate with real documentation.
+```
+
+After all fetches complete, report:
+```
+Enhanced X/Y skills with documentation (Z had no Context7 ID, W already had content)
 ```
 
 #### 4.3 Create State Files
