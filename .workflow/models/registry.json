@@ -147,6 +147,38 @@
         "prefillRemoved": "Assistant message prefill returns 400 error"
       }
     },
+    "claude-sonnet-4-6": {
+      "provider": "anthropic",
+      "modelId": "claude-sonnet-4-6",
+      "displayName": "Claude Sonnet 4.6",
+      "contextWindow": 200000,
+      "maxOutputTokens": 64000,
+      "costTier": "standard",
+      "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "adaptive-thinking"],
+      "languages": {
+        "typescript": 10,
+        "javascript": 10,
+        "python": 10,
+        "go": 9,
+        "rust": 9,
+        "java": 9,
+        "csharp": 9,
+        "ruby": 8,
+        "php": 8
+      },
+      "bestFor": ["general-coding", "refactoring", "documentation", "testing", "code-review", "sustained-agentic"],
+      "pricing": {
+        "inputPer1kTokens": 0.003,
+        "outputPer1kTokens": 0.015,
+        "currency": "USD"
+      },
+      "contextPreferences": {
+        "density": "standard",
+        "explicitExamples": true,
+        "patternHints": true,
+        "minContextForQuality": 0.3
+      }
+    },
     "claude-sonnet-4-5": {
       "provider": "anthropic",
       "modelId": "claude-sonnet-4-5-20250929",
@@ -349,7 +381,7 @@
     "standard": {
       "description": "Balanced cost/capability for most tasks",
       "maxCostPerTask": 0.50,
-      "preferredModels": ["claude-sonnet-4", "gpt-4o"]
+      "preferredModels": ["claude-sonnet-4-6", "claude-sonnet-4", "gpt-4o"]
     },
     "premium": {
       "description": "High-capability models for complex tasks",
@@ -360,20 +392,20 @@
 
   "routing": {
     "default": {
-      "primary": "claude-sonnet-4",
-      "fallback": "claude-haiku-3-5",
+      "primary": "claude-sonnet-4-6",
+      "fallback": "claude-sonnet-4",
       "escalation": "claude-opus-4-6"
     },
     "byTaskType": {
-      "feature": { "primary": "claude-sonnet-4" },
-      "bugfix": { "primary": "claude-sonnet-4" },
-      "refactor": { "primary": "claude-sonnet-4" },
+      "feature": { "primary": "claude-sonnet-4-6" },
+      "bugfix": { "primary": "claude-sonnet-4-6" },
+      "refactor": { "primary": "claude-sonnet-4-6" },
       "architecture": { "primary": "claude-opus-4-6" },
       "quick-edit": { "primary": "claude-haiku-3-5" },
       "documentation": { "primary": "claude-haiku-3-5" }
     },
     "byLanguage": {
-      "typescript": { "primary": "claude-sonnet-4" },
+      "typescript": { "primary": "claude-sonnet-4-6" },
       "python": { "primary": "gpt-4o", "fallback": "claude-sonnet-4" }
     }
   }

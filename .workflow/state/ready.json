@@ -72,6 +72,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-d239fcac",
+      "title": "Add Claude Sonnet 4.6 to model registry",
+      "type": "story",
+      "feature": "general",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-19T18:35:00.000Z",
+      "completedAt": "2026-02-19T18:45:00.000Z"
+    },
+    {
       "id": "wf-webmcp-s2",
       "title": "Remove old browser testing code (Playwright, Chrome extension, screenshot commands)",
       "type": "story",

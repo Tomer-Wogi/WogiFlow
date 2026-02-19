@@ -13,6 +13,22 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-098 | 2026-02-19 18:45
+**Type**: change
+**Tags**: #config:models #registry
+**Task**: wf-d239fcac
+**Request**: "Add Claude Sonnet 4.6 to model registry"
+**Result**: Added claude-sonnet-4-6 entry to registry.json with correct pricing, capabilities, and context preferences. Updated default routing primary to claude-sonnet-4-6. Updated byTaskType routing (feature, bugfix, refactor) and byLanguage (typescript). Updated costTiers standard preferredModels.
+**Files**: .workflow/models/registry.json
+
+### R-097 | 2026-02-19 18:30
+**Type**: refactor
+**Tags**: #config:browser #cleanup
+**Task**: wf-webmcp-s2
+**Request**: "Remove old browser testing code (Playwright, Chrome extension, screenshot commands)"
+**Result**: Deleted 11 files (5 core scripts, 2 commands, 2 test flows, 1 template, 1 gitkeep). Cleaned 3 config sections from config.json. Removed browser references from flow-done.js, flow-workflow-steps.js, flow-task-enforcer.js, flow CLI. Updated CLAUDE.md, 7 docs/knowledge-base files, wogi-help.md, tester agent. Removed playwright dependency. 28 files changed, 3,438 deletions.
+**Files**: scripts/flow-browser-*.js, .claude/commands/wogi-*-browser.md, .workflow/config.json, CLAUDE.md, and 20+ more
+
 ### R-096 | 2026-02-19 18:00
 **Type**: new
 **Tags**: #feature:init-onboard #wf-init-s5 #epic:epic-init-onboard #wogi-init #reference-import #cross-project #path-sanitization
