@@ -1,9 +1,88 @@
 {
-  "lastUpdated": "2026-02-19T15:05:00.000Z",
+  "lastUpdated": "2026-02-19T16:45:46.628Z",
   "inProgress": [],
   "ready": [],
-  "blocked": [],
+  "blocked": [
+    {
+      "id": "wf-init-s2",
+      "title": "Extend pattern extractor with missing categories and deep mode",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "blocked",
+      "priority": "P1",
+      "description": "Add type/interface naming, export patterns, test structure, folder conventions, comment/doc style, config patterns, full API response templates. Wire _getGitBlameDate() for deep mode.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "epicId": "epic-init-onboard",
+      "blockedBy": [
+        "wf-init-s1"
+      ],
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s2.md"
+    },
+    {
+      "id": "wf-init-s3",
+      "title": "Add template extraction from reference/existing projects",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "blocked",
+      "priority": "P1",
+      "description": "Extract representative file skeletons (component, service, test, route, hook) as reusable templates. Save to .workflow/templates/extracted/.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "epicId": "epic-init-onboard",
+      "blockedBy": [
+        "wf-init-s2"
+      ],
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s3.md"
+    },
+    {
+      "id": "wf-init-s4",
+      "title": "Rewrite wogi-onboard for mature/existing project analysis",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "blocked",
+      "priority": "P0",
+      "description": "Complete rewrite of wogi-onboard.md from ~100-line stub to ~400+ lines. Git-based temporal analysis, legacy vs current pattern detection, interactive developer questioning, all state files.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "epicId": "epic-init-onboard",
+      "blockedBy": [
+        "wf-init-s1",
+        "wf-init-s2",
+        "wf-init-s3"
+      ],
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s4.md"
+    },
+    {
+      "id": "wf-init-s5",
+      "title": "Enhance wogi-init reference project path",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "blocked",
+      "priority": "P0",
+      "description": "Full expansion of 'Other project folder' path. Deep extraction from reference, conflict resolution, template import, function-map/api-map from reference, cross-project path resolution.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "epicId": "epic-init-onboard",
+      "blockedBy": [
+        "wf-init-s1",
+        "wf-init-s2",
+        "wf-init-s3"
+      ],
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s5.md"
+    }
+  ],
   "recentlyCompleted": [
+    {
+      "id": "wf-init-s1",
+      "title": "Wire persistence pipeline and state file generation",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "completed",
+      "priority": "P0",
+      "description": "Wire pattern extraction → decisions.md persistence, conflict resolution → decisions.md, FunctionScanner/APIScanner into init/onboard, add function-map.md + api-map.md creation to Step 4.3.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "startedAt": "2026-02-19T16:35:00.000Z",
+      "epicId": "epic-init-onboard",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s1.md",
+      "completedAt": "2026-02-19T16:45:46.628Z"
+    },
     {
       "id": "wf-725481b7",
       "title": "Add function-map and api-map references to wogi-start.md Step 1 and Step 5",
@@ -108,30 +187,6 @@
       "createdAt": "2026-02-13T16:00:00.000Z",
       "startedAt": "2026-02-13T16:15:00.000Z",
       "completedAt": "2026-02-13T17:00:00.000Z"
-    },
-    {
-      "id": "wf-cr-review8",
-      "title": "Fix 8 code review findings from wf-obs-extract and wf-skill-align",
-      "type": "bugfix",
-      "feature": "code-quality",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Fix 8 review findings: C1-null embedding handling, H1-LIKE injection, M1-solution fact docs, M2-input validation, M3-resource limits, L1-SKILL.md helper, L2-sensitive data filter, L3-config docs.",
-      "createdAt": "2026-02-11T15:00:00.000Z",
-      "startedAt": "2026-02-11T15:00:00.000Z",
-      "completedAt": "2026-02-11T15:15:00.000Z"
-    },
-    {
-      "id": "wf-skill-align",
-      "title": "SKILL.md standard alignment (add license/compatibility fields, accept SKILL.md filename)",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P3",
-      "description": "Add optional license and compatibility fields to skill template and figma-analyzer skill. Accept SKILL.md (uppercase) as alternate filename in skill discovery alongside skill.md.",
-      "createdAt": "2026-02-11T14:00:00.000Z",
-      "startedAt": "2026-02-11T14:05:00.000Z",
-      "completedAt": "2026-02-11T14:30:00.000Z"
     }
   ],
   "backlog": [

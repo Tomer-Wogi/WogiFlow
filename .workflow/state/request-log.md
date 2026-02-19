@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-092 | 2026-02-19 16:45
+**Type**: new
+**Tags**: #feature:init-onboard #wf-init-s1 #epic:epic-init-onboard #persistence-pipeline #pattern-extraction #function-map #api-map
+**Request**: "Wire persistence pipeline and state file generation (Epic: Complete Init/Onboard 100% Coverage, Story 1/5)"
+**Result**: Created epic-init-onboard with 5 stories. Implemented Story 1 (wf-init-s1): (1) Wired formatAsDecisions() and resolutionsToDecisions() into wogi-init.md reference project path — patterns now persist to decisions.md. (2) Added FunctionScanner.scan()/save()/generateMap() and APIScanner.scan()/save()/generateMap() to wogi-init.md Step 4.3. (3) Added app-map.md population from component extraction data. (4) Updated Step 4.3 checklist to require ALL 6 state files: ready.json, decisions.md, app-map.md, function-map.md, api-map.md, request-log.md. (5) Wired conflict resolver (both auto and interactive modes) into reference import path. (6) Rewrote wogi-onboard.md from 100-line stub to 301-line implementation with 7 phases: Project Analysis, Deep Pattern Extraction, Project Interview, Persistence Pipeline, Skill Generation, Config Generation, Summary.
+**Files**: .claude/commands/wogi-init.md, .claude/commands/wogi-onboard.md, .workflow/state/ready.json, .workflow/state/epics.json, .workflow/changes/general/wf-init-s1.md, .workflow/changes/general/wf-init-s2.md, .workflow/changes/general/wf-init-s3.md, .workflow/changes/general/wf-init-s4.md, .workflow/changes/general/wf-init-s5.md
+
 ### R-091 | 2026-02-19 15:00
 **Type**: change
 **Tags**: #feature:claude-code-integration #wf-a7c31f02 #ai-routing #research #auto-scan #auto-bulk

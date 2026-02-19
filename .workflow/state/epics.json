@@ -1,5 +1,25 @@
 {
-  "epics": {},
+  "epics": {
+    "epic-init-onboard": {
+      "id": "epic-init-onboard",
+      "title": "Complete Init/Onboard 100% Coverage",
+      "description": "Three paths to perfection: (1) wogi-init fresh wizard, (2) wogi-init with reference project, (3) wogi-onboard existing/mature project. Wire pattern extraction → persistence, add missing pattern categories, template extraction, git-based temporal analysis, function-map/api-map generation, conflict resolution. AI-written code must be indistinguishable from reference/existing project code.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-init-s1",
+        "wf-init-s2",
+        "wf-init-s3",
+        "wf-init-s4",
+        "wf-init-s5"
+      ],
+      "features": [],
+      "status": "ready",
+      "progress": 0,
+      "createdAt": "2026-02-19T16:34:09.101Z",
+      "updatedAt": "2026-02-19T16:39:06.605Z"
+    }
+  },
   "version": "1.0.0",
-  "lastUpdated": "2026-01-18T18:21:59.061Z"
+  "lastUpdated": "2026-02-19T16:39:06.606Z"
 }

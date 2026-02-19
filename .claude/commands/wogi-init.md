@@ -77,7 +77,11 @@ AskUserQuestion({
    - Read `.workflow/` if exists for patterns
    - Read `.eslintrc`, `tsconfig.json`, `.prettierrc` for conventions
    - Read `src/` structure for file organization patterns
-3. Use `scripts/flow-pattern-extractor.js` to extract and analyze patterns
+3. Use `scripts/flow-pattern-extractor.js` to extract and analyze patterns:
+   ```javascript
+   const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
+   const result = await extractPatterns(referenceProjectPath, { analysisMode: 'deep' });
+   ```
 4. Detect conflicts (different approaches in same codebase)
 5. Present findings with conflict resolution:
 
@@ -123,6 +127,83 @@ AskUserQuestion({
   }]
 });
 ```
+
+6. **Resolve conflicts and persist patterns:**
+
+   **If "Accept All with Recommended":**
+   ```javascript
+   const { resolveConflictsAuto, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+   const resolutions = resolveConflictsAuto(result.conflicts);
+   const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
+   ```
+
+   **If "Manual Review 1-by-1":**
+   Use the `AskUserQuestion` tool to present each conflict one at a time. For each conflict:
+   ```javascript
+   AskUserQuestion({
+     questions: [{
+       question: `Conflict: ${conflict.description}\n\nPattern A: ${conflict.patternA.pattern.name} (${conflict.patternA.occurrences} files)\nPattern B: ${conflict.patternB.pattern.name} (${conflict.patternB.occurrences} files)`,
+       header: "Resolve",
+       options: [
+         { label: `Pattern A: ${conflict.patternA.pattern.name}`, description: conflict.patternA.pattern.description },
+         { label: `Pattern B: ${conflict.patternB.pattern.name}`, description: conflict.patternB.pattern.description },
+         { label: "Skip (decide later)", description: "Don't set a rule for this pattern yet" }
+       ],
+       multiSelect: false
+     }]
+   });
+   ```
+   Collect all resolutions, then:
+   ```javascript
+   const { resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+   const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
+   ```
+
+7. **Persist extracted patterns to decisions.md:**
+   ```javascript
+   const patternDecisionsMarkdown = formatAsDecisions(result);
+   ```
+   Write BOTH pattern recommendations AND conflict resolutions to `.workflow/state/decisions.md`:
+   ```markdown
+   # Project Decisions & Patterns
+
+   [patternDecisionsMarkdown - contains all extracted patterns grouped by category]
+
+   [conflictDecisionsMarkdown - contains resolved conflict decisions]
+   ```
+
+   **CRITICAL**: This step MUST happen. Without it, extracted patterns vanish after init completes.
+
+8. **Run function and API scanners on the reference project:**
+   ```javascript
+   const { FunctionScanner } = require('./scripts/flow-function-index.js');
+   const { APIScanner } = require('./scripts/flow-api-index.js');
+
+   // Scan reference project for utility functions
+   const funcScanner = new FunctionScanner({ projectRoot: referenceProjectPath });
+   const funcRegistry = await funcScanner.scan();
+   if (funcRegistry) {
+     funcScanner.save();       // Writes function-index.json
+     funcScanner.generateMap(); // Writes function-map.md
+   }
+
+   // Scan reference project for API endpoints
+   const apiScanner = new APIScanner({ projectRoot: referenceProjectPath });
+   const apiRegistry = await apiScanner.scan();
+   if (apiRegistry) {
+     apiScanner.save();        // Writes api-index.json
+     apiScanner.generateMap(); // Writes api-map.md
+   }
+   ```
+
+9. **Populate app-map.md from component patterns:**
+   From the pattern extraction result, use `result.patterns` (component category) to populate app-map.md:
+   - For each detected component: add to the Components table
+   - For each detected screen/page: add to the Screens table
+   - For each detected modal: add to the Modals table
+   - Include path, variant info, and props patterns where detected
+
+   The component patterns are available in the extraction result under the `component` category.
 
 #### If "Exported WogiFlow profile" selected:
 1. Ask for the .zip file path
@@ -493,7 +574,7 @@ Enhanced X/Y skills with documentation (Z had no Context7 ID, W already had cont
 
 #### 4.3 Create State Files
 
-Create the following files in `.workflow/state/`:
+Create ALL of the following files in `.workflow/state/`. **Do NOT skip any.**
 
 **ready.json** (task queue):
 ```json
@@ -501,11 +582,24 @@ Create the following files in `.workflow/state/`:
   "ready": [],
   "inProgress": [],
   "recentlyCompleted": [],
+  "blocked": [],
+  "backlog": [],
   "lastUpdated": "2026-01-13T..."
 }
 ```
 
 **decisions.md** (coding patterns):
+
+If patterns were extracted (from reference project or existing code), use the extracted content:
+```markdown
+# Project Decisions & Patterns
+
+[OUTPUT FROM formatAsDecisions(result) - extracted patterns grouped by category]
+
+[OUTPUT FROM resolutionsToDecisions(resolutions) - resolved conflict decisions]
+```
+
+If no patterns extracted (fresh project with no reference), create a template:
 ```markdown
 # Project Decisions & Patterns
 
@@ -519,18 +613,112 @@ Create the following files in `.workflow/state/`:
 <!-- Decisions will be added as we work -->
 ```
 
+**CRITICAL**: When a reference project was scanned (Step 2 "Other project folder"), the extracted patterns from `formatAsDecisions()` and resolved conflicts from `resolutionsToDecisions()` MUST be written here. This is the persistence pipeline — without it, all extracted knowledge is lost.
+
 **app-map.md** (component registry):
+
+If components were detected (from reference project scan or existing code scan), populate with detected data:
 ```markdown
 # Application Component Map
 
 ## Overview
 This file tracks all components in the application.
 
-## Components
-<!-- Components will be registered as they're created -->
-
 ## Screens
-<!-- Screens will be registered as they're created -->
+
+| Screen | Route | Status |
+|--------|-------|--------|
+[Detected screens from pattern extraction, if any]
+
+## Modals
+
+| Modal | Trigger | Status |
+|-------|---------|--------|
+[Detected modals, if any]
+
+## Components
+
+| Component | Variants | Path | Details |
+|-----------|----------|------|---------|
+[Detected components from pattern extraction, if any]
+
+## Rules
+
+1. **Before creating** → Search this file
+2. **If similar exists** → Add variant, don't create new
+3. **After creating** → Update this file + create detail doc
+```
+
+If no components detected, create the empty template (same structure, no entries).
+
+**function-map.md** (utility function registry):
+
+Run the function scanner to auto-generate:
+```javascript
+const { FunctionScanner } = require('./scripts/flow-function-index.js');
+const scanner = new FunctionScanner();
+const registry = await scanner.scan();
+if (registry && registry.functions.length > 0) {
+  scanner.save();        // Writes function-index.json
+  scanner.generateMap(); // Writes function-map.md
+}
+```
+
+If no functions found (empty project), create a minimal template:
+```markdown
+# Function Map
+
+Utility functions available for reuse. **Check before creating new utilities.**
+
+## Utilities
+
+| Function | Purpose | File | Parameters |
+|----------|---------|------|------------|
+<!-- Functions will be registered as they're created -->
+
+## Rules
+
+1. **Before creating** → Search this file
+2. **If similar exists** → Extend it, don't create new
+3. **After creating** → Run `flow function-index scan` to update
+```
+
+**api-map.md** (API endpoint registry):
+
+Run the API scanner to auto-generate:
+```javascript
+const { APIScanner } = require('./scripts/flow-api-index.js');
+const scanner = new APIScanner();
+const registry = await scanner.scan();
+if (registry && (registry.endpoints.length > 0 || registry.clientFunctions.length > 0)) {
+  scanner.save();        // Writes api-index.json
+  scanner.generateMap(); // Writes api-map.md
+}
+```
+
+If no APIs found (empty project), create a minimal template:
+```markdown
+# API Map
+
+API endpoints and client functions. **Check before creating new endpoints.**
+
+## Endpoints
+
+| Method | Endpoint | Service | File |
+|--------|----------|---------|------|
+<!-- Endpoints will be registered as they're created -->
+
+## Client Functions
+
+| Function | Method | Endpoint | File |
+|----------|--------|----------|------|
+<!-- Client functions will be registered as they're created -->
+
+## Rules
+
+1. **Before creating** → Search this file
+2. **If similar exists** → Parameterize it, don't duplicate
+3. **After creating** → Run `flow api-index scan` to update
 ```
 
 **request-log.md** (change history):
@@ -548,6 +736,14 @@ This file tracks all changes made to the project.
 **Result**: Project configured with [stack summary]
 **Files**: .workflow/*, .claude/*
 ```
+
+**State File Generation Checklist** (verify all created):
+- [ ] `ready.json` — Task queue
+- [ ] `decisions.md` — Coding patterns (with extracted patterns if available)
+- [ ] `app-map.md` — Component registry (with detected components if available)
+- [ ] `function-map.md` — Function registry (auto-scanned or template)
+- [ ] `api-map.md` — API registry (auto-scanned or template)
+- [ ] `request-log.md` — Change history (with R-001 entry)
 
 #### 4.4 Create Spec Files
 
@@ -596,11 +792,16 @@ Setup Complete!
   config.json          # Project configuration
   specs/
     stack.md           # Your tech stack details
+    product.md         # Product description (if provided)
   state/
     ready.json         # Task queue
     request-log.md     # Change history
-    app-map.md         # Component registry (grows as you work)
-    decisions.md       # Coding patterns (grows as you work)
+    app-map.md         # Component registry (auto-populated if reference project provided)
+    decisions.md       # Coding patterns (auto-populated from pattern extraction)
+    function-map.md    # Utility function registry (auto-scanned)
+    api-map.md         # API endpoint registry (auto-scanned)
+    function-index.json # Machine-readable function index
+    api-index.json     # Machine-readable API index
 
 .claude/
   skills/
