@@ -137,6 +137,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "compact context", "save context", "running low on context" | `/wogi-compact` |
 | "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
 | "debug browser", "debug the page", "UI looks broken", "page isn't working" | `/wogi-debug-browser` |
+| "test browser", "run browser tests", "test the UI", "verify in browser" | `/wogi-test-browser` |
 | "debug this", "investigate hypotheses", "competing theories", "parallel debug" | `/wogi-debug-hypothesis` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.

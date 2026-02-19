@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-101 | 2026-02-19 19:30
+**Type**: new
+**Tags**: #command:test-browser #webmcp
+**Task**: wf-webmcp-s6
+**Request**: "Rewrite wogi-test-browser with WebMCP test flows"
+**Result**: Created .claude/commands/wogi-test-browser.md with WebMCP-powered test flow protocol. Test flows defined as JSON sequences of tool calls with assertion engine (equals, contains, truthy, regex, etc.). Generates structured pass/fail reports. Includes --generate mode for auto-creating test flows from tool definitions. Registered in wogi-start, wogi-help, CLAUDE.md triggers.
+**Files**: .claude/commands/wogi-test-browser.md (new), .claude/commands/wogi-start.md, .claude/commands/wogi-help.md, CLAUDE.md
+
 ### R-100 | 2026-02-19 19:20
 **Type**: new
 **Tags**: #command:debug-browser #webmcp

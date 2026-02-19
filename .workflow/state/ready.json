@@ -14,17 +14,6 @@
       "epicId": "epic-webmcp"
     },
     {
-      "id": "wf-webmcp-s6",
-      "title": "Rewrite wogi-test-browser with WebMCP test flows",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "ready",
-      "priority": "P1",
-      "description": "Rewrite wogi-test-browser.md to use WebMCP for test execution. Define test flows as WebMCP tool sequences. Assert page state via structured tool responses instead of screenshot comparison. Generate test reports with pass/fail per tool call.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    },
-    {
       "id": "wf-webmcp-s7",
       "title": "Add WebMCP verification to wogi-start quality gates",
       "type": "story",
@@ -49,6 +38,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s6",
+      "title": "Rewrite wogi-test-browser with WebMCP test flows",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T19:25:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T19:30:00.000Z"
+    },
     {
       "id": "wf-webmcp-s5",
       "title": "Rewrite wogi-debug-browser with WebMCP backend",

@@ -53,6 +53,7 @@ COMPONENT MANAGEMENT
 DEBUGGING
 ═══════════════════════════════════════════════════════════════
 /wogi-debug-browser [desc]   WebMCP browser debug (structured tool calls)
+/wogi-test-browser [flow]    WebMCP browser test flows with assertions
 /wogi-debug-hypothesis [desc] Parallel hypothesis investigation
 /wogi-trace [feature]        Code flow trace for a feature
 
