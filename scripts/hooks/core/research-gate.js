@@ -9,6 +9,9 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
+const fs = require('fs');
+const path = require('path');
+const { PATHS } = require('../../flow-utils');
 const {
   checkResearchGate,
   isResearchEnabled: _isResearchEnabled,
@@ -400,10 +403,153 @@ function formatClaimWarning(claims) {
   return lines.join('\n');
 }
 
+// ============================================================
+// Research Cache
+// ============================================================
+
+/**
+ * Get the research cache file path
+ * @returns {string}
+ */
+function getCachePath() {
+  const config = getResearchConfig();
+  const cachePath = config.cache?.path || '.workflow/state/research-cache.json';
+  return path.isAbsolute(cachePath) ? cachePath : path.join(PATHS.root, cachePath);
+}
+
+/**
+ * Read the research cache
+ * @returns {Object} Cache object with entries keyed by normalized query
+ */
+function readCache() {
+  const cachePath = getCachePath();
+  try {
+    if (fs.existsSync(cachePath)) {
+      const raw = fs.readFileSync(cachePath, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Research Cache] Read failed: ${err.message}`);
+    }
+  }
+  return { entries: {}, lastCleanup: null };
+}
+
+/**
+ * Write to the research cache
+ * @param {Object} cache - Cache object to write
+ */
+function writeCache(cache) {
+  const cachePath = getCachePath();
+  try {
+    const dir = path.dirname(cachePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(cachePath, JSON.stringify(cache, null, 2) + '\n', 'utf-8');
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Research Cache] Write failed: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Normalize a query for cache key lookup
+ * @param {string} query - Raw query string
+ * @returns {string} Normalized key
+ */
+function normalizeQuery(query) {
+  return query.toLowerCase().trim().replace(/\s+/g, ' ').slice(0, 200);
+}
+
+/**
+ * Look up a query in the research cache
+ * @param {string} query - The research query
+ * @returns {Object|null} Cached result or null if not found / expired
+ */
+function lookupCache(query) {
+  const config = getResearchConfig();
+  if (!config.cache?.enabled) return null;
+
+  const cache = readCache();
+  const key = normalizeQuery(query);
+  const entry = cache.entries[key];
+
+  if (!entry) return null;
+
+  const ttlMs = (config.cache.ttlHours || 24) * 60 * 60 * 1000;
+  const age = Date.now() - new Date(entry.cachedAt).getTime();
+
+  if (age > ttlMs) {
+    // Expired - remove entry
+    delete cache.entries[key];
+    writeCache(cache);
+    return null;
+  }
+
+  return entry;
+}
+
+/**
+ * Store a research result in the cache
+ * @param {string} query - The research query
+ * @param {Object} result - The research result to cache
+ */
+function cacheResult(query, result) {
+  const config = getResearchConfig();
+  if (!config.cache?.enabled) return;
+
+  const cache = readCache();
+  const key = normalizeQuery(query);
+  const maxEntries = config.cache.maxEntries || 200;
+
+  // Evict oldest entries if at capacity
+  const keys = Object.keys(cache.entries);
+  if (keys.length >= maxEntries) {
+    const sorted = keys.sort((a, b) =>
+      new Date(cache.entries[a].cachedAt) - new Date(cache.entries[b].cachedAt)
+    );
+    const toEvict = sorted.slice(0, keys.length - maxEntries + 1);
+    for (const k of toEvict) {
+      delete cache.entries[k];
+    }
+  }
+
+  cache.entries[key] = {
+    query: query.slice(0, 200),
+    result,
+    cachedAt: new Date().toISOString()
+  };
+
+  writeCache(cache);
+}
+
+/**
+ * Check if research is mandatory for current context
+ * @param {string} context - 'explore_phase', 'history', or 'general'
+ * @returns {boolean}
+ */
+function isResearchMandatory(context) {
+  const config = getResearchConfig();
+  if (context === 'explore_phase') {
+    return config.mandatoryInExplorePhase !== false;
+  }
+  if (context === 'history') {
+    return config.mandatoryForHistoryResearch !== false;
+  }
+  return false;
+}
+
 module.exports = {
   checkResearchRequirement,
   generateResearchCommand,
   generateResearchProtocolSteps,
   detectUnverifiedClaims,
-  formatClaimWarning
+  formatClaimWarning,
+  lookupCache,
+  cacheResult,
+  isResearchMandatory,
+  normalizeQuery
 };

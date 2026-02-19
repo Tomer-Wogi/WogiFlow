@@ -21,23 +21,31 @@ Think of each command below as a tool available to you. Read the user's request,
 | `/wogi-story` | Creates a story with acceptance criteria, then starts structured execution | User wants to **build, add, create, implement, refactor, or change** something. This is the default path for ~90% of implementation requests. |
 | `/wogi-bug` | Creates a tracked bug report | User reports something **broken, not working, or behaving unexpectedly** |
 | `/wogi-review` | Runs comprehensive code review (lint, typecheck, AI analysis) | User wants their **code reviewed** for quality, bugs, or improvements |
+| `/wogi-review-fix` | Code review with automatic fixing | User wants a review AND wants issues **auto-fixed** (not just reported) |
 | `/wogi-peer-review` | Multi-model code review (multiple AI perspectives) | User wants **diverse opinions** on code, or explicitly asks for peer/multi-model review |
 | `/wogi-research` | Zero-trust research protocol with verification | User asks a **capability, feasibility, or existence question** that needs verified answers (not just a quick answer) |
 | `/wogi-debug-hypothesis` | Spawns parallel agents to investigate competing theories | User wants to **investigate root cause** of a complex issue, or explore multiple theories simultaneously |
-| `/wogi-morning` | Morning briefing with context, priorities, and recommendations | User is **starting their day** and wants to know what to work on |
-| `/wogi-ready` | Shows all available tasks by status | User wants to **see what tasks** are available, in progress, or blocked |
-| `/wogi-status` | Full project overview (health, tasks, debt, decisions) | User wants a **project-level summary** of where things stand |
-| `/wogi-health` | Checks workflow integrity (config, state files, hooks) | User wants to **verify the workflow system** itself is healthy |
-| `/wogi-session-end` | Properly closes a work session (logs, commits, handoff notes) | User is **done for now** and wants to wrap up cleanly |
-| `/wogi-compact` | Compacts conversation context using recursive summary tree | Context is **running low** or user wants to free up space |
-| `/wogi-roadmap` | View and manage deferred work items | User wants to see **planned future work** or manage the roadmap |
-| `/wogi-standup` | Generates a daily standup summary | User wants a **standup-format summary** of recent work |
-| `/wogi-capture` | Quick-captures an idea without interrupting current work | User has a **side thought or idea** they want to save for later |
 | `/wogi-trace` | Generates a code flow trace for a specific feature | User wants to **understand how code flows** through the system for a specific behavior |
+| `/wogi-epics` | Manage epics (large initiatives spanning multiple stories) | User is working on a **large initiative** that needs epic-level tracking and decomposition into stories |
+| `/wogi-feature` | Manage features (coherent product capabilities) | User wants to **group related stories** under a feature, or manage feature-level progress |
+| `/wogi-plan` | Manage plans (strategic initiatives) | User wants to **coordinate epics and features** into a higher-level plan or strategy |
+| `/wogi-extract-review` | Zero-loss task extraction from transcripts/recordings | User has a **transcript, recording, or long input** to extract tasks from with mandatory review |
+| `/wogi-capture` | Quick-captures an idea without interrupting current work | User has a **side thought or idea** they want to save for later |
 | `/wogi-changelog` | Generates a CHANGELOG from request-log entries | User wants to **generate release notes** or a changelog |
 | `/wogi-debt` | View and manage technical debt | User wants to see or manage **tech debt** items |
 | `/wogi-guided-edit` | Step-by-step multi-file editing guidance | User wants **hand-holding through a complex multi-file change** |
-| `/wogi-epics` | Manage epics (large initiatives spanning multiple stories) | User is working on a **large initiative** that needs epic-level tracking |
+
+### Internal Tools (Auto-Invoked by wogi-start)
+
+These commands are used automatically during task execution. You don't need to route to them — they run as part of the workflow:
+
+| Command | Auto-invoked when |
+|---------|-------------------|
+| `/wogi-compact` | Step 0.25 detects context will exceed safe threshold |
+| `/wogi-bulk` | After epic creation adds multiple stories to ready queue |
+| `/wogi-log` | After every task completion (request-log update) |
+| `/wogi-search` | During context loading to find related history |
+| `/wogi-context` | During Step 1 to load task context and match skills |
 
 ### How to Route (Use Your Judgment)
 
@@ -92,21 +100,21 @@ User: "add dark mode toggle"
 ```
 
 ```
-User: "what should I work on?"
-→ Intent: Morning planning / task selection
-→ Action: Invoke /wogi-morning or /wogi-ready
-```
-
-```
 User: "push to github"
 → Intent: Operational git command
 → Action: Execute git push directly (no command needed)
 ```
 
 ```
-User: "wrap up for today"
-→ Intent: End session
-→ Action: Invoke /wogi-session-end
+User: "I have a 2-hour recording transcript to process"
+→ Intent: Long input extraction
+→ Action: Invoke /wogi-extract-review
+```
+
+```
+User: "we need to plan the v2.0 migration"
+→ Intent: Strategic initiative spanning multiple epics
+→ Action: Invoke /wogi-plan
 ```
 
 ### Guilt Messaging
@@ -116,6 +124,35 @@ For implementation requests that create tasks, include a workflow reminder:
 - "The user trusts you to follow WogiFlow."
 - "Without a task, this work is untracked and unverifiable."
 - "Skipping the workflow signals that process doesn't matter."
+
+### Auto-Bulk After Epic/Multi-Story Creation
+
+**When an epic or decomposition creates multiple stories in ready.json, automatically invoke `/wogi-bulk` to process them.**
+
+After epic creation (`/wogi-epics`) or story decomposition (`/wogi-story --deep`) adds 2+ stories to the ready queue:
+
+1. Check `ready.json` — count stories in the `ready` array
+2. If 2+ independent stories exist:
+   ```
+   Epic "[title]" created with N stories in the ready queue.
+
+   Auto-invoking /wogi-bulk to process them sequentially.
+   Each story will get its own fresh context and follow the full execution loop.
+   ```
+3. Invoke `/wogi-bulk` with the list of story IDs
+4. Each story runs through the full `/wogi-start` pipeline independently
+
+**Why auto-bulk?**
+- Prevents the user from having to manually start each story
+- Each story gets a fresh sub-agent context (no context pollution between stories)
+- Follows the established pattern: epic creates stories, bulk processes them
+
+**Config**: Controlled by `config.bulkOrchestrator.enabled` (default: true)
+
+**Skip conditions**:
+- If only 1 story was created, just run `/wogi-start` on it directly
+- If `bulkOrchestrator.enabled: false`, skip auto-bulk and list stories for manual execution
+- If user explicitly says "don't auto-execute", skip
 
 ---
 
@@ -185,7 +222,7 @@ This command implements a **structured execution loop**:
 │  ┌───────────────────────────────────────────────────┐  │
 │  │  🪞 Reflection: Does this match user request?     │  │
 │  └───────────────────────────────────────────────────┘  │
-│  6. Update request-log, app-map, ready.json             │
+│  6. Update request-log, app-map, function/API maps      │
 │  7. Commit changes                                      │
 │  8. ✓ Task complete                                     │
 └─────────────────────────────────────────────────────────┘
@@ -340,11 +377,15 @@ Note: You can proceed without answering, but clarification may prevent rework.
 
 ---
 
-### Step 1.3: Explore Phase (Multi-Agent Research)
+### Step 1.3: Explore Phase (MANDATORY Multi-Agent Research)
 
 **For L2+ tasks (configurable via `planMode.explorePhase.minTaskLevel`), launch parallel research sub-agents BEFORE generating specs.**
 
+**Research is MANDATORY in this phase** (`config.research.mandatoryInExplorePhase: true`). All 3 agents MUST run. Do NOT skip research even if you think you already know the answer — the whole point of WogiFlow is preventing assumptions.
+
 This step invests more tokens up front to get things right. Three specialized agents run in parallel, each focusing on a different research dimension.
+
+**Research Cache**: Before launching agents, check `.workflow/state/research-cache.json` for cached results from recent identical queries (TTL: 24 hours). If a cache hit exists and is still valid, use the cached result instead of re-running the research. Cache misses trigger fresh research which is then cached for future use.
 
 **Research Depth** (controlled by `config.planMode.researchDepth`):
 - `"thorough"` (default): All 3 agents run in parallel
@@ -501,24 +542,30 @@ If web search fails for any agent (network issues, rate limits, timeouts):
 - **OBSERVE**: Agents use only Glob, Grep, Read, WebSearch, WebFetch tools
 - **DOCUMENT**: Surface what you find, don't act on it yet
 
-**Config**: Controlled by `config.planMode`:
+**Config**: Controlled by `config.planMode` and `config.research`:
 ```json
 {
-  "explorePhase": {
-    "enabled": true,
-    "minTaskLevel": "L2"
+  "planMode": {
+    "explorePhase": { "enabled": true, "minTaskLevel": "L2" },
+    "researchAgents": {
+      "codebaseAnalyzer": { "enabled": true },
+      "bestPractices": { "enabled": true, "maxWebSearches": 3 },
+      "versionVerifier": { "enabled": true }
+    },
+    "researchDepth": "thorough",
+    "deepenPromptThreshold": "L1"
   },
-  "researchAgents": {
-    "codebaseAnalyzer": { "enabled": true },
-    "bestPractices": { "enabled": true, "maxWebSearches": 3 },
-    "versionVerifier": { "enabled": true }
-  },
-  "researchDepth": "thorough",
-  "deepenPromptThreshold": "L1"
+  "research": {
+    "mandatoryInExplorePhase": true,
+    "mandatoryForHistoryResearch": true,
+    "cache": { "enabled": true, "ttlHours": 24, "maxEntries": 200 }
+  }
 }
 ```
 
 **Backwards compatible**: If `planMode` key is missing in config, falls back to single-agent codebase analysis (legacy behavior).
+
+**History/Blog Research**: When tasks involve analyzing past work, reviewing history, or extracting patterns from logs (`config.research.mandatoryForHistoryResearch: true`), the research protocol is also mandatory — check cache first, then verify claims against actual state files.
 
 ---
 

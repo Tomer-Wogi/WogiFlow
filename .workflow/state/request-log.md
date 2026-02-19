@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-091 | 2026-02-19 15:00
+**Type**: change
+**Tags**: #feature:claude-code-integration #wf-a7c31f02 #ai-routing #research #auto-scan #auto-bulk
+**Request**: "Finalize wogi-start AI catalog, mandatory research, auto-scan, auto-bulk"
+**Result**: (1) Refined command catalog from 20 to 16 commands — removed session/admin commands (morning, ready, status, health, session-end, compact, roadmap, standup), added /wogi-feature, /wogi-plan, /wogi-review-fix, /wogi-extract-review. Added Internal Tools section for auto-invoked commands. Updated CLAUDE.md with split Work/Session command tables. (2) Made research mandatory in Explore Phase with cache — added mandatoryInExplorePhase and mandatoryForHistoryResearch config keys, added research cache functions (lookupCache, cacheResult, isResearchMandatory) to research-gate.js, added cache config with TTL. (3) Wired function/API registry auto-scan into task-completed.js — now calls FunctionScanner.scan() and APIScanner.scan() after task completion when config says autoUpdate:true. (4) Added auto-bulk invocation section to wogi-start.md and wogi-epics.md — after epic creation adds 2+ stories, auto-invoke /wogi-bulk.
+**Files**: .claude/commands/wogi-start.md, .claude/commands/wogi-epics.md, CLAUDE.md, .workflow/config.json, scripts/hooks/core/research-gate.js, scripts/hooks/core/task-completed.js, .workflow/state/ready.json
+
 ### R-090 | 2026-02-19 11:45
 **Type**: change
 **Tags**: #feature:claude-code-integration #wf-1488a40e #triage #ai-routing

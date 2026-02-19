@@ -137,9 +137,18 @@ node scripts/flow-epics.js tree epic-dashboard
 | 📋 | L2 | Task |
 | ▪ | L3 | Subtask |
 
+## Auto-Bulk Execution
+
+When an epic is created and stories are added to the ready queue, `/wogi-start` will automatically invoke `/wogi-bulk` to process them sequentially. Each story gets its own fresh context and follows the full execution loop.
+
+This means after creating an epic with stories, you don't need to manually start each one — bulk orchestration handles it.
+
+**To disable**: Set `config.bulkOrchestrator.enabled: false`
+
 ## Tips
 
 - **Start with epics for major features** - Break down into stories before implementation
 - **Update progress regularly** - Run `flow epics update` to sync status
 - **Use tree view for standup** - Quick visual of project state
 - **Epics don't block work** - You can still use `/wogi-start` without epics
+- **Auto-bulk**: After epic creation, stories are auto-processed via `/wogi-bulk`

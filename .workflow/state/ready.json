@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-19T11:45:00.000Z",
+  "lastUpdated": "2026-02-19T15:05:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-a7c31f02",
+      "title": "Finalize wogi-start AI catalog, mandatory research, auto-scan, auto-bulk",
+      "type": "story",
+      "feature": "claude-code-integration",
+      "status": "completed",
+      "priority": "P1",
+      "description": "4 deliverables: (1) Refine wogi-start command catalog to 16 commands with routing logic, (2) Make research mandatory in Explore Phase with cache, (3) Wire function/API registry auto-scan into post-task flow, (4) Wire wogi-bulk auto-invocation after epic/multi-story creation.",
+      "createdAt": "2026-02-19T12:00:00.000Z",
+      "startedAt": "2026-02-19T12:00:00.000Z",
+      "completedAt": "2026-02-19T15:05:00.000Z"
+    },
     {
       "id": "wf-1488a40e",
       "title": "Expand wogi-start triage to route to all WogiFlow commands",
@@ -111,129 +123,6 @@
       "createdAt": "2026-02-11T14:00:00.000Z",
       "startedAt": "2026-02-11T14:05:00.000Z",
       "completedAt": "2026-02-11T14:30:00.000Z"
-    },
-    {
-      "id": "wf-obs-extract",
-      "title": "Observation value extraction pipeline (promote high-value observations to solution facts before purge)",
-      "type": "story",
-      "feature": "memory",
-      "status": "completed",
-      "priority": "P2",
-      "description": "Add extractHighValueObservations() to flow-memory-db.js - runs before observation purge. High-value observations (successful + non-trivial + task-linked) get promoted to facts with category 'solution' and solution_context JSON. Wire into compactor and session-end. Add config keys.",
-      "createdAt": "2026-02-11T14:00:00.000Z",
-      "startedAt": "2026-02-11T14:00:00.000Z",
-      "completedAt": "2026-02-11T13:04:16.826Z"
-    },
-    {
-      "id": "wf-audit-p3",
-      "title": "Fix Phase 3 cleanup audit findings (orphans, naming, config)",
-      "type": "bugfix",
-      "feature": "code-quality",
-      "status": "completed",
-      "priority": "P2",
-      "description": "Deleted 5 orphan scripts (2,462 lines), fixed 22 catch(error)->catch(err) naming violations across 16 files, added missing bulkLoop config key, removed phantom /wogi-done from help.",
-      "createdAt": "2026-02-11T12:50:00.000Z",
-      "startedAt": "2026-02-11T12:50:00.000Z",
-      "completedAt": "2026-02-11T13:10:00.000Z"
-    },
-    {
-      "id": "wf-audit-p2",
-      "title": "Fix Phase 2 data integrity audit findings (stale state, duplicate IDs, agent dirs)",
-      "type": "bugfix",
-      "feature": "code-quality",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Fix data integrity issues: (1) Deduplicate request-log IDs, (2) Update stale progress.md memory block, (3) Consolidate duplicate agent directories, (4) Fix ready.json timestamp inversion, (5) Update stale roadmap items.",
-      "createdAt": "2026-02-11T12:20:00.000Z",
-      "startedAt": "2026-02-11T12:20:00.000Z",
-      "completedAt": "2026-02-11T12:45:00.000Z"
-    },
-    {
-      "id": "wf-audit-p1",
-      "title": "Fix Phase 1 critical audit findings (crashes, security, broken hooks)",
-      "type": "bugfix",
-      "feature": "code-quality",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Fix 7 critical issues from Opus 4.6 codebase audit: (1) Remove 4 dead team script references from CLI router, (2) Fix shell injection in astGrepSearch via execFileSync, (3) Register TaskCompleted hook in settings.local.json, (4) Widen PostToolUse matcher for universal observation capture, (5) Widen PreToolUse matcher for Skill/Bash handling, (6) Fix /wogi-session-review -> /wogi-review in CLAUDE.md, (7) Fix /wogi-epic -> /wogi-epics in CLAUDE.md.",
-      "createdAt": "2026-02-11T12:00:00.000Z",
-      "startedAt": "2026-02-11T12:00:00.000Z",
-      "completedAt": "2026-02-11T12:15:00.000Z"
-    },
-    {
-      "id": "wf-agent-wire",
-      "title": "Wire Agent Teams features into existing workflow automation",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Auto-invoke Agent Teams features from existing workflows: (1) parallelizability scores in /wogi-ready, (2) hypothesis debugging in /wogi-start bug routing and error recovery, (3) teammate state in /wogi-status, (4) Agent Teams auto-detection in session-context.js, (5) natural language triggers in CLAUDE.md template.",
-      "createdAt": "2026-02-11T11:15:00.000Z",
-      "startedAt": "2026-02-11T11:15:00.000Z",
-      "completedAt": "2026-02-11T11:30:00.000Z"
-    },
-    {
-      "id": "wf-agent-teams",
-      "title": "Agent Teams integration - enhance dispatch, lead enforcement, state tracking, scoring, hypothesis debugging",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Integrate with Claude Code Agent Teams: (1) enhance TeammateIdle for rich dispatch with file-conflict avoidance, (2) add lead-goes-rogue prevention, (3) teammate state tracking, (4) parallelizability scoring, (5) competing hypothesis debugging command.",
-      "createdAt": "2026-02-11T10:45:00.000Z",
-      "startedAt": "2026-02-11T10:45:00.000Z",
-      "completedAt": "2026-02-11T11:01:04.579Z"
-    },
-    {
-      "id": "wf-cr-2133",
-      "title": "Fix 3 code review issues from CC 2.1.33 epic",
-      "type": "bugfix",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P2",
-      "description": "Fix 3 issues found in code review: (1) task-completed.js ignores input, always picks inProgress[0]; (2) teammate-idle.js has dead filter; (3) session-end.js bypasses three-layer pattern.",
-      "createdAt": "2026-02-06T11:15:00.000Z",
-      "startedAt": "2026-02-06T11:15:00.000Z",
-      "completedAt": "2026-02-06T09:56:36.619Z"
-    },
-    {
-      "id": "wf-4a337a35",
-      "title": "Update skill templates with memory frontmatter field",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P3",
-      "description": "Add optional memory: project field to skill template and figma-analyzer skill, aligning with Claude Code 2.1.33 memory support.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "startedAt": "2026-02-06T10:55:00.000Z",
-      "completedAt": "2026-02-06T11:00:00.000Z",
-      "epicId": "wf-a29aa0a3"
-    },
-    {
-      "id": "wf-303884df",
-      "title": "Add TaskCompleted and TeammateIdle hook events",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Add 2 new Claude Code 2.1.33 hook events: TaskCompleted (post-task cleanup, enabled by default) and TeammateIdle (task dispatch, disabled/experimental). New entry points, core handlers, adapter updates.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "startedAt": "2026-02-06T10:40:00.000Z",
-      "completedAt": "2026-02-06T10:50:00.000Z",
-      "epicId": "wf-a29aa0a3"
-    },
-    {
-      "id": "wf-c493fccb",
-      "title": "Add YAML frontmatter (memory + tools) to all agent definitions",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Add memory: project and Task(agent_type) restrictions to all 11 agents in agents/*.md. Orchestrator can spawn all types; specialized agents restricted to relevant types.",
-      "createdAt": "2026-02-06T10:15:00.000Z",
-      "startedAt": "2026-02-06T10:30:00.000Z",
-      "completedAt": "2026-02-06T10:35:00.000Z",
-      "epicId": "wf-a29aa0a3"
     }
   ],
   "backlog": [

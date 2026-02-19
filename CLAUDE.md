@@ -127,15 +127,34 @@ See `.claude/docs/commands.md` for complete command reference.
 
 **When a user's message clearly maps to one of these commands, invoke it via the Skill tool. Use your judgment — understand intent, don't pattern-match keywords.**
 
+### Work Commands (routed via /wogi-start)
+
+These are the commands wogi-start can route to. All implementation requests go through `/wogi-start` which picks the best command:
+
 | Command | What it does | Use when the user wants to... |
 |---------|-------------|-------------------------------|
 | `/wogi-start` | Universal entry point — routes to the right workflow | Implement, build, or change something (this is the default for all work) |
 | `/wogi-story` | Create a story with acceptance criteria | Explicitly create a tracked task before implementing |
 | `/wogi-bug` | Create a tracked bug report | Report something broken or behaving unexpectedly |
 | `/wogi-review` | Comprehensive code review | Get their code reviewed for quality and correctness |
+| `/wogi-review-fix` | Code review with automatic fixing | Get a review AND have issues auto-fixed |
 | `/wogi-peer-review` | Multi-model code review | Get diverse AI perspectives on code |
 | `/wogi-research` | Zero-trust research with verification | Answer a capability/feasibility question with evidence |
 | `/wogi-debug-hypothesis` | Parallel hypothesis debugging | Investigate a complex issue with competing theories |
+| `/wogi-trace` | Code flow trace | Understand how code flows for a specific feature |
+| `/wogi-epics` | Epic management and decomposition | Plan a large initiative spanning multiple stories |
+| `/wogi-feature` | Feature management | Group related stories under a coherent product capability |
+| `/wogi-plan` | Plan management | Coordinate epics and features into a strategic plan |
+| `/wogi-extract-review` | Task extraction from transcripts | Process a recording, transcript, or long input into tasks |
+| `/wogi-capture` | Quick idea capture | Save a thought without interrupting current work |
+| `/wogi-changelog` | Generate changelog | Create release notes from recent work |
+| `/wogi-debt` | Tech debt overview | See or manage technical debt |
+| `/wogi-guided-edit` | Step-by-step multi-file guidance | Get hand-holding through a complex change |
+
+### Session/Admin Commands (invoked directly, not through /wogi-start)
+
+| Command | What it does | Use when the user wants to... |
+|---------|-------------|-------------------------------|
 | `/wogi-morning` | Morning briefing | Start their day, get priorities and context |
 | `/wogi-ready` | Show available tasks | See what work is available |
 | `/wogi-status` | Project overview | Get a high-level project summary |
@@ -144,10 +163,6 @@ See `.claude/docs/commands.md` for complete command reference.
 | `/wogi-compact` | Compact context | Free up conversation space |
 | `/wogi-roadmap` | View/manage roadmap | See planned future work |
 | `/wogi-standup` | Standup summary | Get a standup-format summary of recent work |
-| `/wogi-capture` | Quick idea capture | Save a thought without interrupting current work |
-| `/wogi-trace` | Code flow trace | Understand how code flows for a specific feature |
-| `/wogi-debt` | Tech debt overview | See or manage technical debt |
-| `/wogi-changelog` | Generate changelog | Create release notes from recent work |
 
 **IMPORTANT**: Use your judgment to route. Don't match keywords — understand what the user actually needs. When unsure, ask.
 
@@ -163,10 +178,12 @@ You: /wogi-start "add a logout button"
 **Do NOT:**
 - Jump straight to editing files for implementation requests
 - Rationalize that "this is quick, I'll skip the workflow"
+- Invoke /wogi-bug or /wogi-story directly (let /wogi-start route)
 
 **ALWAYS:**
 - Route all work requests through /wogi-start
-- Use your judgment to pick the right command from the catalog above
+- /wogi-start uses AI judgment to pick the right command from its catalog (16 work commands)
+- Session/admin commands (morning, ready, status, health, session-end, compact, roadmap, standup) are invoked directly — they don't go through /wogi-start
 - Questions and operational tasks (git, tests, deploy) can be handled directly
 
 The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
@@ -269,8 +286,9 @@ cat .workflow/state/decisions.md # Project rules
 ### After Completing:
 1. Update `request-log.md` with tags
 2. Update `app-map.md` if new components
-3. Run quality gates (lint, typecheck, test)
-4. Provide completion report
+3. Auto-scan function/API registries (runs automatically via TaskCompleted hook)
+4. Run quality gates (lint, typecheck, test)
+5. Provide completion report
 
 ## Auto-Validation (CRITICAL)
 

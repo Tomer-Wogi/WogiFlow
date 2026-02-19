@@ -1586,6 +1586,8 @@
     "strictMode": true,
     "autoTrigger": true,
     "requireVerificationFormat": true,
+    "mandatoryInExplorePhase": true,
+    "mandatoryForHistoryResearch": true,
     "maxTokensPerDepth": {
       "quick": 5000,
       "standard": 20000,
@@ -1595,6 +1597,12 @@
     "requireCitations": true,
     "cacheVerifications": true,
     "cacheExpiryHours": 24,
+    "cache": {
+      "enabled": true,
+      "ttlHours": 24,
+      "maxEntries": 200,
+      "path": ".workflow/state/research-cache.json"
+    },
     "triggers": {
       "feasibilityQuestions": "deep",
       "capabilityQuestions": "standard",
