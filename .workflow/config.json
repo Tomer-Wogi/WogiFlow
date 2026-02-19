@@ -388,7 +388,9 @@
         "loopComplete",
         "tests",
         "requestLogEntry",
-        "standardsCompliance"
+        "standardsCompliance",
+        "learningEnforcement",
+        "resolutionPopulated"
       ],
       "optional": [
         "review"
@@ -643,6 +645,30 @@
     "analyzeReviews": true,
     "analyzeRetries": true,
     "analyzeFixes": true
+  },
+  "bugFlow": {
+    "investigationAgents": {
+      "errorSourceFinder": { "enabled": true },
+      "patternChecker": { "enabled": true },
+      "dependencyAnalyzer": { "enabled": true, "minSeverity": "high" }
+    },
+    "autoRoute": true,
+    "learningEnforcement": {
+      "enabled": true,
+      "requireResolution": true,
+      "requireFeedbackPattern": true,
+      "promotionThreshold": 3
+    },
+    "inlineDiscovery": {
+      "maxSearchOperations": 3,
+      "maxFileReads": 2,
+      "autoPriorityBoost": true,
+      "skipDependencyAnalysis": true
+    },
+    "severityOverride": {
+      "enabled": true,
+      "requireJustification": true
+    }
   },
   "onboard": {
     "temporal": {

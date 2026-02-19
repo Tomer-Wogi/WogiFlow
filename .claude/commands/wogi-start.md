@@ -19,7 +19,7 @@ Think of each command below as a tool available to you. Read the user's request,
 | Command | What it does | When to use it |
 |---------|-------------|----------------|
 | `/wogi-story` | Creates a story with acceptance criteria, then starts structured execution | User wants to **build, add, create, implement, refactor, or change** something. This is the default path for ~90% of implementation requests. |
-| `/wogi-bug` | Creates a tracked bug report | User reports something **broken, not working, or behaving unexpectedly** |
+| `/wogi-bug` | Investigates bug, populates report, then starts structured fix execution | User reports something **broken, not working, or behaving unexpectedly** |
 | `/wogi-review` | Runs comprehensive code review (lint, typecheck, AI analysis) | User wants their **code reviewed** for quality, bugs, or improvements |
 | `/wogi-review-fix` | Code review with automatic fixing | User wants a review AND wants issues **auto-fixed** (not just reported) |
 | `/wogi-peer-review` | Multi-model code review (multiple AI perspectives) | User wants **diverse opinions** on code, or explicitly asks for peer/multi-model review |
@@ -84,7 +84,7 @@ User: "I wonder if Claude Code supports custom hooks for pre-commit"
 ```
 User: "the login page keeps crashing when I submit"
 → Intent: Bug report
-→ Action: Invoke /wogi-bug
+→ Action: Invoke /wogi-bug (investigates, populates, then auto-routes to /wogi-start for fix)
 ```
 
 ```
