@@ -825,6 +825,7 @@ When implementing a task, these features run automatically. You don't need to in
     +-- [AUTO] Post-Task Updates
     |   - Update app-map.md with new components
     |   - Update function-map.md with new utilities
+    |   - Auto-generate WebMCP tools for new UI components
     |   - Log to request-log.md with tags
     |   - Commit changes
     |
@@ -881,6 +882,11 @@ When implementing a task, these features run automatically. You don't need to in
 - Component name and path
 - Props/inputs
 - Usage examples
+
+#### WebMCP Tool Auto-Generation
+**When:** After creating new UI components (*.tsx, *.jsx, *.vue, *.svelte) AND `config.webmcp.enabled` is true
+**What:** Runs `node scripts/flow-webmcp-generator.js scan` to generate WebMCP tool definitions for new components
+**Skip:** When WebMCP is disabled, no UI files changed, or task is refactor/bugfix
 
 ### Configuration
 

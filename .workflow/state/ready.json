@@ -2,20 +2,20 @@
   "lastUpdated": "2026-02-19T18:41:33.528Z",
   "inProgress": [],
   "ready": [
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-webmcp-s8",
       "title": "Auto-generate WebMCP tools on component creation",
       "type": "story",
       "feature": "webmcp-integration",
-      "status": "ready",
+      "status": "completed",
       "priority": "P2",
-      "description": "Wire WebMCP tool generation into post-task hooks. When new components are created (detected via app-map update), auto-generate WebMCP tool definitions. Add to wogi-start Step 5 post-completion updates alongside app-map and function-map updates.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "startedAt": "2026-02-19T20:05:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T20:10:00.000Z"
+    },
     {
       "id": "wf-webmcp-s7",
       "title": "Add WebMCP verification to wogi-start quality gates",

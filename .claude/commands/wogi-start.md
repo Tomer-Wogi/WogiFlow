@@ -1053,8 +1053,42 @@ if (changedUIFiles.length > 0 && config.webmcp?.enabled) {
 4. Update app-map.md if new components were created
 5. Update function-map.md if new utility functions were created
 6. Update api-map.md if new API endpoints were created
-7. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
-8. Show completion summary with verification results
+7. **Auto-generate WebMCP tools** if new UI components were created (see below)
+8. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
+9. Show completion summary with verification results
+
+#### Step 5.7: WebMCP Tool Auto-Generation (Conditional)
+
+**When:** New UI components were created AND `config.webmcp.enabled` is true.
+
+**Trigger detection:**
+```javascript
+// Check if task created new UI files
+const uiExtensions = ['.tsx', '.jsx', '.vue', '.svelte'];
+const newUIFiles = createdFiles.filter(f =>
+  uiExtensions.some(ext => f.endsWith(ext))
+);
+
+// Also check if app-map was updated with new components
+const appMapUpdated = changedFiles.includes('app-map.md');
+```
+
+**What it does:**
+1. Run `node scripts/flow-webmcp-generator.js scan` to detect new components
+2. If new tools are generated, show summary:
+   ```
+   🔌 WebMCP: Generated 3 new tool definitions
+      → get_user_card_data (UserCard.tsx)
+      → submit_login_form (LoginForm.tsx)
+      → get_dashboard_metrics (Dashboard.tsx)
+      Tools saved to: .workflow/webmcp/tools.json
+   ```
+3. If no new components detected or WebMCP disabled, skip silently
+
+**Skip conditions:**
+- `config.webmcp.enabled` is false or missing
+- No UI files were created/modified
+- Task type is `refactor` or `bugfix` (no new components expected)
 
 ### Output
 

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-104 | 2026-02-19 20:05
+**Type**: new
+**Tags**: #command:start #webmcp #automation
+**Task**: wf-webmcp-s8
+**Request**: "Auto-generate WebMCP tools on component creation"
+**Result**: Added Step 5.7 to wogi-start post-completion pipeline. When new UI components are created and WebMCP is enabled, auto-runs flow-webmcp-generator.js scan to generate tool definitions. Updated CLAUDE.md Task Execution Pipeline diagram and auto-feature descriptions.
+**Files**: .claude/commands/wogi-start.md, CLAUDE.md
+
 ### R-103 | 2026-02-19 19:55
 **Type**: new
 **Tags**: #command:start #quality-gates #webmcp
