@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-094 | 2026-02-19 17:30
+**Type**: new
+**Tags**: #feature:init-onboard #wf-init-s3 #epic:epic-init-onboard #template-extraction #file-classification #representative-selection
+**Request**: "Add template extraction from reference/existing projects (Epic: Complete Init/Onboard 100% Coverage, Story 3/5)"
+**Result**: Created scripts/flow-template-extractor.js (~450 lines). Implements full template extraction pipeline: (1) File classification into 6 types (component, service, test, route, hook, config) using extension, path patterns, and content markers. (2) Representative file selection with scoring algorithm — structural completeness (40%), git-based recency (30%), median line-count proximity (30%). (3) Template generation that strips implementation bodies leaving structure with // [IMPLEMENTATION], {/* [JSX_CONTENT] */}, // [TEST_BODY] markers. (4) Atomic save with temp+rename. (5) formatTemplateDecisions() generates decisions.md entries referencing extracted templates. Integrated into wogi-init.md (step 10, reference project path) and wogi-onboard.md (step 12, self-analysis path). Smoke tested: 3 types extracted from WogiFlow project (component, hook, config), templates saved correctly.
+**Files**: scripts/flow-template-extractor.js (new), .claude/commands/wogi-init.md, .claude/commands/wogi-onboard.md
+
 ### R-093 | 2026-02-19 16:56
 **Type**: new
 **Tags**: #feature:init-onboard #wf-init-s2 #epic:epic-init-onboard #pattern-extraction #deep-mode #git-blame

@@ -179,21 +179,40 @@ Usage: `/wogi-onboard`
     - Detected modals -> Modals table
     Include paths and patterns where detected.
 
-12. **Create remaining state files:**
+12. **Extract file templates:**
+    ```javascript
+    const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
+    const templateResult = await extractTemplates(projectRoot, {
+      types: ['component', 'service', 'test', 'route', 'hook', 'config']
+    });
+    if (Object.keys(templateResult.templates).length > 0) {
+      saveTemplates(templateResult, path.join(projectRoot, '.workflow', 'templates', 'extracted'));
+      // Append template decisions to decisions.md
+      const templateDecisions = formatTemplateDecisions(templateResult);
+      if (templateDecisions) {
+        const decisionsPath = '.workflow/state/decisions.md';
+        const existing = fs.readFileSync(decisionsPath, 'utf-8');
+        fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
+      }
+    }
+    ```
+    Display: `Extracting file templates... ✓ Found N templates`
+
+13. **Create remaining state files:**
     - `ready.json` - Empty task queue (with blocked/backlog arrays)
     - `request-log.md` - Initialized with R-001 onboarding entry
     - `progress.md` - Initialized with project state
 
 ### Phase 5: Skill Generation
 
-13. **Generate skills based on detected stack:**
+14. **Generate skills based on detected stack:**
     - Create skill directories for each detected framework/library
     - Fetch Context7 documentation (one at a time to prevent context overflow)
     - Check skills.sh for curated community skills
 
 ### Phase 6: Config Generation
 
-14. **Generate `.workflow/config.json`:**
+15. **Generate `.workflow/config.json`:**
     - Quality gates configured based on detected tooling (eslint, prettier, jest, etc.)
     - Commit rules matching project's existing commit style
     - Hooks configured for detected CI/CD pipeline
@@ -215,6 +234,7 @@ Scanning for components... ✓ Found 24 components/modules
 Scanning for API routes... ✓ Found 15 API routes/controllers
 Scanning for utilities... ✓ Found 32 utility functions
 Pattern extraction...    ✓ Found 12 patterns, 2 conflicts resolved
+Template extraction...   ✓ Found 4 templates (component, service, test, hook)
 
 ━━━ Generated Files ━━━
 
@@ -232,6 +252,12 @@ Pattern extraction...    ✓ Found 12 patterns, 2 conflicts resolved
     api-map.md             # API endpoints (15 entries)
     function-index.json    # Machine-readable function index
     api-index.json         # Machine-readable API index
+  templates/
+    extracted/
+      component.template   # Component file skeleton
+      service.template     # Service/utility skeleton
+      test.template        # Test file skeleton
+      route.template       # API route skeleton
 
 .claude/
   skills/
@@ -275,6 +301,7 @@ You can:
 | `.workflow/state/api-map.md` | API endpoint registry (auto-scanned) |
 | `.workflow/state/function-index.json` | Machine-readable function index |
 | `.workflow/state/api-index.json` | Machine-readable API index |
+| `.workflow/templates/extracted/*.template` | File skeletons for consistent new file creation |
 | `.workflow/changes/onboarding/tasks.json` | Initial tasks from known issues |
 
 ## CLI Equivalent

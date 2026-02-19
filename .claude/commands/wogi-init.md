@@ -205,6 +205,35 @@ AskUserQuestion({
 
    The component patterns are available in the extraction result under the `component` category.
 
+10. **Extract file templates from reference project:**
+   ```javascript
+   const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
+   const templateResult = await extractTemplates(referenceProjectPath, {
+     types: ['component', 'service', 'test', 'route', 'hook', 'config'],
+     outputDir: path.join(projectRoot, '.workflow', 'templates', 'extracted')
+   });
+   const saved = saveTemplates(templateResult, path.join(projectRoot, '.workflow', 'templates', 'extracted'));
+   ```
+
+   If templates were extracted, append to decisions.md:
+   ```javascript
+   const templateDecisions = formatTemplateDecisions(templateResult);
+   if (templateDecisions) {
+     // Append to existing decisions.md
+     const decisionsPath = path.join(projectRoot, '.workflow', 'state', 'decisions.md');
+     const existing = fs.readFileSync(decisionsPath, 'utf-8');
+     fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
+   }
+   ```
+
+   Display progress:
+   ```
+   Extracting file templates... ✓ Found N templates
+     - Component: src/components/Button.tsx (12 candidates)
+     - Service: src/services/auth.service.ts (5 candidates)
+     - Test: src/__tests__/auth.test.ts (8 candidates)
+   ```
+
 #### If "Exported WogiFlow profile" selected:
 1. Ask for the .zip file path
 2. Extract to temp folder
