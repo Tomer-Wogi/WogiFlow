@@ -13,6 +13,41 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-090 | 2026-02-19 11:30
+**Type**: new
+**Tags**: #feature:claude-code-integration #wf-1488a40e #implementation-gate #triage
+**Request**: "Expand wogi-start triage to route to all WogiFlow commands"
+**Result**: Expanded classifyRequest() from 5 to 10 categories: workflow, peer-review, review, research, debug, exploration, operational, bug, quick-fix, implementation. Added REVIEW_PATTERNS, PEER_REVIEW_PATTERNS, RESEARCH_PATTERNS, DEBUG_PATTERNS, WORKFLOW_COMMAND_MAP (8 commands). New matchWorkflowCommand() helper. New route-command action type with command field. Updated wogi-start.md triage table, pattern details, examples, unknown classification. Updated CLAUDE.md natural language detection table with 12 entries. All 27 routing tests pass.
+**Files**: scripts/hooks/core/implementation-gate.js, .claude/commands/wogi-start.md, CLAUDE.md
+
+### R-089 | 2026-02-19 11:00
+**Type**: new
+**Tags**: #feature:memory #wf-154914c4 #observation-capture #rejected-approach
+**Request**: "Implement rejected-approach tagging on observations"
+**Result**: Added exploration_status and rejection_reason columns to observations table. Wired into 7 files: schema migration, storeObservation, searchObservationsCompact, getObservationsByIds (new fields), new updateObservationStatus/markTaskObservationsCommitted/searchRejectedObservations functions, observation-capture auto-tags failures, post-tool-use explicit rejection tagging, task-completed marks committed, session-context surfaces warnings, loop-check detects approach thrashing (3+ same-file rejections/hour), extractHighValueObservations promotes rejection patterns to facts, compactor logging updated.
+**Files**: scripts/flow-memory-db.js, scripts/hooks/core/observation-capture.js, scripts/hooks/entry/claude-code/post-tool-use.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/session-context.js, scripts/hooks/core/loop-check.js, scripts/flow-memory-compactor.js, scripts/hooks/entry/claude-code/session-start.js, scripts/hooks/entry/claude-code/stop.js
+
+### R-088 | 2026-02-19 10:22
+**Type**: new
+**Tags**: #feature:memory #roadmap #wf-070071af
+**Request**: "Add rejected-approach tagging observation idea to roadmap"
+**Result**: Added detailed roadmap item under Ideas section for rejected-approach tagging on observations. Includes problem statement, proposed 5-step enhancement, key files, rationale vs full Git Context Controller, and open questions. Inspired by OneContext / Git Context Controller video analysis.
+**Files**: .workflow/roadmap.md
+
+### R-087 | 2026-02-19 10:15
+**Type**: fix
+**Tags**: #feature:claude-code-integration #component:claude-code-adapter #hook:stop #wf-2d3b69b3
+**Request**: "Fix Stop hook JSON schema validation error"
+**Result**: Removed invalid `hookSpecificOutput` from all 3 return paths in `transformStop()` in claude-code.js adapter. Claude Code's schema only supports hookSpecificOutput for PreToolUse, UserPromptSubmit, and PostToolUse events. The meaningful fields (continue, stopReason, systemMessage) were already at the top level.
+**Files**: scripts/hooks/adapters/claude-code.js
+
+### R-086 | 2026-02-19 10:05
+**Type**: change
+**Tags**: #feature:model-registry #component:model-adapter #component:providers #wf-0d039921
+**Request**: "Add Claude Sonnet 4.6 to model registry"
+**Result**: Added 'claude-sonnet-4-6' and 'sonnet-4.6' to MODEL_PATTERNS in flow-model-adapter.js, added capabilities entry for claude-sonnet-4-6 in flow-providers.js MODEL_CAPABILITIES, added Sonnet 4.6 to Anthropic model selection list in flow-providers.js.
+**Files**: scripts/flow-model-adapter.js, scripts/flow-providers.js
+
 ### R-085 | 2026-02-13 20:45
 **Type**: fix
 **Tags**: #feature:code-quality #review-fix #wf-cr-0f99c2

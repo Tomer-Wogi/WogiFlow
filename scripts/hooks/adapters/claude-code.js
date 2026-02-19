@@ -287,13 +287,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
 
       return {
         continue: true, // Force continue to next task
-        systemMessage: nextTaskMsg,
-        hookSpecificOutput: {
-          hookEventName: 'Stop',
-          decision: 'continue_queue',
-          nextTaskId: coreResult.nextTaskId,
-          remaining: coreResult.remaining
-        }
+        systemMessage: nextTaskMsg
       };
     }
 
@@ -301,24 +295,14 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (coreResult.shouldPrompt) {
       return {
         continue: true,
-        systemMessage: coreResult.message,
-        hookSpecificOutput: {
-          hookEventName: 'Stop',
-          decision: 'prompt_continue',
-          nextTaskId: coreResult.nextTaskId
-        }
+        systemMessage: coreResult.message
       };
     }
 
     // Block exit - criteria not complete
     return {
       continue: true, // Force continue
-      stopReason: coreResult.message || 'Acceptance criteria not complete',
-      hookSpecificOutput: {
-        hookEventName: 'Stop',
-        decision: 'block',
-        reason: coreResult.message
-      }
+      stopReason: coreResult.message || 'Acceptance criteria not complete'
     };
   }
 

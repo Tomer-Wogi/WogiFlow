@@ -16,18 +16,51 @@ When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start 
 
 | Category | Patterns | Action | Guilt Message |
 |----------|----------|--------|---------------|
+| **Workflow** | morning briefing, show tasks, project status, wrap up, compact context, show roadmap, standup | Route to specific /wogi-* command | No |
+| **Peer Review** | peer review, multi-model review | Route to /wogi-peer-review | No |
+| **Review** | code review, review changes, please review | Route to /wogi-review | No |
+| **Research** | does X support Y, is it possible, research this, verify, feasibility | Route to /wogi-research | No |
+| **Debug** | debug this, competing theories, root cause analysis, investigate bug | Route to /wogi-debug-hypothesis | No |
 | **Exploration** | what, how, why, show me, explain | Proceed directly | No |
-| **Operational** | push, pull, deploy, publish, run tests | Execute directly | No |
+| **Operational** | push, pull, deploy, publish, run tests, commit | Execute directly | No |
 | **Quick Fix** | typo, text change, simple fix | Execute + log | No |
 | **Bug** | bug, broken, not working, crashes | Route to /wogi-bug | Yes |
 | **Implementation** | add, create, fix, refactor, update | Route to /wogi-story | Yes |
 
 ### Pattern Details
 
+**Workflow** (route to specific command):
+- "morning briefing", "what should I work on", "start my day" → `/wogi-morning`
+- "show tasks", "what's ready", "available tasks" → `/wogi-ready`
+- "project status", "where are we", "show status" → `/wogi-status`
+- "check health", "workflow health", "is everything ok" → `/wogi-health`
+- "wrap up", "end session", "that's all" → `/wogi-session-end`
+- "compact context", "save context", "running low on context" → `/wogi-compact`
+- "show roadmap", "what's planned", "future work" → `/wogi-roadmap`
+- "standup", "standup report", "daily standup" → `/wogi-standup`
+
+**Peer Review** (route to /wogi-peer-review):
+- "peer review", "multi-model review"
+
+**Review** (route to /wogi-review):
+- "code review", "review what we did", "review changes"
+- "please review", "review this session"
+
+**Research** (route to /wogi-research):
+- Capability: "does X support Y?", "can X do Y?"
+- Feasibility: "is it possible to...", "can we use/integrate..."
+- Existence: "is there a...", "does X exist?"
+- Explicit: "research this", "verify if...", "investigate feasibility"
+
+**Debug** (route to /wogi-debug-hypothesis):
+- "debug this", "debug the issue"
+- "competing theories", "parallel debug"
+- "root cause analysis", "investigate the bug/error/crash"
+
 **Exploration** (proceed without task):
 - Questions: "what does X do?", "how does Y work?"
 - Reading: "show me the code for...", "explain..."
-- Analysis: "analyze", "review", "check"
+- Analysis: "analyze", "review the code" (note: "review the code" is exploration; "code review" routes to /wogi-review)
 
 **Operational** (execute directly):
 - Version control: push, pull, fetch, merge, rebase, commit
@@ -52,6 +85,30 @@ When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start 
 - Refactoring: restructure, reorganize
 
 ### Auto-Routing Examples
+
+```
+/wogi-start "morning briefing"
+→ Category: WORKFLOW (high confidence)
+→ Action: Route to /wogi-morning
+```
+
+```
+/wogi-start "code review"
+→ Category: REVIEW (high confidence)
+→ Action: Route to /wogi-review
+```
+
+```
+/wogi-start "does Claude support tool caching?"
+→ Category: RESEARCH (high confidence)
+→ Action: Route to /wogi-research "does Claude support tool caching?"
+```
+
+```
+/wogi-start "debug this authentication issue"
+→ Category: DEBUG (high confidence)
+→ Action: Route to /wogi-debug-hypothesis "authentication issue"
+```
 
 ```
 /wogi-start "how does authentication work?"
@@ -106,6 +163,10 @@ If the request can't be confidently classified:
 → Request unclear. Please clarify what you want to do.
 
 Is this:
+  Workflow command (morning, status, health, roadmap, standup) → Route to command
+  Review (code review, peer review) → Route to review command
+  Research (feasibility, capability question) → Route to /wogi-research
+  Debug (root cause, hypothesis) → Route to /wogi-debug-hypothesis
   Operational (git/npm/deploy) → Execute directly
   Quick fix (typo, text) → Fix and log it
   Feature/Bug (code change) → Create story first

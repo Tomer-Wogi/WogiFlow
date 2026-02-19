@@ -69,6 +69,7 @@ const MODEL_CAPABILITIES = {
   // Cloud models - Full capability
   'claude-opus-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
   'claude-opus-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
+  'claude-sonnet-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'standard' },
   'claude-sonnet-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'standard' },
   'claude': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000 },
   'gpt-4': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 128000 },
@@ -927,6 +928,7 @@ async function detectProviders() {
       models: [
         { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
         { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Best for executor)', recommended: true },
+        { id: 'claude-sonnet-4-6-20250819', name: 'Claude Sonnet 4.6' },
         { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
         { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' }
       ]

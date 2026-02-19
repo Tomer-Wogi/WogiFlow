@@ -254,7 +254,7 @@ async function captureObservation(options) {
     return { skipped: true, reason: 'invalid_options' };
   }
 
-  const { sessionId, toolName, toolInput, toolResponse, duration } = options;
+  const { sessionId, toolName, toolInput, toolResponse, duration, explorationStatus, rejectionReason } = options;
 
   // Validate required fields
   if (!toolName || typeof toolName !== 'string') {
@@ -330,7 +330,9 @@ async function captureObservation(options) {
       fullOutput,
       success: success ? 1 : 0,
       durationMs: duration,
-      contextTaskId
+      contextTaskId,
+      explorationStatus: explorationStatus || (success ? null : 'rejected'),
+      rejectionReason: rejectionReason || (!success ? (outputSummary || '').slice(0, 500) : null)
     });
 
     return { stored: true, id: result.id };

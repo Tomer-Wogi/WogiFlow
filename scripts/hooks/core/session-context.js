@@ -196,7 +196,7 @@ function getSessionState() {
  * @param {boolean} options.includeActivity - Include recent activity
  * @returns {Object} Session context
  */
-function gatherSessionContext(options = {}) {
+async function gatherSessionContext(options = {}) {
   const config = getConfig();
   const hookConfig = config.hooks?.rules?.sessionContext || {};
 
@@ -314,6 +314,28 @@ function gatherSessionContext(options = {}) {
     // Non-critical - flow-agent-teams module may not be available
     if (process.env.DEBUG) {
       console.error(`[session-context] Agent Teams detection failed: ${err.message}`);
+    }
+  }
+
+  // Rejected approach warnings (surface past failed approaches for current task)
+  try {
+    const currentTaskId = context.currentTask?.id;
+    if (currentTaskId) {
+      const memoryDb = require('../../flow-memory-db');
+      const rejected = await memoryDb.searchRejectedObservations({ taskId: currentTaskId, limit: 10 });
+      if (rejected.length > 0) {
+        context.rejectedApproaches = rejected.map(r => ({
+          toolName: r.toolName,
+          inputSummary: r.inputSummary,
+          rejectionReason: r.rejectionReason,
+          timestamp: r.timestamp
+        }));
+      }
+    }
+  } catch (err) {
+    // Non-critical - memory DB may not be initialized
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Rejected approach lookup failed: ${err.message}`);
     }
   }
 
@@ -454,6 +476,19 @@ function formatContextForInjection(context) {
     output += `### Recent Activity\n`;
     for (const activity of ctx.recentActivity) {
       output += `- ${activity.id}: ${activity.request}\n`;
+    }
+    output += '\n';
+  }
+
+  // Rejected approach warnings
+  if (ctx.rejectedApproaches && ctx.rejectedApproaches.length > 0) {
+    output += `### ⚠️ Previously Rejected Approaches\n`;
+    output += `The following approaches were tried and failed for this task. **Do not retry these:**\n\n`;
+    for (const r of ctx.rejectedApproaches) {
+      output += `- **${r.toolName}**: ${r.inputSummary || 'unknown action'}\n`;
+      if (r.rejectionReason) {
+        output += `  Reason: ${r.rejectionReason}\n`;
+      }
     }
     output += '\n';
   }

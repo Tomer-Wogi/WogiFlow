@@ -100,7 +100,7 @@ function checkCriteriaStatus(session) {
  * Check if the current loop can exit (task can complete)
  * @returns {Object} Result: { canExit, blocked, message, reason, criteriaStatus }
  */
-function checkLoopExit() {
+async function checkLoopExit() {
   if (!isLoopEnforcementEnabled()) {
     return {
       canExit: true,
@@ -203,6 +203,53 @@ function checkLoopExit() {
       reason: 'max_iterations_exceeded',
       criteriaStatus
     };
+  }
+
+  // Approach thrashing detection: 3+ rejected observations on same file within last hour
+  try {
+    const memoryDb = require('../../flow-memory-db');
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const rejected = await memoryDb.searchRejectedObservations({
+      taskId: session.taskId,
+      since: oneHourAgo,
+      limit: 50
+    });
+
+    if (rejected.length >= 3) {
+      // Group by file to detect same-file thrashing
+      const fileCounts = {};
+      for (const r of rejected) {
+        const fileMatch = (r.inputSummary || '').match(/(?:file_path|path|file).*?([^\s,'"]+\.\w+)/i);
+        if (fileMatch) {
+          const file = fileMatch[1];
+          fileCounts[file] = (fileCounts[file] || 0) + 1;
+        }
+      }
+
+      const thrashingFiles = Object.entries(fileCounts)
+        .filter(([, count]) => count >= 3)
+        .map(([file, count]) => ({ file, count }));
+
+      if (thrashingFiles.length > 0) {
+        const thrashingWarning = `\n⚠️ APPROACH THRASHING DETECTED:\n` +
+          thrashingFiles.map(f => `  ${f.file}: ${f.count} failed attempts in the last hour`).join('\n') +
+          `\n\nConsider a different strategy:\n` +
+          `  - Try a completely different approach to the problem\n` +
+          `  - Check if the file structure or API has changed\n` +
+          `  - Ask the user for guidance on the correct approach\n`;
+
+        return {
+          canExit: false,
+          blocked: true,
+          message: generateBlockMessage(criteriaStatus, session) + thrashingWarning,
+          reason: 'criteria_incomplete_with_thrashing',
+          criteriaStatus,
+          thrashingFiles
+        };
+      }
+    }
+  } catch {
+    // Non-critical - don't fail loop check for thrashing detection
   }
 
   // Block exit - criteria not complete

@@ -757,8 +757,6 @@ Integrate browser-based testing into the workflow for UI verification.
 
 ---
 
----
-
 ## Completed
 
 <!-- Archive of completed roadmap items for reference -->

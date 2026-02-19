@@ -22,7 +22,7 @@ async function main() {
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Check if loop can exit
-    const coreResult = checkLoopExit();
+    const coreResult = await checkLoopExit();
 
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('Stop', coreResult);

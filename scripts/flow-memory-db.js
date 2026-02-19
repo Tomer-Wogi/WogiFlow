@@ -304,7 +304,10 @@ async function initDatabase() {
       'ALTER TABLE facts ADD COLUMN access_count INTEGER DEFAULT 0',
       'ALTER TABLE facts ADD COLUMN recall_count INTEGER DEFAULT 0',
       'ALTER TABLE facts ADD COLUMN relevance_score REAL DEFAULT 1.0',
-      'ALTER TABLE facts ADD COLUMN promoted_to TEXT'
+      'ALTER TABLE facts ADD COLUMN promoted_to TEXT',
+      // v10.1: Rejected-approach tagging on observations
+      'ALTER TABLE observations ADD COLUMN exploration_status TEXT',
+      'ALTER TABLE observations ADD COLUMN rejection_reason TEXT'
     ];
     for (const migration of migrations) {
       try {
@@ -1387,15 +1390,17 @@ async function storeObservation(options) {
     fullOutput,
     success = 1,
     durationMs,
-    contextTaskId
+    contextTaskId,
+    explorationStatus,
+    rejectionReason
   } = options;
 
   const id = generateId('obs');
 
   db.run(`
-    INSERT INTO observations (id, session_id, tool_name, input_summary, output_summary, full_input, full_output, success, duration_ms, context_task_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [id, sessionId || null, toolName, inputSummary || null, outputSummary || null, fullInput || null, fullOutput || null, success, durationMs || null, contextTaskId || null]);
+    INSERT INTO observations (id, session_id, tool_name, input_summary, output_summary, full_input, full_output, success, duration_ms, context_task_id, exploration_status, rejection_reason)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [id, sessionId || null, toolName, inputSummary || null, outputSummary || null, fullInput || null, fullOutput || null, success, durationMs || null, contextTaskId || null, explorationStatus || null, rejectionReason || null]);
 
   saveDatabase();
   return { id, stored: true };
@@ -1411,7 +1416,7 @@ async function searchObservationsCompact(options = {}) {
   await initDatabase();
   const { query, toolFilter, since, limit = 20 } = options;
 
-  let sql = `SELECT id, tool_name, input_summary, output_summary, timestamp, success, context_task_id
+  let sql = `SELECT id, tool_name, input_summary, output_summary, timestamp, success, context_task_id, exploration_status, rejection_reason
              FROM observations WHERE 1=1`;
   const params = [];
 
@@ -1449,7 +1454,9 @@ async function searchObservationsCompact(options = {}) {
     outputSummary: obs.output_summary,
     timestamp: obs.timestamp,
     success: obs.success === 1,
-    contextTaskId: obs.context_task_id
+    contextTaskId: obs.context_task_id,
+    explorationStatus: obs.exploration_status || null,
+    rejectionReason: obs.rejection_reason || null
   }));
 }
 
@@ -1473,7 +1480,7 @@ async function getObservationsByIds(ids, options = {}) {
   const placeholders = validIds.map(() => '?').join(',');
   const columns = includeFull
     ? '*'
-    : 'id, session_id, tool_name, input_summary, output_summary, timestamp, success, duration_ms, context_task_id';
+    : 'id, session_id, tool_name, input_summary, output_summary, timestamp, success, duration_ms, context_task_id, exploration_status, rejection_reason';
 
   const sql = `SELECT ${columns} FROM observations WHERE id IN (${placeholders})`;
   const result = db.exec(sql, validIds);
@@ -1491,7 +1498,9 @@ async function getObservationsByIds(ids, options = {}) {
     success: obs.success === 1,
     durationMs: obs.duration_ms,
     contextTaskId: obs.context_task_id,
-    relevanceScore: obs.relevance_score
+    relevanceScore: obs.relevance_score,
+    explorationStatus: obs.exploration_status || null,
+    rejectionReason: obs.rejection_reason || null
   }));
 }
 
@@ -1750,9 +1759,73 @@ async function extractHighValueObservations(options = {}) {
     }
   }
 
-  if (extracted.length > 0) saveDatabase();
+  // Phase 2: Extract rejection patterns as facts
+  const rejectionSql = `
+    SELECT id, tool_name, input_summary, rejection_reason, timestamp, context_task_id
+    FROM observations
+    WHERE timestamp < datetime('now', '-' || ? || ' days')
+      AND exploration_status = 'rejected'
+      AND rejection_reason IS NOT NULL
+      AND rejection_reason != ''
+    ORDER BY timestamp ASC
+  `;
+  const rejResult = db.exec(rejectionSql, [safeRetentionDays]);
+  const rejCandidates = queryToRows(rejResult);
 
-  return { extracted: extracted.length, details: extracted };
+  const rejectionPatterns = [];
+  // Group by task for dedup
+  const rejTaskGroups = {};
+  for (const obs of rejCandidates) {
+    const taskId = obs.context_task_id || 'unknown';
+    if (!rejTaskGroups[taskId]) rejTaskGroups[taskId] = [];
+    if (rejTaskGroups[taskId].length < 10) rejTaskGroups[taskId].push(obs);
+  }
+
+  for (const [taskId, observations] of Object.entries(rejTaskGroups)) {
+    try {
+      // Dedup check
+      const existingResult = db.exec(
+        `SELECT id FROM facts WHERE category = 'rejection-pattern' AND json_extract(source_context, '$.taskId') = ?`,
+        [taskId]
+      );
+      if (queryToRows(existingResult).length > 0) continue;
+
+      const summaryParts = observations
+        .filter(o => !SENSITIVE_RE.test(o.rejection_reason || '') && !SENSITIVE_RE.test(o.input_summary || ''))
+        .map(o => `${o.tool_name}: ${o.input_summary || ''} — rejected: ${(o.rejection_reason || '').slice(0, 200)}`)
+        .slice(0, 5);
+
+      if (summaryParts.length === 0) continue;
+
+      const factText = `[Rejected approach for ${taskId}] ${summaryParts.join('; ')}`;
+      const factId = generateId('fact');
+      const embedding = await getEmbedding(factText);
+      if (!embedding) continue;
+
+      const rejContext = {
+        taskId,
+        rejectedTools: [...new Set(observations.map(o => o.tool_name))],
+        rejectionCount: observations.length,
+        observationIds: observations.map(o => o.id),
+        timestamp: observations[0].timestamp
+      };
+
+      db.run(`
+        INSERT INTO facts (id, fact, category, scope, model, embedding, source_context, relevance_score)
+        VALUES (?, ?, 'rejection-pattern', 'local', NULL, ?, ?, 0.8)
+      `, [factId, factText, embeddingToJson(embedding), JSON.stringify(rejContext)]);
+
+      rejectionPatterns.push({ factId, taskId, count: observations.length });
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[extractHighValueObservations] Rejection pattern for ${taskId}:`, err.message);
+      }
+    }
+  }
+
+  if (extracted.length > 0 || rejectionPatterns.length > 0) saveDatabase();
+
+  return { extracted: extracted.length, details: extracted, rejectionPatterns: rejectionPatterns.length };
 }
 
 /**
@@ -1780,6 +1853,98 @@ async function purgeOldObservations(retentionDays = 30, extractConfig = {}) {
   saveDatabase();
 
   return { purged, extracted: extractResult.extracted };
+}
+
+/**
+ * Update exploration status and rejection reason for an observation
+ * @param {string} id - Observation ID
+ * @param {string} status - Exploration status ('rejected', 'committed', 'exploring', or null)
+ * @param {string} [reason] - Rejection reason (optional, only used with 'rejected' status)
+ * @returns {Object} - { updated: boolean }
+ */
+async function updateObservationStatus(id, status, reason) {
+  await initDatabase();
+
+  if (!id || typeof id !== 'string') return { updated: false };
+
+  const validStatuses = ['rejected', 'committed', 'exploring', null];
+  if (!validStatuses.includes(status)) return { updated: false };
+
+  db.run(`
+    UPDATE observations
+    SET exploration_status = ?, rejection_reason = ?
+    WHERE id = ?
+  `, [status, reason || null, id]);
+
+  const updated = db.getRowsModified() > 0;
+  if (updated) saveDatabase();
+
+  return { updated };
+}
+
+/**
+ * Update all non-rejected observations for a task to 'committed'
+ * @param {string} taskId - Task ID
+ * @returns {Object} - { committed: number }
+ */
+async function markTaskObservationsCommitted(taskId) {
+  await initDatabase();
+
+  if (!taskId || typeof taskId !== 'string') return { committed: 0 };
+
+  db.run(`
+    UPDATE observations
+    SET exploration_status = 'committed'
+    WHERE context_task_id = ?
+      AND (exploration_status IS NULL OR exploration_status != 'rejected')
+  `, [taskId]);
+
+  const committed = db.getRowsModified();
+  if (committed > 0) saveDatabase();
+
+  return { committed };
+}
+
+/**
+ * Search for rejected observations, optionally filtered by task or file
+ * @param {Object} options - { taskId, filePath, since, limit }
+ * @returns {Object[]} - Rejected observation records
+ */
+async function searchRejectedObservations(options = {}) {
+  await initDatabase();
+  const { taskId, filePath, since, limit = 20 } = options;
+
+  let sql = `SELECT id, tool_name, input_summary, rejection_reason, timestamp, context_task_id
+             FROM observations WHERE exploration_status = 'rejected'`;
+  const params = [];
+
+  if (taskId) {
+    sql += ' AND context_task_id = ?';
+    params.push(taskId);
+  }
+
+  if (filePath) {
+    sql += ' AND input_summary LIKE ?';
+    params.push(`%${filePath}%`);
+  }
+
+  if (since) {
+    sql += ' AND timestamp >= ?';
+    params.push(since);
+  }
+
+  sql += ' ORDER BY timestamp DESC LIMIT ?';
+  params.push(limit);
+
+  const result = db.exec(sql, params);
+  return queryToRows(result).map(obs => ({
+    id: obs.id,
+    toolName: obs.tool_name,
+    inputSummary: obs.input_summary,
+    rejectionReason: obs.rejection_reason,
+    timestamp: obs.timestamp,
+    contextTaskId: obs.context_task_id
+  }));
 }
 
 // ============================================================
@@ -2167,6 +2332,9 @@ module.exports = {
   getObservationStats,
   extractHighValueObservations,
   purgeOldObservations,
+  updateObservationStatus,
+  markTaskObservationsCommitted,
+  searchRejectedObservations,
 
   // Paths
   DB_PATH,

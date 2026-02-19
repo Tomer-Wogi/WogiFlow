@@ -118,6 +118,9 @@ async function fullCompaction(config) {
       }
     );
     console.log(`   ${color('green', '✓')} Extracted ${results.obsExtract.extracted} solution facts, purged ${results.obsExtract.purged} old observations`);
+    if (results.obsExtract.rejectionPatterns > 0) {
+      console.log(`   ${color('green', '✓')} Promoted ${results.obsExtract.rejectionPatterns} rejection patterns to facts`);
+    }
   }
 
   // Record metric
@@ -136,6 +139,9 @@ async function fullCompaction(config) {
   console.log(`Avg Relevance: ${Math.round(beforeStats.avgRelevance * 100)}% → ${Math.round(afterStats.avgRelevance * 100)}%`);
   if (results.obsExtract) {
     console.log(`Solutions:     ${results.obsExtract.extracted} extracted from observations`);
+    if (results.obsExtract.rejectionPatterns > 0) {
+      console.log(`Rejections:    ${results.obsExtract.rejectionPatterns} rejection patterns promoted`);
+    }
   }
 
   console.log(color('green', '\n✓ Compaction complete\n'));

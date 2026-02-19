@@ -12,6 +12,17 @@ const { runValidation } = require('../../core/validation');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { captureObservation } = require('../../core/observation-capture');
 
+function extractErrorMessage(toolResponse) {
+  if (!toolResponse) return 'unknown error';
+  if (typeof toolResponse === 'string') return toolResponse.slice(0, 500);
+  if (toolResponse.error) {
+    return typeof toolResponse.error === 'string'
+      ? toolResponse.error.slice(0, 500)
+      : JSON.stringify(toolResponse.error).slice(0, 500);
+  }
+  return 'tool execution failed';
+}
+
 async function main() {
   const startTime = Date.now();
 
@@ -32,13 +43,22 @@ async function main() {
 
     // CAPTURE OBSERVATION FOR ALL TOOLS (non-blocking)
     // This runs before validation so we capture even if validation fails
+    // Detect tool failure for rejected-approach tagging
+    const toolFailed = !!(
+      toolResponse?.error ||
+      toolResponse?.isError ||
+      (typeof toolResponse === 'string' && toolResponse.toLowerCase().startsWith('error:'))
+    );
+
     try {
       await captureObservation({
         sessionId: parsedInput.sessionId,
         toolName,
         toolInput,
         toolResponse,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
+        explorationStatus: toolFailed ? 'rejected' : undefined,
+        rejectionReason: toolFailed ? extractErrorMessage(toolResponse) : undefined
       });
     } catch (err) {
       // Non-blocking - observation capture should never fail the hook

@@ -42,7 +42,7 @@ const MODEL_STATS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'model-st
  */
 const MODEL_PATTERNS = {
   'claude-opus': ['claude-opus', 'opus', 'claude-3-opus', 'claude-opus-4', 'claude-opus-4-5', 'claude-opus-4-6', 'opus-4.5', 'opus-4.6'],
-  'claude-sonnet': ['claude-sonnet', 'sonnet', 'claude-3-sonnet', 'claude-sonnet-4', 'claude-sonnet-4-5', 'sonnet-4.5'],
+  'claude-sonnet': ['claude-sonnet', 'sonnet', 'claude-3-sonnet', 'claude-sonnet-4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'sonnet-4.5', 'sonnet-4.6'],
   'claude-haiku': ['claude-haiku', 'haiku', 'claude-3-haiku'],
   'gpt-4': ['gpt-4', 'gpt-4-turbo', 'gpt-4o'],
   'gpt-3.5': ['gpt-3.5', 'gpt-3.5-turbo'],

@@ -139,6 +139,16 @@ function handleTaskCompleted(input) {
     } catch {
       // Non-critical - agent teams module may not be available
     }
+
+    // Mark all non-rejected observations for this task as committed (fire-and-forget)
+    try {
+      const memoryDb = require('../../flow-memory-db');
+      memoryDb.markTaskObservationsCommitted(completedTask.id).catch(() => {
+        // Non-critical - silently ignore DB errors
+      });
+    } catch {
+      // Non-critical - memory DB may not be available
+    }
   } catch (err) {
     result.message = `Task completed handler error: ${err.message}`;
   }

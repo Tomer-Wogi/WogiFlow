@@ -69,7 +69,7 @@ async function main() {
     }
 
     // Gather session context
-    const coreResult = gatherSessionContext({
+    const coreResult = await gatherSessionContext({
       includeSuspended: true,
       includeDecisions: true,
       includeActivity: true
