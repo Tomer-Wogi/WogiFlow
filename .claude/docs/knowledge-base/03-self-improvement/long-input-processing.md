@@ -152,7 +152,7 @@ The system will recognize the old `transcriptDigestion` config key and warn abou
 
 ## Related
 
-- [Voice Input](../05-development-tools/voice-input.md) - Recording transcripts
+- [Development Tools](../05-development-tools/README.md) - Available dev tools
 - [Task Execution](../02-task-execution/02-execution-loop.md) - How tasks flow through gates
 
 ---

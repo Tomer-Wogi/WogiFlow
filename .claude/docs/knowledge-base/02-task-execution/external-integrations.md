@@ -133,4 +133,4 @@ When importing, external tasks are mapped to WogiFlow tasks:
 ## Related
 
 - [Task Planning](./01-task-planning.md) - How tasks are structured
-- [Background Sync](./sync-daemon.md) - Automated sync
+- [Future Features](../future-features.md) - Background sync (planned)

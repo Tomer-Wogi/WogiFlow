@@ -97,7 +97,13 @@ function isHeaderRow(name) {
 
 /**
  * Extract component entries from app-map.md
- * Parses markdown tables and lists to find component references
+ * Parses markdown tables and lists to find component references.
+ *
+ * Supports multiple table formats:
+ *   2-col: | Name | path/to/file.tsx |
+ *   4-col: | Component | Variants | path/to/file.tsx | Details |
+ *   (any column containing a file-like path is extracted)
+ *
  * @returns {Object[]} Array of { name, path, type }
  */
 function parseAppMap() {
@@ -106,19 +112,38 @@ function parseAppMap() {
 
   const entries = [];
 
-  // Parse table rows: | ComponentName | path/to/file.tsx | description |
-  const tablePattern = /\|\s*([^|]+?)\s*\|\s*`?([^|`]+\.[a-z]+)`?\s*\|/gi;
-  let match;
-  while ((match = tablePattern.exec(content)) !== null) {
-    const name = match[1].trim();
-    const filePath = match[2].trim();
+  // Parse table rows generically: extract the first column as name,
+  // then find a column containing a file path (with extension).
+  // This handles 2-col, 3-col, and 4-col tables.
+  const lines = content.split('\n');
+  for (const line of lines) {
+    // Must be a table row
+    if (!line.includes('|')) continue;
+    const cells = line.split('|').map(c => c.trim()).filter(c => c.length > 0);
+    if (cells.length < 2) continue;
+
+    const name = cells[0].replace(/`/g, '').trim();
     if (isHeaderRow(name)) continue;
+    // Skip separator rows
+    if (/^[-:]+$/.test(name)) continue;
+    // Skip italic placeholder rows
+    if (name.startsWith('_') && name.endsWith('_')) continue;
+
+    // Find a cell that looks like a file path (contains a dot-extension)
+    const pathCell = cells.find((c, i) => i > 0 && /[a-zA-Z0-9_/-]+\.[a-z]{1,5}/.test(c));
+    if (!pathCell) continue;
+    // Extract the path, stripping backticks, markdown links, etc.
+    const fileMatch = pathCell.match(/`?([^`\s()\[\]]+\.[a-z]{1,5})`?/);
+    if (!fileMatch) continue;
+    const filePath = fileMatch[1].trim();
+
     entries.push({ name, path: filePath, type: 'component', source: 'app-map' });
   }
 
   // Parse list entries: - **ComponentName** (`path/to/file.tsx`)
   // Requires bold marker (**Name**) immediately after bullet to avoid matching prose lines
   const listPattern = /^[-*]\s+\*\*([^*]+)\*\*\s*\(?`([^`]+\.[a-z]+)`\)?/gim;
+  let match;
   while ((match = listPattern.exec(content)) !== null) {
     const name = match[1].trim();
     const filePath = match[2].trim();
@@ -130,6 +155,11 @@ function parseAppMap() {
 
 /**
  * Extract function entries from function-map.md
+ *
+ * Supports two formats:
+ *   Table: | functionName | path/to/file.js | description |
+ *   Heading: ### functionName / **File**: path/to/file.js
+ *
  * @returns {Object[]} Array of { name, path, type }
  */
 function parseFunctionMap() {
@@ -138,7 +168,7 @@ function parseFunctionMap() {
 
   const entries = [];
 
-  // Parse table rows: | functionName | path/to/file.js | description |
+  // Format 1: Table rows: | functionName | path/to/file.js | description |
   const tablePattern = /\|\s*`?([^|`]+?)`?\s*\|\s*`?([^|`]+\.[a-z]+)`?\s*\|/gi;
   let match;
   while ((match = tablePattern.exec(content)) !== null) {
@@ -148,11 +178,46 @@ function parseFunctionMap() {
     entries.push({ name, path: filePath, type: 'function', source: 'function-map' });
   }
 
+  // Format 2: Heading + **File** metadata (actual format used by function-map.md)
+  // ### functionName
+  // **File**: path/to/file.js
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    // Skip fenced code blocks
+    if (lines[i].trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock) continue;
+
+    const headingMatch = lines[i].match(/^###\s+(\w+)/);
+    if (!headingMatch) continue;
+    const name = headingMatch[1];
+    // Look for **File**: in the next few lines
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      if (lines[j].trimStart().startsWith('```')) break;
+      const fileMatch = lines[j].match(/\*\*File\*\*:\s*(.+)/);
+      if (fileMatch) {
+        const filePath = fileMatch[1].trim();
+        entries.push({ name, path: filePath, type: 'function', source: 'function-map' });
+        break;
+      }
+      // Stop if we hit another heading
+      if (lines[j].startsWith('###')) break;
+    }
+  }
+
   return entries;
 }
 
 /**
  * Extract API endpoint entries from api-map.md
+ *
+ * Supports two formats:
+ *   Table: | GET | /api/users | path/to/handler.ts | description |
+ *   Heading: ### GET /api/users / **File**: path/to/handler.ts
+ *
  * @returns {Object[]} Array of { name, path, type, method, endpoint }
  */
 function parseApiMap() {
@@ -161,7 +226,7 @@ function parseApiMap() {
 
   const entries = [];
 
-  // Parse table rows: | GET | /api/users | path/to/handler.ts | description |
+  // Format 1: Table rows: | GET | /api/users | path/to/handler.ts | description |
   const tablePattern = /\|\s*(GET|POST|PUT|PATCH|DELETE)\s*\|\s*([^|]+?)\s*\|\s*`?([^|`]+\.[a-z]+)`?\s*\|/gi;
   let match;
   while ((match = tablePattern.exec(content)) !== null) {
@@ -177,6 +242,42 @@ function parseApiMap() {
       endpoint,
       source: 'api-map'
     });
+  }
+
+  // Format 2: Heading + **File** metadata (actual format used by api-map.md)
+  // ### GET /api/users
+  // **File**: path/to/handler.ts
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trimStart().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      continue;
+    }
+    if (inCodeBlock) continue;
+
+    const headingMatch = lines[i].match(/^###\s+(GET|POST|PUT|PATCH|DELETE)\s+(\S+)/i);
+    if (!headingMatch) continue;
+    const method = headingMatch[1].toUpperCase();
+    const endpoint = headingMatch[2];
+    // Look for **File**: in the next few lines
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      if (lines[j].trimStart().startsWith('```')) break;
+      const fileMatch = lines[j].match(/\*\*File\*\*:\s*(.+)/);
+      if (fileMatch) {
+        const filePath = fileMatch[1].trim();
+        entries.push({
+          name: `${method} ${endpoint}`,
+          path: filePath,
+          type: 'api',
+          method,
+          endpoint,
+          source: 'api-map'
+        });
+        break;
+      }
+      if (lines[j].startsWith('###')) break;
+    }
   }
 
   return entries;

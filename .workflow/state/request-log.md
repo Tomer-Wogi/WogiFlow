@@ -13,6 +13,16 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-114 | 2026-02-20 00:15
+**Type**: fix
+**Tags**: #quality #codex-review #consistency #verification #dead-code
+**Task**: wf-6b2aa8d3
+**Request**: "Fix all Codex review findings (P0-P2) and remove remaining dead config/code"
+**Result**: Fixed 8 Codex review findings. [P0] Rewrote cross-artifact consistency parsers to handle actual map formats (heading+metadata and multi-column tables) instead of strict 2-column tables - now finds 10 real entries. [P1] Fixed flow-bridge.js sync arg parsing to skip flags when looking for CLI type. [P1] Fixed flow-review.js --verify-only to exit(1) when gates fail. [P1] Marked adversarial review config as AI-instruction-only (not runtime-enforced). [P2] Fixed bridge status config path. [P2] Fixed 3 broken KB links. [P2] Fixed flow-verify.js treating missing tool as pass. Removed 4 dead config keys (parallelDispatch, browserTesting, tdd, onboard.temporal). Deleted dead hook (long-input-gate.js). Cleaned references in 4 command files.
+**Files**: scripts/flow-consistency-check.js, scripts/flow-bridge.js, scripts/flow-review.js, scripts/flow-verify.js, scripts/flow-skill-matcher.js, scripts/hooks/core/long-input-gate.js (deleted), .workflow/config.json, .claude/docs/knowledge-base/02-task-execution/01-task-planning.md, .claude/docs/knowledge-base/02-task-execution/external-integrations.md, .claude/docs/knowledge-base/03-self-improvement/long-input-processing.md, .claude/commands/wogi-onboard.md, .claude/commands/wogi-init.md, .claude/commands/wogi-test-browser.md
+
+---
+
 ### R-113 | 2026-02-19 23:30
 **Type**: refactor
 **Tags**: #cleanup #dead-code #multi-cli #documentation

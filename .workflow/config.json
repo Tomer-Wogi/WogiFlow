@@ -651,13 +651,6 @@
       "requireJustification": true
     }
   },
-  "onboard": {
-    "temporal": {
-      "currentMonths": 6,
-      "transitionalMonths": 18,
-      "autoResolveThreshold": 0.7
-    }
-  },
   "crossSessionLearning": {
     "enabled": true,
     "lookbackDays": 30,
@@ -1113,15 +1106,6 @@
       }
     }
   },
-  "parallelDispatch": {
-    "enabled": true,
-    "maxConcurrent": 3,
-    "taskTimeout": 300000,
-    "minIndependenceConfidence": 0.7,
-    "aggregationStrategy": "merge",
-    "retryOnFailure": true,
-    "maxRetries": 2
-  },
   "contextScoring": {
     "enabled": true,
     "maxContextTokens": 100000,
@@ -1416,12 +1400,12 @@
   "review": {
     "specFirstGating": true,
     "minFindings": 3,
-    "_comment_minFindings": "Adversarial review: each agent must find at least this many findings or justify why fewer exist. Prevents lazy 'looks good' reviews.",
+    "_comment_minFindings": "AI-instruction-only (not enforced by runtime code). Guides AI review agents to find at least this many findings or justify why fewer exist.",
     "requireJustificationIfClean": true,
-    "_comment_requireJustificationIfClean": "When an agent finds fewer than minFindings, it must provide a written justification explaining why the code is genuinely clean.",
+    "_comment_requireJustificationIfClean": "AI-instruction-only (not enforced by runtime code). Guides AI agents to justify when finding fewer than minFindings.",
     "gitVerifiedClaims": {
       "enabled": true,
-      "_comment_gitVerifiedClaims": "Cross-reference spec completion claims against actual git diff. Catches false 'done' claims where spec says file was created but git diff shows no changes.",
+      "_comment_gitVerifiedClaims": "AI-instruction-only (not enforced by runtime code). Intended to cross-reference spec claims against git diff. Not yet implemented.",
       "verifyFileCreation": true,
       "verifyContentMatch": true,
       "blockOnMismatch": true
@@ -1602,14 +1586,6 @@
     "maxToolCalls": 20,
     "uiExtensions": [".tsx", ".jsx", ".vue", ".svelte"]
   },
-  "browserTesting": {
-    "enabled": false,
-    "runOnTaskComplete": false,
-    "runForUITasks": false,
-    "flowsPath": ".workflow/tests/flows/",
-    "stopOnFail": true,
-    "timeout": 30000
-  },
   "research": {
     "enabled": true,
     "defaultDepth": "standard",
@@ -1643,16 +1619,6 @@
     "budgetMode": "soft",
     "negativeEvidenceRule": true,
     "assumptionTracking": true
-  },
-  "tdd": {
-    "enforced": false,
-    "_comment_enforced": "When true, enforces test-first development: write test -> verify test fails -> implement -> verify test passes. Opt-in per-task via --tdd flag.",
-    "defaultForTypes": [],
-    "_comment_defaultForTypes": "Task types that default to TDD mode (e.g., ['bugfix', 'feature']). Empty means opt-in only.",
-    "requireFailingTestFirst": true,
-    "_comment_requireFailingTestFirst": "When TDD is active, block implementation until at least one failing test exists for the acceptance criterion.",
-    "testFrameworkDetection": true,
-    "_comment_testFrameworkDetection": "Auto-detect test framework from package.json (jest, vitest, mocha, etc.)."
   },
   "decisions": {
     "amendmentTracking": {

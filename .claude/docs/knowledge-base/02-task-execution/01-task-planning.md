@@ -255,5 +255,5 @@ For complex tasks, analyze multiple implementation approaches before committing.
 ## Related
 
 - [Execution Loop](./02-execution-loop.md) - How tasks are executed
-- [Story Writer Agent](../../../agents/story-writer.md) - Story creation guidelines
+- [Story Writer Agent](../../../../agents/story-writer.md) - Story creation guidelines
 - [Configuration Reference](../configuration/all-options.md) - All config options

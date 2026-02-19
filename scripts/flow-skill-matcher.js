@@ -128,8 +128,8 @@ const DEFAULT_TRIGGERS = {
     taskTypes: ['feature'],
     categories: ['design', 'ui']
   }
-  // Note: transcript/long-input processing is now handled by long-input-gate hook,
-  // not as a skill. See scripts/hooks/core/long-input-gate.js
+  // Note: transcript/long-input processing is handled by the longInputGate config,
+  // not as a skill. See config.longInputGate in .workflow/config.json
 };
 
 // ============================================================

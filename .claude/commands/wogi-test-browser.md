@@ -309,13 +309,11 @@ Controlled by `.workflow/config.json`:
 
 ```json
 {
-  "browserTesting": {
+  "webmcp": {
     "enabled": true,
-    "runOnTaskComplete": true,
-    "runForUITasks": true,
-    "flowsPath": ".workflow/tests/flows/",
-    "stopOnFail": true,
-    "timeout": 30000
+    "toolsPath": ".workflow/webmcp/tools.json",
+    "fallbackEnabled": true,
+    "maxToolCalls": 20
   }
 }
 ```

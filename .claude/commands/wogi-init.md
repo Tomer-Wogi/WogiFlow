@@ -764,14 +764,6 @@ if (webmcpFrameworks.some(f => normalizedFrontend.includes(f))) {
     fallbackEnabled: true,
     maxToolCalls: 20
   };
-  config.browserTesting = {
-    enabled: true,
-    runOnTaskComplete: true,
-    runForUITasks: true,
-    flowsPath: ".workflow/tests/flows/",
-    stopOnFail: true,
-    timeout: 30000
-  };
 }
 ```
 

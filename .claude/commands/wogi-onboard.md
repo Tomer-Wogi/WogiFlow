@@ -123,7 +123,7 @@ Display:
    After extraction, classify each pattern using its `lastSeen` date:
 
    ```javascript
-   // Configurable thresholds (see config.onboard.temporal)
+   // Configurable thresholds
    const CURRENT_MONTHS = 6;       // Default: patterns seen in last 6 months
    const TRANSITIONAL_MONTHS = 18; // Default: patterns seen 6-18 months ago
    // Anything older than TRANSITIONAL_MONTHS is "legacy"
@@ -588,14 +588,6 @@ Display:
         toolsPath: ".workflow/webmcp/tools.json",
         fallbackEnabled: true,
         maxToolCalls: 20
-      };
-      config.browserTesting = {
-        enabled: true,
-        runOnTaskComplete: true,
-        runForUITasks: true,
-        flowsPath: ".workflow/tests/flows/",
-        stopOnFail: true,
-        timeout: 30000
       };
       // Auto-generate initial WebMCP tool definitions
       // Run: flow webmcp-generate scan

@@ -427,8 +427,9 @@ Configure in config.json under review.autoMultiPass.
   const specFirstGating = config.review?.specFirstGating !== false;
 
   // Run verification gates
+  let gateResults = null;
   if (!skipVerify) {
-    const gateResults = runVerificationGates(changedFiles, { taskId });
+    gateResults = runVerificationGates(changedFiles, { taskId });
     console.log(formatGateResults(gateResults));
     console.log('');
 
@@ -456,8 +457,12 @@ Configure in config.json under review.autoMultiPass.
     }
   }
 
-  // If verify-only, stop here
+  // If verify-only, stop here with appropriate exit code
   if (verifyOnly) {
+    if (gateResults && !gateResults.allPassed) {
+      console.log(color('yellow', '⚠ Verification complete with failures.'));
+      process.exit(1);
+    }
     console.log(color('green', '✓ Verification complete.'));
     process.exit(0);
   }

@@ -881,8 +881,9 @@ async function runGate(gateName, options = {}) {
   const cmdConfig = detectCommand(gateConfig);
 
   if (!cmdConfig) {
-    result.passed = true;
-    result.warnings = [{ message: `No tool detected for ${gateName}, skipping` }];
+    result.passed = false;
+    result.skipped = true;
+    result.warnings = [{ message: `No tool detected for ${gateName}, skipping (treated as not passed)` }];
     return result;
   }
 

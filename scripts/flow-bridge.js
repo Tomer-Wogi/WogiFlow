@@ -92,13 +92,13 @@ function listBridges() {
 function showStatus() {
   const config = getConfig();
   const cliType = config.cli?.type || 'claude-code';
-  const bridgeConfig = config.cli?.bridge || {};
+  const autoSyncConfig = config.cli?.autoSync || {};
 
   console.log(`${colors.bold}CLI Bridge Status${colors.reset}`);
   console.log('');
   console.log(`  CLI Type:        ${colors.cyan}${cliType}${colors.reset}`);
-  console.log(`  Auto Sync:       ${bridgeConfig.autoSync ? colors.green + 'enabled' : colors.yellow + 'disabled'}${colors.reset}`);
-  console.log(`  Sync on Change:  ${bridgeConfig.syncOnConfigChange ? colors.green + 'enabled' : colors.yellow + 'disabled'}${colors.reset}`);
+  console.log(`  Auto Sync:       ${autoSyncConfig.enabled ? colors.green + 'enabled' : colors.yellow + 'disabled'}${colors.reset}`);
+  console.log(`  Sync on Start:   ${autoSyncConfig.onSessionStart ? colors.green + 'enabled' : colors.yellow + 'disabled'}${colors.reset}`);
   console.log('');
 
   // Check if bridge file exists
@@ -136,9 +136,10 @@ async function syncBridge(options = {}) {
   const verbose = options.verbose || process.argv.includes('--verbose') || process.argv.includes('-v');
   const force = options.force || process.argv.includes('--force') || process.argv.includes('-f');
 
-  // Check for CLI type argument (e.g., "flow bridge sync gemini")
-  const cliTypeArg = process.argv[3];
-  const requestedCliType = normalizeCliType(cliTypeArg);
+  // Check for CLI type argument (e.g., "flow bridge sync claude-code")
+  // Skip flags (--force, -f, --verbose, -v) when looking for CLI type
+  const cliTypeArg = process.argv.slice(3).find(arg => !arg.startsWith('-'));
+  const requestedCliType = cliTypeArg ? normalizeCliType(cliTypeArg) : null;
 
   if (cliTypeArg && !requestedCliType) {
     console.error(`${colors.red}Error:${colors.reset} Unknown CLI type: ${cliTypeArg}`);
