@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-093 | 2026-02-19 16:56
+**Type**: new
+**Tags**: #feature:init-onboard #wf-init-s2 #epic:epic-init-onboard #pattern-extraction #deep-mode #git-blame
+**Request**: "Extend pattern extractor with missing categories and deep mode (Epic: Complete Init/Onboard 100% Coverage, Story 2/5)"
+**Result**: Extended flow-pattern-extractor.js from 4 to 10 pattern categories. Added 6 new extractors: extractTypePatterns (interface prefix, type naming, enum naming, generics), extractExportPatterns (default/named, barrel files, module system), extractTestPatterns (file naming, organization, assertions, mocking, setup), extractFolderPatterns (feature-first vs type-first, co-location, index files), extractCommentPatterns (doc style, inline, headers, TODOs), extractConfigPatterns (env style, validation, defaults). Expanded extractApiPatterns with response envelope detection (data-meta, result-status), pagination patterns (page-limit, cursor, offset), error format detection (error-message, errors-array, code-message), and HTTP status code conventions. Wired _getGitFileDate() with caching for deep mode — patterns scored by git commit dates instead of unreliable file mtime. Added _currentAnalysisMode module-level variable set by extractPatterns(). Updated getPatternDescription() with 60+ new descriptions. All 8 acceptance criteria verified.
+**Files**: scripts/flow-pattern-extractor.js
+
 ### R-092 | 2026-02-19 16:45
 **Type**: new
 **Tags**: #feature:init-onboard #wf-init-s1 #epic:epic-init-onboard #persistence-pipeline #pattern-extraction #function-map #api-map

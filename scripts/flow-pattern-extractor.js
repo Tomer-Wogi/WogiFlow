@@ -3,11 +3,17 @@
 /**
  * Wogi Flow - Pattern Extraction Engine
  *
- * Scans codebases to extract patterns across 4 categories:
+ * Scans codebases to extract patterns across 10 categories:
  * - Code patterns (naming, error handling, imports)
- * - API patterns (endpoints, responses, validation)
+ * - API patterns (endpoints, responses, pagination, error format, status codes)
  * - Component patterns (props, hooks, state)
  * - Architecture patterns (file org, modules, layers)
+ * - Type patterns (interface prefix, type naming, enums, generics)
+ * - Export patterns (default vs named, barrel files, module system)
+ * - Test patterns (file naming, organization, assertions, mocking)
+ * - Folder patterns (feature-first vs type-first, co-location)
+ * - Comment patterns (doc style, inline, headers, TODOs)
+ * - Config patterns (env style, validation, defaults)
  *
  * Detects conflicts between old and new code patterns,
  * provides recommendations based on frequency/recency/best practices.
@@ -19,7 +25,7 @@
  * Options:
  *   --output <file>        Output file (default: stdout)
  *   --format <format>      Output format: json, markdown, decisions (default: json)
- *   --categories <cats>    Categories: code,api,component,architecture (default: all)
+ *   --categories <cats>    Categories: code,api,component,architecture,types,exports,tests,folders,comments,config (default: all)
  *   --framework <name>     Framework: auto, react, nestjs, python (default: auto)
  *   --with-conflicts       Include conflict analysis
  *   --resolve-conflicts    Interactive conflict resolution (uses flow-conflict-resolver)
@@ -39,6 +45,12 @@ const crypto = require('crypto');
 
 const DEFAULT_MAX_FILES = 1000;
 const DEFAULT_ANALYSIS_MODE = 'balanced';
+
+// Module-level analysis mode (set by extractPatterns, read by addPatternOccurrence)
+let _currentAnalysisMode = DEFAULT_ANALYSIS_MODE;
+
+// Cache for git file dates to avoid repeated git calls
+const _gitFileDateCache = new Map();
 
 // Pattern detection thresholds
 const MIN_PATTERN_FREQUENCY = 0.05;  // At least 5% of files must use pattern
@@ -263,6 +275,40 @@ function _getGitBlameDate(projectRoot, filePath, lineNumber) {
 }
 
 /**
+ * Get file's last commit date via git log (more reliable than mtime after git clone)
+ */
+function _getGitFileDate(projectRoot, filePath) {
+  const key = `${projectRoot}:${filePath}`;
+  if (_gitFileDateCache.has(key)) {
+    return _gitFileDateCache.get(key);
+  }
+
+  try {
+    const output = execFileSync('git', [
+      'log', '-1', '--format=%at', '--', filePath
+    ], {
+      encoding: 'utf-8',
+      cwd: projectRoot,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    const timestamp = parseInt(output.trim(), 10);
+    if (!isNaN(timestamp) && timestamp > 0) {
+      const date = new Date(timestamp * 1000);
+      _gitFileDateCache.set(key, date);
+      return date;
+    }
+  } catch {
+    // Git log failed (not a git repo, file not tracked, etc.)
+  }
+
+  // Fallback to mtime
+  const date = getFileMtime(projectRoot, filePath);
+  _gitFileDateCache.set(key, date);
+  return date;
+}
+
+/**
  * Get file modification time
  */
 function getFileMtime(projectRoot, filePath) {
@@ -461,10 +507,13 @@ function addPatternOccurrence(patternMap, patternName, file, projectRoot) {
 
   patternMap[patternName].files.push(file);
 
-  // Track most recent
-  const mtime = getFileMtime(projectRoot, file);
-  if (!patternMap[patternName].mtime || mtime > patternMap[patternName].mtime) {
-    patternMap[patternName].mtime = mtime;
+  // Track most recent - use git dates in deep mode for reliable recency
+  const fileDate = _currentAnalysisMode === 'deep'
+    ? _getGitFileDate(projectRoot, file)
+    : getFileMtime(projectRoot, file);
+
+  if (!patternMap[patternName].mtime || fileDate > patternMap[patternName].mtime) {
+    patternMap[patternName].mtime = fileDate;
   }
 }
 
@@ -520,6 +569,137 @@ function getPatternDescription(subcategory, name) {
       'relative': 'Imports use relative paths (./file)',
       'absolute': 'Imports use absolute paths',
       'absolute-alias': 'Imports use path aliases (@/ or ~/)'
+    },
+    // API patterns
+    'api.naming': {
+      'kebab-case-routes': 'API routes use kebab-case (/my-resource)',
+      'snake_case-routes': 'API routes use snake_case (/my_resource)',
+      'camelCase-routes': 'API routes use camelCase (/myResource)'
+    },
+    'api.response-format': {
+      'wrapped-response': 'API responses wrapped with success flag',
+      'data-wrapper': 'API responses wrapped in { data: ... }',
+      'data-meta-envelope': 'API responses use { data, meta } envelope',
+      'result-status-envelope': 'API responses use { result, status } envelope'
+    },
+    'api.error-format': {
+      'error-message-object': 'Errors returned as { error, message }',
+      'errors-array': 'Errors returned as { errors: [...] }',
+      'code-message-pair': 'Errors returned as { code, message }'
+    },
+    'api.pagination': {
+      'page-limit': 'Pagination uses page/limit parameters',
+      'cursor-based': 'Pagination uses cursor-based approach',
+      'offset-limit': 'Pagination uses offset/limit parameters'
+    },
+    'api.status-codes': {
+      '201-on-create': 'Returns 201 for resource creation',
+      '204-no-content': 'Returns 204 for no-content responses',
+      '422-validation': 'Returns 422 for validation errors',
+      '400-validation': 'Returns 400 for validation errors'
+    },
+    // Type patterns
+    'types.interface-prefix': {
+      'I-prefix': 'Interfaces use I-prefix (IUser, IConfig)',
+      'no-prefix': 'Interfaces have no prefix (User, Config)'
+    },
+    'types.type-naming': {
+      'T-prefix': 'Type aliases use T-prefix (TUser, TConfig)',
+      'PascalCase': 'Type aliases use PascalCase (User, Config)'
+    },
+    'types.enum-naming': {
+      'SCREAMING_SNAKE': 'Enum members use SCREAMING_SNAKE_CASE',
+      'PascalCase': 'Enum members use PascalCase'
+    },
+    'types.generic-naming': {
+      'single-letter': 'Generics use single letters (T, K, V)',
+      'T-prefix-descriptive': 'Generics use T-prefix descriptive names (TProps, TState)'
+    },
+    // Export patterns
+    'exports.style': {
+      'default-export': 'Modules use default exports',
+      'named-exports': 'Modules use named exports'
+    },
+    'exports.barrel': {
+      'barrel-index': 'Directories use barrel index files for re-exports'
+    },
+    'exports.module-system': {
+      'commonjs': 'Uses CommonJS (module.exports/require)',
+      'esm': 'Uses ES Modules (import/export)'
+    },
+    // Test patterns
+    'tests.file-naming': {
+      'dot-test': 'Test files use .test.ts naming',
+      'dot-spec': 'Test files use .spec.ts naming',
+      '__tests__-dir': 'Tests placed in __tests__/ directories'
+    },
+    'tests.organization': {
+      'nested-describes': 'Tests use deeply nested describe blocks',
+      'flat-describes': 'Tests use flat describe blocks',
+      'should-style': 'Test names use "should" prefix',
+      'descriptive-style': 'Test names use plain descriptions'
+    },
+    'tests.assertion': {
+      'expect': 'Tests use expect() assertions (Jest/Vitest)',
+      'assert': 'Tests use assert() assertions (Node/Chai)'
+    },
+    'tests.mocking': {
+      'jest-mock': 'Uses jest.mock() for mocking',
+      'jest-spyOn': 'Uses jest.spyOn() for spying',
+      'sinon': 'Uses Sinon.js for mocking/stubbing',
+      'vitest': 'Uses Vitest vi.mock()/vi.spyOn()'
+    },
+    'tests.setup': {
+      'beforeEach': 'Uses beforeEach for test setup',
+      'beforeAll': 'Uses beforeAll for suite setup',
+      'afterEach': 'Uses afterEach for teardown'
+    },
+    // Folder patterns
+    'folders.organization': {
+      'feature-first': 'Project uses feature-first directory organization',
+      'type-first': 'Project uses type-first directory organization (components/, services/)'
+    },
+    'folders.colocation': {
+      'colocated': 'Tests are co-located next to source files',
+      'separate-test-dir': 'Tests are in separate test directories'
+    },
+    'folders.index-files': {
+      'index-per-dir': 'Directories use index files for exports'
+    },
+    // Comment patterns
+    'comments.doc-style': {
+      'jsdoc': 'Uses JSDoc with @param/@returns annotations',
+      'block-comments': 'Uses block comments (/** ... */) without tags',
+      'docstrings': 'Uses Python docstrings for documentation'
+    },
+    'comments.inline-style': {
+      'double-slash': 'Uses // for inline comments',
+      'block-inline': 'Uses /* */ for inline comments'
+    },
+    'comments.file-header': {
+      'has-header': 'Files have header comments/shebangs'
+    },
+    'comments.todo-style': {
+      'TODO': 'Uses TODO markers for pending work',
+      'FIXME': 'Uses FIXME markers for known issues',
+      'HACK': 'Uses HACK markers for workarounds'
+    },
+    // Config patterns
+    'config.env-style': {
+      'dotenv': 'Uses .env files for environment configuration',
+      'config-dir': 'Uses dedicated config/ directory'
+    },
+    'config.env-naming': {
+      'SCREAMING_SNAKE': 'Environment variables use SCREAMING_SNAKE_CASE'
+    },
+    'config.validation': {
+      'joi': 'Uses Joi for config/input validation',
+      'zod': 'Uses Zod for config/input validation',
+      'class-validator': 'Uses class-validator decorators'
+    },
+    'config.defaults': {
+      'or-fallback': 'Uses || operator for default values',
+      'nullish-coalescing': 'Uses ?? operator for default values'
     }
   };
 
@@ -537,7 +717,9 @@ function extractApiPatterns(projectRoot, files, options = {}) {
   const patterns = {
     'api.naming': {},
     'api.response-format': {},
-    'api.error-format': {}
+    'api.error-format': {},
+    'api.pagination': {},
+    'api.status-codes': {}
   };
 
   const framework = options.framework || 'unknown';
@@ -582,13 +764,55 @@ function extractApiPatterns(projectRoot, files, options = {}) {
     }
 
     // Response patterns
-    if (content.includes('res.json') || content.includes('res.send')) {
-      // Check for wrapped responses
+    if (content.includes('res.json') || content.includes('res.send') || content.includes('res.status')) {
+      // Wrapped response envelopes
       if (content.includes('success:') || content.includes('"success"')) {
         addPatternOccurrence(patterns['api.response-format'], 'wrapped-response', file, projectRoot);
       }
       if (content.includes('data:') || content.includes('"data"')) {
         addPatternOccurrence(patterns['api.response-format'], 'data-wrapper', file, projectRoot);
+      }
+      if (/\bmeta\s*:/.test(content) && /\bdata\s*:/.test(content)) {
+        addPatternOccurrence(patterns['api.response-format'], 'data-meta-envelope', file, projectRoot);
+      }
+      if (/\bresult\s*:/.test(content) && /\bstatus\s*:/.test(content)) {
+        addPatternOccurrence(patterns['api.response-format'], 'result-status-envelope', file, projectRoot);
+      }
+
+      // Error response format
+      if (/\berror\s*:/.test(content) && /\bmessage\s*:/.test(content)) {
+        addPatternOccurrence(patterns['api.error-format'], 'error-message-object', file, projectRoot);
+      }
+      if (/\berrors\s*:\s*\[/.test(content)) {
+        addPatternOccurrence(patterns['api.error-format'], 'errors-array', file, projectRoot);
+      }
+      if (/\bcode\s*:/.test(content) && /\bmessage\s*:/.test(content)) {
+        addPatternOccurrence(patterns['api.error-format'], 'code-message-pair', file, projectRoot);
+      }
+
+      // Pagination patterns
+      if (/\bpage\b/.test(content) && /\blimit\b/.test(content)) {
+        addPatternOccurrence(patterns['api.pagination'], 'page-limit', file, projectRoot);
+      }
+      if (/\bcursor\b/.test(content) || /\bnextCursor\b/.test(content)) {
+        addPatternOccurrence(patterns['api.pagination'], 'cursor-based', file, projectRoot);
+      }
+      if (/\boffset\b/.test(content) && /\blimit\b/.test(content)) {
+        addPatternOccurrence(patterns['api.pagination'], 'offset-limit', file, projectRoot);
+      }
+
+      // HTTP status code patterns
+      if (/res\.status\(201\)/.test(content)) {
+        addPatternOccurrence(patterns['api.status-codes'], '201-on-create', file, projectRoot);
+      }
+      if (/res\.status\(204\)/.test(content)) {
+        addPatternOccurrence(patterns['api.status-codes'], '204-no-content', file, projectRoot);
+      }
+      if (/res\.status\(422\)/.test(content)) {
+        addPatternOccurrence(patterns['api.status-codes'], '422-validation', file, projectRoot);
+      }
+      if (/res\.status\(400\)/.test(content)) {
+        addPatternOccurrence(patterns['api.status-codes'], '400-validation', file, projectRoot);
       }
     }
 
@@ -742,6 +966,423 @@ function extractArchitecturePatterns(projectRoot, files, _options = {}) {
   }
 
   return aggregatePatterns(patterns, 'architecture', files.length);
+}
+
+// ============================================================================
+// Type/Interface Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract type/interface patterns: naming, prefixes, enums, generics
+ */
+function extractTypePatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'types.interface-prefix': {},
+    'types.type-naming': {},
+    'types.enum-naming': {},
+    'types.generic-naming': {}
+  };
+
+  for (const file of files) {
+    const ext = path.extname(file);
+    if (!['.ts', '.tsx'].includes(ext)) continue;
+
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+
+    // Interface prefix: IUser vs User
+    const interfaceMatches = content.matchAll(/\binterface\s+([A-Z][a-zA-Z0-9]*)/g);
+    for (const match of interfaceMatches) {
+      const name = match[1];
+      if (/^I[A-Z]/.test(name)) {
+        addPatternOccurrence(patterns['types.interface-prefix'], 'I-prefix', file, projectRoot);
+      } else {
+        addPatternOccurrence(patterns['types.interface-prefix'], 'no-prefix', file, projectRoot);
+      }
+    }
+
+    // Type alias naming: TUser vs PascalCase
+    const typeMatches = content.matchAll(/\btype\s+([A-Z][a-zA-Z0-9]*)\s*[=<]/g);
+    for (const match of typeMatches) {
+      const name = match[1];
+      if (/^T[A-Z]/.test(name)) {
+        addPatternOccurrence(patterns['types.type-naming'], 'T-prefix', file, projectRoot);
+      } else {
+        addPatternOccurrence(patterns['types.type-naming'], 'PascalCase', file, projectRoot);
+      }
+    }
+
+    // Enum member naming: SCREAMING_SNAKE vs PascalCase
+    const enumMatches = content.matchAll(/\benum\s+[A-Z][a-zA-Z0-9]*\s*\{([^}]*)\}/g);
+    for (const match of enumMatches) {
+      const body = match[1];
+      if (/\b[A-Z][A-Z0-9_]{2,}\b/.test(body)) {
+        addPatternOccurrence(patterns['types.enum-naming'], 'SCREAMING_SNAKE', file, projectRoot);
+      }
+      if (/\b[A-Z][a-z][a-zA-Z0-9]+\s*[=,}]/.test(body)) {
+        addPatternOccurrence(patterns['types.enum-naming'], 'PascalCase', file, projectRoot);
+      }
+    }
+
+    // Generic parameter naming: T vs TProps
+    const genericMatches = content.matchAll(/<\s*([A-Z][a-zA-Z0-9]*)\s*(?:extends|,|>)/g);
+    for (const match of genericMatches) {
+      const name = match[1];
+      if (/^[TKVUE]$/.test(name)) {
+        addPatternOccurrence(patterns['types.generic-naming'], 'single-letter', file, projectRoot);
+      } else if (/^T[A-Z]/.test(name)) {
+        addPatternOccurrence(patterns['types.generic-naming'], 'T-prefix-descriptive', file, projectRoot);
+      }
+    }
+  }
+
+  return aggregatePatterns(patterns, 'types', files.length);
+}
+
+// ============================================================================
+// Export Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract export patterns: default vs named, barrel files, module system
+ */
+function extractExportPatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'exports.style': {},
+    'exports.barrel': {},
+    'exports.module-system': {}
+  };
+
+  for (const file of files) {
+    const ext = path.extname(file);
+    if (!['.js', '.jsx', '.ts', '.tsx', '.mjs'].includes(ext)) continue;
+
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+
+    const basename = path.basename(file);
+
+    // Export style: default vs named
+    if (/\bexport\s+default\b/.test(content)) {
+      addPatternOccurrence(patterns['exports.style'], 'default-export', file, projectRoot);
+    }
+    if (/\bexport\s+(const|function|class|type|interface|enum)\s/.test(content)) {
+      addPatternOccurrence(patterns['exports.style'], 'named-exports', file, projectRoot);
+    }
+
+    // Barrel files (index.ts that re-exports)
+    if (/^index\.(ts|js|tsx|jsx)$/.test(basename)) {
+      const reExportCount = (content.match(/export\s+(\{[^}]+\}\s+from|[\s\S]*?\*\s+from)/g) || []).length;
+      if (reExportCount > 0) {
+        addPatternOccurrence(patterns['exports.barrel'], 'barrel-index', file, projectRoot);
+      }
+    }
+
+    // Module system: ESM vs CJS
+    if (content.includes('module.exports') || /\bexports\./.test(content)) {
+      addPatternOccurrence(patterns['exports.module-system'], 'commonjs', file, projectRoot);
+    }
+    if (/^import\s/m.test(content) || /^export\s/m.test(content)) {
+      addPatternOccurrence(patterns['exports.module-system'], 'esm', file, projectRoot);
+    }
+  }
+
+  return aggregatePatterns(patterns, 'exports', files.length);
+}
+
+// ============================================================================
+// Test Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract test patterns: file naming, organization, assertions, mocking
+ */
+function extractTestPatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'tests.file-naming': {},
+    'tests.organization': {},
+    'tests.assertion': {},
+    'tests.mocking': {},
+    'tests.setup': {}
+  };
+
+  const testFiles = files.filter(f =>
+    f.includes('.test.') || f.includes('.spec.') || f.includes('__tests__/')
+  );
+
+  for (const file of testFiles) {
+    // File naming pattern
+    if (file.includes('.test.')) {
+      addPatternOccurrence(patterns['tests.file-naming'], 'dot-test', file, projectRoot);
+    }
+    if (file.includes('.spec.')) {
+      addPatternOccurrence(patterns['tests.file-naming'], 'dot-spec', file, projectRoot);
+    }
+    if (file.includes('__tests__/')) {
+      addPatternOccurrence(patterns['tests.file-naming'], '__tests__-dir', file, projectRoot);
+    }
+
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+
+    // Assertion style
+    if (content.includes('expect(')) {
+      addPatternOccurrence(patterns['tests.assertion'], 'expect', file, projectRoot);
+    }
+    if (content.includes('assert.') || content.includes('assert(')) {
+      addPatternOccurrence(patterns['tests.assertion'], 'assert', file, projectRoot);
+    }
+
+    // Mocking patterns
+    if (content.includes('jest.mock(')) {
+      addPatternOccurrence(patterns['tests.mocking'], 'jest-mock', file, projectRoot);
+    }
+    if (content.includes('jest.spyOn(')) {
+      addPatternOccurrence(patterns['tests.mocking'], 'jest-spyOn', file, projectRoot);
+    }
+    if (content.includes('sinon.')) {
+      addPatternOccurrence(patterns['tests.mocking'], 'sinon', file, projectRoot);
+    }
+    if (content.includes('vi.mock(') || content.includes('vi.spyOn(')) {
+      addPatternOccurrence(patterns['tests.mocking'], 'vitest', file, projectRoot);
+    }
+
+    // Setup/teardown
+    if (content.includes('beforeEach(')) {
+      addPatternOccurrence(patterns['tests.setup'], 'beforeEach', file, projectRoot);
+    }
+    if (content.includes('beforeAll(')) {
+      addPatternOccurrence(patterns['tests.setup'], 'beforeAll', file, projectRoot);
+    }
+    if (content.includes('afterEach(')) {
+      addPatternOccurrence(patterns['tests.setup'], 'afterEach', file, projectRoot);
+    }
+
+    // Describe nesting
+    const describeCount = (content.match(/\bdescribe\(/g) || []).length;
+    if (describeCount > 2) {
+      addPatternOccurrence(patterns['tests.organization'], 'nested-describes', file, projectRoot);
+    } else if (describeCount >= 1) {
+      addPatternOccurrence(patterns['tests.organization'], 'flat-describes', file, projectRoot);
+    }
+
+    // Test naming style
+    if (/\bit\(\s*['"]should\s/.test(content)) {
+      addPatternOccurrence(patterns['tests.organization'], 'should-style', file, projectRoot);
+    } else if (/\bit\(\s*['"][a-z]/.test(content)) {
+      addPatternOccurrence(patterns['tests.organization'], 'descriptive-style', file, projectRoot);
+    }
+  }
+
+  return aggregatePatterns(patterns, 'tests', testFiles.length || 1);
+}
+
+// ============================================================================
+// Folder Convention Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract folder patterns: organization, co-location, index files
+ */
+function extractFolderPatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'folders.organization': {},
+    'folders.colocation': {},
+    'folders.index-files': {}
+  };
+
+  const directories = new Map();
+  const testDirs = new Set();
+  const sourceDirs = new Set();
+
+  for (const file of files) {
+    const dir = path.dirname(file);
+    if (!directories.has(dir)) directories.set(dir, []);
+    directories.get(dir).push(file);
+
+    if (file.includes('.test.') || file.includes('.spec.') || file.includes('__tests__')) {
+      testDirs.add(dir);
+    } else {
+      sourceDirs.add(dir);
+    }
+  }
+
+  // Feature-first vs type-first organization
+  let featureFirstScore = 0;
+  let typeFirstScore = 0;
+
+  for (const dir of directories.keys()) {
+    const lowDir = dir.toLowerCase();
+    if (/\/(components|services|utils|hooks|helpers|types|models|controllers|views)\b/.test(lowDir)) {
+      typeFirstScore++;
+    }
+    if (/\/(features|modules)\//.test(lowDir)) {
+      featureFirstScore++;
+    }
+  }
+
+  if (featureFirstScore > typeFirstScore && featureFirstScore > 0) {
+    const sampleFile = files[0];
+    if (sampleFile) addPatternOccurrence(patterns['folders.organization'], 'feature-first', sampleFile, projectRoot);
+  } else if (typeFirstScore > 0) {
+    const sampleFile = files[0];
+    if (sampleFile) addPatternOccurrence(patterns['folders.organization'], 'type-first', sampleFile, projectRoot);
+  }
+
+  // Co-location patterns
+  for (const testDir of testDirs) {
+    if (sourceDirs.has(testDir)) {
+      const sampleFile = directories.get(testDir)?.[0];
+      if (sampleFile) addPatternOccurrence(patterns['folders.colocation'], 'colocated', sampleFile, projectRoot);
+    } else if (testDir.includes('__tests__') || testDir.includes('/test/') || testDir.includes('/tests/')) {
+      const sampleFile = directories.get(testDir)?.[0];
+      if (sampleFile) addPatternOccurrence(patterns['folders.colocation'], 'separate-test-dir', sampleFile, projectRoot);
+    }
+  }
+
+  // Index file pattern per directory
+  for (const [_dir, dirFiles] of directories.entries()) {
+    const hasIndex = dirFiles.some(f => /^index\.(ts|js|tsx|jsx)$/.test(path.basename(f)));
+    if (hasIndex && dirFiles.length > 1) {
+      addPatternOccurrence(patterns['folders.index-files'], 'index-per-dir', dirFiles[0], projectRoot);
+    }
+  }
+
+  return aggregatePatterns(patterns, 'folders', files.length);
+}
+
+// ============================================================================
+// Comment/Documentation Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract comment patterns: doc style, inline comments, headers, TODOs
+ */
+function extractCommentPatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'comments.doc-style': {},
+    'comments.inline-style': {},
+    'comments.file-header': {},
+    'comments.todo-style': {}
+  };
+
+  for (const file of files) {
+    const ext = path.extname(file);
+    if (!['.js', '.jsx', '.ts', '.tsx', '.py'].includes(ext)) continue;
+
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+
+    // Doc-style comments
+    if (content.includes('/**')) {
+      if (content.includes('@param') || content.includes('@returns') || content.includes('@type')) {
+        addPatternOccurrence(patterns['comments.doc-style'], 'jsdoc', file, projectRoot);
+      } else {
+        addPatternOccurrence(patterns['comments.doc-style'], 'block-comments', file, projectRoot);
+      }
+    }
+
+    // Python docstrings
+    if (ext === '.py' && /"""[\s\S]*?"""|'''[\s\S]*?'''/.test(content)) {
+      addPatternOccurrence(patterns['comments.doc-style'], 'docstrings', file, projectRoot);
+    }
+
+    // Inline comment style
+    if (/\/\/ .+$/m.test(content)) {
+      addPatternOccurrence(patterns['comments.inline-style'], 'double-slash', file, projectRoot);
+    }
+    if (/\/\* .+? \*\//.test(content)) {
+      addPatternOccurrence(patterns['comments.inline-style'], 'block-inline', file, projectRoot);
+    }
+
+    // File header pattern (first non-empty line is a comment)
+    const lines = content.split('\n');
+    const firstLine = lines[0] || '';
+    if (firstLine.startsWith('/**') || firstLine.startsWith('// ') || firstLine.startsWith('#!')) {
+      addPatternOccurrence(patterns['comments.file-header'], 'has-header', file, projectRoot);
+    }
+
+    // TODO/FIXME conventions
+    if (/\bTODO[\s:(]/.test(content)) {
+      addPatternOccurrence(patterns['comments.todo-style'], 'TODO', file, projectRoot);
+    }
+    if (/\bFIXME[\s:(]/.test(content)) {
+      addPatternOccurrence(patterns['comments.todo-style'], 'FIXME', file, projectRoot);
+    }
+    if (/\bHACK[\s:(]/.test(content)) {
+      addPatternOccurrence(patterns['comments.todo-style'], 'HACK', file, projectRoot);
+    }
+  }
+
+  return aggregatePatterns(patterns, 'comments', files.length);
+}
+
+// ============================================================================
+// Config/Environment Pattern Extractors
+// ============================================================================
+
+/**
+ * Extract config patterns: env style, naming, validation, defaults
+ */
+function extractConfigPatterns(projectRoot, files, _options = {}) {
+  const patterns = {
+    'config.env-style': {},
+    'config.env-naming': {},
+    'config.validation': {},
+    'config.defaults': {}
+  };
+
+  // Check for .env files
+  if (fs.existsSync(path.join(projectRoot, '.env')) ||
+      fs.existsSync(path.join(projectRoot, '.env.example')) ||
+      fs.existsSync(path.join(projectRoot, '.env.local'))) {
+    if (files[0]) addPatternOccurrence(patterns['config.env-style'], 'dotenv', files[0], projectRoot);
+  }
+
+  // Check for config directory
+  if (fs.existsSync(path.join(projectRoot, 'config')) ||
+      fs.existsSync(path.join(projectRoot, 'src/config'))) {
+    if (files[0]) addPatternOccurrence(patterns['config.env-style'], 'config-dir', files[0], projectRoot);
+  }
+
+  for (const file of files) {
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+
+    // Environment variable access
+    if (/process\.env\.[A-Z_]/.test(content)) {
+      addPatternOccurrence(patterns['config.env-naming'], 'SCREAMING_SNAKE', file, projectRoot);
+    }
+    if (/os\.environ/.test(content)) {
+      addPatternOccurrence(patterns['config.env-naming'], 'SCREAMING_SNAKE', file, projectRoot);
+    }
+
+    // Config validation library
+    if (/\bJoi\b|\bjoi\./.test(content)) {
+      addPatternOccurrence(patterns['config.validation'], 'joi', file, projectRoot);
+    }
+    if (/\bz\.(object|string|number|boolean|array)\b/.test(content)) {
+      addPatternOccurrence(patterns['config.validation'], 'zod', file, projectRoot);
+    }
+    if (content.includes('class-validator') || /@Is(String|Number|Boolean|Email)\b/.test(content)) {
+      addPatternOccurrence(patterns['config.validation'], 'class-validator', file, projectRoot);
+    }
+
+    // Default value patterns
+    if (/process\.env\.\w+\s*\|\|\s*/.test(content)) {
+      addPatternOccurrence(patterns['config.defaults'], 'or-fallback', file, projectRoot);
+    }
+    if (/process\.env\.\w+\s*\?\?\s*/.test(content)) {
+      addPatternOccurrence(patterns['config.defaults'], 'nullish-coalescing', file, projectRoot);
+    }
+  }
+
+  return aggregatePatterns(patterns, 'config', files.length);
 }
 
 // ============================================================================
@@ -988,13 +1629,17 @@ function formatSubcategory(subcategory) {
  */
 async function extractPatterns(projectRoot, options = {}) {
   const {
-    categories = ['code', 'api', 'component', 'architecture'],
+    categories = ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config'],
     includeConflicts = true,
     includeRecommendations = true,
     maxFiles = DEFAULT_MAX_FILES,
     framework: frameworkOption = 'auto',
     analysisMode = DEFAULT_ANALYSIS_MODE
   } = options;
+
+  // Set module-level analysis mode for addPatternOccurrence to use
+  _currentAnalysisMode = analysisMode;
+  _gitFileDateCache.clear();
 
   const startTime = Date.now();
 
@@ -1045,6 +1690,36 @@ async function extractPatterns(projectRoot, options = {}) {
     allPatterns.push(...archPatterns);
   }
 
+  if (categories.includes('types')) {
+    const typePatterns = extractTypePatterns(projectRoot, files, { framework });
+    allPatterns.push(...typePatterns);
+  }
+
+  if (categories.includes('exports')) {
+    const exportPatterns = extractExportPatterns(projectRoot, files, { framework });
+    allPatterns.push(...exportPatterns);
+  }
+
+  if (categories.includes('tests')) {
+    const testPatterns = extractTestPatterns(projectRoot, files, { framework });
+    allPatterns.push(...testPatterns);
+  }
+
+  if (categories.includes('folders')) {
+    const folderPatterns = extractFolderPatterns(projectRoot, files, { framework });
+    allPatterns.push(...folderPatterns);
+  }
+
+  if (categories.includes('comments')) {
+    const commentPatterns = extractCommentPatterns(projectRoot, files, { framework });
+    allPatterns.push(...commentPatterns);
+  }
+
+  if (categories.includes('config')) {
+    const configPatterns = extractConfigPatterns(projectRoot, files, { framework });
+    allPatterns.push(...configPatterns);
+  }
+
   // Detect conflicts
   const conflicts = includeConflicts ? detectConflicts(allPatterns) : [];
 
@@ -1068,7 +1743,13 @@ async function extractPatterns(projectRoot, options = {}) {
       code: allPatterns.filter(p => p.category === 'code'),
       api: allPatterns.filter(p => p.category === 'api'),
       component: allPatterns.filter(p => p.category === 'component'),
-      architecture: allPatterns.filter(p => p.category === 'architecture')
+      architecture: allPatterns.filter(p => p.category === 'architecture'),
+      types: allPatterns.filter(p => p.category === 'types'),
+      exports: allPatterns.filter(p => p.category === 'exports'),
+      tests: allPatterns.filter(p => p.category === 'tests'),
+      folders: allPatterns.filter(p => p.category === 'folders'),
+      comments: allPatterns.filter(p => p.category === 'comments'),
+      config: allPatterns.filter(p => p.category === 'config')
     },
     conflicts,
     recommendations
@@ -1083,7 +1764,7 @@ function parseArgs(args) {
   const options = {
     output: null,
     format: 'json',
-    categories: ['code', 'api', 'component', 'architecture'],
+    categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config'],
     framework: 'auto',
     withConflicts: true,
     resolveConflicts: false,
@@ -1258,6 +1939,12 @@ module.exports = {
   extractApiPatterns,
   extractComponentPatterns,
   extractArchitecturePatterns,
+  extractTypePatterns,
+  extractExportPatterns,
+  extractTestPatterns,
+  extractFolderPatterns,
+  extractCommentPatterns,
+  extractConfigPatterns,
   // Utilities
   globFiles,
   createPattern,

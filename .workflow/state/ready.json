@@ -1,38 +1,21 @@
 {
-  "lastUpdated": "2026-02-19T16:45:46.628Z",
+  "lastUpdated": "2026-02-19T16:53:38.487Z",
   "inProgress": [],
-  "ready": [],
-  "blocked": [
-    {
-      "id": "wf-init-s2",
-      "title": "Extend pattern extractor with missing categories and deep mode",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "blocked",
-      "priority": "P1",
-      "description": "Add type/interface naming, export patterns, test structure, folder conventions, comment/doc style, config patterns, full API response templates. Wire _getGitBlameDate() for deep mode.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "epicId": "epic-init-onboard",
-      "blockedBy": [
-        "wf-init-s1"
-      ],
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s2.md"
-    },
+  "ready": [
     {
       "id": "wf-init-s3",
       "title": "Add template extraction from reference/existing projects",
       "type": "story",
       "feature": "init-onboard",
-      "status": "blocked",
+      "status": "ready",
       "priority": "P1",
       "description": "Extract representative file skeletons (component, service, test, route, hook) as reusable templates. Save to .workflow/templates/extracted/.",
       "createdAt": "2026-02-19T16:30:00.000Z",
       "epicId": "epic-init-onboard",
-      "blockedBy": [
-        "wf-init-s2"
-      ],
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s3.md"
-    },
+    }
+  ],
+  "blocked": [
     {
       "id": "wf-init-s4",
       "title": "Rewrite wogi-onboard for mature/existing project analysis",
@@ -44,8 +27,6 @@
       "createdAt": "2026-02-19T16:30:00.000Z",
       "epicId": "epic-init-onboard",
       "blockedBy": [
-        "wf-init-s1",
-        "wf-init-s2",
         "wf-init-s3"
       ],
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s4.md"
@@ -61,14 +42,26 @@
       "createdAt": "2026-02-19T16:30:00.000Z",
       "epicId": "epic-init-onboard",
       "blockedBy": [
-        "wf-init-s1",
-        "wf-init-s2",
         "wf-init-s3"
       ],
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s5.md"
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-init-s2",
+      "title": "Extend pattern extractor with missing categories and deep mode",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Add type/interface naming, export patterns, test structure, folder conventions, comment/doc style, config patterns, full API response templates. Wire _getGitBlameDate() for deep mode.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "startedAt": "2026-02-19T16:50:00.000Z",
+      "epicId": "epic-init-onboard",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s2.md",
+      "completedAt": "2026-02-19T16:57:00.000Z"
+    },
     {
       "id": "wf-init-s1",
       "title": "Wire persistence pipeline and state file generation",
@@ -175,18 +168,6 @@
       "createdAt": "2026-02-13T20:30:00.000Z",
       "startedAt": "2026-02-13T20:30:00.000Z",
       "completedAt": "2026-02-13T20:45:00.000Z"
-    },
-    {
-      "id": "wf-18fb7974",
-      "title": "Wire skill generation pipeline - Context7 fetch-extract-flush, skills.sh source, context overflow prevention",
-      "type": "story",
-      "feature": "skill-generation",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Wire the broken Context7 doc-fetching pipeline (fetch-extract-flush loop), add skills.sh as alternate skill source in setup wizard, and prevent context overflow during setup by serializing doc fetches.",
-      "createdAt": "2026-02-13T16:00:00.000Z",
-      "startedAt": "2026-02-13T16:15:00.000Z",
-      "completedAt": "2026-02-13T17:00:00.000Z"
     }
   ],
   "backlog": [
