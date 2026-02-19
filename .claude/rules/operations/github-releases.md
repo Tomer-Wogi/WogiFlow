@@ -1,3 +1,9 @@
+---
+description: "GitHub release workflow - prevents race conditions in npm publish"
+alwaysApply: false
+globs: package.json
+---
+
 # GitHub Release Workflow
 
 **Source**: Repeated failures (10+ times) in npm publish automation

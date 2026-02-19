@@ -1,0 +1,32 @@
+# Function Map
+
+Utility functions registry for preventing duplication.
+
+---
+
+## How to Use
+
+Before creating any new utility function, check this file first.
+
+### Scan & Generate
+```bash
+flow function-index scan    # Scan codebase for utility functions
+flow function-index map     # Generate this file from scan results
+```
+
+### Manual Entry Format
+```markdown
+### functionName
+**File**: path/to/file.js
+**Purpose**: Brief description
+**Params**: (input: Type) => ReturnType
+**Used by**: [list of consumers]
+```
+
+---
+
+## Registered Functions
+
+<!-- Functions will be populated by `flow function-index scan` or manually -->
+
+---

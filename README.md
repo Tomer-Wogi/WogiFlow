@@ -21,12 +21,12 @@ WogiFlow works with 6 AI coding CLIs. Use whichever you prefer - the workflow st
 
 | CLI | Enforcement | Rules File | Min Version | Guide |
 |-----|-------------|------------|-------------|-------|
-| **Claude Code** | Hard (hooks) | `CLAUDE.md` | **2.1.23+** | [Guide](.workflow/docs/cli-guides/claude-code.md) |
-| **Gemini CLI** | Hard (hooks) | `GEMINI.md` | - | [Guide](.workflow/docs/cli-guides/gemini-cli.md) |
-| **Cursor** | Mixed | `.cursor/rules/wogiflow.mdc` | - | [Guide](.workflow/docs/cli-guides/cursor.md) |
-| **OpenCode** | Hard (plugins) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/opencode.md) |
-| **Codex** | Soft (rules) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/codex.md) |
-| **Kimi** | Soft (rules) | `AGENTS.md` | - | [Guide](.workflow/docs/cli-guides/kimi.md) |
+| **Claude Code** | Hard (hooks) | `CLAUDE.md` | **2.1.23+** | [Guide](.claude/docs/knowledge-base/01-setup-onboarding/) |
+| **Gemini CLI** | Hard (hooks) | `GEMINI.md` | - | - |
+| **Cursor** | Mixed | `.cursor/rules/wogiflow.mdc` | - | - |
+| **OpenCode** | Hard (plugins) | `AGENTS.md` | - | - |
+| **Codex** | Soft (rules) | `AGENTS.md` | - | - |
+| **Kimi** | Soft (rules) | `AGENTS.md` | - | - |
 
 > **Claude Code 2.1.23+ Recommended**: Includes critical fixes for per-user temp directory isolation (shared systems), async hook cancellation, and ripgrep timeout reporting. Earlier versions may experience silent search failures.
 
@@ -217,16 +217,9 @@ Detailed documentation is in the [Knowledge Base](.claude/docs/knowledge-base/RE
 | [Safety & Guardrails](.claude/docs/knowledge-base/06-safety-guardrails/) | Damage control, checkpoints, security |
 | [Configuration](.claude/docs/knowledge-base/configuration/) | All configuration options |
 
-### CLI-Specific Guides
+### CLI-Specific Setup
 
-Each supported CLI has its own guide explaining setup, enforcement, and usage:
-
-- [Claude Code Guide](.workflow/docs/cli-guides/claude-code.md)
-- [Gemini CLI Guide](.workflow/docs/cli-guides/gemini-cli.md)
-- [Cursor Guide](.workflow/docs/cli-guides/cursor.md)
-- [OpenCode Guide](.workflow/docs/cli-guides/opencode.md)
-- [Codex Guide](.workflow/docs/cli-guides/codex.md)
-- [Kimi Guide](.workflow/docs/cli-guides/kimi.md)
+Each CLI uses its own rules file format. Run `npx flow bridge sync` to generate the appropriate file for your CLI. See the [Setup & Onboarding docs](.claude/docs/knowledge-base/01-setup-onboarding/) for detailed instructions.
 
 ---
 

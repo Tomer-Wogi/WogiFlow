@@ -35,6 +35,7 @@
       }
     }
   },
+  "_comment_tasks_vs_loops": "tasks = script-level config (flow-start.js). loops = AI-level loop enforcement. Shared keys (maxIterations, maxRetries, blockExitUntilComplete, autoInferVerification) must stay in sync.",
   "tasks": {
     "maxIterations": 20,
     "stuckThreshold": 3,
@@ -429,6 +430,7 @@
     }
   },
   "validation": {
+    "_comment_afterFileEdit": "Hook-based auto-validation is disabled. CLAUDE.md instructs AI to self-validate. Enable for hook-enforced validation.",
     "afterFileEdit": {
       "enabled": false,
       "commands": {
@@ -489,6 +491,7 @@
     "autoGenerateStorybook": false,
     "storybookPath": "src/stories"
   },
+  "_comment_strictMode_collision": "This 'strictMode' controls verification checklists. NOT the same as enforcement.strictMode (task gating) or research.strictMode (citation rules). Three distinct features share the key name.",
   "strictMode": {
     "verificationChecklist": false,
     "correctionReportsOnFail": false,
@@ -1016,7 +1019,7 @@
       }
     },
     "templates": {
-      "directory": "templates/hybrid"
+      "directory": ".workflow/templates/hybrid"
     },
     "projectContext": {
       "uiFramework": null,

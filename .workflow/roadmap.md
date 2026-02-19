@@ -10,27 +10,6 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 <!-- Items actively being worked on. Usually maps to stories in ready.json -->
 
-### Phase 0.1.1: CLI Template System
-
-**Status:** Ready to Start
-**Created:** 2026-01-13
-**Depends On:** None
-
-**Assumes:**
-- Handlebars available as dependency
-- Current CLAUDE.md generation works as reference
-
-**Key Files:**
-- `scripts/flow-cli-sync.js` - New file to create
-- `.workflow/templates/claude-md.hbs` - Existing template to migrate
-
-**Implementation Plan:**
-1. Create flow-cli-sync.js with Handlebars rendering
-2. Define template context structure
-3. Add CLI detection utilities
-
----
-
 ---
 
 ## Next (Ready to Plan)
@@ -41,14 +20,14 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - CLI Template System implemented
 - Handlebars rendering working
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Template renderer
+- `scripts/flow-bridge.js` - Template renderer
 - `.workflow/cli/templates/claude.hbs` - New template location
 
 **Implementation Plan:**
@@ -62,7 +41,7 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - Template system implemented
@@ -70,7 +49,7 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 **Key Files:**
 - `scripts/flow` - Add sync subcommand
-- `scripts/flow-cli-sync.js` - Sync logic
+- `scripts/flow-bridge.js` - Sync logic
 
 **Implementation Plan:**
 1. Add `flow sync` CLI command
@@ -123,8 +102,6 @@ Cleaner config patterns for secrets and environment variables.
 1. Implement {file:path} pattern for file-based secrets
 2. Implement {env:VAR} pattern for environment variables
 3. Add to config loading in flow-utils.js
-
----
 
 ---
 
@@ -189,6 +166,8 @@ Auto-create PRs with rich media:
 
 ---
 
+---
+
 ## Later (Future Phases)
 
 <!-- Deferred items from large feature breakdowns. Includes dependency tracking. -->
@@ -197,14 +176,14 @@ Auto-create PRs with rich media:
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - Template system implemented
 - TOML config format understood
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Template renderer
+- `scripts/flow-bridge.js` - Template renderer
 - `.workflow/cli/templates/codex.hbs` - New template
 
 **Context When Deferred:**
@@ -221,14 +200,14 @@ Codex CLI uses AGENTS.md with <100 lines best practice and TOML config.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - Template system implemented
 - Gemini CLI docs understood
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Template renderer
+- `scripts/flow-bridge.js` - Template renderer
 - `.workflow/cli/templates/gemini.hbs` - New template
 
 **Context When Deferred:**
@@ -245,14 +224,14 @@ Gemini CLI uses GEMINI.md + system.md pattern with 8 hook events.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - Template system implemented
 - OpenCode follows AGENTS.md pattern
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Template renderer
+- `scripts/flow-bridge.js` - Template renderer
 - `.workflow/cli/templates/opencode.hbs` - New template
 
 **Implementation Plan:**
@@ -272,7 +251,7 @@ Gemini CLI uses GEMINI.md + system.md pattern with 8 hook events.
 - All CLI templates created
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Hook handlers
+- `scripts/flow-bridge.js` - Hook handlers
 - `.workflow/cli/hooks/` - Hook scripts
 
 **Context When Deferred:**
@@ -297,7 +276,7 @@ Event-based sync for task completions, learnings back to .workflow/.
 
 **Key Files:**
 - `scripts/postinstall.js` - Installer script
-- `scripts/flow-cli-sync.js` - Sync utilities
+- `scripts/flow-bridge.js` - Sync utilities
 
 **Context When Deferred:**
 Installer should ask "Which CLI(s)?" and generate appropriate files.
@@ -313,14 +292,14 @@ Installer should ask "Which CLI(s)?" and generate appropriate files.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System
+**Depends On:** Phase 0.1.1: CLI Template System (Completed)
 
 **Assumes:**
 - CLI environment variables documented
 - Detection possible at runtime
 
 **Key Files:**
-- `scripts/flow-cli-sync.js` - Detection logic
+- `scripts/flow-bridge.js` - Detection logic
 
 **Implementation Plan:**
 1. Research env vars per CLI
@@ -329,102 +308,61 @@ Installer should ask "Which CLI(s)?" and generate appropriate files.
 
 ---
 
-### Phase 1.1: Formalized Model Registry
+### Phase 0.1.10: Multi-CLI Adapter System (Superpowers-Inspired)
 
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-042)
-**Files:** `scripts/flow-models.js`, `.workflow/models/registry.json`
+**Status:** Deferred
+**Created:** 2026-02-04
+**Depends On:** Phase 0.1.6: Sync Command
 
----
+**Assumes:**
+- Sync command working
+- Understanding of how other CLIs inject instructions (researched from superpowers plugin)
 
-### Phase 1.2: Enhanced Model Stats
+**Problem:**
+WogiFlow currently only works with Claude Code. Other CLIs (Gemini CLI, Codex, Cursor, OpenCode) ignore WogiFlow instructions because:
+1. They don't read CLAUDE.md
+2. They have their own instruction mechanisms
+3. Tool names differ (TodoWrite vs update_plan)
 
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-042)
-**Files:** `scripts/flow-models.js`, `.workflow/models/stats.json`
+**Research (2026-02-04):**
+Superpowers plugin solves this with a 3-layer architecture:
+1. **Shared Core** (`lib/skills-core.js`) - skill discovery, parsing
+2. **CLI-Specific Adapters** - plugin files for each CLI
+3. **Tool Mapping Tables** - explicit translations in bootstrap files
 
----
+Key mechanism: System prompt injection via hooks (OpenCode uses `experimental.chat.system.transform`)
 
-### Phase 2.1: Multi-Model Mode
+**Key Files:**
+- `lib/wogi-core.js` - Shared workflow logic (new)
+- `.codex/wogi-bootstrap.md` - Codex adapter with tool mappings
+- `.cursor/.cursorrules` - Generated rules file
+- `.opencode/plugins/wogiflow.js` - OpenCode plugin
+- `.gemini/system.md` - Gemini instruction file
+- `scripts/flow-bootstrap.js` - Universal bootstrap generator
 
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-045)
-**Files:** `scripts/flow-task-analyzer.js`, `scripts/flow-model-router.js`, `scripts/flow-prompt-composer.js`
+**Tool Mapping Tables (Per CLI):**
+```
+Claude Code → Native (TodoWrite, Task, etc.)
+Codex       → update_plan, spawn_agent
+OpenCode    → update_plan, @mention
+Cursor      → (TBD - research cursor rules)
+Gemini CLI  → (TBD - research gemini hooks)
+```
 
----
+**Implementation Plan:**
+1. Create `lib/wogi-core.js` with shared workflow logic
+2. Research each CLI's instruction injection mechanism
+3. Create tool mapping tables for each CLI
+4. Implement `flow bootstrap --target=<cli>` command
+5. Create CLI-specific adapters that inject via appropriate mechanism
+6. Test with actual CLIs (need access to Codex, Gemini CLI, etc.)
 
-### Phase 2.2: Prompt Fragment System
+**Options Considered:**
+- **Option 1: CLI Adapters** (like superpowers) - Most robust, requires maintaining multiple codebases
+- **Option 2: Bootstrap Generator** - Lower effort, generates markdown for any CLI
+- **Option 3: MCP Server** - One server, many clients, but requires MCP support
 
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-045)
-**Files:** `scripts/flow-prompt-composer.js`, `.workflow/prompts/fragments/`
-
----
-
-### Phase 3.1: Task Router
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-046)
-**Files:** `scripts/flow-model-router.js`, `scripts/flow-task-analyzer.js`
-
----
-
-### Phase 3.2: Cascade Fallback
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-046)
-**Files:** `scripts/flow-cascade.js`
-
----
-
-### Phase 3.3: Tiered Learning Thresholds
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-046)
-**Files:** `scripts/flow-tiered-learning.js`
-
----
-
-### Phase 4.1: Parallel Dispatch
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-048)
-**Files:** `scripts/flow-parallel-dispatch.js`
-
----
-
-### Phase 4.2: Context Priority Scoring
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-048)
-**Files:** `scripts/flow-context-scoring.js`
-
----
-
-### Phase 4.3: Quality Gate Confidence
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-048)
-**Files:** `scripts/flow-gate-confidence.js`
-
----
-
-### Phase 5.1: npm Package Distribution
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-12
-**Notes:** Published as `wogiflow` on npm, currently v1.2.0
+**Recommended approach:** Start with Option 2 (bootstrap generator), evolve to Option 3 (MCP) as MCP becomes standard.
 
 ---
 
@@ -432,7 +370,7 @@ Installer should ask "Which CLI(s)?" and generate appropriate files.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package Distribution
+**Depends On:** Phase 5.1: npm Package Distribution (Completed)
 
 **Assumes:**
 - npm package published
@@ -456,7 +394,7 @@ Users choose stable vs beta releases with auto-update preferences.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package Distribution
+**Depends On:** Phase 5.1: npm Package Distribution (Completed)
 
 **Assumes:**
 - npm package distributed
@@ -479,7 +417,7 @@ Code intelligence features improve DX significantly.
 
 **Status:** Deferred
 **Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package, Phase 0.1: CLI Agnosticism
+**Depends On:** Phase 5.1: npm Package (Completed), Phase 0.1: CLI Agnosticism
 
 **Assumes:**
 - npm package available
@@ -510,13 +448,13 @@ Community skill sharing with discovery, installation, publishing.
 - AWS backend infrastructure ready (Cognito, API Gateway)
 - Subscription model defined
 
-**Key Files (already exist):**
+**Key Files (to create):**
 - `scripts/flow-team.js` - Team login, logout, setup selection
 - `scripts/flow-team-sync.js` - Knowledge sync with backend
 - `scripts/flow-team-dashboard.js` - Team status display
 
 **Context When Deferred:**
-Scripts exist from v1.8.0 development. Features require:
+Features require:
 - Active AWS backend (api.wogi-flow.com)
 - Subscription/payment system
 - Team invite code generation
@@ -529,11 +467,12 @@ Scripts exist from v1.8.0 development. Features require:
 - `/wogi-team status` - Connection and sync status
 
 **Implementation Plan:**
-1. Activate AWS backend infrastructure
-2. Implement subscription validation
-3. Create team invite flow
-4. Test knowledge sync across team members
-5. Create command files for slash commands
+1. Create team scripts (flow-team.js, flow-team-sync.js, flow-team-dashboard.js)
+2. Activate AWS backend infrastructure
+3. Implement subscription validation
+4. Create team invite flow
+5. Test knowledge sync across team members
+6. Create command files for slash commands
 
 ---
 
@@ -558,24 +497,6 @@ Web UI for task progress, step status, execution history.
 2. Implement run status display
 3. Add step-level tracing view
 4. Role-based access control
-
----
-
-### Phase 6.2: Jira/Linear Integration
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-049)
-**Files:** `scripts/flow-jira-integration.js`, `scripts/flow-linear-integration.js`
-
----
-
-### Phase 6.3: Background Sync Daemon
-
-**Status:** Completed
-**Created:** 2026-01-13
-**Implemented:** 2026-01-11 (R-049)
-**Files:** `scripts/flow-sync-daemon.js`
 
 ---
 
@@ -725,19 +646,6 @@ Explain current work using 80/20 rule for non-technical PMs learning as they bui
 
 ---
 
-### Browser Testing Integration
-
-**Priority**: Medium
-
-Integrate browser-based testing into the workflow for UI verification.
-
-**Features**:
-- Automated browser test suggestions after UI changes
-- Integration with Playwright/Puppeteer for E2E tests
-- Visual regression testing support
-
----
-
 ### Voice Input Integration
 
 **Priority**: Low
@@ -760,6 +668,177 @@ Integrate browser-based testing into the workflow for UI verification.
 ## Completed
 
 <!-- Archive of completed roadmap items for reference -->
+
+### Phase 0.1.1: CLI Template System
+
+**Implemented:** 2026-01-13 (as CLI Bridge system)
+**Files:** `scripts/flow-bridge.js`, `scripts/flow-bridge-state.js`, `.workflow/templates/claude-md.hbs`, `.workflow/templates/agents-md.hbs`, `.workflow/templates/partials/`
+**Notes:** Implemented as `flow bridge sync` command with Handlebars rendering. Provides CLI-agnostic template generation for Claude Code (CLAUDE.md) and Codex (AGENTS.md).
+
+---
+
+### Phase 1.1: Formalized Model Registry
+
+**Implemented:** 2026-01-11 (R-042)
+**Files:** `scripts/flow-models.js`, `.workflow/models/registry.json`
+
+---
+
+### Phase 1.2: Enhanced Model Stats
+
+**Implemented:** 2026-01-11 (R-042)
+**Files:** `scripts/flow-models.js`, `.workflow/models/stats.json`
+
+---
+
+### Phase 2.1: Multi-Model Mode
+
+**Implemented:** 2026-01-11 (R-045)
+**Files:** `scripts/flow-task-analyzer.js`, `scripts/flow-model-router.js`, `scripts/flow-prompt-composer.js`
+
+---
+
+### Phase 2.2: Prompt Fragment System
+
+**Implemented:** 2026-01-11 (R-045)
+**Files:** `scripts/flow-prompt-composer.js`, `.workflow/prompts/fragments/`
+
+---
+
+### Phase 3.1: Task Router
+
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-model-router.js`, `scripts/flow-task-analyzer.js`
+
+---
+
+### Phase 3.2: Cascade Fallback
+
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-cascade.js`
+
+---
+
+### Phase 3.3: Tiered Learning Thresholds
+
+**Implemented:** 2026-01-11 (R-046)
+**Files:** `scripts/flow-tiered-learning.js`
+
+---
+
+### Phase 4.1: Parallel Dispatch
+
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-parallel-dispatch.js`
+
+---
+
+### Phase 4.2: Context Priority Scoring
+
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-context-scoring.js`
+
+---
+
+### Phase 4.3: Quality Gate Confidence
+
+**Implemented:** 2026-01-11 (R-048)
+**Files:** `scripts/flow-gate-confidence.js`
+
+---
+
+### Phase 5.1: npm Package Distribution
+
+**Implemented:** 2026-01-12
+**Notes:** Published as `wogiflow` on npm, currently v1.2.0
+
+---
+
+### Phase 6.2: Jira/Linear Integration
+
+**Implemented:** 2026-01-11 (R-049)
+**Files:** `scripts/flow-jira-integration.js`, `scripts/flow-linear-integration.js`
+
+---
+
+### Phase 6.3: Background Sync Daemon
+
+**Implemented:** 2026-01-11 (R-049)
+**Files:** `scripts/flow-sync-daemon.js`
+
+---
+
+### Recursive Enhancement Protocol (All 6 Phases)
+
+**Implemented:** Prior to 2026-01-09
+**Notes:** All 6 phases implemented including multi-pass review, recursive context compaction, phased task execution, epic management, and error recovery with hypothesis generation.
+
+---
+
+### Hierarchical Work Items (Plans, Epics, Features, Stories)
+
+**Implemented:** Prior to 2026-01-09
+**Notes:** Full hierarchy from Plans down to Stories implemented in ready.json and workflow commands.
+
+---
+
+### Session Learning Analysis
+
+**Implemented:** Prior to 2026-01-09
+**Files:** `scripts/flow-adaptive-learning.js`
+
+---
+
+### Multi-CLI Support (6 CLIs)
+
+**Implemented:** Prior to 2026-01-13
+**Notes:** Support for Claude Code, Codex, Gemini CLI, Cursor, OpenCode, and others via bridge system.
+
+---
+
+### Function & API Registries
+
+**Implemented:** Prior to 2026-01-13
+**Files:** `.workflow/state/function-map.md`, `.workflow/state/api-map.md`
+**Notes:** function-map.md and api-map.md registries with flow function-index and flow api-index scan commands.
+
+---
+
+### Standards Compliance (Phase 3 of Review)
+
+**Implemented:** Prior to 2026-01-13
+**Notes:** Multi-pass review includes standards compliance pass.
+
+---
+
+### Solution Optimization (Phase 4 of Review)
+
+**Implemented:** Prior to 2026-01-13
+**Notes:** Multi-pass review includes solution optimization pass.
+
+---
+
+### WebMCP Integration (Browser Testing)
+
+**Implemented:** Prior to 2026-02-08
+**Notes:** Replaced Playwright/Puppeteer approach. Browser testing via WebMCP integration is implemented. The "Browser Testing Integration" idea in the Ideas section (Playwright-based) is superseded by this.
+
+---
+
+### Agent Teams Integration
+
+**Implemented:** Prior to 2026-01-13
+**Notes:** Agent team coordination implemented for parallel review and task execution.
+
+---
+
+### Universal /wogi-start Entry Point
+
+**Implemented:** Prior to 2026-01-13
+**Files:** `.claude/commands/wogi-start.md`
+**Notes:** Universal entry point routing exploration, operational, quick-fix, bug, and implementation requests to the appropriate action.
+
+---
 
 ### Loop Retry Learning
 
@@ -846,61 +925,3 @@ Before implementing any item, I check:
 - **Key Files**: Do required files exist with expected interfaces?
 
 If validation fails, I'll explain what changed and offer options.
-
-### Phase 0.1.10: Multi-CLI Adapter System (Superpowers-Inspired)
-
-**Status:** Deferred
-**Created:** 2026-02-04
-**Depends On:** Phase 0.1.6: Sync Command
-
-**Assumes:**
-- Sync command working
-- Understanding of how other CLIs inject instructions (researched from superpowers plugin)
-
-**Problem:**
-WogiFlow currently only works with Claude Code. Other CLIs (Gemini CLI, Codex, Cursor, OpenCode) ignore WogiFlow instructions because:
-1. They don't read CLAUDE.md
-2. They have their own instruction mechanisms
-3. Tool names differ (TodoWrite vs update_plan)
-
-**Research (2026-02-04):**
-Superpowers plugin solves this with a 3-layer architecture:
-1. **Shared Core** (`lib/skills-core.js`) - skill discovery, parsing
-2. **CLI-Specific Adapters** - plugin files for each CLI
-3. **Tool Mapping Tables** - explicit translations in bootstrap files
-
-Key mechanism: System prompt injection via hooks (OpenCode uses `experimental.chat.system.transform`)
-
-**Key Files:**
-- `lib/wogi-core.js` - Shared workflow logic (new)
-- `.codex/wogi-bootstrap.md` - Codex adapter with tool mappings
-- `.cursor/.cursorrules` - Generated rules file
-- `.opencode/plugins/wogiflow.js` - OpenCode plugin
-- `.gemini/system.md` - Gemini instruction file
-- `scripts/flow-bootstrap.js` - Universal bootstrap generator
-
-**Tool Mapping Tables (Per CLI):**
-```
-Claude Code → Native (TodoWrite, Task, etc.)
-Codex       → update_plan, spawn_agent
-OpenCode    → update_plan, @mention
-Cursor      → (TBD - research cursor rules)
-Gemini CLI  → (TBD - research gemini hooks)
-```
-
-**Implementation Plan:**
-1. Create `lib/wogi-core.js` with shared workflow logic
-2. Research each CLI's instruction injection mechanism
-3. Create tool mapping tables for each CLI
-4. Implement `flow bootstrap --target=<cli>` command
-5. Create CLI-specific adapters that inject via appropriate mechanism
-6. Test with actual CLIs (need access to Codex, Gemini CLI, etc.)
-
-**Options Considered:**
-- **Option 1: CLI Adapters** (like superpowers) - Most robust, requires maintaining multiple codebases
-- **Option 2: Bootstrap Generator** - Lower effort, generates markdown for any CLI
-- **Option 3: MCP Server** - One server, many clients, but requires MCP support
-
-**Recommended approach:** Start with Option 2 (bootstrap generator), evolve to Option 3 (MCP) as MCP becomes standard.
-
----

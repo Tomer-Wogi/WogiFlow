@@ -11,16 +11,34 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Classify as: exploration, operational, quick-fix, bug, or implementation
     |   - Route to appropriate action
     |
+    +-- [AUTO] Context Check (Step 0.25)
+    |   - Estimate task context needs
+    |   - If current + estimated > 95% → Compact first
+    |
     +-- [AUTO] Pre-Implementation Checks
     |   - Check app-map.md for existing components
     |   - Check function-map.md for existing utilities
     |   - Check api-map.md for existing endpoints
     |   - Validate request aligns with task scope
     |
+    +-- [AUTO] Explore Phase (L2+ tasks, multi-agent)
+    |   - Agent 1: Codebase Analyzer (Glob/Grep/Read)
+    |   - Agent 2: Best Practices (WebSearch)
+    |   - Agent 3: Version Verifier (Read/WebSearch)
+    |   - All 3 run in parallel as Task agents
+    |
+    +-- [AUTO] Clarifying Questions
+    |   - Surface assumptions before spec generation
+    |   - Skipped for small tasks (≤2 files)
+    |
     +-- [AUTO] Specification Generation (for medium/large tasks)
     |   - Generate acceptance criteria
     |   - Identify files to change
     |   - Set up verification commands
+    |
+    +-- [AUTO] Approval Gate (L1/L0 tasks only)
+    |   - Display spec and WAIT for user approval
+    |   - Do NOT proceed until approved
     |
     |   FOR EACH FILE EDIT:
     |   +-- [AUTO] Scope Validation
@@ -44,6 +62,11 @@ When implementing a task, these features run automatically. You don't need to in
     +-- [AUTO] Integration Wiring Check
     |   - Verify new components are imported/used
     |   - Flag orphan files (created but not wired)
+    |
+    +-- [AUTO] Standards Compliance Check
+    |   - Naming conventions, security patterns
+    |   - Scoped by task type (component, utility, api, etc.)
+    |   - Blocks completion if must-fix violations found
     |
     +-- [AUTO] Post-Task Updates
     |   - Update app-map.md with new components

@@ -23,6 +23,9 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-story [title]` | Create a detailed story. Simple stories go flat in `.workflow/changes/`. Use `--deep` for decomposition which creates a feature folder. Auto-archived when completed. |
 | `/wogi-bug [title]` | Create bug report in `.workflow/bugs/` with next BUG-XXX number. Use bug-report template. |
+| `/wogi-feature [title]` | Manage features - group related stories under a coherent product capability. Create, list, add stories. |
+| `/wogi-epics [title]` | Manage epics - large initiatives spanning multiple stories. Create, decompose, track progress. |
+| `/wogi-plan [title]` | Manage plans - strategic initiatives coordinating epics and features into higher-level strategy. |
 
 ### Workflow Management
 
@@ -33,6 +36,30 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-standup` | Generate standup summary: what was done (from request-log), what's in progress, what's next, any blockers. |
 | `/wogi-session-end` | End session: update progress, analyze session for learnings (auto-apply 90%+ confidence patterns), archive logs, offer tech debt cleanup, commit and push. |
 | `/wogi-init` | Initialize workflow structure. Create all directories and state files. Use for new projects. |
+| `/wogi-review-fix` | Code review with automatic fixing. Runs full review process then auto-fixes all findings. |
+| `/wogi-peer-review` | Multi-model code review - different AI models review same code for diverse perspectives. |
+| `/wogi-triage` | Interactive walkthrough of review findings from last-review.json. Categorize, dismiss, or create tasks. |
+| `/wogi-onboard` | Analyze existing project with deep temporal analysis, pattern extraction, and state file generation. |
+| `/wogi-morning` | Morning briefing - where you left off, pending tasks, key context, recommended starting task. |
+| `/wogi-compact` | Run memory compaction to free context space. Preview with `--preview`. |
+| `/wogi-debt` | View and manage technical debt across sessions. |
+| `/wogi-roadmap` | View and manage deferred work items. Add, archive, promote to stories. |
+
+### Debugging & Investigation
+
+| Command | Action |
+|---------|--------|
+| `/wogi-debug-hypothesis [desc]` | Parallel hypothesis debugging - spawns multiple agents investigating competing theories simultaneously. Use for complex bugs with unclear root cause. |
+| `/wogi-debug-browser [desc]` | WebMCP-powered browser debugging - uses structured tool calls instead of screenshots for precise UI inspection and state debugging. |
+| `/wogi-trace [prompt]` | Generate task-focused code trace showing execution flow, components involved, and mermaid diagram. |
+| `/wogi-test-browser [flow]` | WebMCP-powered browser testing - defines test flows as structured tool call sequences with expectations. |
+
+### Capture & Extraction
+
+| Command | Action |
+|---------|--------|
+| `/wogi-capture [idea]` | Quick-capture an idea or bug without interrupting current work. Routes to appropriate backlog. |
+| `/wogi-extract-review [input]` | Zero-loss task extraction from transcripts/recordings with mandatory review step. |
 
 ### Component Management
 
@@ -109,30 +136,13 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-hybrid-status` | Show current hybrid mode configuration. |
 | `/wogi-hybrid-edit` | Edit the current execution plan before running. |
 
-### Durable Sessions (v2.0)
-
-| Command | Action |
-|---------|--------|
-| `/wogi-suspend` | Suspend current task. Options: `--wait-ci`, `--review`, `--rate-limit N`. |
-| `/wogi-resume` | Resume suspended task. Options: `--status`, `--approve`. |
-| `/wogi-session-end` | End session with learning analysis, memory management, tech debt cleanup, commit and push. |
-
 ### Memory & Knowledge
+
 | Command | Action |
 |---------|--------|
 | `/wogi-compact` | Run memory compaction. Preview with `--preview`. |
-
-### Morning Briefing
-
-| Command | Action |
-|---------|--------|
-| `/wogi-morning` | Morning briefing - show where you left off, pending tasks, recent changes. |
-
-### Guided Edit
-
-| Command | Action |
-|---------|--------|
-| `/wogi-guided-edit` | Guide through multi-file changes step by step. Shows each edit for approval. |
+| `/wogi-suspend` | Suspend current task with resume condition (--wait-ci, --review, --rate-limit). |
+| `/wogi-resume` | Resume a suspended task. Use --status to check, --approve to approve review. |
 
 ### Research Protocol (Zero-Trust)
 
@@ -142,6 +152,7 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-research --quick [q]` | Quick research (5K tokens) - 1-2 files, no web search. |
 | `/wogi-research --deep [q]` | Deep research (50K tokens) - full file audit, multiple web searches. |
 | `/wogi-research --exhaustive [q]` | Exhaustive research (100K+ tokens) - everything + user confirmation gates. |
+| `/wogi-correction [id]` | Create detailed correction report for a significant bug fix with root cause analysis. |
 
 ### Planning & Documentation
 
@@ -149,6 +160,7 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-correction [TASK-XXX]` | Create detailed correction report for significant bug fix. |
 | `/wogi-help` | Show all available Wogi Flow commands with descriptions. |
+| `/wogi-guided-edit` | Guide through multi-file changes step by step with approval at each edit. |
 
 ## CLI Commands
 

@@ -137,6 +137,9 @@ See `.claude/docs/commands.md` for complete command reference.
 | "compact context", "save context", "running low on context" | `/wogi-compact` |
 | "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
 | "debug this", "investigate hypotheses", "competing theories", "parallel debug" | `/wogi-debug-hypothesis` |
+| "triage findings", "walk through review", "review findings" | `/wogi-triage` |
+| "morning briefing", "what should I work on", "start my day" | `/wogi-morning` |
+| "tech debt", "show debt", "manage debt" | `/wogi-debt` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
 
@@ -373,7 +376,7 @@ Check `config.json → commits` before committing:
 Check `config.json → qualityGates` before closing any task:
 ```json
 "qualityGates": {
-  "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"] }
+  "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
 }
 ```
 
@@ -786,16 +789,34 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Classify as: exploration, operational, quick-fix, bug, or implementation
     |   - Route to appropriate action
     |
+    +-- [AUTO] Context Check (Step 0.25)
+    |   - Estimate task context needs
+    |   - If current + estimated > 95% → Compact first
+    |
     +-- [AUTO] Pre-Implementation Checks
     |   - Check app-map.md for existing components
     |   - Check function-map.md for existing utilities
     |   - Check api-map.md for existing endpoints
     |   - Validate request aligns with task scope
     |
+    +-- [AUTO] Explore Phase (L2+ tasks, multi-agent)
+    |   - Agent 1: Codebase Analyzer (Glob/Grep/Read)
+    |   - Agent 2: Best Practices (WebSearch)
+    |   - Agent 3: Version Verifier (Read/WebSearch)
+    |   - All 3 run in parallel as Task agents
+    |
+    +-- [AUTO] Clarifying Questions
+    |   - Surface assumptions before spec generation
+    |   - Skipped for small tasks (≤2 files)
+    |
     +-- [AUTO] Specification Generation (for medium/large tasks)
     |   - Generate acceptance criteria
     |   - Identify files to change
     |   - Set up verification commands
+    |
+    +-- [AUTO] Approval Gate (L1/L0 tasks only)
+    |   - Display spec and WAIT for user approval
+    |   - Do NOT proceed until approved
     |
     |   FOR EACH FILE EDIT:
     |   +-- [AUTO] Scope Validation
@@ -821,9 +842,9 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Flag orphan files (created but not wired)
     |
     +-- [AUTO] Standards Compliance Check
-    |   - Verify naming conventions, security patterns
-    |   - Check decisions.md rules, app-map duplication
-    |   - Block completion if must-fix violations found
+    |   - Naming conventions, security patterns
+    |   - Scoped by task type (component, utility, api, etc.)
+    |   - Blocks completion if must-fix violations found
     |
     +-- [AUTO] Post-Task Updates
     |   - Update app-map.md with new components
@@ -907,178 +928,10 @@ These features are controlled by `.workflow/config.json`:
 
 ---
 
-## Enforcement Rules
-
-These rules are MANDATORY and apply to all implementation work.
-
----
-
-### Task Gating (MANDATORY)
-
-**Before ANY implementation work, you MUST have an active task.**
-
-#### Step 1: Is this an implementation request?
-
-**YES - Implementation requests:**
-- "Add X to Y"
-- "Fix the bug in..."
-- "Create a component for..."
-- "Implement feature X"
-- "Build me a [system/feature]"
-- Any request that requires writing/modifying code
-
-**NO - Handle normally:**
-- "What does X do?"
-- "How does Y work?"
-- "Show me the code for..."
-- Questions, exploration, reading files
-
-If **NO** → Proceed normally without task gating.
-If **YES** → Continue to Step 2.
-
-#### Step 2: Does a task already exist?
-
-Check `.workflow/state/ready.json` for existing tasks.
-
-- If **YES** → Start that task
-- If **NO** → Continue to Step 3
-
-#### Step 3: Assess and Create
-
-| Size | Files | Action |
-|------|-------|--------|
-| Trivial | 1 | Execute inline with logging |
-| Small | 1-5 | Create task, then proceed |
-| Medium | 5-15 | Create story with AC first, get approval |
-| Large | 15+ | Create epic, decompose to stories |
-
-**This is NON-NEGOTIABLE. The user installed WogiFlow to prevent untracked changes.**
-
----
-
-### Research Protocol (MANDATORY for Capability Questions)
-
-**When answering questions about capabilities, feasibility, or existence, you MUST verify first.**
-
-#### Auto-Trigger Questions:
-- **Capability**: "Does X support Y?", "Can X do Y?"
-- **Feasibility**: "Is it possible to...", "Can we..."
-- **Existence**: "Is there a...", "Does X exist?"
-- **Architecture**: "How does X work?"
-- **Integration**: "How to integrate X with Y?"
-
-#### Required Steps:
-
-1. **Scope Mapping** - Identify relevant files and sources
-2. **Local Evidence** - Read ALL relevant files (don't skim)
-3. **External Verification** - Web search for current docs
-4. **Assumption Check** - List and verify each assumption
-5. **Synthesis** - Answer with citations and confidence level
-
-#### The Negative Evidence Rule
-
-**FORBIDDEN claims:**
-- "X is not supported"
-- "There is no Y"
-- "It doesn't exist"
-- "X cannot do Y"
-
-**REQUIRED format for negative claims:**
-```
-I searched the following sources and found no evidence of X:
-1. [source 1] - searched for [terms]
-2. [source 2] - searched for [terms]
-3. [official docs URL] - no mention found
-
-However, my search may be incomplete. Before concluding X doesn't exist:
-- Check if there's a different name for this feature
-- Verify with the latest official documentation
-- Consider that the feature may be in development
-```
-
-#### Assumption Tracking
-
-Before answering, list assumptions:
-```
-## My Assumptions
-1. [VERIFY] Claim → Confidence: LOW (training data)
-2. [OK] Verified fact → Confidence: HIGH (read file)
-```
-
-Any assumption with LOW confidence MUST be verified.
-
----
-
-### Component Reuse (MANDATORY)
-
-**Before creating ANY new component, you MUST check for existing ones.**
-
-#### Required Checks:
-
-1. **Read app-map.md** - Check for existing components
-2. **Search codebase** - Find similar implementations
-3. **Evaluate similarity** - Can you extend instead of create?
-
-#### Decision Tree:
-
-```
-Similar component exists?
-    |
-    +-- EXACT match → USE IT
-    |
-    +-- 80%+ similar → ADD VARIANT to existing
-    |
-    +-- Partial match → EXTEND existing
-    |
-    +-- No match → CREATE NEW (last resort)
-```
-
-**The same applies to:**
-- Utility functions (check function-map.md)
-- API endpoints (check api-map.md)
-- Hooks and helpers
-- Types and interfaces
-
----
-
-### Post-Edit Validation (MANDATORY)
-
-**After editing ANY code file, you MUST validate before proceeding.**
-
-```bash
-# For TypeScript/JavaScript
-npx tsc --noEmit 2>&1 | head -20
-npx eslint [file] --fix
-```
-
-**Rule: Do NOT edit another file until the current file passes validation.**
-
----
-
-### Request Logging (MANDATORY)
-
-**After EVERY request that changes files, you MUST log it.**
-
-Add entry to `.workflow/state/request-log.md`:
-
-```markdown
-### R-[XXX] | [YYYY-MM-DD HH:MM]
-**Type**: new | fix | change | refactor
-**Tags**: #screen:[name] #component:[name]
-**Request**: "[what user asked]"
-**Result**: [what was done]
-**Files**: [files changed]
-```
-
----
-
-
----
-
 ## Generated by CLI Bridge
 
 This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-02-19T19:09:13.369Z
+Last synced: 2026-02-19T19:59:37.063Z
