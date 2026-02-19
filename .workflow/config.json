@@ -380,7 +380,8 @@
       ],
       "optional": [
         "review",
-        "docs"
+        "docs",
+        "webmcpVerification"
       ]
     },
     "bugfix": {

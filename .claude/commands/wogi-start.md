@@ -976,6 +976,58 @@ Missing files:
 - `requestLogEntry`: Verify entry exists in request-log.md
 - `appMapUpdate`: Verify new components are in app-map.md
 - `noNewFeatures`: (for refactors) Verify no new features added
+- `webmcpVerification`: (optional, for UI tasks) Verify WebMCP tool exposure
+
+### WebMCP Verification Gate (Optional)
+
+**When:** Task modified UI files (*.tsx, *.jsx, *.vue, *.svelte) AND `config.webmcp.enabled` is true.
+
+**What it checks:**
+1. Read `.workflow/webmcp/tools.json` for registered tools
+2. For each new/modified UI component, check if it exposes expected WebMCP tools
+3. If component creates interactive elements (forms, buttons, tables), suggest tool generation
+
+**Output (when triggered):**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 WEBMCP VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+UI files changed: 3
+  src/components/UserCard.tsx
+  src/components/LoginForm.tsx
+  src/pages/Dashboard.tsx
+
+Tool coverage:
+  ✓ LoginForm → get_login_form_state, submit_login_form
+  ⚠ UserCard → No tools registered
+    → Suggest: get_user_card_data, click_user_card_action
+  ✓ Dashboard → get_dashboard_metrics
+
+Coverage: 2/3 components have tools (67%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Behavior:**
+- This gate is **non-blocking** (suggestions only, does not fail the task)
+- Auto-suggests running `node scripts/flow-webmcp-generator.js scan` for uncovered components
+- Skipped entirely when `config.webmcp.enabled` is false or missing
+
+**Detection logic:**
+```javascript
+// Check if any changed files are UI files
+const uiExtensions = ['.tsx', '.jsx', '.vue', '.svelte'];
+const changedUIFiles = changedFiles.filter(f =>
+  uiExtensions.some(ext => f.endsWith(ext))
+);
+
+// Only run if UI files were changed and WebMCP is enabled
+if (changedUIFiles.length > 0 && config.webmcp?.enabled) {
+  // Run WebMCP verification
+}
+```
+
+**Config**: Controlled by `config.qualityGates.feature.optional` array (add `"webmcpVerification"`).
 
 **Save final verification artifact** to `.workflow/verifications/wf-XXXXXXXX-final.json`
 
@@ -1077,6 +1129,7 @@ Beginning structured execution loop...
   ✓ typecheck passed
   ✓ requestLogEntry found
   ✓ appMapUpdate verified
+  ℹ webmcpVerification: 2/3 UI components have tools (non-blocking)
 
 Final verification artifact: .workflow/verifications/wf-XXXXXXXX-final.json
 

@@ -3,17 +3,6 @@
   "inProgress": [],
   "ready": [
     {
-      "id": "wf-webmcp-s7",
-      "title": "Add WebMCP verification to wogi-start quality gates",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "ready",
-      "priority": "P2",
-      "description": "Add optional WebMCP verification step to wogi-start Step 4 quality gates. For UI tasks (*.tsx, *.jsx, *.vue changes), auto-suggest WebMCP tool validation. Verify components expose expected tools. Add webmcpVerification to qualityGates config.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    },
-    {
       "id": "wf-webmcp-s8",
       "title": "Auto-generate WebMCP tools on component creation",
       "type": "story",
@@ -27,6 +16,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s7",
+      "title": "Add WebMCP verification to wogi-start quality gates",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-19T19:55:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T20:00:00.000Z"
+    },
     {
       "id": "wf-webmcp-s4",
       "title": "Wire WebMCP into init/onboard flows",
