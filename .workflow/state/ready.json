@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-02881a",
+      "title": "Fix code review findings from wf-02881aba",
+      "type": "task",
+      "feature": "quality-improvements",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T21:30:00.000Z",
+      "completedAt": "2026-02-19T21:45:00.000Z"
+    },
+    {
       "id": "wf-02881aba",
       "title": "Implement 6 competitor-inspired improvements",
       "type": "story",

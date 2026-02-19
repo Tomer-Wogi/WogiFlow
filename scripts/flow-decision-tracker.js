@@ -17,7 +17,7 @@
  *
  * Programmatic:
  *   const { recordAmendment, getHistory } = require('./flow-decision-tracker');
- *   await recordAmendment({ section, action, rationale, source });
+ *   recordAmendment({ section, action, rationale, source });
  */
 
 const fs = require('fs');
@@ -29,8 +29,8 @@ const {
   success,
   warn,
   error,
-  info,
-  safeJsonParse
+  safeJsonParse,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // ============================================================
@@ -50,10 +50,16 @@ const AMENDMENT_SOURCES = ['manual', 'auto-promoted', 'review-finding', 'user-fe
  */
 function getLogPath() {
   const config = getConfig();
-  return path.join(
+  const defaultPath = '.workflow/state/decision-amendments.json';
+  const candidate = path.join(
     PATHS.root,
-    config.decisions?.amendmentTracking?.logFile || '.workflow/state/decision-amendments.json'
+    config.decisions?.amendmentTracking?.logFile || defaultPath
   );
+  if (!isPathWithinProject(candidate)) {
+    warn('Ignoring unsafe logFile config value, using default.');
+    return path.join(PATHS.root, defaultPath);
+  }
+  return candidate;
 }
 
 /**
@@ -83,11 +89,18 @@ function writeLog(log) {
   const logPath = getLogPath();
   const dir = path.dirname(logPath);
 
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
 
-  fs.writeFileSync(logPath, JSON.stringify(log, null, 2));
+    // Atomic write: write to temp file, then rename
+    const tempPath = logPath + '.tmp.' + process.pid;
+    fs.writeFileSync(tempPath, JSON.stringify(log, null, 2));
+    fs.renameSync(tempPath, logPath);
+  } catch (err) {
+    warn(`Failed to write amendment log: ${err.message}`);
+  }
 }
 
 // ============================================================
@@ -133,6 +146,10 @@ function recordAmendment(params) {
 
   if (!AMENDMENT_ACTIONS.includes(action)) {
     return { err: `Invalid action: ${action}. Must be one of: ${AMENDMENT_ACTIONS.join(', ')}` };
+  }
+
+  if (source && !AMENDMENT_SOURCES.includes(source)) {
+    return { err: `Invalid source: ${source}. Must be one of: ${AMENDMENT_SOURCES.join(', ')}` };
   }
 
   // Validate rationale if required
@@ -185,7 +202,7 @@ function getHistory(section, limit) {
 
   if (section) {
     amendments = amendments.filter(a =>
-      a.section.toLowerCase().includes(section.toLowerCase())
+      typeof a.section === 'string' && a.section.toLowerCase().includes(section.toLowerCase())
     );
   }
 

@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "amendments": [
+    {
+      "id": "amend-d727a7b7",
+      "timestamp": "2026-02-19T21:18:53.847Z",
+      "section": "Coding Standards",
+      "action": "add",
+      "rationale": "Added TDD enforcement rule for test-first development",
+      "source": "manual"
+    }
+  ]
+}

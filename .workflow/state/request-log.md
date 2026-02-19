@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-109 | 2026-02-19 21:45
+**Type**: fix
+**Tags**: #code-review #security #quality #decision-tracking #consistency
+**Task**: wf-cr-02881a
+**Request**: "Code review and fix all findings from wf-02881aba"
+**Result**: Multi-pass code review (Structure/Logic/Security) found 16 issues (1 critical, 5 high, 8 medium, 2 low). Fixed 14 of 16 (2 pre-existing low-priority deferred). CRITICAL: CLI `record` broken with requireImpactAssessment=true, fixed config default to false. HIGH: removed 2 unused imports (execSync, info), added atomic writeLog with try-catch, tightened listPattern regex to avoid prose false-matches, added isPathWithinProject validation for config logFile path. MEDIUM: validated AMENDMENT_SOURCES, fixed orphans CLI default dirs inconsistency, cached parsed map results to avoid double I/O, added symlink skip + depth limit to directory scanner, added type guard on amendment fields, added path boundary check in checkFileExists, added TODO for unimplemented crossMapConsistency.
+**Files**: scripts/flow-decision-tracker.js, scripts/flow-consistency-check.js, .workflow/config.json, .workflow/state/ready.json
+
 ### R-108 | 2026-02-19 21:02
 **Type**: new
 **Tags**: #review #tdd #spec-generation #decision-tracking #consistency #config #competitor-research

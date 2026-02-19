@@ -29,15 +29,14 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 const {
   PATHS,
   getConfig,
   success,
   warn,
   error,
-  info,
-  safeJsonParse
+  safeJsonParse,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // ============================================================
@@ -55,6 +54,12 @@ const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', '.next',
   '__pycache__', '.workflow', '.claude', 'coverage'
 ]);
+
+/** Default directories to check for orphan detection */
+const DEFAULT_COMPONENT_DIRS = ['src/components', 'src/hooks', 'src/services', 'src/pages'];
+
+/** Maximum directory scan depth (prevents symlink loops and stack overflow) */
+const MAX_SCAN_DEPTH = 20;
 
 // ============================================================
 // Map Parsing
@@ -97,7 +102,8 @@ function parseAppMap() {
   }
 
   // Parse list entries: - **ComponentName** (`path/to/file.tsx`)
-  const listPattern = /[-*]\s*\*?\*?([^*`]+?)\*?\*?\s*\(?`([^`]+\.[a-z]+)`\)?/gi;
+  // Requires bold marker (**Name**) immediately after bullet to avoid matching prose lines
+  const listPattern = /^[-*]\s+\*\*([^*]+)\*\*\s*\(?`([^`]+\.[a-z]+)`\)?/gim;
   while ((match = listPattern.exec(content)) !== null) {
     const name = match[1].trim();
     const filePath = match[2].trim();
@@ -196,7 +202,9 @@ function parseApiMap() {
 function getSourceFiles() {
   const files = [];
 
-  function scan(dir, relativePath) {
+  function scan(dir, relativePath, depth) {
+    if (depth > MAX_SCAN_DEPTH) return;
+
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -206,12 +214,13 @@ function getSourceFiles() {
 
     for (const entry of entries) {
       if (SKIP_DIRS.has(entry.name)) continue;
+      if (entry.isSymbolicLink()) continue;
 
       const fullPath = path.join(dir, entry.name);
       const relPath = path.join(relativePath, entry.name);
 
       if (entry.isDirectory()) {
-        scan(fullPath, relPath);
+        scan(fullPath, relPath, depth + 1);
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
         if (SOURCE_EXTENSIONS.has(ext)) {
@@ -221,7 +230,7 @@ function getSourceFiles() {
     }
   }
 
-  scan(PATHS.root, '');
+  scan(PATHS.root, '', 0);
   return files;
 }
 
@@ -236,6 +245,16 @@ function getSourceFiles() {
  */
 function checkFileExists(entry) {
   const fullPath = path.join(PATHS.root, entry.path);
+
+  if (!isPathWithinProject(fullPath)) {
+    return {
+      entry,
+      exists: false,
+      severity: 'error',
+      message: `Unsafe path blocked: ${entry.path} (listed in ${entry.source} as "${entry.name}")`
+    };
+  }
+
   const exists = fs.existsSync(fullPath);
 
   return {
@@ -273,9 +292,13 @@ function runConsistencyCheck(options = {}) {
     }
   };
 
+  // Cache parsed results to avoid double I/O
+  const appMapEntries = checks.appMapVsCodebase !== false || checks.orphanDetection !== false ? parseAppMap() : [];
+  const functionMapEntries = checks.functionMapVsCodebase !== false || checks.orphanDetection !== false ? parseFunctionMap() : [];
+  const apiMapEntries = checks.apiMapVsCodebase !== false || checks.orphanDetection !== false ? parseApiMap() : [];
+
   // 1. App-map vs codebase
   if (checks.appMapVsCodebase !== false) {
-    const appMapEntries = parseAppMap();
     for (const entry of appMapEntries) {
       const result = checkFileExists(entry);
       results.checks.push(result);
@@ -290,7 +313,6 @@ function runConsistencyCheck(options = {}) {
 
   // 2. Function-map vs codebase
   if (checks.functionMapVsCodebase !== false) {
-    const functionMapEntries = parseFunctionMap();
     for (const entry of functionMapEntries) {
       const result = checkFileExists(entry);
       results.checks.push(result);
@@ -305,7 +327,6 @@ function runConsistencyCheck(options = {}) {
 
   // 3. API-map vs codebase
   if (checks.apiMapVsCodebase !== false) {
-    const apiMapEntries = parseApiMap();
     for (const entry of apiMapEntries) {
       const result = checkFileExists(entry);
       results.checks.push(result);
@@ -321,18 +342,14 @@ function runConsistencyCheck(options = {}) {
   // 4. Orphan detection
   if (checks.orphanDetection !== false) {
     const allMapPaths = new Set();
-    const allEntries = [
-      ...parseAppMap(),
-      ...parseFunctionMap(),
-      ...parseApiMap()
-    ];
+    const allEntries = [...appMapEntries, ...functionMapEntries, ...apiMapEntries];
 
     for (const entry of allEntries) {
       allMapPaths.add(entry.path);
     }
 
     // Get configured source directories
-    const componentDirs = config.componentIndex?.directories || ['src/components', 'src/hooks', 'src/services', 'src/pages'];
+    const componentDirs = config.componentIndex?.directories || DEFAULT_COMPONENT_DIRS;
     const sourceFiles = getSourceFiles();
 
     const orphans = [];
@@ -362,6 +379,10 @@ function runConsistencyCheck(options = {}) {
       results.summary.warnings += orphans.length;
     }
   }
+
+  // TODO: Implement crossMapConsistency check (config key exists but check is not yet implemented)
+  // This would verify that components referenced in one map exist in others
+  // (e.g., a function used by a component is also in function-map)
 
   // Determine overall status
   const mode = consistencyConfig.mode || 'warn';
@@ -506,7 +527,7 @@ if (require.main === module) {
         for (const entry of allEntries) allMapPaths.add(entry.path);
 
         const config = getConfig();
-        const componentDirs = config.componentIndex?.directories || ['src/components'];
+        const componentDirs = config.componentIndex?.directories || DEFAULT_COMPONENT_DIRS;
         const sourceFiles = getSourceFiles();
 
         for (const file of sourceFiles) {

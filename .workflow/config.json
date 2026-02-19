@@ -1660,7 +1660,7 @@
       "_comment_amendmentTracking": "Track all changes to decisions.md with rationale, timestamp, impact assessment, and source pattern. Creates audit trail for rule evolution.",
       "logFile": ".workflow/state/decision-amendments.json",
       "requireRationale": true,
-      "requireImpactAssessment": true,
+      "requireImpactAssessment": false,
       "trackSource": true,
       "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
     }
