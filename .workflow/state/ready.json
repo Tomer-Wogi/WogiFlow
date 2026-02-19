@@ -3,18 +3,6 @@
   "inProgress": [],
   "ready": [
     {
-      "id": "wf-init-s4",
-      "title": "Rewrite wogi-onboard for mature/existing project analysis",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "ready",
-      "priority": "P0",
-      "description": "Complete rewrite of wogi-onboard.md from ~100-line stub to ~400+ lines. Git-based temporal analysis, legacy vs current pattern detection, interactive developer questioning, all state files.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s4.md"
-    },
-    {
       "id": "wf-init-s5",
       "title": "Enhance wogi-init reference project path",
       "type": "story",
@@ -29,6 +17,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-init-s4",
+      "title": "Rewrite wogi-onboard for mature/existing project analysis",
+      "type": "story",
+      "feature": "init-onboard",
+      "status": "completed",
+      "priority": "P0",
+      "description": "Complete rewrite of wogi-onboard.md from ~100-line stub to ~400+ lines. Git-based temporal analysis, legacy vs current pattern detection, interactive developer questioning, all state files.",
+      "createdAt": "2026-02-19T16:30:00.000Z",
+      "startedAt": "2026-02-19T17:35:00.000Z",
+      "epicId": "epic-init-onboard",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s4.md",
+      "completedAt": "2026-02-19T17:45:00.000Z"
+    },
     {
       "id": "wf-init-s3",
       "title": "Add template extraction from reference/existing projects",

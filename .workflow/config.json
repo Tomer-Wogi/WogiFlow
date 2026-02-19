@@ -644,6 +644,13 @@
     "analyzeRetries": true,
     "analyzeFixes": true
   },
+  "onboard": {
+    "temporal": {
+      "currentMonths": 6,
+      "transitionalMonths": 18,
+      "autoResolveThreshold": 0.7
+    }
+  },
   "crossSessionLearning": {
     "enabled": true,
     "lookbackDays": 30,

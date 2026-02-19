@@ -9,88 +9,259 @@ Usage: `/wogi-onboard`
 - When joining a new team/project
 - Onboarding a mature/production project that needs AI assistance
 
+## Key Difference from `/wogi-init`
+
+`/wogi-init` creates a NEW project with optional reference.
+`/wogi-onboard` analyzes an EXISTING project — the codebase IS the reference. It deeply scans itself to understand existing patterns, detects legacy vs modern code, and produces a complete WogiFlow setup.
+
+---
+
 ## What It Does
 
-### Phase 1: Project Analysis
+### Phase 1: Project Analysis & Stack Detection
+
+Display:
+```
+━━━ Phase 1/7: Project Analysis ━━━
+```
 
 1. **Auto-detect tech stack** using `scripts/flow-context-init.js`:
-   - Detects language (TypeScript, Python, Go, etc.)
-   - Detects framework (Next.js, NestJS, React, FastAPI, etc.)
-   - Detects database (PostgreSQL, MongoDB, etc.)
-   - Reads package.json, tsconfig.json, .eslintrc, .prettierrc
-   - Scans directory structure for patterns
+   ```javascript
+   const { detectStack, initContext } = require('./scripts/flow-context-init.js');
+   const detected = detectStack();
+   ```
+   This detects:
+   - Language and version (TypeScript, Python, Go, etc.)
+   - Framework (Next.js, NestJS, React, FastAPI, etc.)
+   - Database and ORM (PostgreSQL + TypeORM, MongoDB + Mongoose, etc.)
+   - Testing framework (Jest, Vitest, Mocha, Pytest, etc.)
+   - Linting and formatting tools (ESLint, Prettier, etc.)
+   - Build tools and bundlers (Webpack, Vite, esbuild, etc.)
+   - Package manager (npm, yarn, pnpm)
 
 2. **Display detected stack for confirmation:**
    ```javascript
    AskUserQuestion({
      questions: [{
-       question: `I detected the following tech stack:\n\n- Language: ${detected.language}\n- Framework: ${detected.framework}\n- Database: ${detected.database}\n- Testing: ${detected.testing}\n\nIs this correct?`,
+       question: `I detected the following tech stack:\n\n` +
+         `- Language: ${detected.language}${detected.languageVersion ? ' ' + detected.languageVersion : ''}\n` +
+         `- Runtime: ${detected.runtime || 'N/A'}\n` +
+         `- Framework: ${[detected.frameworks.frontend, detected.frameworks.backend, detected.frameworks.fullStack].filter(Boolean).join(', ') || 'None detected'}\n` +
+         `- Database: ${detected.database || 'None detected'}${detected.orm ? ' (' + detected.orm + ')' : ''}\n` +
+         `- Testing: ${detected.testing || 'None detected'}\n` +
+         `- Linting: ${detected.linting || 'None'}\n` +
+         `- Formatting: ${detected.formatting || 'None'}\n` +
+         `- Bundler: ${detected.bundler || 'None'}\n` +
+         `\nIs this correct?`,
        header: "Stack",
        options: [
-         { label: "Yes, that's correct", description: "Use detected stack" },
-         { label: "Let me correct", description: "Some detections are wrong" }
+         { label: "Yes, correct", description: "Use detected stack as-is" },
+         { label: "Let me correct", description: "Some detections are wrong — I'll provide corrections" }
        ],
        multiSelect: false
      }]
    });
    ```
+   If "Let me correct": Ask for corrections via free-text input.
 
-### Phase 2: Deep Pattern Extraction
+3. **Scan product information:**
+   ```javascript
+   const { scanProject, formatSummary } = require('./scripts/flow-product-scanner.js');
+   const productInfo = scanProject(projectRoot);
+   ```
+   This extracts:
+   - Project name and description (from package.json, README)
+   - Project type (frontend, backend, fullstack, CLI, library)
+   - Key features detected (auth, database, testing, docker, etc.)
+   - Routes and pages discovered
 
-3. **Run pattern extractor on the project:**
+Display:
+```
+  Stack detection...     ✓ TypeScript + NestJS + PostgreSQL
+  Product scanning...    ✓ Backend API, 12 features detected
+```
+
+---
+
+### Phase 2: Deep Pattern Extraction with Temporal Analysis
+
+Display:
+```
+━━━ Phase 2/7: Pattern Extraction (Deep Mode) ━━━
+```
+
+4. **Run pattern extractor in deep mode:**
    ```javascript
    const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
-   const result = await extractPatterns(projectRoot, { analysisMode: 'deep' });
+   const result = await extractPatterns(projectRoot, {
+     analysisMode: 'deep',
+     categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config']
+   });
    ```
-   This scans source files for:
-   - File and function naming conventions
-   - Import styles and module patterns
-   - Component structure patterns (class vs functional, hooks, etc.)
-   - API route patterns and response formats
-   - Architecture patterns (layers, modules)
 
-4. **Detect and resolve conflicts:**
+   Deep mode uses `git log` dates instead of filesystem mtime for reliable temporal analysis. This scans across all 10 pattern categories:
+   - **code**: Naming conventions, variable declaration, error handling, async patterns
+   - **api**: Response formats, pagination, error formats, status codes
+   - **component**: Class vs functional, hooks, state management, styling
+   - **architecture**: File structure, layering, dependency injection
+   - **types**: Interface naming, type naming, enum conventions, generics
+   - **exports**: Default vs named, barrel files, module system
+   - **tests**: File naming, organization, assertion style, mocking
+   - **folders**: Feature-first vs type-first, co-location, index files
+   - **comments**: Documentation style, inline comments, TODOs
+   - **config**: Environment handling, validation, defaults
+
+   Display:
+   ```
+     File discovery...      ✓ Found 245 source files
+     Pattern extraction...  ✓ Found 18 patterns across 10 categories
+   ```
+
+5. **Classify patterns by temporal age:**
+
+   After extraction, classify each pattern using its `lastSeen` date:
+
+   ```javascript
+   // Configurable thresholds (see config.onboard.temporal)
+   const CURRENT_MONTHS = 6;       // Default: patterns seen in last 6 months
+   const TRANSITIONAL_MONTHS = 18; // Default: patterns seen 6-18 months ago
+   // Anything older than TRANSITIONAL_MONTHS is "legacy"
+
+   const now = new Date();
+   const currentCutoff = new Date(now);
+   currentCutoff.setMonth(currentCutoff.getMonth() - CURRENT_MONTHS);
+   const legacyCutoff = new Date(now);
+   legacyCutoff.setMonth(legacyCutoff.getMonth() - TRANSITIONAL_MONTHS);
+
+   function classifyAge(pattern) {
+     if (!pattern.lastSeen) return 'unknown';
+     const date = new Date(pattern.lastSeen);
+     if (date >= currentCutoff) return 'current';
+     if (date >= legacyCutoff) return 'transitional';
+     return 'legacy';
+   }
+
+   // Classify all patterns
+   for (const [category, patterns] of Object.entries(result.patterns)) {
+     for (const pattern of patterns) {
+       pattern.temporalClass = classifyAge(pattern);
+     }
+   }
+   ```
+
+   Display:
+   ```
+     Temporal analysis...   ✓ 14 current, 2 transitional, 2 legacy patterns
+   ```
+
+   **When git history is unavailable** (shallow clone, no .git directory):
+   - Fall back to file mtime with a warning
+   - Display: `⚠️ No git history available — using file modification times (less reliable)`
+
+6. **Detect and resolve conflicts with temporal awareness:**
    ```javascript
    const { resolveConflictsAuto, resolveConflictsInteractive, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
    ```
 
-   If conflicts are found (competing patterns in the codebase):
-   ```javascript
-   AskUserQuestion({
-     questions: [{
-       question: `I found ${result.conflicts.length} conflicting patterns in your codebase. How should I handle them?`,
-       header: "Conflicts",
-       options: [
-         { label: "Auto-resolve (Recommended)", description: "Accept the most common/recent pattern for each conflict" },
-         { label: "Review each conflict", description: "I'll show each conflict and you choose the pattern to follow" },
-         { label: "Skip conflicts", description: "Don't resolve now - I'll ask when I encounter them" }
-       ],
-       multiSelect: false
-     }]
-   });
+   Display:
+   ```
+     Conflict detection...  ✓ Found 3 conflicts
    ```
 
-   **If "Auto-resolve":** `const resolutions = resolveConflictsAuto(result.conflicts);`
-   **If "Review each":** Present each conflict via AskUserQuestion:
+   If conflicts are found, first attempt temporal auto-resolution:
    ```javascript
-   // For each conflict:
+   // For each conflict, check if temporal analysis can resolve it
+   const autoResolvable = [];
+   const ambiguous = [];
+
+   for (const conflict of result.conflicts) {
+     const ageA = conflict.patternA.pattern.temporalClass;
+     const ageB = conflict.patternB.pattern.temporalClass;
+
+     // Clear case: one is current, other is legacy
+     if (ageA === 'current' && ageB === 'legacy') {
+       autoResolvable.push({ conflict, winner: 'A', reason: 'temporal' });
+     } else if (ageB === 'current' && ageA === 'legacy') {
+       autoResolvable.push({ conflict, winner: 'B', reason: 'temporal' });
+     }
+     // Clear case: newer pattern used in >70% of recent files
+     else if (conflict.patternA.recentFileRatio > 0.7) {
+       autoResolvable.push({ conflict, winner: 'A', reason: 'dominance' });
+     } else if (conflict.patternB.recentFileRatio > 0.7) {
+       autoResolvable.push({ conflict, winner: 'B', reason: 'dominance' });
+     }
+     // Ambiguous: both current, or both transitional, or close ratio
+     else {
+       ambiguous.push(conflict);
+     }
+   }
+   ```
+
+   If there are auto-resolved conflicts, display them:
+   ```
+     Auto-resolved: 2 conflicts (temporal analysis)
+       ✓ code.variable-declaration: "const-let" beats "var" (legacy → current)
+       ✓ component.style: "functional" beats "class-components" (70%+ recent files)
+   ```
+
+   If there are ambiguous conflicts, ask the developer:
+   ```javascript
+   // For EACH ambiguous conflict:
    AskUserQuestion({
      questions: [{
-       question: `Conflict in ${conflict.description}:\n\nPattern A: ${conflict.patternA.pattern.name} (${conflict.patternA.occurrences} files)\nPattern B: ${conflict.patternB.pattern.name} (${conflict.patternB.occurrences} files)`,
+       question: `Conflicting patterns in "${conflict.description}":\n\n` +
+         `Pattern A: ${conflict.patternA.pattern.name}\n` +
+         `  Used in ${conflict.patternA.occurrences} files\n` +
+         `  Age: ${conflict.patternA.pattern.temporalClass}\n` +
+         `  Last seen: ${conflict.patternA.pattern.lastSeen?.toLocaleDateString() || 'unknown'}\n\n` +
+         `Pattern B: ${conflict.patternB.pattern.name}\n` +
+         `  Used in ${conflict.patternB.occurrences} files\n` +
+         `  Age: ${conflict.patternB.pattern.temporalClass}\n` +
+         `  Last seen: ${conflict.patternB.pattern.lastSeen?.toLocaleDateString() || 'unknown'}\n\n` +
+         `Which should the AI follow for NEW code?`,
        header: "Resolve",
        options: [
          { label: `A: ${conflict.patternA.pattern.name}`, description: conflict.patternA.pattern.description },
          { label: `B: ${conflict.patternB.pattern.name}`, description: conflict.patternB.pattern.description },
-         { label: "Skip", description: "Decide later" }
+         { label: "Both (migration)", description: "We're migrating from one to the other — use newer for new code, leave old code alone" },
+         { label: "Skip", description: "Decide later when I encounter it" }
        ],
        multiSelect: false
      }]
    });
    ```
 
+   **Migration-in-progress handling:**
+
+   If the developer chooses "Both (migration)", determine which is the migration target:
+   ```javascript
+   // If one is clearly newer (more recent lastSeen), that's the target
+   // Otherwise ask:
+   AskUserQuestion({
+     questions: [{
+       question: `You indicated a migration is in progress. Which pattern is the TARGET (what new code should use)?`,
+       header: "Target",
+       options: [
+         { label: conflict.patternA.pattern.name, description: `Used in ${conflict.patternA.occurrences} files` },
+         { label: conflict.patternB.pattern.name, description: `Used in ${conflict.patternB.occurrences} files` }
+       ],
+       multiSelect: false
+     }]
+   });
+   ```
+
+   Record migration decisions in a special format (see Phase 4, step 8).
+
+---
+
 ### Phase 3: Project Interview
 
-5. **Ask about project context:**
+Display:
+```
+━━━ Phase 3/7: Project Interview ━━━
+```
+
+7. **Ask about project context:**
    ```javascript
    AskUserQuestion({
      questions: [{
@@ -107,7 +278,7 @@ Usage: `/wogi-onboard`
    });
    ```
 
-6. **Ask about goals:**
+8. **Ask about goals:**
    ```javascript
    AskUserQuestion({
      questions: [{
@@ -124,43 +295,101 @@ Usage: `/wogi-onboard`
    });
    ```
 
-7. **Ask about known issues** (optional):
+9. **Ask about known issues** (optional):
    ```
    Do you have any known issues or tech debt you'd like to track?
    (Paste a list or say "skip")
    ```
+   If issues provided, create task entries in ready.json backlog.
+
+---
 
 ### Phase 4: Persistence Pipeline (CRITICAL)
 
+Display:
+```
+━━━ Phase 4/7: Generating State Files ━━━
+```
+
 **All extracted data MUST persist to state files. Without this, analysis is lost.**
 
-8. **Persist patterns to decisions.md:**
-   ```javascript
-   const patternMarkdown = formatAsDecisions(result);
-   const conflictMarkdown = resolutionsToDecisions(resolutions);
-   ```
-   Write to `.workflow/state/decisions.md`:
-   ```markdown
-   # Project Decisions & Patterns
+10. **Generate stack.md:**
+    ```javascript
+    const contextResult = initContext({ rescan: false });
+    ```
+    Writes `.workflow/context/stack.md` with detected tech stack details.
+    If `initContext` was already called, skip re-generation.
 
-   [patternMarkdown - extracted patterns grouped by category]
+    Display: `  stack.md...           ✓ Tech stack documented`
 
-   [conflictMarkdown - resolved conflict decisions]
-   ```
+11. **Generate product.md:**
+    ```javascript
+    const productSummary = formatSummary(productInfo);
+    ```
+    Write to `.workflow/context/product.md`:
+    ```markdown
+    # Product Overview
 
-9. **Run function scanner:**
-   ```javascript
-   const { FunctionScanner } = require('./scripts/flow-function-index.js');
-   const funcScanner = new FunctionScanner();
-   const funcRegistry = await funcScanner.scan();
-   if (funcRegistry && funcRegistry.functions.length > 0) {
-     funcScanner.save();        // Writes function-index.json
-     funcScanner.generateMap(); // Writes function-map.md
-   }
-   ```
-   If no functions found, create template `function-map.md`.
+    **Name**: [project name]
+    **Type**: [frontend/backend/fullstack/cli/library]
+    **Description**: [from package.json or README]
 
-10. **Run API scanner:**
+    ## Features Detected
+    [list of features: auth, database, testing, docker, etc.]
+
+    ## Routes / Pages
+    [discovered routes with paths]
+    ```
+
+    Display: `  product.md...         ✓ Product overview generated`
+
+12. **Persist patterns to decisions.md:**
+    ```javascript
+    const patternMarkdown = formatAsDecisions(result);
+    const conflictMarkdown = resolutionsToDecisions(resolutions);
+    ```
+    Write to `.workflow/state/decisions.md`:
+    ```markdown
+    # Project Decisions & Patterns
+
+    <!-- Auto-generated by /wogi-onboard -->
+    <!-- Temporal analysis: patterns classified as current/transitional/legacy -->
+
+    [patternMarkdown - extracted patterns grouped by category]
+
+    ## Conflict Resolutions
+
+    [conflictMarkdown - resolved conflict decisions]
+    ```
+
+    **Migration decisions** get a special format:
+    ```markdown
+    ### MIGRATION: [old pattern] → [new pattern]
+    <!-- PIN: migration-[category] -->
+    **Status**: In Progress
+    **Old pattern**: [name] (used in X files)
+    **New pattern**: [name] (used in Y files)
+    **Rule**: Use **[new pattern]** for ALL new code. Existing [old pattern] code will be migrated separately.
+    **Detected**: [date]
+    ```
+
+    Display: `  decisions.md...       ✓ 18 patterns, 3 conflicts resolved (2 auto, 1 manual)`
+
+13. **Run function scanner:**
+    ```javascript
+    const { FunctionScanner } = require('./scripts/flow-function-index.js');
+    const funcScanner = new FunctionScanner();
+    const funcRegistry = await funcScanner.scan();
+    if (funcRegistry && funcRegistry.functions.length > 0) {
+      funcScanner.save();        // Writes function-index.json
+      funcScanner.generateMap(); // Writes function-map.md
+    }
+    ```
+    If no functions found, create template `function-map.md`.
+
+    Display: `  function-map.md...    ✓ Found 32 utility functions`
+
+14. **Run API scanner:**
     ```javascript
     const { APIScanner } = require('./scripts/flow-api-index.js');
     const apiScanner = new APIScanner();
@@ -172,14 +401,18 @@ Usage: `/wogi-onboard`
     ```
     If no APIs found, create template `api-map.md`.
 
-11. **Populate app-map.md from component data:**
+    Display: `  api-map.md...         ✓ Found 15 API endpoints`
+
+15. **Populate app-map.md from component data:**
     From the pattern extraction result, populate app-map.md with:
     - Detected UI components -> Components table
     - Detected pages/screens -> Screens table
     - Detected modals -> Modals table
     Include paths and patterns where detected.
 
-12. **Extract file templates:**
+    Display: `  app-map.md...         ✓ Found 24 components/modules`
+
+16. **Extract file templates:**
     ```javascript
     const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
     const templateResult = await extractTemplates(projectRoot, {
@@ -196,28 +429,183 @@ Usage: `/wogi-onboard`
       }
     }
     ```
-    Display: `Extracting file templates... ✓ Found N templates`
 
-13. **Create remaining state files:**
-    - `ready.json` - Empty task queue (with blocked/backlog arrays)
-    - `request-log.md` - Initialized with R-001 onboarding entry
-    - `progress.md` - Initialized with project state
+    Display: `  templates...          ✓ Found 4 templates (component, service, test, hook)`
+
+17. **Create remaining state files:**
+
+    **ready.json** - Empty task queue:
+    ```json
+    {
+      "lastUpdated": "[ISO timestamp]",
+      "inProgress": [],
+      "ready": [],
+      "blocked": [],
+      "recentlyCompleted": [],
+      "backlog": [/* known issues from interview, if any */]
+    }
+    ```
+
+    **request-log.md** - Initialized with onboarding entry:
+    ```markdown
+    # Request Log
+
+    Automatic log of all requests that changed files. Searchable by tags.
+
+    ---
+
+    ### R-001 | [date]
+    **Type**: new
+    **Tags**: #onboarding #setup
+    **Request**: "Initial project onboarding via /wogi-onboard"
+    **Result**: Generated complete WogiFlow setup from existing project analysis.
+    Detected [X] patterns, resolved [Y] conflicts, extracted [Z] templates.
+    **Files**: .workflow/ (all state files generated)
+    ```
+
+    **progress.md** - Initialized with project state:
+    ```markdown
+    # Progress
+
+    ## Current State
+    - **Project**: [name] ([state from interview])
+    - **Goals**: [from interview]
+    - **Onboarded**: [date]
+
+    ## Session Notes
+    <!-- Updated by /wogi-session-end -->
+    ```
+
+    Display:
+    ```
+      ready.json...          ✓ Task queue initialized
+      request-log.md...      ✓ Initialized with R-001
+      progress.md...         ✓ Project state recorded
+    ```
+
+---
 
 ### Phase 5: Skill Generation
 
-14. **Generate skills based on detected stack:**
-    - Create skill directories for each detected framework/library
+Display:
+```
+━━━ Phase 5/7: Generating Skills ━━━
+```
+
+18. **Generate skills based on detected stack:**
+    ```javascript
+    const { generateSkills } = require('./scripts/flow-skill-generator.js');
+    ```
+
+    For each detected framework/library:
+    - Create skill directories in `.claude/skills/[technology]/`
     - Fetch Context7 documentation (one at a time to prevent context overflow)
     - Check skills.sh for curated community skills
+    - Write `skill.md`, `patterns.md`, `anti-patterns.md`, `conventions.md`
+
+    **Fetch-extract-flush loop** (prevents context overflow):
+    ```
+    For each technology:
+      1. Fetch docs via Context7 MCP (resolve-library-id → get-library-docs)
+      2. Extract patterns, conventions, anti-patterns
+      3. Write to skill files
+      4. Release fetched content from context
+    ```
+
+    Display:
+    ```
+      nestjs...              ✓ Skill generated (Context7 docs)
+      typeorm...             ✓ Skill generated (Context7 docs)
+      jest...                ✓ Skill generated (skills.sh)
+      eslint...              ✓ Skill generated (built-in)
+    ```
+
+---
 
 ### Phase 6: Config Generation
 
-15. **Generate `.workflow/config.json`:**
-    - Quality gates configured based on detected tooling (eslint, prettier, jest, etc.)
-    - Commit rules matching project's existing commit style
-    - Hooks configured for detected CI/CD pipeline
+Display:
+```
+━━━ Phase 6/7: Generating Config ━━━
+```
+
+19. **Generate `.workflow/config.json`:**
+
+    Build config based on detected tooling:
+
+    ```javascript
+    const config = {
+      version: "1.0",
+      project: {
+        name: productInfo.name,
+        type: productInfo.type,
+        onboardedAt: new Date().toISOString()
+      },
+      qualityGates: {
+        feature: { require: [] },
+        bugfix: { require: [] },
+        refactor: { require: [] }
+      },
+      commits: {
+        requireApproval: { feature: true, bugfix: false, refactor: true, docs: false },
+        autoCommitSmallFixes: true,
+        smallFixThreshold: 3
+      },
+      onboard: {
+        temporal: {
+          currentMonths: 6,
+          transitionalMonths: 18,
+          autoResolveThreshold: 0.7
+        }
+      }
+    };
+
+    // Configure quality gates based on detected tooling
+    if (detected.linting) {
+      config.qualityGates.feature.require.push('lint');
+      config.qualityGates.bugfix.require.push('lint');
+    }
+    if (detected.typeChecking || detected.language === 'TypeScript') {
+      config.qualityGates.feature.require.push('typecheck');
+      config.qualityGates.bugfix.require.push('typecheck');
+    }
+    if (detected.testing) {
+      config.qualityGates.feature.require.push('tests');
+    }
+
+    // Always require these
+    for (const type of ['feature', 'bugfix', 'refactor']) {
+      config.qualityGates[type].require.push('requestLogEntry');
+    }
+    config.qualityGates.feature.require.push('appMapUpdate');
+
+    // Detect commit style from git log
+    // Check for conventional commits, ticket prefixes, etc.
+    ```
+
+    **Commit style detection:**
+    ```bash
+    git log --oneline -20 --format="%s"
+    ```
+    Analyze recent commit messages:
+    - If most use `feat:`, `fix:`, `chore:` → conventional commits
+    - If most use `[TICKET-123]` → ticket-prefix style
+    - If no pattern → default to conventional commits
+
+    **CI/CD detection:**
+    - Check for `.github/workflows/`, `Jenkinsfile`, `.gitlab-ci.yml`, `.circleci/`
+    - If found, configure hooks accordingly
+
+    Display: `  config.json...        ✓ Quality gates: lint + typecheck + tests`
+
+---
 
 ### Phase 7: Summary
+
+Display:
+```
+━━━ Phase 7/7: Complete ━━━
+```
 
 Display the completion summary:
 
@@ -233,21 +621,24 @@ Display the completion summary:
 Scanning for components... ✓ Found 24 components/modules
 Scanning for API routes... ✓ Found 15 API routes/controllers
 Scanning for utilities... ✓ Found 32 utility functions
-Pattern extraction...    ✓ Found 12 patterns, 2 conflicts resolved
+Pattern extraction...    ✓ Found 18 patterns, 3 conflicts resolved
+  Temporal analysis:     14 current, 2 transitional, 2 legacy
+  Migrations in progress: 1 (class-components → hooks)
 Template extraction...   ✓ Found 4 templates (component, service, test, hook)
 
 ━━━ Generated Files ━━━
 
 .workflow/
   config.json              # Project configuration
-  specs/
+  context/
     stack.md               # Detected tech stack
     product.md             # Product description
   state/
     ready.json             # Task queue
     request-log.md         # Change history (R-001 init)
+    progress.md            # Project state
     app-map.md             # Component registry (24 entries)
-    decisions.md           # Coding patterns (12 patterns)
+    decisions.md           # Coding patterns (18 patterns, 3 resolutions)
     function-map.md        # Utility functions (32 entries)
     api-map.md             # API endpoints (15 entries)
     function-index.json    # Machine-readable function index
@@ -265,9 +656,11 @@ Template extraction...   ✓ Found 4 templates (component, service, test, hook)
     [library]/             # Library patterns
 
 ╔═══════════════════════════════════════════════════════════════╗
-║           ✅ Project Onboarding Complete!                     ║
+║           Project Onboarding Complete!                        ║
 ╚═══════════════════════════════════════════════════════════════╝
 ```
+
+---
 
 ## After Onboarding
 
@@ -276,7 +669,9 @@ The AI now has full context about your project:
 - Existing components and their locations
 - Utility functions available for reuse
 - API endpoints and patterns
-- Coding patterns to follow
+- Coding patterns to follow (with temporal awareness)
+- Migration-in-progress rules
+- File templates for consistent new file creation
 - Known issues to fix
 - Project goals
 
@@ -286,17 +681,20 @@ You can:
 - Create new features that fit the architecture
 - Fix bugs with proper context
 
+---
+
 ## Files Created
 
 | File | Purpose |
 |------|---------|
-| `.workflow/config.json` | Project configuration |
-| `.workflow/specs/stack.md` | Detected tech stack |
-| `.workflow/specs/product.md` | Product description |
+| `.workflow/config.json` | Project configuration (quality gates, temporal thresholds) |
+| `.workflow/context/stack.md` | Detected tech stack |
+| `.workflow/context/product.md` | Product description and features |
 | `.workflow/state/ready.json` | Task queue |
 | `.workflow/state/request-log.md` | Change history |
+| `.workflow/state/progress.md` | Project state and session notes |
 | `.workflow/state/app-map.md` | Component registry (auto-populated) |
-| `.workflow/state/decisions.md` | Coding patterns (from extraction) |
+| `.workflow/state/decisions.md` | Coding patterns, conflict resolutions, migration rules |
 | `.workflow/state/function-map.md` | Utility function registry (auto-scanned) |
 | `.workflow/state/api-map.md` | API endpoint registry (auto-scanned) |
 | `.workflow/state/function-index.json` | Machine-readable function index |
@@ -304,25 +702,107 @@ You can:
 | `.workflow/templates/extracted/*.template` | File skeletons for consistent new file creation |
 | `.workflow/changes/onboarding/tasks.json` | Initial tasks from known issues |
 
+---
+
+## Configuration
+
+Temporal analysis thresholds in `config.json`:
+
+```json
+{
+  "onboard": {
+    "temporal": {
+      "currentMonths": 6,
+      "transitionalMonths": 18,
+      "autoResolveThreshold": 0.7
+    }
+  }
+}
+```
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `currentMonths` | 6 | Patterns seen within this many months are "current" |
+| `transitionalMonths` | 18 | Patterns older than `currentMonths` but newer than this are "transitional" |
+| `autoResolveThreshold` | 0.7 | Auto-resolve when one pattern has >70% of recent files |
+
+---
+
 ## CLI Equivalent
 
 ```bash
 ./scripts/flow onboard
 ```
 
+---
+
 ## Error Handling
 
 ### If pattern extraction fails
 - Log error but continue
 - Create empty decisions.md template
-- Inform user they can re-run extraction later
+- Display: `⚠️ Pattern extraction failed: [error]. Created empty decisions.md.`
+- Inform user they can re-run: `flow pattern-extract --deep`
 
-### If scanner fails
+### If temporal analysis fails (no git history)
+- Fall back to file mtime with warning
+- Display: `⚠️ No git history — using file modification times (less reliable after git clone)`
+- Temporal classification will be less accurate but still functional
+
+### If scanner fails (function or API)
 - Log error but continue
 - Create template function-map.md / api-map.md
+- Display: `⚠️ [Scanner] failed: [error]. Created template file.`
 - Inform user they can run `flow function-index scan` or `flow api-index scan` later
 
-### If Context7 fetch fails
+### If template extraction fails
+- Log error but continue
+- Skip template section in decisions.md
+- Display: `⚠️ Template extraction failed: [error]. Skipping templates.`
+
+### If Context7 fetch fails (skill generation)
 - Log error but continue
 - Create skills with placeholder content
+- Display: `⚠️ Context7 unavailable for [technology]. Created placeholder skill.`
 - Inform user they can run `/wogi-skills refresh` later
+
+### If product scanner fails
+- Log error but continue
+- Create minimal product.md from package.json name/description only
+- Display: `⚠️ Product scanner failed: [error]. Created minimal product.md.`
+
+---
+
+## Edge Cases
+
+### Monorepo detection
+If multiple `package.json` files are found at different levels:
+- Ask the developer which packages to analyze
+- Run analysis per-package or on the root, based on their choice
+
+### No source files found
+If no recognizable source files exist:
+- Display error: `No source files found. Is this the correct project root?`
+- Suggest checking the directory path
+
+### Very large codebase (>10,000 files)
+- Display warning: `Large codebase detected (X files). Analysis may take longer.`
+- Consider using `--max-files N` option to limit scan scope
+- Pattern extraction will automatically sample rather than scan every file
+
+### Project already onboarded
+If `.workflow/config.json` already exists:
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: "This project already has a WogiFlow setup. What would you like to do?",
+    header: "Existing",
+    options: [
+      { label: "Re-analyze", description: "Overwrite existing setup with fresh analysis" },
+      { label: "Merge", description: "Keep existing decisions, add newly detected patterns" },
+      { label: "Cancel", description: "Keep current setup unchanged" }
+    ],
+    multiSelect: false
+  }]
+});
+```

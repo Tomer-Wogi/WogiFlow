@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-095 | 2026-02-19 17:45
+**Type**: new
+**Tags**: #feature:init-onboard #wf-init-s4 #epic:epic-init-onboard #wogi-onboard #temporal-analysis #legacy-detection #migration
+**Request**: "Rewrite wogi-onboard for mature/existing project analysis (Epic: Complete Init/Onboard 100% Coverage, Story 4/5)"
+**Result**: Complete rewrite of wogi-onboard.md from 329 lines to 808 lines. Added 7 phases with progress indicators throughout. Phase 2 adds temporal pattern classification (current/transitional/legacy) using git-based dates with configurable thresholds (currentMonths: 6, transitionalMonths: 18). Conflict resolution now uses temporal awareness: auto-resolves when current beats legacy, or >70% dominance. Added "Both (migration in progress)" option with special MIGRATION decision format in decisions.md. Phase 4 expanded to generate all state files: stack.md, product.md, decisions.md, function-map.md, api-map.md, app-map.md, templates, ready.json, request-log.md, progress.md. Added config generation (Phase 6) with commit style detection and CI/CD detection. Added comprehensive error handling for all phases and edge cases (monorepo, large codebase, already-onboarded). Added onboard.temporal config section.
+**Files**: .claude/commands/wogi-onboard.md, .workflow/config.json
+
 ### R-094 | 2026-02-19 17:30
 **Type**: new
 **Tags**: #feature:init-onboard #wf-init-s3 #epic:epic-init-onboard #template-extraction #file-classification #representative-selection
