@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-102 | 2026-02-19 19:40
+**Type**: change
+**Tags**: #command:init #command:onboard #webmcp
+**Task**: wf-webmcp-s4
+**Request**: "Wire WebMCP into init/onboard flows"
+**Result**: Added WebMCP capability detection to wogi-onboard (detects frontend frameworks, adds webmcp/browserTesting config sections, auto-generates tool definitions). Added WebMCP config to wogi-init stack wizard (adds config sections when frontend framework selected).
+**Files**: .claude/commands/wogi-onboard.md, .claude/commands/wogi-init.md
+
 ### R-101 | 2026-02-19 19:30
 **Type**: new
 **Tags**: #command:test-browser #webmcp

@@ -38,6 +38,7 @@ Display:
    - Linting and formatting tools (ESLint, Prettier, etc.)
    - Build tools and bundlers (Webpack, Vite, esbuild, etc.)
    - Package manager (npm, yarn, pnpm)
+   - WebMCP compatibility (frontend framework with interactive components)
 
 2. **Display detected stack for confirmation:**
    ```javascript
@@ -520,6 +521,26 @@ Display:
       eslint...              ✓ Skill generated (built-in)
     ```
 
+19b. **Generate WebMCP tool definitions** (if frontend framework detected):
+
+    If `config.webmcp.enabled` is true, run the WebMCP tool generator:
+
+    ```bash
+    node scripts/flow-webmcp-generator.js scan
+    ```
+
+    This scans `app-map.md` for interactive components and generates tool definitions
+    to `.workflow/webmcp/tools.json`. Display:
+
+    ```
+      WebMCP tools...        ✓ N tool definitions generated
+    ```
+
+    If no interactive components found (e.g., fresh project):
+    ```
+      WebMCP tools...        ○ No components yet (will generate after first UI task)
+    ```
+
 ---
 
 ### Phase 6: Config Generation
@@ -571,6 +592,29 @@ Display:
     }
     if (detected.testing) {
       config.qualityGates.feature.require.push('tests');
+    }
+
+    // WebMCP detection: If project has a frontend framework with UI components
+    const hasWebMCPFramework = detected.frameworks.frontend &&
+      ['react', 'next.js', 'vue', 'svelte', 'sveltekit', 'nuxt'].some(f =>
+        (detected.frameworks.frontend || '').toLowerCase().includes(f));
+    if (hasWebMCPFramework) {
+      config.webmcp = {
+        enabled: true,
+        toolsPath: ".workflow/webmcp/tools.json",
+        fallbackEnabled: true,
+        maxToolCalls: 20
+      };
+      config.browserTesting = {
+        enabled: true,
+        runOnTaskComplete: true,
+        runForUITasks: true,
+        flowsPath: ".workflow/tests/flows/",
+        stopOnFail: true,
+        timeout: 30000
+      };
+      // Auto-generate initial WebMCP tool definitions
+      // Run: flow webmcp-generate scan
     }
 
     // Always require these

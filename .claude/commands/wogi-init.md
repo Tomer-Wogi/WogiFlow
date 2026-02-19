@@ -747,6 +747,25 @@ const config = {
   },
   createdAt: new Date().toISOString()
 };
+
+// Add WebMCP config if frontend framework selected
+const webmcpFrameworks = ['Next.js', 'React', 'Vue 3', 'Svelte / SvelteKit'];
+if (webmcpFrameworks.some(f => selectedFrontend && selectedFrontend.includes(f))) {
+  config.webmcp = {
+    enabled: true,
+    toolsPath: ".workflow/webmcp/tools.json",
+    fallbackEnabled: true,
+    maxToolCalls: 20
+  };
+  config.browserTesting = {
+    enabled: true,
+    runOnTaskComplete: true,
+    runForUITasks: true,
+    flowsPath: ".workflow/tests/flows/",
+    stopOnFail: true,
+    timeout: 30000
+  };
+}
 ```
 
 Save to `.workflow/config.json`.

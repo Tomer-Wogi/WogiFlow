@@ -3,17 +3,6 @@
   "inProgress": [],
   "ready": [
     {
-      "id": "wf-webmcp-s4",
-      "title": "Wire WebMCP into init/onboard flows",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "ready",
-      "priority": "P2",
-      "description": "Update wogi-init.md and wogi-onboard.md to detect WebMCP-compatible projects (Chrome 146+, navigator.modelContext). Add WebMCP capability detection to stack analysis. Generate initial tool definitions during onboarding. Add webmcp section to config.json.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    },
-    {
       "id": "wf-webmcp-s7",
       "title": "Add WebMCP verification to wogi-start quality gates",
       "type": "story",
@@ -38,6 +27,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s4",
+      "title": "Wire WebMCP into init/onboard flows",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-19T19:35:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T19:50:00.000Z"
+    },
     {
       "id": "wf-webmcp-s6",
       "title": "Rewrite wogi-test-browser with WebMCP test flows",
