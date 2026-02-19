@@ -1048,14 +1048,15 @@ if (changedUIFiles.length > 0 && config.webmcp?.enabled) {
       - Have all acceptance criteria been met?
       - Are there any loose ends to address?
    ```
-2. Update ready.json: Move task to recentlyCompleted
-3. Update request-log.md with task entry
-4. Update app-map.md if new components were created
-5. Update function-map.md if new utility functions were created
-6. Update api-map.md if new API endpoints were created
-7. **Auto-generate WebMCP tools** if new UI components were created (see below)
-8. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
-9. Show completion summary with verification results
+2. **Close out all TodoWrite items** for this task — mark any remaining `in_progress` or `pending` items as `completed`. Stale items persist across context compactions and create noise.
+3. Update ready.json: Move task to recentlyCompleted
+4. Update request-log.md with task entry
+5. Update app-map.md if new components were created
+6. Update function-map.md if new utility functions were created
+7. Update api-map.md if new API endpoints were created
+8. **Auto-generate WebMCP tools** if new UI components were created (see below)
+9. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
+10. Show completion summary with verification results
 
 #### Step 5.7: WebMCP Tool Auto-Generation (Conditional)
 

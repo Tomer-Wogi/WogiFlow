@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-105 | 2026-02-19 20:15
+**Type**: fix
+**Tags**: #command:start #task-tracking
+**Task**: wf-todo-cleanup
+**Request**: "Add TodoWrite cleanup step to wogi-start finalization"
+**Result**: Added Step 5.2 to wogi-start finalization: close out all remaining TodoWrite items before completing a task. Prevents stale in_progress/pending items from persisting across context compactions.
+**Files**: .claude/commands/wogi-start.md
+
 ### R-104 | 2026-02-19 20:05
 **Type**: new
 **Tags**: #command:start #webmcp #automation
