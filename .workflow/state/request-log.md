@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-099 | 2026-02-19 19:00
+**Type**: new
+**Tags**: #script:webmcp-generator #webmcp
+**Task**: wf-webmcp-s3
+**Request**: "Create WebMCP tool generator script (flow-webmcp-generator.js)"
+**Result**: Created flow-webmcp-generator.js extending BaseScanner. Scans app-map.md for interactive components, detects framework (React/Vue/Svelte), generates WebMCP tool definitions with verb_object naming, JSON Schema Draft 7 inputSchema, and annotations. Outputs to .workflow/webmcp/tools.json. CLI: flow webmcp-generate scan|show|export.
+**Files**: scripts/flow-webmcp-generator.js (new), scripts/flow (edit), .workflow/webmcp/tools.json (generated)
+
 ### R-098 | 2026-02-19 18:45
 **Type**: change
 **Tags**: #config:models #registry

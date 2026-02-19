@@ -100,6 +100,11 @@ show_help() {
     echo "  api-index show       Show API function or endpoint"
     echo "  api-index map        Regenerate api-map.md"
     echo ""
+    echo "WebMCP:"
+    echo "  webmcp-generate scan   Scan components, generate tool definitions"
+    echo "  webmcp-generate show   Display generated tools summary"
+    echo "  webmcp-generate export Output tools JSON to stdout"
+    echo ""
     echo "Skills & Learning:"
     echo "  skill-learn          Extract learnings from recent changes"
     echo "  auto-learn           Auto-learn from session reviews and bug fixes"
@@ -466,6 +471,9 @@ case "${1:-}" in
         ;;
     map-sync)
         "$SCRIPT_DIR/flow-map-sync" "${@:2}"
+        ;;
+    webmcp-generate)
+        node "$SCRIPT_DIR/flow-webmcp-generator.js" "${@:2}"
         ;;
     function-index)
         node "$SCRIPT_DIR/flow-function-index.js" "${@:2}"

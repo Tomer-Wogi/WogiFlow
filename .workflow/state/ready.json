@@ -1,18 +1,7 @@
 {
-  "lastUpdated": "2026-02-19T18:11:30.225Z",
+  "lastUpdated": "2026-02-19T18:33:40.132Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-webmcp-s3",
-      "title": "Create WebMCP tool generator script (flow-webmcp-generator.js)",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "ready",
-      "priority": "P1",
-      "description": "Create flow-webmcp-generator.js that generates WebMCP tool definitions from component analysis. Scans app-map for interactive components, generates navigator.modelContext tool schemas, outputs to .workflow/webmcp/tools.json. Supports React, Vue, Svelte component patterns.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    },
     {
       "id": "wf-webmcp-s4",
       "title": "Wire WebMCP into init/onboard flows",
@@ -71,6 +60,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s3",
+      "title": "Create WebMCP tool generator script (flow-webmcp-generator.js)",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T18:50:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T19:00:00.000Z"
+    },
     {
       "id": "wf-d239fcac",
       "title": "Add Claude Sonnet 4.6 to model registry",
@@ -183,30 +183,6 @@
       "priority": "P3",
       "startedAt": "2026-02-19T15:44:00.000Z",
       "completedAt": "2026-02-19T15:45:00.000Z"
-    },
-    {
-      "id": "wf-a7c31f02",
-      "title": "Finalize wogi-start AI catalog, mandatory research, auto-scan, auto-bulk",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "4 deliverables: (1) Refine wogi-start command catalog to 16 commands with routing logic, (2) Make research mandatory in Explore Phase with cache, (3) Wire function/API registry auto-scan into post-task flow, (4) Wire wogi-bulk auto-invocation after epic/multi-story creation.",
-      "createdAt": "2026-02-19T12:00:00.000Z",
-      "startedAt": "2026-02-19T12:00:00.000Z",
-      "completedAt": "2026-02-19T15:05:00.000Z"
-    },
-    {
-      "id": "wf-1488a40e",
-      "title": "Expand wogi-start triage to route to all WogiFlow commands",
-      "type": "story",
-      "feature": "claude-code-integration",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Replace regex-based triage with AI-driven command catalog. All /wogi-* commands listed as tools for the model to choose from. Update wogi-start.md skill prompt and CLAUDE.md.",
-      "createdAt": "2026-02-19T11:10:00.000Z",
-      "startedAt": "2026-02-19T11:40:00.000Z",
-      "completedAt": "2026-02-19T11:45:00.000Z"
     }
   ],
   "backlog": [
