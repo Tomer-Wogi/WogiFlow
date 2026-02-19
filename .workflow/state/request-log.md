@@ -13,6 +13,21 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-112 | 2026-02-19 23:15
+**Type**: release
+**Tags**: #release #npm #github #v1.4.1
+**Request**: "Update GitHub and create a release (make sure we see the new readme on GitHub and npm)"
+**Result**: Created v1.4.1 patch release to ensure updated README is visible on both GitHub and npm. Bumped version to 1.4.1, pushed to master, created tag, published GitHub release and npm package.
+**Files**: package.json, package-lock.json
+
+### R-111 | 2026-02-19 22:45
+**Type**: docs
+**Tags**: #documentation #knowledge-base #readme #v1.4.0
+**Task**: wf-docs-v140
+**Request**: "Make sure we updated knowledge base and readme files to match what we have"
+**Result**: Comprehensive documentation update for all 6 v1.4.0 features across 7 files. Updated README.md with new Core Features table entries, file structure, and feature sections. Updated knowledge base: session-review (adversarial review, git-verified claims, standards compliance), specification-mode ([NEEDS CLARIFICATION] markers), verification (TDD mode, cross-artifact consistency, git-verified claims), project-learning (decision amendment tracking), all-options (5 new config sections), commands.md (decision tracker and consistency CLI).
+**Files**: README.md, .claude/docs/knowledge-base/02-task-execution/05-session-review.md, .claude/docs/knowledge-base/02-task-execution/specification-mode.md, .claude/docs/knowledge-base/02-task-execution/03-verification.md, .claude/docs/knowledge-base/03-self-improvement/project-learning.md, .claude/docs/knowledge-base/configuration/all-options.md, .claude/docs/commands.md
+
 ### R-110 | 2026-02-19 22:00
 **Type**: fix
 **Tags**: #code-review #security #quality #flow-utils #consistency
