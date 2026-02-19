@@ -13,6 +13,16 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-115 | 2026-02-20 00:30
+**Type**: fix
+**Tags**: #quality #review-findings #hooks #verification #schema
+**Task**: wf-cr-6b2aa8
+**Request**: "Fix 3 medium-severity code review findings from wf-6b2aa8d3 review"
+**Result**: Fixed 3 medium-severity + 1 low-severity review findings: (1) Fixed skipped+passed semantic conflict — hook adapter claude-code.js:246 treated skipped as passing (OR'd with passed), contradicting flow-verify.js which sets passed:false+skipped:true for missing tools. Changed adapter to only check `coreResult.passed`. Added `skipped` to GateResult constructor and toJSON. (2) Removed dead `browserTesting` block from config.schema.json (35 lines). (3) Removed dead `bridgePath` variable with no-op `.replace('-', '-')` from flow-bridge.js. (4) Removed orphaned `suggestBrowserTests` config key (related to removed browserTesting feature).
+**Files**: scripts/hooks/adapters/claude-code.js, scripts/flow-verify.js, scripts/flow-bridge.js, .workflow/config.schema.json, .workflow/config.json
+
+---
+
 ### R-114 | 2026-02-20 00:15
 **Type**: fix
 **Tags**: #quality #codex-review #consistency #verification #dead-code

@@ -243,7 +243,7 @@ class ClaudeCodeAdapter extends BaseAdapter {
    */
   transformPostToolUse(coreResult) {
     // If validation was skipped or passed
-    if (coreResult.skipped || coreResult.passed) {
+    if (coreResult.passed) {
       const message = coreResult.summary || (coreResult.passed ? 'Validation passed' : null);
       return {
         continue: true,

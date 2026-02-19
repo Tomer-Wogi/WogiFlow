@@ -101,8 +101,6 @@ function showStatus() {
   console.log(`  Sync on Start:   ${autoSyncConfig.onSessionStart ? colors.green + 'enabled' : colors.yellow + 'disabled'}${colors.reset}`);
   console.log('');
 
-  // Check if bridge file exists
-  const bridgePath = path.join(BRIDGES_DIR, `${cliType.replace('-', '-')}-bridge.js`);
   // Check bridge file (Claude Code only)
   const bridgeFile = 'claude-bridge.js';
   const bridgeExists = fs.existsSync(path.join(BRIDGES_DIR, bridgeFile));

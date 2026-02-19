@@ -812,42 +812,6 @@
         }
       }
     },
-    "browserTesting": {
-      "type": "object",
-      "description": "CATEGORY: QUALITY & VALIDATION - Browser test integration",
-      "properties": {
-        "enabled": {
-          "type": "boolean",
-          "description": "Enable browser testing",
-          "default": true
-        },
-        "runOnTaskComplete": {
-          "type": "boolean",
-          "description": "Run browser tests after task",
-          "default": true
-        },
-        "runForUITasks": {
-          "type": "boolean",
-          "description": "Auto-suggest for UI tasks",
-          "default": true
-        },
-        "autoRun": {
-          "type": "boolean",
-          "description": "Auto-run without asking",
-          "default": false
-        },
-        "timeout": {
-          "type": "number",
-          "description": "Test timeout in milliseconds",
-          "default": 30000
-        },
-        "screenshotOnFailure": {
-          "type": "boolean",
-          "description": "Capture screenshot on test failure",
-          "default": true
-        }
-      }
-    },
     "capture": {
       "type": "object",
       "description": "CATEGORY: CAPTURE - Quick capture configuration with auto-grouping",

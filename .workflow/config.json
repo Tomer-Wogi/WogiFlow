@@ -99,7 +99,6 @@
     "pauseBetweenScenarios": false,
     "autoInferVerification": true,
     "fallbackToManual": true,
-    "suggestBrowserTests": true,
     "simpleMode": {
       "enabled": true,
       "completionPromise": "TASK_COMPLETE",

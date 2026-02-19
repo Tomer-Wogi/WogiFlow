@@ -35,6 +35,7 @@ class GateResult {
   constructor(name) {
     this.name = name;
     this.passed = false;
+    this.skipped = false;
     this.exitCode = null;
     this.duration = 0;
     this.stdout = '';
@@ -50,6 +51,7 @@ class GateResult {
     return {
       name: this.name,
       passed: this.passed,
+      skipped: this.skipped,
       exitCode: this.exitCode,
       duration: this.duration,
       command: this.command,
