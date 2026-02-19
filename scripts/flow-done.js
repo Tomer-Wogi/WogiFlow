@@ -31,9 +31,8 @@ const { clearCurrentTask, addKeyFact } = require('./flow-memory-blocks');
 const { trackTaskComplete } = require('./flow-session-state');
 const { autoArchiveIfNeeded } = require('./flow-log-manager');
 
-// v1.9.0 regression testing and browser test suggestions (legacy - now in workflow steps)
+// v1.9.0 regression testing (legacy - now in workflow steps)
 const { runRegressionTests } = require('./flow-regression');
-const { suggestBrowserTests } = require('./flow-browser-suggest');
 
 // v2.2 modular workflow steps
 const { runSteps, getAllSteps } = require('./flow-workflow-steps');
@@ -1399,24 +1398,6 @@ async function main() {
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[DEBUG] Regression tests: ${err.message}`);
-    }
-  }
-
-  // v1.9.0: Suggest browser tests for UI tasks (legacy - skipped if using workflowSteps)
-  const usingBrowserWorkflowStep = config.workflowSteps?.browserTest?.enabled;
-  if (!usingBrowserWorkflowStep && config.browserTesting?.enabled && config.browserTesting?.runOnTaskComplete) {
-    try {
-      const browserSuggestion = suggestBrowserTests(taskId, result.task);
-      if (browserSuggestion.suggested && browserSuggestion.flows.length > 0) {
-        console.log('');
-        console.log(color('cyan', '🌐 Browser tests available:'));
-        browserSuggestion.flows.forEach(flow => {
-          console.log(color('dim', `   - ${flow}`));
-        });
-        console.log(color('dim', `   Run: /wogi-test-browser ${browserSuggestion.flows[0]}`));
-      }
-    } catch (err) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Browser test suggestion: ${err.message}`);
     }
   }
 

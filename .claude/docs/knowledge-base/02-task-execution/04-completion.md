@@ -334,9 +334,7 @@ Task Verification Passed
 ├────────────────────────────────────────────┤
 │ 7. Run regression tests (if enabled)       │
 ├────────────────────────────────────────────┤
-│ 8. Suggest browser tests (if UI task)      │
-├────────────────────────────────────────────┤
-│ 9. Check context health                    │
+│ 8. Check context health                    │
 └────────────────────────────────────────────┘
          ↓
     ✓ Task Complete

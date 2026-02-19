@@ -479,45 +479,6 @@
     "runOnTaskComplete": true,
     "onFailure": "warn"
   },
-  "browserTesting": {
-    "enabled": true,
-    "runOnTaskComplete": true,
-    "runForUITasks": true,
-    "autoRun": false,
-    "timeout": 30000,
-    "screenshotOnFailure": true,
-    "baseUrl": "http://localhost:3000"
-  },
-  "browserDebugging": {
-    "enabled": true,
-    "maxIterations": 10,
-    "iterationTimeout": 60000,
-    "screenshotOnEachIteration": true,
-    "autoRefreshAfterFix": true,
-    "hotReloadWaitMs": 2000,
-    "consoleErrorPatterns": true,
-    "saveDebugSession": true,
-    "sessionSavePath": ".workflow/debug-sessions/",
-    "triggers": {
-      "manual": true,
-      "suggestOnBroken": true,
-      "autoOnTestFailure": false
-    },
-    "naturalLanguage": {
-      "enabled": true,
-      "useAppMap": true
-    },
-    "playwrightFallback": {
-      "enabled": true,
-      "headed": false,
-      "videoRecording": true
-    },
-    "artifacts": {
-      "screenshots": true,
-      "video": true,
-      "consoleLogs": true
-    }
-  },
   "componentRules": {
     "preferVariants": true,
     "requireAppMapEntry": true,
@@ -1478,16 +1439,6 @@
       "enabled": true,
       "mode": "warn",
       "when": "afterTask"
-    },
-    "browserTest": {
-      "enabled": true,
-      "mode": "prompt",
-      "when": "afterTask",
-      "triggerFor": [
-        "*.tsx",
-        "*.jsx",
-        "*.vue"
-      ]
     },
     "securityScan": {
       "enabled": true,

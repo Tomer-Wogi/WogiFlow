@@ -69,13 +69,6 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-import [file]` | Import workflow profile. Merge or replace workflow config. Restart required after. |
 | `/wogi-changelog` | Generate CHANGELOG.md from request-log entries. Group by type (added, changed, fixed). |
 
-### Browser Testing (Claude Extension)
-
-| Command | Action |
-|---------|--------|
-| `/wogi-test-browser [flow]` | Open browser and execute test flow. Navigate to URLs, interact with elements, verify outcomes. Report pass/fail with screenshots. |
-| `/wogi-test-browser all` | Run all test flows defined in `.workflow/tests/flows/`. |
-
 ### Status Line
 
 | Command | Action |
@@ -181,7 +174,6 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow verify all         # Run all verification gates
 ./scripts/flow regression         # Run regression tests
 ./scripts/flow regression --all   # Test all completed tasks
-./scripts/flow browser-suggest    # Suggest browser tests for a task
 ./scripts/flow standup            # Generate standup summary
 ./scripts/flow session-end        # End session properly (with learning analysis)
 ./scripts/flow session-learning   # Analyze session for patterns (standalone)

@@ -44,17 +44,6 @@ const STEP_REGISTRY = {
     configKey: 'regressionTesting',
     handlerPath: './flow-step-regression',
   },
-  browserTest: {
-    name: 'browserTest',
-    description: 'Suggest browser tests for UI changes',
-    category: 'testing',
-    defaultMode: 'prompt',
-    defaultWhen: 'afterTask',
-    defaultEnabled: true,
-    triggerFor: ['*.tsx', '*.jsx', '*.vue', '*.svelte'],
-    configKey: 'browserTesting',
-    handlerPath: './flow-step-browser',
-  },
   securityScan: {
     name: 'securityScan',
     description: 'Run npm audit and security checks',

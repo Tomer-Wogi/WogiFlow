@@ -1,9 +1,87 @@
 {
-  "lastUpdated": "2026-02-19T18:03:23.972Z",
+  "lastUpdated": "2026-02-19T18:11:30.225Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-webmcp-s3",
+      "title": "Create WebMCP tool generator script (flow-webmcp-generator.js)",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P1",
+      "description": "Create flow-webmcp-generator.js that generates WebMCP tool definitions from component analysis. Scans app-map for interactive components, generates navigator.modelContext tool schemas, outputs to .workflow/webmcp/tools.json. Supports React, Vue, Svelte component patterns.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    },
+    {
+      "id": "wf-webmcp-s4",
+      "title": "Wire WebMCP into init/onboard flows",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Update wogi-init.md and wogi-onboard.md to detect WebMCP-compatible projects (Chrome 146+, navigator.modelContext). Add WebMCP capability detection to stack analysis. Generate initial tool definitions during onboarding. Add webmcp section to config.json.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    },
+    {
+      "id": "wf-webmcp-s5",
+      "title": "Rewrite wogi-debug-browser with WebMCP backend",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P1",
+      "description": "Rewrite wogi-debug-browser.md to use WebMCP tool calls instead of screenshots. Navigate via structured DOM tools, read page state via tool responses, interact with forms/buttons via tool calls. 89% token reduction vs screenshot approach. Fallback to screenshot if WebMCP unavailable.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    },
+    {
+      "id": "wf-webmcp-s6",
+      "title": "Rewrite wogi-test-browser with WebMCP test flows",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P1",
+      "description": "Rewrite wogi-test-browser.md to use WebMCP for test execution. Define test flows as WebMCP tool sequences. Assert page state via structured tool responses instead of screenshot comparison. Generate test reports with pass/fail per tool call.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    },
+    {
+      "id": "wf-webmcp-s7",
+      "title": "Add WebMCP verification to wogi-start quality gates",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Add optional WebMCP verification step to wogi-start Step 4 quality gates. For UI tasks (*.tsx, *.jsx, *.vue changes), auto-suggest WebMCP tool validation. Verify components expose expected tools. Add webmcpVerification to qualityGates config.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    },
+    {
+      "id": "wf-webmcp-s8",
+      "title": "Auto-generate WebMCP tools on component creation",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "ready",
+      "priority": "P2",
+      "description": "Wire WebMCP tool generation into post-task hooks. When new components are created (detected via app-map update), auto-generate WebMCP tool definitions. Add to wogi-start Step 5 post-completion updates alongside app-map and function-map updates.",
+      "createdAt": "2026-02-19T18:10:00.000Z",
+      "epicId": "epic-webmcp"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s2",
+      "title": "Remove old browser testing code (Playwright, Chrome extension, screenshot commands)",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T18:20:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T18:30:00.000Z"
+    },
     {
       "id": "wf-webmcp-s1",
       "title": "Overhaul wogi-bug to match wogi-story quality",
@@ -119,18 +197,6 @@
       "createdAt": "2026-02-19T11:10:00.000Z",
       "startedAt": "2026-02-19T11:40:00.000Z",
       "completedAt": "2026-02-19T11:45:00.000Z"
-    },
-    {
-      "id": "wf-154914c4",
-      "title": "Implement rejected-approach tagging on observations",
-      "type": "story",
-      "feature": "memory",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Add exploration_status and rejection_reason to observations. Wire into all flows: capture on failure, warn at task start, detect approach thrashing, mark committed on completion, extract rejection patterns during compaction.",
-      "createdAt": "2026-02-19T10:30:00.000Z",
-      "startedAt": "2026-02-19T10:30:00.000Z",
-      "completedAt": "2026-02-19T11:00:00.000Z"
     }
   ],
   "backlog": [

@@ -125,46 +125,20 @@ See `.claude/docs/commands.md` for complete command reference.
 
 ## Natural Language Command Detection
 
-**When a user's message clearly maps to one of these commands, invoke it via the Skill tool. Use your judgment — understand intent, don't pattern-match keywords.**
+**When you recognize these phrases, auto-invoke the corresponding command:**
 
-### Work Commands (routed via /wogi-start)
+| Phrase Pattern | Command |
+|----------------|---------|
+| "review what we did", "review this session", "please review", "code review" | `/wogi-review` |
+| "show tasks", "what's ready", "available tasks" | `/wogi-ready` |
+| "project status", "show status", "where are we" | `/wogi-status` |
+| "check health", "workflow health", "is everything ok" | `/wogi-health` |
+| "wrap up", "end session", "that's all" | `/wogi-session-end` |
+| "compact context", "save context", "running low on context" | `/wogi-compact` |
+| "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
+| "debug this", "investigate hypotheses", "competing theories", "parallel debug" | `/wogi-debug-hypothesis` |
 
-These are the commands wogi-start can route to. All implementation requests go through `/wogi-start` which picks the best command:
-
-| Command | What it does | Use when the user wants to... |
-|---------|-------------|-------------------------------|
-| `/wogi-start` | Universal entry point — routes to the right workflow | Implement, build, or change something (this is the default for all work) |
-| `/wogi-story` | Create a story with acceptance criteria | Explicitly create a tracked task before implementing |
-| `/wogi-bug` | Create a tracked bug report | Report something broken or behaving unexpectedly |
-| `/wogi-review` | Comprehensive code review | Get their code reviewed for quality and correctness |
-| `/wogi-review-fix` | Code review with automatic fixing | Get a review AND have issues auto-fixed |
-| `/wogi-peer-review` | Multi-model code review | Get diverse AI perspectives on code |
-| `/wogi-research` | Zero-trust research with verification | Answer a capability/feasibility question with evidence |
-| `/wogi-debug-hypothesis` | Parallel hypothesis debugging | Investigate a complex issue with competing theories |
-| `/wogi-trace` | Code flow trace | Understand how code flows for a specific feature |
-| `/wogi-epics` | Epic management and decomposition | Plan a large initiative spanning multiple stories |
-| `/wogi-feature` | Feature management | Group related stories under a coherent product capability |
-| `/wogi-plan` | Plan management | Coordinate epics and features into a strategic plan |
-| `/wogi-extract-review` | Task extraction from transcripts | Process a recording, transcript, or long input into tasks |
-| `/wogi-capture` | Quick idea capture | Save a thought without interrupting current work |
-| `/wogi-changelog` | Generate changelog | Create release notes from recent work |
-| `/wogi-debt` | Tech debt overview | See or manage technical debt |
-| `/wogi-guided-edit` | Step-by-step multi-file guidance | Get hand-holding through a complex change |
-
-### Session/Admin Commands (invoked directly, not through /wogi-start)
-
-| Command | What it does | Use when the user wants to... |
-|---------|-------------|-------------------------------|
-| `/wogi-morning` | Morning briefing | Start their day, get priorities and context |
-| `/wogi-ready` | Show available tasks | See what work is available |
-| `/wogi-status` | Project overview | Get a high-level project summary |
-| `/wogi-health` | Workflow health check | Verify the workflow system is working |
-| `/wogi-session-end` | End session properly | Wrap up, commit, and create handoff notes |
-| `/wogi-compact` | Compact context | Free up conversation space |
-| `/wogi-roadmap` | View/manage roadmap | See planned future work |
-| `/wogi-standup` | Standup summary | Get a standup-format summary of recent work |
-
-**IMPORTANT**: Use your judgment to route. Don't match keywords — understand what the user actually needs. When unsure, ask.
+**IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
 
 ## CRITICAL: Universal Entry Point
 
@@ -177,14 +151,20 @@ You: /wogi-start "add a logout button"
 
 **Do NOT:**
 - Jump straight to editing files for implementation requests
+- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
 - Rationalize that "this is quick, I'll skip the workflow"
-- Invoke /wogi-bug or /wogi-story directly (let /wogi-start route)
 
 **ALWAYS:**
-- Route all work requests through /wogi-start
-- /wogi-start uses AI judgment to pick the right command from its catalog (16 work commands)
-- Session/admin commands (morning, ready, status, health, session-end, compact, roadmap, standup) are invoked directly — they don't go through /wogi-start
-- Questions and operational tasks (git, tests, deploy) can be handled directly
+- Route implementation requests through /wogi-start
+- Let it classify and decide the appropriate action
+- Follow its routing decision
+
+**/wogi-start will intelligently route:**
+- **Exploration** (questions, reading) → Proceed without task
+- **Operational** (git, npm, deploy) → Execute directly
+- **Quick fix** (typo, text) → Execute + log
+- **Bug report** → Route to /wogi-bug
+- **Implementation** → Route to /wogi-story
 
 The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
 
@@ -286,9 +266,8 @@ cat .workflow/state/decisions.md # Project rules
 ### After Completing:
 1. Update `request-log.md` with tags
 2. Update `app-map.md` if new components
-3. Auto-scan function/API registries (runs automatically via TaskCompleted hook)
-4. Run quality gates (lint, typecheck, test)
-5. Provide completion report
+3. Run quality gates (lint, typecheck, test)
+4. Provide completion report
 
 ## Auto-Validation (CRITICAL)
 
@@ -579,55 +558,6 @@ When user says to wrap up:
 2. Ensure request-log is current
 3. Update progress.md
 4. Commit and push
-
-
-## Browser Testing Suggestions
-
-When a user expresses that something isn't working as expected, consider whether browser testing might help diagnose the issue.
-
-### When to Suggest Browser Testing
-
-**Consider suggesting browser tests when:**
-- The user reports UI behavior that doesn't match expectations
-- Recent work involved frontend components, pages, or visual elements
-- The issue seems related to user interaction (clicks, forms, navigation)
-- You've made changes to files with extensions like `.tsx`, `.jsx`, `.vue`, `.svelte`
-- The task involved directories like `/components/`, `/pages/`, `/views/`, `/screens/`
-
-**Do NOT suggest browser testing when:**
-- The context is clearly backend/API/server-side
-- Only configuration, scripts, or non-UI code was changed
-- The issue is about data, logic, or server errors (suggest logs, unit tests instead)
-- No UI components were involved in recent changes
-
-### How to Suggest
-
-When you semantically understand the user is frustrated about something not working, and the context suggests UI involvement:
-
-```
-💡 This might be a good case for browser testing.
-
-I can run an automated browser test to:
-- Navigate to the relevant page
-- Interact with the elements you mentioned
-- Capture what's actually happening on screen
-
-Would you like me to run /wogi-test-browser to help diagnose this?
-```
-
-### Requirements
-
-Browser testing requires:
-- Claude Code's Chrome integration (`claude --chrome`)
-- Claude in Chrome extension installed
-- Test flows defined in `.workflow/tests/flows/`
-
-If Chrome isn't connected, guide the user to enable it.
-
-### After UI Task Completion
-
-When a task that modified UI files is completed and `browserTesting.runOnTaskComplete` is enabled, suggest running relevant browser tests to verify the changes work correctly.
-
 
 
 ---
@@ -1146,4 +1076,4 @@ This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-02-18T07:53:08.478Z
+Last synced: 2026-02-19T18:07:40.822Z

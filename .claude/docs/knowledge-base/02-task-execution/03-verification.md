@@ -26,8 +26,7 @@ Auto-inference automatically verifies certain types of criteria without manual c
 {
   "loops": {
     "autoInferVerification": true,    // Enable auto-inference
-    "fallbackToManual": true,         // Ask user if can't infer
-    "suggestBrowserTests": true       // Suggest browser tests for UI
+    "fallbackToManual": true          // Ask user if can't infer
   }
 }
 ```
@@ -50,7 +49,6 @@ Result: ✓ File exists: src/services/AuthService.ts
 ✓ File exists: src/services/AuthService.ts        (auto-verified)
 ✓ Found "login" in src/services/AuthService.ts   (auto-verified)
 ⚠️ Could not auto-verify - manual check required  (fallback)
-🌐 UI criterion detected - browser test recommended
 ```
 
 ---
@@ -253,75 +251,6 @@ Test previously completed tasks to ensure new changes don't break them.
 
 ---
 
-## Browser Testing
-
-For UI tasks, browser testing verifies visual and interactive behavior.
-
-### Configuration
-
-```json
-{
-  "browserTesting": {
-    "enabled": true,
-    "runOnTaskComplete": true,    // Suggest after UI tasks
-    "runForUITasks": true,        // Auto-detect UI tasks
-    "autoRun": false,             // Require manual trigger
-    "timeout": 30000,
-    "screenshotOnFailure": true
-  }
-}
-```
-
-### Test Flow Definition
-
-Create test flows in `.workflow/tests/flows/`:
-
-```yaml
-# login.yaml
-name: Login Flow
-steps:
-  - navigate: /login
-  - fill:
-      selector: "#email"
-      value: "test@example.com"
-  - fill:
-      selector: "#password"
-      value: "password123"
-  - click: "#submit-btn"
-  - waitFor: ".dashboard"
-  - assert:
-      selector: ".welcome-message"
-      contains: "Welcome"
-```
-
-### Running Browser Tests
-
-```bash
-# Run specific flow
-/wogi-test-browser login
-
-# Run all flows
-/wogi-test-browser --all
-```
-
-### When Browser Tests Are Suggested
-
-After completing tasks that modify:
-- `.tsx` or `.jsx` files
-- Files in `src/components/`, `src/pages/`, etc.
-- CSS/SCSS files
-
-```
-✓ Completed: TASK-015
-
-🌐 Browser tests available:
-   - login-flow
-   - registration-flow
-   Run: /wogi-test-browser login-flow
-```
-
----
-
 ## Pattern Enforcement
 
 Ensure code follows patterns defined in `decisions.md`.
@@ -432,9 +361,7 @@ Task Completion Attempt
 │ 6. Run Regression Tests (if enabled)       │
 │    - Sample completed tasks               │
 ├────────────────────────────────────────────┤
-│ 7. Suggest Browser Tests (if UI task)      │
-├────────────────────────────────────────────┤
-│ 8. Security Scan (if enabled)              │
+│ 7. Security Scan (if enabled)              │
 └────────────────────────────────────────────┘
          ↓
     All passed? → Complete task
@@ -448,8 +375,7 @@ Task Completion Attempt
 1. **Enable auto-inference** - Saves time on obvious checks
 2. **Configure gates per task type** - Features need more than bugfixes
 3. **Use regression testing** - Catch breakages early
-4. **Write browser test flows** - Cover critical user journeys
-5. **Enable security scanning** - Catch vulnerabilities before commit
+4. **Enable security scanning** - Catch vulnerabilities before commit
 
 ---
 

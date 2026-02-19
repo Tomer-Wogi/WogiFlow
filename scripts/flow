@@ -72,7 +72,6 @@ show_help() {
     echo "  verify all           Run all verification gates"
     echo "  regression           Run regression tests on completed tasks"
     echo "  regression --all     Test all completed tasks"
-    echo "  browser-suggest      Suggest browser tests for a task"
     echo "  step list            Show all workflow steps with status"
     echo "  step enable <name>   Enable a workflow step"
     echo "  step disable <name>  Disable a workflow step"
@@ -412,9 +411,6 @@ case "${1:-}" in
         ;;
     step)
         node "$SCRIPT_DIR/flow-workflow-steps.js" "${@:2}"
-        ;;
-    browser-suggest)
-        node "$SCRIPT_DIR/flow-browser-suggest.js" "${@:2}"
         ;;
     run-trace)
         node "$SCRIPT_DIR/flow-run-trace.js" "${@:2}"

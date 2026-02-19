@@ -71,12 +71,6 @@ CONFIGURATION
 /wogi-import [file]      Import team profile
 
 ═══════════════════════════════════════════════════════════════
-TESTING (if enabled)
-═══════════════════════════════════════════════════════════════
-/wogi-test-browser [flow]  Execute browser test flow
-/wogi-test-browser all     Run all test flows
-
-═══════════════════════════════════════════════════════════════
 SKILL COMMANDS (when installed)
 ═══════════════════════════════════════════════════════════════
 Run /wogi-skills to see commands from installed skills.

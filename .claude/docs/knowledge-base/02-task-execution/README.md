@@ -11,7 +11,7 @@ The `/wogi-start` command initiates a structured execution pipeline that ensures
    ─────────────────    ─────────────     ──────────────────     ──────────────      ────────────
    • Task gating        • Story creation   • Self-completing    • Auto-inference    • Logging
    • Size assessment    • Acceptance       • Durable sessions   • Quality gates     • Commits
-   • Dependency check     criteria         • Suspend/resume     • Browser tests     • Archival
+   • Dependency check     criteria         • Suspend/resume     • Quality gates     • Archival
                         • Decomposition    • Hybrid mode                            • Cleanup
 ```
 
@@ -80,7 +80,6 @@ Automated checks that validate the implementation.
 **Key Features:**
 - **Auto-Inference**: Automatic verification of file existence, function exports, etc.
 - **Quality Gates**: Lint, typecheck, test requirements per task type
-- **Browser Testing**: Visual verification for UI changes
 - **Pattern Enforcement**: Ensure code follows project decisions
 
 [Read more: Verification](./03-verification.md)

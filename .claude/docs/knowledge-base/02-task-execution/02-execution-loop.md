@@ -66,8 +66,7 @@ The execution loop is the core mechanism that ensures task completion. When enab
     "commitEvery": 3,             // Checkpoint commits
     "pauseBetweenScenarios": false,
     "autoInferVerification": true,
-    "fallbackToManual": true,
-    "suggestBrowserTests": true
+    "fallbackToManual": true
   }
 }
 ```

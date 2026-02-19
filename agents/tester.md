@@ -122,14 +122,6 @@ Execute each step:
 - For E2E user journey validation
 - When automated tests can't verify UI behavior
 
-### Browser Test Commands
-
-| Slash Command | Action |
-|---------------|--------|
-| `/wogi-test-browser [flow]` | Run specific flow test |
-| `/wogi-test-browser all` | Run all defined flows |
-| `/wogi-test-record [name]` | Record new test flow interactively |
-
 ## Test Output
 
 ```markdown

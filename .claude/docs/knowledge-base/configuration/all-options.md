@@ -49,7 +49,6 @@ Configuration lives in `.workflow/config.json`
 | [validation](#validation) | Auto-validation commands |
 | [testing](#testing) | Test execution |
 | [regressionTesting](#regressiontesting) | Regression checks |
-| [browserTesting](#browsertesting) | Browser test integration |
 | [componentRules](#componentrules) | Component reuse rules |
 | [strictMode](#strictmode) | Additional strict options |
 
@@ -212,8 +211,7 @@ Controls self-completing execution loops.
     "commitEvery": 3,
     "pauseBetweenScenarios": false,
     "autoInferVerification": true,
-    "fallbackToManual": true,
-    "suggestBrowserTests": true
+    "fallbackToManual": true
   }
 }
 ```
@@ -231,7 +229,6 @@ Controls self-completing execution loops.
 | `pauseBetweenScenarios` | boolean | `false` | Pause between scenarios |
 | `autoInferVerification` | boolean | `true` | Auto-generate verification steps |
 | `fallbackToManual` | boolean | `true` | Fall back to manual on failure |
-| `suggestBrowserTests` | boolean | `true` | Suggest browser tests for UI |
 
 **Trade-off**: Higher `maxRetries`/`maxIterations` = higher completion rate but more token usage.
 
@@ -472,9 +469,7 @@ Test execution configuration.
 {
   "testing": {
     "runAfterTask": false,
-    "runBeforeCommit": false,
-    "browserTests": false,
-    "browserTestUrl": "http://localhost:3000"
+    "runBeforeCommit": false
   }
 }
 ```
@@ -483,8 +478,6 @@ Test execution configuration.
 |--------|------|---------|-------------|
 | `runAfterTask` | boolean | `false` | Run tests after task |
 | `runBeforeCommit` | boolean | `false` | Run tests before commit |
-| `browserTests` | boolean | `false` | Enable browser tests |
-| `browserTestUrl` | string | `"http://localhost:3000"` | Browser test base URL |
 
 ---
 
@@ -1423,34 +1416,6 @@ Story breakdown configuration.
 | `edgeCases` | boolean | `true` | Include edge cases |
 | `loadingStates` | boolean | `true` | Include loading states |
 | `errorStates` | boolean | `true` | Include error states |
-
----
-
-## browserTesting
-
-Browser test configuration.
-
-```json
-{
-  "browserTesting": {
-    "enabled": true,
-    "runOnTaskComplete": true,
-    "runForUITasks": true,
-    "autoRun": false,
-    "timeout": 30000,
-    "screenshotOnFailure": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable browser tests |
-| `runOnTaskComplete` | boolean | `true` | Run after task |
-| `runForUITasks` | boolean | `true` | Run for UI tasks |
-| `autoRun` | boolean | `false` | Auto-run tests |
-| `timeout` | number | `30000` | Test timeout in ms |
-| `screenshotOnFailure` | boolean | `true` | Screenshot on failure |
 
 ---
 

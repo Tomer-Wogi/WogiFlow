@@ -604,55 +604,6 @@ When user says to wrap up:
 3. Update progress.md
 4. Commit and push
 
-{{#if config.browserTesting.enabled}}
-## Browser Testing Suggestions
-
-When a user expresses that something isn't working as expected, consider whether browser testing might help diagnose the issue.
-
-### When to Suggest Browser Testing
-
-**Consider suggesting browser tests when:**
-- The user reports UI behavior that doesn't match expectations
-- Recent work involved frontend components, pages, or visual elements
-- The issue seems related to user interaction (clicks, forms, navigation)
-- You've made changes to files with extensions like `.tsx`, `.jsx`, `.vue`, `.svelte`
-- The task involved directories like `/components/`, `/pages/`, `/views/`, `/screens/`
-
-**Do NOT suggest browser testing when:**
-- The context is clearly backend/API/server-side
-- Only configuration, scripts, or non-UI code was changed
-- The issue is about data, logic, or server errors (suggest logs, unit tests instead)
-- No UI components were involved in recent changes
-
-### How to Suggest
-
-When you semantically understand the user is frustrated about something not working, and the context suggests UI involvement:
-
-```
-💡 This might be a good case for browser testing.
-
-I can run an automated browser test to:
-- Navigate to the relevant page
-- Interact with the elements you mentioned
-- Capture what's actually happening on screen
-
-Would you like me to run /wogi-test-browser to help diagnose this?
-```
-
-### Requirements
-
-Browser testing requires:
-- Claude Code's Chrome integration (`claude --chrome`)
-- Claude in Chrome extension installed
-- Test flows defined in `.workflow/tests/flows/`
-
-If Chrome isn't connected, guide the user to enable it.
-
-### After UI Task Completion
-
-When a task that modified UI files is completed and `browserTesting.runOnTaskComplete` is enabled, suggest running relevant browser tests to verify the changes work correctly.
-{{/if}}
-
 {{#if config.research.enabled}}
 ---
 

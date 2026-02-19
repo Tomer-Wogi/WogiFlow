@@ -772,7 +772,7 @@ function getLoopStats() {
 
 /**
  * Verify a specific criterion using auto-inference
- * Returns { passed: boolean|null, message: string, verification: string, browserTestSuggested?: boolean }
+ * Returns { passed: boolean|null, message: string, verification: string }
  */
 function verifyCriterion(criterion, context = {}) {
   const { execSync } = require('child_process');
@@ -1016,32 +1016,6 @@ function verifyCriterion(criterion, context = {}) {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // UI/BROWSER TESTING (Claude Browser Extension)
-  // ═══════════════════════════════════════════════════════════════
-
-  const uiPatterns = [
-    /(?:ui|user interface|page|screen|view)\s+(?:renders?|displays?|shows?|works?)/i,
-    /(?:button|form|input|modal|dialog|dropdown)\s+(?:works?|functions?|responds?)/i,
-    /(?:click|submit|select|hover)\s+(?:works?|triggers?)/i,
-    /user\s+(?:can|should be able to)\s+(?:see|click|submit|enter|select)/i,
-    /(?:displays?|shows?|renders?)\s+(?:correctly|properly|as expected)/i
-  ];
-
-  const isUITest = uiPatterns.some(p => p.test(desc));
-  const suggestBrowserTests = taskConfig.suggestBrowserTests !== false; // Default true
-  const browserConfig = config.browserTesting || {};
-
-  if (isUITest && suggestBrowserTests && browserConfig.enabled) {
-    return {
-      passed: null,
-      message: '🌐 UI criterion detected - browser test recommended',
-      verification: 'browser-test',
-      browserTestSuggested: true,
-      suggestedFlow: inferBrowserTestFlow(desc)
-    };
-  }
-
-  // ═══════════════════════════════════════════════════════════════
   // FALLBACK
   // ═══════════════════════════════════════════════════════════════
 
@@ -1058,34 +1032,6 @@ function verifyCriterion(criterion, context = {}) {
     passed: false,
     message: '✗ Could not verify and fallbackToManual is disabled',
     verification: 'failed'
-  };
-}
-
-/**
- * Infer browser test flow from criterion description
- */
-function inferBrowserTestFlow(description) {
-  const desc = description.toLowerCase();
-
-  // Try to extract page/screen name (e.g., "the login page renders" -> "login")
-  const pageMatch = desc.match(/(?:the\s+)?(\w+)\s+(?:page|screen|view)\s+(?:renders?|displays?|shows?|works?)/i);
-
-  // Try to extract component name (e.g., "the registration form works" -> "registration")
-  const componentMatch = desc.match(/(?:the\s+)?(\w+)\s+(?:button|form|modal|dialog|dropdown|input)\s+(?:works?|functions?|responds?|renders?)/i);
-
-  // Try to extract action target (e.g., "click the submit button" -> "submit")
-  const actionMatch = desc.match(/(?:click|submit|select|hover|enter)\s+(?:on\s+)?(?:the\s+)?(\w+)/i);
-
-  // Also try to find any named element in quotes
-  const quotedMatch = desc.match(/["`'](\w+)["`']/);
-
-  const target = pageMatch?.[1] || componentMatch?.[1] || actionMatch?.[1] || quotedMatch?.[1] || 'unknown';
-
-  return {
-    type: pageMatch ? 'page' : componentMatch ? 'component' : 'action',
-    target: target,
-    action: actionMatch ? actionMatch[0] : 'verify-renders',
-    description
   };
 }
 
@@ -1109,7 +1055,6 @@ module.exports = {
   endLoop,
   getLoopStats,
   verifyCriterion,
-  inferBrowserTestFlow,
   generateEnforcementMessage,
   // Simple Mode functions (v2.2)
   isSimpleModeEnabled,

@@ -59,8 +59,7 @@
   },
   "optionalDependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@xenova/transformers": "^2.15.0",
-    "playwright": "^1.40.0"
+    "@xenova/transformers": "^2.15.0"
   },
   "engines": {
     "node": ">=18.0.0"
