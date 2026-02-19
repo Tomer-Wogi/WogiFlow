@@ -5,6 +5,15 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-725481b7",
+      "title": "Add function-map and api-map references to wogi-start.md Step 1 and Step 5",
+      "type": "bugfix",
+      "status": "completed",
+      "priority": "P3",
+      "startedAt": "2026-02-19T15:44:00.000Z",
+      "completedAt": "2026-02-19T15:45:00.000Z"
+    },
+    {
       "id": "wf-a7c31f02",
       "title": "Finalize wogi-start AI catalog, mandatory research, auto-scan, auto-bulk",
       "type": "story",

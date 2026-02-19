@@ -335,8 +335,10 @@ This command implements a **structured execution loop**:
    - Find story file in `.workflow/changes/*/wf-XXXXXXXX.md` or tasks.json
    - Extract user story, acceptance criteria, technical notes
 5. Check `.workflow/state/app-map.md` for components mentioned
-6. Check `.workflow/state/decisions.md` for relevant patterns
-7. **Auto-invoke skills** based on task context:
+6. Check `.workflow/state/function-map.md` for existing utility functions
+7. Check `.workflow/state/api-map.md` for existing API endpoints
+8. Check `.workflow/state/decisions.md` for relevant patterns
+9. **Auto-invoke skills** based on task context:
 
 ### Step 1.2: Clarifying Questions (NEW)
 
@@ -404,8 +406,10 @@ Analyze the codebase for task: "[TASK_TITLE]"
 1. Use Glob to find files related to: [TASK_KEYWORDS]
 2. Use Grep to search for patterns, function names, component references
 3. Read app-map.md for existing components that could be reused
-4. Read decisions.md for patterns that must be followed
-5. Map dependencies:
+4. Read function-map.md for existing utility functions that could be reused
+5. Read api-map.md for existing API endpoints that could be reused
+6. Read decisions.md for patterns that must be followed
+7. Map dependencies:
    - Files that REFERENCE the target code
    - Files REFERENCED BY the target code
 6. Surface assumptions that need verification
@@ -675,6 +679,8 @@ Given [context] When [action] Then [outcome]
 Also add:
 - "Update request-log.md with task entry"
 - "Update app-map.md if new components created"
+- "Update function-map.md if new utility functions created"
+- "Update api-map.md if new API endpoints created"
 - "Run quality gates"
 - "Commit changes"
 
@@ -983,8 +989,12 @@ Missing files:
       - Are there any loose ends to address?
    ```
 2. Update ready.json: Move task to recentlyCompleted
-3. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
-4. Show completion summary with verification results
+3. Update request-log.md with task entry
+4. Update app-map.md if new components were created
+5. Update function-map.md if new utility functions were created
+6. Update api-map.md if new API endpoints were created
+7. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
+8. Show completion summary with verification results
 
 ### Output
 
