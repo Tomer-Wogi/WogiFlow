@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-remain",
+      "title": "Fix remaining 4 code review findings",
+      "type": "task",
+      "feature": "quality-improvements",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-19T21:50:00.000Z",
+      "completedAt": "2026-02-19T22:00:00.000Z"
+    },
+    {
       "id": "wf-cr-02881a",
       "title": "Fix code review findings from wf-02881aba",
       "type": "task",

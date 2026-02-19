@@ -65,24 +65,44 @@ const MAX_SCAN_DEPTH = 20;
 // Map Parsing
 // ============================================================
 
+/** Header row indicators to skip during table parsing */
+const HEADER_NAMES = new Set(['component', 'function', 'name', 'method', 'endpoint']);
+
+/**
+ * Read a map file and return its content, or null if unavailable
+ * @param {string} fileName - Map file name (e.g., 'app-map.md')
+ * @returns {string|null} File content or null
+ */
+function readMapFile(fileName) {
+  const mapPath = path.join(PATHS.state, fileName);
+  if (!fs.existsSync(mapPath)) {
+    return null;
+  }
+  try {
+    return fs.readFileSync(mapPath, 'utf-8');
+  } catch (err) {
+    warn(`Failed to read ${fileName}: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Check if a table row name is a header row
+ * @param {string} name - Parsed name from table
+ * @returns {boolean}
+ */
+function isHeaderRow(name) {
+  return name.includes('---') || HEADER_NAMES.has(name.toLowerCase());
+}
+
 /**
  * Extract component entries from app-map.md
  * Parses markdown tables and lists to find component references
  * @returns {Object[]} Array of { name, path, type }
  */
 function parseAppMap() {
-  const mapPath = path.join(PATHS.state, 'app-map.md');
-  if (!fs.existsSync(mapPath)) {
-    return [];
-  }
-
-  let content;
-  try {
-    content = fs.readFileSync(mapPath, 'utf-8');
-  } catch (err) {
-    warn(`Failed to read app-map.md: ${err.message}`);
-    return [];
-  }
+  const content = readMapFile('app-map.md');
+  if (!content) return [];
 
   const entries = [];
 
@@ -92,12 +112,7 @@ function parseAppMap() {
   while ((match = tablePattern.exec(content)) !== null) {
     const name = match[1].trim();
     const filePath = match[2].trim();
-
-    // Skip header rows
-    if (name.includes('---') || name.toLowerCase() === 'component' || name.toLowerCase() === 'name') {
-      continue;
-    }
-
+    if (isHeaderRow(name)) continue;
     entries.push({ name, path: filePath, type: 'component', source: 'app-map' });
   }
 
@@ -118,18 +133,8 @@ function parseAppMap() {
  * @returns {Object[]} Array of { name, path, type }
  */
 function parseFunctionMap() {
-  const mapPath = path.join(PATHS.state, 'function-map.md');
-  if (!fs.existsSync(mapPath)) {
-    return [];
-  }
-
-  let content;
-  try {
-    content = fs.readFileSync(mapPath, 'utf-8');
-  } catch (err) {
-    warn(`Failed to read function-map.md: ${err.message}`);
-    return [];
-  }
+  const content = readMapFile('function-map.md');
+  if (!content) return [];
 
   const entries = [];
 
@@ -139,11 +144,7 @@ function parseFunctionMap() {
   while ((match = tablePattern.exec(content)) !== null) {
     const name = match[1].trim();
     const filePath = match[2].trim();
-
-    if (name.includes('---') || name.toLowerCase() === 'function' || name.toLowerCase() === 'name') {
-      continue;
-    }
-
+    if (isHeaderRow(name)) continue;
     entries.push({ name, path: filePath, type: 'function', source: 'function-map' });
   }
 
@@ -155,18 +156,8 @@ function parseFunctionMap() {
  * @returns {Object[]} Array of { name, path, type, method, endpoint }
  */
 function parseApiMap() {
-  const mapPath = path.join(PATHS.state, 'api-map.md');
-  if (!fs.existsSync(mapPath)) {
-    return [];
-  }
-
-  let content;
-  try {
-    content = fs.readFileSync(mapPath, 'utf-8');
-  } catch (err) {
-    warn(`Failed to read api-map.md: ${err.message}`);
-    return [];
-  }
+  const content = readMapFile('api-map.md');
+  if (!content) return [];
 
   const entries = [];
 
@@ -386,8 +377,11 @@ function runConsistencyCheck(options = {}) {
 
   // Determine overall status
   const mode = consistencyConfig.mode || 'warn';
+  const orphanMode = consistencyConfig.orphanMode || 'warn';
   results.passed = results.summary.failed === 0;
-  results.blocked = mode === 'block' && !results.passed;
+  // Orphans block only when orphanMode is explicitly set to 'block'
+  const orphansBlock = orphanMode === 'block' && results.summary.warnings > 0;
+  results.blocked = (mode === 'block' && !results.passed) || orphansBlock;
 
   return results;
 }

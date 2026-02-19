@@ -651,16 +651,19 @@ function safeJsonParse(filePath, defaultValue = null) {
 
     const parsed = JSON.parse(content);
 
-    // Validate it's an object (not array or primitive for config files)
-    if (typeof parsed !== 'object' || parsed === null) {
-      console.error(`[safeJsonParse] Invalid JSON structure in ${filePath} (expected object)`);
+    // Validate it's a plain object (not array, null, or primitive)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      const actualType = Array.isArray(parsed) ? 'array' : typeof parsed;
+      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
+      console.error(`[safeJsonParse] Invalid JSON structure in ${relPath} (expected object, got ${actualType})`);
       return defaultValue;
     }
 
     // Recursive check for prototype pollution in nested objects and arrays
     const dangerousKeyError = checkForDangerousKeys(parsed);
     if (dangerousKeyError) {
-      console.error(`[safeJsonParse] Prototype pollution attempt in ${filePath}: ${dangerousKeyError}`);
+      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
+      console.error(`[safeJsonParse] Prototype pollution attempt in ${relPath}: ${dangerousKeyError}`);
       return defaultValue;
     }
 
@@ -669,7 +672,8 @@ function safeJsonParse(filePath, defaultValue = null) {
     // Only log errors for actual parse failures, not missing files
     // ENOENT is expected for optional files - caller handles with defaultValue
     if (err.code !== 'ENOENT') {
-      console.error(`[safeJsonParse] Failed to parse ${filePath}: ${err.message}`);
+      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
+      console.error(`[safeJsonParse] Failed to parse ${relPath}: ${err.message}`);
     }
     return defaultValue;
   }

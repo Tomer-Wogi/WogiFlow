@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-110 | 2026-02-19 22:00
+**Type**: fix
+**Tags**: #code-review #security #quality #flow-utils #consistency
+**Task**: wf-cr-remain
+**Request**: "Fix all remaining code review findings"
+**Result**: Fixed last 4 review findings. (1) safeJsonParse now rejects top-level arrays with Array.isArray check. (2) safeJsonParse error messages use project-relative paths instead of leaking absolute filesystem paths. (3) DRY refactor: extracted readMapFile() and isHeaderRow() helpers in flow-consistency-check.js, eliminating ~40 lines of duplicated file-reading boilerplate across 3 parse functions. (4) Orphan warnings now respect orphanMode:'block' config for users who want strict map coverage enforcement.
+**Files**: scripts/flow-utils.js, scripts/flow-consistency-check.js, .workflow/state/ready.json
+
 ### R-109 | 2026-02-19 21:45
 **Type**: fix
 **Tags**: #code-review #security #quality #decision-tracking #consistency
