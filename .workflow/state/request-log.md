@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-096 | 2026-02-19 18:00
+**Type**: new
+**Tags**: #feature:init-onboard #wf-init-s5 #epic:epic-init-onboard #wogi-init #reference-import #cross-project #path-sanitization
+**Request**: "Enhance wogi-init reference project path (Epic: Complete Init/Onboard 100% Coverage, Story 5/5)"
+**Result**: Expanded wogi-init.md "Other project folder" section from simple scan to comprehensive 6-phase Reference Import Pipeline. Phase 1: Reference stack detection with user confirmation (match/partially/just-patterns). Phase 2: Deep pattern extraction across all 10 categories. Phase 3: Interactive conflict resolution with auto/manual/skip options. Phase 4: Template extraction + function/API registry scanning + product scanning. Phase 5: Skill generation from reference stack with Context7 fetch-extract-flush loop. Phase 6: State file persistence with cross-project path sanitization (sanitizeRefPath converts absolute paths to ref: prefixed relative paths). All state files (decisions.md, function-map.md, api-map.md, app-map.md) label entries as [ref] Reference Patterns. Error handling for each phase. wogi-init.md now 1105 lines total.
+**Files**: .claude/commands/wogi-init.md
+
 ### R-095 | 2026-02-19 17:45
 **Type**: new
 **Tags**: #feature:init-onboard #wf-init-s4 #epic:epic-init-onboard #wogi-onboard #temporal-analysis #legacy-detection #migration

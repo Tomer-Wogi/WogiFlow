@@ -71,168 +71,388 @@ AskUserQuestion({
 ```
 
 #### If "Other project folder" selected:
-1. Ask user to provide the folder path
-2. Scan the folder:
-   - Read `package.json` for dependencies
-   - Read `.workflow/` if exists for patterns
-   - Read `.eslintrc`, `tsconfig.json`, `.prettierrc` for conventions
-   - Read `src/` structure for file organization patterns
-3. Use `scripts/flow-pattern-extractor.js` to extract and analyze patterns:
-   ```javascript
-   const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
-   const result = await extractPatterns(referenceProjectPath, { analysisMode: 'deep' });
-   ```
-4. Detect conflicts (different approaches in same codebase)
-5. Present findings with conflict resolution:
 
-```
-I found the following patterns in [project-name]:
+This is the **Reference Project Import Pipeline** — it deeply analyzes a reference project so that AI-generated code in the NEW project is indistinguishable from code written by the reference project's developers.
 
-## Tech Stack (Detected)
-- Framework: Next.js 14
-- Styling: Tailwind CSS
-- State: Zustand
-- Testing: Vitest
+**Ask user to provide the folder path:**
+```javascript
+// User provides the reference project path in their next message
+const referenceProjectPath = userInput; // e.g., "/Users/dev/my-production-app"
 
-## Coding Patterns (5 found)
-1. Use functional components with hooks
-2. API routes follow /api/[resource]/[action] pattern
-3. Use zod for validation
-4. Components in src/components/[feature]/
-5. Server actions for mutations
-
-## Conflicts Detected (2)
-These need your decision:
-
-### 1. Error Handling
-- Pattern A (8 files): try/catch with console.error
-- Pattern B (12 files): try/catch with error boundary (Recommended)
-
-### 2. API Response Format
-- Pattern A (3 files): { data, error, status }
-- Pattern B (5 files): { success, data, message } (Recommended)
+// Validate the path exists and has source files
+if (!fs.existsSync(referenceProjectPath)) {
+  return "Path not found. Please provide a valid folder path.";
+}
+if (!fs.existsSync(path.join(referenceProjectPath, 'package.json')) &&
+    !fs.existsSync(path.join(referenceProjectPath, 'requirements.txt')) &&
+    !fs.existsSync(path.join(referenceProjectPath, 'go.mod'))) {
+  return "No project manifest found. Is this the correct project root?";
+}
 ```
 
-Then ask:
+##### Phase 1/6: Detect Reference Stack
+
+```
+━━━ Reference Import: Phase 1/6 — Detecting Stack ━━━
+```
+
+```javascript
+const { detectStack } = require('./scripts/flow-context-init.js');
+// Temporarily set CWD context for the reference project
+const refStack = detectStack(referenceProjectPath);
+```
+
+Display detected stack:
+```
+  Reference project: [name from package.json]
+  Language:  ${refStack.language} ${refStack.languageVersion || ''}
+  Framework: ${[refStack.frameworks.frontend, refStack.frameworks.backend, refStack.frameworks.fullStack].filter(Boolean).join(', ') || 'None'}
+  Database:  ${refStack.database || 'None'} ${refStack.orm ? '(' + refStack.orm + ')' : ''}
+  Testing:   ${refStack.testing || 'None'}
+  Linting:   ${refStack.linting || 'None'}
+```
+
+Confirm with user:
 ```javascript
 AskUserQuestion({
   questions: [{
-    question: "How would you like to handle the detected patterns?",
-    header: "Patterns",
+    question: `I detected this stack in the reference project. Should the NEW project match it?`,
+    header: "Stack",
     options: [
-      { label: "Accept All with Recommended (Recommended)", description: "Use the recommended resolution for conflicts" },
-      { label: "Manual Review 1-by-1", description: "Review each conflict and pattern individually" }
+      { label: "Yes, match it", description: "New project uses the same stack" },
+      { label: "Partially", description: "I'll keep some but change others in the wizard" },
+      { label: "Just patterns", description: "Import coding patterns only, I'll choose my own stack" }
     ],
     multiSelect: false
   }]
 });
 ```
 
-6. **Resolve conflicts and persist patterns:**
+If "Yes" or "Partially": Pre-populate the tech stack wizard (Step 3) with the detected stack.
 
-   **If "Accept All with Recommended":**
-   ```javascript
-   const { resolveConflictsAuto, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
-   const resolutions = resolveConflictsAuto(result.conflicts);
-   const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
-   ```
+##### Phase 2/6: Extract Patterns (Deep Mode)
 
-   **If "Manual Review 1-by-1":**
-   Use the `AskUserQuestion` tool to present each conflict one at a time. For each conflict:
-   ```javascript
-   AskUserQuestion({
-     questions: [{
-       question: `Conflict: ${conflict.description}\n\nPattern A: ${conflict.patternA.pattern.name} (${conflict.patternA.occurrences} files)\nPattern B: ${conflict.patternB.pattern.name} (${conflict.patternB.occurrences} files)`,
-       header: "Resolve",
-       options: [
-         { label: `Pattern A: ${conflict.patternA.pattern.name}`, description: conflict.patternA.pattern.description },
-         { label: `Pattern B: ${conflict.patternB.pattern.name}`, description: conflict.patternB.pattern.description },
-         { label: "Skip (decide later)", description: "Don't set a rule for this pattern yet" }
-       ],
-       multiSelect: false
-     }]
-   });
-   ```
-   Collect all resolutions, then:
-   ```javascript
-   const { resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
-   const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
-   ```
+```
+━━━ Reference Import: Phase 2/6 — Extracting Patterns ━━━
+```
 
-7. **Persist extracted patterns to decisions.md:**
-   ```javascript
-   const patternDecisionsMarkdown = formatAsDecisions(result);
-   ```
-   Write BOTH pattern recommendations AND conflict resolutions to `.workflow/state/decisions.md`:
-   ```markdown
-   # Project Decisions & Patterns
+```javascript
+const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
+const result = await extractPatterns(referenceProjectPath, {
+  analysisMode: 'deep',
+  categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config']
+});
+```
 
-   [patternDecisionsMarkdown - contains all extracted patterns grouped by category]
+Display findings:
+```
+  Files scanned:     245
+  Patterns found:    18 across 10 categories
+  Conflicts found:   2
 
-   [conflictDecisionsMarkdown - contains resolved conflict decisions]
-   ```
+  Top patterns:
+    code.naming: camelCase functions, PascalCase components
+    code.async: async/await (no callbacks)
+    api.response: { data, meta } envelope
+    component.style: functional with hooks
+    tests.naming: *.test.ts in __tests__/
+```
 
-   **CRITICAL**: This step MUST happen. Without it, extracted patterns vanish after init completes.
+##### Phase 3/6: Resolve Conflicts
 
-8. **Run function and API scanners on the reference project:**
-   ```javascript
-   const { FunctionScanner } = require('./scripts/flow-function-index.js');
-   const { APIScanner } = require('./scripts/flow-api-index.js');
+```
+━━━ Reference Import: Phase 3/6 — Resolving Conflicts ━━━
+```
 
-   // Scan reference project for utility functions
-   const funcScanner = new FunctionScanner({ projectRoot: referenceProjectPath });
-   const funcRegistry = await funcScanner.scan();
-   if (funcRegistry) {
-     funcScanner.save();       // Writes function-index.json
-     funcScanner.generateMap(); // Writes function-map.md
-   }
+If conflicts detected:
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: `I found ${result.conflicts.length} conflicting patterns in the reference project. How should I handle them?`,
+    header: "Conflicts",
+    options: [
+      { label: "Accept recommended (Recommended)", description: "Use the most common/recent pattern for each conflict" },
+      { label: "Review each conflict", description: "I'll show each conflict and you choose" },
+      { label: "Skip conflicts", description: "Don't resolve — ask when encountered" }
+    ],
+    multiSelect: false
+  }]
+});
+```
 
-   // Scan reference project for API endpoints
-   const apiScanner = new APIScanner({ projectRoot: referenceProjectPath });
-   const apiRegistry = await apiScanner.scan();
-   if (apiRegistry) {
-     apiScanner.save();        // Writes api-index.json
-     apiScanner.generateMap(); // Writes api-map.md
-   }
-   ```
+**If "Accept recommended":**
+```javascript
+const { resolveConflictsAuto, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+const resolutions = resolveConflictsAuto(result.conflicts);
+const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
+```
 
-9. **Populate app-map.md from component patterns:**
-   From the pattern extraction result, use `result.patterns` (component category) to populate app-map.md:
-   - For each detected component: add to the Components table
-   - For each detected screen/page: add to the Screens table
-   - For each detected modal: add to the Modals table
-   - Include path, variant info, and props patterns where detected
+**If "Review each conflict":**
+For each conflict, present via AskUserQuestion:
+```javascript
+AskUserQuestion({
+  questions: [{
+    question: `Conflict: ${conflict.description}\n\nPattern A: ${conflict.patternA.pattern.name} (${conflict.patternA.occurrences} files)\nPattern B: ${conflict.patternB.pattern.name} (${conflict.patternB.occurrences} files)`,
+    header: "Resolve",
+    options: [
+      { label: `A: ${conflict.patternA.pattern.name}`, description: conflict.patternA.pattern.description },
+      { label: `B: ${conflict.patternB.pattern.name}`, description: conflict.patternB.pattern.description },
+      { label: "Skip (decide later)", description: "Don't set a rule yet" }
+    ],
+    multiSelect: false
+  }]
+});
+```
+Collect all resolutions:
+```javascript
+const { resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
+```
 
-   The component patterns are available in the extraction result under the `component` category.
+Display: `  Conflicts resolved:  ${resolutions.length} resolved, ${skipped} skipped`
 
-10. **Extract file templates from reference project:**
-   ```javascript
-   const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
-   const templateResult = await extractTemplates(referenceProjectPath, {
-     types: ['component', 'service', 'test', 'route', 'hook', 'config'],
-     outputDir: path.join(projectRoot, '.workflow', 'templates', 'extracted')
-   });
-   const saved = saveTemplates(templateResult, path.join(projectRoot, '.workflow', 'templates', 'extracted'));
-   ```
+##### Phase 4/6: Extract Templates & Scan Registries
 
-   If templates were extracted, append to decisions.md:
-   ```javascript
-   const templateDecisions = formatTemplateDecisions(templateResult);
-   if (templateDecisions) {
-     // Append to existing decisions.md
-     const decisionsPath = path.join(projectRoot, '.workflow', 'state', 'decisions.md');
-     const existing = fs.readFileSync(decisionsPath, 'utf-8');
-     fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
-   }
-   ```
+```
+━━━ Reference Import: Phase 4/6 — Extracting Templates & Registries ━━━
+```
 
-   Display progress:
-   ```
-   Extracting file templates... ✓ Found N templates
-     - Component: src/components/Button.tsx (12 candidates)
-     - Service: src/services/auth.service.ts (5 candidates)
-     - Test: src/__tests__/auth.test.ts (8 candidates)
-   ```
+**a) Extract file templates:**
+```javascript
+const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
+const templateResult = await extractTemplates(referenceProjectPath, {
+  types: ['component', 'service', 'test', 'route', 'hook', 'config'],
+  outputDir: path.join(projectRoot, '.workflow', 'templates', 'extracted')
+});
+const saved = saveTemplates(templateResult, path.join(projectRoot, '.workflow', 'templates', 'extracted'));
+```
+
+Display:
+```
+  Templates extracted:  ${Object.keys(templateResult.templates).length} types
+    - Component: ${templateResult.templates.component?.sourcePath || 'none'}
+    - Service: ${templateResult.templates.service?.sourcePath || 'none'}
+    - Test: ${templateResult.templates.test?.sourcePath || 'none'}
+```
+
+**b) Scan function registry:**
+```javascript
+const { FunctionScanner } = require('./scripts/flow-function-index.js');
+const funcScanner = new FunctionScanner({ projectRoot: referenceProjectPath });
+const funcRegistry = await funcScanner.scan();
+```
+
+Display: `  Functions found:     ${funcRegistry?.functions?.length || 0} utility functions`
+
+**c) Scan API registry:**
+```javascript
+const { APIScanner } = require('./scripts/flow-api-index.js');
+const apiScanner = new APIScanner({ projectRoot: referenceProjectPath });
+const apiRegistry = await apiScanner.scan();
+```
+
+Display: `  API endpoints found: ${apiRegistry?.endpoints?.length || 0} endpoints`
+
+**d) Scan product info:**
+```javascript
+const { scanProject, formatSummary } = require('./scripts/flow-product-scanner.js');
+const refProductInfo = scanProject(referenceProjectPath);
+```
+
+##### Phase 5/6: Generate Skills from Reference Stack
+
+```
+━━━ Reference Import: Phase 5/6 — Generating Skills ━━━
+```
+
+Generate skills for the reference project's detected technologies:
+```javascript
+const { generateSkills, enhanceSkillWithDocs } = require('./scripts/flow-skill-generator.js');
+```
+
+For each detected framework/library in `refStack`:
+- Create skill directories in `.claude/skills/[technology]/`
+- Fetch Context7 documentation (one at a time, fetch-extract-flush loop)
+- Check skills.sh for curated community skills
+- Write `skill.md`, `patterns.md`, `anti-patterns.md`, `conventions.md`
+
+```
+FOR EACH technology (sequentially):
+  1. FETCH: resolve-library-id → get-library-docs (tokens: 5000)
+  2. EXTRACT: enhanceSkillWithDocs(skillId, fetchedDocs)
+  3. FLUSH: Content written to disk, released from context
+```
+
+Display:
+```
+  nestjs...            ✓ Skill generated (Context7)
+  typeorm...           ✓ Skill generated (Context7)
+  jest...              ✓ Skill generated (skills.sh)
+```
+
+If Context7 is unavailable, create placeholder skills:
+```
+  ⚠️ Context7 unavailable. Skills created with placeholder content.
+  Run /wogi-skills refresh later to populate.
+```
+
+##### Phase 6/6: Persist to New Project State Files
+
+```
+━━━ Reference Import: Phase 6/6 — Creating State Files ━━━
+```
+
+**CRITICAL**: All paths from the reference project MUST be sanitized before writing to the new project's state files. No absolute paths from the reference project should appear in the new project.
+
+```javascript
+// Path sanitization helper
+function sanitizeRefPath(absPath, refRoot) {
+  // Convert absolute reference paths to relative "ref:" prefixed paths
+  if (absPath.startsWith(refRoot)) {
+    return 'ref:' + absPath.slice(refRoot.length).replace(/^\//, '');
+  }
+  return absPath;
+}
+
+// Apply to all registry entries
+function sanitizeRegistry(registry, refRoot) {
+  if (!registry) return registry;
+  const sanitized = JSON.parse(JSON.stringify(registry));
+  for (const item of (sanitized.functions || sanitized.endpoints || [])) {
+    if (item.file) item.file = sanitizeRefPath(item.file, refRoot);
+    if (item.path) item.path = sanitizeRefPath(item.path, refRoot);
+  }
+  return sanitized;
+}
+```
+
+**a) Write decisions.md with extracted patterns:**
+```javascript
+const patternDecisionsMarkdown = formatAsDecisions(result);
+```
+Write to `.workflow/state/decisions.md`:
+```markdown
+# Project Decisions & Patterns
+
+<!-- Imported from reference project: [reference project name] -->
+<!-- Date: [import date] -->
+
+[patternDecisionsMarkdown]
+
+## Conflict Resolutions
+
+[conflictDecisionsMarkdown]
+```
+
+If templates were extracted, append template decisions:
+```javascript
+const templateDecisions = formatTemplateDecisions(templateResult);
+if (templateDecisions) {
+  const decisionsPath = path.join(projectRoot, '.workflow', 'state', 'decisions.md');
+  const existing = fs.readFileSync(decisionsPath, 'utf-8');
+  fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
+}
+```
+
+**b) Write function-map.md (reference patterns):**
+
+Write function entries with `[ref]` prefix to indicate they're from the reference:
+```markdown
+# Function Map
+
+Utility functions from reference project. **Follow these patterns when creating similar functions.**
+
+## Reference Patterns (from [reference project name])
+
+| Function | Purpose | Ref Path | Parameters |
+|----------|---------|----------|------------|
+| formatDate | Date formatting | ref:src/utils/date.ts | (date: Date, format: string) |
+| validateEmail | Email validation | ref:src/utils/validate.ts | (email: string) |
+```
+
+If `funcRegistry` has entries, write them. Otherwise create empty template.
+
+**c) Write api-map.md (reference patterns):**
+
+```markdown
+# API Map
+
+API patterns from reference project. **Follow these patterns for new endpoints.**
+
+## Reference Patterns (from [reference project name])
+
+| Method | Endpoint | Purpose | Ref Path |
+|--------|----------|---------|----------|
+| GET | /api/users | List users | ref:src/routes/users.ts |
+| POST | /api/auth/login | User login | ref:src/routes/auth.ts |
+```
+
+**d) Write app-map.md (reference patterns):**
+
+Populate from component extraction. Each entry marked as reference:
+```markdown
+## Components
+
+| Component | Variants | Ref Path | Pattern |
+|-----------|----------|----------|---------|
+| Button | primary, secondary, danger | ref:src/components/Button.tsx | [ref] Functional + hooks |
+| Modal | confirm, alert | ref:src/components/Modal.tsx | [ref] Portal-based |
+```
+
+**e) Write remaining state files:**
+- `ready.json` — Empty task queue
+- `request-log.md` — R-001 init entry noting reference import
+- `progress.md` — Initialized
+
+Display:
+```
+  decisions.md...       ✓ 18 patterns, 2 conflict resolutions
+  function-map.md...    ✓ 32 reference function patterns
+  api-map.md...         ✓ 15 reference API patterns
+  app-map.md...         ✓ 24 reference component patterns
+  templates/...         ✓ 4 file templates saved
+  ready.json...         ✓ Task queue initialized
+  request-log.md...     ✓ Initialized (R-001: reference import)
+  progress.md...        ✓ Project state recorded
+```
+
+##### Reference Import Summary
+
+After all phases complete, display:
+```
+━━━ Reference Import Complete ━━━
+
+  Reference: [reference project name] ([reference path])
+  Imported:
+    18 coding patterns (10 categories)
+    2 conflicts resolved
+    32 function signatures (as reference patterns)
+    15 API endpoint patterns
+    24 component patterns
+    4 file templates
+
+  The AI will now write code that matches your reference project's style.
+  All patterns are labeled [ref] — they'll be replaced with actual paths
+  as you build your new project.
+```
+
+##### Error Handling (Reference Import)
+
+**If reference path is invalid:**
+- Display: `Path not found or not a project root. Please try again.`
+- Re-ask for the path
+
+**If pattern extraction fails on reference:**
+- Log error, continue with other phases
+- Display: `⚠️ Pattern extraction failed on reference. Other imports will continue.`
+
+**If scanner fails:**
+- Log error, continue
+- Create template function-map.md / api-map.md
+- Display: `⚠️ [Scanner] failed on reference. Created template.`
+
+**If reference has no source files:**
+- Display: `No source files found in reference project. Only package.json patterns imported.`
 
 #### If "Exported WogiFlow profile" selected:
 1. Ask for the .zip file path
