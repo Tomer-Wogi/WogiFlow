@@ -1,4 +1,4 @@
-Comprehensive code review with verification gates, AI analysis, and **STRICT project standards enforcement** (v4.0).
+Comprehensive code review with verification gates, AI analysis, **adversarial minimum findings**, **git-verified claims**, and **STRICT project standards enforcement** (v5.0).
 
 Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents) based on file count and security patterns. Includes mandatory standards compliance check that BLOCKS completion if project conventions are violated.
 
@@ -18,7 +18,7 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 /wogi-review --skip-optimization  # Skip solution optimization suggestions
 ```
 
-## Review Phases (v4.0)
+## Review Phases (v5.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -29,6 +29,11 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 │                                                              │
 │  Phase 2: AI Review (multi-pass or parallel)                 │
 │     → Code/Logic, Security, Architecture analysis            │
+│     → Adversarial mode: min findings per agent (v5.0)        │
+│                                                              │
+│  Phase 2.5: Git-Verified Claim Checking (v5.0)               │
+│     → Cross-reference spec claims vs actual git diff         │
+│     → BLOCKS if spec promises files not in git diff          │
 │                                                              │
 │  Phase 3: Standards Compliance [STRICT]                      │
 │     → decisions.md, app-map.md, naming-conventions.md        │
@@ -154,6 +159,52 @@ Review agents are organized in three tiers: **core** (always run), **optional** 
 ```
 
 Setting `projectRules: false` gives the legacy 3-agent behavior.
+
+### Adversarial Review Minimum Findings (v5.0)
+
+**Every review agent MUST find at least `config.review.minFindings` (default: 3) findings, or provide a written justification explaining why the code is genuinely clean.**
+
+This prevents "looks good to me" lazy reviews. The assumption is that no code change is perfect — there are always potential improvements, edge cases, or patterns that could be flagged.
+
+**Agent Prompt Suffix** (appended to every agent prompt):
+
+```
+IMPORTANT: Adversarial Review Mode
+You MUST find at least [minFindings] findings. If you genuinely cannot find
+[minFindings] issues after thorough analysis, you MUST provide a "clean code
+justification" as a special finding:
+
+{ "id": "finding-CLEAN", "file": "N/A", "line": 0, "type": "clean-justification",
+  "severity": "info", "category": "[agent-category]",
+  "issue": "Code review found fewer than [minFindings] issues",
+  "recommendation": "[Detailed explanation of WHY the code is clean - what specific
+  qualities make it well-written. Must reference: error handling patterns, naming
+  conventions, edge case coverage, and security posture. Generic praise is NOT
+  acceptable.]",
+  "autoFixable": false, "agent": "[agent-name]" }
+
+Do NOT:
+- Report false positives to meet the minimum
+- Inflate severity of minor issues
+- Repeat the same finding across multiple files
+
+DO:
+- Look harder at edge cases, error handling, naming, and performance
+- Consider the code in context of the full codebase
+- Flag opportunities for improvement even if current code works
+- Check for missing tests, missing error handling, missing validation
+```
+
+**Config**: `config.review.minFindings` (default: 3), `config.review.requireJustificationIfClean` (default: true)
+
+**When consolidating results**: If any agent returns a `clean-justification` finding, display it prominently:
+```
+⚠ Agent [name] found fewer than [minFindings] issues.
+  Justification: [justification text]
+  → Review the justification to confirm code is genuinely clean.
+```
+
+---
 
 ### Core Agents (Always Run)
 
@@ -620,6 +671,76 @@ No changes found to review.
 To review recent commits: /wogi-review --commits 3
 To review specific files: Please stage them first with git add
 ```
+
+## Phase 2.5: Git-Verified Claim Checking (v5.0)
+
+**Cross-reference spec completion claims against actual `git diff` to catch false "done" claims.**
+
+This phase runs AFTER AI review and BEFORE standards compliance. It validates that what the spec promises was actually delivered.
+
+**When it runs**: Only when reviewing a task that has a spec file (`.workflow/changes/wf-XXXXXXXX.md` or `.workflow/specs/wf-XXXXXXXX.md`).
+
+**How it works**:
+
+1. **Parse the spec** for promised deliverables using `flow-spec-verifier.js`:
+   ```bash
+   node scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
+   ```
+   This returns the list of files the spec promises to create or modify.
+
+2. **Get actual git changes**:
+   ```bash
+   git diff --name-only HEAD~N HEAD   # For committed changes
+   git diff --name-only --staged      # For staged changes
+   git diff --name-only               # For unstaged changes
+   ```
+
+3. **Cross-reference**:
+   - For each file the spec says was **created**: verify it appears in git diff as a new file
+   - For each file the spec says was **modified**: verify it appears in git diff as changed
+   - For each file in git diff: check if it was mentioned in the spec (unexpected changes)
+
+4. **Report mismatches**:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 GIT-VERIFIED CLAIM CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Spec: .workflow/changes/wf-abc123.md
+Git diff: 8 files changed
+
+Spec Claims vs Reality:
+  ✓ scripts/flow-foo.js         (spec: create, git: new file)
+  ✓ scripts/flow-bar.js         (spec: modify, git: modified)
+  ✗ scripts/flow-missing.js     (spec: create, git: NOT FOUND)
+    → File promised in spec but not in git diff
+  ⚠ scripts/flow-extra.js       (git: modified, spec: NOT MENTIONED)
+    → File changed but not in spec (scope creep?)
+
+Summary: 2 verified, 1 missing, 1 unplanned
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Severity**:
+- **Missing from git** (spec says create/modify, git has no changes): **BLOCKER** — Implementation gap
+- **Unplanned changes** (git has changes, spec doesn't mention): **WARNING** — Possible scope creep
+
+**Config**: `config.review.gitVerifiedClaims`:
+```json
+{
+  "enabled": true,
+  "verifyFileCreation": true,
+  "verifyContentMatch": true,
+  "blockOnMismatch": true
+}
+```
+
+**When `blockOnMismatch` is true**: Missing files block the review from completing (same as spec verification failure). Unplanned changes generate warnings only.
+
+**Skip conditions**: Skipped when no spec file exists, or when `--skip-verify` flag is used.
+
+---
 
 ## Phase 3: Standards Compliance (v4.0 - STRICT)
 

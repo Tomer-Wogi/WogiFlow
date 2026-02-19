@@ -605,8 +605,84 @@ For medium/large tasks (check `config.json → specificationMode`):
    - Files to change (auto-detected)
    - Test strategy
    - Verification commands
-2. Display spec summary
-3. **Reflection checkpoint**: "Does this spec fully address the requirements?"
+2. **[NEEDS CLARIFICATION] Markers** (v5.0 - from `config.specificationMode.needsClarification`):
+   - During spec generation, for ANY point where you are uncertain, lack context, or making an assumption, insert a marker: `[NEEDS CLARIFICATION: reason]`
+   - Categories: `assumption`, `ambiguity`, `missing-context`, `dependency-unknown`, `edge-case`
+   - **Implementation is BLOCKED until ALL markers are resolved**
+3. Display spec summary (including marker count)
+4. **Reflection checkpoint**: "Does this spec fully address the requirements?"
+
+**[NEEDS CLARIFICATION] Marker Rules:**
+
+When generating a spec, you MUST insert markers for:
+
+| Situation | Marker Example |
+|-----------|---------------|
+| Assuming behavior not stated in requirements | `[NEEDS CLARIFICATION: assumption - assuming user must be logged in, but not specified]` |
+| Multiple valid interpretations | `[NEEDS CLARIFICATION: ambiguity - "status" could mean HTTP status or task status]` |
+| Missing information from user | `[NEEDS CLARIFICATION: missing-context - what error message should be shown?]` |
+| Unknown dependency behavior | `[NEEDS CLARIFICATION: dependency-unknown - does the API return paginated results?]` |
+| Unclear edge case handling | `[NEEDS CLARIFICATION: edge-case - what happens when the list is empty?]` |
+
+**Marker Format in Spec Files:**
+
+```markdown
+## Acceptance Criteria
+
+### Scenario 1: User submits valid form
+Given a logged-in user [NEEDS CLARIFICATION: assumption - login required?]
+When they submit the form with valid data
+Then the data is saved and a success message appears
+[NEEDS CLARIFICATION: edge-case - what if save succeeds but notification fails?]
+```
+
+**Resolution Flow:**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. Generate spec with markers                           │
+│  2. Count markers                                        │
+│  3. If markers > 0 AND blockImplementation is true:      │
+│     → Display markers to user                            │
+│     → Ask user to resolve each marker                    │
+│     → Update spec with resolutions                       │
+│     → Re-check for remaining markers                     │
+│  4. Only proceed when marker count = 0                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Output when markers exist:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ NEEDS CLARIFICATION (3 markers found)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. [assumption] Line 15: "assuming user must be logged in"
+   → Please confirm: Is authentication required for this feature?
+
+2. [edge-case] Line 28: "what happens when the list is empty?"
+   → Please specify: Should we show an empty state or hide the section?
+
+3. [dependency-unknown] Line 42: "does the API return paginated results?"
+   → Please clarify: Is pagination expected? What page size?
+
+Implementation is BLOCKED until all markers are resolved.
+Respond with answers to proceed.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Config**: `config.specificationMode.needsClarification`:
+```json
+{
+  "enabled": true,
+  "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
+  "blockImplementation": true,
+  "minMarkersForReview": 0,
+  "categories": ["assumption", "ambiguity", "missing-context", "dependency-unknown", "edge-case"]
+}
+```
+
+**Skip conditions**: Disabled when `needsClarification.enabled` is false. When `blockImplementation` is false, markers are informational only (displayed but don't block).
 
 **Spec Output:**
 ```
@@ -616,6 +692,7 @@ Acceptance Criteria: 4 scenarios
 Implementation Steps: 6 steps
 Files to Change: 3 files (medium confidence)
 Verification Commands: 4 commands
+[NEEDS CLARIFICATION] Markers: 0 (all clear)
 
 🪞 Reflection: Does this spec fully address the requirements?
    - Are there any edge cases not covered?
@@ -691,6 +768,86 @@ Also add:
 - "Update api-map.md if new API endpoints created"
 - "Run quality gates"
 - "Commit changes"
+
+### Step 2.5: TDD Mode Check (v5.0 - Opt-In)
+
+**When `config.tdd.enforced` is true OR `--tdd` flag is used, the execution loop switches to test-first order.**
+
+TDD mode reverses the normal implement-then-verify flow to: **write test → verify test fails → implement → verify test passes**.
+
+**Activation:**
+- Global: `config.tdd.enforced: true` (applies to all tasks)
+- Per-task: `--tdd` flag on `/wogi-start wf-XXXXXXXX --tdd`
+- Per-type: `config.tdd.defaultForTypes: ["bugfix"]` (auto-enables for specific task types)
+
+**When TDD is active, display:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧪 TDD MODE ACTIVE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Execution order: Test First → Verify Fails → Implement → Verify Passes
+
+For each acceptance criterion:
+  1. Write test that verifies the criterion
+  2. Run test → must FAIL (proves test is meaningful)
+  3. Implement the feature/fix
+  4. Run test → must PASS (proves implementation works)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Test Framework Detection:**
+When `config.tdd.testFrameworkDetection` is true, auto-detect from package.json:
+- `jest` → Use jest test runner
+- `vitest` → Use vitest
+- `mocha` → Use mocha
+- `tap` → Use tap
+- Fallback: `node --test` (Node.js built-in)
+
+**TDD Execution Loop (replaces normal Step 3 when active):**
+
+For each acceptance criteria:
+
+1. **Mark in_progress** in TodoWrite
+2. **Write test** for this criterion:
+   - Create/update test file based on criterion's Given/When/Then
+   - Test should assert the expected behavior
+3. **Run test → MUST FAIL**:
+   - If test passes before implementation → **WARNING**: Test may be trivial or testing wrong thing
+   - Record the failure output (this becomes the "before" state)
+4. **Implement** the feature following matched skill patterns
+5. **Run test → MUST PASS**:
+   - If test still fails → debug and fix implementation
+   - Max 5 retry attempts
+6. **Run full verification** (lint, typecheck, all tests)
+7. **Save TDD artifact** (includes before/after test results)
+8. **Mark completed** only when all tests pass
+
+**TDD Artifact:**
+```json
+{
+  "taskId": "wf-abc123",
+  "mode": "tdd",
+  "criterion": "Given X, When Y, Then Z",
+  "testFile": "tests/feature.test.js",
+  "beforeImplementation": { "testPassed": false, "output": "Expected X but got undefined" },
+  "afterImplementation": { "testPassed": true, "output": "All tests passed" },
+  "attempts": 1
+}
+```
+
+**Config**: `config.tdd`:
+```json
+{
+  "enforced": false,
+  "defaultForTypes": [],
+  "requireFailingTestFirst": true,
+  "testFrameworkDetection": true
+}
+```
+
+**When TDD is NOT active**, proceed with the normal execution loop below.
+
+---
 
 ### Step 3: Execute Each Scenario (Loop)
 
@@ -1148,6 +1305,12 @@ Final verification artifact: .workflow/verifications/wf-XXXXXXXX-final.json
 ```
 
 ## Options
+
+### `--tdd`
+Enable test-first development mode (write test → fail → implement → pass):
+```
+/wogi-start wf-XXXXXXXX --tdd
+```
 
 ### `--no-loop`
 Disable the self-completing loop. Just load context and stop (old behavior):

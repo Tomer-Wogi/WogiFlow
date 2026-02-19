@@ -1,10 +1,19 @@
 {
-  "lastUpdated": "2026-02-19T18:41:33.528Z",
+  "lastUpdated": "2026-02-19T21:01:56.703Z",
   "inProgress": [],
-  "ready": [
-  ],
+  "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-02881aba",
+      "title": "Implement 6 competitor-inspired improvements",
+      "type": "story",
+      "feature": "quality-improvements",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T23:00:00.000Z",
+      "completedAt": "2026-02-19T21:01:56.703Z"
+    },
     {
       "id": "wf-full-audit",
       "title": "Fix all 37 audit findings - zero tech debt",
@@ -78,132 +87,6 @@
       "startedAt": "2026-02-19T19:25:00.000Z",
       "epicId": "epic-webmcp",
       "completedAt": "2026-02-19T19:30:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s5",
-      "title": "Rewrite wogi-debug-browser with WebMCP backend",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T19:05:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T19:20:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s3",
-      "title": "Create WebMCP tool generator script (flow-webmcp-generator.js)",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T18:50:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T19:00:00.000Z"
-    },
-    {
-      "id": "wf-d239fcac",
-      "title": "Add Claude Sonnet 4.6 to model registry",
-      "type": "story",
-      "feature": "general",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T18:35:00.000Z",
-      "completedAt": "2026-02-19T18:45:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s2",
-      "title": "Remove old browser testing code (Playwright, Chrome extension, screenshot commands)",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T18:20:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T18:30:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s1",
-      "title": "Overhaul wogi-bug to match wogi-story quality",
-      "type": "story",
-      "feature": "webmcp-bug-overhaul",
-      "status": "completed",
-      "priority": "P0",
-      "description": "Rewrite wogi-bug.md from 43-line stub to comprehensive bug investigation and execution command. AI investigates, populates all fields, routes to wogi-start. Prevention/learning enforcement. Update wogi-start routing.",
-      "createdAt": "2026-02-19T18:15:00.000Z",
-      "startedAt": "2026-02-19T18:15:00.000Z",
-      "epicId": "epic-webmcp-bug",
-      "completedAt": "2026-02-19T18:20:00.000Z"
-    },
-    {
-      "id": "wf-init-s5",
-      "title": "Enhance wogi-init reference project path",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "completed",
-      "priority": "P0",
-      "description": "Full expansion of 'Other project folder' path. Deep extraction from reference, conflict resolution, template import, function-map/api-map from reference, cross-project path resolution.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "startedAt": "2026-02-19T17:50:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s5.md",
-      "completedAt": "2026-02-19T18:00:00.000Z"
-    },
-    {
-      "id": "wf-init-s4",
-      "title": "Rewrite wogi-onboard for mature/existing project analysis",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "completed",
-      "priority": "P0",
-      "description": "Complete rewrite of wogi-onboard.md from ~100-line stub to ~400+ lines. Git-based temporal analysis, legacy vs current pattern detection, interactive developer questioning, all state files.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "startedAt": "2026-02-19T17:35:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s4.md",
-      "completedAt": "2026-02-19T17:45:00.000Z"
-    },
-    {
-      "id": "wf-init-s3",
-      "title": "Add template extraction from reference/existing projects",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Extract representative file skeletons (component, service, test, route, hook) as reusable templates. Save to .workflow/templates/extracted/.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "startedAt": "2026-02-19T16:58:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s3.md",
-      "completedAt": "2026-02-19T17:30:00.000Z"
-    },
-    {
-      "id": "wf-init-s2",
-      "title": "Extend pattern extractor with missing categories and deep mode",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "completed",
-      "priority": "P1",
-      "description": "Add type/interface naming, export patterns, test structure, folder conventions, comment/doc style, config patterns, full API response templates. Wire _getGitBlameDate() for deep mode.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "startedAt": "2026-02-19T16:50:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s2.md",
-      "completedAt": "2026-02-19T16:57:00.000Z"
-    },
-    {
-      "id": "wf-init-s1",
-      "title": "Wire persistence pipeline and state file generation",
-      "type": "story",
-      "feature": "init-onboard",
-      "status": "completed",
-      "priority": "P0",
-      "description": "Wire pattern extraction → decisions.md persistence, conflict resolution → decisions.md, FunctionScanner/APIScanner into init/onboard, add function-map.md + api-map.md creation to Step 4.3.",
-      "createdAt": "2026-02-19T16:30:00.000Z",
-      "startedAt": "2026-02-19T16:35:00.000Z",
-      "epicId": "epic-init-onboard",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s1.md",
-      "completedAt": "2026-02-19T16:45:46.628Z"
     }
   ],
   "backlog": [

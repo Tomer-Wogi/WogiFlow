@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-108 | 2026-02-19 21:02
+**Type**: new
+**Tags**: #review #tdd #spec-generation #decision-tracking #consistency #config #competitor-research
+**Task**: wf-02881aba
+**Request**: "Implement all 6 competitor-inspired improvements"
+**Result**: Implemented 6 improvements from competitor research (BMAD-METHOD, OpenSpec/Spec Kit, Task Master Dev): (1) Adversarial review minimum findings - added config.review.minFindings (default 3) and agent prompt suffix enforcing minimum findings with clean-justification type (wogi-review.md v5.0). (2) [NEEDS CLARIFICATION] markers in spec generation - 5 categories (assumption, ambiguity, missing-context, dependency-unknown, edge-case), blocks implementation until resolved (wogi-start.md). (3) Git-verified claim checking in code review - Phase 2.5 cross-references spec deliverables against git diff, missing files are BLOCKERs (wogi-review.md). (4) Test-first mode (opt-in TDD) - Step 2.5 TDD Mode Check with test-first execution loop, framework detection, --tdd flag (wogi-start.md). (5) Decision amendment tracking - new script flow-decision-tracker.js with record/history/stats/diff CLI and programmatic API. (6) Cross-artifact consistency analysis - new script flow-consistency-check.js validates app-map/function-map/api-map against codebase, orphan detection. All config keys added to config.json.
+**Files**: .workflow/config.json, .claude/commands/wogi-review.md, .claude/commands/wogi-start.md, scripts/flow-decision-tracker.js (new), scripts/flow-consistency-check.js (new), .workflow/state/ready.json
+
 ### R-107 | 2026-02-19 22:30
 **Type**: fix
 **Tags**: #audit #tech-debt #documentation #config #templates #hooks

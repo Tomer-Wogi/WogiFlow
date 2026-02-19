@@ -358,7 +358,21 @@
       "rollbackPlan": false
     },
     "autoDetectFiles": true,
-    "autoSuggestTests": true
+    "autoSuggestTests": true,
+    "needsClarification": {
+      "enabled": true,
+      "_comment_needsClarification": "Force spec generation to mark uncertain points with [NEEDS CLARIFICATION: reason]. Implementation is blocked until all markers are resolved.",
+      "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
+      "blockImplementation": true,
+      "minMarkersForReview": 0,
+      "categories": [
+        "assumption",
+        "ambiguity",
+        "missing-context",
+        "dependency-unknown",
+        "edge-case"
+      ]
+    }
   },
   "qualityGates": {
     "preTaskBaseline": {
@@ -1401,6 +1415,17 @@
   },
   "review": {
     "specFirstGating": true,
+    "minFindings": 3,
+    "_comment_minFindings": "Adversarial review: each agent must find at least this many findings or justify why fewer exist. Prevents lazy 'looks good' reviews.",
+    "requireJustificationIfClean": true,
+    "_comment_requireJustificationIfClean": "When an agent finds fewer than minFindings, it must provide a written justification explaining why the code is genuinely clean.",
+    "gitVerifiedClaims": {
+      "enabled": true,
+      "_comment_gitVerifiedClaims": "Cross-reference spec completion claims against actual git diff. Catches false 'done' claims where spec says file was created but git diff shows no changes.",
+      "verifyFileCreation": true,
+      "verifyContentMatch": true,
+      "blockOnMismatch": true
+    },
     "agents": {
       "core": [
         "code-logic",
@@ -1618,5 +1643,46 @@
     "budgetMode": "soft",
     "negativeEvidenceRule": true,
     "assumptionTracking": true
+  },
+  "tdd": {
+    "enforced": false,
+    "_comment_enforced": "When true, enforces test-first development: write test -> verify test fails -> implement -> verify test passes. Opt-in per-task via --tdd flag.",
+    "defaultForTypes": [],
+    "_comment_defaultForTypes": "Task types that default to TDD mode (e.g., ['bugfix', 'feature']). Empty means opt-in only.",
+    "requireFailingTestFirst": true,
+    "_comment_requireFailingTestFirst": "When TDD is active, block implementation until at least one failing test exists for the acceptance criterion.",
+    "testFrameworkDetection": true,
+    "_comment_testFrameworkDetection": "Auto-detect test framework from package.json (jest, vitest, mocha, etc.)."
+  },
+  "decisions": {
+    "amendmentTracking": {
+      "enabled": true,
+      "_comment_amendmentTracking": "Track all changes to decisions.md with rationale, timestamp, impact assessment, and source pattern. Creates audit trail for rule evolution.",
+      "logFile": ".workflow/state/decision-amendments.json",
+      "requireRationale": true,
+      "requireImpactAssessment": true,
+      "trackSource": true,
+      "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
+    }
+  },
+  "consistency": {
+    "enabled": true,
+    "_comment_consistency": "Cross-artifact consistency analysis. Validates app-map, function-map, and api-map against each other and the actual codebase.",
+    "runOn": ["afterTask", "beforeCommit"],
+    "checks": {
+      "appMapVsCodebase": true,
+      "_comment_appMapVsCodebase": "Verify components listed in app-map.md actually exist in the codebase.",
+      "functionMapVsCodebase": true,
+      "_comment_functionMapVsCodebase": "Verify functions listed in function-map.md actually exist.",
+      "apiMapVsCodebase": true,
+      "_comment_apiMapVsCodebase": "Verify API endpoints listed in api-map.md actually exist.",
+      "crossMapConsistency": true,
+      "_comment_crossMapConsistency": "Check that components referenced in one map exist in others (e.g., a function used by a component is in function-map).",
+      "orphanDetection": true,
+      "_comment_orphanDetection": "Find files in codebase that exist but are not registered in any map."
+    },
+    "mode": "warn",
+    "_comment_mode": "'warn' reports inconsistencies, 'block' prevents completion until fixed.",
+    "maxOrphans": 10
   }
 }
