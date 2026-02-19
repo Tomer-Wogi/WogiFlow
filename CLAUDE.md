@@ -125,24 +125,31 @@ See `.claude/docs/commands.md` for complete command reference.
 
 ## Natural Language Command Detection
 
-**When you recognize these phrases, auto-invoke the corresponding command:**
+**When a user's message clearly maps to one of these commands, invoke it via the Skill tool. Use your judgment — understand intent, don't pattern-match keywords.**
 
-| Phrase Pattern | Command |
-|----------------|---------|
-| "morning briefing", "start my day", "what should I work on" | `/wogi-morning` |
-| "show tasks", "what's ready", "available tasks" | `/wogi-ready` |
-| "project status", "show status", "where are we" | `/wogi-status` |
-| "check health", "workflow health", "is everything ok" | `/wogi-health` |
-| "wrap up", "end session", "that's all" | `/wogi-session-end` |
-| "compact context", "save context", "running low on context" | `/wogi-compact` |
-| "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
-| "standup", "daily standup", "standup summary" | `/wogi-standup` |
-| "peer review", "multi-model review" | `/wogi-peer-review` |
-| "review what we did", "review this session", "please review", "code review" | `/wogi-review` |
-| "does X support Y?", "is it possible to", "research this", "verify whether" | `/wogi-research` |
-| "debug this", "investigate hypotheses", "competing theories", "root cause analysis" | `/wogi-debug-hypothesis` |
+| Command | What it does | Use when the user wants to... |
+|---------|-------------|-------------------------------|
+| `/wogi-start` | Universal entry point — routes to the right workflow | Implement, build, or change something (this is the default for all work) |
+| `/wogi-story` | Create a story with acceptance criteria | Explicitly create a tracked task before implementing |
+| `/wogi-bug` | Create a tracked bug report | Report something broken or behaving unexpectedly |
+| `/wogi-review` | Comprehensive code review | Get their code reviewed for quality and correctness |
+| `/wogi-peer-review` | Multi-model code review | Get diverse AI perspectives on code |
+| `/wogi-research` | Zero-trust research with verification | Answer a capability/feasibility question with evidence |
+| `/wogi-debug-hypothesis` | Parallel hypothesis debugging | Investigate a complex issue with competing theories |
+| `/wogi-morning` | Morning briefing | Start their day, get priorities and context |
+| `/wogi-ready` | Show available tasks | See what work is available |
+| `/wogi-status` | Project overview | Get a high-level project summary |
+| `/wogi-health` | Workflow health check | Verify the workflow system is working |
+| `/wogi-session-end` | End session properly | Wrap up, commit, and create handoff notes |
+| `/wogi-compact` | Compact context | Free up conversation space |
+| `/wogi-roadmap` | View/manage roadmap | See planned future work |
+| `/wogi-standup` | Standup summary | Get a standup-format summary of recent work |
+| `/wogi-capture` | Quick idea capture | Save a thought without interrupting current work |
+| `/wogi-trace` | Code flow trace | Understand how code flows for a specific feature |
+| `/wogi-debt` | Tech debt overview | See or manage technical debt |
+| `/wogi-changelog` | Generate changelog | Create release notes from recent work |
 
-**IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
+**IMPORTANT**: Use your judgment to route. Don't match keywords — understand what the user actually needs. When unsure, ask.
 
 ## CRITICAL: Universal Entry Point
 
@@ -155,20 +162,12 @@ You: /wogi-start "add a logout button"
 
 **Do NOT:**
 - Jump straight to editing files for implementation requests
-- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
 - Rationalize that "this is quick, I'll skip the workflow"
 
 **ALWAYS:**
-- Route implementation requests through /wogi-start
-- Let it classify and decide the appropriate action
-- Follow its routing decision
-
-**/wogi-start will intelligently route:**
-- **Exploration** (questions, reading) → Proceed without task
-- **Operational** (git, npm, deploy) → Execute directly
-- **Quick fix** (typo, text) → Execute + log
-- **Bug report** → Route to /wogi-bug
-- **Implementation** → Route to /wogi-story
+- Route all work requests through /wogi-start
+- Use your judgment to pick the right command from the catalog above
+- Questions and operational tasks (git, tests, deploy) can be handled directly
 
 The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
 

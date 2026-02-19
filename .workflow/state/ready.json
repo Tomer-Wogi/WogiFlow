@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-19T11:30:00.000Z",
+  "lastUpdated": "2026-02-19T11:45:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
@@ -11,10 +11,10 @@
       "feature": "claude-code-integration",
       "status": "completed",
       "priority": "P1",
-      "description": "Add review, research, debug, and workflow command categories to /wogi-start triage. Update classifyRequest() in implementation-gate.js, wogi-start.md skill prompt, and CLAUDE.md natural language detection table.",
+      "description": "Replace regex-based triage with AI-driven command catalog. All /wogi-* commands listed as tools for the model to choose from. Update wogi-start.md skill prompt and CLAUDE.md.",
       "createdAt": "2026-02-19T11:10:00.000Z",
-      "startedAt": "2026-02-19T11:15:00.000Z",
-      "completedAt": "2026-02-19T11:30:00.000Z"
+      "startedAt": "2026-02-19T11:40:00.000Z",
+      "completedAt": "2026-02-19T11:45:00.000Z"
     },
     {
       "id": "wf-154914c4",

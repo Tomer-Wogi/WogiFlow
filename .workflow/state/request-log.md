@@ -13,11 +13,11 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
-### R-090 | 2026-02-19 11:30
-**Type**: new
-**Tags**: #feature:claude-code-integration #wf-1488a40e #implementation-gate #triage
-**Request**: "Expand wogi-start triage to route to all WogiFlow commands"
-**Result**: Expanded classifyRequest() from 5 to 10 categories: workflow, peer-review, review, research, debug, exploration, operational, bug, quick-fix, implementation. Added REVIEW_PATTERNS, PEER_REVIEW_PATTERNS, RESEARCH_PATTERNS, DEBUG_PATTERNS, WORKFLOW_COMMAND_MAP (8 commands). New matchWorkflowCommand() helper. New route-command action type with command field. Updated wogi-start.md triage table, pattern details, examples, unknown classification. Updated CLAUDE.md natural language detection table with 12 entries. All 27 routing tests pass.
+### R-090 | 2026-02-19 11:45
+**Type**: change
+**Tags**: #feature:claude-code-integration #wf-1488a40e #triage #ai-routing
+**Request**: "Replace regex-based triage with AI-driven command catalog routing"
+**Result**: Reverted regex pattern arrays from implementation-gate.js (restored original 5-category gate). Replaced wogi-start.md triage section with AI-driven Command Catalog (v5.0) — 20 commands listed as tools for the model to choose from based on intent, not keyword matching. Updated CLAUDE.md natural language detection table to match (19 commands with descriptions). Routing logic now lives in the prompt, not in JS code.
 **Files**: scripts/hooks/core/implementation-gate.js, .claude/commands/wogi-start.md, CLAUDE.md
 
 ### R-089 | 2026-02-19 11:00

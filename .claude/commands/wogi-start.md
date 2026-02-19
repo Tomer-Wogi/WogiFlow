@@ -2,175 +2,120 @@ Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXX
 
 **UNIVERSAL ENTRY POINT**: This is the single entry point for ALL requests. Route everything through `/wogi-start` - it will intelligently classify and route to the appropriate action.
 
-## Request Triage (Auto-Routing v4.3)
+## Request Triage (AI-Driven Routing v5.0)
 
-When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start "update github and npm"`), the system automatically classifies and routes the request.
+When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start "update github and npm"`), you must assess the user's intent and route to the best command.
 
 ### Step 0: Detect Request Type
 
 **Is this a task ID or a quoted request?**
 - Task ID format: `wf-XXXXXXXX` (letters, numbers, hyphens) → Skip triage, go to Structured Execution
-- Quoted request: `"anything in quotes"` → Auto-classify and route
+- Quoted request or natural language → Read the Command Catalog below, understand the user's intent, and invoke the right command
 
-### Classification Categories
+### Command Catalog
 
-| Category | Patterns | Action | Guilt Message |
-|----------|----------|--------|---------------|
-| **Workflow** | morning briefing, show tasks, project status, wrap up, compact context, show roadmap, standup | Route to specific /wogi-* command | No |
-| **Peer Review** | peer review, multi-model review | Route to /wogi-peer-review | No |
-| **Review** | code review, review changes, please review | Route to /wogi-review | No |
-| **Research** | does X support Y, is it possible, research this, verify, feasibility | Route to /wogi-research | No |
-| **Debug** | debug this, competing theories, root cause analysis, investigate bug | Route to /wogi-debug-hypothesis | No |
-| **Exploration** | what, how, why, show me, explain | Proceed directly | No |
-| **Operational** | push, pull, deploy, publish, run tests, commit | Execute directly | No |
-| **Quick Fix** | typo, text change, simple fix | Execute + log | No |
-| **Bug** | bug, broken, not working, crashes | Route to /wogi-bug | Yes |
-| **Implementation** | add, create, fix, refactor, update | Route to /wogi-story | Yes |
+Think of each command below as a tool available to you. Read the user's request, understand what they need, and invoke the best-fit command using the Skill tool.
 
-### Pattern Details
+| Command | What it does | When to use it |
+|---------|-------------|----------------|
+| `/wogi-story` | Creates a story with acceptance criteria, then starts structured execution | User wants to **build, add, create, implement, refactor, or change** something. This is the default path for ~90% of implementation requests. |
+| `/wogi-bug` | Creates a tracked bug report | User reports something **broken, not working, or behaving unexpectedly** |
+| `/wogi-review` | Runs comprehensive code review (lint, typecheck, AI analysis) | User wants their **code reviewed** for quality, bugs, or improvements |
+| `/wogi-peer-review` | Multi-model code review (multiple AI perspectives) | User wants **diverse opinions** on code, or explicitly asks for peer/multi-model review |
+| `/wogi-research` | Zero-trust research protocol with verification | User asks a **capability, feasibility, or existence question** that needs verified answers (not just a quick answer) |
+| `/wogi-debug-hypothesis` | Spawns parallel agents to investigate competing theories | User wants to **investigate root cause** of a complex issue, or explore multiple theories simultaneously |
+| `/wogi-morning` | Morning briefing with context, priorities, and recommendations | User is **starting their day** and wants to know what to work on |
+| `/wogi-ready` | Shows all available tasks by status | User wants to **see what tasks** are available, in progress, or blocked |
+| `/wogi-status` | Full project overview (health, tasks, debt, decisions) | User wants a **project-level summary** of where things stand |
+| `/wogi-health` | Checks workflow integrity (config, state files, hooks) | User wants to **verify the workflow system** itself is healthy |
+| `/wogi-session-end` | Properly closes a work session (logs, commits, handoff notes) | User is **done for now** and wants to wrap up cleanly |
+| `/wogi-compact` | Compacts conversation context using recursive summary tree | Context is **running low** or user wants to free up space |
+| `/wogi-roadmap` | View and manage deferred work items | User wants to see **planned future work** or manage the roadmap |
+| `/wogi-standup` | Generates a daily standup summary | User wants a **standup-format summary** of recent work |
+| `/wogi-capture` | Quick-captures an idea without interrupting current work | User has a **side thought or idea** they want to save for later |
+| `/wogi-trace` | Generates a code flow trace for a specific feature | User wants to **understand how code flows** through the system for a specific behavior |
+| `/wogi-changelog` | Generates a CHANGELOG from request-log entries | User wants to **generate release notes** or a changelog |
+| `/wogi-debt` | View and manage technical debt | User wants to see or manage **tech debt** items |
+| `/wogi-guided-edit` | Step-by-step multi-file editing guidance | User wants **hand-holding through a complex multi-file change** |
+| `/wogi-epics` | Manage epics (large initiatives spanning multiple stories) | User is working on a **large initiative** that needs epic-level tracking |
 
-**Workflow** (route to specific command):
-- "morning briefing", "what should I work on", "start my day" → `/wogi-morning`
-- "show tasks", "what's ready", "available tasks" → `/wogi-ready`
-- "project status", "where are we", "show status" → `/wogi-status`
-- "check health", "workflow health", "is everything ok" → `/wogi-health`
-- "wrap up", "end session", "that's all" → `/wogi-session-end`
-- "compact context", "save context", "running low on context" → `/wogi-compact`
-- "show roadmap", "what's planned", "future work" → `/wogi-roadmap`
-- "standup", "standup report", "daily standup" → `/wogi-standup`
+### How to Route (Use Your Judgment)
 
-**Peer Review** (route to /wogi-peer-review):
-- "peer review", "multi-model review"
+**DO NOT pattern-match keywords.** Read the full request, understand the intent, then pick the best command.
 
-**Review** (route to /wogi-review):
-- "code review", "review what we did", "review changes"
-- "please review", "review this session"
+**Routing principles:**
+1. **Understand intent, not keywords.** "Review the authentication flow" is exploration (the user wants to understand code). "Do a code review" is a review request (invoke `/wogi-review`). Same word "review", different intent.
+2. **Default to `/wogi-story`** for anything that changes code. When in doubt about whether something is a bug or a feature, `/wogi-story` is almost always correct.
+3. **Some requests need no command at all.** Questions like "what does X do?" — just answer directly. Operational requests like "push to github" — just execute them. Quick fixes (typos, text changes) — fix and log to request-log.
+4. **When genuinely unsure, ask.** Don't guess. Present 2-3 options from the catalog and let the user choose.
 
-**Research** (route to /wogi-research):
-- Capability: "does X support Y?", "can X do Y?"
-- Feasibility: "is it possible to...", "can we use/integrate..."
-- Existence: "is there a...", "does X exist?"
-- Explicit: "research this", "verify if...", "investigate feasibility"
+### Request Categories (Decision Guide)
 
-**Debug** (route to /wogi-debug-hypothesis):
-- "debug this", "debug the issue"
-- "competing theories", "parallel debug"
-- "root cause analysis", "investigate the bug/error/crash"
+**Proceed directly (no command needed):**
+- Questions and exploration: "what does X do?", "explain how Y works", "show me the code for Z"
+- Operational tasks: "push to github", "run tests", "deploy to staging", "npm publish"
+- Quick fixes: simple typos, text changes, single-line fixes (execute + log to request-log)
 
-**Exploration** (proceed without task):
-- Questions: "what does X do?", "how does Y work?"
-- Reading: "show me the code for...", "explain..."
-- Analysis: "analyze", "review the code" (note: "review the code" is exploration; "code review" routes to /wogi-review)
+**Route to a command (invoke the Skill tool):**
+- Everything else. Pick the best command from the catalog above based on user intent.
 
-**Operational** (execute directly):
-- Version control: push, pull, fetch, merge, rebase, commit
-- Publishing: publish to npm/pypi, deploy to prod/staging
-- Build/CI: run tests, build, lint, format
-- Maintenance: update deps, bump version, sync with remote
-
-**Quick Fix** (execute + log):
-- Typos, spelling fixes
-- Text/label/title changes
-- Simple single-line changes
-
-**Bug** (route to /wogi-bug):
-- "bug" keyword
-- "broken", "not working", "doesn't work"
-- "should X but doesn't Y"
-- "error when..."
-
-**Implementation** (route to /wogi-story):
-- New features: add, create, build, implement
-- Code changes: modify, update, change behavior
-- Refactoring: restructure, reorganize
-
-### Auto-Routing Examples
+### Examples
 
 ```
-/wogi-start "morning briefing"
-→ Category: WORKFLOW (high confidence)
-→ Action: Route to /wogi-morning
+User: "let's do a code review"
+→ Intent: Review code quality
+→ Action: Invoke /wogi-review
 ```
 
 ```
-/wogi-start "code review"
-→ Category: REVIEW (high confidence)
-→ Action: Route to /wogi-review
+User: "I wonder if Claude Code supports custom hooks for pre-commit"
+→ Intent: Capability question needing verification
+→ Action: Invoke /wogi-research
 ```
 
 ```
-/wogi-start "does Claude support tool caching?"
-→ Category: RESEARCH (high confidence)
-→ Action: Route to /wogi-research "does Claude support tool caching?"
+User: "the login page keeps crashing when I submit"
+→ Intent: Bug report
+→ Action: Invoke /wogi-bug
 ```
 
 ```
-/wogi-start "debug this authentication issue"
-→ Category: DEBUG (high confidence)
-→ Action: Route to /wogi-debug-hypothesis "authentication issue"
+User: "something is wrong with auth but I can't tell what — token refresh works sometimes and fails other times"
+→ Intent: Complex investigation, unclear root cause
+→ Action: Invoke /wogi-debug-hypothesis
 ```
 
 ```
-/wogi-start "how does authentication work?"
-→ Category: EXPLORATION (high confidence)
-→ Action: Answer the question directly
+User: "add dark mode toggle"
+→ Intent: New feature implementation
+→ Action: Invoke /wogi-story "add dark mode toggle"
 ```
 
 ```
-/wogi-start "push to github"
-→ Category: OPERATIONAL (high confidence)
-→ Action: Execute git push
+User: "what should I work on?"
+→ Intent: Morning planning / task selection
+→ Action: Invoke /wogi-morning or /wogi-ready
 ```
 
 ```
-/wogi-start "fix the typo in header"
-→ Category: QUICK-FIX (medium confidence)
-→ Action: Fix it, log to request-log.md with #quick-fix
+User: "push to github"
+→ Intent: Operational git command
+→ Action: Execute git push directly (no command needed)
 ```
 
 ```
-/wogi-start "login is broken"
-→ Category: BUG (medium confidence)
-→ Action: Route to /wogi-bug "login is broken"
-⚠️ WORKFLOW REMINDER: [guilt message]
-
-💡 TIP: For complex bugs with unclear root cause, consider running
-   /wogi-debug-hypothesis "login is broken" first to investigate
-   competing theories in parallel before implementing a fix.
-```
-
-```
-/wogi-start "add dark mode toggle"
-→ Category: IMPLEMENTATION (high confidence)
-→ Action: Route to /wogi-story "add dark mode toggle"
-⚠️ WORKFLOW REMINDER: [guilt message]
+User: "wrap up for today"
+→ Intent: End session
+→ Action: Invoke /wogi-session-end
 ```
 
 ### Guilt Messaging
 
-For bug reports and implementation requests, a random guilt message appears to reinforce workflow discipline:
+For implementation requests that create tasks, include a workflow reminder:
 
 - "The user trusts you to follow WogiFlow."
 - "Without a task, this work is untracked and unverifiable."
 - "Skipping the workflow signals that process doesn't matter."
-- "Every bypassed story becomes invisible technical debt."
-- "The user will notice. Follow the process."
-
-### Unknown Classification
-
-If the request can't be confidently classified:
-```
-→ Request unclear. Please clarify what you want to do.
-
-Is this:
-  Workflow command (morning, status, health, roadmap, standup) → Route to command
-  Review (code review, peer review) → Route to review command
-  Research (feasibility, capability question) → Route to /wogi-research
-  Debug (root cause, hypothesis) → Route to /wogi-debug-hypothesis
-  Operational (git/npm/deploy) → Execute directly
-  Quick fix (typo, text) → Fix and log it
-  Feature/Bug (code change) → Create story first
-```
 
 ---
 

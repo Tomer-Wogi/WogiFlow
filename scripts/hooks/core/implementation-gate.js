@@ -104,65 +104,6 @@ const QUICK_FIX_PATTERNS = [
 ];
 
 /**
- * Review patterns (route to /wogi-review or /wogi-peer-review)
- */
-const REVIEW_PATTERNS = [
-  /\bcode\s+review\b/i,
-  /\breview\s+(what\s+we|our|the\s+code|the\s+changes|changes|diff|pr)\b/i,
-  /\bplease\s+review\b/i,
-  /\breview\s+this\s+session\b/i
-];
-
-const PEER_REVIEW_PATTERNS = [
-  /\bpeer\s+review\b/i,
-  /\bmulti[- ]?model\s+review\b/i
-];
-
-/**
- * Research patterns (route to /wogi-research)
- * Matches capability/feasibility/existence questions requiring verification
- */
-const RESEARCH_PATTERNS = [
-  /\bdoes\s+[\w\s]{1,50}\s+support\b/i,
-  /\bis\s+it\s+possible\s+to\b/i,
-  /\bcan\s+[\w\s]{1,30}\s+do\b/i,
-  /\bresearch\s+(this|whether|if|how|the)\b/i,
-  /\bverify\s+(if|whether|that|this)\b/i,
-  /\bis\s+there\s+(a|an)\b/i,
-  /\bdoes\s+[\w\s]{1,30}\s+exist\b/i,
-  /\bcan\s+we\s+(use|integrate|leverage)\b/i,
-  /\bwhat\s+are\s+the\s+options\s+for\b/i,
-  /\bfeasibility\s+of\b/i,
-  /\binvestigate\s+(feasibility|whether|if|options)\b/i
-];
-
-/**
- * Debug/hypothesis patterns (route to /wogi-debug-hypothesis)
- */
-const DEBUG_PATTERNS = [
-  /\bdebug\s+(this|the|a)\b/i,
-  /\bcompeting\s+theor(y|ies)\b/i,
-  /\bparallel\s+debug\b/i,
-  /\broot\s+cause\b/i,
-  /\bhypothes[ie]s\s+debug\b/i,
-  /\binvestigate\s+(the\s+)?(bug|issue|error|crash|failure|root\s+cause)\b/i
-];
-
-/**
- * Workflow command patterns - map specific phrases to specific /wogi-* commands
- */
-const WORKFLOW_COMMAND_MAP = [
-  { patterns: [/\b(morning|daily)\s+briefing\b/i, /\bwhat\s+should\s+I\s+work\s+on\b/i, /\bstart\s+my\s+day\b/i], command: '/wogi-morning' },
-  { patterns: [/\bshow\s+(me\s+)?tasks\b/i, /\bwhat'?s\s+ready\b/i, /\bavailable\s+tasks\b/i], command: '/wogi-ready' },
-  { patterns: [/\bproject\s+status\b/i, /\bwhere\s+are\s+we\b/i, /\bshow\s+status\b/i], command: '/wogi-status' },
-  { patterns: [/\b(check|workflow)\s+health\b/i, /\bis\s+everything\s+ok\b/i], command: '/wogi-health' },
-  { patterns: [/\bwrap\s+up\b/i, /\bend\s+session\b/i, /\bthat'?s\s+all\b/i], command: '/wogi-session-end' },
-  { patterns: [/\bcompact\s+context\b/i, /\b(save|free\s+up)\s+context\b/i, /\brunning\s+low\s+on\s+context\b/i], command: '/wogi-compact' },
-  { patterns: [/\bshow\s+(the\s+)?roadmap\b/i, /\bwhat'?s\s+planned\b/i, /\bfuture\s+work\b/i, /\bdeferred\s+items\b/i], command: '/wogi-roadmap' },
-  { patterns: [/\b(daily\s+)?standup(\s+report|\s+summary)?\b/i], command: '/wogi-standup' }
-];
-
-/**
  * WogiFlow command patterns that should always be allowed
  */
 const WOGI_COMMAND_PATTERNS = [
@@ -468,10 +409,9 @@ function generateRoutingMessage(prompt) {
 
 Use: /wogi-start "${truncatePrompt(prompt)}"
 
-/wogi-start will intelligently route to the right workflow:
-- Review → /wogi-review | Research → /wogi-research | Debug → /wogi-debug-hypothesis
-- Operational (git, npm, deploy) → execute directly
-- Bug report → /wogi-bug | Implementation → /wogi-story`;
+/wogi-start will intelligently decide:
+- Execute directly if operational (git, npm, deploy, review, commit)
+- Create a story first if implementation (add feature, fix bug, refactor)`;
 }
 
 /**
@@ -491,25 +431,10 @@ function generateBlockingMessage(prompt) {
 To proceed, run:
   /wogi-start "${truncatePrompt(prompt)}"
 
-WogiFlow will triage and route:
-- Review/research/debug → appropriate workflow command
-- Operational (git/npm/deploy) → execute directly
-- Small fix → execute + log
-- Larger task → create story/bug first`;
-}
-
-/**
- * Match a prompt against the WORKFLOW_COMMAND_MAP
- * @param {string} prompt - The prompt to check
- * @returns {{matched: boolean, command: string|null}} Match result
- */
-function matchWorkflowCommand(prompt) {
-  for (const entry of WORKFLOW_COMMAND_MAP) {
-    if (entry.patterns.some(p => p.test(prompt))) {
-      return { matched: true, command: entry.command };
-    }
-  }
-  return { matched: false, command: null };
+WogiFlow will triage and decide:
+- If operational (git/npm/deploy) → execute directly
+- If small fix → execute + log for learning
+- If larger task → create story/bug first`;
 }
 
 /**
@@ -517,27 +442,25 @@ function matchWorkflowCommand(prompt) {
  * Used by /wogi-start to decide how to handle a request
  *
  * @param {string} prompt - The user's request
- * @returns {{category: string, confidence: string, action: string, command?: string, matches?: string[]}}
- *   - category: 'workflow'|'review'|'research'|'debug'|'exploration'|'operational'|'bug'|'quick-fix'|'implementation'|'unknown'
+ * @returns {{category: string, confidence: string, action: string, matches?: string[]}}
+ *   - category: 'exploration'|'operational'|'bug'|'quick-fix'|'implementation'|'unknown'
  *   - confidence: 'high'|'medium'|'low'
- *   - action: 'route-command'|'proceed'|'execute'|'create-bug'|'auto-task'|'create-story'|'ask'
- *   - command: (optional) specific /wogi-* command to route to
- *   - matches: Array of matched pattern strings
+ *   - action: 'proceed'|'execute'|'create-bug'|'auto-task'|'create-story'|'ask'
+ *   - matches: Array of matched pattern strings (only for 'implementation' category)
  *
  * @example
- * classifyRequest("code review")
- * // => { category: 'review', confidence: 'high', action: 'route-command', command: '/wogi-review' }
- *
  * classifyRequest("add a logout button")
  * // => { category: 'implementation', confidence: 'medium', action: 'create-story', matches: ['add a logout'] }
+ *
+ * classifyRequest("push to github")
+ * // => { category: 'operational', confidence: 'high', action: 'execute', matches: [] }
  */
 function classifyRequest(prompt) {
   // Return consistent structure with matches array for all categories
-  const makeResult = (category, confidence, action, matches = [], command = undefined) => ({
+  const makeResult = (category, confidence, action, matches = []) => ({
     category,
     confidence,
     action,
-    ...(command && { command }),
     matches
   });
 
@@ -550,55 +473,29 @@ function classifyRequest(prompt) {
     ? prompt.slice(0, MAX_PROMPT_LENGTH)
     : prompt;
 
-  // Priority order: workflow > peer-review > review > research > debug > exploration > operational > bug > quick-fix > implementation
+  // Priority order: exploration > operational > bug > quick-fix > implementation
 
-  // 1. Workflow commands - route to specific /wogi-* command
-  const workflow = matchWorkflowCommand(processedPrompt);
-  if (workflow.matched) {
-    return makeResult('workflow', 'high', 'route-command', [], workflow.command);
-  }
-
-  // 2. Peer review - route to /wogi-peer-review (before general review)
-  if (matchesAnyPattern(processedPrompt, PEER_REVIEW_PATTERNS)) {
-    return makeResult('review', 'high', 'route-command', [], '/wogi-peer-review');
-  }
-
-  // 3. Code review - route to /wogi-review
-  if (matchesAnyPattern(processedPrompt, REVIEW_PATTERNS)) {
-    return makeResult('review', 'high', 'route-command', [], '/wogi-review');
-  }
-
-  // 4. Research requests - route to /wogi-research
-  if (matchesAnyPattern(processedPrompt, RESEARCH_PATTERNS)) {
-    return makeResult('research', 'high', 'route-command', [], '/wogi-research');
-  }
-
-  // 5. Debug/hypothesis requests - route to /wogi-debug-hypothesis
-  if (matchesAnyPattern(processedPrompt, DEBUG_PATTERNS)) {
-    return makeResult('debug', 'high', 'route-command', [], '/wogi-debug-hypothesis');
-  }
-
-  // 6. Exploration requests - proceed without task
+  // 1. Exploration requests - proceed without task
   if (isExplorationRequest(processedPrompt)) {
     return makeResult('exploration', 'high', 'proceed');
   }
 
-  // 7. Operational commands - execute directly
+  // 2. Operational commands - execute directly
   if (matchesAnyPattern(processedPrompt, OPERATIONAL_PATTERNS)) {
     return makeResult('operational', 'high', 'execute');
   }
 
-  // 8. Bug reports - route to /wogi-bug
+  // 3. Bug reports - route to /wogi-bug
   if (matchesAnyPattern(processedPrompt, BUG_PATTERNS)) {
     return makeResult('bug', 'medium', 'create-bug');
   }
 
-  // 9. Quick fixes - auto-create task and execute
+  // 4. Quick fixes - auto-create task and execute
   if (matchesAnyPattern(processedPrompt, QUICK_FIX_PATTERNS)) {
     return makeResult('quick-fix', 'medium', 'auto-task');
   }
 
-  // 10. Implementation requests - route to /wogi-story
+  // 5. Implementation requests - route to /wogi-story
   const impl = detectImplementationIntent(processedPrompt);
   if (impl.isImplementation) {
     return makeResult('implementation', impl.confidence, 'create-story', impl.matches);
@@ -636,13 +533,5 @@ module.exports = {
   EXPLORATION_PATTERNS,
   OPERATIONAL_PATTERNS,
   BUG_PATTERNS,
-  QUICK_FIX_PATTERNS,
-  REVIEW_PATTERNS,
-  PEER_REVIEW_PATTERNS,
-  RESEARCH_PATTERNS,
-  DEBUG_PATTERNS,
-  WORKFLOW_COMMAND_MAP,
-
-  // Workflow command matcher
-  matchWorkflowCommand
+  QUICK_FIX_PATTERNS
 };
