@@ -49,21 +49,7 @@
         "requestsPerMinute": 60,
         "tokensPerMinute": 100000
       },
-      "cli": {
-        "name": "Gemini CLI",
-        "cliId": "gemini-cli",
-        "folderStructure": {
-          "configDir": ".gemini",
-          "skillsDir": ".gemini/skills",
-          "rulesDir": ".gemini/rules",
-          "commandsDir": ".gemini/commands",
-          "docsDir": ".gemini/docs"
-        },
-        "rulesFile": "GEMINI.md",
-        "promptStyle": "markdown",
-        "hotReload": false,
-        "features": ["skills", "rules"]
-      }
+      "cli": null
     },
     "ollama": {
       "name": "Ollama (Local)",

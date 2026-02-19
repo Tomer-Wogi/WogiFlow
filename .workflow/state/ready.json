@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-f0a3106f",
+      "title": "Remove dead multi-CLI support code and false claims",
+      "type": "refactor",
+      "feature": "cleanup",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T22:00:00.000Z",
+      "completedAt": "2026-02-19T23:30:00.000Z"
+    },
+    {
       "id": "wf-docs-v140",
       "title": "Update README and knowledge base docs for v1.4.0 features",
       "type": "task",

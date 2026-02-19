@@ -8,14 +8,8 @@
 
 /**
  * Tools that modify files - used for gating and validation
- * Includes both OpenCode/Codex tool names and Claude Code tool names
  */
 const WRITE_TOOLS = [
-  // OpenCode/Codex tool names
-  'file_write',
-  'edit_file',
-  'replace',
-  // Claude Code tool names
   'Edit',
   'Write'
 ];

@@ -172,197 +172,11 @@ Auto-create PRs with rich media:
 
 <!-- Deferred items from large feature breakdowns. Includes dependency tracking. -->
 
-### Phase 0.1.3: Codex Template
+### Phases 0.1.3-0.1.5, 0.1.7-0.1.10: Multi-CLI Support (CANCELLED)
 
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
-
-**Assumes:**
-- Template system implemented
-- TOML config format understood
-
-**Key Files:**
-- `scripts/flow-bridge.js` - Template renderer
-- `.workflow/cli/templates/codex.hbs` - New template
-
-**Context When Deferred:**
-Codex CLI uses AGENTS.md with <100 lines best practice and TOML config.
-
-**Implementation Plan:**
-1. Create AGENTS.md template (<100 lines)
-2. Add progressive discovery pattern
-3. Support TOML config generation
-
----
-
-### Phase 0.1.4: Gemini Template
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
-
-**Assumes:**
-- Template system implemented
-- Gemini CLI docs understood
-
-**Key Files:**
-- `scripts/flow-bridge.js` - Template renderer
-- `.workflow/cli/templates/gemini.hbs` - New template
-
-**Context When Deferred:**
-Gemini CLI uses GEMINI.md + system.md pattern with 8 hook events.
-
-**Implementation Plan:**
-1. Create GEMINI.md template
-2. Create system.md template
-3. Support Gemini hook integration
-
----
-
-### Phase 0.1.5: OpenCode Template
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
-
-**Assumes:**
-- Template system implemented
-- OpenCode follows AGENTS.md pattern
-
-**Key Files:**
-- `scripts/flow-bridge.js` - Template renderer
-- `.workflow/cli/templates/opencode.hbs` - New template
-
-**Implementation Plan:**
-1. Create AGENTS.md template for OpenCode
-2. Create opencode.json config template
-
----
-
-### Phase 0.1.7: Hook Integration
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.6: Sync Command
-
-**Assumes:**
-- Sync command working
-- All CLI templates created
-
-**Key Files:**
-- `scripts/flow-bridge.js` - Hook handlers
-- `.workflow/cli/hooks/` - Hook scripts
-
-**Context When Deferred:**
-Event-based sync for task completions, learnings back to .workflow/.
-
-**Implementation Plan:**
-1. Define hook events per CLI
-2. Create hook scripts for each CLI
-3. Sync learnings back to model-adapters/
-
----
-
-### Phase 0.1.8: Installer Update (Multi-CLI)
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.2, Phase 0.1.3, Phase 0.1.4, Phase 0.1.5
-
-**Assumes:**
-- All CLI templates working
-- Sync command operational
-
-**Key Files:**
-- `scripts/postinstall.js` - Installer script
-- `scripts/flow-bridge.js` - Sync utilities
-
-**Context When Deferred:**
-Installer should ask "Which CLI(s)?" and generate appropriate files.
-
-**Implementation Plan:**
-1. Add CLI selection prompt to postinstall
-2. Support multiple CLI selection
-3. Generate all selected CLI files
-
----
-
-### Phase 0.1.9: CLI Detection
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
-
-**Assumes:**
-- CLI environment variables documented
-- Detection possible at runtime
-
-**Key Files:**
-- `scripts/flow-bridge.js` - Detection logic
-
-**Implementation Plan:**
-1. Research env vars per CLI
-2. Implement getCurrentCLI() function
-3. Auto-sync on CLI switch
-
----
-
-### Phase 0.1.10: Multi-CLI Adapter System (Superpowers-Inspired)
-
-**Status:** Deferred
-**Created:** 2026-02-04
-**Depends On:** Phase 0.1.6: Sync Command
-
-**Assumes:**
-- Sync command working
-- Understanding of how other CLIs inject instructions (researched from superpowers plugin)
-
-**Problem:**
-WogiFlow currently only works with Claude Code. Other CLIs (Gemini CLI, Codex, Cursor, OpenCode) ignore WogiFlow instructions because:
-1. They don't read CLAUDE.md
-2. They have their own instruction mechanisms
-3. Tool names differ (TodoWrite vs update_plan)
-
-**Research (2026-02-04):**
-Superpowers plugin solves this with a 3-layer architecture:
-1. **Shared Core** (`lib/skills-core.js`) - skill discovery, parsing
-2. **CLI-Specific Adapters** - plugin files for each CLI
-3. **Tool Mapping Tables** - explicit translations in bootstrap files
-
-Key mechanism: System prompt injection via hooks (OpenCode uses `experimental.chat.system.transform`)
-
-**Key Files:**
-- `lib/wogi-core.js` - Shared workflow logic (new)
-- `.codex/wogi-bootstrap.md` - Codex adapter with tool mappings
-- `.cursor/.cursorrules` - Generated rules file
-- `.opencode/plugins/wogiflow.js` - OpenCode plugin
-- `.gemini/system.md` - Gemini instruction file
-- `scripts/flow-bootstrap.js` - Universal bootstrap generator
-
-**Tool Mapping Tables (Per CLI):**
-```
-Claude Code → Native (TodoWrite, Task, etc.)
-Codex       → update_plan, spawn_agent
-OpenCode    → update_plan, @mention
-Cursor      → (TBD - research cursor rules)
-Gemini CLI  → (TBD - research gemini hooks)
-```
-
-**Implementation Plan:**
-1. Create `lib/wogi-core.js` with shared workflow logic
-2. Research each CLI's instruction injection mechanism
-3. Create tool mapping tables for each CLI
-4. Implement `flow bootstrap --target=<cli>` command
-5. Create CLI-specific adapters that inject via appropriate mechanism
-6. Test with actual CLIs (need access to Codex, Gemini CLI, etc.)
-
-**Options Considered:**
-- **Option 1: CLI Adapters** (like superpowers) - Most robust, requires maintaining multiple codebases
-- **Option 2: Bootstrap Generator** - Lower effort, generates markdown for any CLI
-- **Option 3: MCP Server** - One server, many clients, but requires MCP support
-
-**Recommended approach:** Start with Option 2 (bootstrap generator), evolve to Option 3 (MCP) as MCP becomes standard.
+**Status:** Cancelled
+**Cancelled:** 2026-02-19
+**Reason:** Multi-CLI support was never implemented. These phases described Codex, Gemini CLI, OpenCode, Cursor, and Kimi templates, hook integrations, installer updates, CLI detection, and a multi-CLI adapter system. None of this code was ever written. Dead references were cleaned up in wf-f0a3106f. If multi-CLI support is revisited in the future, it should start fresh with a new epic based on current CLI landscapes.
 
 ---
 
@@ -672,8 +486,8 @@ Explain current work using 80/20 rule for non-technical PMs learning as they bui
 ### Phase 0.1.1: CLI Template System
 
 **Implemented:** 2026-01-13 (as CLI Bridge system)
-**Files:** `scripts/flow-bridge.js`, `scripts/flow-bridge-state.js`, `.workflow/templates/claude-md.hbs`, `.workflow/templates/agents-md.hbs`, `.workflow/templates/partials/`
-**Notes:** Implemented as `flow bridge sync` command with Handlebars rendering. Provides CLI-agnostic template generation for Claude Code (CLAUDE.md) and Codex (AGENTS.md).
+**Files:** `scripts/flow-bridge.js`, `scripts/flow-bridge-state.js`, `.workflow/templates/claude-md.hbs`, `.workflow/templates/partials/`
+**Notes:** Implemented as `flow bridge sync` command with Handlebars rendering. Generates Claude Code instructions (CLAUDE.md).
 
 ---
 
@@ -792,7 +606,7 @@ Explain current work using 80/20 rule for non-technical PMs learning as they bui
 ### Multi-CLI Support (6 CLIs)
 
 **Implemented:** Prior to 2026-01-13
-**Notes:** Support for Claude Code, Codex, Gemini CLI, Cursor, OpenCode, and others via bridge system.
+**Notes:** Support for Claude Code via bridge system. Multi-CLI support was planned but never implemented (cancelled in wf-f0a3106f).
 
 ---
 

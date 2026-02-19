@@ -2385,14 +2385,6 @@
               "default": true
             }
           }
-        },
-        "gemini": {
-          "type": "object",
-          "description": "Gemini CLI settings (future)"
-        },
-        "codex": {
-          "type": "object",
-          "description": "Codex CLI settings (future)"
         }
       }
     },

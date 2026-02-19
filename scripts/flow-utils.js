@@ -58,21 +58,17 @@ const MAX_SESSION_HISTORY = 50;
 const MAX_WORKFLOW_ITERATIONS = 100;
 
 // ============================================================
-// CLI Session ID Detection (CLI-Agnostic)
+// CLI Session ID Detection
 // ============================================================
 
 /**
  * Get the current AI CLI session ID.
- * Supports multiple CLIs by checking their respective environment variables.
- * Returns null if no session ID is available.
+ * Currently supports Claude Code only.
  *
  * @returns {string|null} Session ID or null
  */
 function getSessionId() {
-  return process.env.CLAUDE_SESSION_ID    // Claude Code
-      || process.env.GEMINI_SESSION_ID    // Gemini CLI (future)
-      || process.env.CODEX_SESSION_ID     // Codex CLI (future)
-      || process.env.OPENCODE_SESSION_ID  // OpenCode (future)
+  return process.env.CLAUDE_SESSION_ID
       || process.env.AI_SESSION_ID        // Generic fallback
       || null;
 }
@@ -132,14 +128,12 @@ const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
 const CLAUDE_DIR = path.join(PROJECT_ROOT, '.claude');
-const GEMINI_DIR = path.join(PROJECT_ROOT, '.gemini');
 
 const PATHS = {
   root: PROJECT_ROOT,
   workflow: WORKFLOW_DIR,
   state: STATE_DIR,
   claude: CLAUDE_DIR,
-  gemini: GEMINI_DIR,
   config: path.join(WORKFLOW_DIR, 'config.json'),
   ready: path.join(STATE_DIR, 'ready.json'),
   requestLog: path.join(STATE_DIR, 'request-log.md'),

@@ -488,7 +488,7 @@ Test execution configuration.
 
 ## hooks
 
-CLI hooks configuration for AI tools (Claude Code, future Gemini/Codex support).
+CLI hooks configuration for Claude Code.
 
 ```json
 {

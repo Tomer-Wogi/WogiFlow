@@ -150,9 +150,9 @@ ACTION: ALWAYS web search "[tool] latest documentation [current year]"
 Before answering, explicitly list:
 ```markdown
 ## My Assumptions
-1. [VERIFY] Gemini CLI version supports hooks → Confidence: LOW (training data)
+1. [VERIFY] Library X supports feature Y → Confidence: LOW (training data)
 2. [OK] Project uses JavaScript → Confidence: HIGH (read package.json)
-3. [VERIFY] settings.json format → Confidence: LOW (haven't read docs)
+3. [VERIFY] Config format is correct → Confidence: LOW (haven't read docs)
 ```
 
 Any assumption marked `[VERIFY]` with `LOW` confidence **MUST** be verified.
@@ -165,7 +165,7 @@ Every claim needs a traceable source:
 | Claim | Source Type | Source Location | Confidence |
 |-------|-------------|-----------------|------------|
 | "Hooks are supported" | Live Docs | github.com/x/docs/hooks | HIGH |
-| "Settings format is X" | File Read | .gemini/settings.json | HIGH |
+| "Settings format is X" | File Read | .workflow/config.json | HIGH |
 | "Feature Y exists" | Training Data | None | LOW - VERIFY |
 ```
 
@@ -218,32 +218,32 @@ In `.workflow/config.json`:
 ### Example 1: Capability Question
 
 ```
-User: Does Gemini CLI support hooks?
+User: Does Claude Code support custom hooks?
 
-/wogi-research "Does Gemini CLI support hooks?"
+/wogi-research "Does Claude Code support custom hooks?"
 ```
 
 Research output:
 ```
 ## Research Report
 
-**Question:** Does Gemini CLI support hooks?
+**Question:** Does Claude Code support custom hooks?
 **Depth:** standard
 **Confidence:** HIGH
 
 ### Conclusion
-Yes, Gemini CLI supports hooks since version X.
+Yes, Claude Code supports hooks since version 2.1.x.
 
 ### Evidence Chain
 | Claim | Source | Confidence |
 |-------|--------|------------|
-| Hooks supported | https://github.com/gemini-cli/docs/hooks | HIGH |
-| Configuration in .gemini/settings.json | File read | HIGH |
+| Hooks supported | https://docs.anthropic.com/claude-code/hooks | HIGH |
+| Configuration in .claude/settings.local.json | File read | HIGH |
 
 ### Searches Performed
-1. Web: "Gemini CLI hooks documentation 2026"
-2. Local: .gemini/settings.json
-3. Local: .gemini/**/*.md
+1. Web: "Claude Code hooks documentation 2026"
+2. Local: .claude/settings.local.json
+3. Local: .claude/**/*.md
 ```
 
 ### Example 2: Architecture Question
@@ -269,11 +269,5 @@ When `research.strictMode` is enabled and `research.autoTrigger` is true:
 
 ## CLI Compatibility
 
-This command works across all supported CLIs:
-- Claude Code
-- Gemini CLI
-- Codex (OpenAI)
-- OpenCode
-- Cline/Cursor
-
-State is stored in `.workflow/` for cross-CLI persistence.
+This command currently supports Claude Code only.
+State is stored in `.workflow/` for persistence across sessions.

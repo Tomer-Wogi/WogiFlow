@@ -1,6 +1,6 @@
 # WogiFlow
 
-A self-improving AI development workflow that learns from your feedback and works across multiple AI coding CLIs.
+A self-improving AI development workflow that learns from your feedback. Currently supports **Claude Code**.
 
 ## Quick Start
 
@@ -15,34 +15,15 @@ npx flow onboard
 npx flow bridge sync
 ```
 
-## Supported CLIs
+## Supported CLI
 
-WogiFlow works with 6 AI coding CLIs. Use whichever you prefer - the workflow state is shared.
+WogiFlow currently supports **Claude Code** with hard enforcement via hooks.
 
 | CLI | Enforcement | Rules File | Min Version | Guide |
 |-----|-------------|------------|-------------|-------|
 | **Claude Code** | Hard (hooks) | `CLAUDE.md` | **2.1.23+** | [Guide](.claude/docs/knowledge-base/01-setup-onboarding/) |
-| **Gemini CLI** | Hard (hooks) | `GEMINI.md` | - | - |
-| **Cursor** | Mixed | `.cursor/rules/wogiflow.mdc` | - | - |
-| **OpenCode** | Hard (plugins) | `AGENTS.md` | - | - |
-| **Codex** | Soft (rules) | `AGENTS.md` | - | - |
-| **Kimi** | Soft (rules) | `AGENTS.md` | - | - |
 
 > **Claude Code 2.1.23+ Recommended**: Includes critical fixes for per-user temp directory isolation (shared systems), async hook cancellation, and ripgrep timeout reporting. Earlier versions may experience silent search failures.
-
-**Enforcement levels:**
-- **Hard**: Blocks operations before execution (best protection)
-- **Mixed**: Hard at prompt level, soft after
-- **Soft**: Advisory only (rules in context, no blocking)
-
-### Switching CLIs
-
-Workflow state is stored in `.workflow/state/` - CLI-agnostic. You can:
-1. Start a task in Claude Code
-2. Continue it in Cursor
-3. Finish it in Gemini CLI
-
-Run `npx flow bridge sync` after switching to regenerate CLI-specific files.
 
 ---
 
@@ -177,8 +158,6 @@ flow verify all                 # Run all quality gates
 └── rules/                   # Project rules
 
 CLAUDE.md                    # Claude Code instructions (generated)
-GEMINI.md                    # Gemini CLI instructions (generated)
-AGENTS.md                    # Codex/Kimi/OpenCode instructions (generated)
 ```
 
 ---
@@ -225,9 +204,9 @@ Detailed documentation is in the [Knowledge Base](.claude/docs/knowledge-base/RE
 | [Safety & Guardrails](.claude/docs/knowledge-base/06-safety-guardrails/) | Damage control, checkpoints, security |
 | [Configuration](.claude/docs/knowledge-base/configuration/) | All configuration options |
 
-### CLI-Specific Setup
+### Setup
 
-Each CLI uses its own rules file format. Run `npx flow bridge sync` to generate the appropriate file for your CLI. See the [Setup & Onboarding docs](.claude/docs/knowledge-base/01-setup-onboarding/) for detailed instructions.
+Run `npx flow bridge sync` to generate `CLAUDE.md` from your workflow configuration. See the [Setup & Onboarding docs](.claude/docs/knowledge-base/01-setup-onboarding/) for detailed instructions.
 
 ---
 

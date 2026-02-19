@@ -36,8 +36,6 @@ echo -e "${CYAN}║${NC}                                                        
 echo -e "${CYAN}║${NC}  ${YELLOW}Start your AI assistant:${NC}                                  ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}    ${GREEN}claude${NC}      (Claude Code)                               ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}    ${GREEN}gemini${NC}      (Gemini CLI)                                ${CYAN}║${NC}"
-echo -e "${CYAN}║${NC}    ${GREEN}opencode${NC}    (OpenCode)                                  ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}  Then say: ${YELLOW}\"setup wogiflow\"${NC} or run ${YELLOW}/wogi-init${NC}             ${CYAN}║${NC}"
 echo -e "${CYAN}║${NC}                                                              ${CYAN}║${NC}"

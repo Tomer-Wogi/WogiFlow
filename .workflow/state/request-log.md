@@ -13,6 +13,16 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-113 | 2026-02-19 23:30
+**Type**: refactor
+**Tags**: #cleanup #dead-code #multi-cli #documentation
+**Task**: wf-f0a3106f
+**Request**: "Remove all dead multi-CLI support code and false claims"
+**Result**: Removed all dead references to Gemini CLI, Codex, Cursor, OpenCode, Kimi. Deleted GEMINI.md, AGENTS.md, agents-md.hbs template, .gemini/ and .codex/ directories, 2 dead scripts (flow-operational-scanner.js, flow-quality-guard.js). Updated README to claim Claude Code only. Fixed dead code in flow-utils.js, constants.js, flow-hooks.js, flow-init, flow-start.js, config.schema.json, base-bridge.js, model registry, package.json keywords, wogi-research.md examples. Cancelled multi-CLI roadmap phases. Fixed broken config path in flow-start.js.
+**Files**: README.md, GEMINI.md (deleted), AGENTS.md (deleted), .workflow/templates/agents-md.hbs (deleted), scripts/flow-utils.js, scripts/hooks/core/constants.js, scripts/flow-hooks.js, scripts/flow-init, scripts/flow-start.js, scripts/flow-operational-scanner.js (deleted), scripts/flow-quality-guard.js (deleted), .workflow/config.schema.json, .workflow/bridges/base-bridge.js, .workflow/roadmap.md, .workflow/models/registry.json, .gitignore, lib/installer.js, .claude/docs/knowledge-base/configuration/all-options.md, .claude/commands/wogi-research.md, package.json, .gemini/ (deleted), .codex/ (deleted), .workflow/changes/cli-bridges/ (deleted)
+
+---
+
 ### R-112 | 2026-02-19 23:15
 **Type**: release
 **Tags**: #release #npm #github #v1.4.1

@@ -447,7 +447,7 @@ function showHelp() {
   console.log(`
 Wogi Flow - CLI Hooks Manager
 
-Manage hooks for AI CLI tools (Claude Code, Gemini, Codex, etc.)
+Manage hooks for Claude Code CLI
 
 Usage:
   flow hooks setup              Install hooks for configured targets
