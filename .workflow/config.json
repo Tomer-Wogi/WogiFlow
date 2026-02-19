@@ -394,7 +394,8 @@
         "resolutionPopulated"
       ],
       "optional": [
-        "review"
+        "review",
+        "webmcpVerification"
       ]
     },
     "refactor": {
@@ -406,7 +407,8 @@
         "standardsCompliance"
       ],
       "optional": [
-        "review"
+        "review",
+        "webmcpVerification"
       ]
     }
   },
@@ -1564,6 +1566,21 @@
     "defaults": {
       "includeClaude": false
     }
+  },
+  "webmcp": {
+    "enabled": false,
+    "toolsPath": ".workflow/webmcp/tools.json",
+    "fallbackEnabled": true,
+    "maxToolCalls": 20,
+    "uiExtensions": [".tsx", ".jsx", ".vue", ".svelte"]
+  },
+  "browserTesting": {
+    "enabled": false,
+    "runOnTaskComplete": false,
+    "runForUITasks": false,
+    "flowsPath": ".workflow/tests/flows/",
+    "stopOnFail": true,
+    "timeout": 30000
   },
   "research": {
     "enabled": true,

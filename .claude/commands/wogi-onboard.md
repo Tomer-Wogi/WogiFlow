@@ -425,8 +425,12 @@ Display:
       const templateDecisions = formatTemplateDecisions(templateResult);
       if (templateDecisions) {
         const decisionsPath = '.workflow/state/decisions.md';
-        const existing = fs.readFileSync(decisionsPath, 'utf-8');
-        fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
+        try {
+          const existing = fs.readFileSync(decisionsPath, 'utf-8');
+          fs.writeFileSync(decisionsPath, existing + '\n' + templateDecisions);
+        } catch (err) {
+          console.warn('Could not update decisions.md:', err.message);
+        }
       }
     }
     ```
@@ -519,26 +523,6 @@ Display:
       typeorm...             ✓ Skill generated (Context7 docs)
       jest...                ✓ Skill generated (skills.sh)
       eslint...              ✓ Skill generated (built-in)
-    ```
-
-19b. **Generate WebMCP tool definitions** (if frontend framework detected):
-
-    If `config.webmcp.enabled` is true, run the WebMCP tool generator:
-
-    ```bash
-    node scripts/flow-webmcp-generator.js scan
-    ```
-
-    This scans `app-map.md` for interactive components and generates tool definitions
-    to `.workflow/webmcp/tools.json`. Display:
-
-    ```
-      WebMCP tools...        ✓ N tool definitions generated
-    ```
-
-    If no interactive components found (e.g., fresh project):
-    ```
-      WebMCP tools...        ○ No components yet (will generate after first UI task)
     ```
 
 ---
@@ -641,6 +625,28 @@ Display:
     - If found, configure hooks accordingly
 
     Display: `  config.json...        ✓ Quality gates: lint + typecheck + tests`
+
+20. **Generate WebMCP tool definitions** (if config.webmcp.enabled):
+
+    Now that config.json exists with `webmcp.enabled: true`, generate initial tool definitions:
+
+    ```bash
+    node scripts/flow-webmcp-generator.js scan
+    ```
+
+    This scans `app-map.md` for interactive components and generates tool definitions
+    to `.workflow/webmcp/tools.json`. Display:
+
+    ```
+      WebMCP tools...        ✓ N tool definitions generated
+    ```
+
+    If no interactive components found (e.g., fresh project):
+    ```
+      WebMCP tools...        ○ No components yet (will generate after first UI task)
+    ```
+
+    If `config.webmcp` is not set (no frontend framework), skip silently.
 
 ---
 

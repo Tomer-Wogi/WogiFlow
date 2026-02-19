@@ -77,7 +77,12 @@ This is the **Reference Project Import Pipeline** — it deeply analyzes a refer
 **Ask user to provide the folder path:**
 ```javascript
 // User provides the reference project path in their next message
-const referenceProjectPath = userInput; // e.g., "/Users/dev/my-production-app"
+const referenceProjectPath = path.resolve(userInput); // e.g., "/Users/dev/my-production-app"
+
+// Validate path is absolute and doesn't escape filesystem boundaries
+if (!path.isAbsolute(referenceProjectPath) || referenceProjectPath.includes('..')) {
+  return "Invalid path. Please provide a clean absolute path without '..' segments.";
+}
 
 // Validate the path exists and has source files
 if (!fs.existsSync(referenceProjectPath)) {
@@ -317,7 +322,8 @@ function sanitizeRefPath(absPath, refRoot) {
 // Apply to all registry entries
 function sanitizeRegistry(registry, refRoot) {
   if (!registry) return registry;
-  const sanitized = JSON.parse(JSON.stringify(registry));
+  const { safeJsonParse } = require('./scripts/flow-utils.js');
+  const sanitized = safeJsonParse(JSON.stringify(registry), registry);
   for (const item of (sanitized.functions || sanitized.endpoints || [])) {
     if (item.file) item.file = sanitizeRefPath(item.file, refRoot);
     if (item.path) item.path = sanitizeRefPath(item.path, refRoot);
@@ -715,7 +721,7 @@ AskUserQuestion({
     options: [
       { label: "Vitest (Recommended)", description: "Fast unit testing, Vite-native, Jest compatible" },
       { label: "Jest", description: "Popular testing framework with snapshots" },
-      { label: "Playwright", description: "E2E testing with browser automation" },
+      { label: "Playwright", description: "E2E testing with browser automation (complements WebMCP for full browser control)" },
       { label: "Skip for now", description: "Set up testing later" }
     ],
     multiSelect: true
@@ -749,8 +755,9 @@ const config = {
 };
 
 // Add WebMCP config if frontend framework selected
-const webmcpFrameworks = ['Next.js', 'React', 'Vue 3', 'Svelte / SvelteKit'];
-if (webmcpFrameworks.some(f => selectedFrontend && selectedFrontend.includes(f))) {
+const webmcpFrameworks = ['next', 'react', 'vue', 'svelte', 'nuxt'];
+const normalizedFrontend = (selectedFrontend || '').toLowerCase();
+if (webmcpFrameworks.some(f => normalizedFrontend.includes(f))) {
   config.webmcp = {
     enabled: true,
     toolsPath: ".workflow/webmcp/tools.json",
@@ -795,8 +802,15 @@ Options:
 ```
 
 If the user picks skills.sh:
-```bash
-npx skills add <skillsShId> --agent claude-code
+```javascript
+// Validate skillsShId against allowlist before shell interpolation
+const ALLOWED_SKILL_ID = /^[a-zA-Z0-9_-]+$/;
+if (!ALLOWED_SKILL_ID.test(skillsShId)) {
+  console.warn(`Invalid skill ID: ${skillsShId}. Skipping.`);
+} else {
+  // Safe to interpolate after validation
+  execSync(`npx skills add ${skillsShId} --agent claude-code`);
+}
 ```
 
 If `npx skills` is not available, log a warning and fall back to Context7.

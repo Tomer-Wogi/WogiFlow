@@ -253,7 +253,7 @@ This command implements a **structured execution loop**:
 
 5. **Decision:**
    - If `projected_total > 95%` → **Compact first**, then resume
-   - If `current >= 95%` → **Emergency compact** (always, regardless of task)
+   - If `current >= 90%` → **Emergency compact** (always, regardless of task)
    - Otherwise → **Proceed** without compaction
 
 **Example outputs:**
@@ -289,7 +289,7 @@ This command implements a **structured execution loop**:
 {
   "enabled": true,
   "safeThreshold": 0.95,
-  "emergencyThreshold": 0.95,
+  "emergencyThreshold": 0.90,
   "estimation": {
     "perFile": 0.02,
     "perCriterion": 0.03,
@@ -1016,7 +1016,7 @@ Coverage: 2/3 components have tools (67%)
 **Detection logic:**
 ```javascript
 // Check if any changed files are UI files
-const uiExtensions = ['.tsx', '.jsx', '.vue', '.svelte'];
+const uiExtensions = config.webmcp.uiExtensions || ['.tsx', '.jsx', '.vue', '.svelte'];
 const changedUIFiles = changedFiles.filter(f =>
   uiExtensions.some(ext => f.endsWith(ext))
 );
@@ -1058,38 +1058,9 @@ if (changedUIFiles.length > 0 && config.webmcp?.enabled) {
 9. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
 10. Show completion summary with verification results
 
-#### Step 5.7: WebMCP Tool Auto-Generation (Conditional)
+**WebMCP Tool Auto-Generation (Step 8 details):**
 
-**When:** New UI components were created AND `config.webmcp.enabled` is true.
-
-**Trigger detection:**
-```javascript
-// Check if task created new UI files
-const uiExtensions = ['.tsx', '.jsx', '.vue', '.svelte'];
-const newUIFiles = createdFiles.filter(f =>
-  uiExtensions.some(ext => f.endsWith(ext))
-);
-
-// Also check if app-map was updated with new components
-const appMapUpdated = changedFiles.includes('app-map.md');
-```
-
-**What it does:**
-1. Run `node scripts/flow-webmcp-generator.js scan` to detect new components
-2. If new tools are generated, show summary:
-   ```
-   🔌 WebMCP: Generated 3 new tool definitions
-      → get_user_card_data (UserCard.tsx)
-      → submit_login_form (LoginForm.tsx)
-      → get_dashboard_metrics (Dashboard.tsx)
-      Tools saved to: .workflow/webmcp/tools.json
-   ```
-3. If no new components detected or WebMCP disabled, skip silently
-
-**Skip conditions:**
-- `config.webmcp.enabled` is false or missing
-- No UI files were created/modified
-- Task type is `refactor` or `bugfix` (no new components expected)
+When `config.webmcp.enabled` is true and UI files (`.tsx`, `.jsx`, `.vue`, `.svelte`) were created or modified, run `node scripts/flow-webmcp-generator.js scan` to generate tool definitions. Skip silently if WebMCP is disabled or no UI files changed. Failures are non-blocking (warn only).
 
 ### Output
 
@@ -1263,6 +1234,7 @@ Phase commands:
 ## Important
 
 - **TodoWrite is mandatory**: Use it to track progress through scenarios
+- **TodoWrite cleanup is mandatory**: After task completion, mark all remaining in_progress/pending TodoWrite items as completed to prevent stale task noise across context compactions
 - **Self-verification is mandatory**: Don't mark scenarios done without checking they work
 - **Criteria completion check is mandatory**: After implementing, re-read ALL criteria and verify EACH one actually works. If any is not done, implement it and check again. This is the loop that prevents "claiming done when not done."
 - **Spec verification is mandatory**: All files promised in spec must exist before completion
