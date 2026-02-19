@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-100 | 2026-02-19 19:20
+**Type**: new
+**Tags**: #command:debug-browser #webmcp
+**Task**: wf-webmcp-s5
+**Request**: "Rewrite wogi-debug-browser with WebMCP backend"
+**Result**: Created .claude/commands/wogi-debug-browser.md with WebMCP-powered debug protocol. Uses structured tool calls from tools.json instead of screenshots. 6-step workflow: load tools, plan investigation, execute tool calls, analyze, diagnose, report. Graceful fallback when WebMCP unavailable. Registered in wogi-start command catalog, wogi-help, and CLAUDE.md trigger phrases. Added DEBUGGING section to help.
+**Files**: .claude/commands/wogi-debug-browser.md (new), .claude/commands/wogi-start.md, .claude/commands/wogi-help.md, CLAUDE.md
+
 ### R-099 | 2026-02-19 19:00
 **Type**: new
 **Tags**: #script:webmcp-generator #webmcp

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-19T18:33:40.132Z",
+  "lastUpdated": "2026-02-19T18:41:33.528Z",
   "inProgress": [],
   "ready": [
     {
@@ -10,17 +10,6 @@
       "status": "ready",
       "priority": "P2",
       "description": "Update wogi-init.md and wogi-onboard.md to detect WebMCP-compatible projects (Chrome 146+, navigator.modelContext). Add WebMCP capability detection to stack analysis. Generate initial tool definitions during onboarding. Add webmcp section to config.json.",
-      "createdAt": "2026-02-19T18:10:00.000Z",
-      "epicId": "epic-webmcp"
-    },
-    {
-      "id": "wf-webmcp-s5",
-      "title": "Rewrite wogi-debug-browser with WebMCP backend",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "ready",
-      "priority": "P1",
-      "description": "Rewrite wogi-debug-browser.md to use WebMCP tool calls instead of screenshots. Navigate via structured DOM tools, read page state via tool responses, interact with forms/buttons via tool calls. 89% token reduction vs screenshot approach. Fallback to screenshot if WebMCP unavailable.",
       "createdAt": "2026-02-19T18:10:00.000Z",
       "epicId": "epic-webmcp"
     },
@@ -60,6 +49,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-webmcp-s5",
+      "title": "Rewrite wogi-debug-browser with WebMCP backend",
+      "type": "story",
+      "feature": "webmcp-integration",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-19T19:05:00.000Z",
+      "epicId": "epic-webmcp",
+      "completedAt": "2026-02-19T19:20:00.000Z"
+    },
     {
       "id": "wf-webmcp-s3",
       "title": "Create WebMCP tool generator script (flow-webmcp-generator.js)",
@@ -174,15 +174,6 @@
       "epicId": "epic-init-onboard",
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/changes/general/wf-init-s1.md",
       "completedAt": "2026-02-19T16:45:46.628Z"
-    },
-    {
-      "id": "wf-725481b7",
-      "title": "Add function-map and api-map references to wogi-start.md Step 1 and Step 5",
-      "type": "bugfix",
-      "status": "completed",
-      "priority": "P3",
-      "startedAt": "2026-02-19T15:44:00.000Z",
-      "completedAt": "2026-02-19T15:45:00.000Z"
     }
   ],
   "backlog": [

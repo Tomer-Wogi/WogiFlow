@@ -24,6 +24,7 @@ Think of each command below as a tool available to you. Read the user's request,
 | `/wogi-review-fix` | Code review with automatic fixing | User wants a review AND wants issues **auto-fixed** (not just reported) |
 | `/wogi-peer-review` | Multi-model code review (multiple AI perspectives) | User wants **diverse opinions** on code, or explicitly asks for peer/multi-model review |
 | `/wogi-research` | Zero-trust research protocol with verification | User asks a **capability, feasibility, or existence question** that needs verified answers (not just a quick answer) |
+| `/wogi-debug-browser` | WebMCP-powered browser debugging with structured tool calls | User wants to **debug a UI issue** in the browser, inspect component state, or reproduce a visual bug |
 | `/wogi-debug-hypothesis` | Spawns parallel agents to investigate competing theories | User wants to **investigate root cause** of a complex issue, or explore multiple theories simultaneously |
 | `/wogi-trace` | Generates a code flow trace for a specific feature | User wants to **understand how code flows** through the system for a specific behavior |
 | `/wogi-epics` | Manage epics (large initiatives spanning multiple stories) | User is working on a **large initiative** that needs epic-level tracking and decomposition into stories |
@@ -91,6 +92,12 @@ User: "the login page keeps crashing when I submit"
 User: "something is wrong with auth but I can't tell what — token refresh works sometimes and fails other times"
 → Intent: Complex investigation, unclear root cause
 → Action: Invoke /wogi-debug-hypothesis
+```
+
+```
+User: "the dashboard page looks broken after my last change"
+→ Intent: UI issue needing browser-level inspection
+→ Action: Invoke /wogi-debug-browser "dashboard page looks broken after last change"
 ```
 
 ```

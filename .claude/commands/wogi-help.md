@@ -50,6 +50,13 @@ COMPONENT MANAGEMENT
 /wogi-map-check          Check for drift
 
 ═══════════════════════════════════════════════════════════════
+DEBUGGING
+═══════════════════════════════════════════════════════════════
+/wogi-debug-browser [desc]   WebMCP browser debug (structured tool calls)
+/wogi-debug-hypothesis [desc] Parallel hypothesis investigation
+/wogi-trace [feature]        Code flow trace for a feature
+
+═══════════════════════════════════════════════════════════════
 SEARCH & CONTEXT
 ═══════════════════════════════════════════════════════════════
 /wogi-search [query]     Search request-log
