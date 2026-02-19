@@ -35,6 +35,61 @@ The review can be triggered by:
 | Natural language | "review what we did" |
 | Natural language | "review the changes" |
 
+## Review Modes
+
+### Parallel Mode (Default)
+Runs 3 core AI agents simultaneously. Used for simple reviews (< 5 files).
+
+### Multi-Pass Mode (Auto-Enabled)
+Runs 4 sequential passes with context isolation. Auto-enabled when:
+- 5+ files changed
+- Security-sensitive files detected
+- Security patterns in content (password, token, secret)
+- API/service files detected
+
+Passes: Structure (Haiku) → Logic (Sonnet) → Security (Sonnet) → Integration (Sonnet)
+
+---
+
+## Adversarial Minimum Findings
+
+Every review agent **must find at least `config.review.minFindings` (default: 3) findings**, or provide a written justification explaining why the code is genuinely clean.
+
+This prevents "looks good to me" lazy reviews. If an agent finds fewer than the minimum, it must submit a `clean-justification` finding with detailed reasoning about error handling patterns, naming conventions, edge case coverage, and security posture.
+
+```json
+{
+  "review": {
+    "minFindings": 3,
+    "requireJustificationIfClean": true
+  }
+}
+```
+
+---
+
+## Git-Verified Claim Checking
+
+After AI review, the system cross-references spec deliverables against actual `git diff` to catch false "done" claims.
+
+- **Missing from git** (spec says create/modify, git has no changes): **BLOCKER**
+- **Unplanned changes** (git has changes, spec doesn't mention): **WARNING**
+
+```json
+{
+  "review": {
+    "gitVerifiedClaims": {
+      "enabled": true,
+      "verifyFileCreation": true,
+      "verifyContentMatch": true,
+      "blockOnMismatch": true
+    }
+  }
+}
+```
+
+---
+
 ## The 3 Review Agents
 
 ### Agent 1: Code & Logic Review
@@ -155,6 +210,25 @@ Run before merge:
 # In CI pipeline
 ./scripts/flow session-review --commits 1 --json > review.json
 ```
+
+## Standards Compliance (Phase 3)
+
+After AI review, a standards compliance check runs against project documentation:
+- `decisions.md` - All documented coding rules
+- `app-map.md` - Component duplication (>80% similarity = violation)
+- `naming-conventions.md` - File names, catch variables
+- `security-patterns.md` - Raw JSON.parse, unprotected fs.readFileSync
+
+Violations are **blocking** - the review cannot complete until they are fixed.
+
+## Solution Optimization (Phase 4)
+
+Non-blocking suggestions for improvement:
+- Performance patterns (filter+map chains, sequential awaits)
+- Modern JS (var usage, Promise chains vs async/await)
+- UX improvements (loading states, error messages, accessibility)
+
+---
 
 ## Best Practices
 

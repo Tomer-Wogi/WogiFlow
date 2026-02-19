@@ -255,6 +255,87 @@ api.interceptors.response.use(null, async (error) => {
 
 ---
 
+## Decision Amendment Tracking
+
+All changes to `decisions.md` are tracked with an audit trail in `.workflow/state/decision-amendments.json`.
+
+### What's Tracked
+
+Each amendment records:
+- **Timestamp**: When the change was made
+- **Section**: Which section of decisions.md was affected
+- **Action**: `add`, `modify`, `remove`, `promote`, or `deprecate`
+- **Rationale**: Why the change was made (required when `requireRationale: true`)
+- **Source**: Origin of the change (`manual`, `auto-promoted`, `review-finding`, `user-feedback`, `competitor-inspired`)
+- **Impact Assessment**: What this change affects (optional)
+
+### Configuration
+
+```json
+{
+  "decisions": {
+    "amendmentTracking": {
+      "enabled": true,
+      "logFile": ".workflow/state/decision-amendments.json",
+      "requireRationale": true,
+      "requireImpactAssessment": false,
+      "trackSource": true
+    }
+  }
+}
+```
+
+### CLI Usage
+
+```bash
+# Record an amendment
+node scripts/flow-decision-tracker.js record "Coding Standards" add "Added TDD enforcement rule"
+
+# View history (most recent first)
+node scripts/flow-decision-tracker.js history
+node scripts/flow-decision-tracker.js history "Security" --limit 10
+
+# View statistics
+node scripts/flow-decision-tracker.js stats
+
+# View specific amendment
+node scripts/flow-decision-tracker.js diff amend-a1b2c3d4
+
+# JSON output
+node scripts/flow-decision-tracker.js history --json
+node scripts/flow-decision-tracker.js stats --json
+```
+
+### Programmatic API
+
+```javascript
+const { recordAmendment, getHistory, getStats } = require('./scripts/flow-decision-tracker');
+
+// Record a change
+recordAmendment({
+  section: 'Security Patterns',
+  action: 'add',
+  rationale: 'Added path traversal protection rule',
+  source: 'review-finding'
+});
+
+// Get history for a section
+const history = getHistory('Security', 10);
+
+// Get statistics
+const stats = getStats();
+```
+
+### Integration with Learning Loop
+
+When review findings lead to rule changes:
+1. Review finds a recurring issue
+2. Pattern is promoted to `decisions.md`
+3. Amendment is automatically recorded with source `auto-promoted`
+4. Future reviews check the new rule
+
+---
+
 ## Best Practices
 
 1. **Persist Important Corrections**: Don't skip the prompt
@@ -262,6 +343,7 @@ api.interceptors.response.use(null, async (error) => {
 3. **Use Categories**: Organize patterns in decisions.md
 4. **Include Anti-Patterns**: Document what NOT to do
 5. **Review Regularly**: Clean up outdated patterns
+6. **Check Amendment History**: Use `flow-decision-tracker.js history` to understand rule evolution
 
 ---
 

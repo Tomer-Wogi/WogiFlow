@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-docs-v140",
+      "title": "Update README and knowledge base docs for v1.4.0 features",
+      "type": "task",
+      "feature": "documentation",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-19T22:30:00.000Z",
+      "completedAt": "2026-02-19T22:45:00.000Z"
+    },
+    {
       "id": "wf-cr-remain",
       "title": "Fix remaining 4 code review findings",
       "type": "task",

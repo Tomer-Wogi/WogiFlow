@@ -290,6 +290,19 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow workflow run <n>   # Run a workflow
 ./scripts/flow workflow create <n> # Create workflow template
 
+# Decision Amendment Tracking
+node scripts/flow-decision-tracker.js record <section> <action> <rationale>  # Record amendment
+node scripts/flow-decision-tracker.js history [section]  # Show history
+node scripts/flow-decision-tracker.js history --json     # JSON output
+node scripts/flow-decision-tracker.js stats              # Show statistics
+node scripts/flow-decision-tracker.js stats --json       # JSON stats
+node scripts/flow-decision-tracker.js diff <id>          # Show specific amendment
+
+# Cross-Artifact Consistency
+node scripts/flow-consistency-check.js        # Run consistency check
+node scripts/flow-consistency-check.js --json # JSON output for CI
+node scripts/flow-consistency-check.js --mode block  # Block on failures
+
 # Metrics & Analysis
 ./scripts/flow metrics            # Show command success/failure stats
 ./scripts/flow metrics --problems # Show only problematic commands

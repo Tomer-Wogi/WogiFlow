@@ -62,6 +62,54 @@ Key principle: **"Quality code starts with quality planning"**
 
 ---
 
+## [NEEDS CLARIFICATION] Markers
+
+When generating specs, ambiguous or uncertain requirements are tagged with `[NEEDS CLARIFICATION]` markers. Implementation is **blocked** until all markers are resolved.
+
+### How It Works
+
+1. During spec generation, the AI flags assumptions and ambiguities
+2. Markers are inserted inline: `[NEEDS CLARIFICATION: reason]`
+3. If `blockImplementation: true`, coding cannot begin until all markers are resolved
+4. User resolves markers by answering questions or providing guidance
+
+### Categories
+
+| Category | Example |
+|----------|---------|
+| `assumption` | "Assuming REST API, not GraphQL" |
+| `ambiguity` | "Should validation happen client-side or server-side?" |
+| `missing-context` | "No error handling strategy defined" |
+| `dependency-unknown` | "Unclear which auth library to use" |
+| `edge-case` | "What happens when input is empty?" |
+
+### Configuration
+
+```json
+{
+  "needsClarification": {
+    "enabled": true,
+    "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
+    "blockImplementation": true,
+    "minMarkersForReview": 0,
+    "categories": ["assumption", "ambiguity", "missing-context", "dependency-unknown", "edge-case"]
+  }
+}
+```
+
+### Example Spec with Markers
+
+```markdown
+## Implementation Steps
+
+1. Create AuthService with login method
+2. [NEEDS CLARIFICATION: Should we use JWT or session-based auth?]
+3. Add route protection middleware
+4. [NEEDS CLARIFICATION: Should expired sessions redirect to login or show modal?]
+```
+
+---
+
 ## Spec Structure
 
 Generated specs are saved to `.workflow/specs/`:

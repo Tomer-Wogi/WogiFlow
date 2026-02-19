@@ -336,6 +336,117 @@ Block commit? Yes (blockOnHigh: true)
 
 ---
 
+## Test-First Mode (TDD)
+
+Opt-in test-first development where tests must exist before implementation.
+
+### Configuration
+
+```json
+{
+  "tdd": {
+    "enforced": false,
+    "defaultForTypes": [],
+    "requireFailingTestFirst": true,
+    "testFrameworkDetection": true
+  }
+}
+```
+
+### How It Works
+
+When `tdd.enforced` is true (or task uses `--tdd` flag):
+1. **Before implementation**: Test file must exist with failing tests
+2. **During implementation**: Tests are re-run after each change
+3. **After implementation**: All tests must pass (red → green → refactor)
+
+### Per-Task-Type Configuration
+
+Use `defaultForTypes` to auto-enable TDD for specific task types:
+```json
+{
+  "tdd": {
+    "enforced": false,
+    "defaultForTypes": ["feature", "bugfix"]
+  }
+}
+```
+
+---
+
+## Cross-Artifact Consistency Check
+
+Validates that app-map, function-map, and api-map stay in sync with the codebase.
+
+### What It Checks
+
+| Check | Description |
+|-------|-------------|
+| `phantom-entries` | Components/functions documented in maps but missing from codebase |
+| `orphan-files` | Files in codebase but not documented in any map |
+| `cross-map` | Cross-references between maps (component uses function that doesn't exist) |
+
+### Configuration
+
+```json
+{
+  "consistency": {
+    "enabled": true,
+    "runOn": ["afterTask", "beforeCommit"],
+    "mode": "warn",
+    "checks": {
+      "phantomEntries": true,
+      "orphanFiles": true,
+      "crossMapConsistency": true
+    }
+  }
+}
+```
+
+### Running Manually
+
+```bash
+node scripts/flow-consistency-check.js          # Human-readable output
+node scripts/flow-consistency-check.js --json   # JSON for CI
+```
+
+---
+
+## Git-Verified Claim Checking
+
+Cross-references spec deliverables against actual `git diff` to catch false "done" claims.
+
+### How It Works
+
+1. Parse the spec for promised deliverables
+2. Get actual git changes (`git diff --name-only`)
+3. Cross-reference: does every spec promise appear in git?
+4. Report mismatches
+
+### Severity
+
+| Mismatch | Severity |
+|----------|----------|
+| Spec says create, git has nothing | **BLOCKER** - implementation gap |
+| Git has changes, spec doesn't mention | **WARNING** - possible scope creep |
+
+### Configuration
+
+```json
+{
+  "review": {
+    "gitVerifiedClaims": {
+      "enabled": true,
+      "verifyFileCreation": true,
+      "verifyContentMatch": true,
+      "blockOnMismatch": true
+    }
+  }
+}
+```
+
+---
+
 ## Verification Flow Summary
 
 ```
@@ -348,9 +459,15 @@ Task Completion Attempt
 │ 2. Spec Verification                       │
 │    - All promised files exist              │
 ├────────────────────────────────────────────┤
-│ 3. Integration Wiring Check (NEW)          │
+│ 2.5 Git-Verified Claim Check               │
+│    - Spec promises match git diff?         │
+├────────────────────────────────────────────┤
+│ 3. Integration Wiring Check                │
 │    - Created files imported somewhere?     │
 │    - Components wired to parents?          │
+├────────────────────────────────────────────┤
+│ 3.5 Cross-Artifact Consistency             │
+│    - Maps match codebase?                  │
 ├────────────────────────────────────────────┤
 │ 4. Run Quality Gates                       │
 │    - tests, lint, typecheck               │

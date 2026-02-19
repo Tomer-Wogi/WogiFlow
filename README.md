@@ -55,6 +55,11 @@ Run `npx flow bridge sync` after switching to regenerate CLI-specific files.
 | **Component Registry** | Prevents duplicate components via app-map |
 | **Post-Edit Validation** | Auto-runs lint/typecheck after every edit |
 | **Request Logging** | All changes logged with tags for searchability |
+| **Adversarial Code Review** | Review agents must find minimum findings or justify clean code |
+| **Git-Verified Claims** | Cross-references spec deliverables against actual git diff |
+| **Decision Amendment Tracking** | Auditable trail of all project rule changes with rationale |
+| **Cross-Artifact Consistency** | Validates app-map/function-map/api-map against codebase |
+| **TDD Mode** | Opt-in test-first development enforcement |
 | **Hybrid Mode** | Claude plans, local LLM executes (20-60% token savings) |
 | **Peer Review** | Multi-model code review for diverse perspectives |
 | **Skills System** | Modular add-ons that learn from your sessions |
@@ -160,7 +165,10 @@ flow verify all                 # Run all quality gates
     ├── ready.json           # Task queue
     ├── request-log.md       # Change history
     ├── app-map.md           # Component registry
+    ├── function-map.md      # Utility function registry
+    ├── api-map.md           # API endpoint registry
     ├── decisions.md         # Project rules
+    ├── decision-amendments.json  # Rule change audit trail
     └── progress.md          # Session handoff notes
 
 .claude/                     # Claude Code specific
@@ -234,6 +242,37 @@ WogiFlow learns from your corrections:
 5. **Track** → Logs to feedback-patterns.md
 
 After 3+ similar corrections → promotes to permanent instruction.
+
+### Decision Amendment Tracking
+
+All changes to project rules (`decisions.md`) are tracked with an audit trail:
+
+```bash
+# Record a rule change
+node scripts/flow-decision-tracker.js record "Coding Standards" add "Added TDD enforcement rule"
+
+# View amendment history
+node scripts/flow-decision-tracker.js history
+
+# View statistics
+node scripts/flow-decision-tracker.js stats
+```
+
+Each amendment records: timestamp, section, action, rationale, source, and impact assessment.
+
+### Cross-Artifact Consistency
+
+Validates that app-map, function-map, and api-map stay in sync with the codebase:
+
+```bash
+# Run consistency check
+node scripts/flow-consistency-check.js
+
+# JSON output for CI
+node scripts/flow-consistency-check.js --json
+```
+
+Detects: phantom entries (documented but missing), orphan files (exist but undocumented), and cross-map mismatches.
 
 ---
 

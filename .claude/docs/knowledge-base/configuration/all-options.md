@@ -48,9 +48,13 @@ Configuration lives in `.workflow/config.json`
 | [qualityGates](#qualitygates) | Per-task-type requirements |
 | [validation](#validation) | Auto-validation commands |
 | [testing](#testing) | Test execution |
+| [tdd](#tdd) | Test-first development mode |
 | [regressionTesting](#regressiontesting) | Regression checks |
 | [componentRules](#componentrules) | Component reuse rules |
 | [strictMode](#strictmode) | Additional strict options |
+| [review](#review) | Code review settings |
+| [needsClarification](#needsclarification) | Spec uncertainty markers |
+| [consistency](#consistency) | Cross-artifact validation |
 
 ### Category 3: Learning & Memory
 | Section | Purpose |
@@ -63,6 +67,7 @@ Configuration lives in `.workflow/config.json`
 | [knowledgeRouting](#knowledgerouting) | Knowledge routing |
 | [modelAdapters](#modeladapters) | Per-model learning |
 | [prd](#prd) | PRD chunking |
+| [decisions](#decisions) | Decision amendment tracking |
 
 ### Category 4: Context & Session
 | Section | Purpose |
@@ -1534,6 +1539,160 @@ Session start context configuration.
 | `autoLog` | boolean | `true` | Auto-update request log |
 | `autoUpdateAppMap` | boolean | `true` | Auto-update app-map |
 | `requireApproval` | array | `[]` | Operations requiring approval |
+
+---
+
+## review
+
+Code review configuration.
+
+```json
+{
+  "review": {
+    "minFindings": 3,
+    "requireJustificationIfClean": true,
+    "gitVerifiedClaims": {
+      "enabled": true,
+      "verifyFileCreation": true,
+      "verifyContentMatch": true,
+      "blockOnMismatch": true
+    },
+    "agents": {
+      "core": ["code-logic", "security", "architecture"],
+      "optional": ["performance"],
+      "projectRules": true,
+      "maxParallelAgents": 6
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `minFindings` | number | `3` | Minimum findings per review agent (adversarial mode) |
+| `requireJustificationIfClean` | boolean | `true` | Require justification when fewer than minFindings |
+| `gitVerifiedClaims.enabled` | boolean | `true` | Cross-reference spec vs git diff |
+| `gitVerifiedClaims.verifyFileCreation` | boolean | `true` | Verify spec-promised files exist in git |
+| `gitVerifiedClaims.verifyContentMatch` | boolean | `true` | Verify content matches spec intent |
+| `gitVerifiedClaims.blockOnMismatch` | boolean | `true` | Block review on missing files |
+| `agents.core` | array | (see above) | Core review agents (always run) |
+| `agents.optional` | array | `["performance"]` | Optional review agents |
+| `agents.projectRules` | boolean | `true` | Auto-generate agents from decisions.md |
+| `agents.maxParallelAgents` | number | `6` | Max total review agents |
+
+---
+
+## needsClarification
+
+Controls [NEEDS CLARIFICATION] markers in spec generation.
+
+```json
+{
+  "needsClarification": {
+    "enabled": true,
+    "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
+    "blockImplementation": true,
+    "minMarkersForReview": 0,
+    "categories": ["assumption", "ambiguity", "missing-context", "dependency-unknown", "edge-case"]
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable clarification markers |
+| `markerFormat` | string | `"[NEEDS CLARIFICATION: {reason}]"` | Marker format in specs |
+| `blockImplementation` | boolean | `true` | Block coding until all markers resolved |
+| `minMarkersForReview` | number | `0` | Min markers before requiring review |
+| `categories` | array | (see above) | Allowed marker categories |
+
+---
+
+## tdd
+
+Test-first development (TDD) mode.
+
+```json
+{
+  "tdd": {
+    "enforced": false,
+    "defaultForTypes": [],
+    "requireFailingTestFirst": true,
+    "testFrameworkDetection": true
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enforced` | boolean | `false` | Globally enforce TDD |
+| `defaultForTypes` | array | `[]` | Task types that auto-enable TDD (e.g., `["feature", "bugfix"]`) |
+| `requireFailingTestFirst` | boolean | `true` | Require failing test before implementation |
+| `testFrameworkDetection` | boolean | `true` | Auto-detect test framework from package.json |
+
+---
+
+## decisions
+
+Decision amendment tracking configuration.
+
+```json
+{
+  "decisions": {
+    "amendmentTracking": {
+      "enabled": true,
+      "logFile": ".workflow/state/decision-amendments.json",
+      "requireRationale": true,
+      "requireImpactAssessment": false,
+      "trackSource": true
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `amendmentTracking.enabled` | boolean | `true` | Enable amendment tracking |
+| `amendmentTracking.logFile` | string | `".workflow/state/decision-amendments.json"` | Log file path |
+| `amendmentTracking.requireRationale` | boolean | `true` | Require rationale for changes |
+| `amendmentTracking.requireImpactAssessment` | boolean | `false` | Require impact assessment |
+| `amendmentTracking.trackSource` | boolean | `true` | Track amendment source |
+
+---
+
+## consistency
+
+Cross-artifact consistency analysis.
+
+```json
+{
+  "consistency": {
+    "enabled": true,
+    "runOn": ["afterTask", "beforeCommit"],
+    "mode": "warn",
+    "checks": {
+      "phantomEntries": true,
+      "orphanFiles": true,
+      "crossMapConsistency": true,
+      "nameCollisions": true,
+      "deadImports": true
+    },
+    "orphanMode": "warn",
+    "maxOrphans": 10
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable consistency checks |
+| `runOn` | array | `["afterTask", "beforeCommit"]` | When to run checks |
+| `mode` | string | `"warn"` | `"warn"` or `"block"` |
+| `checks.phantomEntries` | boolean | `true` | Check for documented but missing items |
+| `checks.orphanFiles` | boolean | `true` | Check for undocumented files |
+| `checks.crossMapConsistency` | boolean | `true` | Cross-reference between maps |
+| `orphanMode` | string | `"warn"` | `"warn"` or `"block"` for orphan files |
+| `maxOrphans` | number | `10` | Max orphans before warning |
 
 ---
 
