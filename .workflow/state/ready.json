@@ -1,9 +1,39 @@
 {
-  "lastUpdated": "2026-02-19T21:01:56.703Z",
+  "lastUpdated": "2026-02-20T06:35:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2341ad82",
+      "title": "Add Risk & History and Standards Preview agents to explore phase",
+      "type": "story",
+      "feature": "explore-phase",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-20T06:20:00.000Z",
+      "completedAt": "2026-02-20T06:35:00.000Z"
+    },
+    {
+      "id": "wf-1c1fa2d8",
+      "title": "Claude Code compatibility updates (latest release)",
+      "type": "story",
+      "feature": "claude-code-compat",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-20T06:10:00.000Z",
+      "completedAt": "2026-02-20T06:15:00.000Z"
+    },
+    {
+      "id": "wf-rel-142",
+      "title": "Bump version to 1.4.2 and create GitHub release",
+      "type": "task",
+      "feature": "release",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-20T00:35:00.000Z",
+      "completedAt": "2026-02-20T00:40:00.000Z"
+    },
     {
       "id": "wf-cr-6b2aa8",
       "title": "Fix 3 medium-severity review findings from wf-6b2aa8d3",

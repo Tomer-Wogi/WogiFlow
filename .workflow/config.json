@@ -1563,6 +1563,14 @@
       },
       "versionVerifier": {
         "enabled": true
+      },
+      "riskHistory": {
+        "enabled": true,
+        "_comment": "Queries feedback-patterns, corrections, and memory-db for past failures in this task area"
+      },
+      "standardsPreview": {
+        "enabled": true,
+        "_comment": "Pre-computes which standards rules apply and checks component duplication before coding"
       }
     },
     "researchDepth": "thorough",

@@ -192,7 +192,9 @@ This command implements a **structured execution loop**:
 │  │     → Agent 1: Codebase Analyzer (Glob/Grep/Read) │  │
 │  │     → Agent 2: Best Practices (WebSearch)          │  │
 │  │     → Agent 3: Version Verifier (Read/WebSearch)   │  │
-│  │     → All 3 run in parallel as Task agents         │  │
+│  │     → Agent 4: Risk & History (local reads)        │  │
+│  │     → Agent 5: Standards Preview (local reads)     │  │
+│  │     → All 5 run in parallel as Task agents         │  │
 │  │     → Consolidated research summary displayed      │  │
 │  └───────────────────────────────────────────────────┘  │
 │  1.5 SPEC PHASE: Generate specification                 │
@@ -398,8 +400,8 @@ This step invests more tokens up front to get things right. Three specialized ag
 **Research Cache**: Before launching agents, check `.workflow/state/research-cache.json` for cached results from recent identical queries (TTL: 24 hours). If a cache hit exists and is still valid, use the cached result instead of re-running the research. Cache misses trigger fresh research which is then cached for future use.
 
 **Research Depth** (controlled by `config.planMode.researchDepth`):
-- `"thorough"` (default): All 3 agents run in parallel
-- `"standard"`: Codebase Analyzer + quick best practices search
+- `"thorough"` (default): All 5 agents run in parallel
+- `"standard"`: Codebase Analyzer + Best Practices + Risk & History (3 agents, no web for version/standards)
 - `"minimal"`: Codebase Analyzer only (legacy behavior)
 
 **Skip conditions**: L3 (Subtask/trivial) tasks always skip this phase.
@@ -472,15 +474,88 @@ Return:
 - Version-specific considerations
 ```
 
+#### Agent 4: Risk & History Analyzer
+
+Launch as `Task` with `subagent_type=Explore` (local only, no web searches):
+
+```
+Analyze risk and history for task: "[TASK_TITLE]"
+Task type: [TASK_TYPE]
+Planned files: [FILES_TO_CHANGE]
+
+1. Read .workflow/state/feedback-patterns.md
+   - Search for entries matching this task type (feature, bugfix, refactor, etc.)
+   - Search for entries matching the planned file extensions (.js, .ts, .tsx, etc.)
+   - Extract the top 5 most relevant patterns with their occurrence counts
+2. Search .workflow/corrections/ directory for correction reports
+   - Use Glob to find *.md files in corrections/
+   - Read any that relate to the same feature area or file paths
+   - Extract lessons learned
+3. Search .workflow/state/decisions.md for rules tagged with the task type
+   - Focus on rules that were promoted from repeated violations (count >= 3)
+   - Extract the specific verification steps required
+4. If a memory database exists (.workflow/memory/local.db or via MCP):
+   - Query for rejected approaches from past tasks touching the same files
+   - Query for observations tagged with the planned file paths
+   - Surface any "approach X was tried and failed" warnings
+
+Return a structured summary:
+- Known risks for this task type (from feedback-patterns)
+- Past corrections in this area (from corrections/)
+- Promoted rules that apply (from decisions.md, count >= 3)
+- Rejected approaches from similar past work (from memory-db)
+- Confidence: HIGH (many data points) / MEDIUM / LOW (no history)
+```
+
+#### Agent 5: Standards Preview
+
+Launch as `Task` with `subagent_type=Explore` (local only, no web searches):
+
+```
+Preview applicable standards for task: "[TASK_TITLE]"
+Task type: [TASK_TYPE]
+Planned files: [FILES_TO_CHANGE]
+
+1. Determine which standard checks apply based on planned file paths:
+   - If files include components (.tsx, .jsx) → check: naming, components, security
+   - If files include utilities (utils/, helpers/) → check: naming, functions, security
+   - If files include API routes (api/, routes/) → check: naming, api, security
+   - If task type is "bugfix" → check: naming, security (minimal)
+   - If task type is "feature" or "refactor" → check: all
+2. Read .claude/rules/code-style/naming-conventions.md
+   - Extract rules that apply to the planned file types
+3. Read .claude/rules/security/security-patterns.md
+   - Extract security patterns relevant to the planned operations
+4. Read .workflow/state/app-map.md
+   - For each planned NEW component, check similarity against existing entries
+   - Flag any where name or purpose overlaps > 80% with an existing component
+   - This is the SAME check that flow-standards-gate.js will run post-implementation
+5. Read .workflow/state/decisions.md
+   - Extract coding rules that will be enforced for this task type
+
+Return a structured checklist:
+- Task type classification: [type]
+- Standards that WILL be enforced (these will block completion if violated):
+  * [rule name]: [what it checks] - [how to comply]
+  * [rule name]: [what it checks] - [how to comply]
+- Component duplication warnings (if any new components planned):
+  * "[PlannedName]" is similar to existing "[ExistingName]" in app-map
+  * Recommendation: extend existing / create new
+- Security patterns that apply:
+  * [pattern]: [when it triggers] - [correct approach]
+```
+
 #### Launching the Agents
 
-**All 3 agents are launched as parallel `Task` calls in a single message** (established pattern from `/wogi-review`):
+**All 5 agents are launched as parallel `Task` calls in a single message** (established pattern from `/wogi-review`):
 
 ```javascript
-// Launch all 3 in parallel (single message, 3 Task tool calls)
+// Launch all 5 in parallel (single message, 5 Task tool calls)
 Task(subagent_type=Explore, prompt="Codebase Analyzer: ...")
 Task(subagent_type=Explore, prompt="Best Practices: ...")
 Task(subagent_type=Explore, prompt="Version Verifier: ...")
+Task(subagent_type=Explore, prompt="Risk & History Analyzer: ...")
+Task(subagent_type=Explore, prompt="Standards Preview: ...")
 ```
 
 **After all agents complete**, display a consolidated research summary:
@@ -519,6 +594,24 @@ Task(subagent_type=Explore, prompt="Version Verifier: ...")
    - [package]@[version]: APIs confirmed compatible
    - [package]@[version]: ⚠️ [deprecated API] - use [alternative]
 
+⚠️ Risk & History:
+   Confidence: [HIGH/MEDIUM/LOW]
+   Known Risks:
+   - [pattern name] (occurred N times): [description]
+   Past Corrections:
+   - [correction]: [lesson learned]
+   Rejected Approaches:
+   - [approach]: tried in [task], failed because [reason]
+
+📋 Standards Preview:
+   Task type: [type] → Checks: [list]
+   Rules to follow:
+   - [rule]: [how to comply]
+   Component Duplication:
+   - ⚠️ "[PlannedName]" similar to "[ExistingName]" → extend existing
+   Security Patterns:
+   - [pattern]: [correct approach]
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -541,13 +634,16 @@ If user chooses "Deepen":
 
 #### Graceful Fallback
 
-If web search fails for any agent (network issues, rate limits, timeouts):
-- Log a warning: `⚠️ Web research unavailable for [Agent Name]. Proceeding with codebase analysis only.`
-- The Codebase Analyzer always runs locally and never fails due to network issues
-- If Best Practices agent fails: proceed without best practices (codebase + version verifier only)
-- If Version Verifier agent fails: proceed using local package.json versions only (no web validation)
-- If ALL web-based agents fail: proceed with codebase analysis only, equivalent to `researchDepth: "minimal"`
-- Task proceeds normally without blocking — web research is always best-effort
+If any agent fails (network issues, rate limits, timeouts, missing files):
+- Log a warning: `⚠️ Research unavailable for [Agent Name]. Proceeding with remaining agents.`
+- Agents 1, 4, 5 are **local-only** and should almost never fail (no network dependency)
+- Agents 2, 3 use **web search** and may fail due to network issues
+- If Best Practices agent fails: proceed without best practices
+- If Version Verifier agent fails: proceed using local package.json versions only
+- If Risk & History agent fails: proceed without history (no feedback-patterns data)
+- If Standards Preview agent fails: standards will still be enforced post-implementation (Step 3.7)
+- If ALL agents fail: proceed with codebase analysis only, equivalent to `researchDepth: "minimal"`
+- Task proceeds normally without blocking — research is always best-effort
 
 **IMPORTANT CONSTRAINTS:**
 - **READ-ONLY**: Do NOT use Edit, Write, or NotebookEdit during this phase
@@ -562,7 +658,9 @@ If web search fails for any agent (network issues, rate limits, timeouts):
     "researchAgents": {
       "codebaseAnalyzer": { "enabled": true },
       "bestPractices": { "enabled": true, "maxWebSearches": 3 },
-      "versionVerifier": { "enabled": true }
+      "versionVerifier": { "enabled": true },
+      "riskHistory": { "enabled": true },
+      "standardsPreview": { "enabled": true }
     },
     "researchDepth": "thorough",
     "deepenPromptThreshold": "L1"

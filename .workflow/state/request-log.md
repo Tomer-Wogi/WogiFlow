@@ -13,6 +13,32 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-118 | 2026-02-20 06:25
+**Type**: new
+**Tags**: #explore-phase #agents #shift-left #standards #risk
+**Task**: wf-2341ad82
+**Request**: "Add two new explore phase agents: Risk & History Analyzer and Standards Preview"
+**Result**: Added Agent 4 (Risk & History Analyzer) and Agent 5 (Standards Preview) to the explore phase. Agent 4 queries feedback-patterns.md, corrections/, decisions.md, and memory-db for past failures and rejected approaches related to the current task type/files. Agent 5 pre-computes which standards will be enforced, checks component duplication against app-map, and outputs a targeted compliance checklist before coding. Both are local-only (no web), run in parallel with existing 3 agents. Updated config.json with `riskHistory` and `standardsPreview` agent toggles.
+**Files**: `.claude/commands/wogi-start.md`, `.workflow/config.json`, `CLAUDE.md`, `.workflow/templates/partials/auto-features.hbs`
+
+### R-117 | 2026-02-20 06:15
+**Type**: change
+**Tags**: #compatibility #claude-code #models #hooks #worktree #settings
+**Task**: wf-1c1fa2d8
+**Request**: "Claude Code compatibility updates for latest release"
+**Result**: 7 improvements: (1) Added Sonnet 4.6 1M context to model registry/providers/caller, (2) Created ConfigChange hook for mid-session config sync, (3) Added native worktree detection to prevent nesting, (4) Created settings.json for shared hook config (plugin pattern), (5) Updated compatibility docs with managed settings, worktree, simple mode naming, (6) Registered ConfigChange in adapter and settings, (7) Added version 1.5.0+ row to compatibility table.
+**Files**: `.workflow/models/registry.json`, `scripts/flow-model-caller.js`, `.workflow/prompts/fragments/output-format-claude.md`, `scripts/hooks/core/config-change.js` (new), `scripts/hooks/entry/claude-code/config-change.js` (new), `scripts/hooks/adapters/claude-code.js`, `.claude/settings.local.json`, `.claude/settings.json` (new), `scripts/flow-worktree.js`, `.claude/docs/claude-code-compatibility.md`
+
+### R-116 | 2026-02-20 00:40
+**Type**: release
+**Tags**: #release #v1.4.2 #github
+**Task**: wf-rel-142
+**Request**: "Push to GitHub and create a release"
+**Result**: Bumped version to 1.4.2, pushed 5 commits (aea28b2..967e165) to master, created tag v1.4.2, and published GitHub release. Release covers: dead multi-CLI code removal, Codex review fixes (P0-P2), and 3 medium-severity code review fixes.
+**Files**: package.json
+
+---
+
 ### R-115 | 2026-02-20 00:30
 **Type**: fix
 **Tags**: #quality #review-findings #hooks #verification #schema
