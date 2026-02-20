@@ -3,8 +3,10 @@
 /**
  * Wogi Flow - Implementation Gate (Core Module)
  *
- * Detects implementation requests from user prompts and blocks them
- * if no active task exists. Guides users to /wogi-story or /wogi-start.
+ * Routes all user prompts through /wogi-start when no active task exists.
+ * Instead of blocking, injects context that makes Claude automatically
+ * invoke /wogi-start which handles AI-based routing (questions, bugs,
+ * features, operational tasks, etc.).
  *
  * Returns a standardized result that adapters transform for specific CLIs.
  */
@@ -180,14 +182,6 @@ function isImplementationGateEnabled() {
   return true;
 }
 
-// NOTE: softMode is deprecated. Use hooks.rules.implementationGate.mode = 'warn' instead.
-// Kept for backwards compatibility - maps to mode='warn'
-function isSoftModeEnabled() {
-  const config = getConfig();
-  // Check legacy softMode, map to mode='warn'
-  return config.hooks?.rules?.implementationGate?.softMode === true ||
-         config.enforcement?.softMode === true;
-}
 
 /**
  * Detect if prompt is a WogiFlow command (always allowed)
@@ -315,62 +309,52 @@ function checkImplementationGate(options = {}) {
     };
   }
 
-  // No active task - block and route through /wogi-start
+  // No active task - inject routing context so Claude automatically invokes /wogi-start
   // /wogi-start will use AI understanding to decide:
   //   Questions/exploration → proceed directly
   //   Operational (git/npm) → execute directly
   //   Implementation → create story/task first
+  //   Research → use zero-trust protocol
+  //   Bugs → investigate and fix properly
   return {
-    allowed: false,
-    blocked: true,
-    message: generateBlockingMessage(prompt),
-    reason: 'no_active_task'
+    allowed: true,
+    blocked: false,
+    systemReminder: generateRoutingContext(prompt),
+    reason: 'no_active_task_route'
   };
 }
 
 /**
- * Generate blocking message shown to the user when no task is active.
- * Tells the user to route through /wogi-start which handles AI-based routing.
+ * Generate routing context injected as additionalContext when no task is active.
+ * This makes Claude automatically invoke /wogi-start via the Skill tool,
+ * so the user never needs to type any command manually.
+ *
+ * /wogi-start handles ALL routing with AI understanding:
+ * - Questions → answered directly
+ * - Research → zero-trust research protocol
+ * - Operational (git, npm) → executed directly
+ * - Implementation → creates tracked task first
+ * - Bugs → investigation + tracked fix
  */
-function generateBlockingMessage(prompt) {
-  const displayPrompt = truncatePrompt(prompt);
-  return `No active WogiFlow task. Route your request through /wogi-start:
+function generateRoutingContext(prompt) {
+  return `MANDATORY ROUTING — NO ACTIVE WOGIFLOW TASK
 
-  /wogi-start "${displayPrompt}"
+You MUST invoke the Skill tool with skill="wogi-start" and pass the user's FULL original prompt as args BEFORE doing anything else.
 
-/wogi-start will handle it:
-- Questions and exploration → answered directly
-- Operational (git, npm, deploy) → executed directly
-- Implementation → creates a tracked task first`;
-}
+DO NOT:
+- Answer implementation questions directly
+- Create, edit, or write any files
+- Make assumptions about the codebase
+- Research or answer questions on your own (WogiFlow has a zero-trust research protocol)
+- Truncate or summarize the user's prompt
 
-/**
- * @deprecated v5.2: Use generateBlockingMessage.
- */
-function generateWarningMessage(prompt) {
-  return generateBlockingMessage(prompt);
-}
+DO:
+- Immediately invoke: Skill(skill="wogi-start", args="<user's full original prompt>")
+- Let /wogi-start classify and route: questions, research, bugs, features, operational tasks
+- Follow the workflow /wogi-start sets up
 
-/**
- * @deprecated v5.2: Use generateBlockingMessage.
- */
-function generateRoutingMessage(prompt) {
-  return generateBlockingMessage(prompt);
-}
-
-/**
- * @deprecated v5.2: Use generateBlockingMessage.
- */
-function generateBlockMessage(prompt) {
-  return generateBlockingMessage(prompt);
-}
-
-/**
- * Generate context reminder (non-blocking mode).
- * Used when mode is 'warn' instead of 'block'.
- */
-function generateNoTaskReminder() {
-  return `No active WogiFlow task. Use /wogi-start to route your request.`;
+The user installed WogiFlow so ALL work goes through proper workflows with guardrails.
+Bypassing this is a workflow violation.`;
 }
 
 /**
@@ -450,15 +434,10 @@ module.exports = {
 
   // Gate status functions
   isImplementationGateEnabled,
-  isSoftModeEnabled,
   isWogiCommand,
 
   // Message generators
-  generateBlockingMessage,
-  generateNoTaskReminder,
-  generateWarningMessage,   // @deprecated v5.2
-  generateRoutingMessage,   // @deprecated v5.2
-  generateBlockMessage,     // @deprecated v5.2
+  generateRoutingContext,
 
   // Utilities
   truncatePrompt,

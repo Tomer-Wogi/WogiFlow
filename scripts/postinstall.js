@@ -158,56 +158,50 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
  * Copy essential .claude/ resources from package to project
  * This ensures commands are available immediately after npm install
  *
- * Uses merge mode: new commands are added, existing ones are NOT overwritten
- * This preserves user customizations while ensuring new commands are available
+ * ALWAYS overwrites WogiFlow-owned files (commands, docs, rules, settings hooks)
+ * to ensure npm update actually applies changes.
+ * User-customizable files (config.json, ready.json, decisions.md) are NOT touched.
  */
 function copyClaudeResources() {
   const claudeDir = path.join(PROJECT_ROOT, '.claude');
   fs.mkdirSync(claudeDir, { recursive: true, mode: DIR_MODE });
 
-  // Copy commands (essential for slash commands to work)
-  // Use merge mode to add new commands without overwriting customizations
+  // Copy commands (always overwrite - these are WogiFlow skill definitions)
   const packageCommands = path.join(PACKAGE_ROOT, '.claude', 'commands');
   const projectCommands = path.join(claudeDir, 'commands');
   if (fs.existsSync(packageCommands)) {
-    const alreadyExists = fs.existsSync(projectCommands);
-    copyDir(packageCommands, projectCommands, alreadyExists);
+    copyDir(packageCommands, projectCommands, false);
   }
 
-  // Copy docs (knowledge base) - merge mode
+  // Copy docs (always overwrite - these are WogiFlow documentation)
   const packageDocs = path.join(PACKAGE_ROOT, '.claude', 'docs');
   const projectDocs = path.join(claudeDir, 'docs');
   if (fs.existsSync(packageDocs)) {
-    const alreadyExists = fs.existsSync(projectDocs);
-    copyDir(packageDocs, projectDocs, alreadyExists);
+    copyDir(packageDocs, projectDocs, false);
   }
 
-  // Copy rules (coding patterns) - merge mode
+  // Copy rules (always overwrite - these are WogiFlow coding rules)
   const packageRules = path.join(PACKAGE_ROOT, '.claude', 'rules');
   const projectRules = path.join(claudeDir, 'rules');
   if (fs.existsSync(packageRules)) {
-    const alreadyExists = fs.existsSync(projectRules);
-    copyDir(packageRules, projectRules, alreadyExists);
+    copyDir(packageRules, projectRules, false);
   }
 
   // Copy settings.json (hook configuration) - ESSENTIAL for hooks to work
-  // Without this file, Claude Code has no idea hooks exist and won't run them
+  // ALWAYS update hooks section on every install/update to ensure new hook logic applies
   const packageSettings = path.join(PACKAGE_ROOT, '.claude', 'settings.json');
   const projectSettings = path.join(claudeDir, 'settings.json');
   if (fs.existsSync(packageSettings)) {
     if (fs.existsSync(projectSettings)) {
-      // Merge: inject our hooks into existing settings without overwriting other config
+      // Always merge hooks from package into existing settings
       try {
         const existing = JSON.parse(fs.readFileSync(projectSettings, 'utf-8'));
-        // Only merge if not already WogiFlow-managed (avoid duplicate hooks)
-        if (!existing._wogiFlowManaged) {
-          const ours = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
-          existing.hooks = ours.hooks;
-          existing._wogiFlowManaged = true;
-          existing._wogiFlowVersion = ours._wogiFlowVersion || '1.0.0';
-          fs.writeFileSync(projectSettings, JSON.stringify(existing, null, 2), { mode: FILE_MODE });
-        }
-        // If already managed, leave as-is (user may have customized hook config)
+        const ours = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
+        // Always update hooks (core WogiFlow functionality)
+        existing.hooks = ours.hooks;
+        existing._wogiFlowManaged = true;
+        existing._wogiFlowVersion = ours._wogiFlowVersion || '1.0.0';
+        fs.writeFileSync(projectSettings, JSON.stringify(existing, null, 2), { mode: FILE_MODE });
       } catch (err) {
         // Parse error on existing file - overwrite with ours
         if (process.env.DEBUG) {
@@ -231,8 +225,8 @@ function copyClaudeResources() {
  * Copy scripts from package to project (for npm update scenario)
  * This ensures scripts are updated on npm install/update
  *
- * Uses merge mode: new scripts are added, existing ones are NOT overwritten
- * This preserves user customizations while ensuring new scripts are available
+ * ALWAYS overwrites WogiFlow-owned scripts to ensure npm update applies changes.
+ * Hook scripts, core modules, and adapters must stay in sync with the package version.
  */
 function copyScriptsFromPackage() {
   const packageScripts = path.join(PACKAGE_ROOT, 'scripts');
@@ -245,9 +239,8 @@ function copyScriptsFromPackage() {
     return;
   }
 
-  // Use merge mode to add new scripts without overwriting customizations
-  const alreadyExists = fs.existsSync(projectScripts);
-  copyDir(packageScripts, projectScripts, alreadyExists);
+  // Always overwrite scripts to ensure npm update propagates hook/core changes
+  copyDir(packageScripts, projectScripts, false);
 
   // Make flow script executable
   const flowScript = path.join(projectScripts, 'flow');

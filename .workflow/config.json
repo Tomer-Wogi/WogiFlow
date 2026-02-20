@@ -1350,9 +1350,7 @@
         ]
       },
       "implementationGate": {
-        "enabled": true,
-        "softMode": false,
-        "mode": "warn"
+        "enabled": true
       },
       "todoWriteGate": {
         "enabled": true,

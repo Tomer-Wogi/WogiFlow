@@ -154,19 +154,16 @@ async function main() {
     console.log(JSON.stringify(output));
     process.exit(0);
   } catch (err) {
-    // Non-blocking error - allow prompt to continue (graceful degradation)
-    // Log generic message to avoid leaking sensitive path information
+    // Fail-closed: block the prompt on hook errors to prevent untracked implementation
+    // Users installed WogiFlow to enforce task tracking - failing open would bypass that
     if (process.env.DEBUG) {
       console.error(`[Wogi Flow Hook Error] ${err.message}`);
     } else {
       console.error('[Wogi Flow Hook] Validation error occurred');
     }
-    // Exit 0 with continue:true to not block on hook errors
     console.log(JSON.stringify({
-      continue: true,
-      hookSpecificOutput: {
-        hookEventName: 'UserPromptSubmit'
-      }
+      decision: 'block',
+      reason: 'WogiFlow validation error. Please check your WogiFlow setup or use /wogi-start to route your request.'
     }));
     process.exit(0);
   }
@@ -181,14 +178,13 @@ process.stdin.setEncoding('utf8');
   try {
     await main();
   } catch (err) {
-    // Catch any unhandled errors from main
+    // Fail-closed: block on unexpected errors to prevent untracked implementation
     if (process.env.DEBUG) {
       console.error(`[Wogi Flow Hook] Unexpected error: ${err.message}`);
     }
-    // Exit gracefully - don't block on hook errors
     console.log(JSON.stringify({
-      continue: true,
-      hookSpecificOutput: { hookEventName: 'UserPromptSubmit' }
+      decision: 'block',
+      reason: 'WogiFlow hook error. Use /wogi-start to route your request.'
     }));
     process.exit(0);
   }

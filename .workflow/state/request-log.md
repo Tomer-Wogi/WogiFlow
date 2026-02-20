@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-122 | 2026-02-20 13:30
+**Type**: fix
+**Tags**: #hooks #implementation-gate #context-injection #postinstall #npm-update #security #P0 #v1.4.5
+**Task**: wf-cr-hookfmt
+**Request**: "Fix hooks: context injection instead of blocking, review findings, npm update propagation"
+**Result**: Three major fixes: (1) **Context injection architecture** — Changed implementation gate from BLOCKING prompts to injecting `additionalContext` that tells Claude to route through `/wogi-start`. Prompts pass through with routing context, `/wogi-start` handles classification with AI understanding. (2) **Review findings fixed** — HIGH: Added `safeJsonParseString` to pre-tool-use.js (prototype pollution protection), removed 200-char prompt truncation from routing context. MEDIUM: Removed dead config keys (`softMode`, `mode: "warn"`) and dead function (`isSoftModeEnabled`). (3) **npm update propagation** — Fixed postinstall.js to ALWAYS overwrite WogiFlow-owned files (scripts, commands, docs, rules, settings hooks) instead of merge mode that silently skipped updates. Bumped `_wogiFlowVersion` in settings.json to 1.4.5.
+**Files**: `scripts/hooks/core/implementation-gate.js`, `scripts/hooks/entry/claude-code/pre-tool-use.js`, `scripts/hooks/entry/claude-code/user-prompt-submit.js`, `scripts/postinstall.js`, `.claude/settings.json`, `.workflow/config.json`, `scripts/test-hook-chain.js`, `package.json`
+
 ### R-121 | 2026-02-20 10:30
 **Type**: fix
 **Tags**: #hooks #implementation-gate #adapter #UserPromptSubmit #P0 #bugfix

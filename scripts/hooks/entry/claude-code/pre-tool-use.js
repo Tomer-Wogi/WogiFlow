@@ -15,6 +15,7 @@ const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
+const { safeJsonParseString } = require('../../../flow-utils');
 
 // Lazy-load strict adherence to avoid circular deps and startup cost
 let _strictAdherence = null;
@@ -57,12 +58,21 @@ async function main() {
       return;
     }
 
-    // Parse JSON safely
+    // Parse JSON safely with prototype pollution protection
     let input;
     try {
-      input = JSON.parse(inputData);
+      input = safeJsonParseString(inputData, null);
+      if (!input) {
+        // Invalid JSON - allow through (graceful degradation)
+        console.log(JSON.stringify({
+          continue: true,
+          hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }
+        }));
+        process.exit(0);
+        return;
+      }
     } catch (_parseErr) {
-      // Invalid JSON - allow through (graceful degradation)
+      // Parse error - allow through (graceful degradation)
       console.log(JSON.stringify({
         continue: true,
         hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }
@@ -201,19 +211,19 @@ async function main() {
     console.log(JSON.stringify(output));
     process.exit(0);
   } catch (err) {
-    // Non-blocking error - allow operation to continue (graceful degradation)
-    // Log generic message to avoid leaking sensitive path information
+    // Fail-closed: deny the tool use on hook errors to prevent untracked edits
+    // Users installed WogiFlow to enforce task tracking - failing open would bypass that
     if (process.env.DEBUG) {
       console.error(`[Wogi Flow Hook Error] ${err.message}`);
     } else {
       console.error('[Wogi Flow Hook] Validation error occurred');
     }
-    // Exit 0 with allow to not block on hook errors
     console.log(JSON.stringify({
       continue: true,
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
-        permissionDecision: 'allow'
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'WogiFlow validation error. Please check your setup or use /wogi-start.'
       }
     }));
     process.exit(0);
@@ -222,4 +232,24 @@ async function main() {
 
 // Handle stdin properly
 process.stdin.setEncoding('utf8');
-main();
+
+// Must await async main() to prevent race conditions
+(async () => {
+  try {
+    await main();
+  } catch (err) {
+    // Fail-closed: deny on unexpected errors
+    if (process.env.DEBUG) {
+      console.error(`[Wogi Flow Hook] Unexpected error: ${err.message}`);
+    }
+    console.log(JSON.stringify({
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PreToolUse',
+        permissionDecision: 'deny',
+        permissionDecisionReason: 'WogiFlow hook error. Use /wogi-start to route your request.'
+      }
+    }));
+    process.exit(0);
+  }
+})();

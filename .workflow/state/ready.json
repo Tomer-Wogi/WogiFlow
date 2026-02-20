@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-hookfmt",
+      "title": "Fix fail-open error handling, context injection, npm update propagation",
+      "type": "fix",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-20T12:00:00.000Z",
+      "completedAt": "2026-02-20T13:30:00.000Z"
+    },
+    {
       "id": "wf-hook-fmt",
       "title": "Fix UserPromptSubmit hook response format and remove regex classification",
       "type": "fix",
