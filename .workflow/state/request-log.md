@@ -13,9 +13,17 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-124 | 2026-02-20 16:30
+**Type**: fix
+**Tags**: #review #component:wogi-review #code-review-findings #quality #P1
+**Task**: wf-cr-2639a7
+**Request**: "Fix 19 review findings from wf-2639ad7d"
+**Result**: Fixed all 19 findings from comprehensive code review of wogi-review.md. Key fixes: (1) Added Architecture Note explaining runtime vs AI instruction layers (ARCH-001, critical). (2) Aligned Phase 2.5 skip conditions and Phase 3 blocking behavior across all document sections (CL-001, CL-002). (3) Added boundary markers for decisions.md content injection (SEC-001). (4) Added fix loop iteration cap of 3 cycles (SEC-002). (5) Removed duplicate Pass Module API section (ARCH-002/CL-005). (6) Changed model=haiku to model=sonnet per policy (PR-001). (7) Added multi-pass return path to Phases 2.5-5 (CL-003). (8) Added archive/sign-off to Phase 5 (CL-004). (9) Added audit trail for --skip-standards (SEC-003). (10) Added --commits N validation note (SEC-004). (11) Added .gitignore note for findings files (SEC-005). (12) Replaced magic number 80 with config reference (PR-002). (13) Added #component:wogi-review tag (PR-003). (14) Synced Options table (CL-006). (15) Added per-agent minimums note (SEC-006). (16) Fixed agent paths to .workflow/agents/ (ARCH-004). (17) Updated multi-pass output format [Haiku]→[Sonnet].
+**Files**: `.claude/commands/wogi-review.md`, `.workflow/state/request-log.md`
+
 ### R-123 | 2026-02-20 15:42
 **Type**: fix
-**Tags**: #review #wogi-review #phases #enforcement #agents #project-rules #performance #adversarial #git-claims #standards #optimization #post-review #P1
+**Tags**: #review #wogi-review #component:wogi-review #phases #enforcement #agents #project-rules #performance #adversarial #git-claims #standards #optimization #post-review #P1
 **Task**: wf-2639ad7d
 **Request**: "Fix wogi-review to execute all 5 designed phases"
 **Result**: Restructured wogi-review.md skill document to enforce all 5 phases sequentially. Added: (1) MANDATORY 5-PHASE PROTOCOL with explicit checkpoints, (2) project-rules agent spawning from decisions.md, (3) performance agent spawning from config, (4) adversarial minimum findings enforcement, (5) Phase 2.5 git-verified claim checking, (6) Phase 5 post-review workflow with fix loop and learning. Previously only ~40% of the review design executed.
