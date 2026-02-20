@@ -88,6 +88,12 @@ Only ask questions that are genuinely needed. Use `AskUserQuestion` with up to 4
 
 ### Step 5: Write the Rule to decisions.md
 
+**Input sanitization**: Before writing, enforce these guards on user-supplied rule text:
+- Maximum 500 characters for the rule statement
+- Strip markdown structural characters (`---`, `##`, HTML comments `<!-- -->`) from user-supplied text
+- Escape any markdown headings within the rule body (prefix with `\`)
+- This prevents accidental or malicious structural alteration of decisions.md
+
 Read `.workflow/state/decisions.md` and add the rule to the appropriate section.
 
 **Section mapping:**
@@ -131,6 +137,8 @@ Options:
 Use `AskUserQuestion` to present options.
 
 If user chooses option 1:
+- **Require explicit user confirmation** before writing to ready.json (display violation count and file list first)
+- Cap display at 50 violations — if more exist, warn user about scope
 - Create a task in `ready.json` backlog: "Fix N violations of [rule name]"
 
 ### Step 7: Update Request Log
@@ -143,7 +151,7 @@ Add entry to `.workflow/state/request-log.md`:
 **Tags**: #rule #decisions
 **Request**: "Create rule: [rule title]"
 **Result**: Added rule to decisions.md ([section])
-**Files**: `.workflow/state/decisions.md`
+**Files**: `.workflow/state/decisions.md`[, `.workflow/state/ready.json` if fix task created]
 ```
 
 ### Step 8: Confirm

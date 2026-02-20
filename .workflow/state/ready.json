@@ -1,9 +1,83 @@
 {
-  "lastUpdated": "2026-02-20T17:26:12.207Z",
+  "lastUpdated": "2026-02-20T20:10:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-a88584",
+      "title": "Fix 18 review findings from learning-epic commit",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-20T19:35:00.000Z",
+      "completedAt": "2026-02-20T20:10:00.000Z"
+    },
+    {
+      "id": "wf-route-learn",
+      "title": "Update /wogi-start routing to detect learning/rule intents",
+      "type": "story",
+      "feature": "learning",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T19:00:00.000Z",
+      "startedAt": "2026-02-20T19:25:00.000Z",
+      "specPath": ".workflow/changes/wf-route-learn.md",
+      "epic": "wf-learning-epic",
+      "completedAt": "2026-02-20T18:23:19.237Z"
+    },
+    {
+      "id": "wf-learn",
+      "title": "/wogi-learn — Interactive Pattern Promotion from Feedback to Decisions",
+      "type": "story",
+      "feature": "learning",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T19:00:00.000Z",
+      "startedAt": "2026-02-20T19:15:00.000Z",
+      "specPath": ".workflow/changes/wf-learn.md",
+      "epic": "wf-learning-epic",
+      "completedAt": "2026-02-20T19:20:00.000Z"
+    },
+    {
+      "id": "wf-retro",
+      "title": "/wogi-retrospective — Session Learning Extraction and Capture",
+      "type": "story",
+      "feature": "learning",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T19:00:00.000Z",
+      "startedAt": "2026-02-20T19:20:00.000Z",
+      "specPath": ".workflow/changes/wf-retro.md",
+      "epic": "wf-learning-epic",
+      "completedAt": "2026-02-20T18:21:44.146Z"
+    },
+    {
+      "id": "wf-decide",
+      "title": "/wogi-decide — Interactive Rule Creation with Clarifying Questions",
+      "type": "story",
+      "feature": "learning",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T19:00:00.000Z",
+      "startedAt": "2026-02-20T19:10:00.000Z",
+      "specPath": ".workflow/changes/wf-decide.md",
+      "epic": "wf-learning-epic",
+      "completedAt": "2026-02-20T18:19:44.876Z"
+    },
+    {
+      "id": "wf-gitignore",
+      "title": "Default .workflow/ to gitignored in target projects with opt-in tracking",
+      "type": "story",
+      "feature": "installer",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T17:50:00.000Z",
+      "startedAt": "2026-02-20T18:00:00.000Z",
+      "specPath": ".workflow/changes/wf-gitignore.md",
+      "completedAt": "2026-02-20T18:18:52.200Z"
+    },
     {
       "id": "wf-fc196fcf",
       "title": "Fix post-review fix loop task gating and implementation gate blocking",
@@ -57,56 +131,6 @@
       "priority": "P0",
       "startedAt": "2026-02-20T12:00:00.000Z",
       "completedAt": "2026-02-20T13:30:00.000Z"
-    },
-    {
-      "id": "wf-hook-fmt",
-      "title": "Fix UserPromptSubmit hook response format and remove regex classification",
-      "type": "fix",
-      "feature": "hooks",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T10:30:00.000Z",
-      "completedAt": "2026-02-20T11:30:00.000Z"
-    },
-    {
-      "id": "wf-rel-144",
-      "title": "Bump version to 1.4.4 and release",
-      "type": "task",
-      "feature": "release",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T09:50:00.000Z",
-      "completedAt": "2026-02-20T10:10:00.000Z"
-    },
-    {
-      "id": "wf-hook-reg",
-      "title": "Fix hooks not registered in target projects after npm install",
-      "type": "fix",
-      "feature": "hooks",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T09:30:00.000Z",
-      "completedAt": "2026-02-20T09:45:00.000Z"
-    },
-    {
-      "id": "wf-cr-2341a2",
-      "title": "Fix 13 code review findings from wf-1c1fa2d8 and wf-2341ad82",
-      "type": "fix",
-      "feature": "quality",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-20T06:45:00.000Z",
-      "completedAt": "2026-02-20T08:40:23.851Z"
-    },
-    {
-      "id": "wf-2341ad82",
-      "title": "Add Risk & History and Standards Preview agents to explore phase",
-      "type": "story",
-      "feature": "explore-phase",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-20T06:20:00.000Z",
-      "completedAt": "2026-02-20T06:35:00.000Z"
     }
   ],
   "backlog": [

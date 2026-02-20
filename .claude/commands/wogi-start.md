@@ -36,7 +36,7 @@ Think of each command below as a tool available to you. Read the user's request,
 | `/wogi-changelog` | Generates a CHANGELOG from request-log entries | User wants to **generate release notes** or a changelog |
 | `/wogi-debt` | View and manage technical debt | User wants to see or manage **tech debt** items |
 | `/wogi-guided-edit` | Step-by-step multi-file editing guidance | User wants **hand-holding through a complex multi-file change** |
-| `/wogi-decide` | Creates/updates project rules with clarifying questions | User says **"from now on"**, "let's make a rule", "always/never do X", "update our rules" |
+| `/wogi-decide` | Creates/updates project rules with clarifying questions | User says **"from now on" + rule verb** (always/never/must/should), "let's make it a rule", "update our rules". Note: "from now on" alone is not sufficient — require a follow-on rule verb to distinguish from implementation requests. |
 | `/wogi-learn` | Promotes feedback patterns to decision rules | User says **"let's learn from this"**, "we keep making this mistake", "extract lessons" |
 | `/wogi-retrospective` | Guided session reflection with lesson capture | User says **"retro"**, "what went well", "what can we improve", "lessons learned" |
 

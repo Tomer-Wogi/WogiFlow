@@ -658,6 +658,23 @@
     "autoPromptOnSessionEnd": true,
     "saveTo": "both"
   },
+  "_comment_promotionPaths": "Three paths promote patterns to decisions.md: (1) autoLearning/automaticPromotion — auto from bug/review pipeline, (2) crossSessionLearning — on session-end, (3) /wogi-learn — manual interactive. All share the canonical promotionThreshold from autoLearning.promotionThreshold (default: 3).",
+  "decide": {
+    "requireRationale": true,
+    "scanForViolations": true,
+    "maxClarifyingQuestions": 4
+  },
+  "learning": {
+    "_comment": "Used by /wogi-learn. promotionThreshold reads from autoLearning.promotionThreshold for consistency.",
+    "autoPromoteEnabled": false,
+    "requireUserConfirmation": true
+  },
+  "retrospective": {
+    "maxQuestions": 3,
+    "autoSuggestRules": true,
+    "saveReviewFile": true,
+    "quickModeDefault": false
+  },
   "memory": {
     "enabled": true,
     "localDb": ".workflow/memory/local.db",

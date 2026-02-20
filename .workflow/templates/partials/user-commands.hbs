@@ -14,6 +14,9 @@ These commands can be invoked by saying their trigger phrases. The AI will follo
 | Enable hybrid | "enable hybrid mode" |
 | Show tasks | "show tasks" or "what's ready" |
 | Project status | "project status" or "where are we" |
+| Create a rule | "from now on always..." or "let's make it a rule" |
+| Learn from patterns | "let's learn from this" or "promote pattern" |
+| Session retro | "retro" or "what went well" |
 
 ---
 
@@ -150,5 +153,42 @@ Shows full project overview:
 - Recent completions
 - Tech debt items
 - Key decisions
+
+---
+
+### /wogi-decide (Rule Creation)
+
+**Trigger phrases:** "from now on", "let's make it a rule", "always do X", "never do Y"
+
+Creates project rules with clarifying questions:
+1. Parses rule intent from natural language
+2. Checks for duplicate rules in decisions.md
+3. Asks clarifying questions (only if ambiguous)
+4. Writes rule to decisions.md with scope, rationale, exceptions
+5. Optionally scans for existing violations
+
+---
+
+### /wogi-learn (Pattern Promotion)
+
+**Trigger phrases:** "let's learn from this", "we keep making this mistake", "promote pattern"
+
+Promotes feedback patterns to decision rules:
+- **Browse mode**: View all accumulated patterns, select to promote
+- **Incident mode**: Learn from recent mistakes
+- **Bulk mode**: Auto-promote all patterns at threshold
+
+---
+
+### /wogi-retrospective (Session Retrospective)
+
+**Trigger phrases:** "retro", "what went well", "what can we improve", "lessons learned"
+
+Guided session reflection:
+1. Reads session history (request-log, reviews, corrections, patterns)
+2. Presents structured summary
+3. Asks guided reflection questions (max 3)
+4. Routes responses to /wogi-decide or /wogi-learn
+5. Saves retro summary to .workflow/reviews/
 
 ---

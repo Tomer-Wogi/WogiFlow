@@ -25,7 +25,7 @@ Auto-routed from `/wogi-start` when user says:
 Read these files:
 1. `.workflow/state/feedback-patterns.md` — Accumulated patterns with counts
 2. `.workflow/state/decisions.md` — Existing rules (to check for duplicates)
-3. `.workflow/corrections/` — Recent correction reports with lessons
+3. `.workflow/corrections/*.md` — Recent correction reports with lessons (sorted by mtime; if directory doesn't exist or is empty, skip)
 
 ### Step 2: Choose Mode
 
@@ -66,7 +66,7 @@ Use `AskUserQuestion` to let user select.
 ### Mode B: Learn from Incident
 
 1. Read `.workflow/state/request-log.md` — last 5 entries
-2. Read recent files in `.workflow/corrections/` (last 3)
+2. Read recent files in `.workflow/corrections/*.md` (last 3 by modification time; if directory doesn't exist or is empty, analyze request-log only and note: "No correction reports found — analyzing request-log entries.")
 3. Analyze what went wrong:
    - What was the task?
    - What failure occurred?
@@ -90,7 +90,7 @@ Should I create this as a project rule?
 
 Use `AskUserQuestion` to present options.
 
-If option 1: Invoke the `/wogi-decide` flow with the proposed rule.
+If option 1: Invoke `/wogi-decide --from-pattern` with the proposed rule (uses streamlined path). If user cancels within the /wogi-decide sub-flow, return to wogi-learn and display "Rule creation cancelled. Pattern not promoted."
 If option 2: Add to `feedback-patterns.md` Pending Patterns section with count 1.
 
 ### Mode C: Bulk Promotion
@@ -127,9 +127,7 @@ Given a pattern to promote:
    - Pattern count → Evidence for rationale
    - Correction examples → Verification criteria
 
-2. **Check for duplicates in decisions.md:**
-   - Search for similar rules
-   - If duplicate found → Ask to update existing or skip
+2. **Delegate duplicate checking to `/wogi-decide --from-pattern`** which handles duplicate detection and the full rule-writing flow. This ensures a single source of truth for all rule-creation logic.
 
 3. **Ask user for any additions:**
 
@@ -215,8 +213,8 @@ Monitoring [N] patterns with count < 3. They'll become eligible as occurrences i
 ## Options
 
 - `--all` — Bulk promote all patterns with count >= threshold
-- `--threshold N` — Override promotion threshold (default: 3)
-- `--quick` — Skip confirmation prompts, auto-promote qualifying patterns
+- `--threshold N` — Override promotion threshold (default: 3, minimum: 2). Values below 2 are rejected to prevent noise promotion.
+- `--quick` — Skip individual confirmation prompts, but still display count and require final confirmation: "About to promote N patterns — confirm? [Y/n]"
 
 ## Configuration
 

@@ -1,143 +1,215 @@
 {
-  "reviewDate": "2026-02-20T11:00:00.000Z",
-  "taskReviewed": "wf-2639ad7d",
+  "reviewDate": "2026-02-20T19:30:00.000Z",
   "mode": "parallel",
-  "agentsLaunched": 4,
-  "agentBreakdown": { "core": 3, "optional": 0, "projectRules": 1 },
-  "filesReviewed": [".claude/commands/wogi-review.md", ".workflow/state/ready.json", ".workflow/state/request-log.md"],
+  "agentsLaunched": 3,
+  "agentBreakdown": { "core": 3, "optional": 0, "projectRules": 0 },
+  "filesReviewed": [
+    ".claude/commands/wogi-decide.md",
+    ".claude/commands/wogi-learn.md",
+    ".claude/commands/wogi-retrospective.md",
+    ".claude/commands/wogi-start.md",
+    ".claude/commands/wogi-help.md",
+    "CLAUDE.md",
+    ".workflow/state/request-log.md"
+  ],
   "findings": [
     {
-      "id": "finding-CL-001", "severity": "high", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 554,
-      "issue": "Phase 2.5 skip condition inconsistent between Execution Steps and Reference Detail",
-      "recommendation": "Reconcile skip conditions across both sections",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-ARCH01",
+      "severity": "high",
+      "category": "architecture",
+      "file": ".workflow/templates/claude-md.hbs",
+      "line": 171,
+      "issue": "Template (claude-md.hbs) NOT updated with new NLD entries. CLAUDE.md was edited directly, violating self-maintenance rule. Changes will be lost on next bridge sync.",
+      "recommendation": "Add 3 new trigger phrase rows to claude-md.hbs NLD table and user-commands.hbs partial.",
+      "autoFixable": false,
+      "agent": "architecture"
     },
     {
-      "id": "finding-CL-002", "severity": "high", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 634,
-      "issue": "Phase 3 BLOCKS behavior contradicted between Execution Steps, diagram, and Reference Detail",
-      "recommendation": "Align all three locations on single behavior",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-CL01",
+      "severity": "high",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-retrospective.md",
+      "line": 17,
+      "issue": "Trigger phrase 'review what happened' conflicts with /wogi-review routing. Creates routing ambiguity.",
+      "recommendation": "Remove 'review what happened' from wogi-retrospective.md triggers or replace with unambiguous phrase.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-CL-003", "severity": "medium", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 446,
-      "issue": "Multi-pass mode branch has no explicit return to Phases 2.5-5",
-      "recommendation": "Add explicit return instruction at end of Multi-Pass section",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-SEC01",
+      "severity": "high",
+      "category": "security",
+      "file": ".claude/commands/wogi-decide.md",
+      "line": 26,
+      "issue": "User-supplied rule text written verbatim to decisions.md with no sanitization or length cap.",
+      "recommendation": "Enforce max char limit. Strip/escape markdown structural chars.",
+      "autoFixable": false,
+      "agent": "security"
     },
     {
-      "id": "finding-CL-004", "severity": "medium", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 701,
-      "issue": "Phase 5 Execution Steps omit Archive and Sign-Off from Reference Detail",
-      "recommendation": "Add archive and sign-off to Phase 5 Execution Steps",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-CL02",
+      "severity": "high",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-decide.md",
+      "line": 134,
+      "issue": "Request log template in Step 7 omits conditional ready.json write when fix task created in Step 6.",
+      "recommendation": "Update Files field to conditionally include ready.json.",
+      "autoFixable": true,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-CL-005", "severity": "low", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 888,
-      "issue": "runMultiPassReview code block duplicated verbatim",
-      "recommendation": "Remove duplicate Pass Module API section",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-SEC02",
+      "severity": "high",
+      "category": "security",
+      "file": ".claude/commands/wogi-learn.md",
+      "line": 219,
+      "issue": "--quick --all --threshold 1 could mass-promote noise patterns. No validation floor on threshold.",
+      "recommendation": "Add hard floor: --threshold >= 2. Require confirmation even in quick mode.",
+      "autoFixable": false,
+      "agent": "security"
     },
     {
-      "id": "finding-CL-006", "severity": "low", "category": "code-logic",
-      "file": ".claude/commands/wogi-review.md", "line": 903,
-      "issue": "Options table out of sync with Usage section and Execution Steps",
-      "recommendation": "Synchronize flags across all three locations",
-      "autoFixable": true, "agent": "code-logic"
+      "id": "finding-ARCH03",
+      "severity": "medium",
+      "category": "architecture",
+      "file": ".workflow/config.json",
+      "line": null,
+      "issue": "Config blocks (decide, learning, retrospective) documented but absent from config.json.",
+      "recommendation": "Add 3 config blocks with documented defaults.",
+      "autoFixable": false,
+      "agent": "architecture"
     },
     {
-      "id": "finding-SEC-001", "severity": "high", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 364,
-      "issue": "decisions.md content injected verbatim into agent prompts without sanitization",
-      "recommendation": "Wrap injected content in boundary markers",
-      "autoFixable": true, "agent": "security"
+      "id": "finding-ARCH04",
+      "severity": "medium",
+      "category": "architecture",
+      "file": ".workflow/config.json",
+      "line": 617,
+      "issue": "promotionThreshold defined in 4 places with no sync protocol.",
+      "recommendation": "Extract to single config key. Document 3 promotion paths.",
+      "autoFixable": false,
+      "agent": "architecture"
     },
     {
-      "id": "finding-SEC-002", "severity": "high", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 1202,
-      "issue": "Fix loop in Phase 5 has no iteration cap",
-      "recommendation": "Add max iteration count with escalation",
-      "autoFixable": true, "agent": "security"
+      "id": "finding-CL04",
+      "severity": "medium",
+      "category": "code-logic",
+      "file": "CLAUDE.md",
+      "line": 143,
+      "issue": "Trigger phrase divergence between CLAUDE.md and wogi-decide.md.",
+      "recommendation": "Normalize trigger phrases to match exactly.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-SEC-003", "severity": "medium", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 607,
-      "issue": "--skip-standards bypasses strict enforcement with no audit trail",
-      "recommendation": "Add mandatory note to request-log when flags bypass phases",
-      "autoFixable": true, "agent": "security"
+      "id": "finding-CL05",
+      "severity": "medium",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-retrospective.md",
+      "line": 76,
+      "issue": "4 conditional questions but cap is 3. No priority order for tiebreaking.",
+      "recommendation": "Add priority: Q1 > Q4 > Q3 > Q2.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-SEC-004", "severity": "medium", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 410,
-      "issue": "--commits N parameter not validated",
-      "recommendation": "Add validation: N must be positive integer",
-      "autoFixable": true, "agent": "security"
+      "id": "finding-CL06",
+      "severity": "medium",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-learn.md",
+      "line": 93,
+      "issue": "Mode B calls bare /wogi-decide instead of --from-pattern.",
+      "recommendation": "Use --from-pattern flag. Document cancel behavior.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-SEC-005", "severity": "medium", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 498,
-      "issue": "Vulnerability findings persisted to state files potentially committed to shared repos",
-      "recommendation": "Add .gitignore check before writing sensitive findings",
-      "autoFixable": false, "agent": "security"
+      "id": "finding-SEC03",
+      "severity": "medium",
+      "category": "security",
+      "file": ".claude/commands/wogi-decide.md",
+      "line": 134,
+      "issue": "Step 6 auto-creates fix task directly in ready.json, bypassing /wogi-story workflow.",
+      "recommendation": "Require explicit user confirmation before writing to ready.json.",
+      "autoFixable": false,
+      "agent": "security"
     },
     {
-      "id": "finding-SEC-006", "severity": "low", "category": "security",
-      "file": ".claude/commands/wogi-review.md", "line": 192,
-      "issue": "Adversarial minimum findings pressure risks false positive inflation for security agent",
-      "recommendation": "Consider per-agent-category minimums",
-      "autoFixable": false, "agent": "security"
+      "id": "finding-SEC04",
+      "severity": "medium",
+      "category": "security",
+      "file": ".claude/commands/wogi-retrospective.md",
+      "line": 110,
+      "issue": "--since parameter not validated against date regex.",
+      "recommendation": "Validate --since matches date format. Use isPathWithinProject().",
+      "autoFixable": false,
+      "agent": "security"
     },
     {
-      "id": "finding-ARCH-001", "severity": "critical", "category": "architecture",
-      "file": ".claude/commands/wogi-review.md", "line": 108,
-      "issue": "Runtime vs AI instruction phase model mismatch undocumented",
-      "recommendation": "Add architectural note clarifying runtime is pre-flight only",
-      "autoFixable": true, "agent": "architecture"
+      "id": "finding-CL03",
+      "severity": "medium",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-learn.md",
+      "line": 29,
+      "issue": "No edge case for empty/missing corrections directory in Mode B.",
+      "recommendation": "Add fallback to request-log only when corrections/ is empty.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-ARCH-002", "severity": "high", "category": "architecture",
-      "file": ".claude/commands/wogi-review.md", "line": 829,
-      "issue": "Duplicate outdated flow-review-passes CLI module sections",
-      "recommendation": "Remove duplicate, retitle remaining as Legacy",
-      "autoFixable": true, "agent": "architecture"
+      "id": "finding-ARCH05",
+      "severity": "medium",
+      "category": "architecture",
+      "file": ".workflow/templates/partials/user-commands.hbs",
+      "line": null,
+      "issue": "user-commands.hbs partial not updated with new commands.",
+      "recommendation": "Add Learning & Rules section to partial.",
+      "autoFixable": false,
+      "agent": "architecture"
     },
     {
-      "id": "finding-ARCH-003", "severity": "high", "category": "architecture",
-      "file": ".claude/commands/wogi-review.md", "line": 437,
-      "issue": "config.review.autoMultiPass key referenced but doesn't exist in config.json",
-      "recommendation": "Add key to config or update reference in skill document",
-      "autoFixable": false, "agent": "architecture"
+      "id": "finding-CL07",
+      "severity": "low",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-retrospective.md",
+      "line": 110,
+      "issue": "Retro filename not unique for same-day retros.",
+      "recommendation": "Use retro-YYYY-MM-DD-HHMMSS.md.",
+      "autoFixable": true,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-ARCH-004", "severity": "medium", "category": "architecture",
-      "file": ".claude/commands/wogi-review.md", "line": 273,
-      "issue": "agents/security.md vs .workflow/agents/security.md path confusion",
-      "recommendation": "Update to .workflow/agents/ paths consistently",
-      "autoFixable": true, "agent": "architecture"
+      "id": "finding-CL08",
+      "severity": "low",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-decide.md",
+      "line": 51,
+      "issue": "Duplicate-check logic in both wogi-decide.md and wogi-learn.md (DRY).",
+      "recommendation": "Delegate to /wogi-decide --from-pattern.",
+      "autoFixable": false,
+      "agent": "code-logic"
     },
     {
-      "id": "finding-PR-001", "severity": "medium", "category": "project-rule",
-      "file": ".claude/commands/wogi-review.md", "line": 756,
-      "issue": "model=haiku violates Subagent Model Selection Policy",
-      "recommendation": "Change to model=sonnet per decisions.md",
-      "autoFixable": true, "agent": "project-rules-coding-standards"
+      "id": "finding-SEC06",
+      "severity": "low",
+      "category": "security",
+      "file": ".claude/commands/wogi-start.md",
+      "line": 39,
+      "issue": "'from now on' trigger is broad for auto-invocation.",
+      "recommendation": "Require follow-on verb phrase (always, never, must).",
+      "autoFixable": false,
+      "agent": "security"
     },
     {
-      "id": "finding-PR-002", "severity": "medium", "category": "project-rule",
-      "file": ".claude/commands/wogi-review.md", "line": 614,
-      "issue": "Magic number 80 for component duplication threshold",
-      "recommendation": "Reference config.standardsCompliance.similarityThreshold",
-      "autoFixable": true, "agent": "project-rules-coding-standards"
-    },
-    {
-      "id": "finding-PR-003", "severity": "medium", "category": "project-rule",
-      "file": ".workflow/state/request-log.md", "line": 18,
-      "issue": "R-123 missing #screen: and #component: tags",
-      "recommendation": "Add #component:wogi-review tag",
-      "autoFixable": true, "agent": "project-rules-coding-standards"
+      "id": "finding-ARCH06",
+      "severity": "low",
+      "category": "architecture",
+      "file": ".claude/commands/wogi-learn.md",
+      "line": 28,
+      "issue": "Inconsistent corrections directory path spec. 'Recent' sorting undefined.",
+      "recommendation": "Standardize to .workflow/corrections/*.md. Sort by mtime.",
+      "autoFixable": true,
+      "agent": "architecture"
     }
   ],
   "triaged": false

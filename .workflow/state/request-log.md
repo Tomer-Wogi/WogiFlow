@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-128 | 2026-02-20 20:10
+**Type**: fix
+**Tags**: #review #code-review-findings #learning #commands #wogi-decide #wogi-learn #wogi-retrospective #wogi-start #templates #config #P0
+**Task**: wf-cr-a88584
+**Request**: "Fix 18 review findings from learning-epic commit"
+**Result**: Fixed all 18 findings (5 high, 9 medium, 4 low) from code review of learning-epic commit. Key fixes: (1) Updated templates (claude-md.hbs + user-commands.hbs) instead of direct CLAUDE.md edits, ran bridge sync (ARCH01, ARCH05). (2) Removed "review what happened" trigger conflict with /wogi-review (CL01). (3) Added input sanitization for user-supplied rule text in /wogi-decide (SEC01). (4) Added --threshold floor >= 2 and --quick final confirmation in /wogi-learn (SEC02). (5) Required follow-on rule verb for "from now on" trigger (SEC06). (6) Added question priority order for retro max-3 cap (CL05). (7) Added --since date validation (SEC04). (8) Fixed corrections path consistency and empty dir fallback (CL03, ARCH06). (9) Delegated duplicate checking to /wogi-decide --from-pattern (CL08). (10) Added decide/learning/retrospective config blocks with canonical threshold comment (ARCH03, ARCH04). (11) Added user confirmation before writing violations to ready.json (SEC03). (12) Changed retro filename to include HHMMSS (CL07).
+**Files**: `.claude/commands/wogi-decide.md`, `.claude/commands/wogi-learn.md`, `.claude/commands/wogi-retrospective.md`, `.claude/commands/wogi-start.md`, `.workflow/templates/claude-md.hbs`, `.workflow/templates/partials/user-commands.hbs`, `.workflow/config.json`, `CLAUDE.md` (regenerated via bridge sync)
+
 ### R-127 | 2026-02-20 19:25
 **Type**: new
 **Tags**: #learning #commands #epic #wogi-decide #wogi-learn #wogi-retrospective #routing #P1

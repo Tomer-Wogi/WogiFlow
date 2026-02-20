@@ -14,7 +14,6 @@ Auto-routed from `/wogi-start` when user says:
 - "what went well"
 - "what can we improve"
 - "session retrospective"
-- "review what happened"
 - "lessons learned"
 
 ## How It Works
@@ -91,7 +90,13 @@ Use `AskUserQuestion` to ask reflection questions. Ask 2-3 questions max based o
 4. "Did any existing rules get violated that need strengthening?"
    - Options: based on review findings matching decisions.md rules
 
-**Maximum 3 questions per retro. Pick the most relevant ones.**
+**Maximum 3 questions per retro. Priority order when all conditions apply:**
+1. Q1 (always — "what went well")
+2. Q4 (violations — most actionable)
+3. Q3 (patterns — near promotion)
+4. Q2 (frustrations — least actionable)
+
+**Pick top 3 by this priority order.**
 
 ### Step 4: Process Responses and Capture Lessons
 
@@ -107,7 +112,7 @@ For each user response, classify and route:
 
 ### Step 5: Save Retro Summary
 
-Create `.workflow/reviews/retro-YYYY-MM-DD.md`:
+Create `.workflow/reviews/retro-YYYY-MM-DD-HHMMSS.md` (include time to avoid same-day collisions):
 
 ```markdown
 # Session Retrospective — YYYY-MM-DD
@@ -150,7 +155,7 @@ Create `.workflow/reviews/retro-YYYY-MM-DD.md`:
 **Tags**: #retro #learning
 **Request**: "Session retrospective"
 **Result**: Retro completed. [N] lessons captured. [M] actions taken.
-**Files**: `.workflow/reviews/retro-YYYY-MM-DD.md`
+**Files**: `.workflow/reviews/retro-YYYY-MM-DD-HHMMSS.md`
 ```
 
 ### Step 7: Closing
@@ -158,7 +163,7 @@ Create `.workflow/reviews/retro-YYYY-MM-DD.md`:
 ```
 Retrospective Complete
 
-Summary saved to: .workflow/reviews/retro-YYYY-MM-DD.md
+Summary saved to: .workflow/reviews/retro-YYYY-MM-DD-HHMMSS.md
 
 Actions taken:
 - [N] new rules created (via /wogi-decide)
@@ -204,7 +209,7 @@ Anything to capture before we move on?
 ## Options
 
 - `--quick` — Abbreviated flow: summary + one question
-- `--since YYYY-MM-DD` — Retro for work since specific date
+- `--since YYYY-MM-DD` — Retro for work since specific date. **Validate**: must match `/^\d{4}-\d{2}-\d{2}$/`. Reject any other format.
 - `--no-save` — Don't save retro file (just display)
 
 ## Configuration
@@ -230,7 +235,7 @@ In `config.json`:
 | Read | `.workflow/corrections/*.md` |
 | Read | `.workflow/state/feedback-patterns.md` |
 | Read | `.workflow/state/ready.json` |
-| Write | `.workflow/reviews/retro-YYYY-MM-DD.md` |
+| Write | `.workflow/reviews/retro-YYYY-MM-DD-HHMMSS.md` |
 | Write | `.workflow/state/request-log.md` |
 | May invoke | `/wogi-decide` (for new rules) |
 | May invoke | `/wogi-learn` (for pattern promotions) |
