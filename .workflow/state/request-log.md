@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-127 | 2026-02-20 19:25
+**Type**: new
+**Tags**: #learning #commands #epic #wogi-decide #wogi-learn #wogi-retrospective #routing #P1
+**Task**: wf-learning-epic (wf-decide, wf-learn, wf-retro, wf-route-learn)
+**Request**: "Create interactive learning commands — /wogi-decide, /wogi-learn, /wogi-retrospective"
+**Result**: Created 3 new slash commands and updated routing. `/wogi-decide` handles "from now on" rule creation with clarifying questions and duplicate detection. `/wogi-learn` promotes feedback patterns to decision rules with browse, incident, and bulk modes. `/wogi-retrospective` provides guided session reflection that reads request-log, reviews, corrections, and patterns to extract lessons. Updated `/wogi-start` Command Catalog with 3 new entries + 4 routing examples. Updated CLAUDE.md Natural Language Detection table with trigger phrases for all 3 commands. Updated `/wogi-help` with new "Learning & Rules" section.
+**Files**: `.claude/commands/wogi-decide.md` (new), `.claude/commands/wogi-learn.md` (new), `.claude/commands/wogi-retrospective.md` (new), `.claude/commands/wogi-start.md`, `.claude/commands/wogi-help.md`, `CLAUDE.md`
+
 ### R-126 | 2026-02-20 17:30
 **Type**: fix
 **Tags**: #hooks #task-gate #review #component:wogi-review #workflow-bypass #P0

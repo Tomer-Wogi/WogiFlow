@@ -36,6 +36,9 @@ Think of each command below as a tool available to you. Read the user's request,
 | `/wogi-changelog` | Generates a CHANGELOG from request-log entries | User wants to **generate release notes** or a changelog |
 | `/wogi-debt` | View and manage technical debt | User wants to see or manage **tech debt** items |
 | `/wogi-guided-edit` | Step-by-step multi-file editing guidance | User wants **hand-holding through a complex multi-file change** |
+| `/wogi-decide` | Creates/updates project rules with clarifying questions | User says **"from now on"**, "let's make a rule", "always/never do X", "update our rules" |
+| `/wogi-learn` | Promotes feedback patterns to decision rules | User says **"let's learn from this"**, "we keep making this mistake", "extract lessons" |
+| `/wogi-retrospective` | Guided session reflection with lesson capture | User says **"retro"**, "what went well", "what can we improve", "lessons learned" |
 
 ### Internal Tools (Auto-Invoked by wogi-start)
 
@@ -123,6 +126,30 @@ User: "I have a 2-hour recording transcript to process"
 User: "we need to plan the v2.0 migration"
 → Intent: Strategic initiative spanning multiple epics
 → Action: Invoke /wogi-plan
+```
+
+```
+User: "from now on, always use TypeScript strict mode"
+→ Intent: Establish a new project rule
+→ Action: Invoke /wogi-decide "always use TypeScript strict mode"
+```
+
+```
+User: "we keep making the same mistake with file reads, let's learn from it"
+→ Intent: Promote a pattern to a rule
+→ Action: Invoke /wogi-learn "learn from file read mistakes"
+```
+
+```
+User: "let's do a retro on this session"
+→ Intent: Session reflection and lesson capture
+→ Action: Invoke /wogi-retrospective
+```
+
+```
+User: "we should add validation to the form"
+→ Intent: AMBIGUOUS — could be a rule OR implementation
+→ Action: Ask user: "Is this (1) A new rule/convention to document, or (2) An implementation request?"
 ```
 
 ### Guilt Messaging

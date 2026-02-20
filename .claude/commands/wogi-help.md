@@ -58,6 +58,13 @@ DEBUGGING
 /wogi-trace [feature]        Code flow trace for a feature
 
 ═══════════════════════════════════════════════════════════════
+LEARNING & RULES
+═══════════════════════════════════════════════════════════════
+/wogi-decide [rule]      Create project rule with clarifying questions
+/wogi-learn              Promote feedback patterns to decision rules
+/wogi-retrospective      Guided session reflection with lesson capture
+
+═══════════════════════════════════════════════════════════════
 SEARCH & CONTEXT
 ═══════════════════════════════════════════════════════════════
 /wogi-search [query]     Search request-log
