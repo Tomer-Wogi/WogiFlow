@@ -190,6 +190,40 @@ function copyClaudeResources() {
     copyDir(packageRules, projectRules, alreadyExists);
   }
 
+  // Copy settings.json (hook configuration) - ESSENTIAL for hooks to work
+  // Without this file, Claude Code has no idea hooks exist and won't run them
+  const packageSettings = path.join(PACKAGE_ROOT, '.claude', 'settings.json');
+  const projectSettings = path.join(claudeDir, 'settings.json');
+  if (fs.existsSync(packageSettings)) {
+    if (fs.existsSync(projectSettings)) {
+      // Merge: inject our hooks into existing settings without overwriting other config
+      try {
+        const existing = JSON.parse(fs.readFileSync(projectSettings, 'utf-8'));
+        // Only merge if not already WogiFlow-managed (avoid duplicate hooks)
+        if (!existing._wogiFlowManaged) {
+          const ours = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
+          existing.hooks = ours.hooks;
+          existing._wogiFlowManaged = true;
+          existing._wogiFlowVersion = ours._wogiFlowVersion || '1.0.0';
+          fs.writeFileSync(projectSettings, JSON.stringify(existing, null, 2), { mode: FILE_MODE });
+        }
+        // If already managed, leave as-is (user may have customized hook config)
+      } catch (err) {
+        // Parse error on existing file - overwrite with ours
+        if (process.env.DEBUG) {
+          console.error(`[postinstall] settings.json merge failed, overwriting: ${err.message}`);
+        }
+        fs.copyFileSync(packageSettings, projectSettings);
+      }
+    } else {
+      // No existing settings - copy ours directly
+      fs.copyFileSync(packageSettings, projectSettings);
+      try {
+        fs.chmodSync(projectSettings, FILE_MODE);
+      } catch (_err) { /* non-critical */ }
+    }
+  }
+
   // Note: skills/ is NOT copied here - /wogi-init will set up project-specific skills
 }
 

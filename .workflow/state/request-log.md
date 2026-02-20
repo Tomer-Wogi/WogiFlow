@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-120 | 2026-02-20 09:30
+**Type**: fix
+**Tags**: #hooks #postinstall #npm #settings #P0 #bugfix
+**Task**: wf-hook-reg
+**Request**: "Fix hooks not being registered in target projects after npm install"
+**Result**: Fixed P0 bug where WogiFlow hooks never fired in target projects. Root cause: `.claude/settings.json` (which registers hooks with Claude Code) was neither included in the npm package nor copied during postinstall. Fix: (1) Added `.claude/settings.json` to `package.json → files` array so it's included in npm package; (2) Added settings.json merge logic to `postinstall.js → copyClaudeResources()` — handles fresh installs (direct copy), existing non-WogiFlow settings (merge hooks in), already-managed settings (skip), and parse errors (overwrite); (3) Added Step 4.6 to `/wogi-init` that runs `flow hooks setup` as a safety net to generate `settings.local.json` with absolute paths.
+**Files**: `package.json`, `scripts/postinstall.js`, `.claude/commands/wogi-init.md`
+
 ### R-119 | 2026-02-20 06:50
 **Type**: fix
 **Tags**: #code-review #security #hooks #config-change #worktree #quality

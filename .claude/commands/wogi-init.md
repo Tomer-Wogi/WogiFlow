@@ -1053,6 +1053,27 @@ if (fs.existsSync(pendingPath)) {
 }
 ```
 
+#### 4.6 Register Hooks with Claude Code (CRITICAL)
+
+**Run `flow hooks setup` to ensure hooks are registered with Claude Code.**
+
+The postinstall script copies `.claude/settings.json` which contains hook definitions,
+but this step regenerates `settings.local.json` with absolute paths as a safety net.
+
+```bash
+./scripts/flow hooks setup 2>&1
+```
+
+If this fails, hooks may not fire. Display a warning:
+```
+⚠️ Hook setup failed. Hooks may not work.
+   Run manually: ./scripts/flow hooks setup
+```
+
+**Why this matters**: Without hooks registered in `.claude/settings.json` or
+`.claude/settings.local.json`, Claude Code doesn't know WogiFlow's hook scripts
+exist. Task gating, scope validation, and loop enforcement all depend on hooks.
+
 ### Step 5: Summary & Learning Explanation
 
 Display the completion summary:

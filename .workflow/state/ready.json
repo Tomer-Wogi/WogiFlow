@@ -1,19 +1,19 @@
 {
-  "lastUpdated": "2026-02-20T06:55:00.000Z",
-  "inProgress": [
-    {
-      "id": "wf-rel-143",
-      "title": "Bump version to 1.4.3 and create GitHub release",
-      "type": "task",
-      "feature": "release",
-      "status": "in_progress",
-      "priority": "P1",
-      "startedAt": "2026-02-20T06:55:00.000Z"
-    }
-  ],
+  "lastUpdated": "2026-02-20T07:00:00.000Z",
+  "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-hook-reg",
+      "title": "Fix hooks not registered in target projects after npm install",
+      "type": "fix",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-20T09:30:00.000Z",
+      "completedAt": "2026-02-20T09:45:00.000Z"
+    },
     {
       "id": "wf-cr-2341a2",
       "title": "Fix 13 code review findings from wf-1c1fa2d8 and wf-2341ad82",
