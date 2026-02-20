@@ -136,12 +136,42 @@ function generateWorktreePath(branchName) {
  * @param {string} [options.repoRoot] - Repository root (default: auto-detect)
  * @returns {Object} Worktree info { path, branchName, baseBranch, repoRoot }
  */
+/**
+ * Detect if we're already inside a Claude Code native worktree.
+ * Claude Code's --worktree flag creates worktrees under .claude/worktrees/.
+ * We should not nest a WogiFlow worktree inside a native one.
+ *
+ * @param {string} [cwd] - Current working directory
+ * @returns {{ isNative: boolean, path: string|null }}
+ */
+function detectNativeWorktree(cwd = process.cwd()) {
+  const normalized = path.resolve(cwd);
+  // Claude Code native worktrees live under .claude/worktrees/
+  if (normalized.includes(path.join('.claude', 'worktrees'))) {
+    return { isNative: true, path: normalized };
+  }
+  return { isNative: false, path: null };
+}
+
 async function createWorktree(options = {}) {
   const {
     taskId = 'unnamed-task',
     baseBranch,
     repoRoot: providedRoot
   } = options;
+
+  // Check if already inside a Claude Code native worktree (--worktree flag)
+  const nativeCheck = detectNativeWorktree();
+  if (nativeCheck.isNative) {
+    return {
+      path: nativeCheck.path,
+      branchName: getCurrentBranch(),
+      baseBranch: null,
+      repoRoot: getRepoRoot() || process.cwd(),
+      isNativeWorktree: true,
+      message: 'Using Claude Code native worktree (--worktree). Skipping nested WogiFlow worktree creation.'
+    };
+  }
 
   // Validate git repo
   const repoRoot = providedRoot || getRepoRoot();
@@ -402,6 +432,7 @@ module.exports = {
   isGitRepo,
   getCurrentBranch,
   getRepoRoot,
+  detectNativeWorktree,
 
   // Constants
   WORKTREE_PREFIX,

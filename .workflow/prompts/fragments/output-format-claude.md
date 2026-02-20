@@ -2,7 +2,7 @@
 id: output-format-claude
 purpose: formatting
 order: 90
-models: [claude-opus-4-6, claude-opus-4-5, claude-sonnet-4-5, claude-sonnet-4, claude-haiku-3-5]
+models: [claude-opus-4-6, claude-opus-4-5, claude-sonnet-4-6, claude-sonnet-4-5, claude-sonnet-4, claude-haiku-3-5]
 cli: claude-code
 description: Claude-specific output formatting
 ---

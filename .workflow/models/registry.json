@@ -138,6 +138,7 @@
       "modelId": "claude-sonnet-4-6",
       "displayName": "Claude Sonnet 4.6",
       "contextWindow": 200000,
+      "contextWindowBeta": 1000000,
       "maxOutputTokens": 64000,
       "costTier": "standard",
       "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "adaptive-thinking"],

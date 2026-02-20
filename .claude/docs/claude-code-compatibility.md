@@ -64,6 +64,7 @@ flow parallel check  # See available parallel tasks
 | 1.0.46+ | 2.1.20+ | Task deletion, improved compaction |
 | 1.2.0+ | 2.1.33+ | TaskCompleted, TeammateIdle hooks, agent frontmatter |
 | 1.3.0+ | 2.1.33+ | WebMCP integration, model registry (Opus 4.6/Sonnet 4.6) |
+| 1.5.0+ | latest | ConfigChange hook, native worktree awareness, settings.json plugin, Sonnet 4.6 1M context |
 
 ### Environment Variables (2.1.19+)
 
@@ -158,6 +159,40 @@ await cancelTask('wf-123', 'superseded', false);
 | SessionEnd | session-end.js | Request logging, progress update |
 | TaskCompleted | task-completed.js | Move task to recentlyCompleted |
 | TeammateIdle | teammate-idle.js | Suggest next task (disabled by default) |
+| ConfigChange | config-change.js | Re-sync bridge on mid-session config changes |
+
+### Features in Latest Release
+
+- **ConfigChange hook event**: New hook event fired when configuration files change during a session. WogiFlow uses this to automatically re-sync the bridge (regenerate CLAUDE.md) when `.workflow/config.json` is modified mid-session. Always non-blocking.
+- **Sonnet 4.6 with 1M context**: Sonnet 4.5 with 1M context has been removed from the Max plan in favor of Sonnet 4.6, which now has 1M context. WogiFlow's model registry updated with `contextWindowBeta: 1000000` for Sonnet 4.6.
+- **Native `--worktree` flag**: Claude Code now supports `--worktree` (`-w`) to start sessions in an isolated git worktree (under `.claude/worktrees/`). WogiFlow's `createWorktree()` detects this and skips nested worktree creation.
+- **Plugin `settings.json`**: Plugins can now ship `settings.json` for default configuration. WogiFlow now generates `.claude/settings.json` (committed, shared) with hook registrations using relative paths, while `.claude/settings.local.json` (gitignored) holds user-specific permissions.
+- **Managed settings hierarchy**: `disableAllHooks` now respects managed settings hierarchy - non-managed settings cannot disable managed hooks set by policy. WogiFlow hooks in `settings.json` (shared) are protected from user disabling via this mechanism.
+- **Background agent improvements**: Ctrl+F kills background agents (two-press confirmation). Ctrl+C/ESC no longer silently ignored when background agents are running.
+- **MCP startup performance**: Auth failure caching and batched tool token counting improve startup when WogiFlow's MCP servers are configured.
+
+### Simple Mode Naming Distinction
+
+Claude Code's `CLAUDE_CODE_SIMPLE` environment variable (which enables a simplified tool set) is **unrelated** to WogiFlow's `loops.simpleMode` (a lightweight task completion loop using string detection). They are separate features that happen to share the word "simple":
+
+| Feature | Scope | Purpose |
+|---------|-------|---------|
+| `CLAUDE_CODE_SIMPLE` | Claude Code | Restricts available tools to Bash + Edit |
+| `loops.simpleMode` | WogiFlow | Completion-promise loop using `TASK_COMPLETE` string |
+
+Both can be active simultaneously without conflict.
+
+### Native Worktree vs WogiFlow Worktree
+
+| Feature | Claude Code `--worktree` | WogiFlow `flow-worktree.js` |
+|---------|-------------------------|----------------------------|
+| Location | `.claude/worktrees/` | OS temp dir (`wogi-worktrees-{uid}`) |
+| Branch naming | Auto-generated | `wogi-task-{taskId}-{timestamp}` |
+| Squash merge | No (manual) | Yes (`squashOnMerge` config) |
+| Task linking | No | Yes (links to task ID) |
+| Cleanup | Prompted on session exit | Auto after 24h (`autoCleanupHours`) |
+
+WogiFlow detects native worktrees and avoids nesting. When launched with `--worktree`, WogiFlow uses the native worktree as-is.
 
 ## Best Practices
 
@@ -269,4 +304,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*

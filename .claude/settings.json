@@ -1,0 +1,120 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/session-start.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/setup.js",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/user-prompt-submit.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|TodoWrite|Skill|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/pre-tool-use.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/post-tool-use.js",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/stop.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/session-end.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/task-completed.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/teammate-idle.js",
+            "timeout": 10
+          }
+        ],
+        "disabled": true,
+        "_comment": "Experimental - enable via config: hooks.rules.teammateIdle.enabled = true"
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/config-change.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "_wogiFlowManaged": true,
+  "_wogiFlowVersion": "1.0.0",
+  "_comment": "Shared WogiFlow hook configuration. Committed to repo for team use. User-specific overrides go in settings.local.json."
+}

@@ -29,7 +29,8 @@ const HOOK_TIMEOUTS = {
   STOP: 5,                // Loop enforcement check
   SESSION_END: 10,        // Session cleanup/logging
   TASK_COMPLETED: 10,     // Post-task cleanup (Claude Code 2.1.33+)
-  TEAMMATE_IDLE: 5        // Task dispatch for idle agents (Claude Code 2.1.33+)
+  TEAMMATE_IDLE: 5,       // Task dispatch for idle agents (Claude Code 2.1.33+)
+  CONFIG_CHANGE: 5        // Mid-session config change detection (Claude Code latest)
 };
 
 /**
@@ -46,7 +47,8 @@ const CLAUDE_CODE_EVENTS = [
   'Notification',
   'UserPromptSubmit',
   'TaskCompleted',   // Claude Code 2.1.33+ - fired when sub-agent task completes
-  'TeammateIdle'     // Claude Code 2.1.33+ - fired when teammate agent becomes idle
+  'TeammateIdle',    // Claude Code 2.1.33+ - fired when teammate agent becomes idle
+  'ConfigChange'     // Claude Code latest - fired when config files change mid-session
 ];
 
 /**
@@ -130,6 +132,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformTaskCompleted(coreResult);
       case 'TeammateIdle':
         return this.transformTeammateIdle(coreResult);
+      case 'ConfigChange':
+        return this.transformConfigChange(coreResult);
       default:
         return { continue: true };
     }
@@ -430,6 +434,17 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform ConfigChange result (Claude Code latest)
+   * Always non-blocking - informational only
+   */
+  transformConfigChange(coreResult) {
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message })
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot) {
@@ -543,6 +558,15 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         }]
       }];
     }
+
+    // ConfigChange hook for mid-session config detection (Claude Code latest)
+    hooks.ConfigChange = [{
+      hooks: [{
+        type: 'command',
+        command: `node "${path.join(scriptsDir, 'config-change.js')}"`,
+        timeout: HOOK_TIMEOUTS.CONFIG_CHANGE
+      }]
+    }];
 
     return { hooks };
   }
