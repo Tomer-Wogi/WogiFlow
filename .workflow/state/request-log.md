@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-125 | 2026-02-20 17:00
+**Type**: fix
+**Tags**: #hooks #esm #commonjs #compatibility #postinstall #P0
+**Task**: wf-esm-compat
+**Request**: "Fix ESM compatibility: hooks fail in projects with type:module"
+**Result**: Added `scripts/package.json` with `{ "type": "commonjs" }` to the WogiFlow package. This tells Node.js to treat all `.js` files under `scripts/` as CommonJS regardless of the project's root `package.json` setting. The file is automatically copied to target projects during postinstall via the existing `copyDir()` mechanism. Fixes `ReferenceError: require is not defined in ES module scope` for all 34+ hook files.
+**Files**: `scripts/package.json` (new)
+
 ### R-124 | 2026-02-20 16:30
 **Type**: fix
 **Tags**: #review #component:wogi-review #code-review-findings #quality #P1

@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-20T10:42:20.138Z",
+  "lastUpdated": "2026-02-20T17:00:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-esm-compat",
+      "title": "Fix ESM compatibility: add scripts/package.json with type:commonjs",
+      "type": "fix",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-20T17:00:00.000Z",
+      "completedAt": "2026-02-20T17:05:00.000Z"
+    },
     {
       "id": "wf-cr-2639a7",
       "title": "Fix 19 review findings from wf-2639ad7d",
