@@ -716,7 +716,34 @@ Options:
 [3] Review manually - Save findings, fix later
 ```
 
-**5.3. If user chooses fix (option 1 or 2)**:
+**5.3. If user chooses "Review manually" (option 3)**:
+- Save findings to `last-review.json` only (already done in step 2.6)
+- Do NOT create any task in `ready.json`
+- Inform the user: "Findings saved to `.workflow/state/last-review.json`. When ready to fix, use `/wogi-start` to create a tracked task."
+- Proceed to step 5.4
+
+**5.3b. If user chooses fix (option 1 or 2) — TASK CREATION REQUIRED**:
+
+**BEFORE applying any fixes, create a tracked fix task in `ready.json` inProgress:**
+
+1. Generate a fix task ID: `wf-cr-XXXXXX` (first 6 chars of a hash based on review date + finding count)
+2. Count findings to fix (all for option 1, critical/high only for option 2)
+3. Read `ready.json`, add fix task to `inProgress` array:
+   ```json
+   {
+     "id": "wf-cr-XXXXXX",
+     "title": "Fix N review findings from [review-id or task-id]",
+     "type": "fix",
+     "feature": "review",
+     "status": "in_progress",
+     "priority": "P0",
+     "startedAt": "[ISO timestamp]"
+   }
+   ```
+4. Write updated `ready.json` — the task-gate (PreToolUse) will now allow Edit/Write operations
+5. Display: `Created fix task: wf-cr-XXXXXX — Fix N review findings`
+
+**ONLY AFTER the task exists in inProgress**, proceed with the fix loop:
 - Convert findings to TodoWrite items:
   - Critical/High → Individual todos
   - Medium/Low → Grouped by category
@@ -727,6 +754,18 @@ Options:
   - Mark completed
 - After all fixes: Re-run verification gates (lint, typecheck, tests)
 - **Fix loop iteration cap**: Maximum 3 re-verify cycles. If new issues keep appearing after 3 iterations, stop and present remaining issues to the user rather than continuing automatically.
+
+**AFTER the fix loop completes**, move the task to recentlyCompleted:
+1. Read `ready.json`
+2. Remove the fix task from `inProgress`
+3. Add it to `recentlyCompleted` with `completedAt` timestamp
+4. Write updated `ready.json`
+5. Display: `Fix task wf-cr-XXXXXX completed and moved to recentlyCompleted`
+
+This ensures:
+- The PreToolUse task-gate allows edits during the fix loop (active task exists)
+- After completion, no active task exists → task-gate blocks subsequent untracked edits
+- All fix work is tracked and visible in the workflow
 
 **5.4. Learning capture**:
 - Check each finding against `feedback-patterns.md`
@@ -1130,6 +1169,8 @@ After ALL review phases complete (1 through 4), execute the fix-and-verify loop:
 ┌─────────────────────────────────────────────────────────────┐
 │  POST-REVIEW WORKFLOW                                        │
 ├─────────────────────────────────────────────────────────────┤
+│  0. CREATE FIX TASK: Add wf-cr-XXXXXX to ready.json         │
+│     → MUST exist before any edits (task-gate enforces)       │
 │  1. TRACK: Convert issues to TodoWrite items                 │
 │     → Critical/High: Individual todos                        │
 │     → Medium/Low: Grouped by category                        │
@@ -1141,10 +1182,32 @@ After ALL review phases complete (1 through 4), execute the fix-and-verify loop:
 │  3. RE-VERIFY: Run full verification gates again             │
 │     → All gates must pass                                    │
 │     → If new issues found, add to todo list                  │
-│  4. ARCHIVE: Save review report to .workflow/reviews/        │
-│  5. SIGN-OFF: User approves review complete                  │
+│  4. COMPLETE TASK: Move wf-cr-XXXXXX to recentlyCompleted    │
+│  5. ARCHIVE: Save review report to .workflow/reviews/        │
+│  6. SIGN-OFF: User approves review complete                  │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Step 0: Create Fix Task (MANDATORY before any edits)
+
+**Before converting findings to todos or applying any fixes**, create a tracked task:
+
+1. Generate task ID: `wf-cr-XXXXXX` (6-char hash of review date + finding count)
+2. Read `ready.json`, add to `inProgress`:
+   ```json
+   {
+     "id": "wf-cr-XXXXXX",
+     "title": "Fix N review findings from [review-id or task-id]",
+     "type": "fix",
+     "feature": "review",
+     "status": "in_progress",
+     "priority": "P0",
+     "startedAt": "[ISO timestamp]"
+   }
+   ```
+3. Write `ready.json` — the PreToolUse task-gate will now allow Edit/Write operations
+
+**Why this is required**: The PreToolUse task-gate hard-blocks Edit/Write when no active task exists in `ready.json` inProgress. Without this step, the fix loop's edits would be blocked.
 
 ### Step 1: Issue Tracking
 
@@ -1209,7 +1272,18 @@ If new issues are discovered during re-verification:
 2. Continue the fix loop
 3. Re-verify again
 
-### Step 4: Archive Review Report
+### Step 4: Complete Fix Task
+
+**After all fixes pass verification**, move the fix task to recentlyCompleted:
+
+1. Read `ready.json`
+2. Remove `wf-cr-XXXXXX` from `inProgress`
+3. Add it to `recentlyCompleted` with `completedAt` timestamp
+4. Write `ready.json`
+
+**After this step, no active task exists** — the PreToolUse task-gate will block any subsequent Edit/Write operations until the user starts a new task via `/wogi-start`.
+
+### Step 5: Archive Review Report
 
 Save the review report to `.workflow/reviews/`:
 
@@ -1243,7 +1317,7 @@ Report format:
 - Gates passing: Y/Y
 ```
 
-### Step 5: Sign-Off Gate
+### Step 6: Sign-Off Gate
 
 Before completing the review, ask for user approval:
 

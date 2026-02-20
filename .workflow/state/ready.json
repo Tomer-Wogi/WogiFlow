@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-20T17:00:00.000Z",
+  "lastUpdated": "2026-02-20T17:26:12.207Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-fc196fcf",
+      "title": "Fix post-review fix loop task gating and implementation gate blocking",
+      "type": "fix",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-20T17:15:00.000Z",
+      "startedAt": "2026-02-20T17:20:00.000Z",
+      "specPath": ".workflow/changes/wf-fc196fcf.md",
+      "completedAt": "2026-02-20T17:26:12.206Z"
+    },
     {
       "id": "wf-esm-compat",
       "title": "Fix ESM compatibility: add scripts/package.json with type:commonjs",
@@ -95,36 +107,6 @@
       "priority": "P2",
       "startedAt": "2026-02-20T06:20:00.000Z",
       "completedAt": "2026-02-20T06:35:00.000Z"
-    },
-    {
-      "id": "wf-1c1fa2d8",
-      "title": "Claude Code compatibility updates (latest release)",
-      "type": "story",
-      "feature": "claude-code-compat",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-20T06:10:00.000Z",
-      "completedAt": "2026-02-20T06:15:00.000Z"
-    },
-    {
-      "id": "wf-rel-142",
-      "title": "Bump version to 1.4.2 and create GitHub release",
-      "type": "task",
-      "feature": "release",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-20T00:35:00.000Z",
-      "completedAt": "2026-02-20T00:40:00.000Z"
-    },
-    {
-      "id": "wf-cr-6b2aa8",
-      "title": "Fix 3 medium-severity review findings from wf-6b2aa8d3",
-      "type": "fix",
-      "feature": "quality",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-20T00:20:00.000Z",
-      "completedAt": "2026-02-20T00:30:00.000Z"
     }
   ],
   "backlog": [

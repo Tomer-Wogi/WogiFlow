@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-126 | 2026-02-20 17:30
+**Type**: fix
+**Tags**: #hooks #task-gate #review #component:wogi-review #workflow-bypass #P0
+**Task**: wf-fc196fcf
+**Request**: "Fix post-review fix loop bypassing task gating and implementation gate not blocking"
+**Result**: Fixed Phase 5 of `/wogi-review` to create a tracked fix task (`wf-cr-XXXXXX`) in `ready.json` inProgress BEFORE applying any review fixes, and move it to recentlyCompleted after completion. This ensures the PreToolUse task-gate allows edits during the fix loop (active task exists) and blocks subsequent untracked edits (no active task after completion). Added explicit handling for "Review manually" option (no task created, user directed to `/wogi-start`). Updated Reference Detail section with Step 0 (Create Fix Task) and Step 4 (Complete Fix Task). Deliberately kept `implementation-gate.js` as a soft hint (not hard block) to avoid deadlock where Claude can't read prompts to invoke `/wogi-start`. The existing `task-gate.js` already hard-blocks Edit/Write at PreToolUse level when no active task exists.
+**Files**: `.claude/commands/wogi-review.md`, `.workflow/changes/wf-fc196fcf.md`
+
 ### R-125 | 2026-02-20 17:00
 **Type**: fix
 **Tags**: #hooks #esm #commonjs #compatibility #postinstall #P0
