@@ -560,13 +560,15 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     }
 
     // ConfigChange hook for mid-session config detection (Claude Code latest)
-    hooks.ConfigChange = [{
-      hooks: [{
-        type: 'command',
-        command: `node "${path.join(scriptsDir, 'config-change.js')}"`,
-        timeout: HOOK_TIMEOUTS.CONFIG_CHANGE
-      }]
-    }];
+    if (rules.configChange?.enabled !== false) {
+      hooks.ConfigChange = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'config-change.js')}"`,
+          timeout: HOOK_TIMEOUTS.CONFIG_CHANGE
+        }]
+      }];
+    }
 
     return { hooks };
   }

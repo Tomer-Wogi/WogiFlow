@@ -17,6 +17,7 @@ const setupCheck = require('./setup-check');
 const setupHandler = require('./setup-handler');
 const implementationGate = require('./implementation-gate');
 const todoWriteGate = require('./todowrite-gate');
+const configChange = require('./config-change');
 
 // Research gate - lazy-load to avoid errors if not yet created
 let researchGate = null;
@@ -73,6 +74,10 @@ module.exports = {
   // TodoWrite Gate (blocks implementation todos without active task)
   ...todoWriteGate,
   todoWriteGate,
+
+  // Config Change (mid-session config detection, Claude Code latest)
+  ...configChange,
+  configChange,
 
   // Research Gate (detects questions requiring verification)
   ...(researchGate || {}),

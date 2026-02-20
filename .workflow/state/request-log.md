@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-119 | 2026-02-20 06:50
+**Type**: fix
+**Tags**: #code-review #security #hooks #config-change #worktree #quality
+**Task**: wf-cr-2341a2
+**Request**: "Fix all 13 code review findings from wf-1c1fa2d8 and wf-2341ad82"
+**Result**: Fixed 11 actionable findings (7 medium, 4 low). Key fixes: replaced raw JSON.parse with safeJsonParseString in config-change entry hook; fixed misleading sync message with accurate bridgeState caching; added path validation (defense-in-depth); aligned entry hook to use adapter.transformResult pattern; removed unused imports; added hooks.rules.configChange config toggle with gate check; fixed TeammateIdle timeout mismatch (10→5); improved detectNativeWorktree to use path segment matching; registered config-change in core/index.js. 2 informational findings noted (no code change needed).
+**Files**: `scripts/hooks/core/config-change.js`, `scripts/hooks/entry/claude-code/config-change.js`, `scripts/hooks/adapters/claude-code.js`, `scripts/hooks/core/index.js`, `scripts/flow-worktree.js`, `.workflow/config.json`, `.claude/settings.json`
+
 ### R-118 | 2026-02-20 06:25
 **Type**: new
 **Tags**: #explore-phase #agents #shift-left #standards #risk

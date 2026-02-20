@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-20T06:35:00.000Z",
+  "lastUpdated": "2026-02-20T08:40:23.852Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-2341a2",
+      "title": "Fix 13 code review findings from wf-1c1fa2d8 and wf-2341ad82",
+      "type": "fix",
+      "feature": "quality",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-20T06:45:00.000Z",
+      "completedAt": "2026-02-20T08:40:23.851Z"
+    },
     {
       "id": "wf-2341ad82",
       "title": "Add Risk & History and Standards Preview agents to explore phase",
@@ -93,90 +103,6 @@
       "priority": "P1",
       "startedAt": "2026-02-19T21:30:00.000Z",
       "completedAt": "2026-02-19T21:45:00.000Z"
-    },
-    {
-      "id": "wf-02881aba",
-      "title": "Implement 6 competitor-inspired improvements",
-      "type": "story",
-      "feature": "quality-improvements",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T23:00:00.000Z",
-      "completedAt": "2026-02-19T21:01:56.703Z"
-    },
-    {
-      "id": "wf-full-audit",
-      "title": "Fix all 37 audit findings - zero tech debt",
-      "type": "task",
-      "feature": "audit",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-19T21:00:00.000Z",
-      "completedAt": "2026-02-19T22:30:00.000Z"
-    },
-    {
-      "id": "wf-cr-review9",
-      "title": "Fix all code review findings from session review",
-      "type": "task",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T20:25:00.000Z",
-      "completedAt": "2026-02-19T20:35:00.000Z"
-    },
-    {
-      "id": "wf-todo-cleanup",
-      "title": "Add TodoWrite cleanup step to wogi-start finalization",
-      "type": "task",
-      "feature": "workflow-fix",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T20:15:00.000Z",
-      "completedAt": "2026-02-19T20:20:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s8",
-      "title": "Auto-generate WebMCP tools on component creation",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T20:05:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T20:10:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s7",
-      "title": "Add WebMCP verification to wogi-start quality gates",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T19:55:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T20:00:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s4",
-      "title": "Wire WebMCP into init/onboard flows",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T19:35:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T19:50:00.000Z"
-    },
-    {
-      "id": "wf-webmcp-s6",
-      "title": "Rewrite wogi-test-browser with WebMCP test flows",
-      "type": "story",
-      "feature": "webmcp-integration",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T19:25:00.000Z",
-      "epicId": "epic-webmcp",
-      "completedAt": "2026-02-19T19:30:00.000Z"
     }
   ],
   "backlog": [

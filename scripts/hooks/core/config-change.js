@@ -11,7 +11,6 @@
  */
 
 const path = require('path');
-const fs = require('fs');
 
 /**
  * Handle a config change event.
@@ -24,12 +23,30 @@ const fs = require('fs');
 function handleConfigChange(options = {}) {
   const { filePath = '', projectRoot = process.cwd() } = options;
 
+  // Early return for empty/missing file path (no file to check)
+  if (!filePath) {
+    return {
+      enabled: true,
+      needsSync: false,
+      message: null
+    };
+  }
+
   const configPath = path.join(projectRoot, '.workflow', 'config.json');
   const settingsPath = path.join(projectRoot, '.claude', 'settings.local.json');
   const settingsSharedPath = path.join(projectRoot, '.claude', 'settings.json');
 
-  // Determine which config file changed
+  // Validate filePath is within projectRoot (defense-in-depth per security rules §4)
   const normalizedPath = path.resolve(filePath);
+  const resolvedRoot = path.resolve(projectRoot);
+  if (!normalizedPath.startsWith(resolvedRoot + path.sep) && normalizedPath !== resolvedRoot) {
+    return {
+      enabled: true,
+      needsSync: false,
+      message: null
+    };
+  }
+
   const isWorkflowConfig = normalizedPath === path.resolve(configPath);
   const isClaudeSettings = normalizedPath === path.resolve(settingsPath)
     || normalizedPath === path.resolve(settingsSharedPath);
@@ -44,29 +61,44 @@ function handleConfigChange(options = {}) {
   }
 
   if (isWorkflowConfig) {
-    // Workflow config changed - check if bridge needs re-sync
-    let needsSync = false;
+    // Load bridge state module once (fixes double-require)
+    let bridgeState = null;
     try {
-      const { hasConfigChanged } = require('../../flow-bridge-state');
-      needsSync = hasConfigChanged();
+      bridgeState = require('../../flow-bridge-state');
     } catch {
-      // Bridge state module unavailable - assume sync needed
+      // Bridge state module unavailable
+    }
+
+    let needsSync = false;
+    if (bridgeState) {
+      try {
+        needsSync = bridgeState.hasConfigChanged();
+      } catch {
+        needsSync = true;
+      }
+    } else {
+      // Module unavailable - assume sync needed
       needsSync = true;
     }
 
     if (needsSync) {
       // Attempt non-blocking bridge sync
-      try {
-        const { autoSyncBridge } = require('../../flow-bridge-state');
-        autoSyncBridge('claude-code', { silent: true }).catch(() => {});
-      } catch {
-        // Sync unavailable - warn only
+      let syncAttempted = false;
+      if (bridgeState) {
+        try {
+          bridgeState.autoSyncBridge('claude-code', { silent: true }).catch(() => {});
+          syncAttempted = true;
+        } catch {
+          // Sync failed
+        }
       }
 
       return {
         enabled: true,
         needsSync: true,
-        message: 'WogiFlow config changed mid-session. Bridge re-synced to update CLAUDE.md.'
+        message: syncAttempted
+          ? 'WogiFlow config changed mid-session. Bridge re-synced to update CLAUDE.md.'
+          : 'WogiFlow config changed mid-session. Bridge sync unavailable - CLAUDE.md may be stale.'
       };
     }
 

@@ -1363,6 +1363,10 @@
       },
       "teammateIdle": {
         "enabled": false
+      },
+      "configChange": {
+        "enabled": true,
+        "_comment": "Mid-session config change detection. Re-syncs bridge when .workflow/config.json changes."
       }
     },
     "claudeCode": {

@@ -146,8 +146,11 @@ function generateWorktreePath(branchName) {
  */
 function detectNativeWorktree(cwd = process.cwd()) {
   const normalized = path.resolve(cwd);
-  // Claude Code native worktrees live under .claude/worktrees/
-  if (normalized.includes(path.join('.claude', 'worktrees'))) {
+  // Claude Code native worktrees live under .claude/worktrees/ (--worktree flag, Claude Code 1.5.0+)
+  // Use path segment matching to avoid false positives on partial matches
+  const segments = normalized.split(path.sep);
+  const claudeIdx = segments.indexOf('.claude');
+  if (claudeIdx >= 0 && segments[claudeIdx + 1] === 'worktrees') {
     return { isNative: true, path: normalized };
   }
   return { isNative: false, path: null };

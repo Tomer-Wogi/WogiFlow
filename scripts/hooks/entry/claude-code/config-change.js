@@ -12,41 +12,29 @@
 
 const { handleConfigChange } = require('../../core/config-change');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { safeJsonParseString } = require('../../../flow-utils');
+
+process.stdin.setEncoding('utf8');
 
 async function main() {
   try {
-    // Read input from stdin
-    let input = '';
-    const chunks = [];
-    const MAX_INPUT_SIZE = 100 * 1024; // 100KB limit
-
+    // Read input from stdin (consistent pattern with other entry hooks)
+    let inputData = '';
     for await (const chunk of process.stdin) {
-      chunks.push(chunk);
-      if (Buffer.concat(chunks).length > MAX_INPUT_SIZE) break;
+      inputData += chunk;
     }
-    input = Buffer.concat(chunks).toString('utf-8').trim();
 
-    let parsed = {};
-    if (input) {
-      try {
-        parsed = JSON.parse(input);
-      } catch {
-        parsed = {};
-      }
-    }
+    const input = inputData ? safeJsonParseString(inputData, {}) : {};
 
     // Extract the changed file path from the hook input
-    const filePath = parsed.file_path || parsed.filePath || '';
-    const projectRoot = parsed.cwd || process.cwd();
+    const filePath = input.file_path || input.filePath || '';
+    const projectRoot = input.cwd || process.cwd();
 
     // Handle the config change
     const result = handleConfigChange({ filePath, projectRoot });
 
-    // Transform to Claude Code format - always continue, never block
-    const output = {
-      continue: true,
-      ...(result.message && { systemMessage: result.message })
-    };
+    // Transform to Claude Code format via adapter (consistent with other hooks)
+    const output = claudeCodeAdapter.transformResult('ConfigChange', result);
 
     process.stdout.write(JSON.stringify(output));
     process.exit(0);

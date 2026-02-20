@@ -95,7 +95,7 @@
           {
             "type": "command",
             "command": "node scripts/hooks/entry/claude-code/teammate-idle.js",
-            "timeout": 10
+            "timeout": 5
           }
         ],
         "disabled": true,
