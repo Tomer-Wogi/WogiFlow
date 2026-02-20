@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-121 | 2026-02-20 10:30
+**Type**: fix
+**Tags**: #hooks #implementation-gate #adapter #UserPromptSubmit #P0 #bugfix
+**Task**: wf-hook-fmt
+**Request**: "Fix UserPromptSubmit hook response format and remove regex classification"
+**Result**: Fixed two critical bugs preventing the implementation gate from working in target projects: (1) **Wrong response format** — `transformUserPromptSubmit()` in the Claude Code adapter returned `{ continue: false, hookSpecificOutput: { decision: "block" } }` but Claude Code expects top-level `{ decision: "block", reason: "..." }`. `continue: false` stops the entire session, not a single prompt. Fixed to correct format. (2) **Removed regex classification from gate** — Once blocking worked, regex patterns were too aggressive (blocked questions, exploration). Replaced entire classification logic in `checkImplementationGate()` with simple binary check: active task → allow, /wogi-* command → allow, no task → block with message to use /wogi-start. The regex patterns (IMPLEMENTATION_PATTERNS, EXPLORATION_PATTERNS, etc.) are preserved for `classifyRequest()` used by /wogi-start routing, but no longer used for blocking decisions. Verified with comprehensive edge case testing.
+**Files**: `scripts/hooks/adapters/claude-code.js`, `scripts/hooks/core/implementation-gate.js`
+
 ### R-120 | 2026-02-20 09:30
 **Type**: fix
 **Tags**: #hooks #postinstall #npm #settings #P0 #bugfix

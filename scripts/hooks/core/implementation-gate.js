@@ -51,10 +51,12 @@ const IMPLEMENTATION_PATTERNS = [
  * These should NOT trigger the gate
  */
 const EXPLORATION_PATTERNS = [
-  /\bwhat\s+(does|is|are|do)\b/i,
-  /\bhow\s+(does|do|can|to|would)\b/i,
-  /\bwhy\s+(does|do|is|are)\b/i,
-  /\bwhere\s+(is|are|do|does|can)\b/i,
+  /\bwhat\s+(does|is|are|do|did|should|would|could|can)\b/i,
+  /\bhow\s+(does|do|can|to|would|should|could|did)\b/i,
+  /\bwhy\s+(does|do|is|are|did|didn't|doesn't|don't|isn't|aren't|can't|won't|wouldn't|shouldn't|couldn't|hasn't|haven't|wasn't|weren't)\b/i,
+  /\bwhere\s+(is|are|do|does|can|did|should)\b/i,
+  /\bwho\s+(is|are|does|did|should|can)\b/i,
+  /\bwhen\s+(does|do|did|is|are|should|will)\b/i,
   /\bshow\s+me\b/i,
   /\bexplain\b/i,
   /\bdescribe\b/i,
@@ -67,7 +69,9 @@ const EXPLORATION_PATTERNS = [
   /\banalyze\b/i,
   /\breview\s+(the|this|my)/i,
   /\bcheck\s+(if|whether|the)/i,
-  /\bcan\s+(claude|you)\s+(access|read|see)/i
+  /\bcan\s+(claude|you)\s+(access|read|see)/i,
+  /\bit'?s\s+supposed\s+to\b/i,
+  /\bisn'?t\s+(it|that|this)\b/i
 ];
 
 /**
@@ -206,11 +210,12 @@ function isExplorationRequest(prompt) {
   // Check if it matches exploration patterns
   const matchesExploration = matchesAnyPattern(prompt, EXPLORATION_PATTERNS);
 
-  // Short prompts that are questions are exploratory
-  // Check length BEFORE calling trim() to avoid processing long strings
-  const isQuestion = prompt.length < 200 && prompt.trim().endsWith('?');
+  // Prompts containing question marks are likely exploratory
+  // Check for '?' anywhere in the prompt (not just at end - multi-sentence prompts
+  // often have the question mid-text followed by additional context)
+  const hasQuestionMark = prompt.length < 500 && prompt.includes('?');
 
-  return matchesExploration || isQuestion;
+  return matchesExploration || hasQuestionMark;
 }
 
 /**
@@ -250,10 +255,19 @@ function detectImplementationIntent(prompt) {
 /**
  * Check implementation gate for a user prompt
  *
+ * v5.2: Simplified to a binary check: active task or not.
+ * No regex classification - /wogi-start handles routing with AI understanding.
+ *
+ * Flow:
+ * 1. Active task exists → allow (Claude works on the task)
+ * 2. /wogi-* command → allow (always pass through)
+ * 3. No active task → block (user must route through /wogi-start)
+ * 4. /wogi-start handles routing: questions proceed, implementation creates tasks
+ *
  * @param {Object} options
  * @param {string} options.prompt - User's input prompt
  * @param {string} [options.source] - Source of prompt (manual, paste, etc.)
- * @returns {Object} Result: { allowed, blocked, message, reason, confidence, suggestedAction }
+ * @returns {Object} Result: { allowed, blocked, message, reason }
  */
 function checkImplementationGate(options = {}) {
   const { prompt } = options;
@@ -268,12 +282,7 @@ function checkImplementationGate(options = {}) {
     };
   }
 
-  // Truncate overly long prompts to prevent DoS via regex processing
-  const processedPrompt = prompt.length > MAX_PROMPT_LENGTH
-    ? prompt.slice(0, MAX_PROMPT_LENGTH)
-    : prompt;
-
-  // WogiFlow commands always allowed (check original prompt for commands)
+  // WogiFlow commands always allowed (/wogi-start handles routing)
   if (isWogiCommand(prompt)) {
     return {
       allowed: true,
@@ -293,29 +302,7 @@ function checkImplementationGate(options = {}) {
     };
   }
 
-  // Exploration requests always allowed (use truncated prompt for safety)
-  if (isExplorationRequest(processedPrompt)) {
-    return {
-      allowed: true,
-      blocked: false,
-      message: null,
-      reason: 'exploration_request'
-    };
-  }
-
-  // Check for implementation intent (use truncated prompt for safety)
-  const { isImplementation, confidence, matches } = detectImplementationIntent(processedPrompt);
-
-  if (!isImplementation) {
-    return {
-      allowed: true,
-      blocked: false,
-      message: null,
-      reason: 'no_implementation_intent'
-    };
-  }
-
-  // Has implementation intent - check for active task
+  // Check for active task
   const activeTask = getActiveTask();
 
   if (activeTask) {
@@ -324,117 +311,66 @@ function checkImplementationGate(options = {}) {
       blocked: false,
       message: null,
       task: activeTask,
-      reason: 'task_active',
-      confidence,
-      matches
+      reason: 'task_active'
     };
   }
 
-  // No active task and implementation intent detected
-  // v4.2: Use 'mode' config as canonical control (softMode is deprecated fallback)
-  let config;
-  try {
-    config = getConfig();
-    // Defensive: ensure config is an object
-    if (!config || typeof config !== 'object') {
-      config = {};
-    }
-  } catch (err) {
-    // Config load failed - default to warn mode for safety
-    if (process.env.DEBUG) {
-      console.error(`[Implementation Gate] Config load failed: ${err.message}`);
-    }
-    config = {};
-  }
-
-  let mode = config.hooks?.rules?.implementationGate?.mode;
-
-  // Backward compatibility: if mode not set, check legacy softMode
-  if (!mode) {
-    const softMode = isSoftModeEnabled();
-    mode = softMode ? 'warn' : 'block';
-  }
-
-  if (mode === 'off') {
-    return {
-      allowed: true,
-      blocked: false,
-      message: null,
-      reason: 'gate_mode_off'
-    };
-  }
-
-  if (mode === 'warn') {
-    return {
-      allowed: true,
-      blocked: false,
-      message: generateRoutingMessage(prompt),
-      reason: 'route_to_wogi_start',
-      confidence,
-      suggestedAction: 'wogi-start',
-      matches
-    };
-  }
-
-  // Default: mode === 'block' - strict enforcement
+  // No active task - block and route through /wogi-start
+  // /wogi-start will use AI understanding to decide:
+  //   Questions/exploration → proceed directly
+  //   Operational (git/npm) → execute directly
+  //   Implementation → create story/task first
   return {
     allowed: false,
     blocked: true,
     message: generateBlockingMessage(prompt),
-    reason: 'route_to_wogi_start',
-    confidence,
-    suggestedAction: 'wogi-start',
-    suggestedCommand: `/wogi-start "${truncatePrompt(prompt)}"`,
-    matches
+    reason: 'no_active_task'
   };
 }
 
 /**
- * Generate warning message (soft mode)
+ * Generate blocking message shown to the user when no task is active.
+ * Tells the user to route through /wogi-start which handles AI-based routing.
+ */
+function generateBlockingMessage(prompt) {
+  const displayPrompt = truncatePrompt(prompt);
+  return `No active WogiFlow task. Route your request through /wogi-start:
+
+  /wogi-start "${displayPrompt}"
+
+/wogi-start will handle it:
+- Questions and exploration → answered directly
+- Operational (git, npm, deploy) → executed directly
+- Implementation → creates a tracked task first`;
+}
+
+/**
+ * @deprecated v5.2: Use generateBlockingMessage.
  */
 function generateWarningMessage(prompt) {
-  return `Warning: No active WogiFlow task.
-
-Consider: /wogi-start "${truncatePrompt(prompt)}"
-
-This will execute directly (git/npm/deploy) or create a story first (features/fixes).`;
+  return generateBlockingMessage(prompt);
 }
 
 /**
- * Generate routing message - instructs Claude to use /wogi-start
- * /wogi-start will intelligently decide what to do
+ * @deprecated v5.2: Use generateBlockingMessage.
  */
 function generateRoutingMessage(prompt) {
-  return `Route this request through /wogi-start.
-
-Use: /wogi-start "${truncatePrompt(prompt)}"
-
-/wogi-start will intelligently decide:
-- Execute directly if operational (git, npm, deploy, review, commit)
-- Create a story first if implementation (add feature, fix bug, refactor)`;
+  return generateBlockingMessage(prompt);
 }
 
 /**
- * @deprecated Use generateBlockingMessage instead. Kept for backwards compatibility.
+ * @deprecated v5.2: Use generateBlockingMessage.
  */
 function generateBlockMessage(prompt) {
   return generateBlockingMessage(prompt);
 }
 
 /**
- * Generate blocking message (v4.2 strict enforcement)
- * This message appears when implementation is detected without active task
+ * Generate context reminder (non-blocking mode).
+ * Used when mode is 'warn' instead of 'block'.
  */
-function generateBlockingMessage(prompt) {
-  return `Implementation request detected without active task.
-
-To proceed, run:
-  /wogi-start "${truncatePrompt(prompt)}"
-
-WogiFlow will triage and decide:
-- If operational (git/npm/deploy) → execute directly
-- If small fix → execute + log for learning
-- If larger task → create story/bug first`;
+function generateNoTaskReminder() {
+  return `No active WogiFlow task. Use /wogi-start to route your request.`;
 }
 
 /**
@@ -506,7 +442,7 @@ function classifyRequest(prompt) {
 }
 
 module.exports = {
-  // Classification functions
+  // Classification functions (used by /wogi-start for routing, not for blocking)
   classifyRequest,
   detectImplementationIntent,
   isExplorationRequest,
@@ -518,17 +454,18 @@ module.exports = {
   isWogiCommand,
 
   // Message generators
-  generateWarningMessage,
-  generateRoutingMessage,
-  generateBlockMessage,  // @deprecated - use generateBlockingMessage
   generateBlockingMessage,
+  generateNoTaskReminder,
+  generateWarningMessage,   // @deprecated v5.2
+  generateRoutingMessage,   // @deprecated v5.2
+  generateBlockMessage,     // @deprecated v5.2
 
   // Utilities
   truncatePrompt,
   matchesAnyPattern,
   calculateConfidence,
 
-  // Pattern arrays (for testing and extension)
+  // Pattern arrays (used by classifyRequest for /wogi-start routing)
   IMPLEMENTATION_PATTERNS,
   EXPLORATION_PATTERNS,
   OPERATIONAL_PATTERNS,

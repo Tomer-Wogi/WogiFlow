@@ -324,26 +324,27 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
 
   /**
    * Transform UserPromptSubmit result (implementation gate + research gate)
+   *
+   * Claude Code UserPromptSubmit response format:
+   *   Block:   { decision: "block", reason: "..." }  (top-level fields)
+   *   Allow:   {} or omit decision
+   *   Context: { hookSpecificOutput: { hookEventName: "UserPromptSubmit", additionalContext: "..." } }
+   *
+   * NOTE: "continue: false" stops the entire session, NOT the individual prompt.
+   * Use "decision: block" to reject a single prompt.
    */
   transformUserPromptSubmit(coreResult) {
-    // Blocked - prevent prompt processing with clear message
+    // Blocked - reject the prompt using top-level decision field
     if (coreResult.blocked) {
       return {
-        continue: false, // Block the prompt
-        systemMessage: coreResult.message || 'Implementation request blocked by Wogi Flow',
-        hookSpecificOutput: {
-          hookEventName: 'UserPromptSubmit',
-          decision: 'block',
-          reason: coreResult.reason,
-          suggestedAction: coreResult.suggestedAction
-        }
+        decision: 'block',
+        reason: coreResult.message || 'Implementation request blocked by Wogi Flow'
       };
     }
 
     // Research protocol triggered - inject protocol steps as additional context
     if (coreResult.systemReminder) {
       return {
-        continue: true,
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
           additionalContext: coreResult.systemReminder
@@ -351,26 +352,18 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       };
     }
 
-    // Warning - allow but show message
+    // Warning - allow but inject context with the warning message
     if (coreResult.message && !coreResult.blocked) {
       return {
-        continue: true,
-        systemMessage: coreResult.message,
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
-          decision: 'warn',
-          reason: coreResult.reason
+          additionalContext: coreResult.message
         }
       };
     }
 
-    // Allowed
-    return {
-      continue: true,
-      hookSpecificOutput: {
-        hookEventName: 'UserPromptSubmit'
-      }
-    };
+    // Allowed - empty response means allow
+    return {};
   }
 
   /**
