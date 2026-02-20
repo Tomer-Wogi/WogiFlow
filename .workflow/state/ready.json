@@ -1,6 +1,16 @@
 {
-  "lastUpdated": "2026-02-20T08:40:23.852Z",
-  "inProgress": [],
+  "lastUpdated": "2026-02-20T06:55:00.000Z",
+  "inProgress": [
+    {
+      "id": "wf-rel-143",
+      "title": "Bump version to 1.4.3 and create GitHub release",
+      "type": "task",
+      "feature": "release",
+      "status": "in_progress",
+      "priority": "P1",
+      "startedAt": "2026-02-20T06:55:00.000Z"
+    }
+  ],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
