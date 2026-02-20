@@ -1,6 +1,16 @@
 {
   "lastUpdated": "2026-02-20T07:00:00.000Z",
-  "inProgress": [],
+  "inProgress": [
+    {
+      "id": "wf-rel-144",
+      "title": "Bump version to 1.4.4 and release",
+      "type": "task",
+      "feature": "release",
+      "status": "in_progress",
+      "priority": "P0",
+      "startedAt": "2026-02-20T09:50:00.000Z"
+    }
+  ],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
