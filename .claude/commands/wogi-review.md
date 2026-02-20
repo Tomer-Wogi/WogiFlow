@@ -77,27 +77,54 @@ Multi-pass advantages:
 - Early exit on critical issues saves resources
 - Better for large codebases or security-sensitive changes
 
-## How It Works
+## How It Works (MANDATORY 5-PHASE SEQUENTIAL EXECUTION)
+
+**CRITICAL: You MUST execute ALL 5 phases sequentially. Do NOT stop after Phase 2.**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  /wogi-review                                                │
+│  /wogi-review - COMPLETE EXECUTION FLOW                      │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Identify changed files (git diff)                        │
-│  2. VERIFY: Run verification gates                           │
-│     → Spec verification (all deliverables exist?)            │
-│     → Lint, typecheck, test checks                           │
-│  3. CHECK: Should multi-pass be enabled?                     │
-│     → 5+ files? Security files? API files? → YES = multi-pass│
-│     → Otherwise → NO = parallel mode                         │
-│  4. REVIEW:                                                  │
-│     IF multi-pass: Run 4 sequential passes                   │
-│        Pass 1: Structure (Haiku) → Pass 2: Logic (Sonnet)    │
-│        Pass 3: Security (Sonnet) → Pass 4: Integration       │
-│     ELSE: Launch 3 parallel AI agents                        │
-│  5. Consolidate results into single report                   │
+│                                                              │
+│  PHASE 1: Verification Gates                                 │
+│     → Get changed files (git diff)                           │
+│     → Spec verification, lint, typecheck, tests              │
+│     ✓ CHECKPOINT: "Phase 1 complete"                         │
+│                                                              │
+│  PHASE 2: AI Review (all agent tiers)                        │
+│     → Core agents: code-logic, security, architecture        │
+│     → Optional agents: performance (if configured)           │
+│     → Project-rules agents: from decisions.md categories     │
+│     → Adversarial mode: min 3 findings per agent             │
+│     → Persist findings to last-review.json                   │
+│     ✓ CHECKPOINT: "Phase 2 complete - N agents, M findings"  │
+│                                                              │
+│  PHASE 2.5: Git-Verified Claim Checking                      │
+│     → Cross-reference spec claims vs actual git diff         │
+│     → BLOCKER if spec promises files not in diff             │
+│     ✓ CHECKPOINT: "Phase 2.5 complete"                       │
+│                                                              │
+│  PHASE 3: Standards Compliance [STRICT]                      │
+│     → Run flow-standards-checker.js on changed files         │
+│     → BLOCKS completion if MUST_FIX violations found         │
+│     ✓ CHECKPOINT: "Phase 3 complete"                         │
+│                                                              │
+│  PHASE 4: Solution Optimization [NON-BLOCKING]               │
+│     → Run flow-solution-optimizer.js on changed files        │
+│     → Suggestions only - not violations                      │
+│     ✓ CHECKPOINT: "Phase 4 complete"                         │
+│                                                              │
+│  PHASE 5: Post-Review Workflow                               │
+│     → Persist findings, present fix options to user          │
+│     → If user chooses fix: convert to todos, fix loop        │
+│     → Learning capture: corrections, pattern promotion       │
+│     → Display "Phases: 5/5 executed"                         │
+│     ✓ CHECKPOINT: "Phase 5 complete - Review done"           │
+│                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**ENFORCEMENT RULE**: After each phase, display the checkpoint message. If you reach Phase 2's consolidation output and stop, you have only completed 40% of the review. The review is NOT complete until Phase 5's checkpoint is displayed.
 
 ## Phase 1: Verification Gates
 
@@ -366,127 +393,352 @@ Report as JSON:
 - 2 project-rules agents (Component Architecture, Coding Standards)
 - Total: 6 agents (within limit)
 
-## Execution Steps
+## Execution Steps (MANDATORY 5-PHASE PROTOCOL)
 
-When `/wogi-review` is invoked:
+**You MUST execute ALL phases below in sequence. After each phase, display the checkpoint message. The review is NOT complete until Phase 5 finishes.**
 
-1. **Get changed files**:
-   ```bash
-   git diff --name-only HEAD  # Unstaged
-   git diff --name-only --staged  # Staged
-   git diff --name-only HEAD~N HEAD  # If --commits N specified
-   ```
+Track phases completed: start at 0/5, increment after each phase checkpoint.
 
-2. **Run verification gates** (unless --skip-verify):
-   - **Spec verification** (if task has spec file) - verify all deliverables exist
-   - Lint check
-   - TypeScript type check
-   - Test run (if configured)
-   - Report any failures immediately (spec failures are blockers)
+---
 
-3. **Check if multi-pass should be auto-enabled** (unless --no-multipass):
+### PHASE 1: Verification Gates
 
-   Auto-enable multi-pass if ANY of these conditions are met:
-   - `--multipass` flag is provided
-   - 5+ files changed
-   - Any security-sensitive files (auth, credential, .env, security)
-   - Security patterns detected in content (password, token, secret, api_key)
-   - API/service files detected (*.api.ts, *.service.ts, /api/, /routes/)
+**1.1. Get changed files**:
+```bash
+git diff --name-only HEAD  # Unstaged
+git diff --name-only --staged  # Staged
+git diff --name-only HEAD~N HEAD  # If --commits N specified
+```
 
-   **If multi-pass is triggered**: Skip to "Multi-Pass Mode Execution" section below.
+**1.2. Run verification gates** (unless --skip-verify):
+- **Spec verification** (if task has spec file) - verify all deliverables exist
+- Lint check
+- TypeScript type check
+- Test run (if configured)
+- Report any failures immediately (spec failures are blockers)
 
-   **If parallel mode**: Continue with step 4.
+**1.3. Display Phase 1 results**:
+```
+═══════════════════════════════════════
+PHASE 1: VERIFICATION GATES [1/5]
+═══════════════════════════════════════
+✓ Spec: N/N deliverables exist
+✓ Lint: passed
+✓ TypeCheck: passed
+✓ Tests: N/N passed
 
-4. **Determine agent lineup**:
-   - Start with core agents from `config.review.agents.core` (default: code-logic, security, architecture)
-   - Add optional agents from `config.review.agents.optional` (e.g., performance)
-   - If `config.review.agents.projectRules` is true:
-     - Read `decisions.md` using section-resolver PIN system for targeted parsing (avoids expensive full-file parsing for large decisions.md files)
-     - For each category with substantive rules, create a project-rules agent
-     - Cap total agents at `config.review.agents.maxParallelAgents` (default: 6)
+✓ Phase 1 complete. Proceeding to Phase 2...
+```
 
-5. **Launch all agents in parallel** (single message with N Task tool calls, subagent_type=Explore)
+---
 
-6. **Wait for all agents to complete**
+### PHASE 2: AI Review (Dynamic Agent System)
 
-7. **Persist findings to `.workflow/state/last-review.json`**:
-   ```json
-   {
-     "reviewDate": "ISO-8601 timestamp",
-     "mode": "parallel|multi-pass",
-     "filesReviewed": ["path/to/file1.ts", "..."],
-     "findings": [
-       {
-         "id": "finding-001",
-         "severity": "critical|high|medium|low",
-         "category": "quality|security|architecture|performance|project-rule",
-         "file": "path/to/file.ts",
-         "line": 45,
-         "issue": "Description of the issue",
-         "recommendation": "How to fix it",
-         "autoFixable": false,
-         "agent": "code-logic|security|architecture|performance|project-rules-[slug]"
-       }
-     ],
-     "triaged": false
-   }
-   ```
+**2.1. Check if multi-pass should be auto-enabled** (unless --no-multipass):
 
-8. **Consolidate and display results**:
+Auto-enable multi-pass if ANY of these conditions are met:
+- `--multipass` flag is provided
+- 5+ files changed
+- Any security-sensitive files (auth, credential, .env, security)
+- Security patterns detected in content (password, token, secret, api_key)
+- API/service files detected (*.api.ts, *.service.ts, /api/, /routes/)
+
+**If multi-pass is triggered**: Skip to "Multi-Pass Mode Execution" section below, then return here at step 2.6.
+
+**If parallel mode**: Continue with step 2.2.
+
+**2.2. Determine agent lineup (ALL THREE TIERS)**:
+
+You MUST build the agent lineup from all three tiers. Do NOT just launch 3 core agents.
+
+**Tier 1 - Core agents** (always run):
+- Start with core agents from `config.review.agents.core` (default: code-logic, security, architecture)
+
+**Tier 2 - Optional agents** (check config):
+- Read `config.review.agents.optional` (default: ["performance"])
+- For EACH agent in the optional list, add it to the lineup
+- For "performance": Use `.workflow/agents/performance.md` checklist as the prompt basis
+
+**Tier 3 - Project-rules agents** (auto-generated from decisions.md):
+- Check `config.review.agents.projectRules` (default: true)
+- If true:
+  - Read `.workflow/state/decisions.md`
+  - Parse section headers (e.g., "## Component Architecture", "## Coding Standards")
+  - For each category with **substantive rules** (at least 2 non-empty lines of actual rules), create a focused review agent
+  - Skip empty categories or headers without actionable rules
+  - Each project-rules agent reviews changed files against ONLY the rules from its category
+
+**Agent cap**: Total agents (core + optional + project-rules) capped at `config.review.agents.maxParallelAgents` (default: 6). If more categories than slots, prioritize categories matching changed file types.
+
+**Display agent lineup before launching:**
+```
+Agent Lineup (N agents):
+  Core: code-logic, security, architecture
+  Optional: performance
+  Project-Rules: [category-1], [category-2]
+  Total: N (max: 6)
+```
+
+**2.3. Append adversarial minimum findings suffix to EVERY agent prompt**:
+
+Read `config.review.minFindings` (default: 3). Append this to every agent's prompt:
 
 ```
+IMPORTANT: Adversarial Review Mode
+You MUST find at least [minFindings] findings. If you genuinely cannot find
+[minFindings] issues, you MUST provide a "clean code justification" as a
+special finding with type "clean-justification" explaining WHY the code is
+clean. Generic praise like "looks good" is NOT acceptable.
+```
+
+**2.4. Launch ALL agents in parallel** (single message with N Task tool calls, subagent_type=Explore)
+
+**2.5. Wait for all agents to complete**
+
+**2.6. Persist findings to `.workflow/state/last-review.json`**:
+```json
+{
+  "reviewDate": "ISO-8601 timestamp",
+  "mode": "parallel|multi-pass",
+  "agentsLaunched": 6,
+  "agentBreakdown": { "core": 3, "optional": 1, "projectRules": 2 },
+  "filesReviewed": ["path/to/file1.ts", "..."],
+  "findings": [
+    {
+      "id": "finding-001",
+      "severity": "critical|high|medium|low",
+      "category": "quality|security|architecture|performance|project-rule",
+      "file": "path/to/file.ts",
+      "line": 45,
+      "issue": "Description of the issue",
+      "recommendation": "How to fix it",
+      "autoFixable": false,
+      "agent": "code-logic|security|architecture|performance|project-rules-[slug]"
+    }
+  ],
+  "triaged": false
+}
+```
+
+**2.7. Display Phase 2 results (per-agent sections)**:
+```
+═══════════════════════════════════════
+PHASE 2: AI REVIEW [2/5]
+═══════════════════════════════════════
+
+Agents: N launched (3 core + 1 optional + 2 project-rules)
+
+--- CODE & LOGIC REVIEW ---
+[Results from code-logic agent]
+
+--- SECURITY REVIEW ---
+[Results from security agent]
+
+--- ARCHITECTURE & CONFLICTS ---
+[Results from architecture agent]
+
+--- PERFORMANCE REVIEW ---
+[Results from performance agent, if launched]
+
+--- PROJECT RULES: [CATEGORY] ---
+[Results from each project-rules agent]
+
+AI Review: M findings (X critical, Y high, Z medium, W low)
+
+✓ Phase 2 complete. Proceeding to Phase 2.5...
+```
+
+---
+
+### PHASE 2.5: Git-Verified Claim Checking
+
+**This phase is MANDATORY when a task spec exists. Skip ONLY when no spec file exists.**
+
+**2.5.1. Check for spec file**:
+- Look for `.workflow/changes/wf-XXXXXXXX.md` or `.workflow/specs/wf-XXXXXXXX.md`
+- If no spec file exists → Display "Phase 2.5 skipped (no spec file)" and proceed to Phase 3
+
+**2.5.2. Parse spec for promised deliverables**:
+```bash
+node scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
+```
+Or manually: Read the spec's "Files to Change" / "Technical Notes" / "Components" sections and extract all files mentioned.
+
+**2.5.3. Get actual git changes**:
+```bash
+git diff --name-only HEAD~N HEAD   # For committed changes
+git diff --name-only --staged      # For staged changes
+git diff --name-only               # For unstaged changes
+```
+
+**2.5.4. Cross-reference spec vs git diff**:
+- For each file the spec says was **created**: verify it appears in git diff as a new file
+- For each file the spec says was **modified**: verify it appears in git diff as changed
+- For each file in git diff: check if it was mentioned in the spec (unexpected changes)
+
+**2.5.5. Display Phase 2.5 results**:
+```
+═══════════════════════════════════════
+PHASE 2.5: GIT-VERIFIED CLAIMS [2.5/5]
+═══════════════════════════════════════
+
+Spec: .workflow/changes/wf-XXXXXXXX.md
+Git diff: N files changed
+
+Spec Claims vs Reality:
+  ✓ scripts/flow-foo.js         (spec: create, git: new file)
+  ✗ scripts/flow-missing.js     (spec: create, git: NOT FOUND) [BLOCKER]
+  ⚠ scripts/flow-extra.js       (git: modified, spec: NOT MENTIONED) [WARNING]
+
+Summary: X verified, Y missing, Z unplanned
+
+✓ Phase 2.5 complete. Proceeding to Phase 3...
+```
+
+**Severity**: Missing files = BLOCKER. Unplanned changes = WARNING only.
+
+---
+
+### PHASE 3: Standards Compliance [STRICT]
+
+**This phase BLOCKS review completion if MUST_FIX violations are found.**
+
+**3.1. Check skip conditions**:
+- If `--skip-standards` flag is set → Display "Phase 3 skipped (--skip-standards)" and proceed to Phase 4
+
+**3.2. Run standards compliance check**:
+```bash
+node scripts/flow-standards-checker.js [changed-files...]
+```
+Or if the runtime script is not available, manually check:
+- `decisions.md` - All documented coding rules and patterns
+- `app-map.md` - Component duplication (>80% similarity = violation)
+- `naming-conventions.md` - File names (kebab-case), catch variables (`err` not `e`)
+- `security-patterns.md` - Raw JSON.parse, unprotected fs.readFileSync
+
+**3.3. Display Phase 3 results**:
+```
+═══════════════════════════════════════
+PHASE 3: STANDARDS COMPLIANCE [3/5]
+═══════════════════════════════════════
+
+✓ decisions.md: passed
+✗ naming-conventions: 1 violation [MUST FIX]
+   → src/utils.ts:45 - Catch variable "e" should be "err"
+
+Summary: N checks, M violations (X must-fix, Y warnings)
+
+✓ Phase 3 complete. Proceeding to Phase 4...
+```
+
+If must-fix violations found: Report them but continue to Phase 4 and 5. The violations are tracked in findings.
+
+---
+
+### PHASE 4: Solution Optimization [NON-BLOCKING]
+
+**This phase provides suggestions only - NOT violations.**
+
+**4.1. Check skip conditions**:
+- If `--skip-optimization` flag is set → Display "Phase 4 skipped (--skip-optimization)" and proceed to Phase 5
+
+**4.2. Run solution optimization**:
+```bash
+node scripts/flow-solution-optimizer.js [changed-files...]
+```
+Or if the runtime script is not available, manually analyze changed files for:
+- Performance: filter+map chains, sequential awaits in loops
+- Modern JS: var usage, Promise chains vs async/await
+- Error handling: Empty catch blocks, generic error messages
+- UX: Loading states, error messages, accessibility
+
+**4.3. Display Phase 4 results**:
+```
+═══════════════════════════════════════
+PHASE 4: SOLUTION OPTIMIZATION [4/5]
+═══════════════════════════════════════
+
+Technical (N):
+  [Medium] Custom date formatting could use date-fns
+  [Low] Array.filter().map() could be Array.reduce()
+
+UX (N):
+  [High] Form lacks loading state
+
+Summary: X suggestions (Y high, Z medium, W low)
+These are suggestions only - not blocking.
+
+✓ Phase 4 complete. Proceeding to Phase 5...
+```
+
+---
+
+### PHASE 5: Post-Review Workflow
+
+**This phase handles findings persistence, fix options, and learning. It is MANDATORY.**
+
+**5.1. Present consolidated review summary**:
+```
 ╔══════════════════════════════════════════════════════════╗
-║  Code Review                                              ║
+║  REVIEW SUMMARY                                           ║
 ╚══════════════════════════════════════════════════════════╝
 
 Files Reviewed: N
-  • path/to/file1.ts
-  • path/to/file2.ts
-  ...
+Review Mode: parallel | multi-pass
+Agents Used: N (3 core + 1 optional + 2 project-rules)
 
-═══════════════════════════════════════════════════════════
-VERIFICATION GATES
-═══════════════════════════════════════════════════════════
-✓ Spec: 5/5 deliverables exist
-✓ Lint: passed
-✓ TypeCheck: passed
-✓ Tests: 15/15 passed
+Phase Results:
+  Phase 1 (Verification): 4/4 gates passed
+  Phase 2 (AI Review): M findings from N agents
+  Phase 2.5 (Git Claims): X verified, Y missing, Z unplanned
+  Phase 3 (Standards): N checks, M violations
+  Phase 4 (Optimization): N suggestions
 
-═══════════════════════════════════════════════════════════
-CODE & LOGIC REVIEW
-═══════════════════════════════════════════════════════════
-[Results from Agent 1]
-✓ Good: [what's good]
-⚠ Issue: [description] (file:line)
-
-═══════════════════════════════════════════════════════════
-SECURITY REVIEW
-═══════════════════════════════════════════════════════════
-[Results from Agent 2]
-✓ Good: [what's secure]
-⚠ Issue: [description] (file:line)
-
-═══════════════════════════════════════════════════════════
-ARCHITECTURE & CONFLICTS
-═══════════════════════════════════════════════════════════
-[Results from Agent 3]
-✓ Good: [what follows patterns]
-⚠ Issue: [description] (file:line)
-
-═══════════════════════════════════════════════════════════
-SUMMARY
-═══════════════════════════════════════════════════════════
-Verification: 4/4 gates passed (spec, lint, typecheck, tests)
-AI Review: N issues (X critical, Y high, Z medium, W low)
-
-Top Recommendations:
-1. [Most important fix]
-2. [Second most important]
-3. [Third most important]
-
-Findings saved to: .workflow/state/last-review.json
-Run /wogi-triage to walk through findings interactively.
+Total Findings: N (X critical, Y high, Z medium, W low)
+Phases: 5/5 executed
 ```
+
+**5.2. Present fix options to user** (use AskUserQuestion):
+```
+Options:
+[1] Fix all - Convert findings to todos and start fix loop
+[2] Fix critical first - Only fix critical/high severity
+[3] Review manually - Save findings, fix later
+```
+
+**5.3. If user chooses fix (option 1 or 2)**:
+- Convert findings to TodoWrite items:
+  - Critical/High → Individual todos
+  - Medium/Low → Grouped by category
+- For each todo:
+  - Mark in_progress
+  - Apply fix
+  - Run targeted verification (node --check, lint)
+  - Mark completed
+- After all fixes: Re-run verification gates (lint, typecheck, tests)
+
+**5.4. Learning capture**:
+- Check each finding against `feedback-patterns.md`
+- For preventable patterns, create correction records
+- If a pattern has occurred 3+ times → Suggest promoting to `decisions.md`
+
+**5.5. Display final checkpoint**:
+```
+═══════════════════════════════════════
+PHASE 5: POST-REVIEW COMPLETE [5/5]
+═══════════════════════════════════════
+
+Findings: N total
+Fixed: M (if fix loop ran)
+Saved to: .workflow/state/last-review.json
+
+Phases: 5/5 executed
+Review complete.
+```
+
+---
+
+**END OF EXECUTION STEPS. The review is complete ONLY when Phase 5 checkpoint is displayed.**
 
 ## Multi-Pass Mode Execution
 
@@ -672,7 +924,9 @@ To review recent commits: /wogi-review --commits 3
 To review specific files: Please stage them first with git add
 ```
 
-## Phase 2.5: Git-Verified Claim Checking (v5.0)
+## Phase 2.5: Git-Verified Claim Checking (v5.0) — Reference Detail
+
+> **Note**: The authoritative execution flow is in "Execution Steps (MANDATORY 5-PHASE PROTOCOL)" above. This section provides expanded reference detail.
 
 **Cross-reference spec completion claims against actual `git diff` to catch false "done" claims.**
 
@@ -742,7 +996,9 @@ Summary: 2 verified, 1 missing, 1 unplanned
 
 ---
 
-## Phase 3: Standards Compliance (v4.0 - STRICT)
+## Phase 3: Standards Compliance (v4.0 - STRICT) — Reference Detail
+
+> **Note**: The authoritative execution flow is in "Execution Steps (MANDATORY 5-PHASE PROTOCOL)" above. This section provides expanded reference detail.
 
 **This phase BLOCKS review completion if violations are found.** "All code must look like the same developer wrote it."
 
@@ -795,7 +1051,9 @@ Use `--skip-standards` flag to bypass (not recommended):
 
 ---
 
-## Phase 4: Solution Optimization (v4.0 - NON-BLOCKING)
+## Phase 4: Solution Optimization (v4.0 - NON-BLOCKING) — Reference Detail
+
+> **Note**: The authoritative execution flow is in "Execution Steps (MANDATORY 5-PHASE PROTOCOL)" above. This section provides expanded reference detail.
 
 **This phase provides improvement suggestions - they are recommendations, NOT violations.**
 
@@ -857,9 +1115,11 @@ Use `--skip-optimization` flag to skip this phase:
 
 ---
 
-## Post-Review Workflow
+## Post-Review Workflow — Reference Detail
 
-After AI review completes, execute the fix-and-verify loop:
+> **Note**: The authoritative execution flow is in "Execution Steps (MANDATORY 5-PHASE PROTOCOL)" above. This section provides expanded reference detail for Phase 5.
+
+After ALL review phases complete (1 through 4), execute the fix-and-verify loop:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

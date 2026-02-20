@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-123 | 2026-02-20 15:42
+**Type**: fix
+**Tags**: #review #wogi-review #phases #enforcement #agents #project-rules #performance #adversarial #git-claims #standards #optimization #post-review #P1
+**Task**: wf-2639ad7d
+**Request**: "Fix wogi-review to execute all 5 designed phases"
+**Result**: Restructured wogi-review.md skill document to enforce all 5 phases sequentially. Added: (1) MANDATORY 5-PHASE PROTOCOL with explicit checkpoints, (2) project-rules agent spawning from decisions.md, (3) performance agent spawning from config, (4) adversarial minimum findings enforcement, (5) Phase 2.5 git-verified claim checking, (6) Phase 5 post-review workflow with fix loop and learning. Previously only ~40% of the review design executed.
+**Files**: .claude/commands/wogi-review.md
+
 ### R-122 | 2026-02-20 13:30
 **Type**: fix
 **Tags**: #hooks #implementation-gate #context-injection #postinstall #npm-update #security #P0 #v1.4.5

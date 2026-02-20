@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-20T07:00:00.000Z",
+  "lastUpdated": "2026-02-20T10:42:20.138Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2639ad7d",
+      "title": "Fix wogi-review to execute all 5 designed phases",
+      "type": "story",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-20T14:00:00.000Z",
+      "startedAt": "2026-02-20T15:00:00.000Z",
+      "specPath": ".workflow/changes/wf-2639ad7d.md",
+      "completedAt": "2026-02-20T10:42:20.138Z"
+    },
     {
       "id": "wf-cr-hookfmt",
       "title": "Fix fail-open error handling, context injection, npm update propagation",
@@ -93,56 +105,6 @@
       "priority": "P2",
       "startedAt": "2026-02-20T00:20:00.000Z",
       "completedAt": "2026-02-20T00:30:00.000Z"
-    },
-    {
-      "id": "wf-6b2aa8d3",
-      "title": "Fix Codex review findings (P0-P2) and remove dead config/code",
-      "type": "fix",
-      "feature": "quality",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-19T23:35:00.000Z",
-      "completedAt": "2026-02-20T00:15:00.000Z"
-    },
-    {
-      "id": "wf-f0a3106f",
-      "title": "Remove dead multi-CLI support code and false claims",
-      "type": "refactor",
-      "feature": "cleanup",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T22:00:00.000Z",
-      "completedAt": "2026-02-19T23:30:00.000Z"
-    },
-    {
-      "id": "wf-docs-v140",
-      "title": "Update README and knowledge base docs for v1.4.0 features",
-      "type": "task",
-      "feature": "documentation",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T22:30:00.000Z",
-      "completedAt": "2026-02-19T22:45:00.000Z"
-    },
-    {
-      "id": "wf-cr-remain",
-      "title": "Fix remaining 4 code review findings",
-      "type": "task",
-      "feature": "quality-improvements",
-      "status": "completed",
-      "priority": "P2",
-      "startedAt": "2026-02-19T21:50:00.000Z",
-      "completedAt": "2026-02-19T22:00:00.000Z"
-    },
-    {
-      "id": "wf-cr-02881a",
-      "title": "Fix code review findings from wf-02881aba",
-      "type": "task",
-      "feature": "quality-improvements",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-19T21:30:00.000Z",
-      "completedAt": "2026-02-19T21:45:00.000Z"
     }
   ],
   "backlog": [
