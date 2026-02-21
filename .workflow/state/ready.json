@@ -5,6 +5,17 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-mapsync",
+      "title": "Add deletion/rename sync to app-map, function-map, and api-map",
+      "type": "story",
+      "feature": "config",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T10:15:00.000Z",
+      "startedAt": "2026-02-21T10:15:00.000Z",
+      "completedAt": "2026-02-21T13:30:00.000Z"
+    },
+    {
       "id": "wf-cfgaudit",
       "title": "Config audit fixes — remove dead sections, fix similarity threshold, enrich installer",
       "type": "story",

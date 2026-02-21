@@ -312,9 +312,36 @@ class FunctionScanner extends BaseScanner {
   }
 
   /**
+   * Prune entries whose source files no longer exist
+   */
+  prune() {
+    const before = this.registry.functions.length;
+    this.registry.functions = this.registry.functions.filter(func => {
+      const fullPath = path.isAbsolute(func.file) ? func.file : path.join(PROJECT_ROOT, func.file);
+      return fs.existsSync(fullPath);
+    });
+    const removed = before - this.registry.functions.length;
+
+    // Rebuild categories from surviving functions
+    this.registry.categories = {};
+    for (const func of this.registry.functions) {
+      if (!this.registry.categories[func.category]) {
+        this.registry.categories[func.category] = [];
+      }
+      this.registry.categories[func.category].push(func.name);
+    }
+
+    if (removed > 0) {
+      console.log(`   Pruned ${color('yellow', removed)} orphaned entries (source files deleted)`);
+    }
+    return removed;
+  }
+
+  /**
    * Save registry to file
    */
   save() {
+    this.prune();
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(INDEX_PATH, JSON.stringify(this.registry, null, 2));
     success(`Saved to ${path.relative(PROJECT_ROOT, INDEX_PATH)}`);

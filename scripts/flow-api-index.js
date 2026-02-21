@@ -464,9 +464,45 @@ class APIScanner extends BaseScanner {
   }
 
   /**
+   * Prune entries whose source files no longer exist
+   */
+  prune() {
+    const beforeEndpoints = this.registry.endpoints.length;
+    const beforeFunctions = this.registry.clientFunctions.length;
+
+    this.registry.endpoints = this.registry.endpoints.filter(ep => {
+      if (!ep.file) return true; // keep entries without file paths
+      const fullPath = path.isAbsolute(ep.file) ? ep.file : path.join(PROJECT_ROOT, ep.file);
+      return fs.existsSync(fullPath);
+    });
+
+    this.registry.clientFunctions = this.registry.clientFunctions.filter(func => {
+      const fullPath = path.isAbsolute(func.file) ? func.file : path.join(PROJECT_ROOT, func.file);
+      return fs.existsSync(fullPath);
+    });
+
+    // Rebuild services from surviving functions
+    this.registry.services = {};
+    for (const func of this.registry.clientFunctions) {
+      if (!this.registry.services[func.service]) {
+        this.registry.services[func.service] = [];
+      }
+      this.registry.services[func.service].push(func.name);
+    }
+
+    const removed = (beforeEndpoints - this.registry.endpoints.length) +
+                    (beforeFunctions - this.registry.clientFunctions.length);
+    if (removed > 0) {
+      console.log(`   Pruned ${color('yellow', removed)} orphaned entries (source files deleted)`);
+    }
+    return removed;
+  }
+
+  /**
    * Save registry to file
    */
   save() {
+    this.prune();
     fs.mkdirSync(STATE_DIR, { recursive: true });
     fs.writeFileSync(INDEX_PATH, JSON.stringify(this.registry, null, 2));
     success(`Saved to ${path.relative(PROJECT_ROOT, INDEX_PATH)}`);

@@ -926,9 +926,9 @@ Given [context] When [action] Then [outcome]
 
 Also add:
 - "Update request-log.md with task entry"
-- "Update app-map.md if new components created"
-- "Update function-map.md if new utility functions created"
-- "Update api-map.md if new API endpoints created"
+- "Update app-map.md if components were created, deleted, or renamed"
+- "Update function-map.md if utility functions were created, deleted, or renamed"
+- "Update api-map.md if API endpoints were created, deleted, or renamed"
 - "Run quality gates"
 - "Commit changes"
 
@@ -1371,9 +1371,9 @@ if (changedUIFiles.length > 0 && config.webmcp?.enabled) {
 2. **Close out all TodoWrite items** for this task — mark any remaining `in_progress` or `pending` items as `completed`. Stale items persist across context compactions and create noise.
 3. Update ready.json: Move task to recentlyCompleted
 4. Update request-log.md with task entry
-5. Update app-map.md if new components were created
-6. Update function-map.md if new utility functions were created
-7. Update api-map.md if new API endpoints were created
+5. Update app-map.md if components were created, deleted, or renamed (remove stale entries, update paths)
+6. Update function-map.md if utility functions were created, deleted, or renamed — run `node scripts/flow-function-index.js scan` to auto-prune orphans
+7. Update api-map.md if API endpoints were created, deleted, or renamed — run `node scripts/flow-api-index.js scan` to auto-prune orphans
 8. **Auto-generate WebMCP tools** if new UI components were created (see below)
 9. Git add and commit with message: `feat: Complete wf-XXXXXXXX - [title]`
 10. Show completion summary with verification results

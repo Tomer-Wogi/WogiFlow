@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-137 | 2026-02-21 13:30
+**Type**: feature
+**Tags**: #map-sync #function-map #api-map #app-map #pruning #deletion-sync
+**Task**: wf-mapsync
+**Request**: "Ensure WogiFlow updates maps when components/functions/APIs are deleted or renamed — not just when added"
+**Result**: Added `prune()` methods to flow-function-index.js and flow-api-index.js that auto-remove entries whose source files no longer exist. Updated wogi-start.md, CLAUDE.md, and templates to instruct AI to update maps on deletions/renames, not just additions.
+**Files**: scripts/flow-function-index.js, scripts/flow-api-index.js, .claude/commands/wogi-start.md, CLAUDE.md, .workflow/templates/claude-md.hbs, .workflow/templates/partials/auto-features.hbs
+
 ### R-136 | 2026-02-21 13:00
 **Type**: refactor
 **Tags**: #config #installer #standards #similarity-threshold #dead-code
