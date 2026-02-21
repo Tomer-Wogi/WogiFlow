@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "generatedAt": "2026-02-21T10:57:26.863Z",
+  "registries": [
+    {
+      "id": "apis",
+      "name": "API Registry",
+      "mapFile": "api-map.md",
+      "indexFile": "api-index.json",
+      "category": "code",
+      "type": "apis",
+      "enabled": true,
+      "active": true,
+      "activateWhen": "always"
+    },
+    {
+      "id": "components",
+      "name": "Component Registry",
+      "mapFile": "app-map.md",
+      "indexFile": "component-index.json",
+      "category": "code",
+      "type": "components",
+      "enabled": true,
+      "active": false,
+      "activateWhen": "frontend framework or component directories exist"
+    },
+    {
+      "id": "functions",
+      "name": "Function Registry",
+      "mapFile": "function-map.md",
+      "indexFile": "function-index.json",
+      "category": "code",
+      "type": "functions",
+      "enabled": true,
+      "active": true,
+      "activateWhen": "always"
+    }
+  ]
+}

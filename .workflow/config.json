@@ -892,6 +892,14 @@
     ],
     "autoUpdate": true
   },
+  "registries": [
+    { "id": "components", "enabled": true, "activateWhen": "frontend" },
+    { "id": "functions", "enabled": true, "activateWhen": "always" },
+    { "id": "apis", "enabled": true, "activateWhen": "always" },
+    { "id": "schemas", "enabled": "auto", "activateWhen": "orm" },
+    { "id": "services", "enabled": "auto", "activateWhen": "backend" }
+  ],
+  "_comment_registries": "Unified registry config. 'auto' = activate only when stack condition is met. Old-format keys (functionRegistry, apiRegistry, componentIndex) are still read for backwards compatibility.",
   "semanticMatching": {
     "enabled": true,
     "thresholds": {

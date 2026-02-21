@@ -13,6 +13,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-139 | 2026-02-21 15:00
+**Type**: feature
+**Tags**: #scanner #registry #plugin-architecture #manifest #component-scanner
+**Task**: wf-ext-registry
+**Epic**: epic-universal-registry (Story 2/5)
+**Request**: "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack"
+**Result**: Created `flow-registry-manager.js` with RegistryPlugin base class, RegistryManager orchestrator, getActiveRegistries() helper, and CLI. Created 3 plugin adapters: function-registry.js (wraps FunctionScanner), api-registry.js (wraps APIScanner), component-registry.js (new ComponentScanner for React/Vue/Svelte). Added `registries` config array alongside old-format keys for backwards compat. Generates `registry-manifest.json` for dynamic discovery by consuming systems. 22/22 tests passing across all 9 acceptance criteria.
+**Files**: scripts/flow-registry-manager.js (NEW), scripts/registries/function-registry.js (NEW), scripts/registries/api-registry.js (NEW), scripts/registries/component-registry.js (NEW), .workflow/config.json, lib/installer.js
+
 ### R-138 | 2026-02-21 14:45
 **Type**: feature
 **Tags**: #scanner #framework-resolver #file-patterns #prisma #nestjs #django #go #rust

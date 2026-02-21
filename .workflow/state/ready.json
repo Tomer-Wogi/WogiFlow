@@ -1,21 +1,7 @@
 {
-  "lastUpdated": "2026-02-21T10:43:44.893Z",
+  "lastUpdated": "2026-02-21T10:54:29.274Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-ext-registry",
-      "title": "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack",
-      "type": "story",
-      "feature": "scanner",
-      "epic": "epic-universal-registry",
-      "status": "ready",
-      "priority": "P1",
-      "dependsOn": [
-        "wf-fwk-discovery"
-      ],
-      "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-ext-registry.md"
-    },
     {
       "id": "wf-manifest-wiring",
       "title": "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery",
@@ -61,6 +47,22 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-ext-registry",
+      "title": "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "completed",
+      "priority": "P1",
+      "dependsOn": [
+        "wf-fwk-discovery"
+      ],
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "startedAt": "2026-02-21T15:00:00.000Z",
+      "specPath": ".workflow/changes/wf-ext-registry.md",
+      "completedAt": "2026-02-21T10:54:29.274Z"
+    },
     {
       "id": "wf-fwk-discovery",
       "title": "Framework-Driven File Discovery — replace hardcoded FILE_PATTERNS with stack-aware dynamic discovery",
