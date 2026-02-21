@@ -49,8 +49,9 @@ const NAMING_RULES = {
   }
 };
 
-// Component similarity threshold
-const SIMILARITY_THRESHOLD = 0.8;
+// Component similarity thresholds
+const SIMILARITY_THRESHOLD = 0.8;       // >= this: must-fix (blocks task)
+const SIMILARITY_WARNING_THRESHOLD = 0.6; // >= this but < SIMILARITY_THRESHOLD: warning (user decides)
 
 // Task type to check type mapping for smart scoping
 const TASK_CHECK_MAP = {
@@ -315,7 +316,7 @@ function checkNamingConventions(file) {
  * @param {number} threshold - Similarity threshold (0-1)
  * @returns {Object[]} Array of violations
  */
-function checkComponentDuplication(file, existingComponents, threshold = SIMILARITY_THRESHOLD) {
+function checkComponentDuplication(file, existingComponents, threshold = SIMILARITY_THRESHOLD, warningThreshold = SIMILARITY_WARNING_THRESHOLD) {
   const violations = [];
 
   // Only check for new component files
@@ -333,6 +334,7 @@ function checkComponentDuplication(file, existingComponents, threshold = SIMILAR
     const similarity = calculateSimilarity(componentName, existingName);
 
     if (similarity >= threshold && componentName !== existingName) {
+      // High similarity: must-fix (blocks task)
       violations.push({
         type: 'component-duplication',
         severity: 'must-fix',
@@ -340,6 +342,17 @@ function checkComponentDuplication(file, existingComponents, threshold = SIMILAR
         line: null,
         message: `Component "${fileName}" is ${Math.round(similarity * 100)}% similar to existing "${existing.name}"`,
         suggestion: `Use existing component or add variant to "${existing.name}" instead`,
+        rule: 'app-map.md / component-reuse.md'
+      });
+    } else if (similarity >= warningThreshold && componentName !== existingName) {
+      // Moderate similarity: warning (user decides)
+      violations.push({
+        type: 'component-duplication',
+        severity: 'warning',
+        file: file.path,
+        line: null,
+        message: `Component "${fileName}" is ${Math.round(similarity * 100)}% similar to existing "${existing.name}" — review if this is intentional`,
+        suggestion: `Consider reusing or extending "${existing.name}" if the purpose overlaps`,
         rule: 'app-map.md / component-reuse.md'
       });
     }
@@ -355,7 +368,7 @@ function checkComponentDuplication(file, existingComponents, threshold = SIMILAR
  * @param {number} threshold - Similarity threshold (0-1)
  * @returns {Object[]} Array of violations
  */
-function checkFunctionDuplication(file, existingFunctions, threshold = SIMILARITY_THRESHOLD) {
+function checkFunctionDuplication(file, existingFunctions, threshold = SIMILARITY_THRESHOLD, warningThreshold = SIMILARITY_WARNING_THRESHOLD) {
   const violations = [];
   const content = file.content || '';
 
@@ -572,7 +585,8 @@ function isInChangedPaths(filePath, changedPaths) {
 function runStandardsCheck(files, options = {}) {
   const {
     changedPaths = [],
-    similarityThreshold = SIMILARITY_THRESHOLD
+    similarityThreshold = SIMILARITY_THRESHOLD,
+    similarityWarningThreshold = SIMILARITY_WARNING_THRESHOLD
   } = options;
 
   // Determine which checks to run
@@ -612,14 +626,14 @@ function runStandardsCheck(files, options = {}) {
 
     // Component duplication
     if (checksToRun.includes('components') && components.length > 0) {
-      const componentViolations = checkComponentDuplication(file, components, similarityThreshold);
+      const componentViolations = checkComponentDuplication(file, components, similarityThreshold, similarityWarningThreshold);
       allViolations.push(...componentViolations);
       checksSummary['app-map.md'].violations += componentViolations.length;
     }
 
     // Function duplication
     if (checksToRun.includes('functions') && functions.length > 0) {
-      const functionViolations = checkFunctionDuplication(file, functions, similarityThreshold);
+      const functionViolations = checkFunctionDuplication(file, functions, similarityThreshold, similarityWarningThreshold);
       allViolations.push(...functionViolations);
       checksSummary['function-map.md'].violations += functionViolations.length;
     }

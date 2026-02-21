@@ -434,7 +434,8 @@
       "naming",
       "security"
     ],
-    "similarityThreshold": 80,
+    "similarityThreshold": 0.8,
+    "similarityWarningThreshold": 0.6,
     "learning": {
       "enabled": true,
       "promotionThreshold": 3,
@@ -478,10 +479,6 @@
         "npm run test"
       ]
     }
-  },
-  "testing": {
-    "runAfterTask": false,
-    "runBeforeCommit": false
   },
   "checkpoint": {
     "enabled": true,
@@ -586,35 +583,6 @@
     "learnFromLoopRetries": true,
     "loopRetryThreshold": 3,
     "autoSuggestPatternUpdates": true
-  },
-  "skillGeneration": {
-    "sources": {
-      "skillsSh": {
-        "enabled": true,
-        "preferOverContext7": true,
-        "installCommand": "npx skills add"
-      },
-      "context7": {
-        "enabled": true,
-        "maxTokensPerFetch": 5000,
-        "topic": "best practices patterns"
-      }
-    },
-    "fetchMode": "sequential",
-    "contextOverflowPrevention": {
-      "maxConcurrentFetches": 1,
-      "compactThreshold": 0.80
-    }
-  },
-  "autoLearning": {
-    "enabled": true,
-    "captureFrom": {
-      "sessionReview": true,
-      "bugFix": true
-    },
-    "confidenceThreshold": 80,
-    "promotionThreshold": 3,
-    "autoPromote": false
   },
   "sessionLearning": {
     "enabled": true,
@@ -937,26 +905,6 @@
     },
     "useAIReview": true
   },
-  "figmaAnalyzer": {
-    "enabled": true,
-    "thresholds": {
-      "exactMatch": 95,
-      "strongMatch": 80,
-      "variantCandidate": 60
-    },
-    "componentDirs": [
-      "src/components",
-      "components",
-      "src/ui",
-      "ui"
-    ],
-    "mcpServer": {
-      "port": 3847,
-      "autoStart": false
-    },
-    "autoScanOnAnalyze": true,
-    "generatePrompts": true
-  },
   "guidedEdit": {
     "enabled": true,
     "sessionFile": ".workflow/state/guided-edit-session.json",
@@ -1102,26 +1050,6 @@
     "resetAfterMinutes": 30,
     "persistState": false
   },
-  "tieredLearning": {
-    "enabled": true,
-    "tiers": {
-      "autoApply": {
-        "minSuccessRate": 0.9,
-        "minSamples": 5,
-        "action": "apply-silently"
-      },
-      "applyWithLog": {
-        "minSuccessRate": 0.7,
-        "minSamples": 3,
-        "action": "apply-and-log"
-      },
-      "queueForReview": {
-        "minSuccessRate": 0,
-        "minSamples": 0,
-        "action": "queue"
-      }
-    }
-  },
   "contextScoring": {
     "enabled": true,
     "maxContextTokens": 100000,
@@ -1224,18 +1152,6 @@
     "smallFixThreshold": 3,
     "squashTaskCommits": true,
     "commitMessageFormat": "conventional"
-  },
-  "export": {
-    "defaultFlags": [
-      "--rules"
-    ],
-    "sanitizeTemplates": true,
-    "includeSkillLearnings": true,
-    "excludePatterns": [
-      "*.local.*",
-      "*.secret.*",
-      ".env*"
-    ]
   },
   "security": {
     "scanBeforeCommit": true,
@@ -1619,10 +1535,6 @@
     },
     "researchDepth": "thorough",
     "deepenPromptThreshold": "L1"
-  },
-  "planning": {
-    "plansDirectory": ".workflow/plans",
-    "exemptFromTaskGating": true
   },
   "models": {
     "providers": {},

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-136 | 2026-02-21 13:00
+**Type**: refactor
+**Tags**: #config #installer #standards #similarity-threshold #dead-code
+**Task**: wf-cfgaudit
+**Request**: "Config.json audit fixes: remove dead sections, fix similarity threshold, enrich installer"
+**Result**: Removed 7 dead config sections (skillGeneration, autoLearning, tieredLearning, testing, planning, export, figmaAnalyzer — 89 lines). Fixed similarity threshold bug (config had value `80` but code expected `0.8`, making the check non-functional). Added two-tier similarity system: >= 0.8 blocks as must-fix, 0.6-0.8 warns and lets user decide. Added threshold normalization to handle both percentage and decimal formats. Enriched installer default config from 9 lines to comprehensive defaults covering enforcement, tasks, loops, qualityGates, standardsCompliance, validation, commits, hooks, smartCompaction, review, planMode, research, and 10+ more essential sections.
+**Files**: `.workflow/config.json`, `scripts/flow-standards-checker.js`, `scripts/flow-standards-gate.js`, `lib/installer.js`
+
 ### R-135 | 2026-02-21 12:30
 **Type**: new
 **Tags**: #review #origin-tracing #learning-signal #same-session

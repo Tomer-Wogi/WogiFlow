@@ -1,9 +1,20 @@
 {
-  "lastUpdated": "2026-02-21T09:45:00.000Z",
+  "lastUpdated": "2026-02-21T09:49:15.807Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cfgaudit",
+      "title": "Config audit fixes — remove dead sections, fix similarity threshold, enrich installer",
+      "type": "story",
+      "feature": "config",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T10:00:00.000Z",
+      "startedAt": "2026-02-21T10:00:00.000Z",
+      "completedAt": "2026-02-21T09:49:15.806Z"
+    },
     {
       "id": "wf-origintrace",
       "title": "Origin Task Tracing — same-session annotation, originTask references, learning signal detection",
@@ -108,58 +119,6 @@
       "priority": "P0",
       "startedAt": "2026-02-20T19:35:00.000Z",
       "completedAt": "2026-02-20T20:10:00.000Z"
-    },
-    {
-      "id": "wf-route-learn",
-      "title": "Update /wogi-start routing to detect learning/rule intents",
-      "type": "story",
-      "feature": "learning",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T19:00:00.000Z",
-      "startedAt": "2026-02-20T19:25:00.000Z",
-      "specPath": ".workflow/changes/wf-route-learn.md",
-      "epic": "wf-learning-epic",
-      "completedAt": "2026-02-20T18:23:19.237Z"
-    },
-    {
-      "id": "wf-learn",
-      "title": "/wogi-learn — Interactive Pattern Promotion from Feedback to Decisions",
-      "type": "story",
-      "feature": "learning",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T19:00:00.000Z",
-      "startedAt": "2026-02-20T19:15:00.000Z",
-      "specPath": ".workflow/changes/wf-learn.md",
-      "epic": "wf-learning-epic",
-      "completedAt": "2026-02-20T19:20:00.000Z"
-    },
-    {
-      "id": "wf-retro",
-      "title": "/wogi-retrospective — Session Learning Extraction and Capture",
-      "type": "story",
-      "feature": "learning",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T19:00:00.000Z",
-      "startedAt": "2026-02-20T19:20:00.000Z",
-      "specPath": ".workflow/changes/wf-retro.md",
-      "epic": "wf-learning-epic",
-      "completedAt": "2026-02-20T18:21:44.146Z"
-    },
-    {
-      "id": "wf-decide",
-      "title": "/wogi-decide — Interactive Rule Creation with Clarifying Questions",
-      "type": "story",
-      "feature": "learning",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T19:00:00.000Z",
-      "startedAt": "2026-02-20T19:10:00.000Z",
-      "specPath": ".workflow/changes/wf-decide.md",
-      "epic": "wf-learning-epic",
-      "completedAt": "2026-02-20T18:19:44.876Z"
     }
   ],
   "backlog": [
