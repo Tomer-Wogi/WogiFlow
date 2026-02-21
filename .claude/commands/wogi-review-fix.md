@@ -12,6 +12,9 @@ Comprehensive code review with **automatic fixing**. Runs the full `/wogi-review
 /wogi-review-fix --browser          # Include browser debugging for UI issues
 /wogi-review-fix --skip-standards   # Skip standards compliance auto-fix
 /wogi-review-fix --skip-optimization # Skip solution optimization suggestions
+/wogi-review-fix --pending                         # Process all deferred review tasks
+/wogi-review-fix --pending --severity high         # Only high+ severity deferred tasks
+/wogi-review-fix --pending --file src/api.ts       # Only deferred tasks for specific file
 ```
 
 ## How It Works (v4.0)
@@ -50,6 +53,94 @@ Comprehensive code review with **automatic fixing**. Runs the full `/wogi-review
 │     15. Read console, fix runtime errors, verify             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+## Phase 0: Pending Review Task Processing (`--pending` mode)
+
+**When `--pending` is specified, skip the full review (Phases 1-7) and batch-process deferred review tasks from `ready.json`.**
+
+This mode processes tasks created by `/wogi-review` Phase 5.3c or `/wogi-triage` — persistent tasks with `source: "review"` and `wf-rv-` prefix.
+
+### Usage
+
+```bash
+/wogi-review-fix --pending                         # Process all review tasks
+/wogi-review-fix --pending --severity high         # Only high+ severity
+/wogi-review-fix --pending --file src/api.ts       # Only tasks for specific file
+```
+
+### Execution Steps
+
+**0.1. Load pending review tasks**:
+- Read `ready.json`
+- Filter tasks where `source === "review"` (these have `wf-rv-` prefix)
+- Apply filters if provided:
+  - `--severity high`: Only P0 (critical) and P1 (high) tasks
+  - `--file <path>`: Only tasks where `finding.file` matches the path
+
+**0.2. Group into batches** (read `config.reviewFix.batchExecution`):
+- Group by `finding.file`, then by `finding.category`
+- Sort batches by priority (P0 first)
+
+**0.3. Display batch plan**:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PENDING REVIEW TASKS (N items in M batches)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Batch 1 | File: src/api.ts | Category: security (3 findings)
+  P0: SQL injection in user query
+  P1: Missing auth check
+  P2: Raw JSON.parse without try-catch
+
+Batch 2 | File: src/utils.ts | Category: code-logic (2 findings)
+  P2: Sequential awaits could use Promise.all
+  P3: Unused import
+
+Options:
+  [1] Process all batches now
+  [2] Process critical/high batches only
+  [3] Select specific batches
+  [4] Cancel
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**0.4. Execute each batch**:
+
+For each batch:
+1. **Create batch task**: Generate `wf-rvb-XXXXXXXX` (8-char hash of batch files + categories). Add to `inProgress` in `ready.json`. This satisfies the task-gate for edits.
+2. **Fix each finding** in the batch:
+   - Apply severity routing (read `config.reviewFix.severityRouting`):
+     - critical/high findings → Full fix loop (read file, apply fix, verify with lint+typecheck+tests)
+     - medium/low findings → Light fix loop (apply fix, verify with `node --check` + lint + typecheck)
+     - Security findings (`category: "security"`) → Always display to user, even when auto-fixable
+   - On success → Remove the individual `wf-rv-` task from `ready` array in `ready.json`
+   - On failure → Leave task in `ready` array, add `"fixAttempted": true` to the task, continue to next finding
+3. **Complete batch task**: Move `wf-rvb-XXXXXXXX` from `inProgress` to `recentlyCompleted` with `completedAt` timestamp
+
+**0.5. Post-batch verification**:
+- Run full verification gates (lint, typecheck, tests) across all modified files
+- If new issues found, report them (do NOT auto-create tasks for verification regressions)
+
+**0.6. Commit and summary**:
+- Git add modified files and commit: `fix: Batch-fix N review findings (wf-rvb-XXXXXXXX)`
+- Display summary:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ BATCH PROCESSING COMPLETE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Batches processed: M
+Findings fixed: X / Y total
+Findings remaining: Z (still in ready.json)
+Verification: PASSED / FAILED
+
+Run /wogi-ready to see remaining review tasks.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**When `--pending` is NOT specified**, proceed with the normal review+fix flow below.
+
+---
 
 ## Phase 1: Verification Gates
 
@@ -308,7 +399,7 @@ Total issues found: 20
   High-priority optimizations: 2 (auto-applied)
   AI review issues: 12 (auto-fixed)
   Browser runtime issues: 1 (auto-fixed)
-  Manual review needed: 3
+  Manual review needed: 3 → tasks created
 
 Verification: PASSED
 
@@ -319,7 +410,64 @@ Files modified: 6
   • src/components/Form.tsx (3 fixes)
   • src/auth.ts (1 fix)
   • src/components/TaskList.tsx (1 browser fix)
+
+Tasks created for manual items: 3
+  • wf-rv-XXXXXXXX: Potential SQL injection (P0)
+  • wf-rv-XXXXXXXX: Race condition (P1)
+  • wf-rv-XXXXXXXX: Breaking API change (P2)
+
+Run /wogi-review-fix --pending to batch-process deferred items.
 ```
+
+### Persistent Task Creation for Manual Items
+
+After the "MANUAL ATTENTION NEEDED" section, automatically create persistent tasks for each manual item (findings that could not be auto-fixed). This ensures nothing is silently lost.
+
+For EACH manual finding:
+
+1. **Duplicate check**: Search `ready.json` for existing task with matching `finding.id`. Skip if already exists.
+2. **Generate ID**: `wf-rv-XXXXXXXX` (8-char hash of `finding.id` + review date)
+3. **Resolve origin task** (when `config.originTaskTracing.traceOrigin` is true):
+   - Run `git log --format="%H %s" -1 -- [finding.file]` to find the last commit that touched the file
+   - Extract task ID from commit message (pattern: `wf-XXXXXXXX`)
+   - Look up the task in `ready.json` → `recentlyCompleted` to get `{ id, title, type, feature }`
+   - If no task ID found in commit → set `originTask: null`
+4. **Map severity → priority**: critical→P0, high→P1, medium→P2, low→P3
+5. **Create task** in `ready.json` `ready` array:
+   ```json
+   {
+     "id": "wf-rv-XXXXXXXX",
+     "title": "Review fix: [issue truncated to 80 chars]",
+     "type": "fix",
+     "feature": "review",
+     "source": "review",
+     "reviewDate": "[ISO]",
+     "originTask": {
+       "id": "[origin task ID or null]",
+       "title": "[origin task title]",
+       "type": "[origin task type]",
+       "feature": "[origin task feature]"
+     },
+     "finding": {
+       "id": "[finding.id]",
+       "severity": "[finding.severity]",
+       "category": "[finding.category]",
+       "file": "[finding.file]",
+       "line": "[finding.line]",
+       "issue": "[finding.issue]",
+       "recommendation": "[finding.recommendation]",
+       "autoFixable": false
+     },
+     "status": "ready",
+     "priority": "P0-P3",
+     "batchable": true,
+     "batchKey": "[file]|[category]",
+     "createdAt": "[ISO]"
+   }
+   ```
+6. **Update `last-review.json`**: Add `"taskCreated": "wf-rv-XXXXXXXX"` to each finding that got a task.
+
+**Learning signal check**: After all manual tasks are created, run the learning signal detection (same logic as `/wogi-review` Phase 5.3c Step 4). If `config.originTaskTracing.learningSignal.enabled` is true, collect `originTask` references from newly created `wf-rv-` tasks AND existing `wf-rv-` tasks in `ready.json`, group by `originTask.type`/`originTask.feature`, and check if any group has >= threshold instances. If so, add entry to `feedback-patterns.md` and display warning.
 
 ---
 
@@ -338,6 +486,9 @@ Files modified: 6
 | `--browser-url URL` | Specify URL for browser debugging (default: localhost:3000) |
 | `--multipass` | Force multi-pass review mode |
 | `--no-multipass` | Disable auto multi-pass detection |
+| `--pending` | Skip review, batch-process deferred `wf-rv-` tasks from `ready.json` |
+| `--severity <level>` | With `--pending`: filter by severity (critical, high, medium, low) |
+| `--file <path>` | With `--pending`: filter by file path |
 
 ---
 

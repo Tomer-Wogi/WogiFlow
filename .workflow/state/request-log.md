@@ -13,6 +13,22 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-135 | 2026-02-21 12:30
+**Type**: new
+**Tags**: #review #origin-tracing #learning-signal #same-session
+**Task**: wf-origintrace
+**Request**: "Add origin task tracing — same-session annotation, originTask references, and learning signal detection for review fixes"
+**Result**: Added `originTaskTracing` config block with toggles for same-session annotation, origin tracing, and learning signals. Modified wogi-review Phase 5.3c to detect same-session reviews and annotate completed tasks with `reviewFindings` instead of creating standalone tasks; added `originTask` field to `wf-rv-` tasks with git-based origin resolution; added learning signal detection that fires when same task type/feature generates 3+ fixes. Updated wogi-review-fix and wogi-triage with matching `originTask` field and learning signal checks.
+**Files**: `.workflow/config.json`, `.claude/commands/wogi-review.md`, `.claude/commands/wogi-review-fix.md`, `.claude/commands/wogi-triage.md`, `.workflow/changes/wf-origintrace.md`
+
+### R-134 | 2026-02-21 12:00
+**Type**: new
+**Tags**: #review #triage #review-fix #batch #severity-routing
+**Task**: wf-reviewfix
+**Request**: "Implement Enhanced Post-Review Fix Workflow — severity routing, persistent tasks, batch mode"
+**Result**: Added `reviewFix` config block, rewrote wogi-review Phase 5 with 4-option severity-aware prompt and persistent task creation (wf-rv- prefix), added --pending batch mode to wogi-review-fix with grouping/sorting, added --batch and --source review filters to wogi-triage with aligned task format.
+**Files**: `.workflow/config.json`, `.claude/commands/wogi-review.md`, `.claude/commands/wogi-review-fix.md`, `.claude/commands/wogi-triage.md`
+
 ### R-133 | 2026-02-21 11:30
 **Type**: change
 **Tags**: #onboarding #postinstall #welcome-message

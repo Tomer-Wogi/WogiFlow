@@ -685,7 +685,7 @@ These are suggestions only - not blocking.
 
 ### PHASE 5: Post-Review Workflow
 
-**This phase handles findings persistence, fix options, and learning. It is MANDATORY.**
+**This phase handles findings persistence, severity-aware fix routing, persistent task creation for unfixed findings, and learning. It is MANDATORY.**
 
 **5.1. Present consolidated review summary**:
 ```
@@ -708,26 +708,48 @@ Total Findings: N (X critical, Y high, Z medium, W low)
 Phases: 5/5 executed
 ```
 
-**5.2. Present fix options to user** (use AskUserQuestion):
+**5.2. Present severity-aware fix options to user** (use AskUserQuestion):
+
+First, compute the severity summary from findings:
 ```
-Options:
-[1] Fix all - Convert findings to todos and start fix loop
-[2] Fix critical first - Only fix critical/high severity
-[3] Review manually - Save findings, fix later
+Finding Severity Summary:
+  Critical: X (Y auto-fixable)  |  High: X (Y auto-fixable)
+  Medium: X (Y auto-fixable)    |  Low: X (Y auto-fixable)
 ```
 
-**5.3. If user chooses "Review manually" (option 3)**:
-- Save findings to `last-review.json` only (already done in step 2.6)
-- Do NOT create any task in `ready.json`
-- Inform the user: "Findings saved to `.workflow/state/last-review.json`. When ready to fix, use `/wogi-start` to create a tracked task."
-- Proceed to step 5.4
+Then present 4 options:
+```
+[1] Fix all now
+    critical/high → full quality loop | medium/low → light fix loop
 
-**5.3b. If user chooses fix (option 1 or 2) — TASK CREATION REQUIRED**:
+[2] Fix critical/high only, create tasks for rest
+    Fixes important issues now, defers medium/low as persistent tasks
+
+[3] Triage interactively
+    Per-finding decisions (fix/task/skip/dismiss) via /wogi-triage
+
+[4] Create tasks for all (fix later in batches)
+    Every finding → persistent task in ready.json
+    Process later: /wogi-review-fix --pending
+```
+
+**Auto-recommendation logic** (append "(Recommended)" to the suggested option):
+- Any critical finding → recommend Option 1
+- All auto-fixable AND < 5 findings → recommend Option 1
+- \> 10 findings → recommend Option 4
+- Otherwise → recommend Option 2
+
+**5.3. If user chooses Option 3 (Triage interactively)**:
+- Invoke `/wogi-triage` to walk through findings interactively
+- Triage will handle fix/task/skip/dismiss decisions per finding
+- Proceed to step 5.4 after triage completes
+
+**5.3b. If user chooses fix (Option 1 or 2) — SEVERITY-ROUTED FIX LOOP**:
 
 **BEFORE applying any fixes, create a tracked fix task in `ready.json` inProgress:**
 
 1. Generate a fix task ID: `wf-cr-XXXXXX` (first 6 chars of a hash based on review date + finding count)
-2. Count findings to fix (all for option 1, critical/high only for option 2)
+2. Count findings to fix (all for Option 1, critical/high only for Option 2)
 3. Read `ready.json`, add fix task to `inProgress` array:
    ```json
    {
@@ -743,19 +765,37 @@ Options:
 4. Write updated `ready.json` — the task-gate (PreToolUse) will now allow Edit/Write operations
 5. Display: `Created fix task: wf-cr-XXXXXX — Fix N review findings`
 
-**ONLY AFTER the task exists in inProgress**, proceed with the fix loop:
-- Convert findings to TodoWrite items:
-  - Critical/High → Individual todos
-  - Medium/Low → Grouped by category
-- For each todo:
-  - Mark in_progress
-  - Apply fix
-  - Run targeted verification (node --check, lint)
-  - Mark completed
+**ONLY AFTER the task exists in inProgress**, proceed with the severity-routed fix loop.
+
+**Severity Routing Table** (read `config.reviewFix.severityRouting`):
+
+| Severity | autoFixable | Security? | Route |
+|----------|------------|-----------|-------|
+| critical | any | any | Full `/wogi-start` loop |
+| high | false | any | Full `/wogi-start` loop |
+| high | true | yes | Full loop (security always gets full review) |
+| high | true | no | Light fix loop |
+| medium/low | any | yes | Light fix + security flag (display to user even when auto-fixable) |
+| medium/low | any | no | Light fix loop |
+
+**Full loop** (for critical/high findings): Convert to TodoWrite items as individual todos. For each:
+- Mark in_progress
+- Apply fix
+- Run targeted verification (node --check, lint, typecheck)
+- Mark completed
+
+**Light fix loop** (for medium/low auto-fixable findings):
+1. Apply fix (Edit tool)
+2. Verify: `node --check <file>` + lint + typecheck
+3. If PASS → mark fixed
+4. If FAIL → retry once, then escalate to manual/task
+
+Light fix loop does NOT include: spec generation, explore phase, approval gate, or criteria check.
+
 - After all fixes: Re-run verification gates (lint, typecheck, tests)
 - **Fix loop iteration cap**: Maximum 3 re-verify cycles. If new issues keep appearing after 3 iterations, stop and present remaining issues to the user rather than continuing automatically.
 
-**AFTER the fix loop completes**, move the task to recentlyCompleted:
+**AFTER the fix loop completes**, move the fix task to recentlyCompleted:
 1. Read `ready.json`
 2. Remove the fix task from `inProgress`
 3. Add it to `recentlyCompleted` with `completedAt` timestamp
@@ -767,6 +807,121 @@ This ensures:
 - After completion, no active task exists → task-gate blocks subsequent untracked edits
 - All fix work is tracked and visible in the workflow
 
+**5.3c. Same-session detection + persistent task creation for unfixed findings (ALL options)**:
+
+After the fix loop completes (Options 1/2), or immediately (Option 4), handle unfixed findings with **origin-aware persistence**. This ensures nothing gets silently lost AND creates traceability.
+
+**Step 1: Same-session detection** (read `config.originTaskTracing`):
+
+When `config.originTaskTracing.annotateCompletedTasks` is true:
+
+1. Read `ready.json` → `recentlyCompleted` array
+2. For each completed task, check if `completedAt` is within the `sameSessionWindow` (default: 2 hours from now)
+3. For each unfixed finding, check if `finding.file` was changed by a recent completed task:
+   - Run `git log --format="%H" -1 -- [finding.file]` to get the last commit that touched the file
+   - Check if that commit message contains a task ID from `recentlyCompleted` (e.g., `wf-XXXXXXXX` in the commit message)
+   - Alternatively, check if the finding's file path appears in the completed task's known changed files
+4. If a match is found → this is a **same-session finding** for that origin task
+
+**Step 2: Annotate completed tasks with same-session findings**:
+
+For findings that match a same-session completed task:
+
+1. Add a `reviewFindings` array to the completed task in `recentlyCompleted`:
+   ```json
+   {
+     "id": "wf-existing-task",
+     "title": "...",
+     "status": "completed",
+     "reviewFindings": [
+       {
+         "id": "[finding.id]",
+         "severity": "[finding.severity]",
+         "category": "[finding.category]",
+         "file": "[finding.file]",
+         "line": "[finding.line]",
+         "issue": "[finding.issue]",
+         "recommendation": "[finding.recommendation]",
+         "reviewDate": "[ISO]",
+         "status": "unfixed"
+       }
+     ]
+   }
+   ```
+2. Do NOT create a separate `wf-rv-` task for these findings — they live on the completed task
+3. Display: `Annotated task [id] with N review findings (same-session)`
+
+**Step 3: Create persistent tasks for remaining (non-same-session) findings**:
+
+For findings that do NOT match a same-session task, create `wf-rv-` tasks with origin tracing:
+
+1. **Duplicate check**: Search `ready.json` for existing task with matching `finding.id` in the `finding` field. If a task already exists for this finding, skip creation.
+2. **Generate ID**: `wf-rv-XXXXXXXX` (8-char hash of `finding.id` + reviewDate)
+3. **Resolve origin task** (when `config.originTaskTracing.traceOrigin` is true):
+   - Run `git log --format="%H %s" -1 -- [finding.file]` to find the last commit
+   - Extract task ID from commit message (pattern: `wf-XXXXXXXX`)
+   - Look up the task in `recentlyCompleted` to get `{ id, title, type, feature }`
+   - If no task ID found in commit → set `originTask: null`
+4. **Map severity → priority**: critical→P0, high→P1, medium→P2, low→P3
+5. **Create task** in `ready.json` `ready` array:
+   ```json
+   {
+     "id": "wf-rv-XXXXXXXX",
+     "title": "Review fix: [issue truncated to 80 chars]",
+     "type": "fix",
+     "feature": "review",
+     "source": "review",
+     "reviewDate": "[ISO]",
+     "originTask": {
+       "id": "[origin task ID or null]",
+       "title": "[origin task title]",
+       "type": "[origin task type]",
+       "feature": "[origin task feature]"
+     },
+     "finding": {
+       "id": "[finding.id]",
+       "severity": "[finding.severity]",
+       "category": "[finding.category]",
+       "file": "[finding.file]",
+       "line": "[finding.line]",
+       "issue": "[finding.issue]",
+       "recommendation": "[finding.recommendation]",
+       "autoFixable": "[finding.autoFixable]"
+     },
+     "status": "ready",
+     "priority": "P0-P3",
+     "batchable": true,
+     "batchKey": "[file]|[category]",
+     "createdAt": "[ISO]"
+   }
+   ```
+
+**Step 4: Learning signal detection** (when `config.originTaskTracing.learningSignal.enabled` is true):
+
+After all tasks are created, check for patterns:
+
+1. Collect all `originTask` references from newly created `wf-rv-` tasks AND existing `wf-rv-` tasks in `ready.json`
+2. Group by `originTask.type` and `originTask.feature`
+3. If any group has >= `config.originTaskTracing.learningSignal.threshold` (default: 3) fix tasks:
+   - Add entry to `feedback-patterns.md`:
+     ```
+     | [date] | review-origin-pattern-[type/feature] | Tasks of type "[type]"/feature "[feature]" consistently generate review fixes (N instances) | N | Investigate |
+     ```
+   - Display warning:
+     ```
+     ⚠️ LEARNING SIGNAL: Tasks of type "[type]"/feature "[feature]" have generated N review fixes.
+        This suggests a systematic issue with how these tasks are implemented.
+        Consider: /wogi-decide "review checklist for [type] tasks"
+     ```
+
+**Step 5: Update `last-review.json`**: For each finding that got a task, add `"taskCreated": "wf-rv-XXXXXXXX"`. For same-session annotations, add `"annotatedOn": "[origin task ID]"`. Set `"triaged": true` on the review.
+
+**Config toggles** (all in `config.originTaskTracing`):
+- `annotateCompletedTasks: false` → Skip same-session detection, all findings create standalone tasks
+- `traceOrigin: false` → No `originTask` field on fix tasks
+- `learningSignal.enabled: false` → No pattern detection
+- `sameSessionWindow: "2h"` → Time window for same-session detection (default: 2 hours)
+
 **5.4. Learning capture**:
 - Check each finding against `feedback-patterns.md`
 - For preventable patterns, create correction records
@@ -774,7 +929,7 @@ This ensures:
 
 **5.5. Archive review report**:
 - Save review report to `.workflow/reviews/YYYY-MM-DD-HHMMSS-review.md`
-- Include: date, files reviewed, mode, all findings with status, summary
+- Include: date, files reviewed, mode, all findings with status (fixed/task-created/dismissed), summary
 
 **5.6. Sign-off gate**:
 - Present summary to user and ask for confirmation that the review is complete
@@ -787,8 +942,13 @@ PHASE 5: POST-REVIEW COMPLETE [5/5]
 ═══════════════════════════════════════
 
 Findings: N total
-Fixed: M (if fix loop ran)
+Fixed: M  |  Tasks Created: Z  |  Annotated: A  |  Dismissed: W
 Saved to: .workflow/state/last-review.json
+
+Same-session annotations: A findings linked to N completed tasks
+Origin tracing: Z fix tasks with origin references
+
+Run /wogi-review-fix --pending to batch-process deferred items.
 
 Phases: 5/5 executed
 Review complete.

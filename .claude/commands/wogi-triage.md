@@ -9,6 +9,8 @@ Interactive walkthrough of review findings. Loads findings from `.workflow/state
 /wogi-triage --severity high     # Only high+ severity findings
 /wogi-triage --category security # Only security findings
 /wogi-triage --agent performance # Only findings from performance agent
+/wogi-triage --source review     # Only review-sourced tasks from ready.json
+/wogi-triage --batch             # Group findings into batches for faster decisions
 ```
 
 ## How It Works
@@ -117,19 +119,52 @@ After the triage loop completes, execute "Fix now" items sequentially:
 
 ## Task Creation
 
-For "Create task" items, create entries in `ready.json`:
+For "Create task" items, create entries in `ready.json` using the `wf-rv-` prefix (matching the format from `/wogi-review` Phase 5.3c):
+
+1. **Duplicate check**: Search `ready.json` for existing task with matching `finding.id`. Skip if already exists.
+2. **Generate ID**: `wf-rv-XXXXXXXX` (8-char hash of `finding.id` + triage date)
+3. **Resolve origin task** (when `config.originTaskTracing.traceOrigin` is true):
+   - Run `git log --format="%H %s" -1 -- [finding.file]` to find the last commit that touched the file
+   - Extract task ID from commit message (pattern: `wf-XXXXXXXX`)
+   - Look up the task in `ready.json` → `recentlyCompleted` to get `{ id, title, type, feature }`
+   - If no task ID found in commit → set `originTask: null`
+4. **Create task**:
 
 ```json
 {
-  "id": "wf-[8-char-hash]",
-  "title": "Fix: [finding issue summary]",
-  "type": "bugfix",
-  "priority": "P1",  // Based on finding severity: critical→P0, high→P1, medium→P2, low→P3
-  "description": "From code review triage:\n\nFile: [file]:[line]\nIssue: [issue]\nRecommendation: [recommendation]",
-  "createdAt": "[timestamp]",
-  "source": "triage"
+  "id": "wf-rv-XXXXXXXX",
+  "title": "Review fix: [issue truncated to 80 chars]",
+  "type": "fix",
+  "feature": "review",
+  "source": "review",
+  "reviewDate": "[ISO from last-review.json]",
+  "originTask": {
+    "id": "[origin task ID or null]",
+    "title": "[origin task title]",
+    "type": "[origin task type]",
+    "feature": "[origin task feature]"
+  },
+  "finding": {
+    "id": "[finding.id]",
+    "severity": "[finding.severity]",
+    "category": "[finding.category]",
+    "file": "[finding.file]",
+    "line": "[finding.line]",
+    "issue": "[finding.issue]",
+    "recommendation": "[finding.recommendation]",
+    "autoFixable": "[finding.autoFixable]"
+  },
+  "status": "ready",
+  "priority": "P0-P3",
+  "batchable": true,
+  "batchKey": "[file]|[category]",
+  "createdAt": "[ISO]"
 }
 ```
+
+This format is identical to tasks created by `/wogi-review` Phase 5.3c and processable by `/wogi-review-fix --pending`.
+
+**Learning signal check**: After all tasks are created during triage, run the learning signal detection (same as `/wogi-review` Phase 5.3c Step 4). If `config.originTaskTracing.learningSignal.enabled` is true, group all `wf-rv-` tasks in `ready.json` by `originTask.type`/`originTask.feature` and check if any group has >= threshold instances. If so, add to `feedback-patterns.md` and display warning in triage summary.
 
 ## Dismiss Learning
 
@@ -200,6 +235,51 @@ After triage completes, update `last-review.json`:
 Filters can be combined:
 ```bash
 /wogi-triage --severity high --category security
+```
+
+## Batch Mode (`--batch`)
+
+Instead of the per-finding walkthrough, `--batch` groups findings by file+category and presents per-batch decisions for faster triage.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Batch 1 of 5 | File: src/api.ts | Category: security (3 findings)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. [HIGH] Raw JSON.parse without try-catch (line 45)
+  2. [HIGH] Missing auth check on endpoint (line 89)
+  3. [MEDIUM] Sensitive data in error response (line 112)
+
+Options:
+  [1] Fix all in batch — apply all fixes sequentially
+  [2] Create tasks — create wf-rv- tasks for all in batch
+  [3] Expand individually — triage each finding separately
+  [4] Skip — no action for this batch
+  [5] Dismiss — all findings in batch are false positives
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Use `AskUserQuestion` to present batch options. If user chooses "Expand individually", fall back to per-finding walkthrough for that batch only.
+
+## Source Filter (`--source review`)
+
+When `--source review` is specified, triage loads findings from `ready.json` tasks with `source === "review"` instead of from `last-review.json`.
+
+This is useful for triaging accumulated review debt (deferred findings that were turned into persistent tasks).
+
+**How it works:**
+1. Read `ready.json`, filter tasks where `source === "review"` (these have `wf-rv-` prefix)
+2. Extract the `finding` field from each task as the finding to triage
+3. Walk through findings using the same triage flow (fix/task/skip/dismiss)
+4. For "Fix now" decisions: fix the finding, then remove the `wf-rv-` task from `ready.json`
+5. For "Dismiss" decisions: remove the `wf-rv-` task from `ready.json`, record in `feedback-patterns.md`
+6. For "Skip" decisions: leave the task in `ready.json` unchanged
+
+Can be combined with other filters:
+```bash
+/wogi-triage --source review --severity high    # Only high+ review tasks
+/wogi-triage --source review --batch            # Batch triage of review tasks
+/wogi-triage --source review --category security # Only security review tasks
 ```
 
 ## Configuration

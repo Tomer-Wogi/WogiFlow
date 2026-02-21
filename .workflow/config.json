@@ -1398,6 +1398,31 @@
     "mode": "inline",
     "detailPath": ".workflow/corrections"
   },
+  "reviewFix": {
+    "persistUnfixed": true,
+    "taskPrefix": "wf-rv-",
+    "severityRouting": {
+      "criticalHighRoute": "full",
+      "mediumLowRoute": "light",
+      "securityAlwaysFlag": true
+    },
+    "batchExecution": {
+      "groupBy": ["file", "category"],
+      "sortBy": "priority"
+    },
+    "autoRecommendBatchThreshold": 10
+  },
+  "originTaskTracing": {
+    "enabled": true,
+    "annotateCompletedTasks": true,
+    "traceOrigin": true,
+    "sameSessionWindow": "2h",
+    "learningSignal": {
+      "enabled": true,
+      "threshold": 3,
+      "groupBy": ["type", "feature"]
+    }
+  },
   "triage": {
     "enabled": true,
     "autoSuggestAfterReview": true,

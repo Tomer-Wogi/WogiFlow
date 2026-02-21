@@ -1,9 +1,32 @@
 {
-  "lastUpdated": "2026-02-21T08:40:33.397Z",
+  "lastUpdated": "2026-02-21T09:45:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-origintrace",
+      "title": "Origin Task Tracing — same-session annotation, originTask references, learning signal detection",
+      "type": "story",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T09:30:00.000Z",
+      "startedAt": "2026-02-21T09:30:00.000Z",
+      "completedAt": "2026-02-21T09:45:00.000Z",
+      "specPath": ".workflow/changes/wf-origintrace.md"
+    },
+    {
+      "id": "wf-reviewfix",
+      "title": "Enhanced Post-Review Fix Workflow — severity routing, persistent tasks, batch mode",
+      "type": "story",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T09:00:00.000Z",
+      "startedAt": "2026-02-21T09:00:00.000Z",
+      "completedAt": "2026-02-21T09:15:00.000Z"
+    },
     {
       "id": "wf-postinstall",
       "title": "Add post-install welcome message with setup guidance for wogi-init and wogi-onboard",
