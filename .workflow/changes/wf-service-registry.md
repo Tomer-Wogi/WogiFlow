@@ -124,8 +124,9 @@ Do NOT modify:
 
 ## Dependencies
 
-- **Depends on**: wf-ext-registry (needs plugin architecture)
+- **Depends on**: wf-ext-registry (needs plugin architecture + manifest generation)
 - **Depends on**: wf-fwk-discovery (needs framework-specific file patterns)
+- **Note**: wf-manifest-wiring makes this registry auto-discoverable by all consuming systems, but this story can proceed independently — the manifest wiring is additive
 
 ## Complexity
 

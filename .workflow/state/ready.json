@@ -26,6 +26,18 @@
       "specPath": ".workflow/changes/wf-ext-registry.md"
     },
     {
+      "id": "wf-manifest-wiring",
+      "title": "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "ready",
+      "priority": "P1",
+      "dependsOn": ["wf-ext-registry"],
+      "createdAt": "2026-02-21T14:30:00.000Z",
+      "specPath": ".workflow/changes/wf-manifest-wiring.md"
+    },
+    {
       "id": "wf-schema-registry",
       "title": "Schema/Model Registry Plugin — Prisma, TypeORM, Django model detection (fixes Prisma scanner bug)",
       "type": "story",

@@ -60,11 +60,23 @@ Given a task is completed
 When post-task updates run
 Then RegistryManager orchestrates all active registries (not three separate scan commands)
 
+### Scenario 8: Registry manifest generated and maintained
+Given the RegistryManager has active plugins
+When `scan` completes (or on RegistryManager init)
+Then `.workflow/state/registry-manifest.json` is generated listing all active registries with metadata
+And consuming systems can read the manifest to discover all available maps dynamically
+
+### Scenario 9: Manifest includes metadata for each registry
+Given a registry-manifest.json
+When read by any consuming system
+Then each entry includes: id, name, mapFile, indexFile, type, category, activateWhen, and active status
+
 ## Technical Notes
 
 ### Components
-- **New**: `scripts/flow-registry-manager.js` — Plugin orchestrator
+- **New**: `scripts/flow-registry-manager.js` — Plugin orchestrator + manifest generator
 - **New**: `scripts/registries/` directory — Plugin modules
+- **New**: `.workflow/state/registry-manifest.json` — Auto-generated registry manifest
 - **Move**: `FunctionScanner` → `scripts/registries/function-registry.js`
 - **Move**: `APIScanner` → `scripts/registries/api-registry.js`
 - **New**: `scripts/registries/component-registry.js` — Automated component discovery
@@ -82,6 +94,8 @@ class RegistryPlugin extends BaseScanner {
   static name = 'Function Registry';    // Display name
   static mapFile = 'function-map.md';   // Output file
   static indexFile = 'function-index.json'; // Machine-readable output
+  static category = 'code';             // code | database | architecture
+  static type = 'functions';            // For context loading
 
   // Activation
   activateWhen(stack) {
@@ -97,6 +111,85 @@ class RegistryPlugin extends BaseScanner {
   async save() { }
 }
 ```
+
+### Registry Manifest (registry-manifest.json)
+
+The RegistryManager generates this file after every scan or init. It serves as the **single source of truth** for all consuming systems that need to know which registries exist and where their files are.
+
+```json
+{
+  "version": 1,
+  "generatedAt": "2026-02-21T14:00:00.000Z",
+  "registries": [
+    {
+      "id": "components",
+      "name": "Component Registry",
+      "mapFile": "app-map.md",
+      "indexFile": "component-index.json",
+      "category": "code",
+      "type": "components",
+      "enabled": true,
+      "active": true,
+      "activateWhen": "always"
+    },
+    {
+      "id": "functions",
+      "name": "Function Registry",
+      "mapFile": "function-map.md",
+      "indexFile": "function-index.json",
+      "category": "code",
+      "type": "functions",
+      "enabled": true,
+      "active": true,
+      "activateWhen": "always"
+    },
+    {
+      "id": "apis",
+      "name": "API Registry",
+      "mapFile": "api-map.md",
+      "indexFile": "api-index.json",
+      "category": "code",
+      "type": "apis",
+      "enabled": true,
+      "active": true,
+      "activateWhen": "always"
+    },
+    {
+      "id": "schemas",
+      "name": "Schema Registry",
+      "mapFile": "schema-map.md",
+      "indexFile": "schema-index.json",
+      "category": "database",
+      "type": "schemas",
+      "enabled": "auto",
+      "active": true,
+      "activateWhen": "orm"
+    }
+  ]
+}
+```
+
+**Design principle**: The manifest is purely descriptive. It doesn't replace config — it reflects the *resolved* state after config + stack detection. Consuming systems read the manifest to discover what registries exist; they never hardcode map filenames.
+
+**Helper function** (added to `flow-utils.js` or `flow-registry-manager.js`):
+
+```javascript
+function getActiveRegistries() {
+  const manifestPath = path.join(STATE_DIR, 'registry-manifest.json');
+  if (fs.existsSync(manifestPath)) {
+    return safeJsonParse(manifestPath, { registries: [] }).registries
+      .filter(r => r.active);
+  }
+  // Fallback: return hardcoded defaults (backwards compat)
+  return [
+    { id: 'components', mapFile: 'app-map.md', indexFile: 'component-index.json', category: 'code', type: 'components' },
+    { id: 'functions', mapFile: 'function-map.md', indexFile: 'function-index.json', category: 'code', type: 'functions' },
+    { id: 'apis', mapFile: 'api-map.md', indexFile: 'api-index.json', category: 'code', type: 'apis' }
+  ];
+}
+```
+
+The fallback ensures that if `registry-manifest.json` doesn't exist yet (fresh install, pre-migration), all consuming systems still work with the original three maps.
 
 ### Config Evolution
 
@@ -129,7 +222,7 @@ class RegistryPlugin extends BaseScanner {
 Do NOT modify:
 - Existing `.workflow/state/*.md` map file formats (additive only)
 - Existing scanner CLI commands (`flow function-index scan` must still work)
-- `.claude/commands/` files (instruction updates are separate)
+- `.claude/commands/` files (instruction updates are in wf-manifest-wiring story)
 
 ## Dependencies
 
@@ -137,4 +230,4 @@ Do NOT modify:
 
 ## Complexity
 
-High — Refactors core scanning architecture. Must maintain full backwards compatibility.
+High — Refactors core scanning architecture. Must maintain full backwards compatibility. Manifest generation adds moderate scope but is essential for downstream wiring.
