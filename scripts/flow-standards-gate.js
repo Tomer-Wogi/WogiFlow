@@ -61,8 +61,10 @@ function loadTaskContext(taskId) {
     spec = readFile(task.specPath, '');
   }
 
-  // Extract files to change from spec
-  const filesToChange = extractFilesToChange(spec);
+  // Extract files to change from spec (only if spec is a non-empty string)
+  const filesToChange = (spec && typeof spec === 'string' && spec.trim().length > 0)
+    ? extractFilesToChange(spec)
+    : [];
 
   return {
     id: taskId,

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-147 | 2026-02-22 06:30
+**Type**: fix
+**Tags**: #review #security #performance #docs
+**Task**: wf-cr-rv222
+**Request**: "Fix 18 review findings from 3-day comprehensive review (session 2)"
+**Result**: Fixed 10 findings across 6 files: (1) postinstall.js — wrapped bare fs.copyFileSync in try-catch. (2) session-context.js — cached getReadyData() to avoid triple file read on session init. (3) commands.md — fixed markdown formatting break (missing newline in Memory section header). (4) commands.md — replaced 9 phantom CLI commands with actual node script invocations. (5) commands.md — removed duplicate /wogi-compact and /wogi-trace entries. (6) flow-pattern-extractor.js — added path traversal validation to _getGitBlameDate and _getGitFileDate. (7) flow-standards-gate.js — added spec content validation before extractFilesToChange. (8) registry-manifest.json — clarified component registry activation condition. Dismissed 8 findings as false positives or pre-existing non-critical debt.
+**Files**: scripts/postinstall.js, scripts/hooks/core/session-context.js, .claude/docs/commands.md, scripts/flow-pattern-extractor.js, scripts/flow-standards-gate.js, .workflow/state/registry-manifest.json
+
 ### R-146 | 2026-02-22 03:30
 **Type**: change
 **Tags**: #docs #readme #knowledge-base #commands

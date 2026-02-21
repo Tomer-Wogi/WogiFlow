@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-21T22:42:11.838Z",
+  "lastUpdated": "2026-02-22T06:30:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -47,6 +47,16 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-rv222",
+      "title": "Fix 18 review findings from 3-day comprehensive review (session 2)",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-22T04:00:00.000Z",
+      "completedAt": "2026-02-22T06:30:00.000Z"
+    },
     {
       "id": "wf-0a744cdd",
       "title": "Rewrite README as concise feature summary with KB deep-links — cleanup outdated KB, fix phantom commands",

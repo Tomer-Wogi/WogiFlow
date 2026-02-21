@@ -75,14 +75,6 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-map-index scan` | Rescan codebase and regenerate component-index.json. |
 | `/wogi-map-sync` | Compare auto-generated index with curated app-map. Show what's missing, what's stale. Offer to update. |
 
-### Code Traces
-
-| Command | Action |
-|---------|--------|
-| `/wogi-trace [prompt]` | Generate task-focused code trace. Analyzes codebase to show execution flow, components involved, mermaid diagram. Saves to `.workflow/traces/`. |
-| `/wogi-trace list` | List all saved traces. |
-| `/wogi-trace [name]` | Load and show an existing trace. |
-
 ### Search & Context
 
 | Command | Action |
@@ -153,7 +145,6 @@ When user types these commands, execute the corresponding action immediately.
 
 | Command | Action |
 |---------|--------|
-| `/wogi-compact` | Run memory compaction. Preview with `--preview`. |
 | `/wogi-suspend` | Suspend current task with resume condition (--wait-ci, --review, --rate-limit). |
 | `/wogi-resume` | Resume a suspended task. Use --status to check, --approve to approve review. |
 
@@ -270,20 +261,21 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow checkpoint rollback <id> # Rollback to checkpoint
 ./scripts/flow checkpoint cleanup # Remove old checkpoints
 
-# Memory & Knowledge./scripts/flow memory search <q>  # Search stored facts
-./scripts/flow memory stats       # Show memory statistics
-./scripts/flow memory-server      # Start MCP memory server
-./scripts/flow entropy            # Show memory entropy stats
-./scripts/flow entropy --auto     # Auto-compact if entropy high
-./scripts/flow entropy --history  # Show entropy history
-./scripts/flow compact-memory     # Run full memory compaction
-./scripts/flow compact-memory --preview # Show what would be affected
-./scripts/flow memory-sync        # Check patterns for promotion
-./scripts/flow memory-sync --auto # Auto-promote to decisions.md
-./scripts/flow knowledge-route <t> # Detect route for a learning
-./scripts/flow knowledge-route store # Store a learning with route
-./scripts/flow log-manager status  # Show request-log statistics
-./scripts/flow log-manager archive # Archive old log entries
+# Memory & Knowledge
+node scripts/flow-memory-db.js search <q>       # Search stored facts
+node scripts/flow-memory-db.js stats             # Show memory statistics
+node scripts/flow-memory-db.js server            # Start MCP memory server
+node scripts/flow-entropy-monitor.js             # Show memory entropy stats
+node scripts/flow-entropy-monitor.js --auto      # Auto-compact if entropy high
+node scripts/flow-entropy-monitor.js --history   # Show entropy history
+node scripts/flow-memory-compactor.js            # Run full memory compaction
+node scripts/flow-memory-compactor.js --preview  # Show what would be affected
+node scripts/flow-memory-sync.js                 # Check patterns for promotion
+node scripts/flow-memory-sync.js --auto          # Auto-promote to decisions.md
+node scripts/flow-knowledge-router.js <t>        # Detect route for a learning
+node scripts/flow-knowledge-router.js store      # Store a learning with route
+node scripts/flow-log-manager.js status          # Show request-log statistics
+node scripts/flow-log-manager.js archive         # Archive old log entries
 
 # Hybrid Mode
 ./scripts/flow hybrid setup       # Full setup (templates + config)

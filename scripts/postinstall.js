@@ -210,14 +210,26 @@ function copyClaudeResources() {
         if (process.env.DEBUG) {
           console.error(`[postinstall] settings.json merge failed, overwriting: ${err.message}`);
         }
-        fs.copyFileSync(packageSettings, projectSettings);
+        try {
+          fs.copyFileSync(packageSettings, projectSettings);
+        } catch (err) {
+          if (process.env.DEBUG) {
+            console.error(`[postinstall] settings.json copy failed: ${err.message}`);
+          }
+        }
       }
     } else {
       // No existing settings - copy ours directly
-      fs.copyFileSync(packageSettings, projectSettings);
       try {
-        fs.chmodSync(projectSettings, FILE_MODE);
-      } catch (_err) { /* non-critical */ }
+        fs.copyFileSync(packageSettings, projectSettings);
+        try {
+          fs.chmodSync(projectSettings, FILE_MODE);
+        } catch (_err) { /* non-critical */ }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[postinstall] settings.json initial copy failed: ${err.message}`);
+        }
+      }
     }
   }
 

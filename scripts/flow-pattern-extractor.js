@@ -305,7 +305,11 @@ function _getGitBlameDate(projectRoot, filePath, lineNumber) {
       return null;
     }
 
+    // Validate filePath to prevent path traversal
     const fullPath = path.join(projectRoot, filePath);
+    if (!fullPath.startsWith(projectRoot + path.sep) && fullPath !== projectRoot) {
+      return null;
+    }
     // Use execFileSync with array arguments to prevent shell injection
     const output = execFileSync('git', [
       'blame',
@@ -335,6 +339,14 @@ function _getGitFileDate(projectRoot, filePath) {
   const key = `${projectRoot}:${filePath}`;
   if (_gitFileDateCache.has(key)) {
     return _gitFileDateCache.get(key);
+  }
+
+  // Validate filePath to prevent path traversal
+  const resolvedPath = path.resolve(projectRoot, filePath);
+  if (!resolvedPath.startsWith(projectRoot + path.sep) && resolvedPath !== projectRoot) {
+    const date = getFileMtime(projectRoot, filePath);
+    _gitFileDateCache.set(key, date);
+    return date;
   }
 
   try {

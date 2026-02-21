@@ -22,7 +22,7 @@
       "type": "components",
       "enabled": true,
       "active": false,
-      "activateWhen": "frontend framework or component directories exist"
+      "activateWhen": "react, vue, svelte, or angular detected in package.json dependencies"
     },
     {
       "id": "functions",

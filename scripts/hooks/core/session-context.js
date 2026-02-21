@@ -60,13 +60,14 @@ function getSuspendedTask() {
 
 /**
  * Get current task in progress
+ * @param {Object} [readyData] - Pre-loaded ready.json data (avoids duplicate file read)
  * @returns {Object|null} Current task or null
  */
-function getCurrentTask() {
+function getCurrentTask(readyData) {
   try {
-    const readyData = getReadyData();
-    if (readyData.inProgress && readyData.inProgress.length > 0) {
-      const task = readyData.inProgress[0];
+    const data = readyData || getReadyData();
+    if (data.inProgress && data.inProgress.length > 0) {
+      const task = data.inProgress[0];
       return typeof task === 'string' ? { id: task } : task;
     }
     return null;
@@ -78,14 +79,15 @@ function getCurrentTask() {
 /**
  * Get pending task summary (always shown, not just for parallel)
  * Ensures task queue awareness survives context compaction
+ * @param {Object} [readyData] - Pre-loaded ready.json data (avoids duplicate file read)
  * @returns {Object|null} Task queue summary
  */
-function getPendingTaskSummary() {
+function getPendingTaskSummary(readyData) {
   try {
-    const readyData = getReadyData();
-    const ready = readyData.ready || [];
-    const inProgress = readyData.inProgress || [];
-    const blocked = readyData.blocked || [];
+    const data = readyData || getReadyData();
+    const ready = data.ready || [];
+    const inProgress = data.inProgress || [];
+    const blocked = data.blocked || [];
 
     return {
       readyCount: ready.length,
@@ -244,8 +246,16 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // Cache readyData once to avoid triple file read (getCurrentTask + getPendingTaskSummary + parallel check)
+  let readyData;
+  try {
+    readyData = getReadyData();
+  } catch (_err) {
+    readyData = { ready: [], inProgress: [], blocked: [] };
+  }
+
   // Current task
-  const currentTask = getCurrentTask();
+  const currentTask = getCurrentTask(readyData);
   if (currentTask) {
     context.currentTask = currentTask;
   }
@@ -273,16 +283,15 @@ async function gatherSessionContext(options = {}) {
   }
 
   // Pending task summary (always include - survives compaction)
-  const pendingTasks = getPendingTaskSummary();
+  const pendingTasks = getPendingTaskSummary(readyData);
   if (pendingTasks && (pendingTasks.readyCount > 0 || pendingTasks.inProgressCount > 0)) {
     context.pendingTasks = pendingTasks;
   }
 
-  // Parallel execution detection
+  // Parallel execution detection (uses cached readyData — no extra file read)
   try {
     const parallelConfig = getParallelConfig();
     if (parallelConfig.enabled) {
-      const readyData = getReadyData();
       const readyTasks = readyData.ready || [];
       if (readyTasks.length >= 2) {
         const parallelizable = findParallelizable(readyTasks);
