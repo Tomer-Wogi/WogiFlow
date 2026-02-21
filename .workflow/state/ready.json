@@ -1,7 +1,55 @@
 {
   "lastUpdated": "2026-02-21T09:49:15.807Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-fwk-discovery",
+      "title": "Framework-Driven File Discovery — replace hardcoded FILE_PATTERNS with stack-aware dynamic discovery",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "ready",
+      "priority": "P1",
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "specPath": ".workflow/changes/wf-fwk-discovery.md"
+    },
+    {
+      "id": "wf-ext-registry",
+      "title": "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "ready",
+      "priority": "P1",
+      "dependsOn": ["wf-fwk-discovery"],
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "specPath": ".workflow/changes/wf-ext-registry.md"
+    },
+    {
+      "id": "wf-schema-registry",
+      "title": "Schema/Model Registry Plugin — Prisma, TypeORM, Django model detection (fixes Prisma scanner bug)",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "ready",
+      "priority": "P1",
+      "dependsOn": ["wf-ext-registry"],
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "specPath": ".workflow/changes/wf-schema-registry.md"
+    },
+    {
+      "id": "wf-service-registry",
+      "title": "Architecture/Service Registry Plugin — NestJS, Django, Go service/controller detection",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "ready",
+      "priority": "P2",
+      "dependsOn": ["wf-ext-registry"],
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "specPath": ".workflow/changes/wf-service-registry.md"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
     {

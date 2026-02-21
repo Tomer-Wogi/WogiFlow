@@ -1,0 +1,132 @@
+# Story: Architecture/Service Registry Plugin
+
+**ID**: wf-service-registry
+**Epic**: epic-universal-registry
+**Type**: story
+**Priority**: P2
+**Feature**: scanner
+
+## User Story
+
+As a backend developer using NestJS, Django, or similar frameworks,
+I want WogiFlow to track my services, controllers, middleware, and modules,
+So that the AI knows about my architectural layer and avoids creating duplicate services.
+
+## Description
+
+This is the second new registry plugin. Backend frameworks organize code around architectural layers (controllers, services, repositories, middleware) that aren't captured by the current function/API registries. This plugin parses framework-specific decorators and annotations to build an architecture map.
+
+## Acceptance Criteria
+
+### Scenario 1: NestJS architecture mapped
+Given a NestJS project with controllers, services, and modules
+When the service registry scans
+Then controllers, services, modules, guards, and middleware are registered in service-map.md with their routes and dependencies
+
+### Scenario 2: NestJS decorators parsed
+Given files with `@Controller('users')`, `@Get(':id')`, `@Injectable()`
+When scanned
+Then route definitions (`GET /users/:id`) and dependency injection relationships are captured
+
+### Scenario 3: Django views and serializers mapped
+Given a Django REST project
+When the service registry scans
+Then views, viewsets, serializers, and their URL patterns are registered
+
+### Scenario 4: Go handlers and interfaces detected
+Given a Go project with HTTP handler functions
+When scanned
+Then handlers with their routes and interfaces they implement are registered
+
+### Scenario 5: Express/Fastify middleware chain detected
+Given an Express project with middleware
+When scanned
+Then middleware functions and their application order are registered
+
+### Scenario 6: Plugin auto-activates for backend frameworks
+Given `detectStack()` returns a backend framework (NestJS, Django, FastAPI, Express, etc.)
+When RegistryManager checks activation
+Then ServiceRegistry.activateWhen() returns true
+
+### Scenario 7: Pruning removes deleted services
+Given a service file was deleted
+When `prune()` runs
+Then the service is removed from service-map.md
+
+## Technical Notes
+
+### Components
+- **New**: `scripts/registries/service-registry.js` — Service/architecture scanner plugin
+- **New**: `.workflow/state/service-map.md` — Human-readable service documentation
+- **New**: `.workflow/state/service-index.json` — Machine-readable service index
+- **Modify**: `scripts/flow-registry-manager.js` — Register service plugin
+
+### Service-Map Format
+
+```markdown
+# Service Map
+
+## Controllers
+
+| Controller | Route Prefix | Methods | File |
+|-----------|-------------|---------|------|
+| UsersController | /users | GET /, GET /:id, POST /, PATCH /:id, DELETE /:id | src/users/users.controller.ts |
+| AuthController | /auth | POST /login, POST /register, POST /refresh | src/auth/auth.controller.ts |
+
+## Services
+
+| Service | Injected Into | Dependencies | File |
+|---------|--------------|-------------|------|
+| UsersService | UsersController | PrismaService | src/users/users.service.ts |
+| AuthService | AuthController | UsersService, JwtService | src/auth/auth.service.ts |
+
+## Middleware
+
+| Middleware | Applied To | File |
+|-----------|-----------|------|
+| AuthGuard | /users/*, /admin/* | src/common/guards/auth.guard.ts |
+| LoggerMiddleware | * | src/common/middleware/logger.middleware.ts |
+
+## Modules
+
+| Module | Imports | Exports | Providers | File |
+|--------|---------|---------|-----------|------|
+| UsersModule | PrismaModule | UsersService | UsersService, UsersController | src/users/users.module.ts |
+```
+
+### Decorator Parsing
+
+```javascript
+// NestJS decorator patterns
+const NESTJS_PATTERNS = {
+  controller: /@Controller\(['"]([^'"]*)['"]\)/,
+  get: /@Get\(['"]?([^'"]*)?['"]?\)/,
+  post: /@Post\(['"]?([^'"]*)?['"]?\)/,
+  injectable: /@Injectable\(\)/,
+  module: /@Module\(\{([^}]+)\}\)/,
+  guard: /@UseGuards\(([^)]+)\)/
+};
+
+// Django patterns
+const DJANGO_PATTERNS = {
+  viewset: /class\s+(\w+)\(.*ViewSet\)/,
+  apiView: /@api_view\(\[([^\]]+)\]\)/,
+  urlPattern: /path\(['"]([^'"]+)['"]/
+};
+```
+
+## Boundaries
+
+Do NOT modify:
+- Existing map files
+- Core scanner base classes
+- Pattern extractor (uses framework resolver from Story 1)
+
+## Dependencies
+
+- **Depends on**: wf-ext-registry (needs plugin architecture)
+- **Depends on**: wf-fwk-discovery (needs framework-specific file patterns)
+
+## Complexity
+
+High — Must parse decorators/annotations across multiple frameworks. Each framework has different patterns.
