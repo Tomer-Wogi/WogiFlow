@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-21T08:35:19.925Z",
+  "lastUpdated": "2026-02-21T08:40:33.397Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-postinstall",
+      "title": "Add post-install welcome message with setup guidance for wogi-init and wogi-onboard",
+      "type": "fix",
+      "feature": "onboarding",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-02-21T08:39:36.055Z",
+      "startedAt": "2026-02-21T08:39:36.056Z",
+      "specPath": ".workflow/changes/wf-postinstall.md",
+      "completedAt": "2026-02-21T08:40:33.396Z"
+    },
     {
       "id": "wf-5ba8e282",
       "title": "Adapt WogiFlow for Claude Code 2.1.50 — SIMPLE mode detection, worktree hooks, context adjustments, health diagnostics",

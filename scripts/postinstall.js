@@ -324,11 +324,15 @@ function main() {
 \x1b[36m║\x1b[0m             \x1b[1mWogiFlow Installed Successfully!\x1b[0m               \x1b[36m║\x1b[0m
 \x1b[36m╠══════════════════════════════════════════════════════════════╣\x1b[0m
 \x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
-\x1b[36m║\x1b[0m  \x1b[33mTo complete setup, start Claude Code:\x1b[0m                     \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m  \x1b[33mTo complete setup, start Claude Code and then:\x1b[0m             \x1b[36m║\x1b[0m
 \x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
-\x1b[36m║\x1b[0m    \x1b[32mclaude\x1b[0m      \x1b[2m(Claude Code - the official Anthropic CLI)\x1b[0m  \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m  \x1b[1mNew project?\x1b[0m                                               \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    Say \x1b[33m"setup wogiflow"\x1b[0m or run \x1b[33m/wogi-init\x1b[0m                  \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    \x1b[2mSets up workflow from scratch with guided wizard\x1b[0m          \x1b[36m║\x1b[0m
 \x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
-\x1b[36m║\x1b[0m  Then say: \x1b[33m"setup wogiflow"\x1b[0m or run \x1b[33m/wogi-init\x1b[0m               \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m  \x1b[1mExisting project?\x1b[0m                                          \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    Run \x1b[33m/wogi-onboard\x1b[0m                                        \x1b[36m║\x1b[0m
+\x1b[36m║\x1b[0m    \x1b[2mAnalyzes your codebase and sets up workflow with context\x1b[0m  \x1b[36m║\x1b[0m
 \x1b[36m║\x1b[0m                                                              \x1b[36m║\x1b[0m
 \x1b[36m╚══════════════════════════════════════════════════════════════╝\x1b[0m
 

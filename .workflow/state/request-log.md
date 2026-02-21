@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-133 | 2026-02-21 11:30
+**Type**: change
+**Tags**: #onboarding #postinstall #welcome-message
+**Task**: wf-postinstall
+**Request**: "Add post-install welcome message with setup guidance for wogi-init and wogi-onboard"
+**Result**: Updated postinstall.js welcome message to distinguish between new projects (/wogi-init or "setup wogiflow") and existing projects (/wogi-onboard). Added descriptive subtitles for each option.
+**Files**: `scripts/postinstall.js`
+
 ### R-132 | 2026-02-21 10:45
 **Type**: new
 **Tags**: #enforcement #scope-gate #boundaries #spec-generator #story-template
