@@ -161,6 +161,13 @@ ${productSection}
 
 ## Out of Scope
 - [What this does NOT include]
+
+## Boundaries (DO NOT MODIFY)
+Files and paths that must NOT be touched during this task, even if related:
+
+- [path/to/stable-file.js] — [reason: stable, tested, unrelated]
+
+*Delete this section if no boundary protections are needed. Boundaries are enforced by the scope gate at runtime.*
 `;
 }
 

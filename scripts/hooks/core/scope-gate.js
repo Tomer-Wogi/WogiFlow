@@ -18,7 +18,7 @@ const path = require('path');
 // Import from parent scripts directory
 const { getConfig, getProjectRoot } = require('../../flow-utils');
 const { checkTaskGate, getActiveTask } = require('./task-gate');
-const { getSessionFileScope } = require('../../flow-durable-session');
+const { getSessionFileScope, getSessionBoundaries } = require('../../flow-durable-session');
 
 /**
  * Check if scope gating is enabled
@@ -225,6 +225,54 @@ function isFileInScope(filePath, filesToChange) {
 }
 
 /**
+ * Check if a file violates boundary declarations (DO NOT MODIFY list)
+ *
+ * @param {string} filePath - The file being edited
+ * @param {string[]} boundaries - Array of boundary patterns (file paths or globs)
+ * @returns {string|null} The matched boundary pattern, or null if no violation
+ */
+function isFileBoundaryViolation(filePath, boundaries) {
+  if (!boundaries || !Array.isArray(boundaries) || boundaries.length === 0) {
+    return null;
+  }
+
+  for (const pattern of boundaries) {
+    if (typeof pattern === 'string' && pattern.length > 0 && matchesPattern(filePath, pattern)) {
+      return pattern;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Generate block message for boundary violations
+ * @param {string} filePath - The file being edited
+ * @param {Object} task - The active task
+ * @param {string} matchedBoundary - The boundary pattern that was violated
+ * @returns {string}
+ */
+function generateBoundaryBlockMessage(filePath, task, matchedBoundary) {
+  if (!filePath || !task) {
+    return 'BOUNDARY VIOLATION: File is in the task\'s DO NOT MODIFY list';
+  }
+
+  const fileName = path.basename(filePath);
+
+  return `BOUNDARY VIOLATION: Cannot edit ${fileName}
+
+Task: ${task.id}${task.title ? ' - ' + task.title : ''}
+Matched boundary: ${matchedBoundary}
+
+This file is explicitly listed in the task's "## Boundaries (DO NOT MODIFY)" section.
+It must NOT be changed during this task, even if it seems related.
+
+To proceed:
+1. Remove this file from the Boundaries section in the spec, OR
+2. Complete current task and start a new one for this file`;
+}
+
+/**
  * Generate warning message for out-of-scope edits
  * @param {string} filePath - The file being edited
  * @param {Object} task - The active task
@@ -316,6 +364,35 @@ function checkScopeGate(options = {}) {
     return { ...taskResult, scopeChecked: false, reason: 'no_active_task' };
   }
 
+  // Check boundary declarations FIRST (boundaries take priority over scope whitelist)
+  const boundaries = getSessionBoundaries();
+  if (boundaries && filePath) {
+    const matchedBoundary = isFileBoundaryViolation(filePath, boundaries);
+    if (matchedBoundary) {
+      const mode = getScopeGatingMode();
+      if (mode === 'warn') {
+        return {
+          ...taskResult,
+          scopeChecked: true,
+          inScope: false,
+          boundaryViolation: true,
+          warning: generateBoundaryBlockMessage(filePath, activeTask, matchedBoundary),
+          reason: 'boundary_violation_warning'
+        };
+      }
+      // Block mode — boundaries always block
+      return {
+        allowed: false,
+        blocked: true,
+        scopeChecked: true,
+        inScope: false,
+        boundaryViolation: true,
+        message: generateBoundaryBlockMessage(filePath, activeTask, matchedBoundary),
+        reason: 'boundary_violation_blocked'
+      };
+    }
+  }
+
   // Get scope from durable session
   const filesToChange = getSessionFileScope();
 
@@ -372,10 +449,12 @@ module.exports = {
   checkScopeGate,
   isFileInScope,
   isFileExempt,
+  isFileBoundaryViolation,
   matchesPattern,
   isScopeGatingEnabled,
   getScopeGatingMode,
   isPathWithinProject,
   generateScopeWarning,
-  generateScopeBlockMessage
+  generateScopeBlockMessage,
+  generateBoundaryBlockMessage
 };

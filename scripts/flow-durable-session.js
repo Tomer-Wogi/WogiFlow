@@ -370,6 +370,16 @@ function getSessionFileScope() {
 }
 
 /**
+ * Get boundary declarations from current durable session
+ * Used by scope-gate for runtime boundary enforcement
+ * @returns {string[]|null} Array of boundary patterns or null if no boundaries defined
+ */
+function getSessionBoundaries() {
+  const session = loadDurableSession();
+  return session?.boundaries || null;
+}
+
+/**
  * Save the durable session
  * @param {Object} session - Session to save
  */
@@ -1628,6 +1638,7 @@ module.exports = {
   saveDurableSession,
   archiveDurableSession,
   getSessionFileScope,  // v4.0: Get file scope for runtime enforcement
+  getSessionBoundaries, // v5.0: Get boundary declarations for runtime enforcement
 
   // Step management
   getNextPendingStep,

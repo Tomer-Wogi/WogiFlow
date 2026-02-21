@@ -765,6 +765,7 @@ For medium/large tasks (check `config.json → specificationMode`):
    - Acceptance criteria (structured Given/When/Then)
    - Implementation steps
    - Files to change (auto-detected)
+   - **Boundary declarations** (files/paths that must NOT be modified — auto-detected from related stable files, or copied from the story's `## Boundaries` section)
    - Test strategy
    - Verification commands
 2. **[NEEDS CLARIFICATION] Markers** (v5.0 - from `config.specificationMode.needsClarification`):

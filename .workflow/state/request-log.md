@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-132 | 2026-02-21 10:45
+**Type**: new
+**Tags**: #enforcement #scope-gate #boundaries #spec-generator #story-template
+**Task**: wf-boundaries
+**Request**: "Add boundary declarations to task specs"
+**Result**: Added "## Boundaries (DO NOT MODIFY)" section to story template (flow-story.js). Added boundary extraction to spec generator (flow-spec-generator.js) that parses ## Boundaries from spec content. Added runtime boundary enforcement to scope-gate.js — checks boundaries BEFORE scope whitelist, generates BOUNDARY VIOLATION messages when agent tries to edit protected files. Added getSessionBoundaries() to flow-durable-session.js for reading boundaries from session state. Updated wogi-start.md Step 1.5 to mention boundary declarations in spec generation. Inspired by PAUL framework's boundary system.
+**Files**: `scripts/flow-story.js`, `scripts/hooks/core/scope-gate.js`, `scripts/flow-spec-generator.js`, `scripts/flow-durable-session.js`, `.claude/commands/wogi-start.md`
+
 ### R-131 | 2026-02-21 10:25
 **Type**: fix
 **Tags**: #enforcement #routing #wogi-start #conversational-followup #P0

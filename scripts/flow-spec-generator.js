@@ -77,6 +77,11 @@ async function generateSpec(taskId, taskContext) {
     spec.sections.filesToChange = await detectFilesToChange(taskContext);
   }
 
+  // 3.5 Boundary Declarations (DO NOT MODIFY files)
+  if (specConfig.sections?.boundaries !== false) {
+    spec.sections.boundaries = extractBoundaries(taskContext);
+  }
+
   // 4. Test Strategy
   if (specConfig.sections?.testStrategy !== false) {
     spec.sections.testStrategy = generateTestStrategy(taskContext);
@@ -273,6 +278,46 @@ async function detectFilesToChange(taskContext) {
   files.modify = [...new Map(files.modify.map(f => [f.path, f])).values()];
 
   return files;
+}
+
+/**
+ * Extract boundary declarations from task context
+ * Boundaries are files/paths that must NOT be modified during this task.
+ * They come from the spec's "## Boundaries" section if present.
+ *
+ * @param {Object} taskContext - The task context
+ * @returns {string[]} Array of file/path patterns that are off-limits
+ */
+function extractBoundaries(taskContext) {
+  const boundaries = [];
+
+  // Extract from spec content if available (## Boundaries section)
+  if (taskContext.specContent) {
+    const boundaryMatch = taskContext.specContent.match(
+      /## Boundaries[^\n]*\n([\s\S]*?)(?=\n## |\n$|$)/i
+    );
+    if (boundaryMatch) {
+      const lines = boundaryMatch[1].split('\n');
+      for (const line of lines) {
+        // Match bullet points with file paths: "- path/to/file.js — reason"
+        const pathMatch = line.match(/^[-*]\s+([^\s—]+)/);
+        if (pathMatch && pathMatch[1] && !pathMatch[1].startsWith('[')) {
+          boundaries.push(pathMatch[1].trim());
+        }
+      }
+    }
+  }
+
+  // Extract from explicit boundaries field if present
+  if (Array.isArray(taskContext.boundaries)) {
+    for (const b of taskContext.boundaries) {
+      if (typeof b === 'string' && b.length > 0) {
+        boundaries.push(b);
+      }
+    }
+  }
+
+  return boundaries;
 }
 
 /**

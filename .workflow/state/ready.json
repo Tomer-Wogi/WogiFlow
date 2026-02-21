@@ -5,6 +5,18 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-boundaries",
+      "title": "Add boundary declarations to task specs",
+      "type": "story",
+      "feature": "enforcement",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-02-21T10:30:00.000Z",
+      "startedAt": "2026-02-21T10:30:00.000Z",
+      "completedAt": "2026-02-21T10:45:00.000Z",
+      "specPath": ".workflow/changes/wf-boundaries.md"
+    },
+    {
       "id": "wf-conv-followup",
       "title": "Add conversational follow-up handling to /wogi-start",
       "type": "fix",
