@@ -12,8 +12,9 @@ When user types these commands, execute the corresponding action immediately.
 |---------|--------|
 | `/wogi-ready` | Read `ready.json`, show tasks organized by status (ready, in progress, blocked). Summarize what's available to work on. |
 | `/wogi-start [id]` | **Self-completing loop.** Load context, decompose into TodoWrite checklist, implement each scenario with self-verification, run quality gates, auto-complete when truly done. Use `--no-loop` for old behavior. |
-| `/wogi-done [id]` | Manual completion (optional). Check quality gates, update ready.json, commit. Usually not needed since `/wogi-start` auto-completes. |
 | `/wogi-bulk` | Execute multiple tasks in sequence. Order by dependencies + priority. Follow all Task Execution Rules for each. Compact between tasks. Options: number, task IDs, --auto, --plan. |
+| `/wogi-bulk-loop` | Continuous work loop — processes captured ideas and queued tasks automatically. |
+| `/wogi-log` | Add an entry to the request log manually. Used for tracking changes outside the normal task flow. |
 | `/wogi-status` | Show project overview: task counts, active features, bugs, component count, git status, recent request-log entries. |
 | `/wogi-deps [id]` | Find the task in tasks.json, show what it depends on and what depends on it. |
 
@@ -115,7 +116,18 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-config tests-before-commit on/off` | Toggle running tests before commits. |
 | `/wogi-config phases on/off` | Toggle phase-based planning. |
 
-### Skills & Rules
+### Rules & Learning
+
+| Command | Action |
+|---------|--------|
+| `/wogi-decide [rule]` | Create or update project rules with clarifying questions. Trigger: "from now on always/never/must/should..." |
+| `/wogi-learn` | Promote feedback patterns to permanent decision rules. Browse, incident, or bulk mode. |
+| `/wogi-retrospective` | Guided session reflection — extracts lessons, routes to rules or learnings. |
+| `/wogi-rules` | List all coding rules from `.claude/rules/` and installed skills. |
+| `/wogi-rules [name]` | View specific rule file. |
+| `/wogi-rules add [name]` | Create new rule file. |
+
+### Skills & Stack
 
 | Command | Action |
 |---------|--------|
@@ -123,9 +135,9 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-skills add [name]` | Install a skill package. Copy to `.claude/skills/`, update config.json. |
 | `/wogi-skills remove [name]` | Remove installed skill. |
 | `/wogi-skills info [name]` | Show skill details, commands, templates. |
-| `/wogi-rules` | List all coding rules from `.claude/rules/` and installed skills. |
-| `/wogi-rules [name]` | View specific rule file. |
-| `/wogi-rules add [name]` | Create new rule file. |
+| `/wogi-skill-learn` | Extract learnings from recent code changes into skill patterns. |
+| `/wogi-setup-stack` | Interactive tech stack wizard — detects frameworks and generates skills. |
+| `/wogi-models-setup` | Configure external models for peer review and hybrid mode. |
 
 ### Hybrid Mode (Token Savings)
 
@@ -159,7 +171,6 @@ When user types these commands, execute the corresponding action immediately.
 
 | Command | Action |
 |---------|--------|
-| `/wogi-correction [TASK-XXX]` | Create detailed correction report for significant bug fix. |
 | `/wogi-help` | Show all available Wogi Flow commands with descriptions. |
 | `/wogi-guided-edit` | Guide through multi-file changes step by step with approval at each edit. |
 
@@ -173,7 +184,6 @@ npx flow onboard                  # Analyze existing project & set up context
 # Task Management
 ./scripts/flow ready              # See unblocked tasks
 ./scripts/flow start TASK-X       # Start a task
-./scripts/flow done TASK-X        # Complete a task (auto-archives spec)
 ./scripts/flow story "title"      # Create simple story (flat)
 ./scripts/flow story "t" --deep   # Create decomposed story (feature folder)
 ./scripts/flow bug                # Report bug

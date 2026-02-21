@@ -59,24 +59,6 @@ Track detailed success metrics per model:
 
 ---
 
-### Tiered Learning Thresholds
-
-**Status**: Planned
-
-Smarter auto-application of learned patterns:
-
-```javascript
-const LEARNING_TIERS = {
-  AUTO_APPLY: { minSuccessRate: 0.9, minSamples: 5 },
-  APPLY_WITH_LOG: { minSuccessRate: 0.7, minSamples: 3 },
-  QUEUE_FOR_REVIEW: { minSuccessRate: 0, minSamples: 0 }
-};
-```
-
-**Trigger**: Model adapter needs smarter auto-apply logic
-
----
-
 ## Backlog Features
 
 ### Quality Gate Confidence
@@ -217,38 +199,32 @@ We're skeptical these add value without strong evidence.
 
 ---
 
-## Recently Implemented
+## Shipped
 
-These were on the backlog but have been completed:
+Features that were on the backlog and have been completed:
 
 | Feature | Implementation |
 |---------|---------------|
-| Jira Integration | **Pro** - archived in `.workflow/archive/paid-features/` |
-| Linear Integration | **Pro** - archived in `.workflow/archive/paid-features/` |
-| Cascade Fallback | flow-cascade.js - `flow cascade status/reset/config` |
-| Background Sync Daemon | flow-sync-daemon.js - `flow sync-daemon start/stop/status` |
-| PRD Management | flow-prd-manager.js - `flow prd load/context/list/clear` |
-| Memory Sync | flow-memory-sync.js - `flow memory-sync --auto` |
-| Entropy Monitor | flow-entropy-monitor.js - `flow entropy --auto` |
-| Model Registry & Stats | flow-models.js - `flow models list/info/route/stats` |
-| Model Router | flow-model-router.js - `flow route "<task>"` |
-| Multi-Approach | flow-multi-approach.js - `flow multi-approach` |
-| Complexity Assessment | flow-complexity.js - `flow complexity "<task>"` |
-| Metrics & Analysis | flow-metrics.js - `flow metrics --problems` |
-| Release Channels | lib/release-channel.js - `flow channel show/set/list` |
-| Tiered Learning | flow-tiered-learning.js - `flow learning tiers/stats` |
-| Failure Category Enum | `ERROR_CATEGORIES` in flow-adaptive-learning.js |
-| Strategy Effectiveness | `flow hybrid learning effectiveness` |
-| Learning Deduplication | 7-day window in flow-adaptive-learning.js |
-| Community Contribution | `flow hybrid learning contribute --auto-pr` |
-| Damage Control System | flow-damage-control.js |
-| Auto-Inference Verification | flow-task-enforcer.js |
-| Durable Sessions | flow-durable-session.js |
-| Suspend/Resume | flow-suspend.js, flow-resume.js |
-| agent_requested Rules | Rules have `alwaysApply` frontmatter for smart loading |
-| Component Index Freshness | Post-task triggers, stale checks, git hooks |
+| Extensible Registry Architecture | Plugin-based registries with auto-activation per stack |
+| AI-Judge Semantic Matching | flow-semantic-match.js — wired into all reuse consumers |
+| Framework-Driven File Discovery | flow-framework-resolver.js — stack-aware dynamic patterns |
+| Consumer Impact Analysis | Explore Phase Agent 6 — maps all consumers before refactoring |
+| Multi-Agent Explore Phase | 5-6 parallel research agents before implementation |
+| Origin Task Tracing | Same-session annotation, origin references, learning signals |
+| Enhanced Review Fix Workflow | Severity routing, persistent tasks, batch mode |
+| Decision Amendment Tracking | flow-decision-tracker.js — auditable rule change trail |
+| Cross-Artifact Consistency | flow-consistency-check.js — detects orphans and phantoms |
+| Worktree Isolation | flow-worktree.js — parallel tasks in isolated git worktrees |
+| Parallel Execution | flow-parallel.js — concurrent independent tasks |
+| Durable Sessions | flow-durable-session.js — suspend/resume across sessions |
+| Damage Control System | flow-damage-control.js — pattern-based safety |
+| Memory Systems | MCP memory server with SQLite persistence |
 | Guided Edit Mode | `/wogi-guided-edit` for step-by-step multi-file changes |
-| Git Hooks Setup | `flow-setup-hooks.js` for pre-commit automation |
+| Tiered Learning | flow-tiered-learning.js — smart auto-apply logic |
+| Model Registry & Stats | flow-models.js — `flow models list/info/route/stats` |
+| Complexity Assessment | flow-complexity.js — `flow complexity "<task>"` |
+| Metrics & Analysis | flow-metrics.js — `flow metrics --problems` |
+| PRD Management | flow-prd-manager.js — `flow prd load/context/list/clear` |
 
 ---
 

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-146 | 2026-02-22 03:30
+**Type**: change
+**Tags**: #docs #readme #knowledge-base #commands
+**Task**: wf-0a744cdd
+**Request**: "Rewrite README as concise feature summary with KB deep-links — cleanup outdated KB, fix phantom commands"
+**Result**: Full README rewrite from 261 to 153 lines. 28-row feature table with one-liner descriptions covering all current capabilities. Commands grouped into 15 categories. Deleted outdated workflow-steps.md (described non-existent YAML engine). Removed phantom /wogi-done from commands.md. Added 8 undocumented commands (/wogi-decide, /wogi-learn, /wogi-retrospective, /wogi-log, /wogi-skill-learn, /wogi-setup-stack, /wogi-models-setup, /wogi-bulk-loop). Updated future-features.md — moved implemented features to Shipped section (19 entries). All 11 KB deep-links verified valid.
+**Files**: README.md, .claude/docs/commands.md, .claude/docs/knowledge-base/02-task-execution/workflow-steps.md (deleted), .claude/docs/knowledge-base/future-features.md
+
 ### R-145 | 2026-02-22 02:00
 **Type**: fix
 **Tags**: #workflow #routing #enforcement #wogi-start

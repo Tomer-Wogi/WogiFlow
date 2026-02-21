@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-21T21:29:04.441Z",
+  "lastUpdated": "2026-02-21T22:42:11.838Z",
   "inProgress": [],
   "ready": [
     {
@@ -47,6 +47,18 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-0a744cdd",
+      "title": "Rewrite README as concise feature summary with KB deep-links — cleanup outdated KB, fix phantom commands",
+      "type": "story",
+      "feature": "docs",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-22T03:00:00.000Z",
+      "startedAt": "2026-02-22T03:10:00.000Z",
+      "specPath": ".workflow/changes/wf-0a744cdd.md",
+      "completedAt": "2026-02-21T22:42:11.838Z"
+    },
     {
       "id": "wf-routing-fix",
       "title": "Remove 'proceed directly' exemption from wogi-start routing — make routing unconditional",
@@ -149,29 +161,6 @@
       "createdAt": "2026-02-21T10:00:00.000Z",
       "startedAt": "2026-02-21T10:00:00.000Z",
       "completedAt": "2026-02-21T09:49:15.806Z"
-    },
-    {
-      "id": "wf-origintrace",
-      "title": "Origin Task Tracing — same-session annotation, originTask references, learning signal detection",
-      "type": "story",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-21T09:30:00.000Z",
-      "startedAt": "2026-02-21T09:30:00.000Z",
-      "completedAt": "2026-02-21T09:45:00.000Z",
-      "specPath": ".workflow/changes/wf-origintrace.md"
-    },
-    {
-      "id": "wf-reviewfix",
-      "title": "Enhanced Post-Review Fix Workflow — severity routing, persistent tasks, batch mode",
-      "type": "story",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-21T09:00:00.000Z",
-      "startedAt": "2026-02-21T09:00:00.000Z",
-      "completedAt": "2026-02-21T09:15:00.000Z"
     }
   ],
   "backlog": [
