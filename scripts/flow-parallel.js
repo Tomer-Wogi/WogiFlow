@@ -17,6 +17,17 @@
  *   if (canRunInParallel(tasks)) {
  *     await executeParallel(tasks, { maxConcurrent: 3 });
  *   }
+ *
+ * Claude Code 2.1.50+ Worktree Isolation:
+ *   Agent definitions now support `isolation: "worktree"` as a declarative option.
+ *   When set, Claude Code automatically creates an isolated git worktree for the agent,
+ *   giving it a separate copy of the repository. This is an alternative to WogiFlow's
+ *   existing flow-worktree.js module for parallel execution.
+ *
+ *   Future adoption: Consider using `isolation: "worktree"` in Task tool calls
+ *   for agent-based parallel execution instead of manually managing worktrees.
+ *   This would simplify the parallel execution pipeline by delegating worktree
+ *   lifecycle management to Claude Code itself.
  */
 
 const fs = require('fs');

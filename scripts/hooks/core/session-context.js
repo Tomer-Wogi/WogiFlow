@@ -19,6 +19,19 @@ const { findParallelizable, getParallelConfig } = require('../../flow-parallel')
 const { getBypassTracking } = require('../../flow-session-state');
 
 /**
+ * Detect if Claude Code is running in SIMPLE mode.
+ * SIMPLE mode (CLAUDE_CODE_SIMPLE=true) disables hooks, MCP, and CLAUDE.md.
+ * When detected, WogiFlow enforcement is silently broken.
+ *
+ * @returns {{ isSimpleMode: boolean, envValue: string|undefined }}
+ */
+function detectSimpleMode() {
+  const envValue = process.env.CLAUDE_CODE_SIMPLE;
+  const isSimpleMode = envValue === 'true' || envValue === '1';
+  return { isSimpleMode, envValue };
+}
+
+/**
  * Check if session context is enabled
  * @returns {boolean}
  */
@@ -359,6 +372,17 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // CLAUDE_CODE_SIMPLE mode detection (Claude Code 2.1.50+)
+  // When SIMPLE mode is active, hooks/MCP/CLAUDE.md are disabled.
+  // This warning only fires if the hook somehow still runs (e.g., during transition).
+  const simpleMode = detectSimpleMode();
+  if (simpleMode.isSimpleMode) {
+    context.simpleModeWarning = {
+      active: true,
+      envValue: simpleMode.envValue
+    };
+  }
+
   return {
     enabled: true,
     context
@@ -377,6 +401,15 @@ function formatContextForInjection(context) {
 
   const ctx = context.context;
   let output = '## Wogi Flow Session Context\n\n';
+
+  // CRITICAL: CLAUDE_CODE_SIMPLE mode warning (highest priority)
+  if (ctx.simpleModeWarning && ctx.simpleModeWarning.active) {
+    output += `### CLAUDE_CODE_SIMPLE Mode Detected\n`;
+    output += `**WogiFlow enforcement is DISABLED.** CLAUDE_CODE_SIMPLE=true disables hooks, MCP, and CLAUDE.md.\n`;
+    output += `All WogiFlow rules, task gating, scope gating, and validation are inactive.\n\n`;
+    output += `To restore full workflow enforcement:\n`;
+    output += `\`\`\`bash\nunset CLAUDE_CODE_SIMPLE\n\`\`\`\n\n`;
+  }
 
   // PRIORITY: Setup required - show first if needs setup
   if (ctx.setupRequired && ctx.setupRequired.needsSetup) {
@@ -511,6 +544,7 @@ function formatContextForInjection(context) {
 
 module.exports = {
   isSessionContextEnabled,
+  detectSimpleMode,
   getSuspendedTask,
   getCurrentTask,
   getPendingTaskSummary,

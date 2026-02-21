@@ -53,11 +53,26 @@ function getSmartCompactionConfig() {
   const config = getConfig();
   const smartConfig = config.smartCompaction || {};
 
+  let safeThreshold = smartConfig.safeThreshold || 0.95;
+  let emergencyThreshold = smartConfig.emergencyThreshold || 0.90;
+
+  // Claude Code 2.1.50+: CLAUDE_CODE_DISABLE_1M_CONTEXT reduces the context window.
+  // Lower thresholds to account for the smaller available context.
+  const disableExtendedContext = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT;
+  const reducedContext = disableExtendedContext === 'true' || disableExtendedContext === '1';
+  if (reducedContext) {
+    safeThreshold = Math.min(safeThreshold, 0.85);
+    emergencyThreshold = Math.min(emergencyThreshold, 0.80);
+    if (process.env.DEBUG) {
+      console.log('[context-estimator] CLAUDE_CODE_DISABLE_1M_CONTEXT detected — thresholds reduced (safe: 0.85, emergency: 0.80)');
+    }
+  }
+
   return {
     enabled: smartConfig.enabled !== false,
-    safeThreshold: smartConfig.safeThreshold || 0.95,
-    // Emergency triggers earlier than safe threshold (before estimation matters)
-    emergencyThreshold: smartConfig.emergencyThreshold || 0.90,
+    safeThreshold,
+    emergencyThreshold,
+    reducedContext,
     estimation: {
       ...DEFAULT_ESTIMATION_CONFIG,
       ...(smartConfig.estimation || {})
@@ -440,6 +455,10 @@ function formatEstimationResult(result) {
     if (details.length > 0) {
       lines.push(`   Factors: ${details.join(', ')}`);
     }
+  }
+
+  if (result.config && result.config.reducedContext) {
+    lines.push(`   Note: CLAUDE_CODE_DISABLE_1M_CONTEXT active — using reduced thresholds`);
   }
 
   return lines.join('\n');

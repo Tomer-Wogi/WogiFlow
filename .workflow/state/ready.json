@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-20T20:10:00.000Z",
+  "lastUpdated": "2026-02-21T08:35:19.925Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-5ba8e282",
+      "title": "Adapt WogiFlow for Claude Code 2.1.50 — SIMPLE mode detection, worktree hooks, context adjustments, health diagnostics",
+      "type": "story",
+      "feature": "claude-code-compat",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-02-21T11:00:00.000Z",
+      "startedAt": "2026-02-21T11:05:00.000Z",
+      "specPath": ".workflow/changes/wf-5ba8e282.md",
+      "completedAt": "2026-02-21T08:35:19.924Z"
+    },
     {
       "id": "wf-boundaries",
       "title": "Add boundary declarations to task specs",
@@ -113,72 +125,6 @@
       "specPath": ".workflow/changes/wf-decide.md",
       "epic": "wf-learning-epic",
       "completedAt": "2026-02-20T18:19:44.876Z"
-    },
-    {
-      "id": "wf-gitignore",
-      "title": "Default .workflow/ to gitignored in target projects with opt-in tracking",
-      "type": "story",
-      "feature": "installer",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T17:50:00.000Z",
-      "startedAt": "2026-02-20T18:00:00.000Z",
-      "specPath": ".workflow/changes/wf-gitignore.md",
-      "completedAt": "2026-02-20T18:18:52.200Z"
-    },
-    {
-      "id": "wf-fc196fcf",
-      "title": "Fix post-review fix loop task gating and implementation gate blocking",
-      "type": "fix",
-      "feature": "hooks",
-      "status": "completed",
-      "priority": "P0",
-      "createdAt": "2026-02-20T17:15:00.000Z",
-      "startedAt": "2026-02-20T17:20:00.000Z",
-      "specPath": ".workflow/changes/wf-fc196fcf.md",
-      "completedAt": "2026-02-20T17:26:12.206Z"
-    },
-    {
-      "id": "wf-esm-compat",
-      "title": "Fix ESM compatibility: add scripts/package.json with type:commonjs",
-      "type": "fix",
-      "feature": "hooks",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T17:00:00.000Z",
-      "completedAt": "2026-02-20T17:05:00.000Z"
-    },
-    {
-      "id": "wf-cr-2639a7",
-      "title": "Fix 19 review findings from wf-2639ad7d",
-      "type": "fix",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P1",
-      "startedAt": "2026-02-20T11:00:00.000Z",
-      "completedAt": "2026-02-20T16:30:00.000Z"
-    },
-    {
-      "id": "wf-2639ad7d",
-      "title": "Fix wogi-review to execute all 5 designed phases",
-      "type": "story",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P1",
-      "createdAt": "2026-02-20T14:00:00.000Z",
-      "startedAt": "2026-02-20T15:00:00.000Z",
-      "specPath": ".workflow/changes/wf-2639ad7d.md",
-      "completedAt": "2026-02-20T10:42:20.138Z"
-    },
-    {
-      "id": "wf-cr-hookfmt",
-      "title": "Fix fail-open error handling, context injection, npm update propagation",
-      "type": "fix",
-      "feature": "hooks",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T12:00:00.000Z",
-      "completedAt": "2026-02-20T13:30:00.000Z"
     }
   ],
   "backlog": [

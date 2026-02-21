@@ -65,9 +65,14 @@ function checkClaudeCodeVersion() {
       (major === 2 && minor > 1) ||
       (major === 2 && minor === 1 && patch >= 23);
 
-    return { version, meetsMinimum };
+    // 2.1.50+ features: worktree hooks, agent isolation, agent listing
+    const meets2150 = major > 2 ||
+      (major === 2 && minor > 1) ||
+      (major === 2 && minor === 1 && patch >= 50);
+
+    return { version, meetsMinimum, meets2150 };
   } catch {
-    return { version: null, meetsMinimum: true };
+    return { version: null, meetsMinimum: true, meets2150: false };
   }
 }
 
@@ -128,6 +133,31 @@ function main() {
         console.log(`  ${color('yellow', '○')} Claude Code version: ${versionCheck.version} (2.1.23+ recommended)`);
         console.log(`    ${color('dim', '→ Older versions may have silent search failures and shared system issues')}`);
         warnings++;
+      }
+
+      // Report 2.1.50+ features
+      if (versionCheck.meets2150) {
+        console.log(`  ${color('green', '✓')} Claude Code 2.1.50+ features available:`);
+        console.log(`    ${color('dim', '→ WorktreeCreate/WorktreeRemove hooks')}`);
+        console.log(`    ${color('dim', '→ Agent isolation: "worktree" mode')}`);
+        console.log(`    ${color('dim', '→ claude agents CLI command')}`);
+
+        // Run 'claude agents' diagnostic
+        try {
+          const agentsOutput = execSync('claude agents 2>/dev/null || echo ""', {
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+            timeout: 5000
+          }).trim();
+          if (agentsOutput) {
+            const agentCount = agentsOutput.split('\n').filter(l => l.trim()).length;
+            console.log(`  ${color('green', '✓')} claude agents: ${agentCount} agent(s) configured`);
+          } else {
+            console.log(`  ${color('dim', '○')} claude agents: no agents configured`);
+          }
+        } catch {
+          console.log(`  ${color('dim', '○')} claude agents: command unavailable`);
+        }
       }
     }
   }

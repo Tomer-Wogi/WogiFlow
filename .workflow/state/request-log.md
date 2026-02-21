@@ -1308,3 +1308,12 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 - user-prompt-submit.js: Switched to safeJsonParseString, sync regex detection in hook context
 - flow-done.js: Changed readJson() to safeJsonParse() per security patterns
 **Files**: scripts/flow-prompt-capture.js, scripts/flow-correction-detector.js, scripts/flow-bulk-loop.js, scripts/hooks/entry/claude-code/user-prompt-submit.js, scripts/flow-done.js
+
+
+### R-133 | 2026-02-21 08:35
+**Type**: new
+**Tags**: #feature:claude-code-compat #hook:worktree #hook:session-start #module:context-estimator #module:health
+**Task**: wf-5ba8e282
+**Request**: "Adapt WogiFlow for Claude Code 2.1.50 — SIMPLE mode detection, worktree hooks, context adjustments, health diagnostics"
+**Result**: Added 5 features: (1) CLAUDE_CODE_SIMPLE detection with session warning, (2) CLAUDE_CODE_DISABLE_1M_CONTEXT context estimator threshold adjustment, (3) Health check 2.1.50 feature reporting with claude agents diagnostic, (4) WorktreeCreate/WorktreeRemove hooks for worktree lifecycle management, (5) Documentation of isolation: worktree for future parallel execution.
+**Files**: scripts/hooks/core/session-context.js, scripts/flow-context-estimator.js, scripts/flow-health.js, scripts/hooks/adapters/claude-code.js, scripts/hooks/core/worktree-lifecycle.js (new), scripts/hooks/entry/claude-code/worktree-create.js (new), scripts/hooks/entry/claude-code/worktree-remove.js (new), scripts/flow-parallel.js

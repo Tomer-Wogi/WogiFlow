@@ -23,6 +23,8 @@ const { PATHS } = require('../../flow-utils');
 const HOOK_TIMEOUTS = {
   SESSION_START: 10,      // Session initialization
   SETUP: 30,              // Project setup/onboarding
+  WORKTREE_CREATE: 10,    // Copy essential state to new worktree (Claude Code 2.1.50+)
+  WORKTREE_REMOVE: 5,     // Clean up session state from removed worktree (Claude Code 2.1.50+)
   USER_PROMPT_SUBMIT: 5,  // Implementation gate check
   PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
   POST_TOOL_USE: 60,      // Validation (linting, type checking)
@@ -48,7 +50,9 @@ const CLAUDE_CODE_EVENTS = [
   'UserPromptSubmit',
   'TaskCompleted',   // Claude Code 2.1.33+ - fired when sub-agent task completes
   'TeammateIdle',    // Claude Code 2.1.33+ - fired when teammate agent becomes idle
-  'ConfigChange'     // Claude Code latest - fired when config files change mid-session
+  'ConfigChange',    // Claude Code latest - fired when config files change mid-session
+  'WorktreeCreate',  // Claude Code 2.1.50+ - fired when a new worktree is created
+  'WorktreeRemove'   // Claude Code 2.1.50+ - fired when a worktree is removed
 ];
 
 /**
@@ -134,6 +138,10 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformTeammateIdle(coreResult);
       case 'ConfigChange':
         return this.transformConfigChange(coreResult);
+      case 'WorktreeCreate':
+        return this.transformWorktreeCreate(coreResult);
+      case 'WorktreeRemove':
+        return this.transformWorktreeRemove(coreResult);
       default:
         return { continue: true };
     }
@@ -438,6 +446,28 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform WorktreeCreate result (Claude Code 2.1.50+)
+   * Copies essential .workflow/state files to the new worktree.
+   */
+  transformWorktreeCreate(coreResult) {
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message })
+    };
+  }
+
+  /**
+   * Transform WorktreeRemove result (Claude Code 2.1.50+)
+   * Cleans up session state from the removed worktree.
+   */
+  transformWorktreeRemove(coreResult) {
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message })
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot) {
@@ -559,6 +589,28 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
           type: 'command',
           command: `node "${path.join(scriptsDir, 'config-change.js')}"`,
           timeout: HOOK_TIMEOUTS.CONFIG_CHANGE
+        }]
+      }];
+    }
+
+    // WorktreeCreate hook (Claude Code 2.1.50+ worktree lifecycle)
+    if (rules.worktreeLifecycle?.enabled !== false) {
+      hooks.WorktreeCreate = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'worktree-create.js')}"`,
+          timeout: HOOK_TIMEOUTS.WORKTREE_CREATE
+        }]
+      }];
+    }
+
+    // WorktreeRemove hook (Claude Code 2.1.50+ worktree lifecycle)
+    if (rules.worktreeLifecycle?.enabled !== false) {
+      hooks.WorktreeRemove = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'worktree-remove.js')}"`,
+          timeout: HOOK_TIMEOUTS.WORKTREE_REMOVE
         }]
       }];
     }
