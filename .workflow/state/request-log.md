@@ -13,6 +13,28 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-142 | 2026-02-21 18:00
+**Type**: fix
+**Tags**: #review #security #performance #config #architecture
+**Task**: wf-cr-210221
+**Request**: "Fix all 52 review findings from session review"
+**Result**: Applied 18 auto-fixable fixes across security (path traversal, allowlist, safeJsonParse, prototype pollution), performance (Promise.all, RegExp cache, Levenshtein DP, Set dedup), code logic (main() guard, dead code, timestamp storage), architecture (Agent 6 consistency, WebMCP update), and config (missing keys). 4 findings deferred as not auto-fixable. 1 false positive dismissed.
+**Files**: scripts/hooks/core/worktree-lifecycle.js, scripts/flow-registry-manager.js, scripts/flow-api-index.js, scripts/flow-function-index.js, scripts/postinstall.js, scripts/hooks/core/session-context.js, scripts/flow-scanner-base.js, scripts/flow-standards-checker.js, scripts/registries/component-registry.js, .workflow/config.json, .claude/commands/wogi-start.md, .claude/commands/wogi-review-fix.md, .claude/commands/wogi-morning.md
+
+### R-141 | 2026-02-21 17:00
+**Type**: feature
+**Tags**: #workflow #enforcement #rule-pipeline #wogi-decide #wogi-morning
+**Request**: "Rule-to-Action Pipeline — after /wogi-decide creates a rule, scan for violations and route fixes through /wogi-start"
+**Result**: Added mandatory violation scan to wogi-decide.md with 3 routing options (quick-fix/story/epic based on count). Added rule violations section and auto-promoted rules section to wogi-morning.md. Updated claude-md.hbs and auto-features.hbs templates. Regenerated CLAUDE.md.
+**Files**: .claude/commands/wogi-decide.md, .claude/commands/wogi-morning.md, .workflow/templates/claude-md.hbs, .workflow/templates/partials/auto-features.hbs, CLAUDE.md
+
+### R-140 | 2026-02-21 16:00
+**Type**: feature
+**Tags**: #workflow #consumer-impact #agent-6 #wogi-start #story-writer
+**Request**: "Consumer Impact Analysis — bake mandatory pre-refactoring consumer validation into WogiFlow"
+**Result**: Added Agent 6 (Consumer Impact Analyzer) to wogi-start.md explore phase. MANDATORY for refactor/migration/architecture tasks. Maps all consumers (imports, references, configs, docs, tests) before code changes. Hard-blocks on failure for refactor tasks. Added consumer impact section to story-writer.md. Updated auto-features.hbs template with Agent 6 and consumer migration check.
+**Files**: .claude/commands/wogi-start.md, agents/story-writer.md, .workflow/templates/partials/auto-features.hbs
+
 ### R-139 | 2026-02-21 15:00
 **Type**: feature
 **Tags**: #scanner #registry #plugin-architecture #manifest #component-scanner
