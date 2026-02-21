@@ -147,8 +147,17 @@ class RegistryManager {
       return;
     }
 
+    // Allowlist of known safe registry plugin filenames
+    const ALLOWED_REGISTRY_FILES = new Set([
+      'function-registry.js',
+      'api-registry.js',
+      'component-registry.js',
+      'schema-registry.js',
+      'service-registry.js'
+    ]);
+
     const pluginFiles = fs.readdirSync(REGISTRIES_DIR)
-      .filter(f => f.endsWith('-registry.js'))
+      .filter(f => f.endsWith('-registry.js') && ALLOWED_REGISTRY_FILES.has(f))
       .sort();
 
     for (const file of pluginFiles) {
@@ -282,7 +291,7 @@ class RegistryManager {
   async scanAll() {
     const results = {};
 
-    for (const plugin of this.activePlugins) {
+    await Promise.all(this.activePlugins.map(async (plugin) => {
       const id = plugin.constructor.id;
       try {
         const registry = await plugin.scan();
@@ -297,7 +306,7 @@ class RegistryManager {
         results[id] = { success: false, error: err.message };
         warn(`Scan failed for ${id}: ${err.message}`);
       }
-    }
+    }));
 
     // Generate manifest after all scans
     this.generateManifest();

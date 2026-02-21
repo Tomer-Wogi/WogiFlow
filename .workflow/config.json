@@ -630,7 +630,13 @@
   "decide": {
     "requireRationale": true,
     "scanForViolations": true,
-    "maxClarifyingQuestions": 4
+    "maxClarifyingQuestions": 4,
+    "violationRouting": {
+      "_comment": "Severity thresholds for routing violations found during /wogi-decide scans",
+      "quickFixThreshold": 3,
+      "storyThreshold": 10,
+      "epicThreshold": 25
+    }
   },
   "learning": {
     "_comment": "Used by /wogi-learn. promotionThreshold reads from autoLearning.promotionThreshold for consistency.",
@@ -805,7 +811,11 @@
     "showKeyContext": true,
     "showTechDebt": true,
     "checkKnowledgeSync": true,
-    "autoRegenerateKnowledge": true
+    "autoRegenerateKnowledge": true,
+    "showRuleViolations": true,
+    "_comment_showRuleViolations": "Show deferred rule violations from /wogi-decide scans",
+    "showAutoPromotedRules": true,
+    "_comment_showAutoPromotedRules": "Show rules auto-promoted from feedback-patterns since last briefing"
   },
   "bulkLoop": {
     "enabled": true,

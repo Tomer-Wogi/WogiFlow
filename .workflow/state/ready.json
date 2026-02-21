@@ -48,6 +48,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-210221",
+      "title": "Fix 52 review findings from session review 2026-02-21",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-21T12:10:00.000Z",
+      "completedAt": "2026-02-21T13:00:00.000Z"
+    },
+    {
       "id": "wf-ext-registry",
       "title": "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack",
       "type": "story",

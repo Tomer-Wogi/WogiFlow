@@ -34,7 +34,7 @@ const STANDARDS_FILES = {
   apiMap: path.join(PATHS.state, 'api-map.md')
 };
 
-const RULES_DIR = path.join(process.cwd(), '.claude', 'rules');
+const RULES_DIR = path.join(PATHS.root, '.claude', 'rules');
 
 // Naming convention patterns from naming-conventions.md
 const NAMING_RULES = {
@@ -494,30 +494,36 @@ function calculateSimilarity(a, b) {
  * Calculate Levenshtein distance
  */
 function levenshteinDistance(a, b) {
-  const matrix = [];
+  // Early exit on length ratio — strings with very different lengths can't be similar
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
 
-  for (let i = 0; i <= b.length; i++) {
-    matrix[i] = [i];
-  }
+  // Single-row DP — O(N) memory instead of O(N×M)
+  let prev = new Array(a.length + 1);
+  let curr = new Array(a.length + 1);
+
   for (let j = 0; j <= a.length; j++) {
-    matrix[0][j] = j;
+    prev[j] = j;
   }
 
   for (let i = 1; i <= b.length; i++) {
+    curr[0] = i;
     for (let j = 1; j <= a.length; j++) {
       if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
+        curr[j] = prev[j - 1];
       } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j] + 1
+        curr[j] = Math.min(
+          prev[j - 1] + 1,
+          curr[j - 1] + 1,
+          prev[j] + 1
         );
       }
     }
+    // Swap rows
+    [prev, curr] = [curr, prev];
   }
 
-  return matrix[b.length][a.length];
+  return prev[a.length];
 }
 
 // ============================================================================

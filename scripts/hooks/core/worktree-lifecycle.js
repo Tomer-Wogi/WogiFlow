@@ -62,8 +62,12 @@ function handleWorktreeCreate(options = {}) {
   // Validate paths are within expected boundaries
   const resolvedSource = path.resolve(sourceStateDir);
   const resolvedProject = path.resolve(projectRoot);
+  const resolvedWorktree = path.resolve(worktreePath);
   if (!resolvedSource.startsWith(resolvedProject + path.sep)) {
     return { enabled: true, message: 'Invalid source path', copied: [] };
+  }
+  if (!resolvedWorktree.startsWith(resolvedProject + path.sep) && resolvedWorktree !== resolvedProject) {
+    return { enabled: true, message: 'Invalid worktree path — must be within project root', copied: [] };
   }
 
   const copied = [];
@@ -131,6 +135,13 @@ function handleWorktreeRemove(options = {}) {
     return {
       enabled: true,
       message: 'WorktreeRemove: Skipped — cannot clean main project',
+      cleaned: []
+    };
+  }
+  if (!resolvedWorktree.startsWith(resolvedProject + path.sep)) {
+    return {
+      enabled: true,
+      message: 'WorktreeRemove: Invalid worktree path — must be within project root',
       cleaned: []
     };
   }

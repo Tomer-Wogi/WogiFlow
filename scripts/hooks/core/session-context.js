@@ -281,7 +281,7 @@ async function gatherSessionContext(options = {}) {
   // Parallel execution detection
   try {
     const parallelConfig = getParallelConfig();
-    if (parallelConfig.enabled && parallelConfig.autoSuggest) {
+    if (parallelConfig.enabled) {
       const readyData = getReadyData();
       const readyTasks = readyData.ready || [];
       if (readyTasks.length >= 2) {

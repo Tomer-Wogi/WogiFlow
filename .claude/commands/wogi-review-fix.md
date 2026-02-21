@@ -338,8 +338,7 @@ For each iteration (max 10):
 
 ### Requirements
 
-- Chrome integration: `claude --chrome`
-- Claude in Chrome extension v1.0.36+
+- WebMCP integration: `config.webmcp.enabled: true`
 - Dev server running (for hot reload)
 
 ---

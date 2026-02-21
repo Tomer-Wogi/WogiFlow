@@ -609,17 +609,108 @@ Return a structured checklist:
   * [pattern]: [when it triggers] - [correct approach]
 ```
 
+#### Agent 6: Consumer Impact Analyzer (Refactor/Migration Tasks Only)
+
+Launch as `Task` with `subagent_type=Explore` (local only, no web searches).
+
+**This agent is MANDATORY for refactor, migration, and architectural tasks.** It prevents the critical failure mode where code is restructured without updating all consumers, leaving the system broken.
+
+**When to launch**: Task type is `refactor`, `migration`, `architecture`, OR task description contains keywords: refactor, replace, rename, restructure, extract, consolidate, deprecate, migrate, move, reorganize.
+
+```
+Analyze consumer impact for task: "[TASK_TITLE]"
+Task type: [TASK_TYPE]
+Planned changes: [FILES_TO_CHANGE]
+
+This task modifies existing code. You MUST map all consumers before changes proceed.
+
+1. For EACH file/module being modified or replaced:
+   a. Use Grep to find ALL files that import/require from it
+   b. Use Grep to find ALL files that reference its exported functions/classes/constants by name
+   c. Use Grep to find ALL config files that reference it
+   d. Use Grep to find ALL documentation (.md) files that reference it
+   e. Use Grep to find ALL test files that import or mock it
+
+2. For EACH consumer found:
+   - Classify impact: BREAKING (import/API changes), NEEDS-UPDATE (behavior change), SAFE (no change needed)
+   - If BREAKING: describe exactly what breaks and what the consumer needs to change
+   - If NEEDS-UPDATE: describe what behavioral change the consumer should expect
+
+3. Check for indirect consumers:
+   - If module A imports target, and module B imports A, does B break?
+   - Follow the chain up to 3 levels deep
+
+4. Check for dynamic references:
+   - Config files that reference file paths
+   - CLI commands that reference script names
+   - Package.json scripts that reference file paths
+   - Slash commands (.md files) that reference module names
+
+5. Quantify the impact:
+   - Total consumers found
+   - Breaking changes count
+   - Needs-update count
+   - Safe count
+
+Return a structured report:
+- Consumer count: [N] files depend on the code being changed
+- BREAKING consumers (MUST be updated in same PR):
+  * [file]: imports [what] → needs [change]
+  * [file]: references [what] → needs [change]
+- NEEDS-UPDATE consumers (should be reviewed):
+  * [file]: uses [behavior] → may need [adjustment]
+- SAFE consumers (no action needed):
+  * [file]: [why it's safe]
+- Indirect consumers (transitive dependencies):
+  * [file] → [file] → [target] (chain description)
+- Risk assessment: HIGH/MEDIUM/LOW
+  HIGH = 10+ breaking consumers
+  MEDIUM = 3-9 breaking consumers
+  LOW = 0-2 breaking consumers
+- RECOMMENDATION: If HIGH risk, suggest breaking the task into phases:
+  Phase 1: Create new code alongside old (no breaks)
+  Phase 2: Migrate consumers one by one
+  Phase 3: Remove old code
+```
+
+**Output section in research summary:**
+```
+🔗 Consumer Impact Analysis:
+   Consumers: X files depend on code being changed
+   Risk: [HIGH/MEDIUM/LOW]
+
+   BREAKING (must update in same PR):
+   - path/to/consumer1.js: imports FunctionScanner → needs RegistryPlugin
+   - path/to/consumer2.md: references flow-old-name.js → needs path update
+
+   NEEDS-UPDATE (review recommended):
+   - path/to/consumer3.js: uses scan() return format → verify compatible
+
+   Indirect chains:
+   - hooks/task-completed.js → flow-function-index.js → target
+
+   ⚠️ RECOMMENDATION: [if HIGH risk]
+   Consider phased migration instead of big-bang replacement.
+   Phase 1: Add new alongside old (backwards compatible)
+   Phase 2: Migrate consumers
+   Phase 3: Remove old code
+```
+
+**CRITICAL**: If this agent finds 5+ BREAKING consumers, the spec MUST include a migration plan. Implementation without a migration plan for high-impact refactors is BLOCKED.
+
 #### Launching the Agents
 
-**All 5 agents are launched as parallel `Task` calls in a single message** (established pattern from `/wogi-review`):
+**All agents are launched as parallel `Task` calls in a single message** (established pattern from `/wogi-review`):
 
 ```javascript
-// Launch all 5 in parallel (single message, 5 Task tool calls)
+// Launch all in parallel (single message, multiple Task tool calls)
 Task(subagent_type=Explore, prompt="Codebase Analyzer: ...")
 Task(subagent_type=Explore, prompt="Best Practices: ...")
 Task(subagent_type=Explore, prompt="Version Verifier: ...")
 Task(subagent_type=Explore, prompt="Risk & History Analyzer: ...")
 Task(subagent_type=Explore, prompt="Standards Preview: ...")
+// Agent 6 — ONLY for refactor/migration/architecture tasks:
+Task(subagent_type=Explore, prompt="Consumer Impact Analyzer: ...")
 ```
 
 **After all agents complete**, display a consolidated research summary:
@@ -676,6 +767,13 @@ Task(subagent_type=Explore, prompt="Standards Preview: ...")
    Security Patterns:
    - [pattern]: [correct approach]
 
+🔗 Consumer Impact Analysis (refactor/migration tasks only):
+   Consumers: X files depend on code being changed
+   Risk: [HIGH/MEDIUM/LOW]
+   BREAKING: [list of files that MUST be updated]
+   NEEDS-UPDATE: [list of files to review]
+   ⚠️ RECOMMENDATION: [phased migration if HIGH risk]
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -700,14 +798,16 @@ If user chooses "Deepen":
 
 If any agent fails (network issues, rate limits, timeouts, missing files):
 - Log a warning: `⚠️ Research unavailable for [Agent Name]. Proceeding with remaining agents.`
-- Agents 1, 4, 5 are **local-only** and should almost never fail (no network dependency)
+- Agents 1, 4, 5, 6 are **local-only** and should almost never fail (no network dependency)
 - Agents 2, 3 use **web search** and may fail due to network issues
 - If Best Practices agent fails: proceed without best practices
 - If Version Verifier agent fails: proceed using local package.json versions only
 - If Risk & History agent fails: proceed without history (no feedback-patterns data)
 - If Standards Preview agent fails: standards will still be enforced post-implementation (Step 3.7)
+- If Consumer Impact agent fails AND task is refactor/migration/architecture: **HARD BLOCK** — require explicit user confirmation before proceeding. Display: "Consumer impact analysis failed. Refactoring without consumer analysis risks breaking downstream code. Proceed anyway? [yes/no]"
+- If Consumer Impact agent fails AND task is NOT refactor type: warn only, proceed normally
 - If ALL agents fail: proceed with codebase analysis only, equivalent to `researchDepth: "minimal"`
-- Task proceeds normally without blocking — research is always best-effort
+- Task proceeds normally without blocking — research is always best-effort (except Consumer Impact for refactor tasks, which hard-blocks)
 
 **IMPORTANT CONSTRAINTS:**
 - **READ-ONLY**: Do NOT use Edit, Write, or NotebookEdit during this phase
@@ -766,6 +866,15 @@ For medium/large tasks (check `config.json → specificationMode`):
    - Implementation steps
    - Files to change (auto-detected)
    - **Boundary declarations** (files/paths that must NOT be modified — auto-detected from related stable files, or copied from the story's `## Boundaries` section)
+   - **Consumer impact plan** (for refactor/migration tasks — MANDATORY if Consumer Impact Agent found BREAKING consumers):
+     - List ALL consumers that must be updated
+     - For each consumer: what changes, how to migrate
+     - Migration strategy: big-bang vs phased
+     - If 5+ breaking consumers → spec MUST use phased approach:
+       - Phase 1: Create new code alongside old (backwards compatible)
+       - Phase 2: Migrate consumers one by one (each consumer = separate commit)
+       - Phase 3: Remove old code (only after all consumers migrated)
+     - **BLOCKED**: Spec cannot be approved without consumer impact plan when Agent 6 flagged BREAKING consumers
    - Test strategy
    - Verification commands
 2. **[NEEDS CLARIFICATION] Markers** (v5.0 - from `config.specificationMode.needsClarification`):
@@ -1170,7 +1279,34 @@ This checks (scoped by task type):
 | api | naming, api, security |
 | bugfix | naming, security (minimal) |
 | feature | all checks |
-| refactor | all checks |
+| refactor | all checks + **consumer-impact** |
+| migration | all checks + **consumer-impact** |
+
+**Consumer Impact Check (refactor/migration only):**
+
+For refactor and migration tasks, the standards check includes an additional verification:
+
+1. **Re-read the Consumer Impact report** from the Explore Phase
+2. **For EACH breaking consumer identified**, verify it was actually updated:
+   ```
+   ┌─────────────────────────────────────────────────────────┐
+   │  CONSUMER MIGRATION CHECK                               │
+   ├─────────────────────────────────────────────────────────┤
+   │                                                         │
+   │  □ scripts/hooks/core/task-completed.js                 │
+   │    → Was: imports FunctionScanner                       │
+   │    → Expected: updated to new API                       │
+   │    → Status: ✓ MIGRATED / ✗ NOT MIGRATED               │
+   │                                                         │
+   │  □ .claude/commands/wogi-onboard.md                     │
+   │    → Was: references flow-function-index.js             │
+   │    → Expected: updated reference                        │
+   │    → Status: ✓ MIGRATED / ✗ NOT MIGRATED               │
+   │                                                         │
+   └─────────────────────────────────────────────────────────┘
+   ```
+3. **If ANY breaking consumer is NOT migrated → BLOCK task completion**
+4. This check ensures the refactoring is complete end-to-end, not just the core files
 
 **Output (passing):**
 ```

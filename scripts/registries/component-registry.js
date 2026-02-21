@@ -174,8 +174,11 @@ class ComponentScanner extends BaseScanner {
   }
 
   _addComponent(name, file, category, framework, content, position) {
-    // Deduplicate
-    if (this.registry.components.some(c => c.name === name && c.file === file)) return;
+    // Deduplicate using Set for O(1) lookup
+    if (!this._componentKeys) this._componentKeys = new Set();
+    const key = `${name}::${file}`;
+    if (this._componentKeys.has(key)) return;
+    this._componentKeys.add(key);
 
     const line = content ? this.getLineNumber(content, position) : 1;
     const description = content ? this.extractJSDocBefore(content, position) : '';
@@ -198,7 +201,10 @@ class ComponentScanner extends BaseScanner {
   }
 
   _addHook(name, file, category, content, position) {
-    if (this.registry.hooks.some(h => h.name === name && h.file === file)) return;
+    if (!this._hookKeys) this._hookKeys = new Set();
+    const key = `${name}::${file}`;
+    if (this._hookKeys.has(key)) return;
+    this._hookKeys.add(key);
 
     const line = content ? this.getLineNumber(content, position) : 1;
     const description = content ? this.extractJSDocBefore(content, position) : '';

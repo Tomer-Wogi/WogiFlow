@@ -44,6 +44,47 @@ Before designing, always examine the codebase for existing patterns:
 - How they handled errors
 - What tests they wrote
 
+### 1.5. Consumer Impact Analysis (Refactoring/Migration Stories)
+
+**MANDATORY for stories that modify, replace, rename, or restructure existing code.**
+
+Before designing the implementation plan for any refactoring or migration story:
+
+1. **Map all consumers** of the code being changed:
+   - Files that import/require the target modules
+   - Config files that reference target paths or names
+   - Documentation (.md files) that reference target names
+   - CLI commands or hooks that invoke target scripts
+   - Test files that import or mock target modules
+
+2. **Classify impact per consumer**:
+   - **BREAKING**: Import path changes, API signature changes, renamed exports
+   - **NEEDS-UPDATE**: Behavioral changes that may affect callers
+   - **SAFE**: No change needed (e.g., internal-only refactoring)
+
+3. **Include in the story**:
+   ```markdown
+   ## Consumer Impact
+   | Consumer | Impact | Required Change |
+   |----------|--------|-----------------|
+   | hooks/task-completed.js | BREAKING | Update import path |
+   | wogi-onboard.md | NEEDS-UPDATE | Update script reference |
+   | flow-utils.js | SAFE | Internal only |
+
+   Total: X consumers, Y breaking, Z need update
+   Migration strategy: [phased/big-bang]
+   ```
+
+4. **If 5+ breaking consumers**: The story MUST specify phased migration:
+   - Phase 1: New code alongside old (no breaks)
+   - Phase 2: Migrate consumers (each = separate commit)
+   - Phase 3: Remove old code
+
+5. **Acceptance criteria MUST include consumer migration**:
+   - "Given all consumers of [target], When the refactoring is complete, Then ALL breaking consumers have been updated and verified"
+
+**This prevents the critical failure mode where core code is refactored but consumers are left broken.**
+
 ### 2. Decisive Architecture
 Make confident architectural choices rather than presenting multiple options:
 

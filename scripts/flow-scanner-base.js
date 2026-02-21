@@ -49,6 +49,15 @@ class BaseScanner {
       ]
     };
 
+    // Pre-compile exclude patterns to avoid per-file RegExp allocation
+    this._excludeRegexps = this.config.excludePatterns.map(pattern => {
+      const regexPattern = pattern
+        .replace(/\*\*/g, '.*')
+        .replace(/\*/g, '[^/]*')
+        .replace(/\./g, '\\.');
+      return new RegExp(regexPattern);
+    });
+
     // Try to load babel for better parsing
     this.parser = null;
     this.traverse = null;
@@ -83,14 +92,8 @@ class BaseScanner {
   shouldExclude(filePath) {
     const relativePath = path.relative(PROJECT_ROOT, filePath);
 
-    for (const pattern of this.config.excludePatterns) {
-      // Simple glob matching
-      const regexPattern = pattern
-        .replace(/\*\*/g, '.*')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\./g, '\\.');
-
-      if (new RegExp(regexPattern).test(relativePath)) {
+    for (const regex of this._excludeRegexps) {
+      if (regex.test(relativePath)) {
         return true;
       }
     }

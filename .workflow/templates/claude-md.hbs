@@ -327,6 +327,13 @@ cat .workflow/state/decisions.md # Project rules
    - Search for files that ARE REFERENCED BY the target code
    - Map the full flow/pipeline before making changes
    - Ask: "Are there other files invoked as part of this flow?"
+5. **Consumer Impact Analysis** (MANDATORY for refactors/migrations):
+   - Before modifying any existing module, grep for ALL files that import/require it
+   - Check config files, documentation, CLI commands, and hooks for references
+   - Classify each consumer: BREAKING (must update), NEEDS-UPDATE (should review), SAFE
+   - If 5+ breaking consumers exist, plan a phased migration (new alongside old → migrate consumers → remove old)
+   - **NEVER proceed with a refactoring without knowing who depends on the code being changed**
+   - The Explore Phase Agent 6 (Consumer Impact Analyzer) runs this automatically for L2+ tasks
 
 ### While Working:
 1. Follow acceptance criteria exactly

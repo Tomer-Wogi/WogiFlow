@@ -195,8 +195,11 @@ function copyClaudeResources() {
     if (fs.existsSync(projectSettings)) {
       // Always merge hooks from package into existing settings
       try {
-        const existing = JSON.parse(fs.readFileSync(projectSettings, 'utf-8'));
-        const ours = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
+        const existingRaw = JSON.parse(fs.readFileSync(projectSettings, 'utf-8'));
+        const oursRaw = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
+        // Guard against prototype pollution from untrusted JSON
+        const existing = (existingRaw && typeof existingRaw === 'object' && !Array.isArray(existingRaw)) ? existingRaw : {};
+        const ours = (oursRaw && typeof oursRaw === 'object' && !Array.isArray(oursRaw)) ? oursRaw : {};
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;

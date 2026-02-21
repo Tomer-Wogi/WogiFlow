@@ -27,7 +27,8 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Agent 3: Version Verifier (Read/WebSearch)
     |   - Agent 4: Risk & History (local reads)
     |   - Agent 5: Standards Preview (local reads)
-    |   - All 5 run in parallel as Task agents
+    |   - Agent 6: Consumer Impact Analyzer (refactor/migration only)
+    |   - All agents run in parallel as Task agents
     |
     +-- [AUTO] Clarifying Questions
     |   - Surface assumptions before spec generation
@@ -69,6 +70,10 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Naming conventions, security patterns
     |   - Scoped by task type (component, utility, api, etc.)
     |   - Blocks completion if must-fix violations found
+    |
+    +-- [AUTO] Consumer Migration Check (refactor/migration only)
+    |   - Verify ALL breaking consumers were updated
+    |   - Blocks completion if any consumer left broken
     |
     +-- [AUTO] Post-Task Updates
     |   - Update app-map.md (add new, remove deleted, update renamed components)
@@ -115,6 +120,16 @@ When implementing a task, these features run automatically. You don't need to in
 **When:** Before completing task
 **What:** Verifies new files are imported and used somewhere
 **Prevents:** "Orphan components" - files that exist but are never accessible
+
+#### Consumer Impact Analysis (Refactor/Migration Only)
+**When:** During Explore Phase for refactor, migration, or architectural tasks
+**What:** Maps ALL consumers of the code being modified — imports, config references, docs, hooks, tests
+**Prevents:** Refactoring core code without updating consumers, leaving the system broken
+**Enforcement:**
+- Explore Phase: Agent 6 maps all consumers and classifies impact (BREAKING/NEEDS-UPDATE/SAFE)
+- Spec Phase: Consumer impact plan required if BREAKING consumers found; phased migration mandated for 5+ breaking consumers
+- Standards Check: Verifies every BREAKING consumer was actually updated before task completion
+- **Task is BLOCKED if breaking consumers exist and weren't all migrated**
 
 #### Request Logging
 **When:** After any changes to files

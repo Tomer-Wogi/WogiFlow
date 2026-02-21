@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
+const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse } = require('./flow-utils');
 const {
   findSimilarItems,
   generateAIDecisionPrompt,
@@ -589,7 +589,7 @@ function showEndpoint(name) {
   }
 
   try {
-    const registry = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf-8'));
+    const registry = safeJsonParse(INDEX_PATH, {});
 
     if (!name) {
       // List all
@@ -689,7 +689,7 @@ function checkAPI(name, purpose) {
   }
 
   try {
-    const registry = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf-8'));
+    const registry = safeJsonParse(INDEX_PATH, {});
     const matchConfig = getMatchConfig();
 
     // Transform registry for matching
@@ -796,7 +796,7 @@ async function main() {
       }
       try {
         const scanner = new APIScanner();
-        scanner.registry = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf-8'));
+        scanner.registry = safeJsonParse(INDEX_PATH, {});
         scanner.generateMap();
       } catch (err) {
         error(`Failed to read or parse API index: ${err.message}`);
@@ -831,9 +831,11 @@ Examples:
   }
 }
 
-main().catch(err => {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  });
+}
 
 module.exports = { APIScanner };
