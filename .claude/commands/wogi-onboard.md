@@ -286,9 +286,8 @@ Display:
        question: "What are your primary goals with this project?",
        header: "Goals",
        options: [
-         { label: "Add features", description: "Build new functionality" },
-         { label: "Fix bugs", description: "Address existing issues" },
-         { label: "Refactor", description: "Improve code quality and architecture" },
+         { label: "Accelerate & improve development", description: "Use AI agents to build faster and write better code — pages in minutes, consistent patterns, fewer mistakes" },
+         { label: "Fix bugs & refactor", description: "Address existing issues and improve code quality and architecture" },
          { label: "Onboard team", description: "Help new developers understand the codebase" }
        ],
        multiSelect: true
@@ -296,12 +295,62 @@ Display:
    });
    ```
 
-9. **Ask about known issues** (optional):
+9. **Offer project health scan:**
+   ```javascript
+   AskUserQuestion({
+     questions: [{
+       question: "Now that I understand your project's rules and patterns, would you like me to run a comprehensive health scan?\n\n" +
+         "This scans your entire codebase using the rules we just established and looks for:\n" +
+         "- Redundant or duplicate components that could be merged\n" +
+         "- Orphan files not imported or wired anywhere\n" +
+         "- Functions or API calls that could be consolidated\n" +
+         "- Broken references and dead imports\n" +
+         "- Patterns that violate the conventions we just detected\n\n" +
+         "Results become actionable tasks in your backlog.",
+       header: "Health",
+       options: [
+         { label: "Run full scan (Recommended)", description: "Deep scan the entire project for improvement opportunities based on your rules" },
+         { label: "Paste known issues", description: "I already know what needs fixing — let me paste a list instead" },
+         { label: "Skip for now", description: "Continue to skill generation and finish setup — I can run /wogi-health later" }
+       ],
+       multiSelect: false
+     }]
+   });
    ```
-   Do you have any known issues or tech debt you'd like to track?
-   (Paste a list or say "skip")
+
+   **If "Run full scan":**
+   Launch a multi-agent health scan (similar to Explore Phase but project-wide):
+
+   - **Agent A: Redundancy Scanner** — Compares all components, functions, and API endpoints from the maps generated in Phase 4. Uses AI-driven semantic matching (configurable via `config.semanticMatching.thresholds`) to flag entries that could be merged into one with variants.
+   - **Agent B: Orphan Detector** — For every file in the project, checks if it's imported/referenced somewhere. Flags files that exist but are never used (dead code).
+   - **Agent C: Wiring Verifier** — Checks that all components in app-map are actually rendered somewhere, all hooks are called, all utilities are imported. Flags anything created but never wired.
+   - **Agent D: Convention Auditor** — Using the patterns and decisions detected in Phase 2, scans the codebase for violations. Groups findings by severity (must-fix vs nice-to-have).
+
+   All 4 agents run in parallel. Results are consolidated and presented as a summary:
+   ```
+   ━━━ Project Health Scan Results ━━━
+
+   Redundancies:  X components/functions could be consolidated
+   Orphans:       Y files are not imported anywhere
+   Unwired:       Z components exist but aren't rendered
+   Violations:    W patterns don't match your rules
+
+   Total improvement opportunities: N
+
+   Would you like me to create tasks for these findings?
+   ```
+
+   If user approves, create task entries in ready.json backlog, grouped by category.
+
+   **If "Paste known issues":**
+   ```
+   Paste your known issues or tech debt below.
+   (One per line, or a comma-separated list)
    ```
    If issues provided, create task entries in ready.json backlog.
+
+   **If "Skip for now":**
+   Continue to Phase 4. User can run `/wogi-review` or `/wogi-health` later.
 
 ---
 
@@ -841,7 +890,7 @@ AskUserQuestion({
     header: "Existing",
     options: [
       { label: "Re-analyze", description: "Overwrite existing setup with fresh analysis" },
-      { label: "Merge", description: "Keep existing decisions, add newly detected patterns" },
+      { label: "Rescan", description: "Smart diff — keep existing decisions, auto-add new items, resolve conflicts one by one (runs /wogi-rescan)" },
       { label: "Cancel", description: "Keep current setup unchanged" }
     ],
     multiSelect: false

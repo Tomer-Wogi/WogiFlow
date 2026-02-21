@@ -215,7 +215,7 @@ Run before merge:
 
 After AI review, a standards compliance check runs against project documentation:
 - `decisions.md` - All documented coding rules
-- `app-map.md` - Component duplication (>80% similarity = violation)
+- `app-map.md` - Component duplication (semantic similarity, configurable via `config.semanticMatching`)
 - `naming-conventions.md` - File names, catch variables
 - `security-patterns.md` - Raw JSON.parse, unprotected fs.readFileSync
 

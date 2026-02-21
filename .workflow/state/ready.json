@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-21T10:54:29.274Z",
+  "lastUpdated": "2026-02-21T21:29:04.441Z",
   "inProgress": [],
   "ready": [
     {
@@ -47,6 +47,28 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-semantic-wire",
+      "title": "Wire AI-Judge Semantic Matching Into All Reuse Consumers",
+      "type": "story",
+      "feature": "scanner",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T19:00:00.000Z",
+      "startedAt": "2026-02-21T19:10:00.000Z",
+      "specPath": ".workflow/changes/scanner/wf-semantic-wire.md",
+      "completedAt": "2026-02-21T21:29:04.441Z"
+    },
+    {
+      "id": "wf-cr-rescan1",
+      "title": "Fix 9 review findings from wogi-rescan/onboard changes",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-21T18:00:00.000Z",
+      "completedAt": "2026-02-21T18:10:00.000Z"
+    },
     {
       "id": "wf-cr-210221",
       "title": "Fix 52 review findings from session review 2026-02-21",
@@ -130,54 +152,6 @@
       "createdAt": "2026-02-21T09:00:00.000Z",
       "startedAt": "2026-02-21T09:00:00.000Z",
       "completedAt": "2026-02-21T09:15:00.000Z"
-    },
-    {
-      "id": "wf-postinstall",
-      "title": "Add post-install welcome message with setup guidance for wogi-init and wogi-onboard",
-      "type": "fix",
-      "feature": "onboarding",
-      "status": "completed",
-      "priority": "P2",
-      "createdAt": "2026-02-21T08:39:36.055Z",
-      "startedAt": "2026-02-21T08:39:36.056Z",
-      "specPath": ".workflow/changes/wf-postinstall.md",
-      "completedAt": "2026-02-21T08:40:33.396Z"
-    },
-    {
-      "id": "wf-5ba8e282",
-      "title": "Adapt WogiFlow for Claude Code 2.1.50 — SIMPLE mode detection, worktree hooks, context adjustments, health diagnostics",
-      "type": "story",
-      "feature": "claude-code-compat",
-      "status": "completed",
-      "priority": "P2",
-      "createdAt": "2026-02-21T11:00:00.000Z",
-      "startedAt": "2026-02-21T11:05:00.000Z",
-      "specPath": ".workflow/changes/wf-5ba8e282.md",
-      "completedAt": "2026-02-21T08:35:19.924Z"
-    },
-    {
-      "id": "wf-boundaries",
-      "title": "Add boundary declarations to task specs",
-      "type": "story",
-      "feature": "enforcement",
-      "status": "completed",
-      "priority": "P2",
-      "createdAt": "2026-02-21T10:30:00.000Z",
-      "startedAt": "2026-02-21T10:30:00.000Z",
-      "completedAt": "2026-02-21T10:45:00.000Z",
-      "specPath": ".workflow/changes/wf-boundaries.md"
-    },
-    {
-      "id": "wf-conv-followup",
-      "title": "Add conversational follow-up handling to /wogi-start",
-      "type": "fix",
-      "feature": "enforcement",
-      "status": "completed",
-      "priority": "P0",
-      "createdAt": "2026-02-21T10:20:00.000Z",
-      "startedAt": "2026-02-21T10:20:00.000Z",
-      "completedAt": "2026-02-21T10:25:00.000Z",
-      "specPath": ".workflow/changes/wf-conv-followup.md"
     }
   ],
   "backlog": [

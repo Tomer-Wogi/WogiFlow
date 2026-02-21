@@ -184,14 +184,12 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
   const alwaysCheck = standardsConfig.alwaysCheck || ['naming', 'security'];
   const scopeByTaskType = standardsConfig.scopeByTaskType !== false;
 
-  // Build check options (normalize thresholds: accept both 0.8 and 80 formats)
-  const rawThreshold = standardsConfig.similarityThreshold || 0.8;
-  const rawWarning = standardsConfig.similarityWarningThreshold || 0.6;
+  // Build check options
+  // Similarity thresholds are now managed by flow-semantic-match.js via getMatchConfig()
+  // The standards checker loads semantic matching config internally
   const checkOptions = {
     taskType: scopeByTaskType ? taskType : 'feature',
-    changedPaths,
-    similarityThreshold: rawThreshold > 1 ? rawThreshold / 100 : rawThreshold,
-    similarityWarningThreshold: rawWarning > 1 ? rawWarning / 100 : rawWarning
+    changedPaths
   };
 
   // Run the standards check

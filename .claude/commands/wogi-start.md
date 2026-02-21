@@ -592,7 +592,7 @@ Planned files: [FILES_TO_CHANGE]
    - Extract security patterns relevant to the planned operations
 4. Read .workflow/state/app-map.md
    - For each planned NEW component, check similarity against existing entries
-   - Flag any where name or purpose overlaps > 80% with an existing component
+   - Flag any where name or purpose has semantic similarity above the configured threshold (see `config.semanticMatching.thresholds`)
    - This is the SAME check that flow-standards-gate.js will run post-implementation
 5. Read .workflow/state/decisions.md
    - Extract coding rules that will be enforced for this task type
@@ -1375,7 +1375,7 @@ When violations are detected, they are automatically:
     "mode": "block",              // "block" or "warn"
     "scopeByTaskType": true,      // Use smart scoping
     "alwaysCheck": ["naming", "security"],
-    "similarityThreshold": 80,
+    "similarityThreshold": 80,  // Legacy — prefer semanticMatching.thresholds
     "learning": {
       "enabled": true,
       "promotionThreshold": 3,

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-143 | 2026-02-21 21:30
+**Type**: feature
+**Tags**: #scanner #semantic-matching #standards #config
+**Task**: wf-semantic-wire
+**Request**: "Wire AI-Judge Semantic Matching Into All Reuse Consumers"
+**Result**: Replaced fixed 80% similarity thresholds with AI-driven semantic matching across all consumers. Updated flow-standards-checker.js (checkComponentDuplication + checkFunctionDuplication use calculateCombinedSimilarity with match levels), flow-standards-gate.js (removed legacy threshold normalization), lib/installer.js (added semanticMatching defaults). Updated 8 documentation files to replace ">80%" with configurable semantic language. Regenerated CLAUDE.md via bridge sync.
+**Files**: scripts/flow-standards-checker.js, scripts/flow-standards-gate.js, lib/installer.js, .claude/commands/wogi-start.md, .claude/commands/wogi-review.md, .claude/commands/wogi-review-fix.md, .claude/commands/wogi-onboard.md, .claude/commands/wogi-rescan.md, .workflow/templates/partials/auto-features.hbs, .claude/docs/knowledge-base/02-task-execution/05-session-review.md, CLAUDE.md
+
 ### R-142 | 2026-02-21 18:00
 **Type**: fix
 **Tags**: #review #security #performance #config #architecture

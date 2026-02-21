@@ -174,7 +174,7 @@ Unlike `/wogi-review` which blocks on violations, `/wogi-review-fix` **automatic
 | `naming-conventions.md` | File names not kebab-case | Rename file |
 | `naming-conventions.md` | Catch variable not `err` | Replace with `err` |
 | `decisions.md` | Pattern violation (if fixable) | Apply pattern |
-| `app-map.md` | Component duplication >80% | Remove new, use existing |
+| `app-map.md` | Component duplication (semantic similarity, configurable) | Remove new, use existing |
 | `security-patterns.md` | Raw JSON.parse | Replace with safeJsonParse |
 | `security-patterns.md` | Unprotected fs.readFileSync | Add try-catch |
 

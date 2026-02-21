@@ -50,7 +50,7 @@ When implementing a task, these features run automatically. You don't need to in
     |   |
     |   +-- [AUTO] Component Reuse Check
     |   |   - Search app-map for similar components
-    |   |   - Suggest existing component if match > 80%
+    |   |   - Suggest existing component if semantic similarity exceeds threshold (configurable)
     |   |
     |   +-- [AUTO] Post-Edit Validation
     |       - Run lint check
@@ -92,7 +92,7 @@ When implementing a task, these features run automatically. You don't need to in
 **What:** Searches app-map.md and codebase for existing similar components
 **Decision tree:**
 1. EXACT MATCH exists? → Use it
-2. SIMILAR exists (>80% match)? → Add variant to existing
+2. SIMILAR exists (semantic match above threshold)? → Add variant to existing
 3. PARTIAL match? → Extend existing
 4. NOTHING similar? → Create new (last resort)
 

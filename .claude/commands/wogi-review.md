@@ -622,7 +622,7 @@ node scripts/flow-standards-checker.js [changed-files...]
 ```
 Or if the runtime script is not available, manually check:
 - `decisions.md` - All documented coding rules and patterns
-- `app-map.md` - Component duplication (>`config.standardsCompliance.similarityThreshold`% similarity = violation)
+- `app-map.md` - Component duplication (semantic similarity above `config.semanticMatching.thresholds` = violation)
 - `naming-conventions.md` - File names (kebab-case), catch variables (`err` not `e`)
 - `security-patterns.md` - Raw JSON.parse, unprotected fs.readFileSync
 

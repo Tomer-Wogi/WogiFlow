@@ -22,6 +22,11 @@ const {
   safeJsonParse,
   color
 } = require('./flow-utils');
+const {
+  calculateCombinedSimilarity,
+  getMatchLevel,
+  getMatchConfig
+} = require('./flow-semantic-match');
 
 // ============================================================================
 // Constants
@@ -49,9 +54,12 @@ const NAMING_RULES = {
   }
 };
 
-// Component similarity thresholds
-const SIMILARITY_THRESHOLD = 0.8;       // >= this: must-fix (blocks task)
-const SIMILARITY_WARNING_THRESHOLD = 0.6; // >= this but < SIMILARITY_THRESHOLD: warning (user decides)
+// Match level to severity mapping (used by semantic matching)
+const MATCH_LEVEL_SEVERITY = {
+  definite: 'must-fix',   // >= 90 combined score: blocks task
+  likely: 'warning',      // 70-89 combined score: user decides
+  possible: 'info'        // 50-69 combined score: informational only
+};
 
 // Task type to check type mapping for smart scoping
 const TASK_CHECK_MAP = {
@@ -310,13 +318,13 @@ function checkNamingConventions(file) {
 }
 
 /**
- * Check for component duplication
+ * Check for component duplication using semantic matching
  * @param {Object} file - File with path and content
  * @param {Object[]} existingComponents - Components from app-map
- * @param {number} threshold - Similarity threshold (0-1)
+ * @param {Object} matchConfig - Semantic match config (thresholds, weights) — optional, auto-loaded if omitted
  * @returns {Object[]} Array of violations
  */
-function checkComponentDuplication(file, existingComponents, threshold = SIMILARITY_THRESHOLD, warningThreshold = SIMILARITY_WARNING_THRESHOLD) {
+function checkComponentDuplication(file, existingComponents, matchConfig) {
   const violations = [];
 
   // Only check for new component files
@@ -324,53 +332,57 @@ function checkComponentDuplication(file, existingComponents, threshold = SIMILAR
     return violations;
   }
 
-  // Extract component name from file
+  const config = matchConfig || getMatchConfig();
   const fileName = path.basename(file.path, path.extname(file.path));
-  const componentName = fileName.replace(/-/g, '').toLowerCase();
 
-  // Check similarity against existing components
   for (const existing of existingComponents) {
-    const existingName = existing.name.toLowerCase();
-    const similarity = calculateSimilarity(componentName, existingName);
+    const existingName = existing.name || '';
+    if (fileName.replace(/-/g, '').toLowerCase() === existingName.toLowerCase()) continue;
 
-    if (similarity >= threshold && componentName !== existingName) {
-      // High similarity: must-fix (blocks task)
+    const scores = calculateCombinedSimilarity(fileName, existingName, 'components');
+    const matchLevel = getMatchLevel(scores.combined, config.thresholds);
+    const severity = MATCH_LEVEL_SEVERITY[matchLevel];
+
+    if (!severity) continue; // 'none' level — skip
+
+    if (severity === 'must-fix') {
       violations.push({
         type: 'component-duplication',
         severity: 'must-fix',
         file: file.path,
         line: null,
-        message: `Component "${fileName}" is ${Math.round(similarity * 100)}% similar to existing "${existing.name}"`,
-        suggestion: `Use existing component or add variant to "${existing.name}" instead`,
+        message: `Component "${fileName}" is ${scores.combined}% similar to existing "${existingName}" (string: ${scores.string}%, semantic: ${scores.semantic}%)`,
+        suggestion: `Use existing component or add variant to "${existingName}" instead`,
         rule: 'app-map.md / component-reuse.md'
       });
-    } else if (similarity >= warningThreshold && componentName !== existingName) {
-      // Moderate similarity: warning (user decides)
+    } else if (severity === 'warning') {
       violations.push({
         type: 'component-duplication',
         severity: 'warning',
         file: file.path,
         line: null,
-        message: `Component "${fileName}" is ${Math.round(similarity * 100)}% similar to existing "${existing.name}" — review if this is intentional`,
-        suggestion: `Consider reusing or extending "${existing.name}" if the purpose overlaps`,
+        message: `Component "${fileName}" is ${scores.combined}% similar to existing "${existingName}" (string: ${scores.string}%, semantic: ${scores.semantic}%) — review if intentional`,
+        suggestion: `Consider reusing or extending "${existingName}" if the purpose overlaps`,
         rule: 'app-map.md / component-reuse.md'
       });
     }
+    // 'info' level: don't add a violation (non-actionable)
   }
 
   return violations;
 }
 
 /**
- * Check for function duplication
+ * Check for function duplication using semantic matching
  * @param {Object} file - File with path and content
  * @param {Object[]} existingFunctions - Functions from function-map
- * @param {number} threshold - Similarity threshold (0-1)
+ * @param {Object} matchConfig - Semantic match config — optional, auto-loaded if omitted
  * @returns {Object[]} Array of violations
  */
-function checkFunctionDuplication(file, existingFunctions, threshold = SIMILARITY_THRESHOLD, warningThreshold = SIMILARITY_WARNING_THRESHOLD) {
+function checkFunctionDuplication(file, existingFunctions, matchConfig) {
   const violations = [];
   const content = file.content || '';
+  const config = matchConfig || getMatchConfig();
 
   // Find function declarations
   const functionRegex = /(?:function\s+|const\s+|let\s+|var\s+)([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*(?:async\s*)?\(|=\s*function|\()/g;
@@ -378,27 +390,29 @@ function checkFunctionDuplication(file, existingFunctions, threshold = SIMILARIT
 
   while ((match = functionRegex.exec(content)) !== null) {
     const funcName = match[1];
-    const funcNameLower = funcName.toLowerCase();
 
-    // Check against existing functions
     for (const existing of existingFunctions) {
-      const existingLower = existing.name.toLowerCase();
-      const similarity = calculateSimilarity(funcNameLower, existingLower);
+      const existingName = existing.name || '';
+      if (funcName.toLowerCase() === existingName.toLowerCase()) continue;
 
-      if (similarity >= threshold && funcNameLower !== existingLower) {
-        const beforeMatch = content.substring(0, match.index);
-        const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+      const scores = calculateCombinedSimilarity(funcName, existingName, 'functions');
+      const matchLevel = getMatchLevel(scores.combined, config.thresholds);
+      const severity = MATCH_LEVEL_SEVERITY[matchLevel];
 
-        violations.push({
-          type: 'function-duplication',
-          severity: 'warning',
-          file: file.path,
-          line: lineNumber,
-          message: `Function "${funcName}" may duplicate existing "${existing.name}" (${existing.description})`,
-          suggestion: `Consider using existing function from function-map.md`,
-          rule: 'function-map.md'
-        });
-      }
+      if (!severity || severity === 'info') continue;
+
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+
+      violations.push({
+        type: 'function-duplication',
+        severity,
+        file: file.path,
+        line: lineNumber,
+        message: `Function "${funcName}" is ${scores.combined}% similar to existing "${existingName}" (${existing.description || 'no description'})`,
+        suggestion: `Consider using existing function from function-map.md`,
+        rule: 'function-map.md'
+      });
     }
   }
 
@@ -585,15 +599,16 @@ function isInChangedPaths(filePath, changedPaths) {
  * @param {boolean} options.skipFunctions - Skip function duplication check
  * @param {boolean} options.skipSecurity - Skip security pattern check
  * @param {boolean} options.skipApi - Skip API check
- * @param {number} options.similarityThreshold - Override similarity threshold (0-1)
+ * @param {number} options.similarityThreshold - Legacy: override similarity threshold (0-1). Prefer semanticMatching config.
  * @returns {Object} Check results
  */
 function runStandardsCheck(files, options = {}) {
   const {
-    changedPaths = [],
-    similarityThreshold = SIMILARITY_THRESHOLD,
-    similarityWarningThreshold = SIMILARITY_WARNING_THRESHOLD
+    changedPaths = []
   } = options;
+
+  // Load semantic match config (preferred) with legacy fallback
+  const matchConfig = getMatchConfig();
 
   // Determine which checks to run
   const checksToRun = getCheckTypesForTask(options);
@@ -632,14 +647,14 @@ function runStandardsCheck(files, options = {}) {
 
     // Component duplication
     if (checksToRun.includes('components') && components.length > 0) {
-      const componentViolations = checkComponentDuplication(file, components, similarityThreshold, similarityWarningThreshold);
+      const componentViolations = checkComponentDuplication(file, components, matchConfig);
       allViolations.push(...componentViolations);
       checksSummary['app-map.md'].violations += componentViolations.length;
     }
 
     // Function duplication
     if (checksToRun.includes('functions') && functions.length > 0) {
-      const functionViolations = checkFunctionDuplication(file, functions, similarityThreshold, similarityWarningThreshold);
+      const functionViolations = checkFunctionDuplication(file, functions, matchConfig);
       allViolations.push(...functionViolations);
       checksSummary['function-map.md'].violations += functionViolations.length;
     }
@@ -807,7 +822,7 @@ module.exports = {
   getCheckTypesForTask,
   isInChangedPaths,
   STANDARDS_FILES,
-  SIMILARITY_THRESHOLD,
+  MATCH_LEVEL_SEVERITY,
   TASK_CHECK_MAP,
   ALL_CHECK_TYPES
 };
