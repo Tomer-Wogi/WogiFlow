@@ -1375,7 +1375,7 @@ When violations are detected, they are automatically:
     "mode": "block",              // "block" or "warn"
     "scopeByTaskType": true,      // Use smart scoping
     "alwaysCheck": ["naming", "security"],
-    "similarityThreshold": 80,  // Legacy — prefer semanticMatching.thresholds
+    "similarityThreshold": 0.8,  // Legacy — prefer semanticMatching.thresholds
     "learning": {
       "enabled": true,
       "promotionThreshold": 3,

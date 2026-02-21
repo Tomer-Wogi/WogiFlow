@@ -432,7 +432,7 @@ function checkSecurityPatterns(file, securityRules) {
   // Hard-coded security checks from security-patterns.md
 
   // 1. Raw JSON.parse without try-catch or safeJsonParse
-  const jsonParseMatches = content.matchAll(/JSON\.parse\s*\(/g);
+  const jsonParseMatches = content.matchAll(/JSON\s*\.\s*parse\s*\(/g);
   for (const match of jsonParseMatches) {
     const beforeMatch = content.substring(0, match.index);
     const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
@@ -479,66 +479,7 @@ function checkSecurityPatterns(file, securityRules) {
 // Utility Functions
 // ============================================================================
 
-/**
- * Calculate string similarity (Levenshtein-based)
- * @param {string} a - First string
- * @param {string} b - Second string
- * @returns {number} Similarity score 0-1
- */
-function calculateSimilarity(a, b) {
-  if (a === b) return 1;
-  if (!a || !b) return 0;
-
-  const longer = a.length > b.length ? a : b;
-  const shorter = a.length > b.length ? b : a;
-
-  if (longer.length === 0) return 1;
-
-  // Simple containment check
-  if (longer.includes(shorter) || shorter.includes(longer)) {
-    return shorter.length / longer.length;
-  }
-
-  // Levenshtein distance
-  const distance = levenshteinDistance(a, b);
-  return (longer.length - distance) / longer.length;
-}
-
-/**
- * Calculate Levenshtein distance
- */
-function levenshteinDistance(a, b) {
-  // Early exit on length ratio — strings with very different lengths can't be similar
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  // Single-row DP — O(N) memory instead of O(N×M)
-  let prev = new Array(a.length + 1);
-  let curr = new Array(a.length + 1);
-
-  for (let j = 0; j <= a.length; j++) {
-    prev[j] = j;
-  }
-
-  for (let i = 1; i <= b.length; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        curr[j] = prev[j - 1];
-      } else {
-        curr[j] = Math.min(
-          prev[j - 1] + 1,
-          curr[j - 1] + 1,
-          prev[j] + 1
-        );
-      }
-    }
-    // Swap rows
-    [prev, curr] = [curr, prev];
-  }
-
-  return prev[a.length];
-}
+// Legacy calculateSimilarity/levenshteinDistance removed — use flow-semantic-match.js instead
 
 // ============================================================================
 // Main Check Function
@@ -818,7 +759,6 @@ module.exports = {
   checkComponentDuplication,
   checkFunctionDuplication,
   checkSecurityPatterns,
-  calculateSimilarity,
   getCheckTypesForTask,
   isInChangedPaths,
   STANDARDS_FILES,

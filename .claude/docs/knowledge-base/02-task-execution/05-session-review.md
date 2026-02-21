@@ -47,7 +47,7 @@ Runs 4 sequential passes with context isolation. Auto-enabled when:
 - Security patterns in content (password, token, secret)
 - API/service files detected
 
-Passes: Structure (Haiku) → Logic (Sonnet) → Security (Sonnet) → Integration (Sonnet)
+Passes: Structure (Sonnet) → Logic (Sonnet) → Security (Sonnet) → Integration (Sonnet)
 
 ---
 

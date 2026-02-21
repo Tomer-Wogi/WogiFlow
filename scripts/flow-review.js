@@ -377,7 +377,7 @@ Phases:
 
 Standards compliance (Phase 3) checks:
   - decisions.md coding rules
-  - app-map.md component reuse (>80% similarity = violation)
+  - app-map.md component reuse (semantic similarity, configurable via config.semanticMatching)
   - function-map.md utility duplication
   - naming-conventions.md (kebab-case files, 'err' in catch blocks)
   - security-patterns.md (raw JSON.parse, unprotected fs.readFileSync)

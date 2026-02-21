@@ -55,7 +55,7 @@ class BaseScanner {
         .replace(/\*\*/g, '.*')
         .replace(/\*/g, '[^/]*')
         .replace(/\./g, '\\.');
-      return new RegExp(regexPattern);
+      return new RegExp('^' + regexPattern + '$');
     });
 
     // Try to load babel for better parsing

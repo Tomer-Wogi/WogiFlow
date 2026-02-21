@@ -435,6 +435,7 @@
       "security"
     ],
     "similarityThreshold": 0.8,
+    "_comment_similarityThreshold": "Legacy — prefer semanticMatching.thresholds. Kept for backward compatibility.",
     "similarityWarningThreshold": 0.6,
     "learning": {
       "enabled": true,

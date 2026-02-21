@@ -48,6 +48,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-3day21",
+      "title": "Fix 30 review findings from 3-day comprehensive review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-21T22:10:00.000Z",
+      "completedAt": "2026-02-22T01:00:00.000Z"
+    },
+    {
       "id": "wf-semantic-wire",
       "title": "Wire AI-Judge Semantic Matching Into All Reuse Consumers",
       "type": "story",

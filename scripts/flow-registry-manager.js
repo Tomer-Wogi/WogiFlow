@@ -175,11 +175,16 @@ class RegistryManager {
 
         if (!Plugin) {
           // Try to find exported class that has static id
+          let found = false;
           for (const key of Object.keys(pluginModule)) {
             if (typeof pluginModule[key] === 'function' && pluginModule[key].id) {
               this._registerPlugin(pluginModule[key], registriesConfig);
+              found = true;
               break;
             }
+          }
+          if (!found) {
+            warn(`Plugin ${file}: no RegistryPlugin export found — skipping`);
           }
           continue;
         }

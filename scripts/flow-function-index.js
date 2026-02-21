@@ -467,8 +467,13 @@ function exportRegistry() {
     process.exit(1);
   }
 
-  const content = fs.readFileSync(INDEX_PATH, 'utf-8');
-  console.log(content);
+  try {
+    const content = fs.readFileSync(INDEX_PATH, 'utf-8');
+    console.log(content);
+  } catch (err) {
+    error(`Failed to read function index: ${err.message}`);
+    process.exit(1);
+  }
 }
 
 /**

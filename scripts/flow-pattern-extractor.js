@@ -195,7 +195,7 @@ function matchesGlobPattern(relativePath, fileName, pattern) {
   if (dirScopedMatch) {
     const dirPrefix = dirScopedMatch[1];
     const ext = '.' + dirScopedMatch[2];
-    return relativePath.startsWith(dirPrefix + path.sep) && fileName.endsWith(ext);
+    return relativePath.startsWith(dirPrefix + '/') && fileName.endsWith(ext);
   }
 
   // **/dir/**//*.ext — match extension within any ancestor directory name
@@ -204,8 +204,7 @@ function matchesGlobPattern(relativePath, fileName, pattern) {
   if (anyDirScopedMatch) {
     const dirName = anyDirScopedMatch[1];
     const ext = '.' + anyDirScopedMatch[2];
-    const sep = path.sep;
-    return (relativePath.includes(sep + dirName + sep) || relativePath.startsWith(dirName + sep)) &&
+    return (relativePath.includes('/' + dirName + '/') || relativePath.startsWith(dirName + '/')) &&
            fileName.endsWith(ext);
   }
 
@@ -1941,6 +1940,11 @@ async function main() {
   const projectRoot = options.project
     ? path.resolve(options.project)
     : getProjectRoot();
+
+  if (options.project && (!fs.existsSync(projectRoot) || !fs.statSync(projectRoot).isDirectory())) {
+    console.error(`Error: Project path does not exist or is not a directory: ${projectRoot}`);
+    process.exit(1);
+  }
 
   console.error(`${c.cyan}Scanning project...${c.reset}`);
   console.error(`  Root: ${projectRoot}`);

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-144 | 2026-02-22 01:00
+**Type**: fix
+**Tags**: #review #fix #regression #3-day-review
+**Task**: wf-cr-3day21
+**Request**: "Review everything we've done in the past three days — make sure nothing is broken, no regression, no orphan files, no loopholes"
+**Result**: 5-phase comprehensive review of 10 commits across 42+ files (3-day scope). 30 findings from 6 parallel agents. Fixed 18 findings: removed dead Levenshtein code from standards-checker, fixed catch variable naming in postinstall.js, wrapped bare readFileSync in api-index and function-index exportRegistry, fixed Windows path.sep bug in pattern-extractor, added path validation for --project flag, anchored scanner-base exclude regexes, removed dead ternary in installer.js, broadened JSON.parse detection regex, fixed 5 doc inconsistencies (wogi-decide config keys, wogi-rescan similarity ref, session-review model names, wogi-start config value, flow-review help text), added deprecation comment for zombie config key, added plugin warning in registry-manager. 6 findings verified as false positives. 3 deferred to wf-manifest-wiring. 3 accepted as low-risk.
+**Files**: scripts/flow-standards-checker.js, scripts/postinstall.js, scripts/flow-api-index.js, scripts/flow-function-index.js, scripts/flow-pattern-extractor.js, scripts/flow-review.js, scripts/flow-registry-manager.js, scripts/flow-scanner-base.js, lib/installer.js, .workflow/config.json, .claude/commands/wogi-decide.md, .claude/commands/wogi-rescan.md, .claude/commands/wogi-start.md, .claude/docs/knowledge-base/02-task-execution/05-session-review.md
+
 ### R-143 | 2026-02-21 21:30
 **Type**: feature
 **Tags**: #scanner #semantic-matching #standards #config

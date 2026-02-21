@@ -138,16 +138,16 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
         fs.copyFileSync(srcPath, destPath);
         try {
           fs.chmodSync(destPath, FILE_MODE);
-        } catch (chmodErr) {
+        } catch (err) {
           // chmod failure is non-critical on some filesystems (e.g., Windows)
           if (process.env.DEBUG) {
-            console.error(`[postinstall] chmod failed: ${chmodErr.message}`);
+            console.error(`[postinstall] chmod failed: ${err.message}`);
           }
         }
-      } catch (copyErr) {
+      } catch (err) {
         // Log but continue - one file failure shouldn't stop the entire install
         if (process.env.DEBUG) {
-          console.error(`[postinstall] Failed to copy ${entry.name}: ${copyErr.message}`);
+          console.error(`[postinstall] Failed to copy ${entry.name}: ${err.message}`);
         }
       }
     }

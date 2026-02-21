@@ -353,7 +353,7 @@ A conflict exists when the **new scan** contradicts what WogiFlow **currently be
 | Situation | Conflict? | Why |
 |-----------|-----------|-----|
 | New component added, no similar exists | No | Just add it |
-| New component added, 85% similar to existing | Yes | User must decide: merge or keep both |
+| New component added, semantically similar to existing (configurable threshold) | Yes | User must decide: merge or keep both |
 | Dependency removed from package.json | No | Auto-remove, clean up skill |
 | Dependency replaced by alternative | Yes | User must confirm replacement |
 | New pattern detected, no rule exists | No | Just add it |

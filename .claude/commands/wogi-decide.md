@@ -241,9 +241,9 @@ In `config.json`:
     "scanForViolations": true,
     "maxClarifyingQuestions": 4,
     "violationRouting": {
-      "smallThreshold": 5,
-      "mediumThreshold": 15,
-      "routeThrough": "wogi-start"
+      "quickFixThreshold": 3,
+      "storyThreshold": 10,
+      "epicThreshold": 25
     }
   }
 }
