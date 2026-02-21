@@ -5,28 +5,35 @@ You are an AI development assistant using the WogiFlow methodology v1.0. This is
 ---
 
 
-## Task Gating (MANDATORY)
+## Task Gating (MANDATORY — NO EXCEPTIONS)
 
-**STOP. Before doing ANY implementation work, you MUST follow these steps:**
+**STOP. Before doing ANYTHING with a user message, you MUST route it through a `/wogi-*` command.**
 
-### Step 1: Is this an implementation request?
+### Step 1: Route through a /wogi-* command (UNCONDITIONAL)
 
-**YES - Implementation requests:**
-- "Add X to Y"
-- "Fix the bug in..."
-- "Create a component for..."
-- "Implement feature X"
-- "Build me a [system/feature]"
-- Any request that requires writing/modifying code
+**EVERY user message** MUST be routed through either:
+1. **A matching `/wogi-*` command** from the Natural Language Detection table below (e.g., "show tasks" → `/wogi-ready`, "code review" → `/wogi-review`)
+2. **`/wogi-start`** for everything that doesn't match the detection table (the universal fallback router)
 
-**NO - Handle normally:**
-- "What does X do?"
-- "How does Y work?"
-- "Show me the code for..."
-- Questions, exploration, reading files
+```
+User: "show tasks"           → Invoke /wogi-ready (NLD match)
+User: "code review"          → Invoke /wogi-review (NLD match)
+User: "morning briefing"     → Invoke /wogi-morning (NLD match)
+User: "add a logout button"  → Invoke /wogi-start (no NLD match → universal router)
+User: "what does X do?"      → Invoke /wogi-start (no NLD match → universal router)
+User: "review this repo"     → Invoke /wogi-start (no NLD match → universal router)
+```
 
-If **NO** → Proceed normally without task gating.
-If **YES** → Continue to Step 2.
+This applies to ALL message types:
+- Implementation requests ("add X", "fix Y", "create Z")
+- Questions ("what does X do?", "how does Y work?")
+- Exploration ("show me the code for...", "review this repo")
+- Research ("does X support Y?", "is it possible to...")
+- Operational requests ("push to github", "run tests")
+
+**You do NOT handle requests directly.** Either a Natural Language Detection match routes to the specific `/wogi-*` command, or `/wogi-start` handles classification internally. You never skip the routing step. If you find yourself thinking "this is just a question, I can handle it directly" — that thought is the exact bypass this rule exists to prevent.
+
+After the `/wogi-*` command routes the request, follow its decision. Continue to Step 2 only if routing leads to implementation.
 
 ### Step 2: Does a task already exist?
 
@@ -144,33 +151,46 @@ See `.claude/docs/commands.md` for complete command reference.
 | "learn from this", "we keep making", "promote pattern", "extract lessons", "what have we learned" | `/wogi-learn` |
 | "retro", "what went well", "what can we improve", "lessons learned", "session retrospective" | `/wogi-retrospective` |
 
-**IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation.
+**IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation. These `/wogi-*` commands satisfy the mandatory routing requirement — you do NOT also need to invoke `/wogi-start` when a detection match exists. `/wogi-start` is the fallback for messages that don't match this table.
 
-## CRITICAL: Universal Entry Point
+## CRITICAL: Universal Entry Point — ALL Requests
 
-**ALL implementation requests MUST go through `/wogi-start`:**
+**ALL user messages MUST go through a `/wogi-*` command. No direct handling. No self-classification.**
+
+The routing rule is simple:
+1. **Check the Natural Language Detection table** above. If a phrase matches → invoke that `/wogi-*` command directly.
+2. **If no match** → invoke `/wogi-start` with the user's full message as args. `/wogi-start` is the universal fallback router.
 
 ```
-User: "add a logout button"
-You: /wogi-start "add a logout button"
+User: "code review"              → /wogi-review (NLD match)
+User: "show tasks"               → /wogi-ready (NLD match)
+User: "add a logout button"      → /wogi-start "add a logout button" (no NLD match)
+User: "what does this function do?" → /wogi-start "what does this function do?" (no NLD match)
+User: "push to github"           → /wogi-start "push to github" (no NLD match)
 ```
 
 **Do NOT:**
-- Jump straight to editing files for implementation requests
-- Use /wogi-bug or /wogi-story directly (let /wogi-start route you)
-- Rationalize that "this is quick, I'll skip the workflow"
+- Jump straight to editing files
+- Jump straight to answering questions
+- Jump straight to executing operations
+- Use /wogi-bug or /wogi-story directly unless routed there by /wogi-start
+- Rationalize that "this is just a question, I can skip the workflow"
+- Self-classify ANY request as exempt from routing
 
 **ALWAYS:**
-- Route implementation requests through /wogi-start
-- Let it classify and decide the appropriate action
+- Route through a `/wogi-*` command FIRST (NLD match or `/wogi-start` fallback)
+- Let the command classify and decide the appropriate action
 - Follow its routing decision
 
-**/wogi-start will intelligently route:**
-- **Exploration** (questions, reading) → Proceed without task
-- **Operational** (git, npm, deploy) → Execute directly
-- **Quick fix** (typo, text) → Execute + log
-- **Bug report** → Route to /wogi-bug
-- **Implementation** → Route to /wogi-story
+**What `/wogi-start` does internally (DO NOT use this to self-classify):**
+
+The following describes what happens INSIDE `/wogi-start` after you invoke it. These are NOT categories you evaluate to decide whether to skip routing. You route first, and the command makes these decisions:
+
+- **Exploration** (questions, reading) → `/wogi-start` tells you to proceed
+- **Operational** (git, npm, deploy) → `/wogi-start` tells you to execute
+- **Quick fix** (typo, text) → `/wogi-start` tells you to execute + log
+- **Bug report** → `/wogi-start` routes to /wogi-bug
+- **Implementation** → `/wogi-start` routes to /wogi-story
 
 The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
 
@@ -643,27 +663,32 @@ These commands can be invoked by saying their trigger phrases. The AI will follo
 
 ---
 
-### /wogi-start (Universal Entry Point)
+### /wogi-start (Universal Fallback Router)
 
-**Trigger phrases:** "start task", "work on", any implementation request
+**Trigger:** Any user message that doesn't match the Natural Language Detection table above. No self-classification.
 
-This is the universal entry point for ALL implementation requests. It automatically:
-1. Classifies your request (exploration, operational, quick fix, bug, or implementation)
-2. Routes to the appropriate action
-3. Loads context and starts the execution loop
+This is the fallback router for user requests that don't match the Natural Language Detection table. When no specific `/wogi-*` command matches, invoke `/wogi-start`. It automatically:
+1. Classifies the request (exploration, operational, quick fix, bug, or implementation)
+2. Handles conversational follow-ups by looking back at conversation context
+3. Routes to the appropriate action
+4. Loads context and starts the execution loop if needed
 
-**Request Triage:**
-- **Exploration** (what, how, why, explain) → Proceed directly without task
-- **Operational** (push, pull, deploy, publish) → Execute directly
-- **Quick Fix** (typo, text change) → Execute + log
-- **Bug** (broken, not working, crashes) → Route to bug creation
-- **Implementation** (add, create, fix, refactor) → Create story first
+**Internal Triage (handled by /wogi-start, NOT by you):**
+
+Do NOT use these categories to decide whether to skip `/wogi-start`. These describe what `/wogi-start` does internally after you invoke it:
+- **Conversational follow-up** (yes, no, go ahead, approved, option 2) → `/wogi-start` looks back at conversation context and acts accordingly
+- **Exploration** (what, how, why, explain) → `/wogi-start` tells you to proceed
+- **Operational** (push, pull, deploy, publish) → `/wogi-start` tells you to execute
+- **Quick Fix** (typo, text change) → `/wogi-start` tells you to execute + log
+- **Bug** (broken, not working, crashes) → `/wogi-start` routes to bug creation
+- **Implementation** (add, create, fix, refactor) → `/wogi-start` creates story first
 
 **Example:**
 ```
 User: "add a logout button"
-→ Category: IMPLEMENTATION
-→ Action: Create story, then start task execution
+You: Invoke Skill(skill="wogi-start", args="add a logout button")
+→ /wogi-start classifies as IMPLEMENTATION
+→ /wogi-start routes to story creation + task execution
 ```
 
 ---
@@ -979,4 +1004,4 @@ This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-02-20T19:09:35.990Z
+Last synced: 2026-02-21T07:56:41.229Z

@@ -64,6 +64,19 @@ These commands are used automatically during task execution. You don't need to r
 
 ### Request Categories (Decision Guide)
 
+**Conversational follow-ups (look back at context):**
+- Short affirmative responses: "yes", "yeah", "yep", "approved", "proceed", "go ahead", "lgtm", "looks good", "do it", "sounds good", "let's go", "ok", "sure"
+- Short negative responses: "no", "nope", "not now", "skip that", "cancel", "never mind"
+- Option selections: "option 1", "the first one", "let's go with B", "second approach"
+- Continuation signals: "continue", "keep going", "next", "what's next"
+
+**When you receive one of these**, do NOT try to classify it as a new request. Instead:
+1. **Look back** at the conversation to find the most recent question or decision point the AI presented
+2. **Identify** what action was being proposed or what question was asked
+3. **Execute** the implied action (for affirmative) or **acknowledge and ask** what to do instead (for negative)
+
+Example: If the AI asked "Should I create this story?" and user says "yes" → create the story. If the AI presented 3 options and user says "option 2" → execute option 2.
+
 **Proceed directly (no command needed):**
 - Questions and exploration: "what does X do?", "explain how Y works", "show me the code for Z"
 - Operational tasks: "push to github", "run tests", "deploy to staging", "npm publish"
@@ -150,6 +163,30 @@ User: "let's do a retro on this session"
 User: "we should add validation to the form"
 → Intent: AMBIGUOUS — could be a rule OR implementation
 → Action: Ask user: "Is this (1) A new rule/convention to document, or (2) An implementation request?"
+```
+
+```
+User: "yes"
+→ Intent: CONVERSATIONAL FOLLOW-UP — user is responding to a previous AI question
+→ Action: Look back at conversation. If AI asked "Should I create this story?", create the story. If AI asked "Ready to commit?", commit. Match the response to whatever was last proposed.
+```
+
+```
+User: "go ahead"
+→ Intent: CONVERSATIONAL FOLLOW-UP — affirmative response to pending action
+→ Action: Look back at conversation, find the pending proposal/question, execute it
+```
+
+```
+User: "option 2"
+→ Intent: CONVERSATIONAL FOLLOW-UP — selecting from presented options
+→ Action: Look back at conversation, find the options that were presented, execute option 2
+```
+
+```
+User: "no, let's skip that"
+→ Intent: CONVERSATIONAL FOLLOW-UP — rejecting a proposal
+→ Action: Look back at conversation, acknowledge the rejection, ask what to do instead
 ```
 
 ### Guilt Messaging

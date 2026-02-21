@@ -13,6 +13,30 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-131 | 2026-02-21 10:25
+**Type**: fix
+**Tags**: #enforcement #routing #wogi-start #conversational-followup #P0
+**Task**: wf-conv-followup
+**Request**: "Add conversational follow-up handling to /wogi-start"
+**Result**: Added "Conversational follow-ups" category to /wogi-start's Request Categories (Decision Guide). When /wogi-start receives short responses like "yes", "no", "go ahead", "approved", "option 2", it now looks back at conversation context to identify what the user is responding to, then acts accordingly. Added 4 new examples covering affirmative, directive, option selection, and negative follow-ups. Updated user-commands.hbs partial to list "Conversational follow-up" as an internal triage category. Regenerated CLAUDE.md via bridge sync.
+**Files**: `.claude/commands/wogi-start.md`, `.workflow/templates/partials/user-commands.hbs`, `CLAUDE.md` (regenerated), `.workflow/changes/wf-conv-followup.md`
+
+### R-130 | 2026-02-21 10:15
+**Type**: fix
+**Tags**: #enforcement #task-gating #templates #routing #NLD #P0
+**Task**: wf-16d64c68
+**Request**: "Amend /wogi-start routing rule to allow Natural Language Detection commands"
+**Result**: Fixed routing conflict between unconditional /wogi-start rule and Natural Language Detection table. The rule now says: "route through a /wogi-* command" instead of "route through /wogi-start specifically." NLD matches (e.g., "show tasks" → /wogi-ready, "code review" → /wogi-review) are valid routing that satisfies the mandatory gate. /wogi-start is the universal fallback for messages that don't match the NLD table. Updated Task Gating section with NLD-first examples, NLD section with explicit "satisfies routing requirement" note, Universal Entry Point with two-step routing (check NLD → fallback to /wogi-start), and /wogi-start description changed from "MANDATORY for ALL messages" to "Universal Fallback Router." Regenerated CLAUDE.md via bridge sync.
+**Files**: `.workflow/templates/claude-md.hbs`, `.workflow/templates/partials/user-commands.hbs`, `CLAUDE.md` (regenerated)
+
+### R-129 | 2026-02-21 10:00
+**Type**: fix
+**Tags**: #enforcement #task-gating #templates #bypass-prevention #P0
+**Task**: wf-dbccc898
+**Request**: "Remove /wogi-start bypass loophole — make routing unconditionally mandatory"
+**Result**: Fixed 3 locations in CLAUDE.md templates that allowed the AI to self-classify requests and skip /wogi-start. (1) Task Gating Step 1 in claude-md.hbs: Replaced "NO - Handle normally" exception with unconditional routing requirement. Added explicit anti-bypass language: "If you find yourself thinking 'this is just a question, I can skip /wogi-start' — that thought is the exact bypass this rule exists to prevent." (2) Universal Entry Point in claude-md.hbs: Changed from describing routing categories as if AI should self-classify, to explicitly stating they describe what /wogi-start does internally with "DO NOT use this to self-classify" warning. Added question/operational examples alongside implementation examples. (3) /wogi-start description in user-commands.hbs: Changed trigger from "any implementation request" to "EVERY user message", renamed "Request Triage" to "Internal Triage (handled by /wogi-start, NOT by you)", added prefix warning. Regenerated CLAUDE.md via bridge sync. Verified old loophole language ("Proceed normally without task gating", "Handle normally") is completely absent from generated output.
+**Files**: `.workflow/templates/claude-md.hbs`, `.workflow/templates/partials/user-commands.hbs`, `CLAUDE.md` (regenerated)
+
 ### R-128 | 2026-02-20 20:10
 **Type**: fix
 **Tags**: #review #code-review-findings #learning #commands #wogi-decide #wogi-learn #wogi-retrospective #wogi-start #templates #config #P0

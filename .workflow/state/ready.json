@@ -5,6 +5,42 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-conv-followup",
+      "title": "Add conversational follow-up handling to /wogi-start",
+      "type": "fix",
+      "feature": "enforcement",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-21T10:20:00.000Z",
+      "startedAt": "2026-02-21T10:20:00.000Z",
+      "completedAt": "2026-02-21T10:25:00.000Z",
+      "specPath": ".workflow/changes/wf-conv-followup.md"
+    },
+    {
+      "id": "wf-16d64c68",
+      "title": "Amend /wogi-start routing rule to allow Natural Language Detection commands",
+      "type": "fix",
+      "feature": "enforcement",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-21T10:10:00.000Z",
+      "startedAt": "2026-02-21T10:10:00.000Z",
+      "completedAt": "2026-02-21T10:15:00.000Z",
+      "specPath": ".workflow/changes/wf-16d64c68.md"
+    },
+    {
+      "id": "wf-dbccc898",
+      "title": "Remove /wogi-start bypass loophole — make routing unconditionally mandatory",
+      "type": "story",
+      "feature": "enforcement",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-21T10:00:00.000Z",
+      "startedAt": "2026-02-21T10:00:00.000Z",
+      "completedAt": "2026-02-21T10:05:00.000Z",
+      "specPath": ".workflow/changes/wf-dbccc898.md"
+    },
+    {
       "id": "wf-cr-a88584",
       "title": "Fix 18 review findings from learning-epic commit",
       "type": "fix",

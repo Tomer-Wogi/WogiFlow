@@ -20,27 +20,32 @@ These commands can be invoked by saying their trigger phrases. The AI will follo
 
 ---
 
-### /wogi-start (Universal Entry Point)
+### /wogi-start (Universal Fallback Router)
 
-**Trigger phrases:** "start task", "work on", any implementation request
+**Trigger:** Any user message that doesn't match the Natural Language Detection table above. No self-classification.
 
-This is the universal entry point for ALL implementation requests. It automatically:
-1. Classifies your request (exploration, operational, quick fix, bug, or implementation)
-2. Routes to the appropriate action
-3. Loads context and starts the execution loop
+This is the fallback router for user requests that don't match the Natural Language Detection table. When no specific `/wogi-*` command matches, invoke `/wogi-start`. It automatically:
+1. Classifies the request (exploration, operational, quick fix, bug, or implementation)
+2. Handles conversational follow-ups by looking back at conversation context
+3. Routes to the appropriate action
+4. Loads context and starts the execution loop if needed
 
-**Request Triage:**
-- **Exploration** (what, how, why, explain) → Proceed directly without task
-- **Operational** (push, pull, deploy, publish) → Execute directly
-- **Quick Fix** (typo, text change) → Execute + log
-- **Bug** (broken, not working, crashes) → Route to bug creation
-- **Implementation** (add, create, fix, refactor) → Create story first
+**Internal Triage (handled by /wogi-start, NOT by you):**
+
+Do NOT use these categories to decide whether to skip `/wogi-start`. These describe what `/wogi-start` does internally after you invoke it:
+- **Conversational follow-up** (yes, no, go ahead, approved, option 2) → `/wogi-start` looks back at conversation context and acts accordingly
+- **Exploration** (what, how, why, explain) → `/wogi-start` tells you to proceed
+- **Operational** (push, pull, deploy, publish) → `/wogi-start` tells you to execute
+- **Quick Fix** (typo, text change) → `/wogi-start` tells you to execute + log
+- **Bug** (broken, not working, crashes) → `/wogi-start` routes to bug creation
+- **Implementation** (add, create, fix, refactor) → `/wogi-start` creates story first
 
 **Example:**
 ```
 User: "add a logout button"
-→ Category: IMPLEMENTATION
-→ Action: Create story, then start task execution
+You: Invoke Skill(skill="wogi-start", args="add a logout button")
+→ /wogi-start classifies as IMPLEMENTATION
+→ /wogi-start routes to story creation + task execution
 ```
 
 ---
