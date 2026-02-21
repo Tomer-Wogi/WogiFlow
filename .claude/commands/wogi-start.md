@@ -59,7 +59,7 @@ These commands are used automatically during task execution. You don't need to r
 **Routing principles:**
 1. **Understand intent, not keywords.** "Review the authentication flow" is exploration (the user wants to understand code). "Do a code review" is a review request (invoke `/wogi-review`). Same word "review", different intent.
 2. **Default to `/wogi-story`** for anything that changes code. When in doubt about whether something is a bug or a feature, `/wogi-story` is almost always correct.
-3. **Some requests need no command at all.** Questions like "what does X do?" — just answer directly. Operational requests like "push to github" — just execute them. Quick fixes (typos, text changes) — fix and log to request-log.
+3. **Every request gets routed — no exemptions.** Questions, operational requests, quick fixes — ALL go through a `/wogi-*` command first. `/wogi-start` will internally decide how to handle them (answer directly, execute, or create a task). The AI never self-classifies a request as "too simple to route."
 4. **When genuinely unsure, ask.** Don't guess. Present 2-3 options from the catalog and let the user choose.
 
 ### Request Categories (Decision Guide)
@@ -77,13 +77,8 @@ These commands are used automatically during task execution. You don't need to r
 
 Example: If the AI asked "Should I create this story?" and user says "yes" → create the story. If the AI presented 3 options and user says "option 2" → execute option 2.
 
-**Proceed directly (no command needed):**
-- Questions and exploration: "what does X do?", "explain how Y works", "show me the code for Z"
-- Operational tasks: "push to github", "run tests", "deploy to staging", "npm publish"
-- Quick fixes: simple typos, text changes, single-line fixes (execute + log to request-log)
-
 **Route to a command (invoke the Skill tool):**
-- Everything else. Pick the best command from the catalog above based on user intent.
+- Everything. Every request gets routed to the best command from the catalog above based on user intent. There are zero exemptions. `/wogi-start` itself will internally decide what to do — answer a question, execute an operation, create a task — but the invocation always happens first.
 
 ### Examples
 
@@ -126,7 +121,7 @@ User: "add dark mode toggle"
 ```
 User: "push to github"
 → Intent: Operational git command
-→ Action: Execute git push directly (no command needed)
+→ Action: Invoke /wogi-start "push to github" (wogi-start internally decides to execute git push)
 ```
 
 ```

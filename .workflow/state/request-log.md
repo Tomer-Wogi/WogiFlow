@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-145 | 2026-02-22 02:00
+**Type**: fix
+**Tags**: #workflow #routing #enforcement #wogi-start
+**Task**: wf-routing-fix
+**Request**: "Remove the 'proceed directly' exemption category from wogi-start routing docs — make routing unconditional with zero exemptions"
+**Result**: Removed the root cause of workflow routing bypasses. Changed 3 sections in wogi-start.md: (1) Replaced routing principle #3 "Some requests need no command at all" with "Every request gets routed — no exemptions", (2) Removed the entire "Proceed directly (no command needed)" section that listed questions/operational/quick-fix exemptions, (3) Updated "push to github" example from "Execute git push directly (no command needed)" to "Invoke /wogi-start (wogi-start internally decides)". Verified claude-md.hbs template and user-commands.hbs already had correct framing. Regenerated CLAUDE.md via bridge sync.
+**Files**: .claude/commands/wogi-start.md, CLAUDE.md (regenerated)
+
 ### R-144 | 2026-02-22 01:00
 **Type**: fix
 **Tags**: #review #fix #regression #3-day-review

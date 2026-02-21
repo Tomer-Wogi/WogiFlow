@@ -40,6 +40,7 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-peer-review` | Multi-model code review - different AI models review same code for diverse perspectives. |
 | `/wogi-triage` | Interactive walkthrough of review findings from last-review.json. Categorize, dismiss, or create tasks. |
 | `/wogi-onboard` | Analyze existing project with deep temporal analysis, pattern extraction, and state file generation. |
+| `/wogi-rescan` | Re-scan project after external changes. Smart diff: auto-adds new items, auto-removes deleted items, presents conflicts one-by-one. Options: `--dry-run`, `--auto-resolve`, `--category`, `--since`. |
 | `/wogi-morning` | Morning briefing - where you left off, pending tasks, key context, recommended starting task. |
 | `/wogi-compact` | Run memory compaction to free context space. Preview with `--preview`. |
 | `/wogi-debt` | View and manage technical debt across sessions. |
@@ -195,6 +196,11 @@ npx flow onboard                  # Analyze existing project & set up context
 ./scripts/flow import-profile     # Import workflow profile
 ./scripts/flow archive            # Archive old request-log entries
 ./scripts/flow watch              # Run file watcher for auto-validation
+./scripts/flow rescan             # Re-scan project after external changes
+./scripts/flow rescan --dry-run   # Show what would change without applying
+./scripts/flow rescan --auto-resolve  # Auto-resolve pattern conflicts (newer wins)
+./scripts/flow rescan --category stack  # Rescan specific category only
+./scripts/flow rescan --since 2026-02-01  # Only changes since date
 
 # Durable Sessions (v2.0)
 ./scripts/flow suspend            # Suspend current task
