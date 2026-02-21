@@ -1,18 +1,7 @@
 {
-  "lastUpdated": "2026-02-21T09:49:15.807Z",
+  "lastUpdated": "2026-02-21T10:43:44.893Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-fwk-discovery",
-      "title": "Framework-Driven File Discovery — replace hardcoded FILE_PATTERNS with stack-aware dynamic discovery",
-      "type": "story",
-      "feature": "scanner",
-      "epic": "epic-universal-registry",
-      "status": "ready",
-      "priority": "P1",
-      "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-fwk-discovery.md"
-    },
     {
       "id": "wf-ext-registry",
       "title": "Extensible Registry Architecture — plugin-based registry system with auto-activation per stack",
@@ -21,7 +10,9 @@
       "epic": "epic-universal-registry",
       "status": "ready",
       "priority": "P1",
-      "dependsOn": ["wf-fwk-discovery"],
+      "dependsOn": [
+        "wf-fwk-discovery"
+      ],
       "createdAt": "2026-02-21T14:00:00.000Z",
       "specPath": ".workflow/changes/wf-ext-registry.md"
     },
@@ -33,7 +24,9 @@
       "epic": "epic-universal-registry",
       "status": "ready",
       "priority": "P1",
-      "dependsOn": ["wf-ext-registry"],
+      "dependsOn": [
+        "wf-ext-registry"
+      ],
       "createdAt": "2026-02-21T14:30:00.000Z",
       "specPath": ".workflow/changes/wf-manifest-wiring.md"
     },
@@ -45,7 +38,9 @@
       "epic": "epic-universal-registry",
       "status": "ready",
       "priority": "P1",
-      "dependsOn": ["wf-ext-registry"],
+      "dependsOn": [
+        "wf-ext-registry"
+      ],
       "createdAt": "2026-02-21T14:00:00.000Z",
       "specPath": ".workflow/changes/wf-schema-registry.md"
     },
@@ -57,13 +52,28 @@
       "epic": "epic-universal-registry",
       "status": "ready",
       "priority": "P2",
-      "dependsOn": ["wf-ext-registry"],
+      "dependsOn": [
+        "wf-ext-registry"
+      ],
       "createdAt": "2026-02-21T14:00:00.000Z",
       "specPath": ".workflow/changes/wf-service-registry.md"
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-fwk-discovery",
+      "title": "Framework-Driven File Discovery — replace hardcoded FILE_PATTERNS with stack-aware dynamic discovery",
+      "type": "story",
+      "feature": "scanner",
+      "epic": "epic-universal-registry",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-21T14:00:00.000Z",
+      "startedAt": "2026-02-21T14:35:00.000Z",
+      "specPath": ".workflow/changes/wf-fwk-discovery.md",
+      "completedAt": "2026-02-21T14:45:00.000Z"
+    },
     {
       "id": "wf-mapsync",
       "title": "Add deletion/rename sync to app-map, function-map, and api-map",
@@ -156,40 +166,6 @@
       "startedAt": "2026-02-21T10:20:00.000Z",
       "completedAt": "2026-02-21T10:25:00.000Z",
       "specPath": ".workflow/changes/wf-conv-followup.md"
-    },
-    {
-      "id": "wf-16d64c68",
-      "title": "Amend /wogi-start routing rule to allow Natural Language Detection commands",
-      "type": "fix",
-      "feature": "enforcement",
-      "status": "completed",
-      "priority": "P0",
-      "createdAt": "2026-02-21T10:10:00.000Z",
-      "startedAt": "2026-02-21T10:10:00.000Z",
-      "completedAt": "2026-02-21T10:15:00.000Z",
-      "specPath": ".workflow/changes/wf-16d64c68.md"
-    },
-    {
-      "id": "wf-dbccc898",
-      "title": "Remove /wogi-start bypass loophole — make routing unconditionally mandatory",
-      "type": "story",
-      "feature": "enforcement",
-      "status": "completed",
-      "priority": "P0",
-      "createdAt": "2026-02-21T10:00:00.000Z",
-      "startedAt": "2026-02-21T10:00:00.000Z",
-      "completedAt": "2026-02-21T10:05:00.000Z",
-      "specPath": ".workflow/changes/wf-dbccc898.md"
-    },
-    {
-      "id": "wf-cr-a88584",
-      "title": "Fix 18 review findings from learning-epic commit",
-      "type": "fix",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P0",
-      "startedAt": "2026-02-20T19:35:00.000Z",
-      "completedAt": "2026-02-20T20:10:00.000Z"
     }
   ],
   "backlog": [

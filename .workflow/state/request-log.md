@@ -13,6 +13,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-138 | 2026-02-21 14:45
+**Type**: feature
+**Tags**: #scanner #framework-resolver #file-patterns #prisma #nestjs #django #go #rust
+**Task**: wf-fwk-discovery
+**Epic**: epic-universal-registry (Story 1/5)
+**Request**: "Replace hardcoded FILE_PATTERNS with stack-aware dynamic discovery"
+**Result**: Created `flow-framework-resolver.js` with FRAMEWORK_PATTERNS mapping for 11 frameworks (Prisma, TypeORM, Sequelize, Drizzle, Mongoose, NestJS, Django, FastAPI, Flask, Go, Rust). Enhanced `globFiles()` in flow-pattern-extractor.js with `matchesGlobPattern()` supporting 6 pattern types (extension, compound extension, exact filename, suffix, directory-scoped, ancestor directory-scoped). Wired resolver into `extractPatterns()` — calls `detectStack()` then `resolvePatterns()` to additively merge framework patterns with base FILE_PATTERNS. Graceful fallback if stack detection fails.
+**Files**: scripts/flow-framework-resolver.js (NEW), scripts/flow-pattern-extractor.js
+
 ### R-137 | 2026-02-21 13:30
 **Type**: feature
 **Tags**: #map-sync #function-map #api-map #app-map #pruning #deletion-sync

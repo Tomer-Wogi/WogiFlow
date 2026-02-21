@@ -38,6 +38,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync, execFileSync } = require('child_process');
 const crypto = require('crypto');
+const { resolvePatterns } = require('./flow-framework-resolver');
 
 // ============================================================================
 // Constants
@@ -155,11 +156,7 @@ function globFiles(projectRoot, patterns, ignorePatterns = IGNORE_PATTERNS) {
         } else if (entry.isFile()) {
           // Check if matches any pattern
           const matches = patterns.some(pattern => {
-            if (pattern.startsWith('**/*.')) {
-              const ext = pattern.slice(4);
-              return entry.name.endsWith(ext);
-            }
-            return entry.name === pattern;
+            return matchesGlobPattern(relativePath, entry.name, pattern);
           });
 
           if (matches) {
@@ -174,6 +171,64 @@ function globFiles(projectRoot, patterns, ignorePatterns = IGNORE_PATTERNS) {
 
   walkDir(projectRoot, projectRoot);
   return results;
+}
+
+/**
+ * Match a file against a glob pattern.
+ * Supports:
+ *   **\/*.ext         - match by extension anywhere (e.g., **\/*.prisma)
+ *   **\/*.compound.ext - match by compound extension (e.g., **\/*.controller.ts)
+ *   **\/name.ext      - match exact filename anywhere (e.g., **\/models.py)
+ *   **\/*suffix.ext   - match suffix pattern anywhere (e.g., **\/*_handler.go)
+ *   dir/**\/*.ext     - match by extension within directory (e.g., prisma/**\/*.prisma)
+ *   **\/dir/**\/*.ext - match extension within any ancestor dir (e.g., **\/models/**\/*.py)
+ *
+ * @param {string} relativePath - File path relative to project root
+ * @param {string} fileName - Filename only (no directory)
+ * @param {string} pattern - Glob pattern to match
+ * @returns {boolean} Whether the file matches
+ */
+function matchesGlobPattern(relativePath, fileName, pattern) {
+  // dir/**//*.ext — match extension within a specific directory prefix
+  // e.g., prisma/**//*.prisma matches prisma/schema/user.prisma
+  const dirScopedMatch = pattern.match(/^([^*]+)\/\*\*\/\*\.(.+)$/);
+  if (dirScopedMatch) {
+    const dirPrefix = dirScopedMatch[1];
+    const ext = '.' + dirScopedMatch[2];
+    return relativePath.startsWith(dirPrefix + path.sep) && fileName.endsWith(ext);
+  }
+
+  // **/dir/**//*.ext — match extension within any ancestor directory name
+  // e.g., **/models/**//*.py matches src/models/user.py
+  const anyDirScopedMatch = pattern.match(/^\*\*\/([^*]+)\/\*\*\/\*\.(.+)$/);
+  if (anyDirScopedMatch) {
+    const dirName = anyDirScopedMatch[1];
+    const ext = '.' + anyDirScopedMatch[2];
+    const sep = path.sep;
+    return (relativePath.includes(sep + dirName + sep) || relativePath.startsWith(dirName + sep)) &&
+           fileName.endsWith(ext);
+  }
+
+  // **/*.ext or **/*.compound.ext — match by extension/suffix anywhere
+  if (pattern.startsWith('**/*.')) {
+    const ext = pattern.slice(4);
+    return fileName.endsWith(ext);
+  }
+
+  // **/name.ext — match exact filename in any directory
+  if (pattern.startsWith('**/') && !pattern.slice(3).includes('*')) {
+    const targetName = pattern.slice(3);
+    return fileName === targetName;
+  }
+
+  // **/*suffix.ext — match suffix pattern anywhere (e.g., **/*_handler.go)
+  if (pattern.startsWith('**/*') && !pattern.slice(4).includes('*') && !pattern.slice(4).includes('/')) {
+    const suffix = pattern.slice(4);
+    return fileName.endsWith(suffix);
+  }
+
+  // Exact filename match
+  return fileName === pattern;
 }
 
 /**
@@ -1648,7 +1703,7 @@ async function extractPatterns(projectRoot, options = {}) {
     ? detectFramework(projectRoot)
     : frameworkOption;
 
-  // Determine file patterns based on framework
+  // Determine base file patterns based on framework/language
   let filePatterns = [...FILE_PATTERNS.javascript, ...FILE_PATTERNS.typescript];
   if (['python', 'fastapi', 'django', 'flask'].includes(framework)) {
     filePatterns = FILE_PATTERNS.python;
@@ -1656,6 +1711,21 @@ async function extractPatterns(projectRoot, options = {}) {
     filePatterns = FILE_PATTERNS.go;
   } else if (framework === 'rust') {
     filePatterns = FILE_PATTERNS.rust;
+  }
+
+  // Resolve additional framework-specific patterns from detectStack()
+  let frameworkResolved = { patterns: [], matched: [] };
+  try {
+    const { detectStack } = require('./flow-context-init');
+    const stack = detectStack(projectRoot);
+    frameworkResolved = resolvePatterns(stack);
+    if (frameworkResolved.patterns.length > 0) {
+      // Merge framework patterns with base patterns (additive only)
+      filePatterns = [...new Set([...filePatterns, ...frameworkResolved.patterns])];
+    }
+  } catch (err) {
+    // Fallback: if detectStack or resolver fails, continue with base patterns only
+    // This ensures backwards compatibility
   }
 
   // Get files to scan
@@ -1735,6 +1805,7 @@ async function extractPatterns(projectRoot, options = {}) {
       extractedAt: new Date().toISOString(),
       projectRoot,
       framework,
+      frameworksResolved: frameworkResolved.matched,
       filesScanned: files.length,
       scanDurationMs: elapsed,
       analysisMode
