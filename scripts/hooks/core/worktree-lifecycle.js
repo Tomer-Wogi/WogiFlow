@@ -19,20 +19,18 @@ const path = require('path');
 /**
  * Essential state files to copy into new worktrees.
  * These files provide task awareness and project rules in isolated contexts.
+ * Computed lazily to avoid freezing the registry list at require-time.
  */
-const ESSENTIAL_STATE_FILES = [
-  'ready.json',
-  'decisions.md',
-  // Registry map files discovered dynamically from manifest
-  ...(() => {
-    try {
-      const { getRegistryMapFiles } = require('../../flow-utils');
-      return getRegistryMapFiles();
-    } catch (err) {
-      return ['app-map.md', 'function-map.md', 'api-map.md'];
-    }
-  })()
-];
+const CORE_STATE_FILES = ['ready.json', 'decisions.md'];
+
+function getEssentialStateFiles() {
+  try {
+    const { getRegistryMapFiles } = require('../../flow-utils');
+    return [...CORE_STATE_FILES, ...getRegistryMapFiles()];
+  } catch {
+    return [...CORE_STATE_FILES, 'app-map.md', 'function-map.md', 'api-map.md'];
+  }
+}
 
 /**
  * Session-specific files to clean up when a worktree is removed.
@@ -82,7 +80,7 @@ function handleWorktreeCreate(options = {}) {
     // Ensure target .workflow/state directory exists
     fs.mkdirSync(targetStateDir, { recursive: true });
 
-    for (const fileName of ESSENTIAL_STATE_FILES) {
+    for (const fileName of getEssentialStateFiles()) {
       const sourcePath = path.join(sourceStateDir, fileName);
       const targetPath = path.join(targetStateDir, fileName);
 
@@ -181,6 +179,6 @@ function handleWorktreeRemove(options = {}) {
 module.exports = {
   handleWorktreeCreate,
   handleWorktreeRemove,
-  ESSENTIAL_STATE_FILES,
+  getEssentialStateFiles,
   SESSION_FILES_TO_CLEAN
 };

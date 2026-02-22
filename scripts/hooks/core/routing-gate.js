@@ -100,15 +100,16 @@ function setRoutingPending() {
  */
 function clearRoutingPending() {
   try {
-    if (fs.existsSync(ROUTING_FLAG_PATH)) {
-      fs.unlinkSync(ROUTING_FLAG_PATH);
-      if (process.env.DEBUG) {
-        console.error('[routing-gate] Cleared routing-pending flag');
-      }
-      return { cleared: true, reason: 'flag_cleared' };
+    // Direct unlink — no TOCTOU race from existsSync+unlinkSync
+    fs.unlinkSync(ROUTING_FLAG_PATH);
+    if (process.env.DEBUG) {
+      console.error('[routing-gate] Cleared routing-pending flag');
     }
-    return { cleared: false, reason: 'no_flag_existed' };
+    return { cleared: true, reason: 'flag_cleared' };
   } catch (err) {
+    if (err.code === 'ENOENT') {
+      return { cleared: false, reason: 'no_flag_existed' };
+    }
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Failed to clear flag: ${err.message}`);
     }
@@ -117,14 +118,36 @@ function clearRoutingPending() {
   }
 }
 
+// Max age for routing flag before it's considered stale (5 minutes)
+const ROUTING_FLAG_TTL_MS = 5 * 60 * 1000;
+
 /**
- * Check if the routing-pending flag is set
+ * Check if the routing-pending flag is set and not stale
  * @returns {boolean}
  */
 function isRoutingPending() {
   try {
-    return fs.existsSync(ROUTING_FLAG_PATH);
+    const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
+    // Check TTL — stale flags from crashed sessions shouldn't block
+    try {
+      const data = JSON.parse(content);
+      if (data.timestamp) {
+        const age = Date.now() - new Date(data.timestamp).getTime();
+        if (age > ROUTING_FLAG_TTL_MS) {
+          // Flag is stale — clean it up and return false
+          try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+          if (process.env.DEBUG) {
+            console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
+          }
+          return false;
+        }
+      }
+    } catch {
+      // Can't parse flag content — treat as valid (recently written)
+    }
+    return true;
   } catch (err) {
+    if (err.code === 'ENOENT') return false;
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Failed to check flag: ${err.message}`);
     }

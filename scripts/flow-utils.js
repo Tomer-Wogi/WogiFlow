@@ -626,7 +626,21 @@ function dirExists(dirPath) {
 function readJson(filePath, defaultValue = undefined) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+
+    // Prototype pollution protection for object results
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const dangerousKeyError = checkForDangerousKeys(parsed);
+      if (dangerousKeyError) {
+        if (process.env.DEBUG) {
+          console.error(`[readJson] Prototype pollution attempt in ${filePath}: ${dangerousKeyError}`);
+        }
+        if (defaultValue !== undefined) return defaultValue;
+        throw new Error(`Dangerous keys in ${filePath}: ${dangerousKeyError}`);
+      }
+    }
+
+    return parsed;
   } catch (err) {
     // Check for undefined to allow falsy defaults like false, 0, ''
     if (defaultValue !== undefined) {
@@ -871,7 +885,23 @@ const KNOWN_CONFIG_KEYS = [
   'durableSteps',
   'suspension',
   'specificationMode',
-  'validation'
+  'validation',
+  // v1.5.0 registry system
+  'registries',
+  // v2.0.0+ features
+  'commits',
+  'review',
+  'reviewFix',
+  'originTaskTracing',
+  'standardsCompliance',
+  'semanticMatching',
+  'planMode',
+  'research',
+  'bulkOrchestrator',
+  'smartCompaction',
+  'clarifyingQuestions',
+  'tdd',
+  'webmcp'
 ];
 
 // Known nested keys for common config sections
@@ -941,7 +971,6 @@ function validateConfig(config, warnOnUnknown = true) {
  */
 function getConfig() {
   const configPath = PATHS.config;
-  if (!fs.existsSync(configPath)) return {};
 
   try {
     const stat = fs.statSync(configPath);
@@ -949,7 +978,18 @@ function getConfig() {
       return _configCache;
     }
 
-    const rawConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const configContent = fs.readFileSync(configPath, 'utf-8');
+    const rawConfig = JSON.parse(configContent);
+
+    // Prototype pollution check on config
+    if (rawConfig && typeof rawConfig === 'object') {
+      const dangerousKeyError = checkForDangerousKeys(rawConfig);
+      if (dangerousKeyError) {
+        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
+        return {};
+      }
+    }
+
     _configMtime = stat.mtimeMs;
 
     // Validate on first load (DEBUG mode or explicit request)
@@ -970,9 +1010,9 @@ function getConfig() {
       if (process.env.DEBUG && result.warnings.length > 0) {
         console.warn(`[config] ${result.warnings.length} unresolved substitution(s)`);
       }
-    } catch (substErr) {
+    } catch (err) {
       // Fallback to raw config if substitution fails
-      console.warn(`Warning: Config substitution failed: ${substErr.message}`);
+      console.warn(`Warning: Config substitution failed: ${err.message}`);
       _configCache = rawConfig;
     }
 
@@ -993,7 +1033,19 @@ function getRawConfig() {
   if (!fs.existsSync(configPath)) return {};
 
   try {
-    return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const parsed = JSON.parse(content);
+
+    // Prototype pollution check
+    if (parsed && typeof parsed === 'object') {
+      const dangerousKeyError = checkForDangerousKeys(parsed);
+      if (dangerousKeyError) {
+        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
+        return {};
+      }
+    }
+
+    return parsed;
   } catch (err) {
     console.warn(`Warning: Could not parse config.json: ${err.message}`);
     return {};
@@ -1067,9 +1119,9 @@ async function setConfigValue(configPath, newValue) {
   try {
     // More retries with exponential backoff for better reliability
     release = await acquireLock(lockPath, { retries: 5, retryDelay: 100, exponentialBackoff: true });
-  } catch (lockError) {
+  } catch (err) {
     // SECURITY: Don't fall back to non-locked write - throw instead
-    throw new Error(`Could not acquire config lock after retries: ${lockError.message}. Config not updated.`);
+    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`);
   }
 
   try {
@@ -1316,9 +1368,7 @@ function saveReadyData(data) {
   // Load previous data to detect new entries vs historical ones
   let previousData = null;
   try {
-    if (fs.existsSync(PATHS.ready)) {
-      previousData = JSON.parse(fs.readFileSync(PATHS.ready, 'utf-8'));
-    }
+    previousData = readJson(PATHS.ready, null);
   } catch {
     // If we can't read previous data, validate all entries
   }
@@ -1338,9 +1388,7 @@ async function saveReadyDataAsync(data) {
   return withLock(PATHS.ready, () => {
     let previousData = null;
     try {
-      if (fs.existsSync(PATHS.ready)) {
-        previousData = JSON.parse(fs.readFileSync(PATHS.ready, 'utf-8'));
-      }
+      previousData = readJson(PATHS.ready, null);
     } catch {
       // If we can't read previous data, validate all entries
     }
@@ -1364,12 +1412,11 @@ function archiveCompletedTasksToLog(tasks) {
     const archiveLogPath = path.join(PATHS.state, 'completed-archive.json');
     let archive = [];
 
-    if (fs.existsSync(archiveLogPath)) {
-      try {
-        archive = JSON.parse(fs.readFileSync(archiveLogPath, 'utf-8'));
-      } catch {
-        archive = [];
-      }
+    try {
+      const loaded = readJson(archiveLogPath, []);
+      if (Array.isArray(loaded)) archive = loaded;
+    } catch {
+      archive = [];
     }
 
     const timestamp = new Date().toISOString();
@@ -1987,27 +2034,27 @@ async function acquireLock(filePath, options = {}) {
         // Try to remove info file first
         try {
           fs.unlinkSync(lockInfoFile);
-        } catch (unlinkErr) {
+        } catch (err) {
           // ENOENT is fine - file already gone
           // Other errors we log but continue to try rmdir
-          if (unlinkErr.code !== 'ENOENT' && process.env.DEBUG) {
-            console.warn(`[DEBUG] Lock info cleanup warning: ${unlinkErr.message}`);
+          if (err.code !== 'ENOENT' && process.env.DEBUG) {
+            console.warn(`[DEBUG] Lock info cleanup warning: ${err.message}`);
           }
         }
 
         // Always try to remove lock directory
         try {
           fs.rmdirSync(lockDir);
-        } catch (rmdirErr) {
+        } catch (err) {
           // ENOENT is fine - directory already gone
-          if (rmdirErr.code !== 'ENOENT') {
+          if (err.code !== 'ENOENT') {
             // Directory not empty or other error - force cleanup
             try {
               fs.rmSync(lockDir, { recursive: true, force: true });
             } catch {
               // Last resort failed - log if debug
               if (process.env.DEBUG) {
-                console.warn(`[DEBUG] Lock dir cleanup failed: ${rmdirErr.message}`);
+                console.warn(`[DEBUG] Lock dir cleanup failed: ${err.message}`);
               }
             }
           }
@@ -2020,9 +2067,13 @@ async function acquireLock(filePath, options = {}) {
         let lockAge = 0;
 
         try {
-          const info = JSON.parse(fs.readFileSync(lockInfoFile, 'utf-8'));
-          lockAge = Date.now() - info.timestamp;
-          isStale = lockAge > staleMs;
+          const info = readJson(lockInfoFile, null);
+          if (info && typeof info.timestamp === 'number') {
+            lockAge = Date.now() - info.timestamp;
+            isStale = lockAge > staleMs;
+          } else {
+            isStale = attempt >= 2;
+          }
         } catch {
           // Can't read lock info - assume stale if we've waited long enough
           isStale = attempt >= 2;
@@ -2041,10 +2092,10 @@ async function acquireLock(filePath, options = {}) {
           try {
             fs.unlinkSync(lockInfoFile);
             fs.rmdirSync(lockDir);
-          } catch (cleanupErr) {
+          } catch (err) {
             // Cleanup failed - wait before retrying
             if (process.env.DEBUG) {
-              console.warn(`[DEBUG] Stale lock cleanup failed: ${cleanupErr.message}`);
+              console.warn(`[DEBUG] Stale lock cleanup failed: ${err.message}`);
             }
             await new Promise(resolve => setTimeout(resolve, retryDelay));
           }
@@ -2126,17 +2177,17 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
       const lockInfoFile = path.join(lockDir, 'info.json');
 
       try {
-        const info = JSON.parse(fs.readFileSync(lockInfoFile, 'utf-8'));
-        const age = Date.now() - info.timestamp;
+        const info = readJson(lockInfoFile, null);
+        const age = info && typeof info.timestamp === 'number' ? Date.now() - info.timestamp : Infinity;
 
         if (age > staleMs) {
           // Clean up stale lock
           try {
             fs.unlinkSync(lockInfoFile);
-          } catch (unlinkErr) {
-            if (unlinkErr.code !== 'ENOENT') {
+          } catch (err) {
+            if (err.code !== 'ENOENT') {
               if (process.env.DEBUG) {
-                console.warn(`[DEBUG] cleanupStaleLocks: Could not delete ${lockInfoFile}: ${unlinkErr.message}`);
+                console.warn(`[DEBUG] cleanupStaleLocks: Could not delete ${lockInfoFile}: ${err.message}`);
               }
             }
           }
@@ -2144,23 +2195,23 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
           try {
             fs.rmdirSync(lockDir);
             cleaned++;
-          } catch (rmdirErr) {
-            if (rmdirErr.code !== 'ENOENT') {
+          } catch (err) {
+            if (err.code !== 'ENOENT') {
               // Directory not empty or other error - force cleanup
               try {
                 fs.rmSync(lockDir, { recursive: true, force: true });
                 cleaned++;
-              } catch (forceErr) {
+              } catch (err2) {
                 if (process.env.DEBUG) {
-                  console.warn(`[DEBUG] cleanupStaleLocks: Could not force delete ${lockDir}: ${forceErr.message}`);
+                  console.warn(`[DEBUG] cleanupStaleLocks: Could not force delete ${lockDir}: ${err2.message}`);
                 }
               }
             }
           }
         }
-      } catch (readErr) {
+      } catch (err) {
         // Can't read lock info - try to remove based on directory mtime
-        if (readErr.code === 'ENOENT') continue; // Lock already gone
+        if (err.code === 'ENOENT') continue; // Lock already gone
 
         try {
           const stat = fs.statSync(lockDir);
@@ -2169,19 +2220,19 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
             fs.rmSync(lockDir, { recursive: true, force: true });
             cleaned++;
           }
-        } catch (statErr) {
+        } catch (err2) {
           // Directory gone or inaccessible - skip
-          if (statErr.code !== 'ENOENT' && process.env.DEBUG) {
-            console.warn(`[DEBUG] cleanupStaleLocks: Could not stat ${lockDir}: ${statErr.message}`);
+          if (err2.code !== 'ENOENT' && process.env.DEBUG) {
+            console.warn(`[DEBUG] cleanupStaleLocks: Could not stat ${lockDir}: ${err2.message}`);
           }
         }
       }
     }
 
     return cleaned;
-  } catch (dirErr) {
+  } catch (err) {
     if (process.env.DEBUG) {
-      console.warn(`[DEBUG] cleanupStaleLocks: Could not scan ${dirPath}: ${dirErr.message}`);
+      console.warn(`[DEBUG] cleanupStaleLocks: Could not scan ${dirPath}: ${err.message}`);
     }
     return 0;
   }

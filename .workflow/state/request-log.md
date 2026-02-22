@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-158 | 2026-02-22 20:30
+**Type**: fix
+**Tags**: #workflow #security #review-findings #stale-arguments #P0
+**Task**: wf-cr-7f42a1
+**Request**: "Fix 42 review findings AND fix stale skill ARGUMENTS persistence bug"
+**Result**: Fixed 35+ review findings across 15 files. Key fixes: (1) Prototype pollution protection in readJson/getConfig/getRawConfig via checkForDangerousKeys, (2) TOCTOU race in routing-gate clearRoutingPending, (3) TTL staleness check for routing flag, (4) String-type task normalization in task-completed hook, (5) Path traversal prevention in all registry scanners, (6) ReDoS prevention in Prisma regex, (7) N+1 file read caching in TypeORM entities and package.json, (8) All catch variable naming standardized to err, (9) Raw JSON.parse replaced with readJson/safeJsonParse throughout, (10) Stale ARGUMENTS persistence bug fixed — removed scope from completedSkills output, added explicit stale ARGUMENTS warning in session context, (11) Bounded request-log read in session-context, (12) Lazy registry list computation in worktree-lifecycle, (13) Active flag in registry manifest.
+**Files**: scripts/flow-utils.js, scripts/hooks/core/routing-gate.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/session-context.js, scripts/hooks/core/worktree-lifecycle.js, scripts/flow-checkpoint.js, scripts/flow-health.js, scripts/registries/schema-registry.js, scripts/registries/service-registry.js, scripts/flow-task-enforcer.js, scripts/flow-config-set.js, scripts/flow-failure-learning.js, scripts/flow-context-estimator.js, scripts/flow-peer-review.js, scripts/flow-registry-manager.js
+
 ### R-157 | 2026-02-22 17:15
 **Type**: new
 **Tags**: #workflow #hooks #routing-gate #enforcement #P0

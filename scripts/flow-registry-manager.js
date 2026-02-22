@@ -348,7 +348,10 @@ class RegistryManager {
     const manifest = {
       version: 1,
       generatedAt: new Date().toISOString(),
-      registries: this.plugins.map(plugin => plugin.getDescriptor())
+      registries: this.plugins.map(plugin => ({
+        ...plugin.getDescriptor(),
+        active: plugin._active !== false
+      }))
     };
 
     try {

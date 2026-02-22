@@ -35,7 +35,8 @@ const {
   validatePermissions,
   parseFlags,
   outputJson,
-  checkSpecMigration
+  checkSpecMigration,
+  safeJsonParse
 } = require('./flow-utils');
 
 const { execSync } = require('child_process');
@@ -306,8 +307,16 @@ function main() {
 
   const claudeMdPath = path.join(PROJECT_ROOT, 'CLAUDE.md');
   if (fileExists(claudeMdPath)) {
-    const claudeMdContent = fs.readFileSync(claudeMdPath, 'utf-8');
-    const claudeMdSize = fs.statSync(claudeMdPath).size;
+    let claudeMdContent, claudeMdSize;
+    try {
+      claudeMdContent = fs.readFileSync(claudeMdPath, 'utf-8');
+      claudeMdSize = Buffer.byteLength(claudeMdContent, 'utf-8');
+    } catch (err) {
+      console.log(`  ${color('yellow', '⚠')} Could not read CLAUDE.md: ${err.message}`);
+      warnings++;
+      claudeMdContent = '';
+      claudeMdSize = 0;
+    }
     const sizeKb = Math.round(claudeMdSize / 1024);
 
     // Check CLAUDE.md size (should be under 20KB for reliable loading)
@@ -337,7 +346,7 @@ function main() {
     const configResult = validateJson(PATHS.config);
     if (configResult.valid) {
       try {
-        const config = JSON.parse(fs.readFileSync(PATHS.config, 'utf-8'));
+        const config = safeJsonParse(PATHS.config, {});
         if (config.enforcement?.strictMode === true) {
           console.log(`  ${color('green', '✓')} Strict mode: ENABLED`);
         } else if (config.enforcement?.strictMode === false) {
@@ -384,7 +393,7 @@ function main() {
   const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.local.json');
   if (fileExists(settingsPath)) {
     try {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = safeJsonParse(settingsPath, {});
       const permissions = settings.permissions?.allow || [];
 
       // Use shared validation function
@@ -536,7 +545,7 @@ function loadManifest() {
   const manifestPath = path.join(WORKFLOW_DIR, 'manifest.json');
   if (fileExists(manifestPath)) {
     try {
-      return JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+      return safeJsonParse(manifestPath, null);
     } catch {
       return null;
     }

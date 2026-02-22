@@ -73,6 +73,15 @@ function handleTaskCompleted(input) {
     if (!completedTask) {
       completedTask = ready.inProgress[0];
     }
+
+    // Normalize string entries to objects (prevents .id on string returning undefined)
+    if (typeof completedTask === 'string') {
+      completedTask = { id: completedTask, title: completedTask, type: 'unknown' };
+    }
+    if (!completedTask || !completedTask.id) {
+      result.message = 'Could not identify completed task (invalid entry in inProgress)';
+      return result;
+    }
     result.taskId = completedTask.id;
 
     // Move task to recentlyCompleted

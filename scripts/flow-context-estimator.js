@@ -121,11 +121,11 @@ function readSpecFile(taskId) {
       const changePath = path.join(changesDir, entry.name, `${taskId}.md`);
       try {
         return fs.readFileSync(changePath, 'utf-8');
-      } catch (readErr) {
+      } catch (err) {
         // File doesn't exist in this subdir, continue searching
-        if (readErr.code !== 'ENOENT') {
+        if (err.code !== 'ENOENT') {
           if (process.env.DEBUG) {
-            console.error(`[context-estimator] Warning reading change: ${readErr.code}`);
+            console.error(`[context-estimator] Warning reading change: ${err.code}`);
           }
         }
       }

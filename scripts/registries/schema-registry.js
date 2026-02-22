@@ -244,7 +244,8 @@ class SchemaRegistry extends RegistryPlugin {
     }
 
     // Parse models
-    const modelRegex = /model\s+(\w+)\s*\{([^}]+)\}/g;
+    // Use non-greedy match with length limit to avoid ReDoS on nested braces
+    const modelRegex = /model\s+(\w+)\s*\{([^}]{1,5000})\}/g;
     let match;
     while ((match = modelRegex.exec(content)) !== null) {
       const modelName = match[1];
@@ -334,12 +335,14 @@ class SchemaRegistry extends RegistryPlugin {
 
     if (entityFiles.length === 0) return false;
 
-    for (const file of entityFiles) {
+    for (const entry of entityFiles) {
       try {
-        const content = fs.readFileSync(file, 'utf-8');
-        const relPath = path.relative(PROJECT_ROOT, file);
+        // Use cached content from discovery phase to avoid N+1 reads
+        const filePath = typeof entry === 'string' ? entry : entry.path;
+        const content = typeof entry === 'string' ? fs.readFileSync(entry, 'utf-8') : entry.content;
+        const relPath = path.relative(PROJECT_ROOT, filePath);
         this._parseTypeORMFile(content, relPath);
-      } catch (err) {
+      } catch {
         // Skip unreadable files
       }
     }
@@ -358,14 +361,14 @@ class SchemaRegistry extends RegistryPlugin {
           this._findTypeORMEntities(fullPath, results, depth + 1);
         } else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.js')) &&
                    (entry.name.includes('entity') || entry.name.includes('model'))) {
-          // Quick check if file contains @Entity
+          // Quick check if file contains @Entity — cache content to avoid re-reading during parse
           try {
             const content = fs.readFileSync(fullPath, 'utf-8');
             if (content.includes('@Entity')) {
-              results.push(fullPath);
+              results.push({ path: fullPath, content });
             }
-          } catch (err) {
-            // Skip
+          } catch {
+            // Skip unreadable files
           }
         }
       }

@@ -140,8 +140,8 @@ async function main() {
     } else {
       success(`Changed ${keyPath}: ${JSON.stringify(oldValue)} → ${JSON.stringify(value)}`);
     }
-  } catch (lockError) {
-    error(`Failed to update config: ${lockError.message}`);
+  } catch (err) {
+    error(`Failed to update config: ${err.message}`);
     process.exit(1);
   }
 }

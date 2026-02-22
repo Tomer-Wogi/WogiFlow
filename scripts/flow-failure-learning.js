@@ -471,7 +471,7 @@ function updateLearningStats(result) {
     // Clean up temp file if rename failed
     try {
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    } catch (cleanupErr) {
+    } catch {
       // Ignore cleanup errors
     }
     // Not critical - stats update failure won't break functionality

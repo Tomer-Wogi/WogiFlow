@@ -57,6 +57,18 @@ class ServiceRegistry extends RegistryPlugin {
     this.middleware = [];
     this.modules = [];
     this.metadata = {};
+    this._cachedPkg = undefined; // Cache package.json across methods
+  }
+
+  _getPackageJson() {
+    if (this._cachedPkg !== undefined) return this._cachedPkg;
+    const pkgPath = path.join(PROJECT_ROOT, 'package.json');
+    try {
+      this._cachedPkg = safeJsonParseFile(pkgPath, {});
+    } catch {
+      this._cachedPkg = {};
+    }
+    return this._cachedPkg;
   }
 
   /**
@@ -71,17 +83,14 @@ class ServiceRegistry extends RegistryPlugin {
       if (stack.frameworks.fullStack) return true;
     }
 
-    // Check package.json for backend packages
-    const pkgPath = path.join(PROJECT_ROOT, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      try {
-        const pkg = safeJsonParseFile(pkgPath, {});
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        const backendPkgs = ['@nestjs/core', 'express', 'fastify', '@hapi/hapi', 'koa'];
-        if (backendPkgs.some(p => allDeps[p])) return true;
-      } catch (err) {
-        // ignore
-      }
+    // Check package.json for backend packages (cached)
+    try {
+      const pkg = this._getPackageJson();
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+      const backendPkgs = ['@nestjs/core', 'express', 'fastify', '@hapi/hapi', 'koa'];
+      if (backendPkgs.some(p => allDeps[p])) return true;
+    } catch {
+      // ignore
     }
 
     // Check for Django (manage.py)
@@ -241,17 +250,15 @@ class ServiceRegistry extends RegistryPlugin {
   // ============================================================
 
   _detectFramework() {
-    const pkgPath = path.join(PROJECT_ROOT, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      try {
-        const pkg = safeJsonParseFile(pkgPath, {});
-        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-        if (allDeps['@nestjs/core']) return 'nestjs';
-        if (allDeps['express']) return 'express';
-        if (allDeps['fastify']) return 'fastify';
-      } catch (err) {
-        // ignore
-      }
+    // Use cached package.json
+    try {
+      const pkg = this._getPackageJson();
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (allDeps['@nestjs/core']) return 'nestjs';
+      if (allDeps['express']) return 'express';
+      if (allDeps['fastify']) return 'fastify';
+    } catch {
+      // ignore
     }
 
     if (fs.existsSync(path.join(PROJECT_ROOT, 'manage.py'))) return 'django';
@@ -288,7 +295,10 @@ class ServiceRegistry extends RegistryPlugin {
 
         if (entry.isDirectory()) {
           this._findNestJSFiles(fullPath, depth + 1);
-        } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.js')) {
+        } else if ((entry.name.endsWith('.ts') || entry.name.endsWith('.js')) &&
+                   // Pre-filter: skip spec/test files and likely non-NestJS files
+                   !entry.name.endsWith('.spec.ts') && !entry.name.endsWith('.test.ts') &&
+                   !entry.name.endsWith('.d.ts')) {
           try {
             const content = fs.readFileSync(fullPath, 'utf-8');
             const relPath = path.relative(PROJECT_ROOT, fullPath);
@@ -433,7 +443,10 @@ class ServiceRegistry extends RegistryPlugin {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.resolve(dir, entry.name);
+
+        // Ensure resolved path stays within project root
+        if (!fullPath.startsWith(PROJECT_ROOT)) continue;
 
         if (entry.isDirectory()) {
           this._findExpressFiles(fullPath, depth + 1);
@@ -502,7 +515,10 @@ class ServiceRegistry extends RegistryPlugin {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (['node_modules', '.git', '__pycache__', 'venv', '.venv', 'env'].includes(entry.name)) continue;
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.resolve(dir, entry.name);
+
+        // Ensure resolved path stays within project root
+        if (!fullPath.startsWith(PROJECT_ROOT)) continue;
 
         if (entry.isDirectory()) {
           this._findDjangoFiles(fullPath, depth + 1);
@@ -563,7 +579,10 @@ class ServiceRegistry extends RegistryPlugin {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (['vendor', '.git', 'node_modules'].includes(entry.name)) continue;
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.resolve(dir, entry.name);
+
+        // Ensure resolved path stays within project root
+        if (!fullPath.startsWith(PROJECT_ROOT)) continue;
 
         if (entry.isDirectory()) {
           this._findGoHandlers(fullPath, depth + 1);

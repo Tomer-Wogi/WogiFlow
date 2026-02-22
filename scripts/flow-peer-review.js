@@ -177,7 +177,7 @@ function getFilesContent(glob) {
       try {
         const fileContent = require('fs').readFileSync(file, 'utf-8');
         content += `\n// File: ${file}\n${fileContent}\n`;
-      } catch (readErr) {
+      } catch {
         // File may have been deleted, skip it
       }
     }

@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-22T17:15:00.000Z",
+  "lastUpdated": "2026-02-22T20:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-7f42a1",
+      "title": "Fix 42 review findings AND stale skill ARGUMENTS persistence bug",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-22T18:00:00.000Z",
+      "completedAt": "2026-02-22T20:30:00.000Z"
+    },
     {
       "id": "wf-2c28480c",
       "title": "Add routing gate hook — programmatic enforcement blocking Bash before /wogi-* routing",

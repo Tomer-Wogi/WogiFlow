@@ -76,7 +76,8 @@ class Checkpoint {
   loadCheckpoints() {
     if (fs.existsSync(CHECKPOINT_LOG)) {
       try {
-        this.checkpoints = JSON.parse(fs.readFileSync(CHECKPOINT_LOG, 'utf-8'));
+        const { readJson } = require('./flow-utils');
+      this.checkpoints = readJson(CHECKPOINT_LOG, []);
       } catch {
         this.checkpoints = [];
       }
@@ -181,11 +182,16 @@ class Checkpoint {
 
     for (const relPath of stateFiles) {
       const srcPath = path.join(WORKFLOW_DIR, relPath);
-      if (fs.existsSync(srcPath)) {
+      try {
         const content = fs.readFileSync(srcPath, 'utf-8');
         const destPath = path.join(snapshotDir, relPath.replace(/\//g, '_'));
         fs.writeFileSync(destPath, content);
         snapshots[relPath] = destPath;
+      } catch (err) {
+        // File may not exist or be unreadable — skip silently
+        if (process.env.DEBUG && err.code !== 'ENOENT') {
+          console.error(`[checkpoint] Could not snapshot ${relPath}: ${err.message}`);
+        }
       }
     }
 
@@ -255,10 +261,14 @@ class Checkpoint {
     if (checkpoint.stateSnapshot) {
       try {
         for (const [relPath, snapshotPath] of Object.entries(checkpoint.stateSnapshot)) {
-          if (fs.existsSync(snapshotPath)) {
-            const destPath = path.join(WORKFLOW_DIR, relPath);
+          try {
             const content = fs.readFileSync(snapshotPath, 'utf-8');
+            const destPath = path.join(WORKFLOW_DIR, relPath);
             fs.writeFileSync(destPath, content);
+          } catch (err) {
+            if (err.code !== 'ENOENT') {
+              results.errors.push(`Could not restore ${relPath}: ${err.message}`);
+            }
           }
         }
         results.stateRestored = true;

@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getConfig, getProjectRoot, writeJson, safeJsonParse } = require('./flow-utils');
+const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse } = require('./flow-utils');
 
 // v2.0: Import durable session for unified tracking
 const durableSession = require('./flow-durable-session');
@@ -322,8 +322,7 @@ function endSimpleLoop(status = 'completed') {
   const historyPath = path.join(projectRoot, '.workflow', 'state', 'simple-loop-history.json');
   let history = [];
   try {
-    const content = fs.readFileSync(historyPath, 'utf-8');
-    const parsed = JSON.parse(content);
+    const parsed = readJson(historyPath, []);
     if (Array.isArray(parsed)) history = parsed;
   } catch { /* use empty array */ }
   history.push(session);
@@ -700,8 +699,7 @@ function endLoop(status = 'completed') {
   const historyPath = path.join(projectRoot, '.workflow', 'state', 'loop-history.json');
   let history = [];
   try {
-    const content = fs.readFileSync(historyPath, 'utf-8');
-    const parsed = JSON.parse(content);
+    const parsed = readJson(historyPath, []);
     if (Array.isArray(parsed)) history = parsed;
   } catch { /* use empty array */ }
   history.push(session);
@@ -746,8 +744,7 @@ function getLoopStats() {
   }
 
   try {
-    const content = fs.readFileSync(historyPath, 'utf-8');
-    const parsed = JSON.parse(content);
+    const parsed = readJson(historyPath, []);
     // Validate it's an array
     if (!Array.isArray(parsed)) {
       return { totalLoops: 0, completed: 0, failed: 0, avgIterations: 0 };

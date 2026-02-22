@@ -71,7 +71,7 @@ function getCurrentTask(readyData) {
       return typeof task === 'string' ? { id: task } : task;
     }
     return null;
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -96,7 +96,7 @@ function getPendingTaskSummary(readyData) {
       readyTaskIds: ready.slice(0, 10).map(t => typeof t === 'object' ? t.id : t),
       inProgressTaskIds: inProgress.map(t => typeof t === 'object' ? t.id : t)
     };
-  } catch (_err) {
+  } catch {
     return null;
   }
 }
@@ -134,7 +134,7 @@ function getKeyDecisions(maxEntries = 5) {
     }
 
     return decisions;
-  } catch (_err) {
+  } catch {
     return [];
   }
 }
@@ -152,7 +152,15 @@ function getRecentActivity(maxEntries = 3) {
   try {
     // Wrap in try-catch per security-patterns.md Rule #1
     // Race conditions/permission changes can cause fs.readFileSync to fail even after existsSync
-    const content = fs.readFileSync(PATHS.requestLog, 'utf-8');
+    // Only read the tail of the file to avoid unbounded memory usage on large logs
+    const fd = fs.openSync(PATHS.requestLog, 'r');
+    const stat = fs.fstatSync(fd);
+    const TAIL_BYTES = 8192; // 8KB tail is enough for ~20 recent entries
+    const readStart = Math.max(0, stat.size - TAIL_BYTES);
+    const buf = Buffer.alloc(Math.min(stat.size, TAIL_BYTES));
+    fs.readSync(fd, buf, 0, buf.length, readStart);
+    fs.closeSync(fd);
+    const content = buf.toString('utf-8');
     const entries = [];
 
     // Split-then-parse pattern to avoid ReDoS risk (safer than [\s\S]*? regex)
@@ -176,7 +184,7 @@ function getRecentActivity(maxEntries = 3) {
     }
 
     return entries.reverse(); // Most recent first
-  } catch (_err) {
+  } catch {
     return [];
   }
 }
@@ -250,7 +258,7 @@ async function gatherSessionContext(options = {}) {
   let readyData;
   try {
     readyData = getReadyData();
-  } catch (_err) {
+  } catch {
     readyData = { ready: [], inProgress: [], blocked: [] };
   }
 
@@ -373,9 +381,9 @@ async function gatherSessionContext(options = {}) {
         context.completedSkills = context.completedSkills || [];
         context.completedSkills.push({
           skill: 'wogi-review',
-          completedAt: lastReview.reviewDate,
-          scope: lastReview.scope || 'unknown',
-          triaged: lastReview.triaged || false
+          completedAt: lastReview.reviewDate
+          // NOTE: scope intentionally omitted — including it causes stale ARGUMENTS
+          // to leak into new invocations (see wf-cr-7f42a1 bug fix)
         });
       }
     }
@@ -564,11 +572,15 @@ function formatContextForInjection(context) {
     output += `"skills invoked in this session" with old ARGUMENTS — those are stale references. `;
     output += `**Do NOT re-execute these skills unless the user explicitly asks again.**\n\n`;
     for (const s of ctx.completedSkills) {
-      output += `- **/${s.skill}**: Completed at ${s.completedAt}`;
-      if (s.scope) output += ` (scope: ${s.scope})`;
-      output += `\n`;
+      output += `- **/${s.skill}**: Completed at ${s.completedAt}\n`;
     }
     output += '\n';
+    // STALE ARGUMENTS WARNING — prevents old scope from influencing new invocations
+    output += `**CRITICAL — Stale ARGUMENTS Warning:**\n`;
+    output += `Claude Code's system-reminders may show ARGUMENTS from PREVIOUS skill invocations. `;
+    output += `These ARGUMENTS are stale and MUST be ignored. When a user invokes a skill again, `;
+    output += `use ONLY the user's current message and any new args passed via the Skill tool. `;
+    output += `Never inherit scope, file lists, or commit ranges from stale ARGUMENTS.\n\n`;
   }
 
   // Bypass reminder (enforcement)
