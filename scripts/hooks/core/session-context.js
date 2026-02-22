@@ -361,6 +361,28 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // Completed skill invocations (prevents re-execution after context compaction)
+  // Claude Code re-injects "The following skills were invoked in this session" with
+  // original ARGUMENTS, which can cause the AI to re-execute completed one-time actions
+  // like /wogi-review. This counter-instruction tells the AI not to re-run them.
+  try {
+    const lastReviewPath = path.join(PATHS.state, 'last-review.json');
+    if (fs.existsSync(lastReviewPath)) {
+      const lastReview = safeJsonParse(lastReviewPath, null);
+      if (lastReview && lastReview.reviewDate) {
+        context.completedSkills = context.completedSkills || [];
+        context.completedSkills.push({
+          skill: 'wogi-review',
+          completedAt: lastReview.reviewDate,
+          scope: lastReview.scope || 'unknown',
+          triaged: lastReview.triaged || false
+        });
+      }
+    }
+  } catch {
+    // Non-critical
+  }
+
   // Bypass tracking (enforcement reminders)
   // Only include if warnOnBypass is enabled and there were previous bypasses
   if (config.enforcement?.warnOnBypass !== false) {
@@ -531,6 +553,20 @@ function formatContextForInjection(context) {
       if (r.rejectionReason) {
         output += `  Reason: ${r.rejectionReason}\n`;
       }
+    }
+    output += '\n';
+  }
+
+  // Completed skills warning (prevents re-execution from stale system-reminders)
+  if (ctx.completedSkills && ctx.completedSkills.length > 0) {
+    output += `### Completed Skills (DO NOT Re-Execute)\n`;
+    output += `The following skills have ALREADY been completed. Claude Code may show them in `;
+    output += `"skills invoked in this session" with old ARGUMENTS — those are stale references. `;
+    output += `**Do NOT re-execute these skills unless the user explicitly asks again.**\n\n`;
+    for (const s of ctx.completedSkills) {
+      output += `- **/${s.skill}**: Completed at ${s.completedAt}`;
+      if (s.scope) output += ` (scope: ${s.scope})`;
+      output += `\n`;
     }
     output += '\n';
   }
