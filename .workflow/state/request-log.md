@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-150 | 2026-02-22 10:00
+**Type**: fix
+**Tags**: #workflow #conventions #task-ids #naming
+**Task**: wf-7129cf56
+**Request**: "Enforce task ID naming convention — rename descriptive IDs to hash format, add validation rules, prevent workflow bypass"
+**Result**: (1) Renamed 4 descriptive task IDs to proper hash format: wf-skill-overhaul→wf-ebc4759e, wf-manifest-wiring→wf-927db36d, wf-schema-registry→wf-65ea1bdb, wf-service-registry→wf-c7a3804f. Updated ready.json IDs, specPaths, and dependsOn references. Renamed 4 spec .md files. Added "Formerly" comments to all 4 files. (2) Added "Task ID Naming Convention" rule to decisions.md — all IDs must use generateTaskId(), never manual descriptive names. (3) Added "Mandatory Workflow Routing" rule to decisions.md — zero exemptions for routing through /wogi-* commands. (4) Added feedback patterns for both violations (descriptive-task-ids: 20+ count, PROMOTED; workflow-bypass-research: 1, PROMOTED by user escalation).
+**Files**: .workflow/state/ready.json, .workflow/changes/wf-ebc4759e.md, .workflow/changes/wf-927db36d.md, .workflow/changes/wf-65ea1bdb.md, .workflow/changes/wf-c7a3804f.md, .workflow/state/decisions.md, .workflow/state/feedback-patterns.md
+
 ### R-149 | 2026-02-22 09:00
 **Type**: refactor
 **Tags**: #skills #consolidation #deduplication

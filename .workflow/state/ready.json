@@ -1,19 +1,19 @@
 {
-  "lastUpdated": "2026-02-22T09:00:00.000Z",
+  "lastUpdated": "2026-02-22T10:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
-      "id": "wf-skill-overhaul",
+      "id": "wf-ebc4759e",
       "title": "Skill System Overhaul — remove top-3 cap, auto-run Context7 on onboard, separate content layers, version-aware refresh, prioritize team knowledge",
       "type": "story",
       "feature": "skills",
       "status": "ready",
       "priority": "P1",
       "createdAt": "2026-02-22T08:00:00.000Z",
-      "specPath": ".workflow/changes/wf-skill-overhaul.md"
+      "specPath": ".workflow/changes/wf-ebc4759e.md"
     },
     {
-      "id": "wf-manifest-wiring",
+      "id": "wf-927db36d",
       "title": "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery",
       "type": "story",
       "feature": "scanner",
@@ -24,10 +24,10 @@
         "wf-ext-registry"
       ],
       "createdAt": "2026-02-21T14:30:00.000Z",
-      "specPath": ".workflow/changes/wf-manifest-wiring.md"
+      "specPath": ".workflow/changes/wf-927db36d.md"
     },
     {
-      "id": "wf-schema-registry",
+      "id": "wf-65ea1bdb",
       "title": "Schema/Model Registry Plugin — Prisma, TypeORM, Django model detection (fixes Prisma scanner bug)",
       "type": "story",
       "feature": "scanner",
@@ -38,10 +38,10 @@
         "wf-ext-registry"
       ],
       "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-schema-registry.md"
+      "specPath": ".workflow/changes/wf-65ea1bdb.md"
     },
     {
-      "id": "wf-service-registry",
+      "id": "wf-c7a3804f",
       "title": "Architecture/Service Registry Plugin — NestJS, Django, Go service/controller detection",
       "type": "story",
       "feature": "scanner",
@@ -52,11 +52,21 @@
         "wf-ext-registry"
       ],
       "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-service-registry.md"
+      "specPath": ".workflow/changes/wf-c7a3804f.md"
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-7129cf56",
+      "title": "Enforce task ID naming convention — rename descriptive IDs, add validation rules, prevent workflow bypass",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-22T09:30:00.000Z",
+      "completedAt": "2026-02-22T10:00:00.000Z"
+    },
     {
       "id": "wf-skill-consolidate",
       "title": "Consolidate skill scripts — delete deprecated creator, deduplicate utilities, unify discovery",
