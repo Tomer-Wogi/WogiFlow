@@ -23,9 +23,15 @@ const path = require('path');
 const ESSENTIAL_STATE_FILES = [
   'ready.json',
   'decisions.md',
-  'app-map.md',
-  'function-map.md',
-  'api-map.md'
+  // Registry map files discovered dynamically from manifest
+  ...(() => {
+    try {
+      const { getRegistryMapFiles } = require('../../flow-utils');
+      return getRegistryMapFiles();
+    } catch (err) {
+      return ['app-map.md', 'function-map.md', 'api-map.md'];
+    }
+  })()
 ];
 
 /**

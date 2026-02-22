@@ -480,7 +480,7 @@ function ensureKnowledgeDir(skillPath) {
     // Copy templates
     const templateDir = path.join(SKILLS_DIR, '_template', 'knowledge');
     if (fs.existsSync(templateDir)) {
-      for (const file of ['learnings.md', 'patterns.md', 'anti-patterns.md']) {
+      for (const file of ['learnings.md', 'patterns.md', 'anti-patterns.md', 'conventions.md', 'library-reference.md']) {
         const src = path.join(templateDir, file);
         const dest = path.join(knowledgeDir, file);
         if (fs.existsSync(src) && !fs.existsSync(dest)) {

@@ -91,10 +91,23 @@ function main() {
     { path: PATHS.config, name: '.workflow/config.json' },
     { path: PATHS.ready, name: '.workflow/state/ready.json' },
     { path: PATHS.requestLog, name: '.workflow/state/request-log.md' },
-    { path: PATHS.appMap, name: '.workflow/state/app-map.md' },
     { path: PATHS.decisions, name: '.workflow/state/decisions.md' },
     { path: PATHS.progress, name: '.workflow/state/progress.md' },
   ];
+
+  // Add all active registry map files to required files check
+  try {
+    const { getActiveRegistries, STATE_DIR: stateDir } = require('./flow-utils');
+    for (const reg of getActiveRegistries()) {
+      requiredFiles.push({
+        path: path.join(stateDir, reg.mapFile),
+        name: `.workflow/state/${reg.mapFile}`
+      });
+    }
+  } catch {
+    // Fallback: just check app-map.md
+    requiredFiles.push({ path: PATHS.appMap, name: '.workflow/state/app-map.md' });
+  }
 
   for (const file of requiredFiles) {
     if (fileExists(file.path)) {

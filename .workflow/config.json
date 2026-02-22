@@ -515,10 +515,17 @@
     "comingSoon": [],
     "autoInvoke": true,
     "autoDiscoverNested": true,
-    "maxSkillsPerTask": 3,
+    "minRelevanceScore": 2,
+    "_comment_minRelevanceScore": "Replaced maxSkillsPerTask: 3. All skills scoring above this threshold are loaded, no arbitrary cap.",
+    "autoFetchDocs": true,
+    "_comment_autoFetchDocs": "Auto-fetch library documentation via Context7 MCP during onboarding/rescan.",
+    "contentPriority": ["skill.md", "conventions.md", "anti-patterns.md", "learnings.md", "library-reference.md"],
+    "_comment_contentPriority": "Loading order for skill content layers. Last item (library-reference.md) is first to trim if token budget tight.",
     "loadPatterns": true,
     "loadAntiPatterns": true,
-    "loadLearnings": true
+    "loadLearnings": true,
+    "loadLibraryReference": true,
+    "loadConventions": true
   },
   "skillLearning": {
     "enabled": true,

@@ -1,30 +1,20 @@
 {
-  "lastUpdated": "2026-02-22T08:50:02.196Z",
+  "lastUpdated": "2026-02-22T09:04:44.660Z",
   "inProgress": [],
-  "ready": [
-    {
-      "id": "wf-ebc4759e",
-      "title": "Skill System Overhaul — remove top-3 cap, auto-run Context7 on onboard, separate content layers, version-aware refresh, prioritize team knowledge",
-      "type": "story",
-      "feature": "skills",
-      "status": "ready",
-      "priority": "P1",
-      "createdAt": "2026-02-22T08:00:00.000Z",
-      "specPath": ".workflow/changes/wf-ebc4759e.md"
-    },
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-927db36d",
       "title": "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery",
       "type": "story",
       "feature": "scanner",
       "epic": "epic-universal-registry",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
-      "dependsOn": [
-        "wf-ext-registry"
-      ],
-      "createdAt": "2026-02-21T14:30:00.000Z",
-      "specPath": ".workflow/changes/wf-927db36d.md"
+      "startedAt": "2026-02-22T12:35:00.000Z",
+      "specPath": ".workflow/changes/wf-927db36d.md",
+      "completedAt": "2026-02-22T14:30:00.000Z"
     },
     {
       "id": "wf-65ea1bdb",
@@ -32,13 +22,11 @@
       "type": "story",
       "feature": "scanner",
       "epic": "epic-universal-registry",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
-      "dependsOn": [
-        "wf-ext-registry"
-      ],
-      "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-65ea1bdb.md"
+      "startedAt": "2026-02-22T09:10:00.000Z",
+      "specPath": ".workflow/changes/wf-65ea1bdb.md",
+      "completedAt": "2026-02-22T12:30:00.000Z"
     },
     {
       "id": "wf-c7a3804f",
@@ -46,17 +34,24 @@
       "type": "story",
       "feature": "scanner",
       "epic": "epic-universal-registry",
-      "status": "ready",
+      "status": "completed",
       "priority": "P2",
-      "dependsOn": [
-        "wf-ext-registry"
-      ],
-      "createdAt": "2026-02-21T14:00:00.000Z",
-      "specPath": ".workflow/changes/wf-c7a3804f.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "startedAt": "2026-02-22T12:00:00.000Z",
+      "specPath": ".workflow/changes/wf-c7a3804f.md",
+      "completedAt": "2026-02-22T12:30:00.000Z"
+    },
+    {
+      "id": "wf-ebc4759e",
+      "title": "Skill System Overhaul — remove top-3 cap, auto-run Context7 on onboard, separate content layers, version-aware refresh, prioritize team knowledge",
+      "type": "story",
+      "feature": "skills",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-22T08:00:00.000Z",
+      "startedAt": "2026-02-22T12:00:00.000Z",
+      "specPath": ".workflow/changes/wf-ebc4759e.md",
+      "completedAt": "2026-02-22T09:04:44.660Z"
+    },
     {
       "id": "wf-4346ab1a",
       "title": "Fix stale task cleanup, move naming convention to system-level, add code-level prevention for descriptive task IDs",

@@ -283,6 +283,41 @@ function parseApiMap() {
   return entries;
 }
 
+/**
+ * Parse any additional registry maps (schema-map, service-map, etc.)
+ * Uses a generic table parser to extract file path references.
+ * @returns {Object[]} Array of { name, path, type, source }
+ */
+function parseAdditionalRegistryMaps() {
+  const entries = [];
+  try {
+    const { getActiveRegistries } = require('./flow-utils');
+    const knownMaps = new Set(['app-map.md', 'function-map.md', 'api-map.md']);
+    for (const reg of getActiveRegistries()) {
+      if (knownMaps.has(reg.mapFile)) continue; // Already handled by specific parsers
+      const content = readMapFile(reg.mapFile);
+      if (!content) continue;
+      // Generic parser: extract table rows with file paths
+      const lines = content.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('|') || line.includes('---')) continue;
+        const cols = line.split('|').map(c => c.trim()).filter(Boolean);
+        if (cols.length < 2) continue;
+        const name = cols[0];
+        if (isHeaderRow(name)) continue;
+        // Find a column containing a file path
+        const pathCol = cols.find(c => /\.(ts|js|tsx|jsx|py|go|prisma|java|kt|rb|rs)$/.test(c));
+        if (pathCol) {
+          entries.push({ name, path: pathCol, type: reg.type || reg.id, source: reg.mapFile });
+        }
+      }
+    }
+  } catch {
+    // Fallback: no additional registries
+  }
+  return entries;
+}
+
 // ============================================================
 // Codebase Scanning
 // ============================================================
@@ -388,6 +423,7 @@ function runConsistencyCheck(options = {}) {
   const appMapEntries = checks.appMapVsCodebase !== false || checks.orphanDetection !== false ? parseAppMap() : [];
   const functionMapEntries = checks.functionMapVsCodebase !== false || checks.orphanDetection !== false ? parseFunctionMap() : [];
   const apiMapEntries = checks.apiMapVsCodebase !== false || checks.orphanDetection !== false ? parseApiMap() : [];
+  const additionalEntries = checks.orphanDetection !== false ? parseAdditionalRegistryMaps() : [];
 
   // 1. App-map vs codebase
   if (checks.appMapVsCodebase !== false) {
@@ -573,6 +609,7 @@ module.exports = {
   parseAppMap,
   parseFunctionMap,
   parseApiMap,
+  parseAdditionalRegistryMaps,
 
   // Checks
   runConsistencyCheck,
@@ -617,7 +654,8 @@ if (require.main === module) {
         const allEntries = [
           ...parseAppMap(),
           ...parseFunctionMap(),
-          ...parseApiMap()
+          ...parseApiMap(),
+          ...parseAdditionalRegistryMaps()
         ];
         for (const entry of allEntries) allMapPaths.add(entry.path);
 
@@ -644,12 +682,14 @@ if (require.main === module) {
       const appMap = parseAppMap();
       const funcMap = parseFunctionMap();
       const apiMap = parseApiMap();
+      const additional = parseAdditionalRegistryMaps();
 
       console.log('Cross-Artifact Stats:');
       console.log(`  app-map entries: ${appMap.length}`);
       console.log(`  function-map entries: ${funcMap.length}`);
       console.log(`  api-map entries: ${apiMap.length}`);
-      console.log(`  Total tracked: ${appMap.length + funcMap.length + apiMap.length}`);
+      if (additional.length > 0) console.log(`  additional registry entries: ${additional.length}`);
+      console.log(`  Total tracked: ${appMap.length + funcMap.length + apiMap.length + additional.length}`);
       break;
     }
 

@@ -161,12 +161,21 @@ class Checkpoint {
     const stateFiles = [
       'state/ready.json',
       'state/request-log.md',
-      'state/app-map.md',
       'state/decisions.md',
       'state/progress.md',
       'state/durable-session.json',
       'config.json'
     ];
+
+    // Add all active registry map files dynamically
+    try {
+      const { getRegistryMapFiles } = require('./flow-utils');
+      for (const mapFile of getRegistryMapFiles()) {
+        stateFiles.push(`state/${mapFile}`);
+      }
+    } catch {
+      stateFiles.push('state/app-map.md');
+    }
 
     const snapshots = {};
 

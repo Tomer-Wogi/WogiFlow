@@ -82,9 +82,19 @@ function getContextBreakdown() {
     'progress.md': PATHS.progress,
     'request-log.md': PATHS.requestLog,
     'decisions.md': PATHS.decisions,
-    'app-map.md': PATHS.appMap,
     'feedback-patterns.md': PATHS.feedbackPatterns,
   };
+
+  // Add all active registry map files dynamically
+  try {
+    const { getActiveRegistries } = require('./flow-utils');
+    for (const reg of getActiveRegistries()) {
+      files[reg.mapFile] = path.join(PATHS.state, reg.mapFile);
+    }
+  } catch {
+    // Fallback to just app-map
+    files['app-map.md'] = PATHS.appMap;
+  }
 
   const breakdown = {};
   let total = 0;

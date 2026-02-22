@@ -39,6 +39,19 @@ const STANDARDS_FILES = {
   apiMap: path.join(PATHS.state, 'api-map.md')
 };
 
+// Dynamically add all active registry map files for duplication checks
+try {
+  const { getActiveRegistries } = require('./flow-utils');
+  for (const reg of getActiveRegistries()) {
+    const key = reg.id + 'Map';
+    if (!STANDARDS_FILES[key]) {
+      STANDARDS_FILES[key] = path.join(PATHS.state, reg.mapFile);
+    }
+  }
+} catch {
+  // Fallback: keep original three
+}
+
 const RULES_DIR = path.join(PATHS.root, '.claude', 'rules');
 
 // Naming convention patterns from naming-conventions.md

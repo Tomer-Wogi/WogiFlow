@@ -455,20 +455,44 @@ function patternToRegex(pattern) {
  * Load skill context for matched skills
  * Returns combined context from all matched skills
  *
+ * Uses minRelevanceScore threshold instead of arbitrary count cap.
+ * Content is loaded in priority order (configurable via config.skills.contentPriority):
+ *   skill.md → conventions.md → anti-patterns.md → learnings.md → library-reference.md
+ * If token budget is tight, library-reference.md (lowest priority) is first to trim.
+ *
  * @param {Array} matchedSkills - Skills returned from matchSkills()
  * @param {object} options - Loading options
- * @param {number} options.maxSkills - Max skills to load (default: 3)
+ * @param {number} options.minRelevanceScore - Min score threshold (default: from config or 2)
  * @param {boolean} options.includePatterns - Include patterns.md
  * @param {boolean} options.includeAntiPatterns - Include anti-patterns.md
  * @param {boolean} options.includeLearnings - Include learnings.md
+ * @param {boolean} options.includeLibraryReference - Include library-reference.md
+ * @param {boolean} options.includeConventions - Include conventions.md
+ * @param {number} options.maxSkills - Legacy: hard cap (overrides threshold if set)
  */
 async function loadSkillContext(matchedSkills, options = {}) {
-  const maxSkills = options.maxSkills || 3;
-  const includePatterns = options.includePatterns !== false;
-  const includeAntiPatterns = options.includeAntiPatterns !== false;
-  const includeLearnings = options.includeLearnings !== false;
+  const config = getConfig();
+  const skillsConfig = config.skills || {};
 
-  const skillsToLoad = matchedSkills.slice(0, maxSkills);
+  // Use minRelevanceScore threshold instead of maxSkills cap
+  // Legacy support: if options.maxSkills is explicitly set, use it as a hard cap
+  const minScore = options.minRelevanceScore || skillsConfig.minRelevanceScore || 2;
+  const hardCap = options.maxSkills || null;
+
+  const includePatterns = options.includePatterns !== false;
+  const includeAntiPatterns = (options.includeAntiPatterns !== false) && (skillsConfig.loadAntiPatterns !== false);
+  const includeLearnings = (options.includeLearnings !== false) && (skillsConfig.loadLearnings !== false);
+  const includeLibraryReference = (options.includeLibraryReference !== false) && (skillsConfig.loadLibraryReference !== false);
+  const includeConventions = (options.includeConventions !== false) && (skillsConfig.loadConventions !== false);
+
+  // Filter by relevance score threshold (no arbitrary cap)
+  let skillsToLoad = matchedSkills.filter(s => s.score >= minScore);
+
+  // Legacy hard cap support
+  if (hardCap) {
+    skillsToLoad = skillsToLoad.slice(0, hardCap);
+  }
+
   const context = {
     skills: [],
     totalTokenEstimate: 0
@@ -484,41 +508,62 @@ async function loadSkillContext(matchedSkills, options = {}) {
       files: {}
     };
 
-    // Load skill.md or SKILL.md (main description)
+    // Content loading follows priority order:
+    // skill.md → conventions.md → anti-patterns.md → learnings.md → library-reference.md
+    // This ensures team knowledge (conventions) loads before generic docs (library-reference)
+
+    // 1. Load skill.md or SKILL.md (always loaded first - metadata + overview)
     const skillMdPath = getSkillFilePath(skillDir);
     if (fs.existsSync(skillMdPath)) {
       skillContext.files['skill.md'] = fs.readFileSync(skillMdPath, 'utf-8');
     }
 
-    // Load knowledge files
     const knowledgeDir = path.join(skillDir, 'knowledge');
-    if (fs.existsSync(knowledgeDir)) {
-      if (includePatterns) {
-        const patternsPath = path.join(knowledgeDir, 'patterns.md');
-        if (fs.existsSync(patternsPath)) {
-          skillContext.files['patterns.md'] = fs.readFileSync(patternsPath, 'utf-8');
-        }
-      }
 
-      if (includeAntiPatterns) {
-        const antiPatternsPath = path.join(knowledgeDir, 'anti-patterns.md');
-        if (fs.existsSync(antiPatternsPath)) {
-          skillContext.files['anti-patterns.md'] = fs.readFileSync(antiPatternsPath, 'utf-8');
-        }
-      }
+    // 2. Load conventions.md (highest priority team knowledge)
+    if (includeConventions) {
+      // Check knowledge/conventions.md first (new location), fall back to rules/conventions.md (legacy)
+      const knowledgeConventionsPath = path.join(knowledgeDir, 'conventions.md');
+      const rulesConventionsPath = path.join(skillDir, 'rules', 'conventions.md');
 
-      if (includeLearnings) {
-        const learningsPath = path.join(knowledgeDir, 'learnings.md');
-        if (fs.existsSync(learningsPath)) {
-          skillContext.files['learnings.md'] = fs.readFileSync(learningsPath, 'utf-8');
-        }
+      if (fs.existsSync(knowledgeConventionsPath)) {
+        skillContext.files['conventions.md'] = fs.readFileSync(knowledgeConventionsPath, 'utf-8');
+      } else if (fs.existsSync(rulesConventionsPath)) {
+        skillContext.files['conventions.md'] = fs.readFileSync(rulesConventionsPath, 'utf-8');
       }
     }
 
-    // Load rules/conventions
-    const conventionsPath = path.join(skillDir, 'rules', 'conventions.md');
-    if (fs.existsSync(conventionsPath)) {
-      skillContext.files['conventions.md'] = fs.readFileSync(conventionsPath, 'utf-8');
+    // 3. Load anti-patterns.md
+    if (includeAntiPatterns && fs.existsSync(knowledgeDir)) {
+      const antiPatternsPath = path.join(knowledgeDir, 'anti-patterns.md');
+      if (fs.existsSync(antiPatternsPath)) {
+        skillContext.files['anti-patterns.md'] = fs.readFileSync(antiPatternsPath, 'utf-8');
+      }
+    }
+
+    // 4. Load patterns.md (kept for backwards compat, merged with conventions)
+    if (includePatterns && fs.existsSync(knowledgeDir)) {
+      const patternsPath = path.join(knowledgeDir, 'patterns.md');
+      if (fs.existsSync(patternsPath)) {
+        skillContext.files['patterns.md'] = fs.readFileSync(patternsPath, 'utf-8');
+      }
+    }
+
+    // 5. Load learnings.md
+    if (includeLearnings && fs.existsSync(knowledgeDir)) {
+      const learningsPath = path.join(knowledgeDir, 'learnings.md');
+      if (fs.existsSync(learningsPath)) {
+        skillContext.files['learnings.md'] = fs.readFileSync(learningsPath, 'utf-8');
+      }
+    }
+
+    // 6. Load library-reference.md (lowest priority - supplementary, first to trim)
+    if (includeLibraryReference && fs.existsSync(knowledgeDir)) {
+      const libraryRefPath = path.join(knowledgeDir, 'library-reference.md');
+      if (fs.existsSync(libraryRefPath)) {
+        const content = fs.readFileSync(libraryRefPath, 'utf-8');
+        skillContext.files['library-reference.md'] = `<!-- Library Reference (supplementary) -->\n${content}`;
+      }
     }
 
     // Estimate tokens (rough: 1 token ≈ 4 chars)
@@ -666,7 +711,7 @@ async function main() {
 
     if (matches.length > 0) {
       console.log(`\n${colors.dim}Loading top skill context...${colors.reset}\n`);
-      const context = await loadSkillContext(matches, { maxSkills: 1 });
+      const context = await loadSkillContext(matches, { minRelevanceScore: matches[0].score });
       console.log(`${colors.dim}Estimated tokens: ~${context.totalTokenEstimate}${colors.reset}`);
     }
   }

@@ -150,29 +150,21 @@ function handleTaskCompleted(input) {
       // Non-critical - memory DB may not be available
     }
 
-    // Auto-scan function/API registries if configured (fire-and-forget)
+    // Auto-scan all active registries if configured (fire-and-forget)
     try {
-      const config = getConfig();
-      if (config.functionRegistry?.autoUpdate && config.functionRegistry?.scanOn?.includes('afterTask')) {
-        const { FunctionScanner } = require('../../flow-function-index');
-        const scanner = new FunctionScanner();
-        scanner.scan().catch((err) => {
-          if (process.env.DEBUG) {
-            console.error(`[Task Completed] Function scan failed: ${err.message}`);
-          }
-        });
-      }
-      if (config.apiRegistry?.autoUpdate && config.apiRegistry?.scanOn?.includes('afterTask')) {
-        const { APIScanner } = require('../../flow-api-index');
-        const scanner = new APIScanner();
-        scanner.scan().catch((err) => {
-          if (process.env.DEBUG) {
-            console.error(`[Task Completed] API scan failed: ${err.message}`);
-          }
-        });
-      }
+      const { RegistryManager } = require('../../flow-registry-manager');
+      const manager = new RegistryManager();
+      manager.loadPlugins();
+      const { getActiveRegistries } = require('../../flow-utils');
+      const activeRegistries = getActiveRegistries();
+      manager.activatePlugins(null, activeRegistries);
+      manager.scanAll().catch((err) => {
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Registry scan failed: ${err.message}`);
+        }
+      });
     } catch {
-      // Non-critical - registry scanners may not be available
+      // Non-critical - registry manager may not be available
     }
   } catch (err) {
     result.message = `Task completed handler error: ${err.message}`;

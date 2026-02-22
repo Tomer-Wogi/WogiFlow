@@ -13,6 +13,30 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-154 | 2026-02-22 14:30
+**Type**: refactor
+**Tags**: #scanner #registry #manifest #wiring #dynamic-discovery
+**Task**: wf-927db36d
+**Request**: "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery"
+**Result**: Migrated 10 consuming files from hardcoded registry references to dynamic discovery via `getActiveRegistries()`, `getRegistryPaths()`, and `getRegistryMapFiles()` from flow-utils.js. Layer 1 (Foundation): flow-utils.js — added 3 central functions reading registry-manifest.json with fallback to 3 defaults. Layer 4 (Quality): flow-health.js (dynamic required files), flow-context-monitor.js (dynamic context breakdown), flow-section-index.js (dynamic index generation + change detection + stats), flow-consistency-check.js (generic table parser for additional registries + orphan detection), flow-standards-checker.js (dynamic STANDARDS_FILES). Layer 5 (Hooks): worktree-lifecycle.js (dynamic essential state files), task-completed.js (RegistryManager.scanAll() replaces hardcoded scanners). Layer 6 (Templates): claude-md.hbs + auto-features.hbs (updated references to all active registries, added schema-map/service-map/registry-manifest to file locations). Layer 7 (Misc): flow-checkpoint.js (dynamic state snapshots). Also updated lib/installer.js to generate initial registry-manifest.json during install. Regenerated CLAUDE.md. All backwards-compatible with try/catch fallbacks.
+**Files**: scripts/flow-utils.js, scripts/flow-health.js, scripts/flow-context-monitor.js, scripts/flow-section-index.js, scripts/flow-consistency-check.js, scripts/flow-standards-checker.js, scripts/flow-checkpoint.js, scripts/hooks/core/worktree-lifecycle.js, scripts/hooks/core/task-completed.js, lib/installer.js, .workflow/templates/claude-md.hbs, .workflow/templates/partials/auto-features.hbs, CLAUDE.md
+
+### R-153 | 2026-02-22 12:30
+**Type**: new
+**Tags**: #scanner #registry #service #nestjs #express #django #go
+**Task**: wf-c7a3804f
+**Request**: "Architecture/Service Registry Plugin — NestJS, Django, Go service/controller detection"
+**Result**: Created ServiceRegistry plugin extending RegistryPlugin. Implements 4 framework scanners: (1) NestJS — parses @Controller, @Get/@Post/@Put/@Patch/@Delete, @Injectable, @Module, @UseGuards decorators; extracts route prefixes, methods, DI dependencies, module imports/exports. (2) Express/Fastify — detects router.get/post/etc and app.get/post/etc patterns plus middleware exports. (3) Django — detects ViewSet, APIView, View, Serializer classes with inheritance parsing. (4) Go — detects HTTP handler functions and HandleFunc registrations. Produces service-map.md (Controllers, Services, Middleware, Modules tables) and service-index.json. Auto-activates when backend framework detected in stack or package.json. Prune removes deleted service files. Already in ALLOWED_REGISTRY_FILES allowlist.
+**Files**: scripts/registries/service-registry.js (new)
+
+### R-152 | 2026-02-22 12:00
+**Type**: new
+**Tags**: #scanner #registry #schema #prisma #typeorm #database
+**Task**: wf-65ea1bdb
+**Request**: "Schema/Model Registry Plugin — Prisma, TypeORM, Django model detection"
+**Result**: Created SchemaRegistry plugin extending RegistryPlugin. Prisma scanner handles both multi-file (prismaSchemaFolder) and single-file schemas. Parses model/enum blocks, @relation directives, @@index/@@unique, datasource provider, and previewFeatures from generator blocks. TypeORM scanner detects @Entity classes, parses @Column fields and @OneToMany/@ManyToOne/@OneToOne/@ManyToMany relations. Produces schema-map.md (Models table with fields/relations/indexes + Enums table + metadata) and schema-index.json. Auto-activates when ORM detected via stack.orm, package.json (prisma, typeorm, drizzle-orm, sequelize, mongoose), or manage.py. Prune removes entries for deleted schema files. Already in ALLOWED_REGISTRY_FILES allowlist.
+**Files**: scripts/registries/schema-registry.js (new)
+
 ### R-151 | 2026-02-22 11:00
 **Type**: fix
 **Tags**: #workflow #conventions #task-ids #system-level #code-prevention

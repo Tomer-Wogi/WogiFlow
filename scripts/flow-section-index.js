@@ -629,19 +629,41 @@ function generateIndex() {
     }
   }
 
-  // Parse app-map.md
-  if (fileExists(PATHS.appMap)) {
-    try {
-      const appMapContent = readFile(PATHS.appMap);
-      const rows = parseAppMapRows(appMapContent);
-      index.sources['app-map.md'] = {
-        path: PATHS.appMap,
-        lastModified: fs.statSync(PATHS.appMap).mtime.toISOString(),
-        contentHash: hashContent(appMapContent),
-        rows
-      };
-    } catch (err) {
-      warn(`Error parsing app-map.md: ${err.message}`);
+  // Parse all active registry map files
+  try {
+    const { getActiveRegistries } = require('./flow-utils');
+    for (const reg of getActiveRegistries()) {
+      const mapPath = path.join(PATHS.state, reg.mapFile);
+      if (fileExists(mapPath)) {
+        try {
+          const mapContent = readFile(mapPath);
+          const rows = parseAppMapRows(mapContent); // Generic table parser works for all maps
+          index.sources[reg.mapFile] = {
+            path: mapPath,
+            lastModified: fs.statSync(mapPath).mtime.toISOString(),
+            contentHash: hashContent(mapContent),
+            rows
+          };
+        } catch (err) {
+          warn(`Error parsing ${reg.mapFile}: ${err.message}`);
+        }
+      }
+    }
+  } catch {
+    // Fallback: just parse app-map.md
+    if (fileExists(PATHS.appMap)) {
+      try {
+        const appMapContent = readFile(PATHS.appMap);
+        const rows = parseAppMapRows(appMapContent);
+        index.sources['app-map.md'] = {
+          path: PATHS.appMap,
+          lastModified: fs.statSync(PATHS.appMap).mtime.toISOString(),
+          contentHash: hashContent(appMapContent),
+          rows
+        };
+      } catch (err) {
+        warn(`Error parsing app-map.md: ${err.message}`);
+      }
     }
   }
 
@@ -694,7 +716,16 @@ function generateIndex() {
 
   // Calculate stats
   const decisionsSections = index.sources['decisions.md']?.sections?.length || 0;
-  const appMapRows = index.sources['app-map.md']?.rows?.length || 0;
+  // Count rows from all registry map sources
+  let allMapRows = 0;
+  try {
+    const { getActiveRegistries } = require('./flow-utils');
+    for (const reg of getActiveRegistries()) {
+      allMapRows += index.sources[reg.mapFile]?.rows?.length || 0;
+    }
+  } catch {
+    allMapRows = index.sources['app-map.md']?.rows?.length || 0;
+  }
   const specsSections = specsFiles.reduce((sum, f) => sum + f.sections.length, 0);
   const modelProfilesSections = modelProfileFiles.reduce((sum, f) => sum + f.sections.length, 0);
   const taskTypeSections = taskTypeFiles.reduce((sum, f) => sum + f.sections.length, 0);
@@ -702,7 +733,7 @@ function generateIndex() {
 
   index.stats = {
     totalSections: decisionsSections + specsSections + modelProfilesSections + taskTypeSections + contextSections,
-    totalRows: appMapRows,
+    totalRows: allMapRows,
     specsFiles: specsFiles.length,
     modelProfiles: modelProfileFiles.length,
     taskTypes: taskTypeFiles.length,
@@ -768,11 +799,24 @@ function needsRegeneration() {
     if (currentHash !== indexedHash) return true;
   }
 
-  // Check app-map.md
-  if (fileExists(PATHS.appMap)) {
-    const currentHash = hashContent(readFile(PATHS.appMap));
-    const indexedHash = existingIndex.sources['app-map.md']?.contentHash;
-    if (currentHash !== indexedHash) return true;
+  // Check all active registry map files
+  try {
+    const { getActiveRegistries } = require('./flow-utils');
+    for (const reg of getActiveRegistries()) {
+      const mapPath = path.join(PATHS.state, reg.mapFile);
+      if (fileExists(mapPath)) {
+        const currentHash = hashContent(readFile(mapPath));
+        const indexedHash = existingIndex.sources[reg.mapFile]?.contentHash;
+        if (currentHash !== indexedHash) return true;
+      }
+    }
+  } catch {
+    // Fallback: just check app-map.md
+    if (fileExists(PATHS.appMap)) {
+      const currentHash = hashContent(readFile(PATHS.appMap));
+      const indexedHash = existingIndex.sources['app-map.md']?.contentHash;
+      if (currentHash !== indexedHash) return true;
+    }
   }
 
   return false;

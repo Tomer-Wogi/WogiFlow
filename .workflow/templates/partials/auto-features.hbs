@@ -16,9 +16,7 @@ When implementing a task, these features run automatically. You don't need to in
     |   - If current + estimated > 95% → Compact first
     |
     +-- [AUTO] Pre-Implementation Checks
-    |   - Check app-map.md for existing components
-    |   - Check function-map.md for existing utilities
-    |   - Check api-map.md for existing endpoints
+    |   - Check all active registry maps (app-map, function-map, api-map, schema-map, service-map)
     |   - Validate request aligns with task scope
     |
     +-- [AUTO] Explore Phase (L2+ tasks, multi-agent)
@@ -76,9 +74,8 @@ When implementing a task, these features run automatically. You don't need to in
     |   - Blocks completion if any consumer left broken
     |
     +-- [AUTO] Post-Task Updates
-    |   - Update app-map.md (add new, remove deleted, update renamed components)
-    |   - Update function-map.md (add new, prune orphans via scan)
-    |   - Update api-map.md (add new, prune orphans via scan)
+    |   - Update all active registry maps (app-map, function-map, api-map, schema-map, service-map)
+    |   - Run `flow registry-manager scan` to auto-update all registries
     |   - Log to request-log.md with tags
     |   - Commit changes
     |
@@ -96,10 +93,10 @@ When implementing a task, these features run automatically. You don't need to in
 3. PARTIAL match? → Extend existing
 4. NOTHING similar? → Create new (last resort)
 
-#### Function/API Reuse Check
-**When:** Before creating any new utility function or API endpoint
-**What:** Searches function-map.md and api-map.md for existing implementations
-**Benefit:** Prevents duplicate utilities scattered across codebase
+#### Function/API/Registry Reuse Check
+**When:** Before creating any new utility function, API endpoint, or entity
+**What:** Searches all active registry maps (function-map, api-map, schema-map, service-map) for existing implementations
+**Benefit:** Prevents duplicate utilities, endpoints, and entities scattered across codebase
 
 #### Scope Validation
 **When:** Before every file edit
@@ -139,12 +136,14 @@ When implementing a task, these features run automatically. You don't need to in
 - Files changed
 - Result summary
 
-#### App-Map Updates
-**When:** After creating new components
-**What:** Adds entry to app-map.md with:
-- Component name and path
-- Props/inputs
-- Usage examples
+#### Registry Map Updates
+**When:** After creating new components, functions, APIs, or other trackable entities
+**What:** Updates all active registry maps. Run `flow registry-manager scan` to auto-update.
+- `app-map.md` — Components (name, path, props)
+- `function-map.md` — Utility functions
+- `api-map.md` — API endpoints
+- `schema-map.md` — Database models and enums (if ORM detected)
+- `service-map.md` — Service/controller architecture (if backend framework detected)
 
 ### Configuration
 

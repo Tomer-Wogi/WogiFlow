@@ -183,6 +183,67 @@ const PATHS = {
 };
 
 // ============================================================
+// Registry Discovery (v1.5.1 — wf-927db36d)
+// ============================================================
+
+const MANIFEST_PATH = path.join(STATE_DIR, 'registry-manifest.json');
+
+const DEFAULT_REGISTRIES = [
+  { id: 'components', name: 'Component Registry', mapFile: 'app-map.md', indexFile: 'component-index.json', category: 'code', type: 'components', active: true },
+  { id: 'functions', name: 'Function Registry', mapFile: 'function-map.md', indexFile: 'function-index.json', category: 'code', type: 'functions', active: true },
+  { id: 'apis', name: 'API Registry', mapFile: 'api-map.md', indexFile: 'api-index.json', category: 'code', type: 'apis', active: true }
+];
+
+/**
+ * Get all active registries from the manifest (with fallback to defaults).
+ * Lightweight — reads the manifest file directly without requiring flow-registry-manager.
+ * @returns {Array<{id, name, mapFile, indexFile, category, type, active}>}
+ */
+function getActiveRegistries() {
+  if (fs.existsSync(MANIFEST_PATH)) {
+    try {
+      const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+      const manifest = JSON.parse(raw);
+      const active = (manifest.registries || []).filter(r => r.active);
+      if (active.length > 0) return active;
+    } catch (err) {
+      // Fall through to defaults
+    }
+  }
+  return DEFAULT_REGISTRIES;
+}
+
+/**
+ * Get paths for all active registry map and index files.
+ * @returns {{ maps: string[], indexes: string[], mapsByCategory: Object }}
+ */
+function getRegistryPaths() {
+  const registries = getActiveRegistries();
+  const maps = registries.map(r => path.join(STATE_DIR, r.mapFile));
+  const indexes = registries.map(r => path.join(STATE_DIR, r.indexFile));
+
+  const mapsByCategory = {};
+  for (const r of registries) {
+    if (!mapsByCategory[r.category]) mapsByCategory[r.category] = [];
+    mapsByCategory[r.category].push({
+      id: r.id,
+      mapPath: path.join(STATE_DIR, r.mapFile),
+      indexPath: path.join(STATE_DIR, r.indexFile)
+    });
+  }
+
+  return { maps, indexes, mapsByCategory, registries };
+}
+
+/**
+ * Get map file names only (for copying to worktrees, etc.).
+ * @returns {string[]} e.g. ['app-map.md', 'function-map.md', 'api-map.md', 'schema-map.md']
+ */
+function getRegistryMapFiles() {
+  return getActiveRegistries().map(r => r.mapFile);
+}
+
+// ============================================================
 // Colors (ANSI escape codes)
 // ============================================================
 
@@ -3219,6 +3280,11 @@ module.exports = {
   STATE_DIR,
   CLAUDE_DIR,
   getProjectRoot,
+
+  // Registry Discovery (v1.5.1)
+  getActiveRegistries,
+  getRegistryPaths,
+  getRegistryMapFiles,
 
   // Colors & Output
   colors,
