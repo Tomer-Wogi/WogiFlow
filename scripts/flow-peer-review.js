@@ -92,11 +92,11 @@ function getStagedChanges() {
 }
 
 /**
- * Validate taskId format to prevent command injection
+ * Validate taskId format — must be wf-[8 hex chars] or legacy TASK-NNN/BUG-NNN.
+ * Also prevents command injection and path traversal.
  */
 function isValidTaskId(taskId) {
-  // Allow only alphanumeric, dashes, and underscores
-  return /^[a-zA-Z0-9_-]+$/.test(taskId);
+  return /^(wf-[a-f0-9]{8}(-\d{2})?|(TASK|BUG)-\d{3,})$/i.test(taskId);
 }
 
 /**

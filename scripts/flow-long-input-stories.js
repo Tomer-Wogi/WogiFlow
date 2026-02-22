@@ -16,7 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Import safe utilities
-const { safeJsonParse, writeJson } = require('./flow-utils');
+const { safeJsonParse, writeJson, generateTaskId } = require('./flow-utils');
 
 // Utility: ISO timestamp
 function now() {
@@ -1719,10 +1719,11 @@ function listEditableStories() {
 // ============================================================================
 
 /**
- * Generate a workflow ID for task tracking
+ * Generate a workflow ID for task tracking.
+ * Delegates to the canonical generateTaskId() from flow-utils.js.
  */
 function generateWorkflowId() {
-  return 'wf-' + crypto.randomBytes(4).toString('hex');
+  return generateTaskId('long-input-story');
 }
 
 /**

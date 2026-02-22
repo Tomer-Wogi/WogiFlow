@@ -1192,12 +1192,75 @@ function getReadyData(validate = false) {
 }
 
 /**
+ * Validate all task IDs in a ready.json data object before writing.
+ * Checks ready, inProgress, and recentlyCompleted arrays.
+ * Only validates NEW entries — historical descriptive IDs in recentlyCompleted are allowed.
+ *
+ * @param {Object} data - ready.json data to validate
+ * @param {Object} [previousData] - Previous ready.json data to detect new entries
+ * @throws {Error} If any new task ID fails validation
+ */
+function validateReadyDataIds(data, previousData) {
+  // Allowed ID patterns: wf-[8 hex], sub-tasks wf-[8 hex]-NN, legacy TASK-NNN/BUG-NNN
+  const VALID_TASK_ID = /^wf-[a-f0-9]{8}(-\d{2})?$/i;
+  const LEGACY_TASK_ID = /^(TASK|BUG)-\d{3,}$/i;
+
+  // Collect all existing IDs from previous data to skip historical entries
+  const existingIds = new Set();
+  if (previousData) {
+    for (const list of ['ready', 'inProgress', 'recentlyCompleted', 'blocked']) {
+      for (const task of (previousData[list] || [])) {
+        if (task && task.id) existingIds.add(task.id);
+      }
+    }
+    for (const task of (previousData.backlog || [])) {
+      if (task && task.id) existingIds.add(task.id);
+    }
+  }
+
+  const violations = [];
+  for (const list of ['ready', 'inProgress']) {
+    for (const task of (data[list] || [])) {
+      if (!task || !task.id) continue;
+      // Skip IDs that already existed (historical)
+      if (existingIds.has(task.id)) continue;
+      if (!VALID_TASK_ID.test(task.id) && !LEGACY_TASK_ID.test(task.id)) {
+        violations.push(`${list}: "${task.id}" (title: "${task.title || 'unknown'}")`);
+      }
+    }
+  }
+
+  if (violations.length > 0) {
+    const msg = `Task ID validation failed — descriptive IDs are not allowed.\n` +
+      `Use generateTaskId() from flow-utils.js to create IDs.\n` +
+      `Format: wf-[8 hex chars] (e.g., wf-a1b2c3d4)\n\n` +
+      `Violations:\n${violations.map(v => `  - ${v}`).join('\n')}`;
+    console.error(`[TASK-ID-VIOLATION] ${msg}`);
+    // In strict mode, throw to prevent write. In non-strict, warn only.
+    if (process.env.WOGIFLOW_STRICT_IDS !== '0') {
+      throw new Error(msg);
+    }
+  }
+}
+
+/**
  * Write ready.json task queue
  * Note: Does not mutate the input data object
+ * Validates task IDs before writing to prevent descriptive IDs.
  *
  * WARNING: For concurrent access, use saveReadyDataAsync which uses file locking.
  */
 function saveReadyData(data) {
+  // Load previous data to detect new entries vs historical ones
+  let previousData = null;
+  try {
+    if (fs.existsSync(PATHS.ready)) {
+      previousData = JSON.parse(fs.readFileSync(PATHS.ready, 'utf-8'));
+    }
+  } catch {
+    // If we can't read previous data, validate all entries
+  }
+  validateReadyDataIds(data, previousData);
   const toSave = { ...data, lastUpdated: new Date().toISOString() };
   return writeJson(PATHS.ready, toSave);
 }
@@ -1205,11 +1268,21 @@ function saveReadyData(data) {
 /**
  * Write ready.json with file locking (async version)
  * Use this when multiple processes might be writing to ready.json
+ * Validates task IDs before writing to prevent descriptive IDs.
  *
  * SECURITY: Prevents race conditions that could corrupt ready.json
  */
 async function saveReadyDataAsync(data) {
   return withLock(PATHS.ready, () => {
+    let previousData = null;
+    try {
+      if (fs.existsSync(PATHS.ready)) {
+        previousData = JSON.parse(fs.readFileSync(PATHS.ready, 'utf-8'));
+      }
+    } catch {
+      // If we can't read previous data, validate all entries
+    }
+    validateReadyDataIds(data, previousData);
     const toSave = { ...data, lastUpdated: new Date().toISOString() };
     return writeJson(PATHS.ready, toSave);
   });
@@ -3161,6 +3234,7 @@ module.exports = {
   // Task ID Generation (v1.9.0)
   generateTaskId,
   validateTaskId,
+  validateReadyDataIds,
   isLegacyTaskId,
 
   // Hierarchical Work Item ID Generation (v3.2)

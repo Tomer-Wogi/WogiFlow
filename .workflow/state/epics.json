@@ -28,8 +28,8 @@
       "stories": [
         "wf-fwk-discovery",
         "wf-ext-registry",
-        "wf-schema-registry",
-        "wf-service-registry"
+        "wf-65ea1bdb",
+        "wf-c7a3804f"
       ],
       "features": [],
       "status": "ready",

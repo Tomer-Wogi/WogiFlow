@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-151 | 2026-02-22 11:00
+**Type**: fix
+**Tags**: #workflow #conventions #task-ids #system-level #code-prevention
+**Task**: wf-4346ab1a
+**Request**: "Fix stale task cleanup, move naming convention to system-level, add code-level prevention for descriptive task IDs"
+**Result**: Three fixes: (1) Fixed epics.json cross-references — renamed wf-schema-registry→wf-65ea1bdb, wf-service-registry→wf-c7a3804f. Root cause analysis: /wogi-review is stateless (no idempotency check) which allowed 3-day review to be re-attempted. (2) Added Task ID Format rule to claude-md.hbs template — now ships with every WogiFlow installation as a system-level rule, not just per-project decisions.md. Regenerated CLAUDE.md. (3) Added code-level prevention: validateReadyDataIds() in saveReadyData()/saveReadyDataAsync() rejects descriptive IDs at write time; fixed flow-tech-debt.js wf-debt- prefix to use generateTaskId(); replaced flow-long-input-stories.js local generateWorkflowId() with canonical generateTaskId(); tightened permissive isValidTaskId() regex in flow-context-estimator.js and flow-peer-review.js from /[a-zA-Z0-9_-]+/ to strict /wf-[a-f0-9]{8}/ format.
+**Files**: .workflow/state/epics.json, .workflow/templates/claude-md.hbs, CLAUDE.md, scripts/flow-utils.js, scripts/flow-tech-debt.js, scripts/flow-long-input-stories.js, scripts/flow-context-estimator.js, scripts/flow-peer-review.js
+
 ### R-150 | 2026-02-22 10:00
 **Type**: fix
 **Tags**: #workflow #conventions #task-ids #naming

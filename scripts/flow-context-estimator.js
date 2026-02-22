@@ -33,11 +33,13 @@ const DEFAULT_REFACTOR_KEYWORDS = [
   'restructure', 'rearchitect', 'modernize', 'upgrade'
 ];
 
-// Valid task ID pattern - prevents path traversal attacks (Security Rule)
-const VALID_TASK_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+// Valid task ID pattern — enforces wf-[8 hex] format and prevents path traversal
+// Also accepts legacy TASK-NNN/BUG-NNN and sub-tasks wf-XXXXXXXX-NN
+const VALID_TASK_ID_PATTERN = /^(wf-[a-f0-9]{8}(-\d{2})?|(TASK|BUG)-\d{3,})$/i;
 
 /**
- * Validate task ID to prevent path traversal
+ * Validate task ID format — must be wf-[8 hex chars] or legacy TASK-NNN/BUG-NNN.
+ * Also prevents path traversal attacks.
  * @param {string} taskId - Task ID to validate
  * @returns {boolean} True if valid
  */

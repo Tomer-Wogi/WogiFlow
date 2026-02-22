@@ -34,7 +34,8 @@ const {
   writeJson,
   fileExists,
   getProjectRoot,
-  ensureDir
+  ensureDir,
+  generateTaskId
 } = require('./flow-utils');
 
 // ============================================================================
@@ -307,7 +308,7 @@ class TechDebtManager {
 
     // Create task
     const task = {
-      id: `wf-debt-${crypto.randomBytes(4).toString('hex')}`,
+      id: generateTaskId(`debt-${issue.description.slice(0, 30)}`),
       title: `Fix tech debt: ${issue.description.slice(0, 50)}`,
       type: 'refactor',
       priority: issue.severity === 'critical' ? 'high' : (issue.severity === 'high' ? 'medium' : 'low'),
