@@ -379,40 +379,11 @@ class RegistryManager {
 }
 
 // ============================================================
-// getActiveRegistries() — Public helper for consuming systems
-// ============================================================
-
-/**
- * Get all active registries from the manifest.
- * Falls back to hardcoded defaults if manifest doesn't exist.
- *
- * This is the function that consuming systems should use to discover
- * which registries are available and where their files are.
- *
- * @returns {Object[]} Array of active registry descriptors
- */
-function getActiveRegistries() {
-  if (fs.existsSync(MANIFEST_PATH)) {
-    try {
-      const manifest = safeJsonParse(MANIFEST_PATH, { registries: [] });
-      const active = manifest.registries.filter(r => r.active);
-      if (active.length > 0) return active;
-    } catch (err) {
-      // Fall through to defaults
-    }
-  }
-
-  // Fallback: return hardcoded defaults (backwards compat)
-  return [
-    { id: 'components', name: 'Component Registry', mapFile: 'app-map.md', indexFile: 'component-index.json', category: 'code', type: 'components', active: true },
-    { id: 'functions', name: 'Function Registry', mapFile: 'function-map.md', indexFile: 'function-index.json', category: 'code', type: 'functions', active: true },
-    { id: 'apis', name: 'API Registry', mapFile: 'api-map.md', indexFile: 'api-index.json', category: 'code', type: 'apis', active: true }
-  ];
-}
-
-// ============================================================
 // Exports (MUST be set before CLI code runs to avoid circular dep)
 // ============================================================
+
+// Re-export getActiveRegistries from flow-utils (single source of truth)
+const { getActiveRegistries } = require('./flow-utils');
 
 module.exports = {
   RegistryPlugin,

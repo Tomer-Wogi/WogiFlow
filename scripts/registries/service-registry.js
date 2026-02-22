@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { RegistryPlugin } = require('../flow-registry-manager');
-const { getProjectRoot } = require('../flow-utils');
+const { getProjectRoot, safeJsonParse: safeJsonParseFile } = require('../flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
@@ -75,7 +75,7 @@ class ServiceRegistry extends RegistryPlugin {
     const pkgPath = path.join(PROJECT_ROOT, 'package.json');
     if (fs.existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const pkg = safeJsonParseFile(pkgPath, {});
         const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
         const backendPkgs = ['@nestjs/core', 'express', 'fastify', '@hapi/hapi', 'koa'];
         if (backendPkgs.some(p => allDeps[p])) return true;
@@ -244,7 +244,7 @@ class ServiceRegistry extends RegistryPlugin {
     const pkgPath = path.join(PROJECT_ROOT, 'package.json');
     if (fs.existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const pkg = safeJsonParseFile(pkgPath, {});
         const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
         if (allDeps['@nestjs/core']) return 'nestjs';
         if (allDeps['express']) return 'express';
@@ -281,7 +281,10 @@ class ServiceRegistry extends RegistryPlugin {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
         if (entry.name === 'node_modules' || entry.name.startsWith('.') || entry.name === 'dist') continue;
-        const fullPath = path.join(dir, entry.name);
+        const fullPath = path.resolve(dir, entry.name);
+
+        // Ensure resolved path stays within project root
+        if (!fullPath.startsWith(PROJECT_ROOT)) continue;
 
         if (entry.isDirectory()) {
           this._findNestJSFiles(fullPath, depth + 1);

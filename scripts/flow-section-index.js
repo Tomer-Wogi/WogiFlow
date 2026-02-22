@@ -629,10 +629,12 @@ function generateIndex() {
     }
   }
 
-  // Parse all active registry map files
+  // Parse all active registry map files (cache registry list for reuse below)
+  let activeRegistries = null;
   try {
     const { getActiveRegistries } = require('./flow-utils');
-    for (const reg of getActiveRegistries()) {
+    activeRegistries = getActiveRegistries();
+    for (const reg of activeRegistries) {
       const mapPath = path.join(PATHS.state, reg.mapFile);
       if (fileExists(mapPath)) {
         try {
@@ -718,12 +720,11 @@ function generateIndex() {
   const decisionsSections = index.sources['decisions.md']?.sections?.length || 0;
   // Count rows from all registry map sources
   let allMapRows = 0;
-  try {
-    const { getActiveRegistries } = require('./flow-utils');
-    for (const reg of getActiveRegistries()) {
+  if (activeRegistries) {
+    for (const reg of activeRegistries) {
       allMapRows += index.sources[reg.mapFile]?.rows?.length || 0;
     }
-  } catch {
+  } else {
     allMapRows = index.sources['app-map.md']?.rows?.length || 0;
   }
   const specsSections = specsFiles.reduce((sum, f) => sum + f.sections.length, 0);

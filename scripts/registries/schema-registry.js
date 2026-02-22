@@ -14,7 +14,7 @@
 const fs = require('fs');
 const path = require('path');
 const { RegistryPlugin } = require('../flow-registry-manager');
-const { getProjectRoot } = require('../flow-utils');
+const { getProjectRoot, safeJsonParse: safeJsonParseFile } = require('../flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
@@ -47,7 +47,7 @@ class SchemaRegistry extends RegistryPlugin {
     const pkgPath = path.join(PROJECT_ROOT, 'package.json');
     if (fs.existsSync(pkgPath)) {
       try {
-        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+        const pkg = safeJsonParseFile(pkgPath, {});
         const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
         const ormPackages = ['prisma', '@prisma/client', 'typeorm', 'drizzle-orm', 'sequelize', 'mongoose'];
         if (ormPackages.some(p => allDeps[p])) return true;

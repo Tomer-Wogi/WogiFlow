@@ -312,8 +312,11 @@ function parseAdditionalRegistryMaps() {
         }
       }
     }
-  } catch {
-    // Fallback: no additional registries
+  } catch (err) {
+    // Fallback: no additional registries — log if debug enabled
+    if (process.env.DEBUG) {
+      console.error(`[consistency-check] Registry scan fallback: ${err.message}`);
+    }
   }
   return entries;
 }

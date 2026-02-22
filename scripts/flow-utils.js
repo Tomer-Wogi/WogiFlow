@@ -202,10 +202,11 @@ const DEFAULT_REGISTRIES = [
 function getActiveRegistries() {
   if (fs.existsSync(MANIFEST_PATH)) {
     try {
-      const raw = fs.readFileSync(MANIFEST_PATH, 'utf-8');
-      const manifest = JSON.parse(raw);
-      const active = (manifest.registries || []).filter(r => r.active);
-      if (active.length > 0) return active;
+      const manifest = safeJsonParse(MANIFEST_PATH, null);
+      if (manifest) {
+        const active = (manifest.registries || []).filter(r => r.active);
+        if (active.length > 0) return active;
+      }
     } catch (err) {
       // Fall through to defaults
     }

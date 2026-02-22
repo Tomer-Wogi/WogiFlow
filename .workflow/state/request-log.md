@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-155 | 2026-02-22 09:42
+**Type**: fix
+**Tags**: #review #security #registry #safeJsonParse #fix
+**Task**: wf-cr-3day22
+**Request**: "Fix 15 review findings from 3-day comprehensive review"
+**Result**: Fixed 10 of 15 findings (3 critical, 4 high, 3 medium). C1: removed wrong activatePlugins() args in task-completed.js. C2+H4: deduplicated getActiveRegistries() — single source of truth in flow-utils.js. C3: regenerated registry-manifest.json with all 5 registries. H1-H3: replaced raw JSON.parse with safeJsonParse in schema-registry, service-registry, and flow-skill-generator. H5: cached getActiveRegistries() in flow-section-index.js. H7: fixed version type mismatch in installer.js. M1: added debug logging to empty catch in flow-consistency-check.js. M2: added path traversal guard in service-registry.js. 5 findings deferred (M3: regex non-regression, M4/M5/H6: low-impact, already handled by try-catch).
+**Files**: scripts/hooks/core/task-completed.js, scripts/flow-registry-manager.js, scripts/flow-utils.js, scripts/registries/schema-registry.js, scripts/registries/service-registry.js, scripts/flow-skill-generator.js, scripts/flow-section-index.js, scripts/flow-consistency-check.js, lib/installer.js, .workflow/state/registry-manifest.json
+
 ### R-154 | 2026-02-22 14:30
 **Type**: refactor
 **Tags**: #scanner #registry #manifest #wiring #dynamic-discovery

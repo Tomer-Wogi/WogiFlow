@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-02-21T10:57:26.863Z",
+  "generatedAt": "2026-02-22T09:39:52.323Z",
   "registries": [
     {
       "id": "apis",
@@ -22,7 +22,7 @@
       "type": "components",
       "enabled": true,
       "active": false,
-      "activateWhen": "react, vue, svelte, or angular detected in package.json dependencies"
+      "activateWhen": "frontend framework or component directories exist"
     },
     {
       "id": "functions",
@@ -34,6 +34,28 @@
       "enabled": true,
       "active": true,
       "activateWhen": "always"
+    },
+    {
+      "id": "schemas",
+      "name": "Schema/Model Registry",
+      "mapFile": "schema-map.md",
+      "indexFile": "schema-index.json",
+      "category": "database",
+      "type": "schemas",
+      "enabled": true,
+      "active": false,
+      "activateWhen": "ORM detected (Prisma, TypeORM, Django, etc.)"
+    },
+    {
+      "id": "services",
+      "name": "Service/Architecture Registry",
+      "mapFile": "service-map.md",
+      "indexFile": "service-index.json",
+      "category": "architecture",
+      "type": "services",
+      "enabled": true,
+      "active": false,
+      "activateWhen": "backend framework detected (NestJS, Express, Django, Go)"
     }
   ]
 }

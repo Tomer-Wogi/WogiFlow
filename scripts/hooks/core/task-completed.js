@@ -155,9 +155,7 @@ function handleTaskCompleted(input) {
       const { RegistryManager } = require('../../flow-registry-manager');
       const manager = new RegistryManager();
       manager.loadPlugins();
-      const { getActiveRegistries } = require('../../flow-utils');
-      const activeRegistries = getActiveRegistries();
-      manager.activatePlugins(null, activeRegistries);
+      manager.activatePlugins();
       manager.scanAll().catch((err) => {
         if (process.env.DEBUG) {
           console.error(`[Task Completed] Registry scan failed: ${err.message}`);

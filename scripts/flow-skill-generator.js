@@ -759,7 +759,13 @@ function updateConfigJson(technologies, projectRoot) {
     return;
   }
 
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  let config;
+  try {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  } catch (err) {
+    console.log(`  Warning: Failed to parse config.json: ${err.message}`);
+    return;
+  }
 
   // Update skills section
   if (!config.skills) config.skills = {};
@@ -1273,7 +1279,13 @@ For manual use, run the wizard first: node flow-stack-wizard.js
       process.exit(1);
     }
 
-    const selections = JSON.parse(fs.readFileSync(selectionsPath, 'utf8'));
+    let selections;
+    try {
+      selections = JSON.parse(fs.readFileSync(selectionsPath, 'utf8'));
+    } catch (err) {
+      console.error(`Failed to parse stack-selections.json: ${err.message}`);
+      process.exit(1);
+    }
     const { collectTechnologiesFromSelections } = require('./flow-tech-options');
     const technologies = collectTechnologiesFromSelections(selections);
 
