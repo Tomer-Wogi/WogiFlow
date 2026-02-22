@@ -1315,6 +1315,10 @@
         "enabled": true,
         "blockImplementationWithoutTask": true
       },
+      "routingGate": {
+        "enabled": true,
+        "_comment": "Blocks Bash calls before a /wogi-* command is invoked. Fail-open on errors."
+      },
       "taskCompleted": {
         "enabled": true
       },

@@ -3,16 +3,19 @@
 /**
  * Wogi Flow - Claude Code PreToolUse Hook
  *
- * Called before Edit/Write/TodoWrite tool execution.
- * Enforces task gating, scope validation, component reuse checking, and TodoWrite gating.
+ * Called before Edit/Write/TodoWrite/Skill/Bash tool execution.
+ * Enforces task gating, scope validation, component reuse checking,
+ * TodoWrite gating, and routing gate enforcement.
  *
  * v4.0: Added scope gating to validate edits are within task's declared scope
+ * v6.0: Added routing gate — blocks Bash before /wogi-* routing
  */
 
 const path = require('path');
 const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
+const { checkRoutingGate, clearRoutingPending } = require('../../core/routing-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 const { safeJsonParseString } = require('../../../flow-utils');
@@ -128,6 +131,47 @@ async function main() {
         markSkillPending(skillName.toLowerCase(), { args: toolInput.args });
         if (process.env.DEBUG) {
           console.error(`[Hook] Marked skill ${skillName} as pending (via Skill tool)`);
+        }
+      }
+
+      // v6.0: Clear routing-pending flag on ANY /wogi-* skill invocation
+      // This is the "routing happened" signal that unblocks Bash calls
+      if (typeof skillName === 'string' && /^wogi-/i.test(skillName)) {
+        try {
+          clearRoutingPending();
+          if (process.env.DEBUG) {
+            console.error(`[Hook] Cleared routing-pending flag (Skill: ${skillName})`);
+          }
+        } catch (err) {
+          // Non-blocking - don't fail the hook if clear fails
+          if (process.env.DEBUG) {
+            console.error(`[Hook] Failed to clear routing flag: ${err.message}`);
+          }
+        }
+      }
+    }
+
+    // v6.0: Routing gate check (for Bash)
+    // Blocks Bash calls when no /wogi-* command has been invoked first
+    if (toolName === 'Bash') {
+      try {
+        const routingResult = checkRoutingGate(toolName);
+        if (routingResult.blocked) {
+          coreResult = {
+            allowed: false,
+            blocked: true,
+            reason: `Routing gate: ${routingResult.reason}`,
+            message: routingResult.message
+          };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+      } catch (err) {
+        // Fail-open for routing gate (convenience enforcement, not security boundary)
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Routing gate error (fail-open): ${err.message}`);
         }
       }
     }

@@ -9,6 +9,7 @@
 
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
+const { setRoutingPending } = require('../../core/routing-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
@@ -112,6 +113,18 @@ async function main() {
         if (process.env.DEBUG) {
           console.error(`[Hook] Correction detection failed: ${err.message}`);
         }
+      }
+    }
+
+    // v6.0: Set routing-pending flag for routing gate enforcement
+    // This blocks Bash calls until a /wogi-* skill is invoked
+    // Skipped when an active task exists (follow-ups during tracked work are allowed)
+    try {
+      setRoutingPending();
+    } catch (err) {
+      // Non-blocking - don't fail the hook if routing gate fails (fail-open)
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Routing gate set failed: ${err.message}`);
       }
     }
 

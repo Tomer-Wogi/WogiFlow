@@ -1,9 +1,20 @@
 {
-  "lastUpdated": "2026-02-22T16:30:00.000Z",
+  "lastUpdated": "2026-02-22T17:15:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2c28480c",
+      "title": "Add routing gate hook — programmatic enforcement blocking Bash before /wogi-* routing",
+      "type": "story",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-22T17:01:00.000Z",
+      "specPath": ".workflow/changes/wf-2c28480c.md",
+      "completedAt": "2026-02-22T17:15:00.000Z"
+    },
     {
       "id": "wf-a3c1e8b2",
       "title": "Fix skill re-execution bug — prevent stale session reminders from re-triggering one-time skills",

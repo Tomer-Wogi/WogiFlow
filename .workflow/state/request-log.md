@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-157 | 2026-02-22 17:15
+**Type**: new
+**Tags**: #workflow #hooks #routing-gate #enforcement #P0
+**Task**: wf-2c28480c
+**Request**: "Add routing gate hook — programmatic enforcement that blocks Bash/tool calls before a /wogi-* command has been invoked"
+**Result**: Created routing gate hook that programmatically blocks Bash calls before routing through /wogi-* commands. UserPromptSubmit sets .routing-pending flag (skipped when active task exists). PreToolUse blocks Bash if flag is set, clears flag on any Skill(wogi-*) invocation. Fail-open design with config toggle. Prevents AI from bypassing mandatory routing rule.
+**Files**: scripts/hooks/core/routing-gate.js (CREATE), scripts/hooks/entry/claude-code/user-prompt-submit.js, scripts/hooks/entry/claude-code/pre-tool-use.js, .workflow/config.json
+
 ### R-156 | 2026-02-22 16:35
 **Type**: fix
 **Tags**: #workflow #skills #session-context #re-execution #P0
