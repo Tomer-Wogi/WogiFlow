@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ensureDir } = require('./flow-file-ops');
 
 // Import helper functions from tech options
 let _techOptions = null;
@@ -530,12 +531,6 @@ function migrateOldSkills(projectRoot) {
 // ============================================
 // FILE WRITING
 // ============================================
-
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
 
 /**
  * Write skill files with hub-spoke awareness

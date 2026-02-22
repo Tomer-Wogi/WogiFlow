@@ -5,10 +5,6 @@
  *
  * Creates new skills from templates with interactive prompts.
  *
- * TODO: Consider consolidating with flow-skill-creator.js and
- * flow-skill-generator.js into a single flow-skill.js with subcommands.
- * See audit plan from 2026-01-12.
- *
  * Usage:
  *   flow skill-create                  # Interactive mode
  *   flow skill-create <name>           # Create with name
@@ -19,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 const { getProjectRoot, colors } = require('./flow-utils');
+const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const PROJECT_ROOT = getProjectRoot();
 const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
@@ -255,17 +252,7 @@ Examples:
 }
 
 function listSkills() {
-  if (!fs.existsSync(SKILLS_DIR)) {
-    log('dim', 'No skills directory found');
-    return;
-  }
-
-  const dirs = fs.readdirSync(SKILLS_DIR);
-  const skills = dirs.filter(d => {
-    if (d.startsWith('_')) return false;
-    const skillPath = path.join(SKILLS_DIR, d);
-    return fs.statSync(skillPath).isDirectory();
-  });
+  const skills = getAllSkills();
 
   if (skills.length === 0) {
     log('dim', 'No skills found');
@@ -275,23 +262,14 @@ function listSkills() {
   log('cyan', '\nInstalled Skills:\n');
 
   for (const skill of skills) {
-    const skillPath = path.join(SKILLS_DIR, skill);
+    const skillPath = getSkillDir(skill.name);
     const hasKnowledge = fs.existsSync(path.join(skillPath, 'knowledge'));
-    const knowledgeIcon = hasKnowledge ? '📚' : '📦';
+    const knowledgeIcon = hasKnowledge ? '\u{1F4DA}' : '\u{1F4E6}';
 
-    log('white', `  ${knowledgeIcon} ${skill}`);
+    log('white', `  ${knowledgeIcon} ${skill.name}`);
 
-    // Try to read description
-    const mdPath = path.join(skillPath, 'skill.md');
-    const legacyPath = path.join(skillPath, 'SKILL.md');
-    const actualPath = fs.existsSync(mdPath) ? mdPath : legacyPath;
-
-    if (fs.existsSync(actualPath)) {
-      const content = fs.readFileSync(actualPath, 'utf-8');
-      const descMatch = content.match(/description:\s*["']?([^"'\n]+)/);
-      if (descMatch) {
-        log('dim', `     ${descMatch[1].trim()}`);
-      }
+    if (skill.metadata?.description) {
+      log('dim', `     ${skill.metadata.description}`);
     }
   }
 

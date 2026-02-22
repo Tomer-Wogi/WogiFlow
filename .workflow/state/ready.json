@@ -1,7 +1,17 @@
 {
-  "lastUpdated": "2026-02-22T06:30:00.000Z",
+  "lastUpdated": "2026-02-22T09:00:00.000Z",
   "inProgress": [],
   "ready": [
+    {
+      "id": "wf-skill-overhaul",
+      "title": "Skill System Overhaul — remove top-3 cap, auto-run Context7 on onboard, separate content layers, version-aware refresh, prioritize team knowledge",
+      "type": "story",
+      "feature": "skills",
+      "status": "ready",
+      "priority": "P1",
+      "createdAt": "2026-02-22T08:00:00.000Z",
+      "specPath": ".workflow/changes/wf-skill-overhaul.md"
+    },
     {
       "id": "wf-manifest-wiring",
       "title": "Registry Manifest Wiring — migrate all 46+ consuming systems to dynamic registry discovery",
@@ -47,6 +57,16 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-skill-consolidate",
+      "title": "Consolidate skill scripts — delete deprecated creator, deduplicate utilities, unify discovery",
+      "type": "refactor",
+      "feature": "skills",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-22T08:00:00.000Z",
+      "completedAt": "2026-02-22T09:00:00.000Z"
+    },
     {
       "id": "wf-cr-rv222b",
       "title": "Fix 2 additional review findings from dismissed investigation",

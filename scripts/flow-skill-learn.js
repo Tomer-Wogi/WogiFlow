@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { getProjectRoot, getConfig, colors } = require('./flow-utils');
+const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -49,82 +50,22 @@ function isLearningEnabled(config, trigger) {
 }
 
 // ============================================================
-// Skill Discovery
+// Skill Discovery (delegates to flow-skill-matcher.js)
 // ============================================================
 
 function discoverSkills() {
-  const skills = [];
-
-  if (!fs.existsSync(SKILLS_DIR)) {
-    return skills;
-  }
-
-  const dirs = fs.readdirSync(SKILLS_DIR);
-
-  for (const dir of dirs) {
-    if (dir.startsWith('_')) continue; // Skip templates
-
-    const skillPath = path.join(SKILLS_DIR, dir);
-    const skillMdPath = path.join(skillPath, 'skill.md');
-    const legacySkillMdPath = path.join(skillPath, 'SKILL.md');
-
-    if (fs.statSync(skillPath).isDirectory()) {
-      const mdPath = fs.existsSync(skillMdPath) ? skillMdPath :
-                     fs.existsSync(legacySkillMdPath) ? legacySkillMdPath : null;
-
-      if (mdPath) {
-        const content = fs.readFileSync(mdPath, 'utf-8');
-        const skill = parseSkillMd(content, dir, skillPath);
-        skills.push(skill);
-      }
-    }
-  }
-
-  return skills;
-}
-
-function parseSkillMd(content, name, skillPath) {
-  const skill = {
-    name,
-    path: skillPath,
-    version: '1.0.0',
-    description: '',
-    filePatterns: [],
-    hasKnowledge: fs.existsSync(path.join(skillPath, 'knowledge'))
-  };
-
-  // Parse YAML frontmatter
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  if (frontmatterMatch) {
-    const yaml = frontmatterMatch[1];
-    const versionMatch = yaml.match(/version:\s*["']?([^"'\n]+)/);
-    const descMatch = yaml.match(/description:\s*["']?([^"'\n]+)/);
-
-    if (versionMatch) skill.version = versionMatch[1].trim();
-    if (descMatch) skill.description = descMatch[1].trim();
-  }
-
-  // Extract file patterns
-  const patternsMatch = content.match(/## File Patterns[\s\S]*?(?=\n## |$)/);
-  if (patternsMatch) {
-    const patterns = patternsMatch[0].match(/`([^`]+)`/g);
-    if (patterns) {
-      skill.filePatterns = patterns.map(p => p.replace(/`/g, ''));
-    }
-  }
-
-  // Infer patterns from skill name if none found
-  if (skill.filePatterns.length === 0) {
-    const inferredPatterns = {
-      'nestjs': ['*.module.ts', '*.controller.ts', '*.service.ts', '*.entity.ts'],
-      'react': ['*.tsx', '*.jsx', 'use*.ts'],
-      'python': ['*.py'],
-      'typescript': ['*.ts', '*.tsx']
+  const allSkills = getAllSkills();
+  return allSkills.map(s => {
+    const skillPath = getSkillDir(s.name);
+    return {
+      name: s.name,
+      path: skillPath,
+      version: s.metadata?.version || '1.0.0',
+      description: s.metadata?.description || '',
+      filePatterns: s.filePatterns || [],
+      hasKnowledge: fs.existsSync(path.join(skillPath, 'knowledge'))
     };
-    skill.filePatterns = inferredPatterns[name] || [];
-  }
-
-  return skill;
+  });
 }
 
 // ============================================================

@@ -20,6 +20,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ensureDir } = require('./flow-file-ops');
 
 // ============================================================
 // Constants (extracted from magic numbers)
@@ -120,14 +121,7 @@ let db = null;
 let embedder = null;
 let initPromise = null;
 
-/**
- * Ensure directory exists
- */
-function ensureDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true });
-  }
-}
+// ensureDir imported from flow-file-ops
 
 /**
  * Initialize database (singleton)

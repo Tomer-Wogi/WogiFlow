@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-149 | 2026-02-22 09:00
+**Type**: refactor
+**Tags**: #skills #consolidation #deduplication
+**Task**: wf-skill-consolidate
+**Request**: "Consolidate skill scripts — delete deprecated creator, deduplicate utilities, unify discovery"
+**Result**: 4 consolidation changes: (1) Deleted flow-skill-creator.js (572 lines, deprecated) and rerouted CLI `flow skill detect/list` to flow-skill-matcher.js. (2) Deduplicated ensureDir() in flow-skill-generator.js and flow-memory-db.js — now import from flow-file-ops.js. (3) Replaced local discoverSkills()/parseSkillMd() in flow-skill-learn.js (74 lines) with thin adapter over flow-skill-matcher.js getAllSkills(). (4) Replaced local listSkills() in flow-skill-create.js (42 lines) with getAllSkills() from flow-skill-matcher.js. Cleaned up unused discoverSkills import from flow-knowledge-router.js.
+**Files**: scripts/flow-skill-creator.js (deleted), scripts/flow (CLI routing), scripts/flow-skill-generator.js, scripts/flow-memory-db.js, scripts/flow-skill-learn.js, scripts/flow-skill-create.js, scripts/flow-knowledge-router.js
+
 ### R-148 | 2026-02-22 07:15
 **Type**: fix
 **Tags**: #review #performance #optimization

@@ -620,16 +620,16 @@ case "${1:-}" in
     skill)
         case "${2:-list}" in
             detect)
-                node "$SCRIPT_DIR/flow-skill-creator.js" detect
+                node "$SCRIPT_DIR/flow-skill-matcher.js" --list
                 ;;
             list)
-                node "$SCRIPT_DIR/flow-skill-creator.js" list
+                node "$SCRIPT_DIR/flow-skill-matcher.js" --list
                 ;;
             create)
                 if [ -z "$3" ]; then
-                    echo "Usage: flow skill create <framework>"
+                    echo "Usage: flow skill create <name>"
                 else
-                    node "$SCRIPT_DIR/flow-skill-creator.js" create "$3"
+                    node "$SCRIPT_DIR/flow-skill-create.js" "$3"
                 fi
                 ;;
             add)

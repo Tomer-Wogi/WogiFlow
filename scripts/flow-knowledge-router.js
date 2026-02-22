@@ -37,7 +37,7 @@ const {
 } = require('./flow-utils');
 
 // Import from skill-learn and model-adapter to avoid duplication
-const { appendLearning: appendSkillLearning, discoverSkills } = require('./flow-skill-learn');
+const { appendLearning: appendSkillLearning } = require('./flow-skill-learn');
 const { storeSingleLearning: storeModelLearning, getCurrentModel } = require('./flow-model-adapter');
 
 // Use shared memory database for proposals
