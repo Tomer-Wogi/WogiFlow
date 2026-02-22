@@ -251,11 +251,13 @@ function composePrompt(params) {
     domain
   });
 
-  // Separate by purpose
-  const coreFragments = filtered.filter(f => f.metadata.purpose === 'core');
-  const qualityFragments = filtered.filter(f => f.metadata.purpose === 'quality');
-  const domainFragments = filtered.filter(f => f.metadata.purpose === 'domain');
-  const formatFragments = filtered.filter(f => f.metadata.purpose === 'formatting');
+  // Separate by purpose (single pass)
+  const byPurpose = filtered.reduce((acc, f) => {
+    const key = f.metadata.purpose;
+    if (acc[key]) acc[key].push(f);
+    return acc;
+  }, { core: [], quality: [], domain: [], formatting: [] });
+  const { core: coreFragments, quality: qualityFragments, domain: domainFragments, formatting: formatFragments } = byPurpose;
 
   // Build sections
   const sections = [];
@@ -430,10 +432,13 @@ async function composeWithSections(params) {
     });
   }
 
-  // 2. Traditional fragments (quality guidelines, domain, formatting)
-  const qualityFragments = filtered.filter(f => f.metadata.purpose === 'quality');
-  const domainFragments = filtered.filter(f => f.metadata.purpose === 'domain');
-  const formatFragments = filtered.filter(f => f.metadata.purpose === 'formatting');
+  // 2. Traditional fragments (quality guidelines, domain, formatting) — single pass
+  const fragsByPurpose = filtered.reduce((acc, f) => {
+    const key = f.metadata.purpose;
+    if (acc[key]) acc[key].push(f);
+    return acc;
+  }, { quality: [], domain: [], formatting: [] });
+  const { quality: qualityFragments, domain: domainFragments, formatting: formatFragments } = fragsByPurpose;
 
   if (qualityFragments.length > 0) {
     sections.push({

@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-148 | 2026-02-22 07:15
+**Type**: fix
+**Tags**: #review #performance #optimization
+**Task**: wf-cr-rv222b
+**Request**: "Fix 2 additional review findings from dismissed investigation — array grouping optimization"
+**Result**: Replaced multiple `.filter()` passes with single-pass `.reduce()` in 3 files (4 locations): (1) flow-zero-loss-extraction.js — 4 filter passes for confidence grouping → single reduce. (2) flow-prompt-composer.js — 4 filter passes for fragment purpose grouping → single reduce (2 locations). (3) flow-model-router.js — 2 filter passes for capable/incapable model split → single reduce. Finding 6 (skill script consolidation) deferred — TODO already exists in flow-skill-create.js:8-10.
+**Files**: scripts/flow-zero-loss-extraction.js, scripts/flow-prompt-composer.js, scripts/flow-model-router.js
+
 ### R-147 | 2026-02-22 06:30
 **Type**: fix
 **Tags**: #review #security #performance #docs

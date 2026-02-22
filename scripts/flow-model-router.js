@@ -865,9 +865,11 @@ async function evaluateModelsForTask(params) {
     })
   );
 
-  // Separate capable and incapable models
-  const capable = evaluations.filter(e => e.canHandle);
-  const incapable = evaluations.filter(e => !e.canHandle);
+  // Separate capable and incapable models (single pass)
+  const { capable, incapable } = evaluations.reduce((acc, e) => {
+    (e.canHandle ? acc.capable : acc.incapable).push(e);
+    return acc;
+  }, { capable: [], incapable: [] });
 
   // Rank capable models by quality (capability + cost efficiency)
   const ranked = capable.sort((a, b) => {

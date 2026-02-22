@@ -48,6 +48,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-rv222b",
+      "title": "Fix 2 additional review findings from dismissed investigation",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-22T07:00:00.000Z",
+      "completedAt": "2026-02-22T07:15:00.000Z"
+    },
+    {
       "id": "wf-cr-rv222",
       "title": "Fix 18 review findings from 3-day comprehensive review (session 2)",
       "type": "fix",

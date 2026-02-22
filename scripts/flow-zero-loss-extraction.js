@@ -615,11 +615,15 @@ function prepareForReview(statements) {
     scoring: scoreStatement(stmt.text)
   }));
 
-  // Group by confidence level
-  const highConfidence = scored.filter(s => s.scoring.confidence === 'high');
-  const mediumConfidence = scored.filter(s => s.scoring.confidence === 'medium');
-  const lowConfidence = scored.filter(s => s.scoring.confidence === 'low');
-  const filler = scored.filter(s => s.scoring.is_filler);
+  // Group by confidence level (single pass instead of 4 filter passes)
+  const groups = scored.reduce((acc, s) => {
+    if (s.scoring.is_filler) acc.filler.push(s);
+    if (s.scoring.confidence === 'high') acc.high.push(s);
+    else if (s.scoring.confidence === 'medium') acc.medium.push(s);
+    else if (s.scoring.confidence === 'low') acc.low.push(s);
+    return acc;
+  }, { high: [], medium: [], low: [], filler: [] });
+  const { high: highConfidence, medium: mediumConfidence, low: lowConfidence, filler } = groups;
 
   return {
     total: statements.length,
