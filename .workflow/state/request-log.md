@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-156 | 2026-02-22 16:35
+**Type**: fix
+**Tags**: #workflow #skills #session-context #re-execution #P0
+**Task**: wf-a3c1e8b2
+**Request**: "Fix skill re-execution bug — prevent stale session reminders from re-triggering one-time skills like /wogi-review"
+**Result**: Fixed critical bug where Claude Code re-injects invoked skills with original ARGUMENTS after context compaction, causing expensive one-time actions (/wogi-review) to re-execute after every task. Three-part fix: (1) session-context.js detects completed reviews from last-review.json and injects "DO NOT re-execute" counter-instruction, (2) wogi-review.md gets ONE-TIME EXECUTION marker, (3) wogi-review-fix.md gets ONE-TIME EXECUTION marker. Root cause: Claude Code's session tracking persists skill invocations with ARGUMENTS in system-reminders — WogiFlow cannot control this behavior, so it mitigates with counter-instructions.
+**Files**: scripts/hooks/core/session-context.js, .claude/commands/wogi-review.md, .claude/commands/wogi-review-fix.md
+
 ### R-155 | 2026-02-22 09:42
 **Type**: fix
 **Tags**: #review #security #registry #safeJsonParse #fix

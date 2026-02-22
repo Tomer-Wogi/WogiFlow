@@ -1,19 +1,19 @@
 {
   "lastUpdated": "2026-02-22T16:30:00.000Z",
-  "inProgress": [
+  "inProgress": [],
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-a3c1e8b2",
       "title": "Fix skill re-execution bug — prevent stale session reminders from re-triggering one-time skills",
       "type": "fix",
       "feature": "workflow",
-      "status": "in_progress",
+      "status": "completed",
       "priority": "P0",
-      "startedAt": "2026-02-22T16:00:00.000Z"
-    }
-  ],
-  "ready": [],
-  "blocked": [],
-  "recentlyCompleted": [
+      "startedAt": "2026-02-22T16:00:00.000Z",
+      "completedAt": "2026-02-22T16:35:00.000Z"
+    },
     {
       "id": "wf-cr-3day22",
       "title": "Fix 15 review findings from 3-day comprehensive review",
