@@ -1,9 +1,9 @@
 [
   {
-    "id": "CORR-mltzsqm6",
-    "timestamp": "2026-02-19T21:48:05.694Z",
+    "id": "CORR-mlw09ynp",
+    "timestamp": "2026-02-21T07:37:01.621Z",
     "taskId": "wf-fd8d2444",
-    "userMessage": "I asked Codex to check what we have here and let me know what is possible, what is not possible, if we want to use Wogi Flow also for Codex. And just one of the messages I saw while he was reviewing it is this one: \n’ve confirmed one major inconsistency already: the runtime bridge implementation is Claude-only in current code, while public docs still describe multi-CLI support including Codex. I’m now validating installer/upgrade paths and command handlers to see exactly where Codex support breaks and what’s salvageable.\n\nThis is something that is not supposed to be there. If we're currently only supporting cloud code, this is irrelevant code that Wagi review or should have cut and removed. So please check why we still have things that do not work and are not wired. ",
+    "userMessage": "I don't want to hear your right, I apologize anymore. I want to ship Wogi Flow for people to use. When I ship it, I promise them that every task is blocked and routed to Wogi Start. What made you skip it? I don't want you to ever be able to skip it on your own. ",
     "correctionType": "understanding",
     "whatWasWrong": null,
     "whatUserWants": null,

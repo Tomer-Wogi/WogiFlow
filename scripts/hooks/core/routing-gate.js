@@ -163,9 +163,11 @@ function isRoutingPending() {
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
 function checkRoutingGate(toolName) {
-  // Only gate Bash calls
-  if (toolName !== 'Bash') {
-    return { allowed: true, blocked: false, reason: 'not_bash', message: null };
+  // Gate Bash and EnterPlanMode calls
+  // EnterPlanMode bypasses /wogi-start routing — must be blocked before routing
+  const GATED_TOOLS = new Set(['Bash', 'EnterPlanMode']);
+  if (!GATED_TOOLS.has(toolName)) {
+    return { allowed: true, blocked: false, reason: 'not_gated_tool', message: null };
   }
 
   // Check if routing gate is enabled

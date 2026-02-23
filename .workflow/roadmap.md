@@ -16,155 +16,403 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 <!-- Items to tackle after current work. Ready to be promoted to stories. -->
 
-### Phase 0.1.2: Claude Template
+### Community Knowledge System — Free User Knowledge Sharing
 
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
+**Status:** Planned
+**Created:** 2026-02-23
+**Depends On:** None (builds on existing session hooks and state files)
+**Architecture:** Client-side in free `wogiflow` package + server-side in `wogiflow-cloud` repo. Server infrastructure becomes the foundation Teams builds on.
 
-**Assumes:**
-- CLI Template System implemented
-- Handlebars rendering working
+**What It Does:**
+WogiFlow accumulates valuable learnings locally (model adapter profiles, error recovery strategies, coding patterns). Currently these stay on each user's machine. Community Knowledge shares universally-valuable, anonymous learnings across ALL free WogiFlow users — not just Teams.
 
-**Key Files:**
-- `scripts/flow-bridge.js` - Template renderer
-- `.workflow/cli/templates/claude.hbs` - New template location
+**Key Principles:**
+- **Server-side AI curation** — No manual human review. AI agents (Haiku/Sonnet/Opus hybrid) categorize, deduplicate, evaluate quality, and decide what gets promoted to Global Knowledge.
+- **`/wogi-suggest` command** — Users submit ideas, feature requests, and improvement suggestions while working.
+- **Privacy-first** — Anonymous (UUID), opt-in, no code ever leaves the machine.
 
-**Implementation Plan:**
-1. Migrate current CLAUDE.md generation to template
-2. Add progressive discovery references
-3. Test sync command
+**What Gets Shared (5 Categories):**
+
+| Category | Sent (anonymous) | Users Get Back |
+|----------|-----------------|----------------|
+| Model Intelligence | Model name + strength/weakness/adjustment | "Claude Sonnet: add explicit step numbering for multi-step tasks" |
+| Error Recovery | Error category + strategy + success rate | "IMPORT_ERROR with Sonnet: use explicit_imports strategy (87%)" |
+| Pattern Convergence | Pattern name + rule text (no project context) | "90% of users converge on: wrap fs.readFileSync in try-catch" |
+| Session Statistics | Aggregated only: avg tasks/session, failure types | "Most used model: Claude Sonnet 4.5 (62% of sessions)" |
+| Skill Learnings | Skill name + pattern/anti-pattern text | "figma-analyzer: always specify frame ID for better results" |
+
+**Never sent:** Code snippets, file paths, project names, user names, task descriptions, acceptance criteria, request-log content.
+
+**Server-Side AI Curation Pipeline (5 Stages):**
+
+| Stage | Model | Purpose |
+|-------|-------|---------|
+| 1. Intake | Haiku | Validate, classify, strip PII |
+| 2. Dedup | Haiku + embeddings | Semantic similarity search (pgvector) |
+| 3. Quality | Sonnet | Score accuracy, universality, actionability, novelty |
+| 4. Consolidation | Sonnet | Merge near-duplicates into stronger entries |
+| 5. Promotion | Opus (borderline) | Auto-promote (score >= 7.0, 3+ reports) or flag for review |
+
+**Cost estimate:** ~$0.01-0.03 per submission. At 1000/day = ~$10-30/day.
+
+**Relation to Teams:** This system is distinct from Teams (which adds team-level sync, dashboards, paid features). Community Knowledge benefits all free users. The server infrastructure (API, DB, AI pipeline) becomes the foundation Teams Phase T1+ builds on.
 
 ---
 
-### Phase 0.1.6: Sync Command
+#### Phase C1: Community Knowledge Foundation (2 sprints)
 
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 0.1.1: CLI Template System (Completed)
-
-**Assumes:**
-- Template system implemented
-- All CLI templates created (0.1.2-0.1.5)
-
-**Key Files:**
-- `scripts/flow` - Add sync subcommand
-- `scripts/flow-bridge.js` - Sync logic
-
-**Implementation Plan:**
-1. Add `flow sync` CLI command
-2. Detect active CLIs from config
-3. Generate all CLI-specific files
-
----
-
-### Phase 0.2: Failure Category Enum
-
-**Status:** Deferred
-**Created:** 2026-01-13
+**Status:** Planned
+**Created:** 2026-02-23
 **Depends On:** None
 
-**Assumes:**
-- Current ERROR_CATEGORIES in flow-adaptive-learning.js as starting point
+**Scope:**
 
-**Key Files:**
-- `scripts/flow-adaptive-learning.js` - Existing partial implementation
-- `scripts/flow-utils.js` - Where enum should live
+*Server (wogiflow-cloud repo):*
+- API endpoints: `POST /api/community/contribute`, `GET /api/community/knowledge`, `POST /api/community/suggest`
+- PostgreSQL schema: `community_submissions`, `global_knowledge`, `user_suggestions`, `curation_log`
+- AI Curation Pipeline (Stages 1-5) with Haiku/Sonnet/Opus hybrid model selection
+- Basic maintainer dashboard: suggestion backlog + flagged items queue
 
-**Context When Deferred:**
-Consistent error categorization needed by Cascade Fallback, Model Stats, and Learning system.
+*Client (free wogiflow package):*
+- `scripts/flow-community.js` — Push/pull community knowledge logic
+- `.claude/commands/wogi-suggest.md` — Slash command for user suggestions
+- Session-end hook addition — Collect and push anonymized learnings (fire-and-forget, 5s timeout)
+- Session-start hook addition — Pull curated knowledge, merge into local state (24h cache)
+- Config schema addition — `community` section (enabled, categories, serverUrl, cacheTtl)
+- PII stripping — Replace file paths with `[PATH]`, project names with `[PROJECT]`, strip request-log content
+- Opt-in flow — Clear explanation of what's shared and what's never shared
+- Anonymous ID — UUID v4 stored in `~/.wogiflow/anon-id`
 
-**Implementation Plan:**
-1. Formalize FailureCategory enum in flow-utils.js
-2. Update flow-adaptive-learning.js to use it
-3. Document categories and usage
+**Key Files (client-side, free package):**
+- `scripts/flow-community.js` — Push/pull logic
+- `.claude/commands/wogi-suggest.md` — Command definition
+- `scripts/hooks/entry/claude-code/session-end.js` — Add community push call
+- `scripts/hooks/entry/claude-code/session-start.js` — Add community pull call
+- `lib/installer.js` — Add community config defaults
+- `.workflow/config.json` schema — Add `community` section
+- `.workflow/templates/claude-md.hbs` — Add `/wogi-suggest` to command reference
 
----
+**Key Files (server, wogiflow-cloud repo):**
+- `packages/server/routes/community.js` — API endpoints
+- `packages/server/curation/pipeline.js` — AI curation orchestrator
+- `packages/server/curation/stages/intake.js` — Stage 1
+- `packages/server/curation/stages/dedup.js` — Stage 2
+- `packages/server/curation/stages/quality.js` — Stage 3
+- `packages/server/curation/stages/consolidation.js` — Stage 4
+- `packages/server/curation/stages/promotion.js` — Stage 5
+- `packages/server/db/migrations/001_community.sql` — Schema
+- `packages/dashboard/app/community/` — Maintainer dashboard pages
 
-### Phase 0.3: Variable Substitution in Config
+**DB Schema:**
+- `community_submissions` — Incoming contributions with pipeline tracking
+- `global_knowledge` — Curated entries served to users (with pgvector embeddings)
+- `user_suggestions` — Ideas/bugs/improvements from `/wogi-suggest`
+- `curation_log` — Full audit trail of pipeline decisions with cost tracking
 
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** None
-
-**Assumes:**
-- Config files use JSON format
-- Secrets should not be in version control
-
-**Key Files:**
-- `scripts/flow-utils.js` - Add substitution function
-- `.workflow/config.json` - Will use patterns
-
-**Context When Deferred:**
-Cleaner config patterns for secrets and environment variables.
-
-**Implementation Plan:**
-1. Implement {file:path} pattern for file-based secrets
-2. Implement {env:VAR} pattern for environment variables
-3. Add to config loading in flow-utils.js
-
----
-
-### PR with Media — Auto-Create Rich PRs
-
-**Status:** Deferred
-**Created:** 2026-02-08
-**Depends On:** Story 4: Debug Browser (Playwright fallback + artifact capture)
-
-**Assumes:**
-- Playwright fallback is working with video recording
-- Debug sessions save screenshots and videos to `.workflow/debug-sessions/`
-- `gh` CLI is installed and authenticated
-
-**Problem:**
-PRs are text-only. After implementing a feature, there's no automated way to include before/after screenshots, demo videos, or inline change annotations.
-
-**Solution:**
-Auto-create PRs with rich media:
-- Summary from task spec (acceptance criteria as checklist)
-- Before/after screenshots from debug sessions
-- Demo video from Playwright recording
-- Inline change annotations (what changed and why)
-
-**Key Files:**
-- `scripts/flow-pr-media.js` - New file: PR generation with media
-- `.claude/commands/wogi-pr.md` - New command file
-- `.workflow/debug-sessions/` - Source for screenshots/video
-
-**Implementation Plan:**
-1. Create `flow-pr-media.js` that:
-   - Reads task spec for PR summary
-   - Finds debug session artifacts (screenshots, video)
-   - Uploads media as GitHub release assets or inline base64
-   - Generates PR body with embedded media
-2. Create `/wogi-pr` command that:
-   - Generates PR with `gh pr create`
-   - Attaches task completion report
-   - Embeds before/after screenshots
-   - Links demo video
-3. Add config for media preferences (max screenshots, video format)
-
-**Example PR Body:**
-```markdown
-## Summary
-- [x] Login form validates email format
-- [x] Error messages display below inputs
-- [x] Submit disables during API call
-
-## Demo
-![Demo Video](link-to-recording.webm)
-
-## Screenshots
-| Before | After |
-|--------|-------|
-| ![before](iter-1.png) | ![after](iter-final.png) |
-
-## Changes
-- `src/components/LoginForm.tsx` — Added validation logic
-- `src/api/auth.ts` — Added error response types
+**Config Addition:**
+```json
+{
+  "community": {
+    "enabled": false,
+    "anonymousId": null,
+    "categories": {
+      "modelIntelligence": true,
+      "errorRecovery": true,
+      "patternConvergence": true,
+      "sessionStatistics": true,
+      "skillLearnings": true
+    },
+    "pushOnSessionEnd": true,
+    "pullOnSessionStart": true,
+    "cacheTtlHours": 24,
+    "serverUrl": "https://api.wogiflow.com"
+  }
+}
 ```
 
 ---
+
+#### Phase C2: Community Intelligence (1 sprint)
+
+**Status:** Planned
+**Created:** 2026-02-23
+**Depends On:** Phase C1: Community Knowledge Foundation
+
+**Scope:**
+- Embedding-based dedup with pgvector (semantic similarity thresholds: >0.92 exact, 0.75-0.92 near-match, <0.75 new)
+- Community priority detection — suggestions with 10+ votes auto-flagged for maintainer
+- "Community suggests: ..." surfacing in local sessions (informational, not enforced)
+- Community stats on maintainer dashboard (active contributors, knowledge entries, suggestion trends)
+- GitHub issue auto-creation for accepted suggestions (`gh issue create` from dashboard)
+- Offline queue — `~/.wogiflow/pending-suggestions.json`, sent on next session-start
+
+**Key Files (server):**
+- `packages/server/curation/stages/dedup.js` — Enhanced with pgvector
+- `packages/server/routes/community.js` — Priority detection endpoints
+- `packages/dashboard/app/community/stats.js` — Community analytics
+
+**Key Files (client):**
+- `scripts/flow-community.js` — "Community suggests" local surfacing
+- Session-start hook — Merge community knowledge into local model adapters, failure learnings
+
+---
+
+### WogiFlow for Teams — Paid SaaS Extension (Option B: Separate Repo)
+
+**Status:** Planned
+**Created:** 2026-02-22
+**Depends On:** None (existing hook architecture is the extension point)
+**Architecture:** Option B — separate private repo (`wogiflow-cloud`) with `@wogiflow/teams` npm package extending the free `wogiflow` package via hooks.
+
+**Revenue Model:**
+- Solo WogiFlow: Free forever (everything that exists today, MIT license)
+- Teams: Per-seat pricing (cloud sync, team rules, approval flow, templates, dashboard)
+- Enterprise: Higher per-seat + SSO/SAML, audit logs, self-hosted option
+- Marketplace: Revenue share with verified publishers (70/30)
+
+**Repo Structure:**
+```
+Repo 1: wogi-flow (existing, public, MIT, npm: wogiflow)
+  - All existing code unchanged
+  - Add minimal extension points for Teams hooks
+  - Export internal APIs Teams needs (state readers, config helpers)
+
+Repo 2: wogiflow-cloud (new, private monorepo)
+  packages/
+    client/      → npm: @wogiflow/teams (extends wogiflow via hooks)
+    server/      → API server (Node.js + PostgreSQL)
+    dashboard/   → Next.js web app (wogiflow.com)
+    shared/      → Shared TypeScript types and constants
+```
+
+**Four-Layer Knowledge Architecture:**
+```
+Layer 4: GLOBAL     — All WogiFlow users (model tips, known issues, context tricks)
+Layer 3: TEAM       — Organization rules, standards, templates, shared skills
+Layer 2: PROJECT    — decisions.md, registries, ready.json, request-log, feedback-patterns
+Layer 1: USER       — session-state, preferences, draft corrections, local memory
+```
+
+**Rule resolution:** Lower layers override higher (project beats team), but team admins can mark rules as "enforced" (cannot be overridden).
+
+---
+
+#### Phase T1: Foundation (Sprint 1-2)
+
+**Status:** Planned
+**Depends On:** None
+
+**Scope:**
+- PostgreSQL schema + migrations (orgs, users, projects, members, audit_log)
+- Auth system: OAuth 2.0 (GitHub, Google, email) + CLI device authorization flow
+- Basic REST API: orgs, users, projects, members, invites
+- `flow auth login` / `flow team projects` CLI commands in @wogiflow/teams
+- Web dashboard: login, org creation, member invite
+- Auth token storage: `~/.wogiflow/auth.json`
+
+**Key Files (new repo):**
+- `packages/server/db/migrations/001_foundation.sql`
+- `packages/server/routes/auth.js`, `routes/orgs.js`, `routes/projects.js`
+- `packages/client/flow-cloud-auth.js` — CLI auth (device flow, OAuth)
+- `packages/client/flow-team.js` — Team management CLI
+- `packages/dashboard/app/` — Next.js pages
+
+**Minimal changes to free wogiflow:**
+- `lib/installer.js` — Detect @wogiflow/teams, auto-register its hooks
+- `scripts/flow-utils.js` — Export state reader APIs for Teams to consume
+- `.workflow/config.json` schema — Add empty `team` section
+
+---
+
+#### Phase T2: State Sync + Task Management (Sprint 3-4)
+
+**Status:** Planned
+**Depends On:** Phase T1: Foundation
+
+**Scope:**
+- Bidirectional sync engine for all project-level state:
+  - `decisions.md` (append + admin merge)
+  - Registry maps: `app-map.md`, `function-map.md`, `api-map.md`, `schema-map.md`, `service-map.md` (last-write-wins per entry)
+  - `ready.json` (task-level locking for claiming)
+  - `feedback-patterns.md` (append-only)
+  - `epics.json` (epic-level locking)
+  - `config.json` (admin-controlled push)
+  - `progress.md` (append-only per user)
+  - `roadmap.md` (section-level merge via PIN system)
+  - `registry-manifest.json` (merge registries)
+- Gap files also synced:
+  - `tech-debt.json` (bidirectional, item merge)
+  - `decision-amendments.json` (append-only → audit_log table)
+  - `pending-corrections.json` (push to approval queue)
+  - `corrections/CORR-*.md` (push as structured records)
+  - `specs/project.md`, `stack.md`, `architecture.md`, `testing.md` (bidirectional, last-write-wins)
+  - `damage-control.yaml` (admin push, enforced)
+- Session hooks: pull on start (non-blocking), push on end (queue if offline)
+- Task claiming/locking (prevent two people starting same task)
+- Task assignment model (assigned vs unassigned pool)
+- Live team presence (heartbeat every 5min + WebSocket)
+- `flow team tasks` / `flow team status` CLI commands
+- Offline-first: local state is source of truth, sync in background
+- Cloud-first for task claiming and admin approvals only
+
+**Sync behavior:**
+- Offline: show warning "Working in offline mode", queue operations
+- Online: session-start pulls, session-end pushes, periodic push every N minutes
+- Handle "file doesn't exist yet" gracefully (some learning files are created on first use)
+- Regenerate locally post-sync: `section-index.json`, `component-index.json`, `export-map.json`
+- After pulling `decisions.md`: run `flow-rules-sync.js` to regenerate `.claude/rules/`
+
+**Key Files (new repo):**
+- `packages/client/flow-cloud-sync.js` — Bidirectional sync engine
+- `packages/client/hooks/session-start-cloud.js` — Pull team rules + project state
+- `packages/client/hooks/session-end-cloud.js` — Push state changes
+- `packages/client/hooks/task-completed-cloud.js` — Sync task status
+- `packages/server/sync/engine.js` — Server-side sync (CRDT or last-write-wins)
+- `packages/server/routes/sync.js` — State sync API endpoints
+
+**DB tables:**
+- `decision_rules`, `registry_entries`, `request_log_entries`, `tasks`
+- `tech_debt_items`, `corrections`
+
+---
+
+#### Phase T3: Team Knowledge + Integrations (Sprint 5-6)
+
+**Status:** Planned
+**Depends On:** Phase T2: State Sync
+
+**Scope:**
+- Team rules CRUD (web dashboard)
+- Rule cascade: team → project (CTO pushes rule → all projects get it on next session)
+- Enforced vs overridable rules
+- Team templates: export from project (`flow team export-template`), apply to new projects
+  - Template includes: decisions.md, .claude/rules/, config.json, skills, specs/stack.md, specs/architecture.md, damage-control.yaml
+- CTO rule push notifications
+- Model adapter learnings shared at team level (`.workflow/model-adapters/*.md`)
+- Model profiles shared at team level
+- Unified model registry per team
+- Skill learnings shared at team level (`.claude/skills/*/knowledge/*.md`)
+- CLAUDE.md templates (`.hbs` files) synced as team-level config
+- Review checklists (`.workflow/agents/*.md`) shared via templates
+- Hook configuration synced as team-level enforced config
+- **Jira integration**: OAuth connect, webhook inbound, bidirectional sync (ticket → task → completion → Jira update)
+- **GitHub integration**: issues → tasks, PR linking, commit attribution
+- **Bitbucket integration**: issues → tasks (lower priority)
+
+**Jira mapping:** Issue Key → externalId, Summary → title, Description → AI-parsed AC, Assignee → matched by email, Priority → P0-P4, Status → configurable transitions
+
+**Unmatched Jira assignee:** Block sync until admin maps user on dashboard
+
+**Key Files (new repo):**
+- `packages/server/routes/team-rules.js`, `routes/templates.js`
+- `packages/server/integrations/jira-adapter.js`, `github-adapter.js`, `bitbucket-adapter.js`, `base-adapter.js`
+- `packages/dashboard/app/team-rules/`, `app/templates/`, `app/integrations/`
+
+**DB tables:**
+- `team_rules`, `team_templates`
+- `model_learnings`, `model_profiles`, `skill_learnings`
+- `integrations`, `external_task_mappings`
+
+---
+
+#### Phase T4: Approval Flow (Sprint 7-8)
+
+**Status:** Planned
+**Depends On:** Phase T3: Team Knowledge
+
+**Scope:**
+- Pattern aggregation engine (cross-user pattern detection)
+- Pending review queue on web dashboard (like PR review)
+- Approve/Modify/Dismiss with comments and audit trail
+- Auto-flagging: pattern appears across 3+ users → surfaces for admin review
+- Promotion paths:
+  - Project correction → Project decision
+  - Project pattern (3+ occurrences) → Team rule
+  - User model learning → Team knowledge
+  - Team pattern (cross-project) → Global knowledge candidate
+- Notification system (email + in-dashboard)
+- Bulk approve for low-risk patterns
+- Command metrics aggregation for team analytics dashboard
+- Gate confidence trends for quality analytics
+
+**Key Files (new repo):**
+- `packages/server/routes/reviews.js`
+- `packages/server/aggregation/pattern-engine.js`
+- `packages/dashboard/app/reviews/`
+
+**DB tables:**
+- `feedback_patterns` (extended with `users_affected`, `status`)
+- Reuse `audit_log` for all approval decisions
+
+---
+
+#### Phase T5: Marketplace & Global Knowledge (Sprint 9-10)
+
+**Status:** Planned
+**Depends On:** Phase T4: Approval Flow, Phase C1-C2 (Community Knowledge)
+
+**Scope:**
+- Marketplace listings: browse, search, install templates/skills/knowledge-packs
+- Verified publisher program (apply + portfolio review before publishing)
+- Star ratings + usage stats + download counts + version pinning
+- **Global Knowledge (Teams layer):** Extends Community Knowledge (Phase C1-C2) with team-level curation:
+  - Team admins can promote community knowledge to enforced team rules
+  - Team-specific knowledge layer (Layer 3) builds on community layer (Layer 4)
+  - Community infrastructure (API, DB, AI pipeline) is reused — no duplication
+- Aggregated model adapter learnings shared at team level (extends community model intelligence)
+- Memory DB: keep local, but add `flow memory export-team` to extract high-value observations
+
+**Note:** Phase 5.2 (Skill Library Marketplace) from the existing roadmap is ABSORBED into this phase.
+**Note:** The Global Knowledge foundation (collection, AI curation, distribution) is now in Phase C1-C2 (Community Knowledge). This phase adds team-level extensions on top of that foundation.
+
+**Key Files (new repo):**
+- `packages/server/routes/marketplace.js`, `routes/global.js`
+- `packages/server/curation/knowledge-pipeline.js`
+- `packages/client/flow-marketplace.js`
+- `packages/dashboard/app/marketplace/`
+
+**DB tables:**
+- `marketplace_listings`, `marketplace_reviews`
+- `global_knowledge`
+
+---
+
+#### Phase T6: Polish & Launch (Sprint 11-12)
+
+**Status:** Planned
+**Depends On:** Phase T5: Marketplace
+
+**Scope:**
+- Team dashboard: presence, health analytics, activity feed
+- Project Health Dashboard: compliance rate, pattern velocity, debt trends, registry coverage, throughput
+- Cross-project search (`flow team search "date formatting"`)
+- Anomaly detection (5x more corrections than average, debt growing 3x faster)
+- Session summaries for team leads
+- Onboarding score for new team members
+- Smart template suggestions during `flow onboard` ("This looks like Next.js + Prisma, your team has a matching template")
+- Review insights (top recurring findings across team)
+- Enterprise tier: SSO/SAML, audit log exports, self-hosted option prep
+- Documentation + launch materials
+
+**Key Files (new repo):**
+- `packages/dashboard/app/analytics/`, `app/health/`, `app/search/`
+- `packages/server/analytics/anomaly-detection.js`
+
+---
+
+#### Free Package Extension Points (Minimal Changes)
+
+**Status:** Planned — do these BEFORE starting Phase T1
+**Depends On:** None
+
+**Scope:** Small changes to the free `wogiflow` package to enable Teams extension:
+
+1. **`lib/installer.js`** — Detect `@wogiflow/teams` in node_modules, auto-register its hooks in `.claude/settings.local.json`
+2. **`scripts/flow-utils.js`** — Ensure state reader functions are exported (most already are)
+3. **`.workflow/config.json` schema** — Add empty `team: {}` section with `projectId`, `orgId`, `enabled` fields
+4. **`scripts/hooks/core/index.js`** — Add extension hook registration (allow Teams to register additional core hooks)
+
+These are backwards-compatible. Free users see no change.
 
 ---
 
@@ -172,145 +420,12 @@ Auto-create PRs with rich media:
 
 <!-- Deferred items from large feature breakdowns. Includes dependency tracking. -->
 
-### Phases 0.1.3-0.1.5, 0.1.7-0.1.10: Multi-CLI Support (CANCELLED)
-
-**Status:** Cancelled
-**Cancelled:** 2026-02-19
-**Reason:** Multi-CLI support was never implemented. These phases described Codex, Gemini CLI, OpenCode, Cursor, and Kimi templates, hook integrations, installer updates, CLI detection, and a multi-CLI adapter system. None of this code was ever written. Dead references were cleaned up in wf-f0a3106f. If multi-CLI support is revisited in the future, it should start fresh with a new epic based on current CLI landscapes.
-
----
-
-### Phase 5.1.1: Release Channel Configuration
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package Distribution (Completed)
-
-**Assumes:**
-- npm package published
-- Multiple release tracks desired
-
-**Key Files:**
-- `.workflow/config.json` - Channel settings
-- `scripts/flow-updater.js` - New file
-
-**Context When Deferred:**
-Users choose stable vs beta releases with auto-update preferences.
-
-**Implementation Plan:**
-1. Add releaseChannel config
-2. Implement version checking
-3. Add update notification
-
----
-
-### Phase 5.1.2: LSP Tool Integration
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package Distribution (Completed)
-
-**Assumes:**
-- npm package distributed
-- CLIs have LSP capabilities
-
-**Key Files:**
-- `scripts/flow-lsp.js` - New file
-
-**Context When Deferred:**
-Code intelligence features improve DX significantly.
-
-**Implementation Plan:**
-1. Create LSP client wrapper
-2. Integrate with skill patterns
-3. Add symbol-based component detection
-
----
 
 ### Phase 5.2: Skill Library Marketplace
 
-**Status:** Deferred
+**Status:** Absorbed into WogiFlow for Teams → Phase T5
 **Created:** 2026-01-13
-**Depends On:** Phase 5.1: npm Package (Completed), Phase 0.1: CLI Agnosticism
-
-**Assumes:**
-- npm package available
-- Skills work across CLIs
-
-**Key Files:**
-- `scripts/flow-skill-marketplace.js` - New file
-- GitHub repo for skills
-
-**Context When Deferred:**
-Community skill sharing with discovery, installation, publishing.
-
-**Implementation Plan:**
-1. Create GitHub-hosted skill repository
-2. Implement skill search/browse
-3. Add skill install with dependency resolution
-4. Create skill publishing workflow
-
----
-
-### Phase 6.0: Team Collaboration Backend
-
-**Status:** Deferred
-**Created:** 2026-01-14
-**Depends On:** None
-
-**Assumes:**
-- AWS backend infrastructure ready (Cognito, API Gateway)
-- Subscription model defined
-
-**Key Files (to create):**
-- `scripts/flow-team.js` - Team login, logout, setup selection
-- `scripts/flow-team-sync.js` - Knowledge sync with backend
-- `scripts/flow-team-dashboard.js` - Team status display
-
-**Context When Deferred:**
-Features require:
-- Active AWS backend (api.wogi-flow.com)
-- Subscription/payment system
-- Team invite code generation
-
-**Commands (to implement):**
-- `/wogi-team login <code>` - Join team with invite
-- `/wogi-team logout` - Leave team
-- `/wogi-team sync` - Manual knowledge sync
-- `/wogi-team proposals` - View/vote on rule proposals
-- `/wogi-team status` - Connection and sync status
-
-**Implementation Plan:**
-1. Create team scripts (flow-team.js, flow-team-sync.js, flow-team-dashboard.js)
-2. Activate AWS backend infrastructure
-3. Implement subscription validation
-4. Create team invite flow
-5. Test knowledge sync across team members
-6. Create command files for slash commands
-
----
-
-### Phase 6.1: Team Observability Web UI
-
-**Status:** Deferred
-**Created:** 2026-01-13
-**Depends On:** Phase 6.0: Team Collaboration Backend
-
-**Assumes:**
-- Team backend API available
-- Web dashboard needed
-
-**Key Files:**
-- `web/` - New directory for UI
-
-**Context When Deferred:**
-Web UI for task progress, step status, execution history.
-
-**Implementation Plan:**
-1. Design dashboard layout
-2. Implement run status display
-3. Add step-level tracing view
-4. Role-based access control
+**Notes:** Marketplace functionality is now part of the Teams product (Phase T5: Marketplace & Global Knowledge). Includes verified publisher program, ratings, version pinning, and revenue share model.
 
 ---
 
@@ -387,46 +502,6 @@ Record screen + audio → Extract tasks with visual context → Generate WogiFlo
 
 <!-- Nice-to-have, not committed. No dependencies tracked yet. -->
 
-### Plan Management System
-
-**Priority**: Medium
-**Status**: Needs Discussion
-
-A formal system for creating, tracking, and cleaning up implementation plans.
-
-**Current State**:
-- `.claude/plans/` exists but is informal (just exempted from task gating)
-- No creation workflow, no cleanup after implementation
-- Claude Code 2.1.9 added `plansDirectory` setting (their feature)
-
-**Potential Features**:
-- `flow plan create "title"` - Create plan from template
-- `flow plan list` - Show active plans
-- `flow plan archive <id>` - Archive completed plan
-- `flow plan status` - Show plan → implementation tracking
-- Auto-archive when linked tasks complete
-
-**Open Questions (Needs User Input)**:
-- Should plans be Wogi Flow's responsibility or delegate to CLI?
-- What's the plan lifecycle? Draft → Approved → Implementing → Done → Archived?
-- Should plans link to tasks/stories in ready.json?
-- Cleanup: auto-archive vs manual vs never delete?
-
-**Why Deferred**: Needs discussion with user before design decisions.
-
----
-
-### Structured JSON Contract
-
-**Why deferred**: Local LLMs can't reliably produce JSON. Current flow-response-parser.js handles messy output.
-
----
-
-### SQLite Telemetry
-
-**Why deferred**: JSON files work fine for 50 runs/day. Would reconsider if users need complex queries.
-
----
 
 ### Move npm to @wogi Organization
 
@@ -434,12 +509,12 @@ A formal system for creating, tracking, and cleaning up implementation plans.
 
 ---
 
-### `/wogi-learn` - Learning Opportunity Command
+### `/wogi-explain` - PM Education Command
 
 **Priority**: Low
 **Status**: Idea
 
-Explain current work using 80/20 rule for non-technical PMs learning as they build.
+Explain current work using 80/20 rule for non-technical PMs learning as they build. (Note: `/wogi-learn` name is taken — it handles pattern promotion to decision rules.)
 
 **Input**: None (uses current context)
 **Output**: Simple explanation of what we're building and why
@@ -450,32 +525,7 @@ Explain current work using 80/20 rule for non-technical PMs learning as they bui
 - Key concepts being used (80/20 rule - most important 20% of concepts)
 - How it fits into the bigger picture
 
-**Implementation Ideas**:
-- Analyze current task context
-- Identify key technical concepts
-- Generate beginner-friendly explanations
-- Highlight architectural decisions
-
 **Why Deferred**: Lower priority than core workflow features.
-
----
-
-### Voice Input Integration
-
-**Priority**: Low
-
-**Why deferred**: Feature complexity vs immediate value. Requires external dependencies (sox, whisper-cpp) and has UX challenges (no native way to inject transcript as Claude prompt).
-
-**When to revisit**:
-- When MCP supports audio input tools
-- When Claude Code gets native voice input
-- If user demand increases
-
-**Original scope**:
-- Record audio via sox
-- Transcribe via whisper-cpp (local) or OpenAI/Groq APIs
-- Output transcript for user to paste as prompt
-- Auto-trigger long-input-gate for long transcripts
 
 ---
 
@@ -714,6 +764,54 @@ Analyzes tasks >3 iterations, identifies root causes, suggests pattern updates.
 **Implemented:** 2026-01-13
 **Files:** `scripts/flow-roadmap.js`, `.claude/commands/wogi-roadmap.md`
 **Commands:** `/wogi-roadmap add`, `/wogi-roadmap promote`, `/wogi-roadmap validate`
+
+---
+
+### Phase 0.1.2: Claude Template
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `.workflow/templates/claude-md.hbs`, `.workflow/templates/partials/`, `scripts/flow-bridge.js`
+**Notes:** CLAUDE.md generation uses Handlebars templates with partials. `flow bridge sync` regenerates from templates.
+
+---
+
+### Phase 0.1.6: Sync Command
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `scripts/flow-bridge.js`
+**Notes:** `flow bridge sync` command detects active CLIs and generates all CLI-specific files. Includes `sync`, `status`, `list` subcommands.
+
+---
+
+### Phase 0.2: Failure Category Enum
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `.workflow/lib/failure-categories.js`
+**Notes:** Formalized FailureCategory with 14+ categories including code, description, severity, escalate flag, patterns, and strategy. Used by flow-adaptive-learning.js.
+
+---
+
+### Phase 0.3: Variable Substitution in Config
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `scripts/flow-utils.js` (`resolveConfigValue()`)
+**Notes:** Supports `{env:VAR}` for environment variables and `{file:path}` for file-based secrets. Applied during config loading.
+
+---
+
+### Phase 5.1.2: LSP Tool Integration
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `scripts/flow-lsp.js` (923 lines)
+**Notes:** Full LSP client wrapper with TypeScript Language Server detection, stdin/stdout protocol handling, initialization, and request/response management.
+
+---
+
+### Plan Management System
+
+**Implemented:** 2026-02-22 (discovered during roadmap audit)
+**Files:** `scripts/flow-plan.js`, `.claude/commands/wogi-plan.md`
+**Notes:** Full plan CRUD with creation, linking to epics/features, archival, and status tracking.
 
 ---
 

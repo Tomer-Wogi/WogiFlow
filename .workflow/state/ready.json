@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-22T20:30:00.000Z",
+  "lastUpdated": "2026-02-23T10:00:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-routing-v2",
+      "title": "Fix WogiFlow routing bypass — add EnterPlanMode gating + installer CLAUDE.md + health checks",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-23T10:00:00.000Z",
+      "completedAt": "2026-02-23T10:15:00.000Z"
+    },
     {
       "id": "wf-cr-7f42a1",
       "title": "Fix 42 review findings AND stale skill ARGUMENTS persistence bug",

@@ -513,7 +513,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     // Task gating for Edit/Write + TodoWrite gating + Skill tracking + Bash strict adherence
     if (rules.taskGating?.enabled !== false || rules.todoWriteGate?.enabled !== false) {
       preToolUseMatchers.push({
-        matcher: 'Edit|Write|TodoWrite|Skill|Bash',
+        matcher: 'Edit|Write|TodoWrite|Skill|Bash|EnterPlanMode',
         hooks: [{
           type: 'command',
           command: `node "${path.join(scriptsDir, 'pre-tool-use.js')}"`,

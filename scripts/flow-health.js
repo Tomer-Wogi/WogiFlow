@@ -441,6 +441,117 @@ function main() {
     console.log(`  ${color('yellow', '○')} .claude/settings.local.json not found (run 'flow bridge sync')`);
   }
 
+  // Check hook integrity
+  console.log('');
+  printSection('Checking hook integrity...');
+
+  const settingsLocalPath = path.join(PROJECT_ROOT, '.claude', 'settings.local.json');
+  if (fileExists(settingsLocalPath)) {
+    try {
+      const settings = safeJsonParse(settingsLocalPath, {});
+      const hooks = settings.hooks || {};
+
+      // Check PreToolUse matcher includes EnterPlanMode
+      const preToolHooks = hooks.PreToolUse || [];
+      let hasEnterPlanMode = false;
+      let hasCorrectMatcher = false;
+      let hookScriptsMissing = [];
+
+      for (const hookEntry of preToolHooks) {
+        const matcher = hookEntry.matcher || '';
+        if (matcher.includes('EnterPlanMode')) {
+          hasEnterPlanMode = true;
+        }
+        if (matcher.includes('Edit') && matcher.includes('Write') && matcher.includes('Bash') && matcher.includes('Skill')) {
+          hasCorrectMatcher = true;
+        }
+
+        // Check hook script files exist
+        for (const h of (hookEntry.hooks || [])) {
+          if (h.command) {
+            // Extract script path from command like: node "/path/to/script.js"
+            const scriptMatch = h.command.match(/node\s+"([^"]+)"/);
+            if (scriptMatch) {
+              const scriptPath = scriptMatch[1];
+              if (!fileExists(scriptPath)) {
+                hookScriptsMissing.push(scriptPath);
+              }
+            }
+          }
+        }
+      }
+
+      // Also check other hook types for missing scripts
+      for (const hookType of ['PostToolUse', 'UserPromptSubmit', 'SessionStart']) {
+        for (const hookEntry of (hooks[hookType] || [])) {
+          for (const h of (hookEntry.hooks || [])) {
+            if (h.command) {
+              const scriptMatch = h.command.match(/node\s+"([^"]+)"/);
+              if (scriptMatch && !fileExists(scriptMatch[1])) {
+                hookScriptsMissing.push(scriptMatch[1]);
+              }
+            }
+          }
+        }
+      }
+
+      if (hasEnterPlanMode) {
+        console.log(`  ${color('green', '✓')} PreToolUse matcher includes EnterPlanMode`);
+      } else {
+        console.log(`  ${color('red', '✗')} PreToolUse matcher MISSING EnterPlanMode — Claude can bypass /wogi-start`);
+        console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate hooks")}`);
+        issues++;
+      }
+
+      if (hasCorrectMatcher) {
+        console.log(`  ${color('green', '✓')} PreToolUse matcher has core tools (Edit|Write|Bash|Skill)`);
+      } else if (preToolHooks.length > 0) {
+        console.log(`  ${color('yellow', '⚠')} PreToolUse matcher may be outdated — missing core tools`);
+        console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate hooks")}`);
+        warnings++;
+      }
+
+      if (hookScriptsMissing.length > 0) {
+        console.log(`  ${color('red', '✗')} ${hookScriptsMissing.length} hook script(s) MISSING:`);
+        for (const missing of hookScriptsMissing.slice(0, 5)) {
+          console.log(`    - ${missing}`);
+        }
+        console.log(`    ${color('dim', "→ Run 'npm install wogiflow' or 'flow init' to restore scripts")}`);
+        issues++;
+      } else if (preToolHooks.length > 0) {
+        console.log(`  ${color('green', '✓')} All hook scripts exist`);
+      }
+    } catch (err) {
+      console.log(`  ${color('yellow', '⚠')} Could not parse settings.local.json for hooks: ${err.message}`);
+      warnings++;
+    }
+  } else {
+    console.log(`  ${color('yellow', '⚠')} .claude/settings.local.json not found — hooks not configured`);
+    console.log(`    ${color('dim', "→ Run 'flow bridge sync' to generate hooks")}`);
+    warnings++;
+  }
+
+  // Check CLAUDE.md has routing instructions (not just product description)
+  if (fileExists(claudeMdPath)) {
+    try {
+      const claudeContent = fs.readFileSync(claudeMdPath, 'utf-8');
+      const hasRouting = claudeContent.includes('wogi-start') && (
+        claudeContent.includes('Task Gating') ||
+        claudeContent.includes('MUST route') ||
+        claudeContent.includes('MANDATORY')
+      );
+      if (hasRouting) {
+        console.log(`  ${color('green', '✓')} CLAUDE.md contains routing instructions`);
+      } else {
+        console.log(`  ${color('red', '✗')} CLAUDE.md has NO routing instructions — Claude will bypass /wogi-start`);
+        console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate CLAUDE.md from template")}`);
+        issues++;
+      }
+    } catch (err) {
+      // Already warned about CLAUDE.md read failure above
+    }
+  }
+
   // Check git status
   console.log('');
   printSection('Checking git status...');

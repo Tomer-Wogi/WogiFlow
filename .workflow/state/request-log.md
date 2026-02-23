@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-159 | 2026-02-23 10:00
+**Type**: fix
+**Tags**: #feature:routing #hook:pre-tool-use #hook:routing-gate
+**Task**: wf-routing-v2
+**Request**: "Fix WogiFlow routing bypass — Claude Code enters plan mode instead of routing through /wogi-start"
+**Result**: Added EnterPlanMode to routing gate (core + entry + adapter matcher), expanded installer fallback CLAUDE.md with Task Gating section, added hook integrity health checks (matcher freshness, script existence, CLAUDE.md routing content)
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/adapters/claude-code.js, lib/installer.js, scripts/flow-health.js, package.json
+
 ### R-158 | 2026-02-22 20:30
 **Type**: fix
 **Tags**: #workflow #security #review-findings #stale-arguments #P0

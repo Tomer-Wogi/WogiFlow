@@ -151,9 +151,9 @@ async function main() {
       }
     }
 
-    // v6.0: Routing gate check (for Bash)
-    // Blocks Bash calls when no /wogi-* command has been invoked first
-    if (toolName === 'Bash') {
+    // v6.0: Routing gate check (for Bash and EnterPlanMode)
+    // Blocks Bash/EnterPlanMode calls when no /wogi-* command has been invoked first
+    if (toolName === 'Bash' || toolName === 'EnterPlanMode') {
       try {
         const routingResult = checkRoutingGate(toolName);
         if (routingResult.blocked) {
