@@ -271,6 +271,24 @@ function copyScriptsFromPackage() {
 }
 
 /**
+ * Copy WogiFlow-managed .workflow/ subdirectories from package to project
+ * These are package-owned (bridges, templates, agents) and always overwritten on update.
+ * Without this, `npx flow bridge sync` fails because .workflow/bridges/ doesn't exist.
+ */
+function copyWorkflowManagedDirs() {
+  const managedDirs = ['bridges', 'templates', 'agents'];
+
+  for (const subdir of managedDirs) {
+    const src = path.join(PACKAGE_ROOT, '.workflow', subdir);
+    const dest = path.join(WORKFLOW_DIR, subdir);
+
+    if (fs.existsSync(src)) {
+      copyDir(src, dest, false);
+    }
+  }
+}
+
+/**
  * Check if we should be completely silent (CI only)
  */
 function shouldBeSilent() {
@@ -300,6 +318,11 @@ function main() {
   // Copy scripts (for npm update scenario)
   // This ensures scripts are updated when running npm install/update
   copyScriptsFromPackage();
+
+  // Copy WogiFlow-managed .workflow/ subdirectories (bridges, templates, agents)
+  // These are needed for bridge sync, CLAUDE.md generation, and agent definitions.
+  // Always overwrite — these are package-managed, not user-customizable.
+  copyWorkflowManagedDirs();
 
   // Create marker for AI to detect (unless already initialized)
   createPendingSetupMarker();
