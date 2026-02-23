@@ -67,23 +67,20 @@ const config = safeJsonParse(configPath, {});
 if (config.community?.enabled && config.community?.pushOnSessionEnd !== false) {
   const {
     collectShareableData,
-    pushToServer,
-    getOrCreateAnonId,
-    stripPII
+    pushToServer
   } = require('./scripts/flow-community');
 
   try {
-    const anonId = getOrCreateAnonId();
-    const data = collectShareableData(config);
-    const categoryCount = Object.keys(data).filter(k => data[k] && (Array.isArray(data[k]) ? data[k].length > 0 : Object.keys(data[k]).length > 0)).length;
+    // collectShareableData already strips PII and adds metadata
+    const payload = collectShareableData(config);
+    const dataKeys = payload.data ? Object.keys(payload.data) : [];
+    const categoryCount = dataKeys.filter(k => {
+      const v = payload.data[k];
+      return v && (Array.isArray(v) ? v.length > 0 : typeof v === 'object' && Object.keys(v).length > 0);
+    }).length;
 
     if (categoryCount > 0) {
-      const payload = {
-        anonId,
-        wogiflowVersion: require('./package.json').version,
-        timestamp: new Date().toISOString(),
-        data: stripPII(data, config)
-      };
+      // pushToServer adds anonId internally
       await pushToServer(payload, config);
       // Show: ✓ Pushed N learnings (category names)
     } else {

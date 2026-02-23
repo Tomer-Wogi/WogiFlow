@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-24T03:00:00.000Z",
+  "lastUpdated": "2026-02-24T04:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-c1rv19",
+      "title": "Fix 19 review findings from wf-0c000481 community knowledge review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-24T04:00:00.000Z",
+      "completedAt": "2026-02-24T04:30:00.000Z"
+    },
     {
       "id": "wf-0c000481",
       "title": "Community Knowledge System — Phase C1 Client-Side Foundation",

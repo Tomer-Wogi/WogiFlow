@@ -417,8 +417,8 @@ async function gatherSessionContext(options = {}) {
     if (communityConfig?.enabled && communityConfig?.pullOnSessionStart !== false) {
       const { loadCommunityCache } = require('../../flow-community');
       const cache = loadCommunityCache();
-      if (cache && cache.knowledge && Object.keys(cache.knowledge).length > 0) {
-        const knowledge = cache.knowledge;
+      if (cache && cache.data && typeof cache.data === 'object' && Object.keys(cache.data).length > 0) {
+        const knowledge = cache.data;
         const entryCount = Object.values(knowledge).reduce(
           (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0
         );
@@ -427,7 +427,7 @@ async function gatherSessionContext(options = {}) {
             available: true,
             entryCount,
             categories: Object.keys(knowledge).filter(k => Array.isArray(knowledge[k]) && knowledge[k].length > 0),
-            lastSync: cache.lastSync || null
+            lastSync: cache.fetchedAt || null
           };
         }
       }

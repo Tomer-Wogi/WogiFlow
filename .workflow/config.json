@@ -1664,7 +1664,6 @@
   },
   "community": {
     "enabled": false,
-    "anonymousId": null,
     "categories": {
       "modelIntelligence": true,
       "errorRecovery": true,

@@ -40,7 +40,7 @@ const REQUEST_TIMEOUT_MS = 5000;
 function ensureHomeDir() {
   try {
     if (!fs.existsSync(WOGIFLOW_HOME)) {
-      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true, mode: 0o700 });
     }
   } catch (err) {
     if (process.env.DEBUG) {
@@ -73,12 +73,21 @@ function getOrCreateAnonId() {
     // Fall through to generate
   }
 
-  // Generate new UUID v4
+  // Generate new UUID v4 with exclusive write to prevent TOCTOU race
   try {
     const id = crypto.randomUUID();
-    fs.writeFileSync(ANON_ID_PATH, id + '\n', 'utf-8');
+    fs.writeFileSync(ANON_ID_PATH, id + '\n', { encoding: 'utf-8', flag: 'wx', mode: 0o600 });
     return id;
   } catch (err) {
+    // EEXIST means another process created it first — re-read
+    if (err.code === 'EEXIST') {
+      try {
+        const existing = fs.readFileSync(ANON_ID_PATH, 'utf-8').trim();
+        if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(existing)) {
+          return existing;
+        }
+      } catch (err) { /* fall through */ }
+    }
     if (process.env.DEBUG) {
       console.error(`[community] Failed to generate anon ID: ${err.message}`);
     }
@@ -90,18 +99,19 @@ function getOrCreateAnonId() {
 // PII Stripping
 // ============================================================
 
-// Email regex pattern
+// NOTE: These /g regex constants are safe with .replace() but MUST NOT be used with
+// .test() or .exec() directly — those methods mutate lastIndex on /g regexes.
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 // Absolute path patterns (Unix and Windows)
-const UNIX_PATH_PATTERN = /\/(?:Users|home|var|tmp|opt|etc|usr|root)\/[^\s"',;:)}\]]+/g;
-const WINDOWS_PATH_PATTERN = /[A-Z]:\\[^\s"',;:)}\]]+/gi;
+const UNIX_PATH_PATTERN = /\/(?:Users|home|var|tmp|opt|etc|usr|root|srv|data|mnt|media|Volumes|workspace|nix)\/[^\s"',;:)}\]]+/g;
+const WINDOWS_PATH_PATTERN = /[A-Za-z]:\\[^\s"',;:)}\]]+/g;
 
 // Relative path patterns (things that look like file paths)
 const RELATIVE_PATH_PATTERN = /(?:\.\/|\.\.\/)[^\s"',;:)}\]]+/g;
 
 // Git user patterns
-const GIT_USER_PATTERN = /(?:Author|Committer):\s*[^\n<]+/g;
+const GIT_USER_PATTERN = /(Author|Committer):\s*[^\n<]+/g;
 
 /**
  * Strip PII from data before it leaves the machine.
@@ -120,13 +130,22 @@ function stripPII(data, config) {
     return data;
   }
 
-  // Deep clone and strip
-  return JSON.parse(JSON.stringify(data, (key, value) => {
-    if (typeof value === 'string') {
-      return stripPIIFromString(value, projectName);
+  // Deep clone and strip (using structured clone to avoid prototype pollution via JSON round-trip)
+  const cloned = structuredClone(data);
+  function walkAndStrip(obj) {
+    if (typeof obj === 'string') return stripPIIFromString(obj, projectName);
+    if (Array.isArray(obj)) return obj.map(walkAndStrip);
+    if (obj && typeof obj === 'object') {
+      const result = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+        result[k] = walkAndStrip(v);
+      }
+      return result;
     }
-    return value;
-  }));
+    return obj;
+  }
+  return walkAndStrip(cloned);
 }
 
 /**
@@ -243,10 +262,12 @@ function collectModelIntelligence() {
           const body = lines.slice(1).join('\n').trim();
 
           if (body && (title.includes('strength') || title.includes('weakness') || title.includes('adjustment') || title.includes('learning'))) {
+            // Strip code fences before sharing to prevent code leaks
+            const cleanBody = body.replace(/```[\s\S]*?```/g, '[code removed]');
             items.push({
               model: modelName,
               category: title,
-              content: body.substring(0, 500) // Limit size
+              content: cleanBody.substring(0, 500) // Limit size
             });
           }
         }
@@ -278,7 +299,9 @@ function collectErrorRecovery() {
         try {
           const content = fs.readFileSync(path.join(failurePath, file), 'utf-8');
           if (file.endsWith('.json')) {
-            const data = JSON.parse(content);
+            let data;
+            try { data = JSON.parse(content); } catch (err) { continue; }
+            if (!data || typeof data !== 'object' || '__proto__' in data) continue;
             if (data.category && data.strategy) {
               items.push({
                 category: data.category,
@@ -429,10 +452,12 @@ function collectSkillLearnings() {
         for (const file of files.slice(0, 5)) { // Limit per skill
           try {
             const content = fs.readFileSync(path.join(knowledgeDir, file), 'utf-8');
+            // Strip code fences before sharing to prevent code leaks
+            const cleanContent = content.replace(/```[\s\S]*?```/g, '[code removed]');
             items.push({
               skill: skillDir,
               type: path.basename(file, '.md'),
-              content: content.substring(0, 500) // Limit size
+              content: cleanContent.substring(0, 500) // Limit size
             });
           } catch (err) {
             // Skip unreadable
@@ -461,9 +486,37 @@ function collectSkillLearnings() {
  * @param {number} [timeout] - Timeout in ms
  * @returns {Promise<{statusCode: number, body: string}>}
  */
+// Maximum response body size (2 MB)
+const MAX_RESPONSE_SIZE = 2 * 1024 * 1024;
+
+/**
+ * Validate a server URL for safety.
+ * Rejects non-HTTPS, private IPs, metadata endpoints, and URLs with path/query/hash.
+ * @param {URL} parsed - Parsed URL object
+ * @throws {Error} if URL is not safe
+ */
+function validateServerUrl(parsed) {
+  if (parsed.protocol !== 'https:') {
+    throw new Error('Only HTTPS URLs are allowed');
+  }
+  // Block cloud metadata endpoints
+  const blockedHosts = ['169.254.169.254', 'metadata.google.internal', '100.100.100.200'];
+  if (blockedHosts.includes(parsed.hostname)) {
+    throw new Error('Blocked metadata endpoint');
+  }
+  // Block private/loopback IPs
+  if (/^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|0\.|localhost$)/i.test(parsed.hostname)) {
+    throw new Error('Private/loopback addresses not allowed');
+  }
+}
+
 function httpsRequest(method, url, body, timeout = REQUEST_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+
+    // Enforce HTTPS and block dangerous destinations
+    validateServerUrl(parsed);
+
     const payload = body ? JSON.stringify(body) : null;
 
     const options = {
@@ -484,7 +537,16 @@ function httpsRequest(method, url, body, timeout = REQUEST_TIMEOUT_MS) {
 
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => { data += chunk; });
+      let size = 0;
+      res.on('data', chunk => {
+        size += chunk.length;
+        if (size > MAX_RESPONSE_SIZE) {
+          req.destroy();
+          reject(new Error('Response body exceeds 2 MB limit'));
+          return;
+        }
+        data += chunk;
+      });
       res.on('end', () => {
         resolve({ statusCode: res.statusCode, body: data });
       });
@@ -577,6 +639,9 @@ async function pullFromServer(config) {
     if (result.statusCode >= 200 && result.statusCode < 300) {
       try {
         const data = JSON.parse(result.body);
+        // Validate structure: must be a plain object, reject prototype pollution
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+        if ('__proto__' in data || 'constructor' in data || 'prototype' in data) return null;
         saveCommunityCache(data);
         return data;
       } catch (err) {
@@ -603,19 +668,22 @@ async function pullFromServer(config) {
  * @param {string} text - Suggestion text
  * @param {string} type - Suggestion type: idea|bug|improvement
  * @param {Object} config - Config with community settings
- * @returns {Promise<boolean>} Whether submission succeeded
+ * @returns {Promise<{success: boolean, queued: boolean}>} Result with success and queued status
  */
 async function submitSuggestion(text, type, config) {
   const serverUrl = config.community?.serverUrl;
-  if (!serverUrl) return false;
+  if (!serverUrl) return { success: false, queued: false };
 
   const anonId = getOrCreateAnonId();
-  if (!anonId) return false;
+  if (!anonId) return { success: false, queued: false };
+
+  // Strip PII from suggestion text before sending
+  const strippedText = stripPIIFromString(text, config.projectName || '');
 
   const suggestion = {
     anonId,
     type: type || 'idea',
-    content: text,
+    content: strippedText,
     wogiflowVersion: getWogiFlowVersion(),
     timestamp: new Date().toISOString()
   };
@@ -625,16 +693,16 @@ async function submitSuggestion(text, type, config) {
     const result = await httpsRequest('POST', url, suggestion);
 
     if (result.statusCode >= 200 && result.statusCode < 300) {
-      return true;
+      return { success: true, queued: false };
     }
 
     // Server returned error — queue for retry
     queuePendingSuggestion(suggestion);
-    return false;
+    return { success: false, queued: true };
   } catch (err) {
     // Offline or timeout — queue for retry
     queuePendingSuggestion(suggestion);
-    return false;
+    return { success: false, queued: true };
   }
 }
 
@@ -648,8 +716,8 @@ function queuePendingSuggestion(suggestion) {
     let pending = [];
     if (fs.existsSync(PENDING_SUGGESTIONS_PATH)) {
       try {
-        pending = JSON.parse(fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8'));
-        if (!Array.isArray(pending)) pending = [];
+        const raw = JSON.parse(fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8'));
+        pending = Array.isArray(raw) ? raw : [];
       } catch (err) {
         pending = [];
       }
@@ -678,21 +746,21 @@ async function retryPendingSuggestions(config) {
 
   try {
     if (!fs.existsSync(PENDING_SUGGESTIONS_PATH)) return;
-    const pending = JSON.parse(fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8'));
+    let pending;
+    try { pending = JSON.parse(fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8')); } catch (err) { return; }
     if (!Array.isArray(pending) || pending.length === 0) return;
 
     const remaining = [];
-    for (const suggestion of pending) {
+    for (let i = 0; i < pending.length; i++) {
       try {
         const url = `${serverUrl}/api/community/suggest`;
-        const result = await httpsRequest('POST', url, suggestion);
+        const result = await httpsRequest('POST', url, pending[i]);
         if (result.statusCode < 200 || result.statusCode >= 300) {
-          remaining.push(suggestion);
+          remaining.push(pending[i]);
         }
       } catch (err) {
-        remaining.push(suggestion);
-        // If first retry fails, likely still offline — keep rest and stop
-        remaining.push(...pending.slice(pending.indexOf(suggestion) + 1));
+        // Network error — keep this and all remaining suggestions
+        remaining.push(...pending.slice(i));
         break;
       }
     }
@@ -722,8 +790,10 @@ function loadCommunityCache() {
   try {
     if (!fs.existsSync(CACHE_PATH)) return null;
     const content = fs.readFileSync(CACHE_PATH, 'utf-8');
-    const data = JSON.parse(content);
-    if (!data || !data.fetchedAt) return null;
+    let data;
+    try { data = JSON.parse(content); } catch (err) { return null; }
+    if (!data || typeof data !== 'object' || '__proto__' in data) return null;
+    if (!data.fetchedAt) return null;
     return data;
   } catch (err) {
     return null;

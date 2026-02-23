@@ -111,7 +111,7 @@ flow function-index map     # Generate this file from scan results
 ### submitSuggestion
 **File**: scripts/flow-community.js
 **Purpose**: Submit a suggestion to the community server, queue if offline
-**Params**: (text: string, type: string, config: Object) => Object
+**Params**: (text: string, type: string, config: Object) => Promise<{success: boolean, queued: boolean}>
 **Used by**: wogi-suggest command
 
 ---

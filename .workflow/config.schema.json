@@ -2971,11 +2971,6 @@
           "description": "Enable community knowledge sharing (opt-in)",
           "default": false
         },
-        "anonymousId": {
-          "type": ["string", "null"],
-          "description": "Anonymous UUID (auto-generated on first enable, stored in ~/.wogiflow/anon-id)",
-          "default": null
-        },
         "categories": {
           "type": "object",
           "description": "Per-category toggles for what gets shared",
