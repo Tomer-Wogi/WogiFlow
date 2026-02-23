@@ -6,7 +6,8 @@ Steps:
 3. **Check app-map** - If new components created, verify they're added
 4. **Update progress.md** - Add handoff notes for next session
 5. **Commit changes** - Stage and commit all workflow files
-6. **Offer to push** - Ask if should push to remote
+6. **Community push** - If `config.community.enabled` and `config.community.pushOnSessionEnd`, push anonymous learnings
+7. **Offer to push** - Ask if should push to remote
 
 Output:
 ```
@@ -24,6 +25,9 @@ Updating progress.md...
 
 Committing...
   ✓ Committed: "chore: End session - 3 changes logged"
+
+Community knowledge...
+  ✓ Pushed 3 learnings (model intelligence, error recovery, skill learnings)
 
 Push to remote? (y/n)
 ```
@@ -46,6 +50,72 @@ Progress.md handoff format:
 ### Notes
 - API endpoint for preferences not ready yet
 - Decided to use shadcn/ui for modal
+```
+
+## Step 6: Community Knowledge Push
+
+After committing changes, check if community sharing is enabled and push anonymous learnings.
+
+**Implementation:**
+
+```javascript
+const path = require('path');
+const { safeJsonParse } = require('./scripts/flow-utils');
+const configPath = path.join(process.cwd(), '.workflow/config.json');
+const config = safeJsonParse(configPath, {});
+
+if (config.community?.enabled && config.community?.pushOnSessionEnd !== false) {
+  const {
+    collectShareableData,
+    pushToServer,
+    getOrCreateAnonId,
+    stripPII
+  } = require('./scripts/flow-community');
+
+  try {
+    const anonId = getOrCreateAnonId();
+    const data = collectShareableData(config);
+    const categoryCount = Object.keys(data).filter(k => data[k] && (Array.isArray(data[k]) ? data[k].length > 0 : Object.keys(data[k]).length > 0)).length;
+
+    if (categoryCount > 0) {
+      const payload = {
+        anonId,
+        wogiflowVersion: require('./package.json').version,
+        timestamp: new Date().toISOString(),
+        data: stripPII(data, config)
+      };
+      await pushToServer(payload, config);
+      // Show: ✓ Pushed N learnings (category names)
+    } else {
+      // Show: ℹ No new learnings to share
+    }
+  } catch (err) {
+    // Show: ⚠ Community push skipped — server unreachable
+    // Never block session end for community push failures
+  }
+} else {
+  // Skip silently — community not enabled
+}
+```
+
+**Behavior:**
+- Skip silently if `community.enabled` is false (no output)
+- Skip silently if `community.pushOnSessionEnd` is false
+- Collect data from enabled categories only
+- Strip all PII before sending (emails, paths, project names)
+- Fire-and-forget with 5s timeout — never blocks session end
+- On failure: show brief warning, continue with push-to-remote step
+
+**Output when enabled:**
+```
+Community knowledge...
+  ✓ Pushed 3 learnings (model intelligence, error recovery, skill learnings)
+```
+
+**Output on failure:**
+```
+Community knowledge...
+  ⚠ Community push skipped — server unreachable
 ```
 
 ## Cross-Session Pattern Detection (v6.0)

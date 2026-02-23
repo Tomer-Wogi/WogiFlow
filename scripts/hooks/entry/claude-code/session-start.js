@@ -81,6 +81,24 @@ async function main() {
       }
     }
 
+    // Community knowledge pull + retry pending suggestions (non-blocking)
+    try {
+      const { getConfig } = require('../../../flow-utils');
+      const communityConfig = getConfig();
+      if (communityConfig.community?.enabled && communityConfig.community?.pullOnSessionStart !== false) {
+        const { pullFromServer, retryPendingSuggestions } = require('../../../flow-community');
+        // Pull new community knowledge (uses cache with TTL)
+        await pullFromServer(communityConfig).catch(() => {});
+        // Retry any pending suggestions queued while offline
+        await retryPendingSuggestions(communityConfig).catch(() => {});
+      }
+    } catch (err) {
+      // Non-blocking — community features are best-effort
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Community pull failed: ${err.message}`);
+      }
+    }
+
     // Gather session context
     const coreResult = await gatherSessionContext({
       includeSuspended: true,

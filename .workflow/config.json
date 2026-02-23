@@ -1661,5 +1661,21 @@
     "mode": "warn",
     "_comment_mode": "'warn' reports inconsistencies, 'block' prevents completion until fixed.",
     "maxOrphans": 10
+  },
+  "community": {
+    "enabled": false,
+    "anonymousId": null,
+    "categories": {
+      "modelIntelligence": true,
+      "errorRecovery": true,
+      "patternConvergence": true,
+      "sessionStatistics": true,
+      "skillLearnings": true
+    },
+    "pushOnSessionEnd": true,
+    "pullOnSessionStart": true,
+    "cacheTtlHours": 24,
+    "serverUrl": "https://api.wogiflow.com",
+    "_comment_community": "Opt-in anonymous community knowledge sharing. Enable to share/receive model intelligence, error strategies, and universal patterns. No code, paths, or personal data ever leaves the machine."
   }
 }

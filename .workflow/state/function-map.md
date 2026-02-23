@@ -90,4 +90,28 @@ flow function-index map     # Generate this file from scan results
 **Params**: (prefix?: string) => string
 **Used by**: flow-story.js, flow-epics.js, flow-plan.js, flow-feature.js
 
+### getOrCreateAnonId
+**File**: scripts/flow-community.js
+**Purpose**: Generate or retrieve persistent anonymous UUID v4 from ~/.wogiflow/anon-id
+**Params**: () => string
+**Used by**: wogi-session-end (community push), wogi-suggest
+
+### stripPII
+**File**: scripts/flow-community.js
+**Purpose**: Strip emails, file paths, project names, and git identity from data before sending
+**Params**: (data: any, config: Object) => any
+**Used by**: flow-community.js (pushToServer, collectShareableData)
+
+### collectShareableData
+**File**: scripts/flow-community.js
+**Purpose**: Collect anonymous learnings from 5 categories respecting per-category toggles
+**Params**: (config: Object) => Object
+**Used by**: wogi-session-end (community push)
+
+### submitSuggestion
+**File**: scripts/flow-community.js
+**Purpose**: Submit a suggestion to the community server, queue if offline
+**Params**: (text: string, type: string, config: Object) => Object
+**Used by**: wogi-suggest command
+
 ---

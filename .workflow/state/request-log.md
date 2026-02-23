@@ -13,59 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
-### R-170 | 2026-02-24 19:00
-**Type**: fix
-**Tags**: #feature:hooks #component:claude-code-adapter #bug:wf-3f291f2d
-**Task**: wf-3f291f2d
-**Request**: "Fix invalid hook keys (Setup, TaskCompleted, TeammateIdle, ConfigChange) in Claude Code settings"
-**Result**: Removed 4 invalid hook event registrations from claude-code adapter. Added CLAUDE_CODE_EVENTS allowlist limited to 6 official hooks (SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SessionEnd). Added safety filter in generateConfig() that validates all hooks against the allowlist before output. Cleaned local settings.local.json. Entry scripts kept for future use.
-**Files**: scripts/hooks/adapters/claude-code.js, .claude/settings.local.json
-
-### R-169 | 2026-02-24 18:55
+### R-165 | 2026-02-24 03:00
 **Type**: new
-**Tags**: #feature:community #testing:unit #testing:smoke #server:wogiflow-cloud
-**Task**: wf-ebb51efe
-**Request**: "Build and run comprehensive tests for wogiflow-cloud server"
-**Result**: Created test suite with 52 unit tests (extractJson, validate, response) and 12 live smoke tests against api.wogi.ai. All 64 tests pass. Zero additional dependencies — uses node:test and node:assert.
-**Files** (wogiflow-cloud repo):
-- `packages/server/tests/unit/extract-json.test.js` (created — 13 tests)
-- `packages/server/tests/unit/validate.test.js` (created — 26 tests covering contributions + suggestions)
-- `packages/server/tests/unit/response.test.js` (created — 13 tests)
-- `packages/server/tests/smoke.js` (created — 12 live endpoint tests)
-- `packages/server/package.json` (modified — added test script)
-- `packages/server/curation/pipeline-worker.js` (modified — exported extractJson)
-
-### R-168 | 2026-02-24 18:10
-**Type**: fix
-**Tags**: #feature:workflow #hook:routing-gate #security:enforcement
-**Task**: wf-19b06f22
-**Request**: "Extend routing gate hook to block Read/Glob/Grep before wogi-* routing — close enforcement gap"
-**Result**: Fixed enforcement gap where Read/Glob/Grep tools could bypass the routing gate. Updated 5 files: settings.local.json (PreToolUse matcher), settings.json (template matcher), routing-gate.js (GATED_TOOLS set + block message), pre-tool-use.js (condition expansion), claude-code.js adapter (matcher string). Also fixed dead-letter issue where EnterPlanMode was in GATED_TOOLS but missing from settings.local.json matcher.
-**Files**: .claude/settings.local.json, .claude/settings.json, scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/adapters/claude-code.js
-
-### R-167 | 2026-02-24 09:35
-**Type**: fix
-**Tags**: #feature:community #infra:aws #project:wogiflow-cloud #security #review
-**Task**: wogiflow-cloud code review fixes
-**Request**: "Fix all 28 review findings from /wogi-review on wogiflow-cloud server"
-**Result**: Fixed 18 of 28 findings across 10 files. Key changes: shared response.js helper with X-Content-Type-Options (DRY), credential cache TTL (15min) for rotation support, fail-closed pipeline (parse errors reject/archive), atomic idempotent SQS claim, double-settle prevention in HTTP client, tightened UUID regex, ISO 8601 date validation, health check Lambda + DLQ alarm + API throttling in CloudFormation. 10 findings deferred as TODOs (RDS public access, API auth, SSL cert, CORS, pagination). All endpoints tested and verified. CloudFormation stack updated successfully.
-**Files**: wogiflow-cloud/packages/server/ (lib/response.js NEW, lib/db.js, lib/anthropic.js, lib/validate.js, routes/contribute.js, routes/knowledge.js, routes/suggest.js, curation/pipeline-worker.js), wogiflow-cloud/deploy/ (deploy.sh, cloudformation.yaml)
-
-### R-166 | 2026-02-24 08:55
-**Type**: new
-**Tags**: #feature:community #infra:aws #project:wogiflow-cloud
-**Task**: Phase C1 Server Deployment
-**Request**: "Deploy WogiFlow Cloud server infrastructure to AWS"
-**Result**: Deployed full serverless infrastructure to AWS eu-west-1: RDS PostgreSQL 16.6 (db.t4g.micro) with pgvector, 4 Lambda functions (contribute, knowledge, suggest, pipeline-worker), API Gateway HTTP with custom domain api.wogi.ai, SQS FIFO queue with DLQ, Secrets Manager for credentials. Fixed 5 bugs during deployment: RDS SSL cert validation, prototype pollution false positive, Sonnet model ID (20250514→20250929), curation_log CHECK constraint, and AI response JSON parsing. Full 5-stage AI curation pipeline verified end-to-end — test contribution auto-promoted to Global Knowledge with quality score 7.5.
-**Files**: wogiflow-cloud/packages/server/ (lib/db.js, lib/anthropic.js, lib/validate.js, routes/*.js, curation/pipeline-worker.js), wogiflow-cloud/deploy/ (cloudformation.yaml, deploy.sh, migrate.sh), wogiflow-cloud/packages/server/db/001_community.sql
-
-### R-165 | 2026-02-24 10:00
-**Type**: change
-**Tags**: #feature:security #component:claude-bridge #component:settings-local
-**Task**: wf-6c8d7b3e
-**Request**: "Tighten wildcard permission rules in settings template"
-**Result**: Replaced broad `git reset *` and `git restore *` wildcards with scoped safe variants (`git reset HEAD *`, `git reset --soft *`, `git restore --staged *`). Destructive operations (--hard, restore ., clean -f) now require manual user approval. Updated security-patterns.md section 6 with new examples. Updated local settings.local.json to match.
-**Files**: .workflow/bridges/claude-bridge.js, .claude/settings.local.json, .claude/rules/security/security-patterns.md
+**Tags**: #feature:community #script:flow-community #command:wogi-suggest #hook:session-start #hook:session-end
+**Task**: wf-0c000481
+**Request**: "Community Knowledge System — Phase C1 Client-Side Foundation"
+**Result**: Implemented full client-side foundation for anonymous community knowledge sharing. Created flow-community.js (12 functions: anon ID, PII stripping, data collection from 5 categories, push/pull, suggestions with offline queueing, consent flow). Integrated community push into /wogi-session-end, pull into session-start hook, cache display into session context. Created /wogi-suggest command. Updated config.json, config.schema.json, installer.js with community defaults. Updated CLAUDE.md template with NLD triggers.
+**Files**: scripts/flow-community.js, .claude/commands/wogi-suggest.md, .claude/commands/wogi-session-end.md, scripts/hooks/entry/claude-code/session-start.js, scripts/hooks/core/session-context.js, .workflow/config.json, .workflow/config.schema.json, lib/installer.js, .workflow/templates/claude-md.hbs, CLAUDE.md
 
 ### R-164 | 2026-02-24 00:30
 **Type**: fix

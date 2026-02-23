@@ -411,6 +411,34 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // Community knowledge (cached learnings from other WogiFlow users)
+  try {
+    const communityConfig = config.community;
+    if (communityConfig?.enabled && communityConfig?.pullOnSessionStart !== false) {
+      const { loadCommunityCache } = require('../../flow-community');
+      const cache = loadCommunityCache();
+      if (cache && cache.knowledge && Object.keys(cache.knowledge).length > 0) {
+        const knowledge = cache.knowledge;
+        const entryCount = Object.values(knowledge).reduce(
+          (sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0
+        );
+        if (entryCount > 0) {
+          context.communityKnowledge = {
+            available: true,
+            entryCount,
+            categories: Object.keys(knowledge).filter(k => Array.isArray(knowledge[k]) && knowledge[k].length > 0),
+            lastSync: cache.lastSync || null
+          };
+        }
+      }
+    }
+  } catch (err) {
+    // Non-critical — community cache is best-effort
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Community knowledge load failed: ${err.message}`);
+    }
+  }
+
   // CLAUDE_CODE_SIMPLE mode detection (Claude Code 2.1.50+)
   // When SIMPLE mode is active, hooks/MCP/CLAUDE.md are disabled.
   // This warning only fires if the hook somehow still runs (e.g., during transition).
@@ -541,6 +569,17 @@ function formatContextForInjection(context) {
       output += `- **${decision.title}**: ${decision.summary}\n`;
     }
     output += '\n';
+  }
+
+  // Community knowledge summary
+  if (ctx.communityKnowledge && ctx.communityKnowledge.available) {
+    const ck = ctx.communityKnowledge;
+    output += `### Community Knowledge\n`;
+    output += `**${ck.entryCount} learnings** from the WogiFlow community (${ck.categories.join(', ')}).\n`;
+    if (ck.lastSync) {
+      output += `Last synced: ${ck.lastSync}\n`;
+    }
+    output += `Community knowledge is informational — not enforced.\n\n`;
   }
 
   // Recent activity

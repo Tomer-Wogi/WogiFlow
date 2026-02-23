@@ -2961,6 +2961,55 @@
           }
         }
       }
+    },
+    "community": {
+      "type": "object",
+      "description": "Opt-in anonymous community knowledge sharing. Enable to share/receive model intelligence, error strategies, and universal patterns.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable community knowledge sharing (opt-in)",
+          "default": false
+        },
+        "anonymousId": {
+          "type": ["string", "null"],
+          "description": "Anonymous UUID (auto-generated on first enable, stored in ~/.wogiflow/anon-id)",
+          "default": null
+        },
+        "categories": {
+          "type": "object",
+          "description": "Per-category toggles for what gets shared",
+          "properties": {
+            "modelIntelligence": { "type": "boolean", "default": true },
+            "errorRecovery": { "type": "boolean", "default": true },
+            "patternConvergence": { "type": "boolean", "default": true },
+            "sessionStatistics": { "type": "boolean", "default": true },
+            "skillLearnings": { "type": "boolean", "default": true }
+          }
+        },
+        "pushOnSessionEnd": {
+          "type": "boolean",
+          "description": "Push learnings when session ends",
+          "default": true
+        },
+        "pullOnSessionStart": {
+          "type": "boolean",
+          "description": "Pull community knowledge when session starts",
+          "default": true
+        },
+        "cacheTtlHours": {
+          "type": "number",
+          "description": "Hours before community cache is considered stale",
+          "default": 24,
+          "minimum": 1,
+          "maximum": 168
+        },
+        "serverUrl": {
+          "type": "string",
+          "description": "Community server URL",
+          "default": "https://api.wogiflow.com"
+        }
+      }
     }
   },
   "additionalProperties": true
