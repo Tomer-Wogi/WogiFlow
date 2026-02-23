@@ -188,11 +188,21 @@ function checkRoutingGate(toolName) {
   }
 
   // Block: routing is pending and no active task
+  // NOTE: This message is shown to the AI as permissionDecisionReason.
+  // It must be prescriptive enough that the AI invokes /wogi-start instead of
+  // trying workarounds or suggesting the user run commands manually.
   return {
     allowed: false,
     blocked: true,
     reason: 'routing_pending',
-    message: 'Route through a /wogi-* command first. Use /wogi-start to route your request.'
+    message: [
+      'BLOCKED: You must route through /wogi-start before using Bash or EnterPlanMode.',
+      'ACTION REQUIRED: Invoke the Skill tool with skill="wogi-start" and pass the user\'s request as args.',
+      'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
+      '/wogi-start will classify the request (operational, exploration, implementation) and unblock the appropriate tools.',
+      'Do NOT suggest the user run commands manually in their terminal.',
+      'Do NOT try alternative approaches to bypass this gate.'
+    ].join(' ')
   };
 }
 

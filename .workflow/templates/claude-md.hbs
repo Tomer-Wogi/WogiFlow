@@ -305,6 +305,25 @@ You: [edits header.tsx]  ← Tracked properly
 ```
 
 **When in doubt, use `/wogi-start`.** It will route appropriately.
+
+### When a Tool Call Is Blocked by the Routing Gate
+
+If you attempt to use Bash or EnterPlanMode and receive a "BLOCKED" denial from WogiFlow's routing gate, here is the ONLY correct response:
+
+1. **Invoke `/wogi-start`** immediately with the user's original request:
+   ```
+   Skill(skill="wogi-start", args="<the user's original request>")
+   ```
+2. `/wogi-start` will classify the request and clear the routing gate
+3. After `/wogi-start` routes the request, you can use Bash/EnterPlanMode normally
+
+**NEVER do these when blocked:**
+- Suggest the user run commands manually in their terminal
+- Try alternative tools to work around the block
+- Explain the block to the user and ask them what to do
+- Give up and say "I can't do that"
+
+The routing gate exists because EVERY request must be classified by `/wogi-start` first. The block is not an error — it's a reminder that you skipped a mandatory step. Fix it by invoking `/wogi-start`.
 {{/if}}
 
 ## Session Startup

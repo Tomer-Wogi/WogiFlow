@@ -119,13 +119,22 @@ async function main() {
     // v6.0: Set routing-pending flag for routing gate enforcement
     // This blocks Bash calls until a /wogi-* skill is invoked
     // Skipped when an active task exists (follow-ups during tracked work are allowed)
-    try {
-      setRoutingPending();
-    } catch (err) {
-      // Non-blocking - don't fail the hook if routing gate fails (fail-open)
-      if (process.env.DEBUG) {
-        console.error(`[Hook] Routing gate set failed: ${err.message}`);
+    // v6.1: Also skip when the prompt IS a /wogi-* command — the user is already routing.
+    // When users type "/wogi-start ..." directly, Claude Code expands the skill inline
+    // (not through the Skill tool), so clearRoutingPending() in PreToolUse never fires.
+    // Setting the flag here would create an uncleable block.
+    const isWogiCommand = typeof prompt === 'string' && /^\/(wogi-\S+)/i.test(prompt.trim());
+    if (!isWogiCommand) {
+      try {
+        setRoutingPending();
+      } catch (err) {
+        // Non-blocking - don't fail the hook if routing gate fails (fail-open)
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Routing gate set failed: ${err.message}`);
+        }
       }
+    } else if (process.env.DEBUG) {
+      console.error(`[Hook] Skipping routing flag — prompt is a /wogi-* command`);
     }
 
     // Check research gate first (before implementation gate)
