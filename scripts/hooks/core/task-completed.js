@@ -19,6 +19,7 @@ const fs = require('fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS, safeJsonParse } = require('../../flow-utils');
+const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
 
 /**
  * Check if task completed handling is enabled
@@ -112,6 +113,17 @@ function handleTaskCompleted(input) {
       result.message = `Task ${completedTask.id} (${completedTask.title}) moved to completed`;
     } catch (err) {
       result.message = `Failed to update ready.json: ${err.message}`;
+    }
+
+    // Reset workflow phase to idle on task completion
+    if (result.completed && isPhaseGateEnabled()) {
+      try {
+        resetPhase();
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Phase reset failed: ${err.message}`);
+        }
+      }
     }
 
     // Update durable history if it exists

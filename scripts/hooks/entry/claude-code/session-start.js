@@ -10,6 +10,7 @@
 const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
+const { checkAndResetStalePhase } = require('../../core/phase-gate');
 
 // Lazy-load bridge state to avoid circular dependencies
 let autoSyncBridge = null;
@@ -65,6 +66,18 @@ async function main() {
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Failed to clear stale task: ${err.message}`);
+      }
+    }
+
+    // Reset stale workflow phase (auto-expire after 2 hours)
+    try {
+      const wasReset = checkAndResetStalePhase();
+      if (wasReset && process.env.DEBUG) {
+        console.error('[session-start] Reset stale workflow phase to idle');
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Failed to check stale phase: ${err.message}`);
       }
     }
 

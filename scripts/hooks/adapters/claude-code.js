@@ -352,20 +352,38 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
 
     // Research protocol triggered - inject protocol steps as additional context
     if (coreResult.systemReminder) {
+      // Append phase prompt if present
+      const context = coreResult.phasePrompt
+        ? `${coreResult.systemReminder}\n\n${coreResult.phasePrompt}`
+        : coreResult.systemReminder;
       return {
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
-          additionalContext: coreResult.systemReminder
+          additionalContext: context
         }
       };
     }
 
     // Warning - allow but inject context with the warning message
     if (coreResult.message && !coreResult.blocked) {
+      // Append phase prompt if present
+      const context = coreResult.phasePrompt
+        ? `${coreResult.message}\n\n${coreResult.phasePrompt}`
+        : coreResult.message;
       return {
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
-          additionalContext: coreResult.message
+          additionalContext: context
+        }
+      };
+    }
+
+    // Phase prompt only (no other context to inject)
+    if (coreResult.phasePrompt) {
+      return {
+        hookSpecificOutput: {
+          hookEventName: 'UserPromptSubmit',
+          additionalContext: coreResult.phasePrompt
         }
       };
     }

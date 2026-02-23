@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-161 | 2026-02-23 21:00
+**Type**: new
+**Tags**: #feature:workflow #hook:phase-gate #hook:pre-tool-use #template:claude-md
+**Task**: wf-b9f5b675
+**Request**: "State machine workflow enforcement — replace prompt-based enforcement with programmatic hook-based phase gating, strip CLAUDE.md bloat, add just-in-time context injection"
+**Result**: Created phase-gate state machine (7 phases: idle→routing→exploring→spec_review→coding→validating→completing→idle). Integrated into PreToolUse hook to block Edit/Write/Bash based on current phase. Added UserPromptSubmit context injection, session-start stale phase cleanup, task-completed phase reset. Stripped CLAUDE.md from 1,073 to 348 lines (68% reduction) via template rewrite. Added flow-phase.js CLI wrapper and phase transition table in wogi-start.md.
+**Files**: scripts/hooks/core/phase-gate.js (new), scripts/flow-phase.js (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/user-prompt-submit.js, scripts/hooks/entry/claude-code/session-start.js, scripts/hooks/core/task-completed.js, scripts/hooks/adapters/claude-code.js, .workflow/templates/claude-md.hbs, .workflow/templates/partials/user-commands.hbs, .workflow/templates/partials/auto-features.hbs, CLAUDE.md, .workflow/config.json, .claude/commands/wogi-start.md
+
 ### R-160 | 2026-02-23 15:30
 **Type**: new
 **Tags**: #feature:workflow #command:wogi-start #triage:conversation

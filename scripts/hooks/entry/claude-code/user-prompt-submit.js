@@ -10,6 +10,7 @@
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
 const { setRoutingPending } = require('../../core/routing-gate');
+const { getPhaseContextPrompt } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
@@ -139,6 +140,20 @@ async function main() {
       console.error(`[Hook] Skipping routing flag — prompt is a /wogi-* command`);
     }
 
+    // Phase context injection (just-in-time phase-specific instructions)
+    let phasePrompt = null;
+    try {
+      const phaseContext = getPhaseContextPrompt();
+      if (phaseContext.inject && phaseContext.prompt) {
+        phasePrompt = phaseContext.prompt;
+      }
+    } catch (err) {
+      // Non-blocking - phase context is best-effort
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Phase context injection failed: ${err.message}`);
+      }
+    }
+
     // Check research gate first (before implementation gate)
     // Auto-triggers research protocol for capability/existence/feasibility questions
     const researchResult = checkResearchRequirement({
@@ -168,6 +183,14 @@ async function main() {
         warning: true,
         researchWarning: researchResult.message,
         suggestedCommand: researchResult.suggestedCommand
+      };
+    }
+
+    // Inject phase-specific context prompt (additionalSystemPrompt)
+    if (phasePrompt) {
+      coreResult = {
+        ...coreResult,
+        phasePrompt
       };
     }
 

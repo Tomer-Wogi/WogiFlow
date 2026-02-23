@@ -1,154 +1,21 @@
 ## Task Execution Flow (AUTO-INVOKED)
 
-When implementing a task, these features run automatically. You don't need to invoke them manually.
+These features run automatically during task execution via `/wogi-start`. You don't invoke them manually.
 
-### Task Execution Pipeline
+**Pipeline:** Request Triage → Context Check → Explore Phase → Spec Generation → Approval Gate → Implementation Loop → Criteria Check → Wiring Check → Standards Check → Post-Task Updates → Task Complete
 
-```
-/wogi-start "add feature X"
-    |
-    +-- [AUTO] Request Triage
-    |   - Classify as: exploration, operational, quick-fix, bug, or implementation
-    |   - Route to appropriate action
-    |
-    +-- [AUTO] Context Check (Step 0.25)
-    |   - Estimate task context needs
-    |   - If current + estimated > 95% → Compact first
-    |
-    +-- [AUTO] Pre-Implementation Checks
-    |   - Check all active registry maps (app-map, function-map, api-map, schema-map, service-map)
-    |   - Validate request aligns with task scope
-    |
-    +-- [AUTO] Explore Phase (L2+ tasks, multi-agent)
-    |   - Agent 1: Codebase Analyzer (Glob/Grep/Read)
-    |   - Agent 2: Best Practices (WebSearch)
-    |   - Agent 3: Version Verifier (Read/WebSearch)
-    |   - Agent 4: Risk & History (local reads)
-    |   - Agent 5: Standards Preview (local reads)
-    |   - Agent 6: Consumer Impact Analyzer (refactor/migration only)
-    |   - All agents run in parallel as Task agents
-    |
-    +-- [AUTO] Clarifying Questions
-    |   - Surface assumptions before spec generation
-    |   - Skipped for small tasks (≤2 files)
-    |
-    +-- [AUTO] Specification Generation (for medium/large tasks)
-    |   - Generate acceptance criteria
-    |   - Identify files to change
-    |   - Set up verification commands
-    |
-    +-- [AUTO] Approval Gate (L1/L0 tasks only)
-    |   - Display spec and WAIT for user approval
-    |   - Do NOT proceed until approved
-    |
-    |   FOR EACH FILE EDIT:
-    |   +-- [AUTO] Scope Validation
-    |   |   - Verify file is in task's filesToChange
-    |   |   - Warn or block if out of scope
-    |   |
-    |   +-- [AUTO] Component Reuse Check
-    |   |   - Search app-map for similar components
-    |   |   - Suggest existing component if semantic similarity exceeds threshold (configurable)
-    |   |
-    |   +-- [AUTO] Post-Edit Validation
-    |       - Run lint check
-    |       - Run typecheck
-    |       - Report errors immediately
-    |
-    +-- [AUTO] Criteria Completion Check
-    |   - Re-read ALL acceptance criteria
-    |   - Verify EACH criterion is actually implemented
-    |   - Loop back if any criterion incomplete
-    |
-    +-- [AUTO] Integration Wiring Check
-    |   - Verify new components are imported/used
-    |   - Flag orphan files (created but not wired)
-    |
-    +-- [AUTO] Standards Compliance Check
-    |   - Naming conventions, security patterns
-    |   - Scoped by task type (component, utility, api, etc.)
-    |   - Blocks completion if must-fix violations found
-    |
-    +-- [AUTO] Consumer Migration Check (refactor/migration only)
-    |   - Verify ALL breaking consumers were updated
-    |   - Blocks completion if any consumer left broken
-    |
-    +-- [AUTO] Post-Task Updates
-    |   - Update all active registry maps (app-map, function-map, api-map, schema-map, service-map)
-    |   - Run `flow registry-manager scan` to auto-update all registries
-    |   - Log to request-log.md with tags
-    |   - Commit changes
-    |
-    +-- Task Complete
-```
+**Key auto-features:**
+- **Component/Function/API Reuse Check** — searches registry maps before creating new entities
+- **Scope Validation** — verifies file edits are within task scope
+- **Post-Edit Validation** — runs lint/typecheck after every edit
+- **Criteria Completion Check** — re-reads spec, verifies each criterion actually works
+- **Integration Wiring Check** — verifies new files are imported/used (no orphans)
+- **Consumer Impact Analysis** — maps all consumers before refactors (MANDATORY for L2+ refactors)
+- **Standards Compliance Check** — enforces naming, security, and project patterns
 
-### What Each Auto-Feature Does
+Full pipeline details are in `.claude/commands/wogi-start.md`.
 
-#### Component Reuse Check
-**When:** Before creating any new component
-**What:** Searches app-map.md and codebase for existing similar components
-**Decision tree:**
-1. EXACT MATCH exists? → Use it
-2. SIMILAR exists (semantic match above threshold)? → Add variant to existing
-3. PARTIAL match? → Extend existing
-4. NOTHING similar? → Create new (last resort)
-
-#### Function/API/Registry Reuse Check
-**When:** Before creating any new utility function, API endpoint, or entity
-**What:** Searches all active registry maps (function-map, api-map, schema-map, service-map) for existing implementations
-**Benefit:** Prevents duplicate utilities, endpoints, and entities scattered across codebase
-
-#### Scope Validation
-**When:** Before every file edit
-**What:** Verifies the file is listed in the task's `filesToChange` section
-**Behavior:** Warns or blocks edits to files outside task scope
-
-#### Post-Edit Validation
-**When:** After every file edit
-**What:** Runs lint and typecheck on the modified file
-**Rule:** Do NOT edit another file until current file passes validation
-
-#### Criteria Completion Check
-**When:** After implementing all changes
-**What:** Re-reads the spec and verifies each acceptance criterion is actually working
-**Key question:** "If I run the code now, does it do what the criterion describes?"
-
-#### Integration Wiring Check
-**When:** Before completing task
-**What:** Verifies new files are imported and used somewhere
-**Prevents:** "Orphan components" - files that exist but are never accessible
-
-#### Consumer Impact Analysis (Refactor/Migration Only)
-**When:** During Explore Phase for refactor, migration, or architectural tasks
-**What:** Maps ALL consumers of the code being modified — imports, config references, docs, hooks, tests
-**Prevents:** Refactoring core code without updating consumers, leaving the system broken
-**Enforcement:**
-- Explore Phase: Agent 6 maps all consumers and classifies impact (BREAKING/NEEDS-UPDATE/SAFE)
-- Spec Phase: Consumer impact plan required if BREAKING consumers found; phased migration mandated for 5+ breaking consumers
-- Standards Check: Verifies every BREAKING consumer was actually updated before task completion
-- **Task is BLOCKED if breaking consumers exist and weren't all migrated**
-
-#### Request Logging
-**When:** After any changes to files
-**What:** Appends entry to request-log.md with:
-- Type (new/fix/change/refactor)
-- Tags (#screen:X #component:Y)
-- Files changed
-- Result summary
-
-#### Registry Map Updates
-**When:** After creating new components, functions, APIs, or other trackable entities
-**What:** Updates all active registry maps. Run `flow registry-manager scan` to auto-update.
-- `app-map.md` — Components (name, path, props)
-- `function-map.md` — Utility functions
-- `api-map.md` — API endpoints
-- `schema-map.md` — Database models and enums (if ORM detected)
-- `service-map.md` — Service/controller architecture (if backend framework detected)
-
-### Configuration
-
-These features are controlled by `.workflow/config.json`:
-
+**Configuration** in `.workflow/config.json`:
 ```json
 {
   "hooks": {
@@ -161,5 +28,3 @@ These features are controlled by `.workflow/config.json`:
   }
 }
 ```
-
----

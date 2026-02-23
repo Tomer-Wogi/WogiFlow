@@ -288,6 +288,23 @@ This command implements a **structured execution loop**:
 - **File-based validation**: Every phase produces artifacts
 - **Self-reflection**: Checkpoints to pause and verify approach
 
+### Phase Transitions (when `config.hooks.rules.phaseGate.enabled`)
+
+At each execution milestone, update the workflow phase. These are no-ops when phase gating is disabled.
+
+| When | Command |
+|------|---------|
+| After triage routes to task | `node scripts/flow-phase.js transition idle routing <taskId>` |
+| Before explore phase | `node scripts/flow-phase.js transition routing exploring <taskId>` |
+| After spec generated | `node scripts/flow-phase.js transition exploring spec_review <taskId>` |
+| After user approves spec | `node scripts/flow-phase.js transition spec_review coding <taskId>` |
+| For simple tasks (skip explore/spec) | `node scripts/flow-phase.js transition routing coding <taskId>` |
+| Before verification | `node scripts/flow-phase.js transition coding validating <taskId>` |
+| After verification passes | `node scripts/flow-phase.js transition validating completing <taskId>` |
+| Task completion | Automatic (task-completed hook resets to idle) |
+
+If a transition fails (wrong current phase), it's non-blocking — log and continue.
+
 ### Execution Flow
 
 ```
