@@ -1,0 +1,75 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-19T21:53:49.030Z",
+  "commands": {
+    "npm run build": {
+      "totalRuns": 2,
+      "successes": 0,
+      "failures": 2,
+      "avgDuration": 93,
+      "lastRun": "2026-02-19T21:53:48.756Z",
+      "lastSuccess": null,
+      "lastFailure": "2026-02-19T21:53:48.756Z",
+      "errorTypes": {
+        "UNKNOWN": 2
+      }
+    },
+    "npm test": {
+      "totalRuns": 2,
+      "successes": 2,
+      "failures": 0,
+      "avgDuration": 181,
+      "lastRun": "2026-02-19T21:53:48.846Z",
+      "lastSuccess": "2026-02-19T21:53:48.846Z",
+      "lastFailure": null,
+      "errorTypes": {}
+    },
+    "npm audit --json": {
+      "totalRuns": 2,
+      "successes": 0,
+      "failures": 2,
+      "avgDuration": 175,
+      "lastRun": "2026-02-19T21:53:49.030Z",
+      "lastSuccess": null,
+      "lastFailure": "2026-02-19T21:53:49.030Z",
+      "errorTypes": {
+        "UNKNOWN": 2
+      }
+    }
+  },
+  "recentFailures": [
+    {
+      "command": "npm audit --json",
+      "timestamp": "2026-02-19T21:53:49.030Z",
+      "exitCode": 1,
+      "errorType": "UNKNOWN",
+      "errorSummary": null
+    },
+    {
+      "command": "npm run build",
+      "timestamp": "2026-02-19T21:53:48.756Z",
+      "exitCode": 1,
+      "errorType": "UNKNOWN",
+      "errorSummary": null
+    },
+    {
+      "command": "npm audit --json",
+      "timestamp": "2026-02-19T21:50:56.376Z",
+      "exitCode": 1,
+      "errorType": "UNKNOWN",
+      "errorSummary": null
+    },
+    {
+      "command": "npm run build",
+      "timestamp": "2026-02-19T21:50:56.110Z",
+      "exitCode": 1,
+      "errorType": "UNKNOWN",
+      "errorSummary": null
+    }
+  ],
+  "summary": {
+    "totalRuns": 6,
+    "totalSuccesses": 2,
+    "totalFailures": 4
+  }
+}
