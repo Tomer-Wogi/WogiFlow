@@ -35,7 +35,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|TodoWrite|Skill|Bash",
+        "matcher": "Edit|Write|TodoWrite|Skill|Bash|EnterPlanMode",
         "hooks": [
           {
             "type": "command",
