@@ -292,6 +292,20 @@ Last synced: ${new Date().toISOString()}
   // Do not override - see security-patterns.md rule #2
 
   /**
+   * Get installed WogiFlow version from settings.json (set by postinstall)
+   * @returns {string} Version string or 'unknown'
+   */
+  _getInstalledVersion() {
+    try {
+      const settingsPath = path.join(this.projectDir, this.cliFolder, 'settings.json');
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      return settings._wogiFlowVersion || 'unknown';
+    } catch (err) {
+      return 'unknown';
+    }
+  }
+
+  /**
    * Generate settings.local.json with permissions
    * NOTE: Requires Claude Code 2.1.7+ which fixed wildcard matching of shell operators.
    * See security-patterns.md rule #6 for details.
@@ -425,7 +439,7 @@ Last synced: ${new Date().toISOString()}
       },
       respectGitignore: true,
       _wogiFlowManaged: true,
-      _wogiFlowVersion: '2.0.0',
+      _wogiFlowVersion: this._getInstalledVersion(),
       _generatedAt: new Date().toISOString(),
     };
 
@@ -455,7 +469,7 @@ Last synced: ${new Date().toISOString()}
     if (fs.existsSync(settingsPath)) {
       try {
         existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      } catch (e) {
+      } catch (err) {
         this.log(`Warning: Could not parse existing settings.local.json`);
       }
     }

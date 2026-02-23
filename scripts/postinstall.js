@@ -15,9 +15,14 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
 // Get project root (where npm install was run, not node_modules/wogiflow)
-const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();
+// Validate INIT_CWD: must be an absolute path that exists (prevents injected values)
+const RAW_INIT_CWD = process.env.INIT_CWD;
+const PROJECT_ROOT = (RAW_INIT_CWD && path.isAbsolute(RAW_INIT_CWD) && fs.existsSync(RAW_INIT_CWD))
+  ? RAW_INIT_CWD
+  : process.cwd();
 
 // Package root (where wogiflow is installed in node_modules)
 const PACKAGE_ROOT = path.resolve(__dirname, '..');
@@ -33,8 +38,16 @@ const FILE_MODE = 0o644; // rw-r--r-- for files
 // Dangerous keys for prototype pollution protection
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
+// Timeout for CLAUDE.md regeneration child process (ms)
+// Override with WOGIFLOW_REGEN_TIMEOUT env var for slow systems
+const REGEN_TIMEOUT = parseInt(process.env.WOGIFLOW_REGEN_TIMEOUT, 10) || 15000;
+
 /**
- * Safe JSON parse with prototype pollution protection.
+ * Safe JSON parse with shallow prototype pollution protection.
+ * Checks top-level keys only — sufficient for config/settings objects
+ * which are flat structures (hooks, version, flags). Nested pollution
+ * would require a recursive check, but our configs don't nest untrusted data.
+ *
  * Inline copy — postinstall.js can't reliably require flow-utils.js
  * because it runs from npm context before scripts/ is fully copied.
  * @param {string} jsonString - JSON string to parse
@@ -47,7 +60,7 @@ function safeJsonParseString(jsonString, defaultValue = null) {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return defaultValue;
     }
-    // Check top-level keys for prototype pollution
+    // Check top-level keys only (shallow) — see JSDoc for rationale
     for (const key of Object.keys(parsed)) {
       if (DANGEROUS_KEYS.has(key)) {
         return defaultValue;
@@ -153,6 +166,11 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
       continue;
     }
 
+    // Validate entry name to prevent path traversal
+    if (entry.name.includes('/') || entry.name.includes('\\') || entry.name === '..' || entry.name === '.') {
+      continue;
+    }
+
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
@@ -165,12 +183,14 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
       }
       try {
         fs.copyFileSync(srcPath, destPath);
-        try {
-          fs.chmodSync(destPath, FILE_MODE);
-        } catch (err) {
-          // chmod failure is non-critical on some filesystems (e.g., Windows)
-          if (process.env.DEBUG) {
-            console.error(`[postinstall] chmod failed: ${err.message}`);
+        // Skip chmod on Windows where it's unsupported and adds per-file overhead
+        if (process.platform !== 'win32') {
+          try {
+            fs.chmodSync(destPath, FILE_MODE);
+          } catch (err) {
+            if (process.env.DEBUG) {
+              console.error(`[postinstall] chmod failed: ${err.message}`);
+            }
           }
         }
       } catch (err) {
@@ -298,9 +318,17 @@ function copyScriptsFromPackage() {
 }
 
 /**
- * Copy WogiFlow-managed .workflow/ subdirectories from package to project
- * These are package-owned (bridges, templates, agents) and always overwritten on update.
- * Without this, `npx flow bridge sync` fails because .workflow/bridges/ doesn't exist.
+ * Copy WogiFlow-managed .workflow/ subdirectories from package to project.
+ * These directories are package-owned and always overwritten on npm update.
+ *
+ * Managed directories:
+ * - bridges/   — CLI bridge modules (base-bridge, claude-bridge)
+ * - templates/ — CLAUDE.md Handlebars templates and partials
+ * - agents/    — Review agent checklists (security, performance)
+ * - lib/       — Shared libraries (config-substitution) used by bridges
+ *
+ * Without this step, `npx flow bridge sync` would fail because
+ * .workflow/bridges/ wouldn't exist in the project directory.
  */
 function copyWorkflowManagedDirs() {
   const managedDirs = ['bridges', 'templates', 'agents', 'lib'];
@@ -316,17 +344,51 @@ function copyWorkflowManagedDirs() {
 }
 
 /**
- * Regenerate CLAUDE.md from templates (for npm update scenario)
+ * Get the WogiFlow package version from package.json
+ * @returns {string} Version string or 'unknown'
+ */
+function getPackageVersion() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8'));
+    return pkg.version || 'unknown';
+  } catch (err) {
+    return 'unknown';
+  }
+}
+
+/**
+ * Regenerate CLAUDE.md from templates (for npm update scenario).
  * Only runs when config.json exists (project already initialized).
  *
  * Uses execFileSync to run the bridge in an isolated child process.
  * This avoids fragile require() chains from the postinstall npm context
  * where module resolution can fail silently (base-bridge → flow-utils → lib/).
+ *
+ * Design: The child process runs with cwd=PROJECT_ROOT (not PACKAGE_ROOT)
+ * because the bridge uses relative requires that resolve from the project root:
+ *   .workflow/bridges/ → base-bridge → ../../scripts/flow-utils → ../.workflow/lib/
+ * This is intentional — the bridge must run in the project's directory tree.
  */
 function regenerateClaudeMd() {
-  // Only regenerate if project is already initialized (has config.json)
-  if (!fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) {
+  // Only regenerate if project is already initialized
+  if (!isAlreadyInitialized()) {
     return;
+  }
+
+  // Version-based skip gate: avoid redundant child process spawn
+  // when the same package version was already used to regenerate
+  const versionFile = path.join(STATE_DIR, '.claude-md-regen-version');
+  const pkgVersion = getPackageVersion();
+  try {
+    const lastVersion = fs.readFileSync(versionFile, 'utf-8').trim();
+    if (lastVersion === pkgVersion && !process.env.WOGIFLOW_FORCE_REGEN) {
+      if (process.env.DEBUG) {
+        console.error(`[postinstall] CLAUDE.md already regenerated for v${pkgVersion}, skipping`);
+      }
+      return;
+    }
+  } catch (err) {
+    // No version file yet — proceed with regen
   }
 
   // Check that bridges exist (just copied by copyWorkflowManagedDirs)
@@ -339,15 +401,12 @@ function regenerateClaudeMd() {
   }
 
   try {
-    const { execFileSync } = require('child_process');
-
-    // Run bridge generation in an isolated child process.
-    // cwd=PROJECT_ROOT ensures all relative paths resolve correctly:
-    //   .workflow/bridges/ → base-bridge → ../../scripts/flow-utils → ../.workflow/lib/
+    // Pass PROJECT_ROOT via env var instead of string interpolation in -e script.
+    // This avoids shell/quoting issues with paths containing special characters.
     const script = [
       'try {',
       '  const { getBridge } = require("./.workflow/bridges");',
-      `  const bridge = getBridge({ projectDir: ${JSON.stringify(PROJECT_ROOT)} });`,
+      '  const bridge = getBridge({ projectDir: process.env.WOGIFLOW_PROJECT_ROOT });',
       '  bridge.generateRulesFile({ force: true });',
       '  process.exit(0);',
       '} catch (err) {',
@@ -356,20 +415,37 @@ function regenerateClaudeMd() {
       '}'
     ].join('\n');
 
-    execFileSync(process.execPath, ['-e', script], {
+    const result = execFileSync(process.execPath, ['-e', script], {
       cwd: PROJECT_ROOT,
-      timeout: 15000,
+      timeout: REGEN_TIMEOUT,
+      env: { ...process.env, WOGIFLOW_PROJECT_ROOT: PROJECT_ROOT },
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    process.stderr.write('\x1b[36mWogiFlow:\x1b[0m Updated CLAUDE.md from latest templates.\n');
+    // Log stdout in DEBUG mode (may contain diagnostic info from bridge)
+    if (process.env.DEBUG && result && result.length > 0) {
+      console.error(`[postinstall] CLAUDE.md regen stdout: ${result.toString().trim()}`);
+    }
+
+    // Record successful regen version for skip gate
+    try {
+      fs.writeFileSync(versionFile, pkgVersion, { mode: FILE_MODE });
+    } catch (err) {
+      // Non-critical — next install will just regen again
+    }
+
+    // Respect CI/silent mode for user-facing messages
+    if (!shouldBeSilent()) {
+      process.stderr.write('\x1b[36mWogiFlow:\x1b[0m Updated CLAUDE.md from latest templates.\n');
+    }
   } catch (err) {
     // Non-fatal — CLAUDE.md regeneration failure shouldn't break npm install
-    // But DO tell the user so they can regenerate manually
-    process.stderr.write('\x1b[33mWogiFlow:\x1b[0m Could not auto-update CLAUDE.md. Run: npx flow bridge sync\n');
+    if (!shouldBeSilent()) {
+      process.stderr.write('\x1b[33mWogiFlow:\x1b[0m Could not auto-update CLAUDE.md. Run: npx flow bridge sync\n');
+    }
     if (process.env.DEBUG) {
       const stderr = err.stderr ? err.stderr.toString().trim() : err.message;
-      console.error(`[postinstall] CLAUDE.md regen failed: ${stderr}`);
+      console.error('[postinstall] CLAUDE.md regen failed:', stderr);
     }
   }
 }
@@ -478,7 +554,9 @@ try {
   main();
 } catch (err) {
   // Don't fail npm install on postinstall errors
+  // Sanitize PACKAGE_ROOT from error messages to avoid leaking internal node_modules paths
+  const safeMessage = err.message.replace(PACKAGE_ROOT, '[wogiflow]');
   const errorInfo = process.env.DEBUG ? ` (${err.code || 'unknown'})` : '';
-  process.stderr.write(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${err.message}${errorInfo}\n`);
+  process.stderr.write(`\x1b[33mWogiFlow postinstall warning:\x1b[0m ${safeMessage}${errorInfo}\n`);
   createMinimalStructure();
 }

@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-23T11:30:00.000Z",
+  "lastUpdated": "2026-02-23T13:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-9d3e1a",
+      "title": "Fix 17 review findings — security hardening, performance, architecture, standards (v1.5.8 review)",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-23T13:00:00.000Z",
+      "completedAt": "2026-02-23T13:30:00.000Z"
+    },
     {
       "id": "wf-cr-8a1b2c",
       "title": "Fix broken regenerateClaudeMd — use execFileSync, add lib/ to managed dirs, visible output",

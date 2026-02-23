@@ -28,6 +28,20 @@ const {
 const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/adapters');
 
 const PROJECT_ROOT = getProjectRoot();
+
+/**
+ * Get installed WogiFlow version from settings.json (set by postinstall)
+ * @returns {string} Version string or 'unknown'
+ */
+function getInstalledVersion() {
+  try {
+    const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    return settings._wogiFlowVersion || 'unknown';
+  } catch (err) {
+    return 'unknown';
+  }
+}
 const HOOK_MARKER = '// WOGI_FLOW_MANAGED_HOOKS';
 
 // ============================================================
@@ -136,7 +150,7 @@ function installClaudeCodeHooks(adapter, hooksConfig) {
     ...existingConfig,
     hooks: hooksConfig.hooks,
     _wogiFlowManaged: true,
-    _wogiFlowVersion: '1.0.0'
+    _wogiFlowVersion: getInstalledVersion()
   };
 
   // Write config
