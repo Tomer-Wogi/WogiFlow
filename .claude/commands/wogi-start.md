@@ -77,8 +77,39 @@ These commands are used automatically during task execution. You don't need to r
 
 Example: If the AI asked "Should I create this story?" and user says "yes" → create the story. If the AI presented 3 options and user says "option 2" → execute option 2.
 
+**Conversation (open-ended discussion, no side effects):**
+
+When the user wants to **think, discuss, brainstorm, or understand** — without committing to implementation — classify as Conversation. This is a multi-turn, no-side-effects mode.
+
+**Detection signals:**
+- "What do you think about..."
+- "Let's discuss / brainstorm / talk about..."
+- "Describe how X works" / "Explain X to me" / "Walk me through..."
+- "I'm thinking about..." / "I have an idea..."
+- "Help me think through..."
+- "How would we approach..."
+- "What if we..." / "Tell me about..."
+- Questions about WogiFlow's own behavior ("how does wogi-start work?")
+
+**Key distinction — hedging vs imperative:**
+| Signal | Category | Why |
+|--------|----------|-----|
+| "add X" (direct imperative) | Implementation | Intent to act now |
+| "I'm thinking about adding X" | Conversation | Hedging — exploring, not committing |
+| "does X support Y?" (needs verified answer) | Research | Factual verification needed |
+| "what do you think about X?" | Conversation | Seeking opinion/discussion |
+| "explain how X works" | Conversation | Seeking understanding |
+| "describe the review pipeline for me" | Conversation | Wants explanation, not documentation |
+| "create documentation for X" | Implementation | Direct imperative to create a file |
+
+**Behavior rules when in Conversation mode:**
+1. **Allowed tools**: Read, Glob, Grep, WebSearch, WebFetch (read-only — to look up code, search for answers)
+2. **Blocked actions**: No Edit, Write, NotebookEdit. No creating tasks, stories, or bugs. No modifying ready.json, request-log.md, or any state files.
+3. **No guilt messaging**: Do NOT show workflow violation warnings. Conversation mode is a legitimate category, not a bypass.
+4. **Natural exit**: If the user says "ok let's build it", "create a story for this", "make a task", or any direct implementation imperative — transition out of Conversation to the appropriate action (typically `/wogi-story`). Use the conversation context to pre-populate the story description.
+
 **Route to a command (invoke the Skill tool):**
-- Everything. Every request gets routed to the best command from the catalog above based on user intent. There are zero exemptions. `/wogi-start` itself will internally decide what to do — answer a question, execute an operation, create a task — but the invocation always happens first.
+- Everything that doesn't match Conversational follow-up or Conversation mode gets routed to the best command from the catalog above based on user intent. There are zero exemptions. `/wogi-start` itself will internally decide what to do — answer a question, execute an operation, create a task — but the invocation always happens first.
 
 ### Examples
 
@@ -158,6 +189,30 @@ User: "let's do a retro on this session"
 User: "we should add validation to the form"
 → Intent: AMBIGUOUS — could be a rule OR implementation
 → Action: Ask user: "Is this (1) A new rule/convention to document, or (2) An implementation request?"
+```
+
+```
+User: "what do you think about adding a caching layer?"
+→ Intent: CONVERSATION — exploring an idea, not requesting implementation
+→ Action: Respond conversationally. Discuss trade-offs, options, considerations. Do NOT create a task or story. If user later says "let's build it" → transition to /wogi-story.
+```
+
+```
+User: "explain how the review pipeline works"
+→ Intent: CONVERSATION — wants to understand, not create documentation
+→ Action: Read the relevant files (wogi-review.md, etc.) and explain conversationally. Do NOT create documentation files.
+```
+
+```
+User: "I'm thinking about reorganizing the skills system"
+→ Intent: CONVERSATION — "thinking about" signals exploration, not commitment
+→ Action: Discuss the approach, explore options. Do NOT create a story. Wait for explicit "let's do it" before transitioning.
+```
+
+```
+User: "help me think through how the hook architecture should evolve"
+→ Intent: CONVERSATION — brainstorming session
+→ Action: Read relevant code, discuss architecture options. No files written, no tasks created.
 ```
 
 ```

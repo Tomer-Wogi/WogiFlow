@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-160 | 2026-02-23 15:30
+**Type**: new
+**Tags**: #feature:workflow #command:wogi-start #triage:conversation
+**Task**: wf-12a93915
+**Request**: "Add conversation mode to wogi-start triage — open-ended discussion with no side effects"
+**Result**: Added Conversation classification to /wogi-start triage. Detection signals for brainstorming, explaining, exploring ideas. Behavior rules: read-only tools allowed, no file writes, no task creation, no guilt messaging. Natural exit when user says "let's build it". Updated template, CLAUDE.md, and command flowcharts.
+**Files**: .claude/commands/wogi-start.md, .workflow/templates/claude-md.hbs, .claude/docs/knowledge-base/02-task-execution/command-flowcharts.md, CLAUDE.md
+
 ### R-159 | 2026-02-23 10:00
 **Type**: fix
 **Tags**: #feature:routing #hook:pre-tool-use #hook:routing-gate

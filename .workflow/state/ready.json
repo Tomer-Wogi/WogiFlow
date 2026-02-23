@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-23T13:30:00.000Z",
+  "lastUpdated": "2026-02-23T15:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-12a93915",
+      "title": "Add conversation mode to wogi-start triage — open-ended discussion with no side effects",
+      "type": "story",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-23T15:00:00.000Z",
+      "startedAt": "2026-02-23T15:10:00.000Z",
+      "completedAt": "2026-02-23T15:30:00.000Z",
+      "specPath": ".workflow/changes/wf-12a93915.md"
+    },
     {
       "id": "wf-cr-9d3e1a",
       "title": "Fix 17 review findings — security hardening, performance, architecture, standards (v1.5.8 review)",

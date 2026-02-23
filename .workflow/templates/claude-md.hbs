@@ -27,6 +27,7 @@ User: "review this repo"     → Invoke /wogi-start (no NLD match → universal 
 This applies to ALL message types:
 - Implementation requests ("add X", "fix Y", "create Z")
 - Questions ("what does X do?", "how does Y work?")
+- Conversations ("what do you think about...", "let's discuss...", "explain how...")
 - Exploration ("show me the code for...", "review this repo")
 - Research ("does X support Y?", "is it possible to...")
 - Operational requests ("push to github", "run tests")
@@ -232,6 +233,7 @@ User: "push to github"           → /wogi-start "push to github" (no NLD match)
 
 The following describes what happens INSIDE `/wogi-start` after you invoke it. These are NOT categories you evaluate to decide whether to skip routing. You route first, and the command makes these decisions:
 
+- **Conversation** (brainstorming, explaining, discussing) → `/wogi-start` responds conversationally, no side effects
 - **Exploration** (questions, reading) → `/wogi-start` tells you to proceed
 - **Operational** (git, npm, deploy) → `/wogi-start` tells you to execute
 - **Quick fix** (typo, text) → `/wogi-start` tells you to execute + log
