@@ -1,30 +1,37 @@
 ---
-description: Enable hybrid mode - Claude plans, local LLM executes
+description: Enable hybrid mode - Claude plans, cheaper/faster models execute
 ---
 
-# Enable Hybrid Mode
+# Enable Multi-Model Hybrid Execution
 
-Hybrid mode allows me to create execution plans that are executed by a local LLM (Ollama or LM Studio), saving tokens while maintaining quality.
+Hybrid mode is a **multi-model execution system** where Opus (the planning model) delegates tasks to cheaper/faster models for execution. This saves tokens while maintaining quality.
 
-## Step 1: Detect Local LLM Providers
+**Hybrid works with:**
+- **Local LLMs** (Ollama, LM Studio) — free tokens, runs on your machine
+- **Cloud models** (Haiku, Sonnet, GPT-4o-mini, Gemini Flash) — cheap tokens, fast execution
+- **Mixed setups** — different models for different task types
 
-Let me check what's available on your system:
+## Step 1: Detect Available Providers
+
+Check what's available on your system:
 
 ```bash
 node scripts/flow-hybrid-detect.js providers
 ```
 
+This detects:
+- **Local**: Ollama (port 11434), LM Studio (port 1234)
+- **Cloud**: Checks `config.json → hybrid.cloudProviders` for configured API keys
+
 ## Step 2: Choose Setup Method
 
 ### Option A: Use Unified Model Setup (Recommended)
 
-If you want to configure multiple providers at once (for both hybrid and peer review):
+Configure multiple providers at once (for both hybrid and peer review):
 
 ```
 /wogi-models-setup
 ```
-
-This configures all your models in one place.
 
 ### Option B: Hybrid-Specific Setup
 
@@ -48,7 +55,6 @@ if (sessionModel && !args.includes('--select-model')) {
   // Use session model - show brief note
   console.log(`Using executor: ${sessionModel}`);
   console.log(`(Run with --select-model to change)`);
-  // Proceed with hybrid mode using sessionModel
 } else {
   // Show selection if multiple models available
   const models = modelConfig.getEnabledModels();
@@ -61,102 +67,83 @@ Selection persists until `/wogi-session-end` is called.
 
 ## How Hybrid Mode Works
 
-1. **You give me a task** - "Add user authentication"
-2. **I create a plan** - Detailed steps with templates
-3. **You review the plan** - Approve, modify, or cancel
-4. **Local LLM executes** - Each step runs on your machine
-5. **I handle failures** - Escalate to me if local LLM fails
+1. **You give me a task** — "Add user authentication"
+2. **I analyze complexity** — Determine which executor model to use (smart routing)
+3. **I create a plan** — Detailed steps with templates and context
+4. **You review the plan** — Approve, modify, or cancel via `/wogi-hybrid-edit`
+5. **Executor model runs each step** — Local LLM or cloud model
+6. **I validate results** — Run lint, typecheck, and standards checks after each step
+7. **I handle failures** — Escalate to Opus if executor model fails
+
+## Smart Model Routing
+
+Opus selects the executor model based on task complexity. The routing table is configurable in `config.json → hybrid.routing`:
+
+| Task Type | Model Tier | Examples |
+|-----------|-----------|---------|
+| **Simple edits** | Cheapest (Haiku, GPT-4o-mini) | Typos, text changes, config edits |
+| **Code generation** | Mid-tier (Sonnet, GPT-4o) | New functions, components, tests |
+| **Documentation** | Cheapest | README, comments, docs |
+| **Complex refactoring** | Planner (keep on Opus) | Multi-file restructuring — don't delegate |
+
+**Routing decision logic:**
+1. Analyze task description and acceptance criteria
+2. Match against routing rules in `config.json → hybrid.routing.rules`
+3. Select first available model from the matched tier
+4. If no models available in tier → escalate to next tier up
+5. If task is too complex for any executor → keep on Opus (don't delegate)
+
+## Workflow Integration
+
+Hybrid mode follows the same workflow pipeline as direct execution:
+
+- **Phase gating**: Hybrid execution only runs in the `coding` phase
+- **Explore phase**: Research findings from the explore phase are included in the executor's context
+- **Standards compliance**: After each hybrid-executed edit, run standards check
+- **Post-edit validation**: Lint and typecheck after every file edit
+- **Criteria verification**: All acceptance criteria are verified after hybrid execution completes
+
+**Failure escalation:**
+1. Executor model fails a step → Retry with more context (up to 3 retries)
+2. Still fails → Escalate to Opus to fix the issue
+3. Opus fixes and resumes hybrid execution for remaining steps
 
 ## Token Savings
 
-Typical savings: **20-60%** (depending on task complexity)
-- Planning: ~1,500-5,000 tokens (Claude)
-- Execution: Local LLM (free) or Cloud model (paid but cheaper)
-- Detailed instructions needed for quality results
-- Only escalations use additional Claude tokens
+| Task Size | Normal (Opus) | Hybrid (mixed) | Savings |
+|-----------|--------------|----------------|---------|
+| Small (typo, config) | ~8K | ~2K (Haiku) | 75% |
+| Medium (feature) | ~20K | ~8K (Sonnet) | 60% |
+| Large (multi-file) | ~45K | ~15K (mixed) | 65% |
+
+*Actual savings depend on model selection and task complexity.*
 
 ## Commands After Enabling
 
-- `/wogi-hybrid-off` - Disable hybrid mode
-- `/wogi-hybrid-status` - Check current configuration
-- `/wogi-hybrid-edit` - Modify plan before execution
-- `/wogi-hybrid --select-model` - Change executor model for this session
+- `/wogi-hybrid-off` — Disable hybrid mode
+- `/wogi-hybrid-status` — Check current configuration and routing table
+- `/wogi-hybrid-edit` — Modify the execution plan before running
+- `/wogi-hybrid --select-model` — Change executor model for this session
 
-## Supported Models
+## Supported Executor Models
 
-Recommended models for code generation:
-- **NVIDIA Nemotron 3 Nano** - Best instruction following
-- **Qwen3-Coder 30B** - Best code quality
-- **DeepSeek Coder** - Good balance
+### Cloud Models (Recommended for Most Users)
+- **Claude 3.5 Haiku** — Fast, cheap, great for simple tasks
+- **Claude 3.5 Sonnet** — Balanced quality/cost for code generation
+- **GPT-4o-mini** — OpenAI's cheapest code model
+- **GPT-4o** — OpenAI's mid-tier model
+- **Gemini 2.0 Flash** — Google's fast model
+- **Gemini 1.5 Pro** — Google's mid-tier model
 
-## Hybrid Mode Intelligence (v2.1)
+### Local Models (Free Tokens)
+- **Qwen3-Coder 30B** — Best code quality
+- **NVIDIA Nemotron 3 Nano** — Best instruction following
+- **DeepSeek Coder** — Good balance
 
-Hybrid mode now includes intelligent features that learn from each execution:
+## Security
 
-### Model Learning Profiles
+- **Local LLMs**: Code never leaves your machine
+- **Cloud models**: Follow existing API key security (keys stored in env vars, never committed)
+- **No code sharing**: Hybrid mode sends task plans and context, not your full codebase
 
-Each executor model gets its own learning profile at `.workflow/state/model-profiles/`.
-The system learns:
-- What context each model needs for success
-- Common failure patterns to avoid
-- Optimal example count and instruction richness
-
-```bash
-# View model profiles
-node scripts/flow-model-profile.js list
-
-# Get profile for specific model
-node scripts/flow-model-profile.js get qwen3-coder
-
-# Get instruction richness recommendation
-node scripts/flow-model-profile.js richness qwen3-coder create --json
-```
-
-### Task Type Classification
-
-Tasks are automatically classified as:
-- **create** - New files/components
-- **modify** - Edit existing files
-- **refactor** - Structural changes
-- **fix** - Bug fixes
-- **integrate** - Connect systems
-
-Each type loads specific context and follows learned patterns.
-
-```bash
-# Classify a task
-node scripts/flow-task-classifier.js classify "Add user authentication"
-
-# Get context for task type
-node scripts/flow-task-classifier.js context create
-```
-
-### Failure Learning
-
-When execution fails, the system:
-1. Asks the executor what information was missing
-2. Updates the model profile with learnings
-3. Retries with enhanced context
-
-```bash
-# View learning statistics
-node scripts/flow-failure-learning.js stats
-
-# View recent learnings
-node scripts/flow-failure-learning.js recent qwen3-coder
-```
-
-### Cheaper Context Generation
-
-Context is generated using the cheapest appropriate model:
-- **Scripts**: File listing, export extraction (free)
-- **Haiku**: Import mapping, PIN generation (cheap)
-- **Sonnet**: Pattern identification (moderate)
-- **Opus**: Architecture analysis (only when needed)
-
-```bash
-# Generate project context
-node scripts/flow-context-generator.js generate --verbose
-```
-
-Let me detect your local LLM setup now...
+Let me detect your setup and configure hybrid mode now...

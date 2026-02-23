@@ -1015,6 +1015,20 @@
         "envKey": "GOOGLE_API_KEY"
       }
     },
+    "routing": {
+      "enabled": true,
+      "rules": [
+        { "taskType": "simple-edit", "model": "cheapest", "description": "Typos, text changes, config edits" },
+        { "taskType": "code-generation", "model": "mid-tier", "description": "New functions, components, tests" },
+        { "taskType": "refactoring", "model": "planner", "description": "Keep on Opus — too complex to delegate" },
+        { "taskType": "documentation", "model": "cheapest", "description": "README, comments, docs" }
+      ],
+      "tiers": {
+        "cheapest": ["claude-3-5-haiku-latest", "gpt-4o-mini", "gemini-2.0-flash-exp"],
+        "mid-tier": ["claude-3-5-sonnet-latest", "gpt-4o", "gemini-1.5-pro"],
+        "planner": "current"
+      }
+    },
     "templates": {
       "directory": ".workflow/templates/hybrid"
     },

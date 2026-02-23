@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-23T19:14:52.383Z",
+  "lastUpdated": "2026-02-23T22:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -15,6 +15,18 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-dc55c22b",
+      "title": "Overhaul wogi-hybrid — Multi-Model Routing & Workflow Integration",
+      "type": "story",
+      "feature": "hybrid",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-23T20:00:00.000Z",
+      "startedAt": "2026-02-23T20:00:00.000Z",
+      "specPath": ".workflow/changes/wf-dc55c22b.md",
+      "completedAt": "2026-02-23T22:00:00.000Z"
+    },
     {
       "id": "wf-b9f5b675",
       "title": "State Machine Workflow Enforcement — Replace Prompt Bloat with Programmatic Phase Gating",

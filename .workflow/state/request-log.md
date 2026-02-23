@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-162 | 2026-02-23 22:00
+**Type**: change
+**Tags**: #feature:hybrid #command:hybrid #command:hybrid-setup #command:hybrid-status #command:hybrid-edit #command:hybrid-off
+**Task**: wf-dc55c22b
+**Request**: "Overhaul wogi-hybrid — multi-model routing, cloud model support, workflow integration"
+**Result**: Fixed crash bug in flow-hybrid-detect.js (e→err). Rewrote all 5 hybrid commands to frame hybrid as multi-model execution (local LLMs + cloud models). Removed 4 non-existent script references. Added smart model routing table to config.json (cheapest/mid-tier/planner tiers). Implemented wogi-hybrid-edit.md with plan viewing/editing. Added workflow integration docs (phase gating, explore, standards). Added 4 hybrid decision rules to decisions.md (when to use, model selection, failure escalation, security).
+**Files**: scripts/flow-hybrid-detect.js, .claude/commands/wogi-hybrid.md, .claude/commands/wogi-hybrid-setup.md, .claude/commands/wogi-hybrid-status.md, .claude/commands/wogi-hybrid-edit.md, .claude/commands/wogi-hybrid-off.md, .workflow/state/decisions.md, .workflow/config.json
+
 ### R-161 | 2026-02-23 21:00
 **Type**: new
 **Tags**: #feature:workflow #hook:phase-gate #hook:pre-tool-use #template:claude-md

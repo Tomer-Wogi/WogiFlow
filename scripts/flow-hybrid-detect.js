@@ -161,7 +161,7 @@ Commands:
   }
 }
 
-main().catch(e => {
+main().catch(err => {
   console.error(JSON.stringify({ error: err.message }));
   process.exit(1);
 });
