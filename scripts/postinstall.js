@@ -30,13 +30,42 @@ const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 const DIR_MODE = 0o755;  // rwxr-xr-x for directories
 const FILE_MODE = 0o644; // rw-r--r-- for files
 
+// Dangerous keys for prototype pollution protection
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Safe JSON parse with prototype pollution protection.
+ * Inline copy — postinstall.js can't reliably require flow-utils.js
+ * because it runs from npm context before scripts/ is fully copied.
+ * @param {string} jsonString - JSON string to parse
+ * @param {*} defaultValue - Default value on parse failure
+ * @returns {Object} Parsed object or defaultValue
+ */
+function safeJsonParseString(jsonString, defaultValue = null) {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return defaultValue;
+    }
+    // Check top-level keys for prototype pollution
+    for (const key of Object.keys(parsed)) {
+      if (DANGEROUS_KEYS.has(key)) {
+        return defaultValue;
+      }
+    }
+    return parsed;
+  } catch (err) {
+    return defaultValue;
+  }
+}
+
 /**
  * Safely close a file descriptor, ignoring errors
  * @param {number|null} fd - File descriptor to close
  */
 function safeClose(fd) {
   if (fd !== null) {
-    try { fs.closeSync(fd); } catch (_err) { /* intentionally ignored */ }
+    try { fs.closeSync(fd); } catch (err) { /* intentionally ignored */ }
   }
 }
 
@@ -195,11 +224,9 @@ function copyClaudeResources() {
     if (fs.existsSync(projectSettings)) {
       // Always merge hooks from package into existing settings
       try {
-        const existingRaw = JSON.parse(fs.readFileSync(projectSettings, 'utf-8'));
-        const oursRaw = JSON.parse(fs.readFileSync(packageSettings, 'utf-8'));
-        // Guard against prototype pollution from untrusted JSON
-        const existing = (existingRaw && typeof existingRaw === 'object' && !Array.isArray(existingRaw)) ? existingRaw : {};
-        const ours = (oursRaw && typeof oursRaw === 'object' && !Array.isArray(oursRaw)) ? oursRaw : {};
+        // Use safeJsonParseString for prototype pollution protection
+        const existing = safeJsonParseString(fs.readFileSync(projectSettings, 'utf-8'), {});
+        const ours = safeJsonParseString(fs.readFileSync(packageSettings, 'utf-8'), {});
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;
@@ -224,7 +251,7 @@ function copyClaudeResources() {
         fs.copyFileSync(packageSettings, projectSettings);
         try {
           fs.chmodSync(projectSettings, FILE_MODE);
-        } catch (_err) { /* non-critical */ }
+        } catch (err) { /* non-critical */ }
       } catch (err) {
         if (process.env.DEBUG) {
           console.error(`[postinstall] settings.json initial copy failed: ${err.message}`);
@@ -289,6 +316,45 @@ function copyWorkflowManagedDirs() {
 }
 
 /**
+ * Regenerate CLAUDE.md from templates (for npm update scenario)
+ * Only runs when config.json exists (project already initialized).
+ * Uses the bridge's synchronous generateRulesFile() to avoid async in postinstall.
+ */
+function regenerateClaudeMd() {
+  // Only regenerate if project is already initialized (has config.json)
+  if (!fs.existsSync(path.join(WORKFLOW_DIR, 'config.json'))) {
+    return;
+  }
+
+  try {
+    // Load the bridge module from the project's .workflow/bridges/
+    const bridgesPath = path.join(PROJECT_ROOT, '.workflow', 'bridges');
+    if (!fs.existsSync(path.join(bridgesPath, 'index.js'))) {
+      if (process.env.DEBUG) {
+        console.error('[postinstall] Bridge module not found, skipping CLAUDE.md regen');
+      }
+      return;
+    }
+
+    const { getBridge } = require(bridgesPath);
+    const bridge = getBridge({ projectDir: PROJECT_ROOT });
+
+    // generateRulesFile() is synchronous — safe to call from postinstall
+    // force: true ensures templates always win over stale CLAUDE.md
+    bridge.generateRulesFile({ force: true });
+
+    if (process.env.DEBUG) {
+      console.error('[postinstall] Regenerated CLAUDE.md from templates');
+    }
+  } catch (err) {
+    // Non-fatal — CLAUDE.md regeneration failure shouldn't break npm install
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] CLAUDE.md regen failed: ${err.message}`);
+    }
+  }
+}
+
+/**
  * Check if we should be completely silent (CI only)
  */
 function shouldBeSilent() {
@@ -324,6 +390,11 @@ function main() {
   // Always overwrite — these are package-managed, not user-customizable.
   copyWorkflowManagedDirs();
 
+  // Regenerate CLAUDE.md from updated templates (for npm update scenario)
+  // This ensures the AI reads fresh instructions matching the new package version.
+  // Must run AFTER copyWorkflowManagedDirs() so templates/bridges are up to date.
+  regenerateClaudeMd();
+
   // Create marker for AI to detect (unless already initialized)
   createPendingSetupMarker();
 
@@ -343,7 +414,7 @@ function main() {
       // Combine access check and open into single try-catch to avoid TOCTOU
       ttyFd = fs.openSync('/dev/tty', 'w');
       output = { write: (msg) => fs.writeSync(ttyFd, msg) };
-    } catch (_err) {
+    } catch (err) {
       // /dev/tty not available (no terminal, CI, etc.) - fallback to stderr
       ttyFd = null;
     }

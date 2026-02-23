@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-23T10:00:00.000Z",
+  "lastUpdated": "2026-02-23T11:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-7f0e95",
+      "title": "Fix 7 review findings — CLAUDE.md regen, routing hardening, security, naming",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-23T11:00:00.000Z",
+      "completedAt": "2026-02-23T11:30:00.000Z"
+    },
     {
       "id": "wf-routing-v2",
       "title": "Fix WogiFlow routing bypass — add EnterPlanMode gating + installer CLAUDE.md + health checks",

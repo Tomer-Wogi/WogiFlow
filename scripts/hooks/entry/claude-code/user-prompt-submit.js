@@ -123,7 +123,9 @@ async function main() {
     // When users type "/wogi-start ..." directly, Claude Code expands the skill inline
     // (not through the Skill tool), so clearRoutingPending() in PreToolUse never fires.
     // Setting the flag here would create an uncleable block.
-    const isWogiCommand = typeof prompt === 'string' && /^\/(wogi-\S+)/i.test(prompt.trim());
+    // Tightened regex: only match /wogi-[lowercase-alphanumeric-hyphens] to prevent
+    // injection via crafted prompts like "/wogi-<script>" or "/wogi-../../path"
+    const isWogiCommand = typeof prompt === 'string' && /^\/wogi-[a-z0-9-]+\b/i.test(prompt.trim());
     if (!isWogiCommand) {
       try {
         setRoutingPending();

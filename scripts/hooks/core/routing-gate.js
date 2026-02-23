@@ -18,7 +18,10 @@ const path = require('path');
 
 const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
 
-const ROUTING_FLAG_PATH = path.join(PATHS.state, '.routing-pending');
+// Include session ID in flag path to prevent concurrent sessions from
+// interfering with each other. Falls back to PID-based path if no session ID.
+const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || `pid-${process.ppid || process.pid}`;
+const ROUTING_FLAG_PATH = path.join(PATHS.state, `.routing-pending-${SESSION_ID}`);
 
 /**
  * Check if routing gate is enabled in config
@@ -32,8 +35,10 @@ function isRoutingGateEnabled() {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Config read error: ${err.message}`);
     }
-    // Fail-open: if config can't be read, don't enforce
-    return false;
+    // Fail-closed: if config can't be read, enforce the gate.
+    // Users who installed WogiFlow expect routing enforcement.
+    // Failing open here would silently bypass routing on config corruption.
+    return true;
   }
 }
 
@@ -118,8 +123,10 @@ function clearRoutingPending() {
   }
 }
 
-// Max age for routing flag before it's considered stale (5 minutes)
-const ROUTING_FLAG_TTL_MS = 5 * 60 * 1000;
+// Max age for routing flag before it's considered stale (30 minutes)
+// 5 min was too short — complex tasks with explore phases, spec generation,
+// and approval gates can take 15-20 min before first Bash call.
+const ROUTING_FLAG_TTL_MS = 30 * 60 * 1000;
 
 /**
  * Check if the routing-pending flag is set and not stale
