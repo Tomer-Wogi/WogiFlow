@@ -13,6 +13,20 @@ Usage:
 /wogi-guided-edit "update all imports from @old/lib to @new/lib"
 ```
 
+## Task Gating
+
+This command modifies files. It MUST operate within one of these contexts:
+
+1. **Within `/wogi-start`** (preferred): When invoked as part of an active task, the task already exists in `ready.json` inProgress. Proceed directly.
+2. **Standalone invocation**: Before editing files, check `ready.json` for an active inProgress task. If none exists, create a lightweight task:
+   ```
+   ID: wf-ge-XXXXXXXX (8-char hash)
+   Title: "Guided edit: [description]"
+   Type: fix
+   Feature: guided-edit
+   ```
+   Add to `ready.json` inProgress before any file modifications.
+
 ## Workflow
 
 1. **Analyze**: Find all files affected by the change
@@ -22,7 +36,10 @@ Usage:
    - Show proposed diff (if replace operation)
    - User: approve / reject / skip
 4. **Apply**: Make approved changes
+   - **After each file edit**: Run `node --check` (for .js files) and lint validation
+   - Do NOT proceed to next file until current file passes validation
 5. **Summary**: Show completion stats
+6. **Complete task**: Move guided-edit task to recentlyCompleted in `ready.json`
 
 ## Commands During Session
 

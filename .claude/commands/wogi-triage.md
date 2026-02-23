@@ -89,7 +89,25 @@ What would you like to do with this finding?
 
 ## Fix Execution
 
-After the triage loop completes, execute "Fix now" items sequentially:
+After the triage loop completes, execute "Fix now" items sequentially.
+
+**MANDATORY: Create a tracked task before applying any fixes.** This ensures the PreToolUse task-gate allows Edit/Write operations:
+
+1. Generate task ID: `wf-tr-XXXXXXXX` (8-char hash of triage date + fix count)
+2. Add to `ready.json` inProgress:
+   ```json
+   {
+     "id": "wf-tr-XXXXXXXX",
+     "title": "Fix N triage findings",
+     "type": "fix",
+     "feature": "triage",
+     "status": "in_progress",
+     "priority": "P1",
+     "startedAt": "[ISO timestamp]"
+   }
+   ```
+3. Only after the task exists in inProgress, proceed with fixes below.
+4. After all fixes complete, move the task to recentlyCompleted.
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

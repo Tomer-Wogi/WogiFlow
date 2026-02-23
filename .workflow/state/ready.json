@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-23T22:00:00.000Z",
+  "lastUpdated": "2026-02-23T23:30:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -15,6 +15,18 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-dff7f8ec",
+      "title": "Audit & Fix All wogi-* Command Flows for Workflow Integration",
+      "type": "story",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-23T22:30:00.000Z",
+      "startedAt": "2026-02-23T23:00:00.000Z",
+      "specPath": ".workflow/changes/wf-dff7f8ec.md",
+      "completedAt": "2026-02-23T23:30:00.000Z"
+    },
     {
       "id": "wf-dc55c22b",
       "title": "Overhaul wogi-hybrid — Multi-Model Routing & Workflow Integration",

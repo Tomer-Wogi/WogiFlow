@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-163 | 2026-02-23 23:00
+**Type**: change
+**Tags**: #feature:workflow #command:guided-edit #command:triage #command:extract-review
+**Task**: wf-dff7f8ec
+**Request**: "Audit & fix all wogi-* command flows for workflow integration"
+**Result**: Audited all 61 wogi-* command files across 3 tiers. Found 0 dead script references (847+ references validated). Fixed 2 workflow violations: (1) wogi-guided-edit.md — added task gating and post-edit validation requirements, (2) wogi-triage.md — added mandatory task creation before fix execution. Clarified wogi-extract-review.md task conversion flow. Verified routing table completeness (all commands routable via NLD or wogi-start catalog). Confirmed pattern consistency (no old terminology). ARGUMENTS placement correct in all files.
+**Files**: .claude/commands/wogi-guided-edit.md, .claude/commands/wogi-triage.md, .claude/commands/wogi-extract-review.md
+
 ### R-162 | 2026-02-23 22:00
 **Type**: change
 **Tags**: #feature:hybrid #command:hybrid #command:hybrid-setup #command:hybrid-status #command:hybrid-edit #command:hybrid-off

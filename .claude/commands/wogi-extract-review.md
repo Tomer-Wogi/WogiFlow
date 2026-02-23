@@ -105,6 +105,10 @@ After zero-loss extraction and review:
 1. Confirmed tasks become the input for topic extraction
 2. Topics are generated from the confirmed task list
 3. Standard 4-pass processing continues
+4. Final output creates stories in `ready.json` via `/wogi-story`
+5. Each story then executes through the full `/wogi-start` pipeline
+
+**Note**: This command does NOT modify source code files. It processes input text into structured tasks. All file modifications happen downstream via `/wogi-start`.
 
 ```bash
 # Full flow
