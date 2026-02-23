@@ -2,6 +2,8 @@
 
 Extract tasks from long input with 100% capture rate and mandatory human review.
 
+**Scope**: This command does NOT modify source code files. It processes input text into structured tasks. All file modifications happen downstream via `/wogi-start`.
+
 ## Purpose
 
 When processing transcripts, meeting notes, or long prompts, this command ensures NOTHING is missed by:
@@ -107,8 +109,6 @@ After zero-loss extraction and review:
 3. Standard 4-pass processing continues
 4. Final output creates stories in `ready.json` via `/wogi-story`
 5. Each story then executes through the full `/wogi-start` pipeline
-
-**Note**: This command does NOT modify source code files. It processes input text into structured tasks. All file modifications happen downstream via `/wogi-start`.
 
 ```bash
 # Full flow

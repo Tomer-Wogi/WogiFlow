@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-164 | 2026-02-24 00:30
+**Type**: fix
+**Tags**: #feature:review #command:guided-edit #command:triage #command:extract-review
+**Task**: wf-2de507ce
+**Request**: "Fix 10 review findings from wf-dff7f8ec audit"
+**Result**: Fixed all 10 findings: (1-2) Replaced invalid task ID prefixes wf-ge-/wf-tr- with proper generateTaskId() calls, (3) Added abort handling to guided-edit, (4) Added empty fix queue guard to triage, (5-6) Added missing task schema fields (status/priority/createdAt/startedAt), (7) Expanded validation matrix to cover .ts/.tsx/.json, (8) Made step 6 conditional on invocation context, (9) Scoped standalone task check to guided-edit feature, (10) Elevated scope note to top of extract-review.
+**Files**: .claude/commands/wogi-guided-edit.md, .claude/commands/wogi-triage.md, .claude/commands/wogi-extract-review.md
+
 ### R-163 | 2026-02-23 23:00
 **Type**: change
 **Tags**: #feature:workflow #command:guided-edit #command:triage #command:extract-review

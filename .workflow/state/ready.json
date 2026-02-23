@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-23T23:30:00.000Z",
+  "lastUpdated": "2026-02-24T00:30:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -15,6 +15,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2de507ce",
+      "title": "Fix 10 review findings from wf-dff7f8ec audit",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-24T00:15:00.000Z",
+      "startedAt": "2026-02-24T00:15:00.000Z",
+      "completedAt": "2026-02-24T00:30:00.000Z"
+    },
     {
       "id": "wf-dff7f8ec",
       "title": "Audit & Fix All wogi-* Command Flows for Workflow Integration",
