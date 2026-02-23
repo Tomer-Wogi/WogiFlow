@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-8a1b2c",
+      "title": "Fix broken regenerateClaudeMd — use execFileSync, add lib/ to managed dirs, visible output",
+      "type": "fix",
+      "feature": "postinstall",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-23T12:00:00.000Z",
+      "completedAt": "2026-02-23T12:10:00.000Z"
+    },
+    {
       "id": "wf-cr-7f0e95",
       "title": "Fix 7 review findings — CLAUDE.md regen, routing hardening, security, naming",
       "type": "fix",

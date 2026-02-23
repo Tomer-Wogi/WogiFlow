@@ -115,6 +115,6 @@
     ]
   },
   "_wogiFlowManaged": true,
-  "_wogiFlowVersion": "1.5.7",
+  "_wogiFlowVersion": "1.5.8",
   "_comment": "Shared WogiFlow hook configuration. Committed to repo for team use. User-specific overrides go in settings.local.json."
 }

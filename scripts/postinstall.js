@@ -303,7 +303,7 @@ function copyScriptsFromPackage() {
  * Without this, `npx flow bridge sync` fails because .workflow/bridges/ doesn't exist.
  */
 function copyWorkflowManagedDirs() {
-  const managedDirs = ['bridges', 'templates', 'agents'];
+  const managedDirs = ['bridges', 'templates', 'agents', 'lib'];
 
   for (const subdir of managedDirs) {
     const src = path.join(PACKAGE_ROOT, '.workflow', subdir);
@@ -318,7 +318,10 @@ function copyWorkflowManagedDirs() {
 /**
  * Regenerate CLAUDE.md from templates (for npm update scenario)
  * Only runs when config.json exists (project already initialized).
- * Uses the bridge's synchronous generateRulesFile() to avoid async in postinstall.
+ *
+ * Uses execFileSync to run the bridge in an isolated child process.
+ * This avoids fragile require() chains from the postinstall npm context
+ * where module resolution can fail silently (base-bridge → flow-utils → lib/).
  */
 function regenerateClaudeMd() {
   // Only regenerate if project is already initialized (has config.json)
@@ -326,30 +329,47 @@ function regenerateClaudeMd() {
     return;
   }
 
-  try {
-    // Load the bridge module from the project's .workflow/bridges/
-    const bridgesPath = path.join(PROJECT_ROOT, '.workflow', 'bridges');
-    if (!fs.existsSync(path.join(bridgesPath, 'index.js'))) {
-      if (process.env.DEBUG) {
-        console.error('[postinstall] Bridge module not found, skipping CLAUDE.md regen');
-      }
-      return;
-    }
-
-    const { getBridge } = require(bridgesPath);
-    const bridge = getBridge({ projectDir: PROJECT_ROOT });
-
-    // generateRulesFile() is synchronous — safe to call from postinstall
-    // force: true ensures templates always win over stale CLAUDE.md
-    bridge.generateRulesFile({ force: true });
-
+  // Check that bridges exist (just copied by copyWorkflowManagedDirs)
+  const bridgesIndex = path.join(PROJECT_ROOT, '.workflow', 'bridges', 'index.js');
+  if (!fs.existsSync(bridgesIndex)) {
     if (process.env.DEBUG) {
-      console.error('[postinstall] Regenerated CLAUDE.md from templates');
+      console.error('[postinstall] Bridge module not found, skipping CLAUDE.md regen');
     }
+    return;
+  }
+
+  try {
+    const { execFileSync } = require('child_process');
+
+    // Run bridge generation in an isolated child process.
+    // cwd=PROJECT_ROOT ensures all relative paths resolve correctly:
+    //   .workflow/bridges/ → base-bridge → ../../scripts/flow-utils → ../.workflow/lib/
+    const script = [
+      'try {',
+      '  const { getBridge } = require("./.workflow/bridges");',
+      `  const bridge = getBridge({ projectDir: ${JSON.stringify(PROJECT_ROOT)} });`,
+      '  bridge.generateRulesFile({ force: true });',
+      '  process.exit(0);',
+      '} catch (err) {',
+      '  process.stderr.write(err.message);',
+      '  process.exit(1);',
+      '}'
+    ].join('\n');
+
+    execFileSync(process.execPath, ['-e', script], {
+      cwd: PROJECT_ROOT,
+      timeout: 15000,
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    process.stderr.write('\x1b[36mWogiFlow:\x1b[0m Updated CLAUDE.md from latest templates.\n');
   } catch (err) {
     // Non-fatal — CLAUDE.md regeneration failure shouldn't break npm install
+    // But DO tell the user so they can regenerate manually
+    process.stderr.write('\x1b[33mWogiFlow:\x1b[0m Could not auto-update CLAUDE.md. Run: npx flow bridge sync\n');
     if (process.env.DEBUG) {
-      console.error(`[postinstall] CLAUDE.md regen failed: ${err.message}`);
+      const stderr = err.stderr ? err.stderr.toString().trim() : err.message;
+      console.error(`[postinstall] CLAUDE.md regen failed: ${stderr}`);
     }
   }
 }
@@ -421,9 +441,9 @@ function main() {
   }
 
   try {
-    // Already initialized - short message
+    // Already initialized - confirm update applied
     if (isAlreadyInitialized()) {
-      output.write('\x1b[36mWogiFlow:\x1b[0m Already initialized. Run \x1b[33mnpx flow status\x1b[0m to see project state.\n');
+      output.write('\x1b[36mWogiFlow:\x1b[0m Updated scripts, hooks, and commands to latest version.\n');
       return;
     }
 
