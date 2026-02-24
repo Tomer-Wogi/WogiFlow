@@ -16,6 +16,17 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-19b06f22",
+      "title": "Extend routing gate hook to block Read/Glob/Grep before wogi-* routing",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-24T18:00:00.000Z",
+      "startedAt": "2026-02-24T18:00:00.000Z",
+      "completedAt": "2026-02-24T18:10:00.000Z"
+    },
+    {
       "id": "wf-6c8d7b3e",
       "title": "Tighten wildcard permission rules in settings template",
       "type": "task",

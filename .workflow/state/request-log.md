@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-168 | 2026-02-24 18:10
+**Type**: fix
+**Tags**: #feature:workflow #hook:routing-gate #security:enforcement
+**Task**: wf-19b06f22
+**Request**: "Extend routing gate hook to block Read/Glob/Grep before wogi-* routing — close enforcement gap"
+**Result**: Fixed enforcement gap where Read/Glob/Grep tools could bypass the routing gate. Updated 5 files: settings.local.json (PreToolUse matcher), settings.json (template matcher), routing-gate.js (GATED_TOOLS set + block message), pre-tool-use.js (condition expansion), claude-code.js adapter (matcher string). Also fixed dead-letter issue where EnterPlanMode was in GATED_TOOLS but missing from settings.local.json matcher.
+**Files**: .claude/settings.local.json, .claude/settings.json, scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/adapters/claude-code.js
+
 ### R-167 | 2026-02-24 09:35
 **Type**: fix
 **Tags**: #feature:community #infra:aws #project:wogiflow-cloud #security #review
