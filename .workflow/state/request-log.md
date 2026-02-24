@@ -13,6 +13,28 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-170 | 2026-02-24 19:00
+**Type**: fix
+**Tags**: #feature:hooks #component:claude-code-adapter #bug:wf-3f291f2d
+**Task**: wf-3f291f2d
+**Request**: "Fix invalid hook keys (Setup, TaskCompleted, TeammateIdle, ConfigChange) in Claude Code settings"
+**Result**: Removed 4 invalid hook event registrations from claude-code adapter. Added CLAUDE_CODE_EVENTS allowlist limited to 6 official hooks (SessionStart, PreToolUse, PostToolUse, UserPromptSubmit, Stop, SessionEnd). Added safety filter in generateConfig() that validates all hooks against the allowlist before output. Cleaned local settings.local.json. Entry scripts kept for future use.
+**Files**: scripts/hooks/adapters/claude-code.js, .claude/settings.local.json
+
+### R-169 | 2026-02-24 18:55
+**Type**: new
+**Tags**: #feature:community #testing:unit #testing:smoke #server:wogiflow-cloud
+**Task**: wf-ebb51efe
+**Request**: "Build and run comprehensive tests for wogiflow-cloud server"
+**Result**: Created test suite with 52 unit tests (extractJson, validate, response) and 12 live smoke tests against api.wogi.ai. All 64 tests pass. Zero additional dependencies — uses node:test and node:assert.
+**Files** (wogiflow-cloud repo):
+- `packages/server/tests/unit/extract-json.test.js` (created — 13 tests)
+- `packages/server/tests/unit/validate.test.js` (created — 26 tests covering contributions + suggestions)
+- `packages/server/tests/unit/response.test.js` (created — 13 tests)
+- `packages/server/tests/smoke.js` (created — 12 live endpoint tests)
+- `packages/server/package.json` (modified — added test script)
+- `packages/server/curation/pipeline-worker.js` (modified — exported extractJson)
+
 ### R-168 | 2026-02-24 18:10
 **Type**: fix
 **Tags**: #feature:workflow #hook:routing-gate #security:enforcement

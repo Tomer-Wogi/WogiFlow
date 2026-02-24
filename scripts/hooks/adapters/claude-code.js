@@ -36,24 +36,35 @@ const HOOK_TIMEOUTS = {
 };
 
 /**
- * Claude Code Hook Events
+ * Claude Code Hook Events — ONLY officially supported events.
+ * Claude Code rejects settings.json with unrecognized hook keys.
+ * Do NOT add hooks here without verifying they pass Claude Code schema validation.
  */
 const CLAUDE_CODE_EVENTS = [
   'SessionStart',
-  'Setup',           // Claude Code 2.1.10+ - triggered by --init, --init-only, --maintenance
   'PreToolUse',
   'PostToolUse',
   'Stop',
-  'SubagentStop',
   'SessionEnd',
-  'Notification',
   'UserPromptSubmit',
-  'TaskCompleted',   // Claude Code 2.1.33+ - fired when sub-agent task completes
-  'TeammateIdle',    // Claude Code 2.1.33+ - fired when teammate agent becomes idle
-  'ConfigChange',    // Claude Code latest - fired when config files change mid-session
-  'WorktreeCreate',  // Claude Code 2.1.50+ - fired when a new worktree is created
-  'WorktreeRemove'   // Claude Code 2.1.50+ - fired when a worktree is removed
 ];
+
+/**
+ * Extended hook events — NOT part of official Claude Code schema.
+ * These were speculatively added and cause schema validation errors.
+ * Kept here for reference in case Claude Code adds them in the future.
+ * See: https://github.com/anthropics/claude-code/issues (check for hook API updates)
+ */
+// const EXTENDED_EVENTS_NOT_YET_SUPPORTED = [
+//   'Setup',           // Speculated for --init/--maintenance
+//   'SubagentStop',    // Speculated for sub-agent stop
+//   'Notification',    // Speculated for notifications
+//   'TaskCompleted',   // Speculated for task completion
+//   'TeammateIdle',    // Speculated for teammate idle
+//   'ConfigChange',    // Speculated for config changes
+//   'WorktreeCreate',  // Speculated for worktree creation
+//   'WorktreeRemove',  // Speculated for worktree removal
+// ];
 
 /**
  * Claude Code Adapter
@@ -503,16 +514,8 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       }];
     }
 
-    // Setup hook (Claude Code 2.1.10+ --init/--maintenance)
-    if (rules.setup?.enabled !== false) {
-      hooks.Setup = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'setup.js')}"`,
-          timeout: HOOK_TIMEOUTS.SETUP
-        }]
-      }];
-    }
+    // NOTE: Setup hook removed — not in official Claude Code schema.
+    // The setup.js entry script still exists for manual use.
 
     // UserPromptSubmit hook (implementation gate)
     if (rules.implementationGate?.enabled !== false) {
@@ -578,62 +581,21 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       }];
     }
 
-    // TaskCompleted hook for post-task cleanup (Claude Code 2.1.33+)
-    if (rules.taskCompleted?.enabled !== false) {
-      hooks.TaskCompleted = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'task-completed.js')}"`,
-          timeout: HOOK_TIMEOUTS.TASK_COMPLETED
-        }]
-      }];
+    // NOTE: TaskCompleted, TeammateIdle, ConfigChange, WorktreeCreate, WorktreeRemove
+    // hooks removed — not in official Claude Code schema. Registering them causes
+    // schema validation errors that block Claude Code from loading settings.
+    // Entry scripts still exist in scripts/hooks/entry/claude-code/ for future use
+    // if/when Claude Code officially supports these events.
+
+    // Final safety filter: only emit hooks that are in CLAUDE_CODE_EVENTS
+    const filteredHooks = {};
+    for (const [key, value] of Object.entries(hooks)) {
+      if (CLAUDE_CODE_EVENTS.includes(key)) {
+        filteredHooks[key] = value;
+      }
     }
 
-    // TeammateIdle hook for task dispatch (Claude Code 2.1.33+, experimental)
-    if (rules.teammateIdle?.enabled === true) {
-      hooks.TeammateIdle = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'teammate-idle.js')}"`,
-          timeout: HOOK_TIMEOUTS.TEAMMATE_IDLE
-        }]
-      }];
-    }
-
-    // ConfigChange hook for mid-session config detection (Claude Code latest)
-    if (rules.configChange?.enabled !== false) {
-      hooks.ConfigChange = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'config-change.js')}"`,
-          timeout: HOOK_TIMEOUTS.CONFIG_CHANGE
-        }]
-      }];
-    }
-
-    // WorktreeCreate hook (Claude Code 2.1.50+ worktree lifecycle)
-    if (rules.worktreeLifecycle?.enabled !== false) {
-      hooks.WorktreeCreate = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'worktree-create.js')}"`,
-          timeout: HOOK_TIMEOUTS.WORKTREE_CREATE
-        }]
-      }];
-    }
-
-    // WorktreeRemove hook (Claude Code 2.1.50+ worktree lifecycle)
-    if (rules.worktreeLifecycle?.enabled !== false) {
-      hooks.WorktreeRemove = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'worktree-remove.js')}"`,
-          timeout: HOOK_TIMEOUTS.WORKTREE_REMOVE
-        }]
-      }];
-    }
-
-    return { hooks };
+    return { hooks: filteredHooks };
   }
 
   /**
