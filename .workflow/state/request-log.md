@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-166 | 2026-02-24 08:55
+**Type**: new
+**Tags**: #feature:community #infra:aws #project:wogiflow-cloud
+**Task**: Phase C1 Server Deployment
+**Request**: "Deploy WogiFlow Cloud server infrastructure to AWS"
+**Result**: Deployed full serverless infrastructure to AWS eu-west-1: RDS PostgreSQL 16.6 (db.t4g.micro) with pgvector, 4 Lambda functions (contribute, knowledge, suggest, pipeline-worker), API Gateway HTTP with custom domain api.wogi.ai, SQS FIFO queue with DLQ, Secrets Manager for credentials. Fixed 5 bugs during deployment: RDS SSL cert validation, prototype pollution false positive, Sonnet model ID (20250514→20250929), curation_log CHECK constraint, and AI response JSON parsing. Full 5-stage AI curation pipeline verified end-to-end — test contribution auto-promoted to Global Knowledge with quality score 7.5.
+**Files**: wogiflow-cloud/packages/server/ (lib/db.js, lib/anthropic.js, lib/validate.js, routes/*.js, curation/pipeline-worker.js), wogiflow-cloud/deploy/ (cloudformation.yaml, deploy.sh, migrate.sh), wogiflow-cloud/packages/server/db/001_community.sql
+
 ### R-165 | 2026-02-24 10:00
 **Type**: change
 **Tags**: #feature:security #component:claude-bridge #component:settings-local
