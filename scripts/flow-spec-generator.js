@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
 const { matchSkills, loadSkillContext } = require('./flow-skill-matcher');
+const { getCommand } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -372,38 +373,50 @@ function generateVerificationCommands(taskContext) {
   const config = getConfig();
   const commands = [];
 
-  // Add lint command
-  commands.push({
-    command: 'npm run lint',
-    description: 'Run linter',
-    required: true,
-    expectedExitCode: 0
-  });
+  // Add lint command (resolved from package.json / config)
+  const lintCmd = getCommand('lint');
+  if (lintCmd) {
+    commands.push({
+      command: lintCmd,
+      description: 'Run linter',
+      required: true,
+      expectedExitCode: 0
+    });
+  }
 
   // Add typecheck command
-  commands.push({
-    command: 'npm run typecheck',
-    description: 'Run type checker',
-    required: true,
-    expectedExitCode: 0
-  });
+  const typecheckCmd = getCommand('typecheck');
+  if (typecheckCmd) {
+    commands.push({
+      command: typecheckCmd,
+      description: 'Run type checker',
+      required: true,
+      expectedExitCode: 0
+    });
+  }
 
   // Add test command
-  commands.push({
-    command: 'npm test',
-    description: 'Run tests',
-    required: true,
-    expectedExitCode: 0
-  });
+  const testCmd = getCommand('test');
+  if (testCmd) {
+    commands.push({
+      command: testCmd,
+      description: 'Run tests',
+      required: true,
+      expectedExitCode: 0
+    });
+  }
 
   // Add build command for features
   if (taskContext.type === 'feature') {
-    commands.push({
-      command: 'npm run build',
-      description: 'Build project',
-      required: false,
-      expectedExitCode: 0
-    });
+    const buildCmd = getCommand('build');
+    if (buildCmd) {
+      commands.push({
+        command: buildCmd,
+        description: 'Build project',
+        required: false,
+        expectedExitCode: 0
+      });
+    }
   }
 
   return commands;

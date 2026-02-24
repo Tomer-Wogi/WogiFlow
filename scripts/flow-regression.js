@@ -18,6 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getExec, getCommand } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
@@ -166,27 +167,28 @@ function detectTestRunner(testFiles) {
           const fileArgs = testFiles.join(' ');
           // Jest-style
           if (pkg.devDependencies?.jest || pkg.dependencies?.jest) {
-            return `npx jest ${fileArgs} --passWithNoTests`;
+            return `${getExec('jest')} ${fileArgs} --passWithNoTests`;
           }
           // Vitest
           if (pkg.devDependencies?.vitest || pkg.dependencies?.vitest) {
-            return `npx vitest run ${fileArgs}`;
+            return `${getExec('vitest')} run ${fileArgs}`;
           }
           // Mocha
           if (pkg.devDependencies?.mocha || pkg.dependencies?.mocha) {
-            return `npx mocha ${fileArgs}`;
+            return `${getExec('mocha')} ${fileArgs}`;
           }
         }
-        // Fallback to npm test
-        return 'npm test -- --passWithNoTests';
+        // Fallback to resolved test command
+        const testCmd = getCommand('test') || 'npm test';
+        return `${testCmd} -- --passWithNoTests`;
       }
     } catch (err) {
       // package.json is malformed, fall through to default
     }
   }
 
-  // Default to jest
-  return `npx jest ${testFiles.join(' ')} --passWithNoTests`;
+  // Default to jest via exec resolver
+  return `${getExec('jest')} ${testFiles.join(' ')} --passWithNoTests`;
 }
 
 /**

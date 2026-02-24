@@ -1,9 +1,33 @@
 {
   "lastUpdated": "2026-02-25T02:30:00.000Z",
-  "inProgress": [],
+  "inProgress": [
+    {
+      "id": "wf-e28a6f68",
+      "title": "Remove Teams implementation from public repo",
+      "type": "story",
+      "feature": "security",
+      "status": "in_progress",
+      "priority": "P0",
+      "createdAt": "2026-02-25T03:00:00.000Z",
+      "startedAt": "2026-02-25T03:00:00.000Z",
+      "specPath": ".workflow/changes/wf-e28a6f68.md"
+    },
+  ],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-f837a262",
+      "title": "Add centralized script resolver to replace hardcoded npm/npx commands",
+      "type": "story",
+      "feature": "script-resolver",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-25T10:00:00.000Z",
+      "startedAt": "2026-02-25T10:00:00.000Z",
+      "completedAt": "2026-02-25T12:15:00.000Z",
+      "specPath": ".workflow/changes/wf-f837a262.md"
+    },
     {
       "id": "wf-ec88195b",
       "title": "Phase C2 Client-Side — Community Knowledge Local Surfacing",

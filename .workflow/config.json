@@ -11,6 +11,15 @@
   },
   "autoLog": true,
   "autoUpdateAppMap": true,
+  "_comment_scripts": "Script name overrides. null = auto-detect from package.json. Set to a string to override (e.g., \"npm run type-check\").",
+  "scripts": {
+    "lint": null,
+    "typecheck": null,
+    "test": null,
+    "build": null,
+    "fix": null,
+    "coverage": null
+  },
   "requireApproval": [],
   "enforcement": {
     "strictMode": true,
@@ -381,7 +390,7 @@
         "bugfix",
         "quick-fix"
       ],
-      "command": "npm test"
+      "command": "{script:test}"
     },
     "feature": {
       "require": [
@@ -448,36 +457,38 @@
     "_comment_afterFileEdit": "Hook-based auto-validation is disabled. CLAUDE.md instructs AI to self-validate. Enable for hook-enforced validation.",
     "afterFileEdit": {
       "enabled": false,
+      "_comment_commands": "Use {exec:tool} for package-manager-aware tool invocation. Resolved at runtime by flow-script-resolver.js.",
       "commands": {
         "*.ts": [
-          "npx tsc --noEmit"
+          "{exec:tsc} --noEmit"
         ],
         "*.tsx": [
-          "npx tsc --noEmit",
-          "npx eslint {file} --fix"
+          "{exec:tsc} --noEmit",
+          "{exec:eslint} {file} --fix"
         ],
         "*.js": [
-          "npx eslint {file} --fix"
+          "{exec:eslint} {file} --fix"
         ],
         "*.jsx": [
-          "npx eslint {file} --fix"
+          "{exec:eslint} {file} --fix"
         ]
       },
       "fixErrorsBeforeContinuing": true
     },
+    "_comment_afterTaskComplete": "Commands use canonical names resolved by flow-script-resolver.js. Use {script:lint} syntax or direct commands.",
     "afterTaskComplete": {
       "enabled": false,
       "commands": [
-        "npm run lint",
-        "npm run typecheck"
+        "{script:lint}",
+        "{script:typecheck}"
       ]
     },
     "beforeCommit": {
       "enabled": false,
       "commands": [
-        "npm run lint",
-        "npm run typecheck",
-        "npm run test"
+        "{script:lint}",
+        "{script:typecheck}",
+        "{script:test}"
       ]
     }
   },

@@ -81,6 +81,17 @@ async function main() {
       }
     }
 
+    // Validate script alignment (drift detection)
+    let scriptWarnings = [];
+    try {
+      const { validateScripts } = require('../../../flow-script-resolver');
+      scriptWarnings = validateScripts();
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Script validation failed: ${err.message}`);
+      }
+    }
+
     // Gather session context
     const coreResult = await gatherSessionContext({
       includeSuspended: true,
@@ -117,6 +128,11 @@ async function main() {
       if (process.env.DEBUG) {
         console.error(`[session-start] Community pull failed: ${err.message}`);
       }
+    }
+
+    // Inject script warnings into context (if any)
+    if (scriptWarnings.length > 0 && coreResult && coreResult.context) {
+      coreResult.context.scriptWarnings = scriptWarnings.map(w => w.message);
     }
 
     // Transform to Claude Code format

@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse } = require('./flow-utils');
+const { getCommand } = require('./flow-script-resolver');
 
 // v2.0: Import durable session for unified tracking
 const durableSession = require('./flow-durable-session');
@@ -986,7 +987,8 @@ function verifyCriterion(criterion, context = {}) {
     }
     // Try running tests
     try {
-      execSync('npm test -- --passWithNoTests 2>&1 | tail -5', {
+      const testCmd = getCommand('test') || 'npm test';
+      execSync(`${testCmd} -- --passWithNoTests 2>&1 | tail -5`, {
         cwd: projectRoot,
         encoding: 'utf-8',
         timeout: 60000,

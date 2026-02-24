@@ -19,6 +19,7 @@ const {
   getConfig,
   safeJsonParse
 } = require('./flow-utils');
+const { getCommand: resolveCommand } = require('./flow-script-resolver');
 // Auto-context module (optional - graceful degradation)
 let autoContext = null;
 try {
@@ -440,7 +441,7 @@ async function main() {
 
       try {
         const { execFileSync } = require('child_process');
-        const testCommand = baselineConfig.command || 'npm test';
+        const testCommand = baselineConfig.command || resolveCommand('test') || 'npm test';
         const [cmd, ...args] = testCommand.split(' ');
 
         execFileSync(cmd, args, {

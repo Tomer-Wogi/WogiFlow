@@ -24,6 +24,7 @@ const path = require('path');
 const { spawn, execSync } = require('child_process');
 const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
 const { recordCommandResult } = require('./flow-metrics');
+const { detectPackageManager, getExecCommand, getRunPrefix } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -106,57 +107,76 @@ class GateResult {
 /**
  * Default gate configurations
  */
-const DEFAULT_GATES = {
-  lint: {
-    name: 'Lint',
-    commands: [
-      { cmd: 'npx', args: ['eslint', '.', '--ext', '.ts,.tsx,.js,.jsx'], detect: 'eslint' },
-      { cmd: 'npx', args: ['biome', 'check', '.'], detect: '@biomejs/biome' }
-    ],
-    parser: 'eslint',
-    autoFix: { cmd: 'npx', args: ['eslint', '.', '--fix'] }
-  },
-  typecheck: {
-    name: 'TypeCheck',
-    commands: [
-      { cmd: 'npx', args: ['tsc', '--noEmit'], detect: 'typescript' }
-    ],
-    parser: 'typescript'
-  },
-  test: {
-    name: 'Test',
-    commands: [
-      { cmd: 'npx', args: ['vitest', 'run'], detect: 'vitest' },
-      { cmd: 'npx', args: ['jest'], detect: 'jest' },
-      { cmd: 'npm', args: ['test'], detect: null }
-    ],
-    parser: 'jest'
-  },
-  build: {
-    name: 'Build',
-    commands: [
-      { cmd: 'npm', args: ['run', 'build'], detect: null }
-    ],
-    parser: 'generic'
-  },
-  format: {
-    name: 'Format Check',
-    commands: [
-      { cmd: 'npx', args: ['prettier', '--check', '.'], detect: 'prettier' },
-      { cmd: 'npx', args: ['biome', 'format', '--check', '.'], detect: '@biomejs/biome' }
-    ],
-    parser: 'prettier',
-    autoFix: { cmd: 'npx', args: ['prettier', '--write', '.'] }
-  },
-  securityScan: {
-    name: 'Security Scan',
-    commands: [
-      { cmd: 'npm', args: ['audit', '--json'], detect: null }
-    ],
-    parser: 'security',
-    customChecks: ['secrets', 'injection', 'evalExec']
-  }
-};
+/**
+ * Build default gates using detected package manager.
+ * Replaces hardcoded 'npx'/'npm' with resolved equivalents.
+ */
+function buildDefaultGates() {
+  const pm = detectPackageManager();
+  const exec = getExecCommand(pm);
+  const run = getRunPrefix(pm);
+  // For test/build: npm uses 'npm test'/'npm run build', others use 'pnpm test'/'pnpm build'
+  const pmCmd = pm;
+
+  return {
+    lint: {
+      name: 'Lint',
+      commands: [
+        { cmd: exec, args: ['eslint', '.', '--ext', '.ts,.tsx,.js,.jsx'], detect: 'eslint' },
+        { cmd: exec, args: ['biome', 'check', '.'], detect: '@biomejs/biome' }
+      ],
+      parser: 'eslint',
+      autoFix: { cmd: exec, args: ['eslint', '.', '--fix'] }
+    },
+    typecheck: {
+      name: 'TypeCheck',
+      commands: [
+        { cmd: exec, args: ['tsc', '--noEmit'], detect: 'typescript' }
+      ],
+      parser: 'typescript'
+    },
+    test: {
+      name: 'Test',
+      commands: [
+        { cmd: exec, args: ['vitest', 'run'], detect: 'vitest' },
+        { cmd: exec, args: ['jest'], detect: 'jest' },
+        { cmd: pmCmd, args: ['test'], detect: null }
+      ],
+      parser: 'jest'
+    },
+    build: {
+      name: 'Build',
+      commands: [
+        { cmd: pmCmd, args: ['run', 'build'], detect: null }
+      ],
+      parser: 'generic'
+    },
+    format: {
+      name: 'Format Check',
+      commands: [
+        { cmd: exec, args: ['prettier', '--check', '.'], detect: 'prettier' },
+        { cmd: exec, args: ['biome', 'format', '--check', '.'], detect: '@biomejs/biome' }
+      ],
+      parser: 'prettier',
+      autoFix: { cmd: exec, args: ['prettier', '--write', '.'] }
+    },
+    securityScan: {
+      name: 'Security Scan',
+      commands: [
+        { cmd: pmCmd, args: ['audit', '--json'], detect: null }
+      ],
+      parser: 'security',
+      customChecks: ['secrets', 'injection', 'evalExec']
+    }
+  };
+}
+
+// Lazy-initialized to allow detection at runtime
+let _defaultGates = null;
+function getDefaultGates() {
+  if (!_defaultGates) _defaultGates = buildDefaultGates();
+  return _defaultGates;
+}
 
 /**
  * Error parsers for different tools
@@ -561,7 +581,7 @@ function generateFixSuggestions(gateName, errors) {
   if (gateName === 'lint') {
     const hasAutoFix = errors.some(e => e.rule);
     if (hasAutoFix) {
-      suggestions.push('Run `npx eslint . --fix` to auto-fix some issues');
+      suggestions.push(`Run \`${getExecCommand(detectPackageManager())} eslint . --fix\` to auto-fix some issues`);
     }
 
     // Group by rule for specific suggestions
@@ -629,7 +649,7 @@ function generateFixSuggestions(gateName, errors) {
   }
 
   if (gateName === 'format') {
-    suggestions.push('Run `npx prettier --write .` to fix formatting');
+    suggestions.push(`Run \`${getExecCommand(detectPackageManager())} prettier --write .\` to fix formatting`);
   }
 
   if (gateName === 'securityScan') {
@@ -871,7 +891,7 @@ async function runSecurityChecks(gateResult) {
  */
 async function runGate(gateName, options = {}) {
   const config = getConfig();
-  const gateConfig = config.verifyGates?.[gateName] || DEFAULT_GATES[gateName];
+  const gateConfig = config.verifyGates?.[gateName] || getDefaultGates()[gateName];
 
   if (!gateConfig) {
     const result = new GateResult(gateName);
@@ -960,7 +980,7 @@ async function runGates(gateNames, options = {}) {
 
   // Use configured gates if 'all' specified
   if (gateNames.includes('all')) {
-    gateNames = Object.keys(config.verifyGates || DEFAULT_GATES);
+    gateNames = Object.keys(config.verifyGates || getDefaultGates());
   }
 
   // If stopOnFailure is set or only one gate, run sequentially
@@ -1105,7 +1125,7 @@ module.exports = {
   getSummary,
   formatResults,
   saveResults,
-  DEFAULT_GATES,
+  getDefaultGates,
   ERROR_PARSERS
 };
 

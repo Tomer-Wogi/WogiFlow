@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-174 | 2026-02-25 12:15
+**Type**: new
+**Tags**: #feature:script-resolver #component:flow-script-resolver #hook:session-start
+**Task**: wf-f837a262
+**Request**: "Add centralized script resolver to replace hardcoded npm/npx commands"
+**Result**: Created flow-script-resolver.js utility that auto-detects package manager from lockfiles and resolves script names from package.json with alias matching (e.g., typecheck → type-check). Replaced hardcoded npm/npx commands in 7 flow scripts (task-enforcer, spec-generator, orchestrate, verify, step-coverage, regression, start). Added scripts config section to config.json with null defaults for auto-detection. Added session-start drift detection that warns when expected scripts are missing. Updated installer to ship resolver-compatible config to new projects.
+**Files**: scripts/flow-script-resolver.js (new), scripts/flow-task-enforcer.js, scripts/flow-spec-generator.js, scripts/flow-orchestrate.js, scripts/flow-verify.js, scripts/flow-step-coverage.js, scripts/flow-regression.js, scripts/flow-start.js, scripts/hooks/entry/claude-code/session-start.js, .workflow/config.json, lib/installer.js
+
 ### R-173 | 2026-02-25 02:30
 **Type**: new
 **Tags**: #feature:community #component:flow-community #hook:session-start

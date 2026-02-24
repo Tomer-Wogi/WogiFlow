@@ -21,6 +21,7 @@ const path = require('path');
 const { execSync, execFileSync, spawn } = require('child_process');
 const readline = require('readline');
 const { validatePathWithinProject } = require('./flow-security');
+const { getExecParts } = require('./flow-script-resolver');
 
 // Import LLM clients (extracted for modularity)
 const { LocalLLM, CloudExecutor, createExecutor } = require('./flow-orchestrate-llm');
@@ -1991,7 +1992,8 @@ class Validator {
       }
 
       // Use execFileSync with array args for safety
-      execFileSync('npx', ['tsc', '--noEmit'], {
+      const tscExec = getExecParts('tsc', ['--noEmit']);
+      execFileSync(tscExec.cmd, tscExec.args, {
         encoding: 'utf-8',
         cwd,
         stdio: ['pipe', 'pipe', 'pipe']
@@ -2048,7 +2050,8 @@ class Validator {
       // Also find the right directory for eslint config
       const cwd = this.findTsConfigDir(filePath);
       // Use execFileSync with array args to prevent shell injection
-      execFileSync('npx', ['eslint', filePath, '--fix'], {
+      const eslintExec = getExecParts('eslint', [filePath, '--fix']);
+      execFileSync(eslintExec.cmd, eslintExec.args, {
         encoding: 'utf-8',
         cwd,
         stdio: ['pipe', 'pipe', 'pipe']

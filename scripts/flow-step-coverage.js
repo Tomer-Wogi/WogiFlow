@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getCommand, detectPackageManager } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -48,7 +49,7 @@ async function run(options = {}) {
     return {
       passed: true,
       message: 'No coverage data available',
-      suggestion: 'Run tests with coverage: npm test -- --coverage',
+      suggestion: `Run tests with coverage: ${getCommand('test') || 'npm test'} -- --coverage`,
     };
   }
 
@@ -146,17 +147,14 @@ async function runCoverageTests() {
     const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
     const scripts = pkg.scripts || {};
 
-    // Try to find coverage command
-    let coverageCmd = null;
+    // Try to find coverage command via resolver
+    let coverageCmd = getCommand('coverage');
 
-    if (scripts['test:coverage']) {
-      coverageCmd = 'npm run test:coverage';
-    } else if (scripts.coverage) {
-      coverageCmd = 'npm run coverage';
-    } else if (scripts.test) {
-      // Try to add --coverage flag
+    if (!coverageCmd && scripts.test) {
+      // No coverage script — try to add --coverage flag to test command
       if (scripts.test.includes('jest') || scripts.test.includes('vitest')) {
-        coverageCmd = 'npm test -- --coverage --json --outputFile=coverage/coverage-summary.json';
+        const testCmd = getCommand('test') || 'npm test';
+        coverageCmd = `${testCmd} -- --coverage --json --outputFile=coverage/coverage-summary.json`;
       }
     }
 
