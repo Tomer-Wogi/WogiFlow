@@ -773,7 +773,7 @@ function getLoopStats() {
  * Returns { passed: boolean|null, message: string, verification: string }
  */
 function verifyCriterion(criterion, context = {}) {
-  const { execSync } = require('child_process');
+  const { execSync, execFileSync } = require('child_process');
   const { changedFiles = [], testResults = null, lintResults = null } = context;
   const config = getConfig();
   const taskConfig = getTaskConfig();
@@ -985,10 +985,19 @@ function verifyCriterion(criterion, context = {}) {
         verification: 'tests'
       };
     }
-    // Try running tests
+    // Try running tests — use execFileSync with array args to prevent shell injection
     try {
-      const testCmd = getCommand('test') || 'npm test';
-      execSync(`${testCmd} -- --passWithNoTests 2>&1 | tail -5`, {
+      const testCmd = getCommand('test', { bare: true }) || 'test';
+      const pm = require('./flow-script-resolver').detectPackageManager(projectRoot);
+      let cmd, args;
+      if (pm === 'npm') {
+        cmd = 'npm';
+        args = [testCmd === 'test' ? 'test' : 'run', ...(testCmd !== 'test' ? [testCmd] : []), '--', '--passWithNoTests'];
+      } else {
+        cmd = pm;
+        args = ['run', testCmd, '--', '--passWithNoTests'];
+      }
+      execFileSync(cmd, args, {
         cwd: projectRoot,
         encoding: 'utf-8',
         timeout: 60000,

@@ -171,7 +171,8 @@ function buildDefaultGates() {
   };
 }
 
-// Lazy-initialized to allow detection at runtime
+// Lazy-initialized to allow detection at runtime.
+// Cache is never invalidated because each hook invocation is a fresh process.
 let _defaultGates = null;
 function getDefaultGates() {
   if (!_defaultGates) _defaultGates = buildDefaultGates();

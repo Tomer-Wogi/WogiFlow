@@ -390,7 +390,7 @@
         "bugfix",
         "quick-fix"
       ],
-      "command": "{script:test}"
+      "command": null
     },
     "feature": {
       "require": [
@@ -457,38 +457,38 @@
     "_comment_afterFileEdit": "Hook-based auto-validation is disabled. CLAUDE.md instructs AI to self-validate. Enable for hook-enforced validation.",
     "afterFileEdit": {
       "enabled": false,
-      "_comment_commands": "Use {exec:tool} for package-manager-aware tool invocation. Resolved at runtime by flow-script-resolver.js.",
+      "_comment_commands": "Commands per file extension. Use actual commands or null to auto-detect via flow-script-resolver.js at runtime.",
       "commands": {
         "*.ts": [
-          "{exec:tsc} --noEmit"
+          "npx tsc --noEmit"
         ],
         "*.tsx": [
-          "{exec:tsc} --noEmit",
-          "{exec:eslint} {file} --fix"
+          "npx tsc --noEmit",
+          "npx eslint {file} --fix"
         ],
         "*.js": [
-          "{exec:eslint} {file} --fix"
+          "npx eslint {file} --fix"
         ],
         "*.jsx": [
-          "{exec:eslint} {file} --fix"
+          "npx eslint {file} --fix"
         ]
       },
       "fixErrorsBeforeContinuing": true
     },
-    "_comment_afterTaskComplete": "Commands use canonical names resolved by flow-script-resolver.js. Use {script:lint} syntax or direct commands.",
+    "_comment_afterTaskComplete": "Commands run after task completion. These are disabled by default. When enabled, flow-script-resolver.js resolves commands at runtime.",
     "afterTaskComplete": {
       "enabled": false,
       "commands": [
-        "{script:lint}",
-        "{script:typecheck}"
+        "npm run lint",
+        "npm run typecheck"
       ]
     },
     "beforeCommit": {
       "enabled": false,
       "commands": [
-        "{script:lint}",
-        "{script:typecheck}",
-        "{script:test}"
+        "npm run lint",
+        "npm run typecheck",
+        "npm test"
       ]
     }
   },

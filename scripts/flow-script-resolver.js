@@ -23,7 +23,17 @@
 const fs = require('fs');
 const path = require('path');
 
-// Lazy-load to avoid circular dependencies
+/**
+ * Validate a script name is safe for shell usage.
+ * Rejects names containing shell metacharacters.
+ */
+const UNSAFE_CHARS = /[;&|$`()"'\\<>!\n\r]/;
+function isSafeScriptName(name) {
+  return typeof name === 'string' && name.length > 0 && name.length < 100 && !UNSAFE_CHARS.test(name);
+}
+
+// Module-level caches. These are not invalidated because each hook invocation
+// runs in a fresh Node process. For long-running processes, call clearCache().
 let _projectRoot = null;
 function getProjectRoot() {
   if (!_projectRoot) {
@@ -37,10 +47,9 @@ let _config = null;
 function getConfig() {
   if (!_config) {
     try {
+      const { safeJsonParse } = require('./flow-utils');
       const configPath = path.join(getProjectRoot(), '.workflow', 'config.json');
-      if (fs.existsSync(configPath)) {
-        _config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      }
+      _config = safeJsonParse(configPath, null);
     } catch {
       // Graceful fallback — no config
     }
@@ -115,9 +124,10 @@ function getExecCommand(pm) {
 function getPackageScripts(projectRoot) {
   const root = projectRoot || getProjectRoot();
   try {
+    const { safeJsonParse } = require('./flow-utils');
     const pkgPath = path.join(root, 'package.json');
-    if (!fs.existsSync(pkgPath)) return {};
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    const pkg = safeJsonParse(pkgPath, null);
+    if (!pkg) return {};
     return pkg.scripts || {};
   } catch {
     return {};
@@ -173,6 +183,8 @@ function getCommand(name, options = {}) {
   // 1. Check config override
   const configScripts = config.scripts || {};
   if (configScripts[name] && typeof configScripts[name] === 'string') {
+    // Validate config override is safe
+    if (!isSafeScriptName(configScripts[name].split(' ')[0])) return null;
     return configScripts[name];
   }
 
@@ -181,6 +193,9 @@ function getCommand(name, options = {}) {
   const resolved = resolveScriptName(name, scripts);
 
   if (!resolved) return null;
+
+  // Validate resolved script name is safe for shell usage
+  if (!isSafeScriptName(resolved.scriptName)) return null;
 
   if (bare) return resolved.scriptName;
 
@@ -218,6 +233,11 @@ function getExec(binary, args = [], options = {}) {
  * @returns {{ cmd: string, args: string[] }} Command and args for execFileSync
  */
 function getExecParts(binary, args = [], options = {}) {
+  // Validate binary name to prevent injection
+  if (!isSafeScriptName(binary)) {
+    return { cmd: 'npx', args: [binary, ...args] }; // Safe fallback — execFileSync won't interpret metacharacters
+  }
+
   const pm = detectPackageManager(options.projectRoot);
   const exec = getExecCommand(pm);
 
@@ -227,7 +247,12 @@ function getExecParts(binary, args = [], options = {}) {
   }
 
   // For yarn dlx / pnpm dlx: command is yarn/pnpm, "dlx" is first arg
-  const [pmCmd, dlx] = exec.split(' ');
+  const parts = exec.split(' ');
+  if (parts.length !== 2) {
+    // Unexpected format — safe fallback
+    return { cmd: exec, args: [binary, ...args] };
+  }
+  const [pmCmd, dlx] = parts;
   return { cmd: pmCmd, args: [dlx, binary, ...args] };
 }
 
