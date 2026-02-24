@@ -61,7 +61,7 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 #### Phase C1: Community Knowledge Foundation (2 sprints)
 
-**Status:** Client-side COMPLETE (wf-0c000481, 2026-02-25). Server-side COMPLETE (wf-ebb51efe, 2026-02-24). AI curation pipeline and maintainer dashboard remaining.
+**Status:** COMPLETE. Client-side (wf-0c000481, 2026-02-25). Server-side API + DB + AI curation pipeline (wf-ebb51efe, 2026-02-24). Maintainer dashboard + admin API + CloudFormation (wf-b7220e8b, 2026-02-25).
 **Created:** 2026-02-23
 **Depends On:** None
 

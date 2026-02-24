@@ -1668,6 +1668,14 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Result**: Added 5 features: (1) CLAUDE_CODE_SIMPLE detection with session warning, (2) CLAUDE_CODE_DISABLE_1M_CONTEXT context estimator threshold adjustment, (3) Health check 2.1.50 feature reporting with claude agents diagnostic, (4) WorktreeCreate/WorktreeRemove hooks for worktree lifecycle management, (5) Documentation of isolation: worktree for future parallel execution.
 **Files**: scripts/hooks/core/session-context.js, scripts/flow-context-estimator.js, scripts/flow-health.js, scripts/hooks/adapters/claude-code.js, scripts/hooks/core/worktree-lifecycle.js (new), scripts/hooks/entry/claude-code/worktree-create.js (new), scripts/hooks/entry/claude-code/worktree-remove.js (new), scripts/flow-parallel.js
 
+### R-135 | 2026-02-25 19:30
+**Type**: new
+**Tags**: #feature:community #component:admin-dashboard #component:admin-api #component:admin-auth #repo:wogiflow-cloud
+**Task**: wf-b7220e8b
+**Request**: "Community Knowledge Maintainer Dashboard — Admin API + Static UI"
+**Result**: Built maintainer dashboard for the community knowledge system. Admin API with 10 endpoints (list/action suggestions, flagged items, knowledge, stats, pipeline). Static HTML + vanilla JS dashboard with 5 tabs (Overview, Suggestions, Flagged, Knowledge, Pipeline). Bearer token auth via AWS Secrets Manager with constant-time comparison. Updated CloudFormation template with AdminFunction Lambda, API Gateway routes (GET/POST /api/admin/{proxy+}), AdminApiKey secret, and Authorization CORS header.
+**Files**: `wogiflow-cloud: packages/server/routes/admin.js`, `packages/server/lib/admin-auth.js`, `packages/dashboard/index.html`, `packages/dashboard/app.js`, `deploy/cloudformation.yaml`
+
 ### R-134 | 2026-02-25 18:00
 **Type**: fix
 **Tags**: #feature:security #feature:community #component:flow-community #component:flow-script-resolver #component:extension-registry #component:session-start #component:flow-regression #component:flow-utils
