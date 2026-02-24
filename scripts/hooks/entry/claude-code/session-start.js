@@ -88,6 +88,28 @@ async function main() {
       includeActivity: true
     });
 
+    // Community knowledge pull + suggestion retry (non-blocking)
+    try {
+      const { getConfig } = require('../../../flow-utils');
+      const config = getConfig();
+      if (config.community?.enabled) {
+        const community = require('../../../flow-community');
+
+        // Retry pending suggestions (fire-and-forget)
+        community.retryPendingSuggestions(config).catch(() => {});
+
+        // Pull community knowledge (fire-and-forget, updates cache)
+        const knowledge = await community.pullFromServer(config);
+        if (knowledge && coreResult && coreResult.context) {
+          coreResult.context.communityKnowledge = knowledge;
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Community pull failed: ${err.message}`);
+      }
+    }
+
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('SessionStart', coreResult);
 

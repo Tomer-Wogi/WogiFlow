@@ -2961,6 +2961,75 @@
           }
         }
       }
+    },
+    "community": {
+      "type": "object",
+      "description": "CATEGORY: COMMUNITY - Anonymous knowledge sharing with other WogiFlow users. Opt-in, privacy-first.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable community knowledge sharing (opt-in). No code, paths, or personal info leaves the machine.",
+          "default": false
+        },
+        "anonymousId": {
+          "type": ["string", "null"],
+          "description": "Anonymous UUID for this user. Auto-generated on first enable. Stored in ~/.wogiflow/anon-id.",
+          "default": null
+        },
+        "categories": {
+          "type": "object",
+          "description": "Per-category toggles for what types of data are shared.",
+          "properties": {
+            "modelIntelligence": {
+              "type": "boolean",
+              "description": "Share model strengths/weaknesses/adjustments",
+              "default": true
+            },
+            "errorRecovery": {
+              "type": "boolean",
+              "description": "Share error recovery strategies and success rates",
+              "default": true
+            },
+            "patternConvergence": {
+              "type": "boolean",
+              "description": "Share universal coding patterns (not project-specific)",
+              "default": true
+            },
+            "sessionStatistics": {
+              "type": "boolean",
+              "description": "Share aggregated session stats (command usage, model usage)",
+              "default": true
+            },
+            "skillLearnings": {
+              "type": "boolean",
+              "description": "Share skill-specific patterns and anti-patterns",
+              "default": true
+            }
+          }
+        },
+        "pushOnSessionEnd": {
+          "type": "boolean",
+          "description": "Push community data when session ends via /wogi-session-end",
+          "default": true
+        },
+        "pullOnSessionStart": {
+          "type": "boolean",
+          "description": "Pull community knowledge when session starts (session-start hook)",
+          "default": true
+        },
+        "cacheTtlHours": {
+          "type": "number",
+          "description": "Hours before community cache is considered stale and re-fetched",
+          "default": 24,
+          "minimum": 1,
+          "maximum": 168
+        },
+        "serverUrl": {
+          "type": "string",
+          "description": "Community server URL",
+          "default": "https://api.wogiflow.com"
+        }
+      }
     }
   },
   "additionalProperties": true

@@ -596,6 +596,48 @@ function formatContextForInjection(context) {
     output += `The user installed WogiFlow to track all work - bypassing breaks their trust.\n\n`;
   }
 
+  // Community knowledge (pulled from server)
+  if (ctx.communityKnowledge && typeof ctx.communityKnowledge === 'object') {
+    const ck = ctx.communityKnowledge;
+    const items = [];
+
+    // Model intelligence
+    if (Array.isArray(ck.modelIntelligence)) {
+      for (const item of ck.modelIntelligence.slice(0, 5)) {
+        if (item.model && (item.strengths || item.adjustments)) {
+          const detail = item.adjustments || item.strengths;
+          items.push(`Community: ${item.model} — ${detail}`);
+        }
+      }
+    }
+
+    // Error strategies
+    if (Array.isArray(ck.errorStrategies)) {
+      for (const item of ck.errorStrategies.slice(0, 3)) {
+        if (item.category && item.strategy) {
+          items.push(`Community: ${item.category} — ${item.strategy}`);
+        }
+      }
+    }
+
+    // Patterns
+    if (Array.isArray(ck.patterns)) {
+      for (const item of ck.patterns.slice(0, 3)) {
+        if (item.description) {
+          items.push(`Community: ${item.description}`);
+        }
+      }
+    }
+
+    if (items.length > 0) {
+      output += `### Community Knowledge\n`;
+      for (const item of items) {
+        output += `- ${item}\n`;
+      }
+      output += '\n';
+    }
+  }
+
   return output;
 }
 

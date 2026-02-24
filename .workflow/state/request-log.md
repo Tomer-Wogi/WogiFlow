@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-171 | 2026-02-25 00:30
+**Type**: new
+**Tags**: #feature:community #component:flow-community #command:wogi-suggest
+**Task**: wf-0c000481
+**Request**: "Community Knowledge System — Phase C1 Client-Side Foundation"
+**Result**: Implemented client-side foundation for anonymous community knowledge sharing. Created flow-community.js with 9 exports (collectShareableData, stripPII, pushToServer, pullFromServer, getOrCreateAnonId, submitSuggestion, retryPendingSuggestions, loadCommunityCache, saveCommunityCache). Created /wogi-suggest slash command. Integrated community pull into session-start hook and community push into /wogi-session-end command. Added community config section to config.json, config.schema.json, and installer.js. Updated NLD table and CLAUDE.md with wogi-suggest. All operations fire-and-forget with 5s timeout, PII-stripped, opt-in only.
+**Files**: scripts/flow-community.js (new), .claude/commands/wogi-suggest.md (new), .workflow/config.json, .workflow/config.schema.json, lib/installer.js, scripts/hooks/entry/claude-code/session-start.js, scripts/hooks/core/session-context.js, .claude/commands/wogi-session-end.md, .workflow/templates/claude-md.hbs, CLAUDE.md
+
 ### R-170 | 2026-02-24 19:00
 **Type**: fix
 **Tags**: #feature:hooks #component:claude-code-adapter #bug:wf-3f291f2d

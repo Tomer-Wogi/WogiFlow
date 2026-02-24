@@ -5,8 +5,9 @@ Steps:
 2. **Check log size** - If over 50 entries, suggest archiving
 3. **Check app-map** - If new components created, verify they're added
 4. **Update progress.md** - Add handoff notes for next session
-5. **Commit changes** - Stage and commit all workflow files
-6. **Offer to push** - Ask if should push to remote
+5. **Community push** - If `config.community.enabled`, push anonymous learnings
+6. **Commit changes** - Stage and commit all workflow files
+7. **Offer to push** - Ask if should push to remote
 
 Output:
 ```
@@ -21,6 +22,9 @@ Checking app-map...
 
 Updating progress.md...
   Added handoff notes
+
+Pushing community learnings...
+  ✓ Community data pushed (anonymous, PII-stripped)
 
 Committing...
   ✓ Committed: "chore: End session - 3 changes logged"
@@ -46,6 +50,41 @@ Progress.md handoff format:
 ### Notes
 - API endpoint for preferences not ready yet
 - Decided to use shadcn/ui for modal
+```
+
+## Community Push (Step 5)
+
+When `config.community.enabled` is `true` and `config.community.pushOnSessionEnd` is `true`:
+
+1. Check if consent has been acknowledged (`~/.wogiflow/consent-acknowledged`)
+   - If not: Display the consent message (informational — enabling in config IS consent)
+   - Acknowledge consent after display
+2. Collect shareable data via `collectShareableData(config)` from `scripts/flow-community.js`
+3. Push to server via `pushToServer(payload, config)` — 5-second timeout, fire-and-forget
+4. On success: Show "Community data pushed (anonymous, PII-stripped)"
+5. On failure: Show "Community push skipped — server unreachable" (warning, not error)
+6. If `community.enabled` is `false`: Skip silently (don't show the step at all)
+
+```javascript
+const { collectShareableData, pushToServer, isConsentAcknowledged, acknowledgeConsent, getConsentMessage } = require('../../scripts/flow-community');
+
+// Only if community is enabled
+if (config.community?.enabled && config.community?.pushOnSessionEnd !== false) {
+  // Check consent
+  if (!isConsentAcknowledged()) {
+    console.log(getConsentMessage());
+    acknowledgeConsent();
+  }
+
+  // Collect and push
+  const payload = collectShareableData(config);
+  const success = await pushToServer(payload, config);
+  if (success) {
+    console.log('Community data pushed (anonymous, PII-stripped)');
+  } else {
+    console.log('Community push skipped — server unreachable');
+  }
+}
 ```
 
 ## Cross-Session Pattern Detection (v6.0)

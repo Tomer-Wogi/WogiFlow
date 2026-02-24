@@ -1642,6 +1642,22 @@
       "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
     }
   },
+  "community": {
+    "enabled": false,
+    "_comment_community": "Anonymous community knowledge sharing. Opt-in, privacy-first. No code, paths, or personal info leaves the machine.",
+    "anonymousId": null,
+    "categories": {
+      "modelIntelligence": true,
+      "errorRecovery": true,
+      "patternConvergence": true,
+      "sessionStatistics": true,
+      "skillLearnings": true
+    },
+    "pushOnSessionEnd": true,
+    "pullOnSessionStart": true,
+    "cacheTtlHours": 24,
+    "serverUrl": "https://api.wogiflow.com"
+  },
   "consistency": {
     "enabled": false,
     "_comment_consistency": "Cross-artifact consistency analysis. Validates app-map, function-map, and api-map against each other and the actual codebase.",

@@ -1,20 +1,21 @@
 {
-  "lastUpdated": "2026-02-24T10:00:00.000Z",
+  "lastUpdated": "2026-02-25T00:30:00.000Z",
   "inProgress": [],
-  "ready": [
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-0c000481",
       "title": "Community Knowledge System — Phase C1 Client-Side Foundation",
       "type": "story",
       "feature": "community",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
       "createdAt": "2026-02-23T16:00:00.000Z",
+      "startedAt": "2026-02-24T20:00:00.000Z",
+      "completedAt": "2026-02-25T00:30:00.000Z",
       "specPath": ".workflow/changes/wf-0c000481.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+    },
     {
       "id": "wf-3f291f2d",
       "title": "Fix invalid hook keys in Claude Code settings",
