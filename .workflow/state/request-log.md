@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-167 | 2026-02-24 09:35
+**Type**: fix
+**Tags**: #feature:community #infra:aws #project:wogiflow-cloud #security #review
+**Task**: wogiflow-cloud code review fixes
+**Request**: "Fix all 28 review findings from /wogi-review on wogiflow-cloud server"
+**Result**: Fixed 18 of 28 findings across 10 files. Key changes: shared response.js helper with X-Content-Type-Options (DRY), credential cache TTL (15min) for rotation support, fail-closed pipeline (parse errors reject/archive), atomic idempotent SQS claim, double-settle prevention in HTTP client, tightened UUID regex, ISO 8601 date validation, health check Lambda + DLQ alarm + API throttling in CloudFormation. 10 findings deferred as TODOs (RDS public access, API auth, SSL cert, CORS, pagination). All endpoints tested and verified. CloudFormation stack updated successfully.
+**Files**: wogiflow-cloud/packages/server/ (lib/response.js NEW, lib/db.js, lib/anthropic.js, lib/validate.js, routes/contribute.js, routes/knowledge.js, routes/suggest.js, curation/pipeline-worker.js), wogiflow-cloud/deploy/ (deploy.sh, cloudformation.yaml)
+
 ### R-166 | 2026-02-24 08:55
 **Type**: new
 **Tags**: #feature:community #infra:aws #project:wogiflow-cloud
