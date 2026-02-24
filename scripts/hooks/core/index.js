@@ -30,6 +30,9 @@ try {
   }
 }
 
+// Extension registry - allows third-party packages to register hooks
+const extensionRegistry = require('./extension-registry');
+
 module.exports = {
   // Constants (shared across hooks)
   ...constants,
@@ -81,5 +84,8 @@ module.exports = {
 
   // Research Gate (detects questions requiring verification)
   ...(researchGate || {}),
-  researchGate
+  researchGate,
+
+  // Extension Registry (allows @wogiflow/teams and other packages to register hooks)
+  extensionRegistry
 };

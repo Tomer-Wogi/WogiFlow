@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-172 | 2026-02-25 01:15
+**Type**: new
+**Tags**: #feature:teams-extension #component:extension-registry #hook:postinstall
+**Task**: wf-dcf132cb
+**Request**: "Free Package Extension Points — Enable Teams Hook Integration"
+**Result**: Added minimal extension points for @wogiflow/teams: extension registry in core hooks, Teams package detection in postinstall, team config section with schema, verified all state reader functions exported.
+**Files**: scripts/hooks/core/extension-registry.js (new), scripts/hooks/core/index.js, scripts/postinstall.js, lib/installer.js, .workflow/config.json, .workflow/config.schema.json
+
 ### R-171 | 2026-02-25 00:30
 **Type**: new
 **Tags**: #feature:community #component:flow-community #command:wogi-suggest

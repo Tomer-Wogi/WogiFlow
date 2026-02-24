@@ -467,6 +467,53 @@ function isAlreadyInitialized() {
 }
 
 /**
+ * Known WogiFlow extension packages.
+ * Each must export registerHooks({ settingsPath, projectRoot })
+ */
+const EXTENSION_PACKAGES = ['@wogiflow/teams'];
+
+/**
+ * Detect and register third-party WogiFlow extensions.
+ * Extensions (e.g., @wogiflow/teams) can register their hooks into
+ * .claude/settings.json by exporting a registerHooks() function.
+ *
+ * This runs during postinstall, after core settings are written.
+ * If the extension package is not installed, this is a silent no-op.
+ */
+function detectAndRegisterExtensions() {
+  const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
+
+  for (const pkg of EXTENSION_PACKAGES) {
+    try {
+      // require.resolve throws if not installed — expected and silent
+      require.resolve(pkg, { paths: [PROJECT_ROOT] });
+
+      // Package is installed — try to load and register
+      const extension = require(pkg);
+
+      if (typeof extension.registerHooks === 'function') {
+        const result = extension.registerHooks({
+          settingsPath,
+          projectRoot: PROJECT_ROOT
+        });
+
+        if (!shouldBeSilent()) {
+          const count = (result && result.hooksRegistered) || 0;
+          process.stderr.write(`\x1b[36mWogiFlow:\x1b[0m Registered extension: ${pkg} (${count} hooks)\n`);
+        }
+      } else if (process.env.DEBUG) {
+        console.error(`[postinstall] Extension ${pkg} found but has no registerHooks() export`);
+      }
+    } catch (err) {
+      // Extension not installed — silent skip (expected for most users)
+      if (process.env.DEBUG && !err.message.includes('Cannot find module')) {
+        console.error(`[postinstall] Extension detection for ${pkg}: ${err.message}`);
+      }
+    }
+  }
+}
+
+/**
  * Main entry point (sync - no async operations needed)
  */
 function main() {
@@ -490,6 +537,10 @@ function main() {
   // This ensures the AI reads fresh instructions matching the new package version.
   // Must run AFTER copyWorkflowManagedDirs() so templates/bridges are up to date.
   regenerateClaudeMd();
+
+  // Detect and register third-party WogiFlow extensions (e.g., @wogiflow/teams)
+  // Must run AFTER copyClaudeResources() so settings.json exists to append hooks to.
+  detectAndRegisterExtensions();
 
   // Create marker for AI to detect (unless already initialized)
   createPendingSetupMarker();

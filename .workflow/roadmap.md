@@ -61,7 +61,7 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 #### Phase C1: Community Knowledge Foundation (2 sprints)
 
-**Status:** Planned
+**Status:** Client-side COMPLETE (wf-0c000481, 2026-02-25). Server-side COMPLETE (wf-ebb51efe, 2026-02-24). AI curation pipeline and maintainer dashboard remaining.
 **Created:** 2026-02-23
 **Depends On:** None
 
@@ -402,7 +402,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Free Package Extension Points (Minimal Changes)
 
-**Status:** Planned — do these BEFORE starting Phase T1
+**Status:** COMPLETE (wf-dcf132cb, 2026-02-25)
 **Depends On:** None
 
 **Scope:** Small changes to the free `wogiflow` package to enable Teams extension:

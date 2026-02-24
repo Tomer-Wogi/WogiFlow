@@ -1642,6 +1642,12 @@
       "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
     }
   },
+  "team": {
+    "enabled": false,
+    "_comment_team": "WogiFlow for Teams integration. Requires @wogiflow/teams package. Free users can ignore this section.",
+    "projectId": null,
+    "orgId": null
+  },
   "community": {
     "enabled": false,
     "_comment_community": "Anonymous community knowledge sharing. Opt-in, privacy-first. No code, paths, or personal info leaves the machine.",

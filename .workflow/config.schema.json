@@ -3030,6 +3030,28 @@
           "default": "https://api.wogiflow.com"
         }
       }
+    },
+    "team": {
+      "type": "object",
+      "description": "CATEGORY: TEAM INTEGRATION - WogiFlow for Teams configuration. Requires @wogiflow/teams package (premium). Free users can ignore this section.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable team features. Requires @wogiflow/teams package to be installed.",
+          "default": false
+        },
+        "projectId": {
+          "type": ["string", "null"],
+          "description": "Unique project identifier in the team system. Set by @wogiflow/teams during team setup.",
+          "default": null
+        },
+        "orgId": {
+          "type": ["string", "null"],
+          "description": "Organization identifier for multi-team setups. Set by @wogiflow/teams during team setup.",
+          "default": null
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-25T00:30:00.000Z",
+  "lastUpdated": "2026-02-25T01:15:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-dcf132cb",
+      "title": "Free Package Extension Points — Enable Teams Hook Integration",
+      "type": "story",
+      "feature": "teams-extension",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-25T01:00:00.000Z",
+      "startedAt": "2026-02-25T01:00:00.000Z",
+      "completedAt": "2026-02-25T01:15:00.000Z",
+      "specPath": ".workflow/changes/wf-dcf132cb.md"
+    },
     {
       "id": "wf-0c000481",
       "title": "Community Knowledge System — Phase C1 Client-Side Foundation",
