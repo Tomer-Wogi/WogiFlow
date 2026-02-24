@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-24T00:30:00.000Z",
+  "lastUpdated": "2026-02-24T10:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -15,6 +15,17 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6c8d7b3e",
+      "title": "Tighten wildcard permission rules in settings template",
+      "type": "task",
+      "feature": "security",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-02-24T10:00:00.000Z",
+      "startedAt": "2026-02-24T10:00:00.000Z",
+      "completedAt": "2026-02-24T10:00:00.000Z"
+    },
     {
       "id": "wf-2de507ce",
       "title": "Fix 10 review findings from wf-dff7f8ec audit",

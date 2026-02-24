@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-165 | 2026-02-24 10:00
+**Type**: change
+**Tags**: #feature:security #component:claude-bridge #component:settings-local
+**Task**: wf-6c8d7b3e
+**Request**: "Tighten wildcard permission rules in settings template"
+**Result**: Replaced broad `git reset *` and `git restore *` wildcards with scoped safe variants (`git reset HEAD *`, `git reset --soft *`, `git restore --staged *`). Destructive operations (--hard, restore ., clean -f) now require manual user approval. Updated security-patterns.md section 6 with new examples. Updated local settings.local.json to match.
+**Files**: .workflow/bridges/claude-bridge.js, .claude/settings.local.json, .claude/rules/security/security-patterns.md
+
 ### R-164 | 2026-02-24 00:30
 **Type**: fix
 **Tags**: #feature:review #command:guided-edit #command:triage #command:extract-review

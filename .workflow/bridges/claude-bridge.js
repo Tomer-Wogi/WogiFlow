@@ -346,7 +346,7 @@ Last synced: ${new Date().toISOString()}
       'Bash(python -m *)',
       'Bash(python3 -m *)',
 
-      // Git operations - all safe read/write operations
+      // Git operations - safe read/write operations
       'Bash(git status)',
       'Bash(git status *)',
       'Bash(git diff *)',
@@ -358,8 +358,13 @@ Last synced: ${new Date().toISOString()}
       'Bash(git push *)',
       'Bash(git pull *)',
       'Bash(git fetch *)',
-      'Bash(git reset *)',
-      'Bash(git restore *)',
+      // git reset — only safe unstaging operations
+      // NOTE: git reset --hard intentionally excluded — destroys uncommitted work
+      'Bash(git reset HEAD *)',
+      'Bash(git reset --soft *)',
+      // git restore — only safe staged-file operations
+      // NOTE: git restore <file> / git restore . intentionally excluded — discards changes
+      'Bash(git restore --staged *)',
       'Bash(git show *)',
       'Bash(git rm *)',
       'Bash(git ls-files *)',
