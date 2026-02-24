@@ -13,9 +13,9 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const http = require('http');
 const crypto = require('crypto');
 const os = require('os');
+const { execFileSync } = require('child_process');
 
 const { PATHS, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 
@@ -147,7 +147,6 @@ function stripPII(data, config) {
   let gitUser = '';
   let gitEmail = '';
   try {
-    const { execFileSync } = require('child_process');
     gitUser = execFileSync('git', ['config', 'user.name'], { encoding: 'utf-8', timeout: 2000 }).trim();
     gitEmail = execFileSync('git', ['config', 'user.email'], { encoding: 'utf-8', timeout: 2000 }).trim();
   } catch {
@@ -160,7 +159,7 @@ function stripPII(data, config) {
     let result = str;
 
     // Replace absolute paths (Unix and Windows)
-    result = result.replace(/(?:\/(?:Users|home|var|tmp|opt|etc|usr)\/[^\s,;:'")\]}>]+)/g, '[PATH]');
+    result = result.replace(/(?:\/(?:Users|home|var|tmp|opt|etc|usr|root|app|srv|run|mnt|media|proc|data)\/[^\s,;:'")\]}>]+)/g, '[PATH]');
     result = result.replace(/(?:[A-Z]:\\[^\s,;:'")\]}>]+)/gi, '[PATH]');
 
     // Replace home directory references
@@ -276,7 +275,8 @@ function getWogiFlowVersion() {
     _cachedVersion = pkg.version || 'unknown';
     return _cachedVersion;
   } catch {
-    return 'unknown';
+    _cachedVersion = 'unknown';
+    return _cachedVersion;
   }
 }
 
@@ -521,12 +521,19 @@ function isAllowedServerUrl(urlStr) {
     // Enforce HTTPS only
     if (url.protocol !== 'https:') return false;
     // Block localhost and loopback
-    const hostname = url.hostname.toLowerCase();
+    // URL.hostname returns IPv6 with bracket delimiters (e.g., '[::1]') — strip them
+    const rawHostname = url.hostname.toLowerCase();
+    const hostname = rawHostname.startsWith('[') ? rawHostname.slice(1, -1) : rawHostname;
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+    // Block IPv6 private/loopback ranges
+    if (hostname.startsWith('::ffff:')) return false;      // IPv4-mapped IPv6
+    if (hostname.startsWith('fe80:') || hostname.startsWith('fe80::')) return false;  // Link-local
+    if (hostname.startsWith('fc00:') || hostname.startsWith('fd00:')) return false;   // Unique local (RFC 4193)
     // Block private IP ranges (RFC-1918 + link-local)
     const ipMatch = hostname.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
     if (ipMatch) {
-      const [, a, b] = ipMatch.map(Number);
+      const a = parseInt(ipMatch[1], 10);
+      const b = parseInt(ipMatch[2], 10);
       if (a === 10) return false;                          // 10.0.0.0/8
       if (a === 172 && b >= 16 && b <= 31) return false;  // 172.16.0.0/12
       if (a === 192 && b === 168) return false;            // 192.168.0.0/16
@@ -558,12 +565,10 @@ function httpRequest(method, urlStr, body = null, timeoutMs = REQUEST_TIMEOUT_MS
       }
 
       const url = new URL(urlStr);
-      const isHttps = url.protocol === 'https:';
-      const transport = isHttps ? https : http;
-
+      // isAllowedServerUrl already enforces HTTPS — use https directly
       const options = {
         hostname: url.hostname,
-        port: url.port || (isHttps ? 443 : 80),
+        port: url.port || 443,
         path: url.pathname + url.search,
         method,
         headers: {
@@ -574,14 +579,16 @@ function httpRequest(method, urlStr, body = null, timeoutMs = REQUEST_TIMEOUT_MS
         timeout: timeoutMs
       };
 
-      const req = transport.request(options, (res) => {
+      const req = https.request(options, (res) => {
         let data = '';
         res.on('data', (chunk) => {
-          data += chunk;
-          if (data.length > MAX_RESPONSE_BYTES) {
+          // Check size BEFORE appending to prevent single oversized chunk from buffering
+          if (data.length + chunk.length > MAX_RESPONSE_BYTES) {
             req.destroy();
             resolve(null);
+            return;
           }
+          data += chunk;
         });
         res.on('end', () => {
           resolve({ statusCode: res.statusCode, body: data });
@@ -943,14 +950,18 @@ function mergeModelIntelligence(items) {
 
       // Check if community section already exists
       if (content.includes(COMMUNITY_MARKER)) {
-        // Section exists — check for this specific item (full string match)
-        if (content.includes(detail)) {
+        // Scope dedup check to community section only (not full file)
+        const markerIndex = content.indexOf(COMMUNITY_MARKER);
+        const communitySection = content.slice(markerIndex);
+        if (communitySection.includes(detail)) {
           continue; // Already merged
         }
-        // Append to existing section (safe insert point calculation)
-        const markerIndex = content.indexOf(COMMUNITY_MARKER);
-        const nlIndex = content.indexOf('\n', markerIndex);
-        const insertPoint = nlIndex === -1 ? content.length : nlIndex + 1;
+        // Append at END of community section (next ## heading or EOF) for chronological order
+        const afterMarker = content.slice(markerIndex);
+        const nextHeadingMatch = afterMarker.match(/\n## /);
+        const insertPoint = nextHeadingMatch
+          ? markerIndex + nextHeadingMatch.index
+          : content.length;
         const newLine = `- ${detail}\n`;
         const updated = content.slice(0, insertPoint) + newLine + content.slice(insertPoint);
         fs.writeFileSync(filePath, updated, 'utf-8');

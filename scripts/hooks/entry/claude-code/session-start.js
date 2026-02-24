@@ -11,6 +11,7 @@ const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 const { checkAndResetStalePhase } = require('../../core/phase-gate');
+const { safeJsonParseString } = require('../../../flow-utils');
 
 // Lazy-load bridge state to avoid circular dependencies
 let autoSyncBridge = null;
@@ -42,7 +43,6 @@ async function main() {
       inputData += chunk;
     }
 
-    const { safeJsonParseString } = require('../../../flow-utils');
     const input = inputData ? (safeJsonParseString(inputData, {}) || {}) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 

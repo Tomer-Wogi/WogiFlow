@@ -750,17 +750,19 @@ function safeJsonParse(filePath, defaultValue = null) {
 }
 
 /**
- * Safely parse a JSON string with prototype pollution protection
- * Use this when you already have the JSON content as a string
+ * Safely parse a JSON string with prototype pollution protection.
+ * Use this when you already have the JSON content as a string.
+ * Note: Unlike safeJsonParse (file-based), this allows arrays through
+ * since it validates typeof === 'object' which is true for arrays.
  * @param {string} jsonString - JSON string to parse
  * @param {*} [defaultValue=null] - Default value if parsing fails
- * @returns {object|null} Parsed JSON or defaultValue on error
+ * @returns {object|Array|null} Parsed JSON (object or array) or defaultValue on error
  */
 function safeJsonParseString(jsonString, defaultValue = null) {
   try {
     const parsed = JSON.parse(jsonString);
 
-    // Validate it's an object (not array or primitive for config files)
+    // Validate it's an object or array (not primitive for config files)
     if (typeof parsed !== 'object' || parsed === null) {
       return defaultValue;
     }

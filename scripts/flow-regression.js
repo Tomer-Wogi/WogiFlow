@@ -16,9 +16,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
-const { getExec, getCommand } = require('./flow-script-resolver');
+const { getExecParts, getCommand } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
@@ -51,9 +51,17 @@ function getCompletedTasks() {
 function findTestFiles(taskId, taskData) {
   const testFiles = [];
 
-  // Check if task has explicit test files
+  // Check if task has explicit test files (validate paths to prevent injection)
   if (taskData?.testFiles) {
-    testFiles.push(...taskData.testFiles);
+    const SAFE_PATH = /^[a-zA-Z0-9_.\-/]+$/;
+    for (const tf of taskData.testFiles) {
+      if (typeof tf === 'string' && SAFE_PATH.test(tf) && !tf.includes('..')) {
+        const resolved = path.resolve(PROJECT_ROOT, tf);
+        if (resolved.startsWith(PROJECT_ROOT + path.sep) || resolved === PROJECT_ROOT) {
+          testFiles.push(tf);
+        }
+      }
+    }
     return testFiles;
   }
 
@@ -81,7 +89,12 @@ function findTestFiles(taskId, taskData) {
   // Also look in request-log for files changed
   const logPath = path.join(STATE_DIR, 'request-log.md');
   if (fs.existsSync(logPath)) {
-    const logContent = fs.readFileSync(logPath, 'utf8');
+    let logContent;
+    try {
+      logContent = fs.readFileSync(logPath, 'utf8');
+    } catch {
+      return [...new Set(testFiles)]; // Dedupe and return what we have
+    }
     // Escape special regex characters in taskId
     const escapedTaskId = taskId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const taskPattern = new RegExp(`### R-\\d+.*${escapedTaskId}[\\s\\S]*?Files:\\s*([^\\n]+)`, 'i');
@@ -127,9 +140,9 @@ function runTaskTests(taskId, taskData) {
   log('white', `   Running tests: ${testFiles.join(', ')}`);
 
   try {
-    // Try to run tests with common test runners
-    const testCommand = detectTestRunner(testFiles);
-    execSync(testCommand, {
+    // Try to run tests with common test runners (using execFileSync for injection safety)
+    const { cmd, args } = detectTestRunner(testFiles);
+    execFileSync(cmd, args, {
       cwd: PROJECT_ROOT,
       stdio: 'pipe',
       timeout: 60000 // 1 minute timeout per task
@@ -151,7 +164,9 @@ function runTaskTests(taskId, taskData) {
 }
 
 /**
- * Detect which test runner to use
+ * Detect which test runner to use.
+ * Returns { cmd, args } for use with execFileSync (prevents shell injection).
+ * @returns {{ cmd: string, args: string[] }}
  */
 function detectTestRunner(testFiles) {
   const packageJson = path.join(PROJECT_ROOT, 'package.json');
@@ -164,31 +179,34 @@ function detectTestRunner(testFiles) {
       if (pkg.scripts?.test) {
         // If specific files, pass them
         if (testFiles.length > 0) {
-          const fileArgs = testFiles.join(' ');
           // Jest-style
           if (pkg.devDependencies?.jest || pkg.dependencies?.jest) {
-            return `${getExec('jest')} ${fileArgs} --passWithNoTests`;
+            return getExecParts('jest', [...testFiles, '--passWithNoTests']);
           }
           // Vitest
           if (pkg.devDependencies?.vitest || pkg.dependencies?.vitest) {
-            return `${getExec('vitest')} run ${fileArgs}`;
+            return getExecParts('vitest', ['run', ...testFiles]);
           }
           // Mocha
           if (pkg.devDependencies?.mocha || pkg.dependencies?.mocha) {
-            return `${getExec('mocha')} ${fileArgs}`;
+            return getExecParts('mocha', testFiles);
           }
         }
-        // Fallback to resolved test command
-        const testCmd = getCommand('test') || 'npm test';
-        return `${testCmd} -- --passWithNoTests`;
+        // Fallback to resolved test command via package manager
+        const testCmd = getCommand('test');
+        if (testCmd) {
+          const parts = testCmd.split(/\s+/);
+          return { cmd: parts[0], args: [...parts.slice(1), '--', '--passWithNoTests'] };
+        }
+        return { cmd: 'npm', args: ['test', '--', '--passWithNoTests'] };
       }
-    } catch (err) {
+    } catch {
       // package.json is malformed, fall through to default
     }
   }
 
   // Default to jest via exec resolver
-  return `${getExec('jest')} ${testFiles.join(' ')} --passWithNoTests`;
+  return getExecParts('jest', [...testFiles, '--passWithNoTests']);
 }
 
 /**

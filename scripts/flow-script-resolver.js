@@ -27,7 +27,7 @@ const path = require('path');
  * Validate a script name is safe for shell usage.
  * Rejects names containing shell metacharacters.
  */
-const UNSAFE_CHARS = /[;&|$`()"'\\<>!\n\r]/;
+const UNSAFE_CHARS = /[;&|$`()"'\\<>!\n\r/]/;
 function isSafeScriptName(name) {
   return typeof name === 'string' && name.length > 0 && name.length < 100 && !UNSAFE_CHARS.test(name);
 }
@@ -184,7 +184,7 @@ function getCommand(name, options = {}) {
   const configScripts = config.scripts || {};
   if (configScripts[name] && typeof configScripts[name] === 'string') {
     // Validate entire config override — reject if any part contains shell metacharacters
-    const overrideParts = configScripts[name].split(/\s+/);
+    const overrideParts = configScripts[name].trim().split(/\s+/).filter(Boolean);
     if (!overrideParts.every(part => isSafeScriptName(part))) return null;
     return configScripts[name];
   }

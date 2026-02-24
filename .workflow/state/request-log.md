@@ -1667,3 +1667,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Adapt WogiFlow for Claude Code 2.1.50 — SIMPLE mode detection, worktree hooks, context adjustments, health diagnostics"
 **Result**: Added 5 features: (1) CLAUDE_CODE_SIMPLE detection with session warning, (2) CLAUDE_CODE_DISABLE_1M_CONTEXT context estimator threshold adjustment, (3) Health check 2.1.50 feature reporting with claude agents diagnostic, (4) WorktreeCreate/WorktreeRemove hooks for worktree lifecycle management, (5) Documentation of isolation: worktree for future parallel execution.
 **Files**: scripts/hooks/core/session-context.js, scripts/flow-context-estimator.js, scripts/flow-health.js, scripts/hooks/adapters/claude-code.js, scripts/hooks/core/worktree-lifecycle.js (new), scripts/hooks/entry/claude-code/worktree-create.js (new), scripts/hooks/entry/claude-code/worktree-remove.js (new), scripts/flow-parallel.js
+
+### R-134 | 2026-02-25 18:00
+**Type**: fix
+**Tags**: #feature:security #feature:community #component:flow-community #component:flow-script-resolver #component:extension-registry #component:session-start #component:flow-regression #component:flow-utils
+**Task**: wf-cr-a684a4
+**Request**: "Fix 17 review findings from a684a46 code review — security hardening, logic fixes, architecture cleanup"
+**Result**: Fixed 16 of 17 findings across 6 files. Critical: IPv6 SSRF bypass (bracket-delimited hostnames). High: response size TOCTOU (check before append), testFiles command injection (execFileSync + path validation). Medium: PII path coverage, path traversal in UNSAFE_CHARS, config override whitespace, mergeModelIntelligence insertion order, JSDoc accuracy. Low: try-catch, version cache, dedup scope, DNS-label regex, module-level imports, dead http import, parseInt consistency. Deferred: arch-001 (SSRF validator dedup with flow-links.js — architectural task).
+**Files**: `scripts/flow-community.js`, `scripts/flow-regression.js`, `scripts/flow-script-resolver.js`, `scripts/hooks/core/extension-registry.js`, `scripts/hooks/entry/claude-code/session-start.js`, `scripts/flow-utils.js`

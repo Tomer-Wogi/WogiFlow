@@ -17,8 +17,8 @@
 
 const registeredExtensions = new Map();
 
-// Extension names must be DNS-label-like: lowercase alphanumeric + hyphens, max 64 chars
-const VALID_EXTENSION_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+// Extension names must be DNS-label-like: lowercase alphanumeric + hyphens, no trailing hyphens, max 64 chars
+const VALID_EXTENSION_NAME = /^[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$/;
 
 /**
  * Register an extension's hook module.
