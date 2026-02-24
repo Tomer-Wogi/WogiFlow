@@ -234,7 +234,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T2: State Sync + Task Management (Sprint 3-4)
 
-**Status:** Planned
+**Status:** COMPLETE (wf-55372124, 2026-02-26). 5 stories: S1 DB schema + sync API (wf-b7d27fe6), S2 server-side merge engine (wf-8cc0ee60), S3 task claiming/locking/assignment (wf-669671eb), S4 client sync hooks + offline queue (wf-7ee14d40), S5 team presence + status (wf-9976667c). 363 tests passing, feature/teams-t2 branch.
 **Depends On:** Phase T1: Foundation
 
 **Scope:**

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-26T06:00:00.000Z",
+  "lastUpdated": "2026-02-26T13:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -56,6 +56,83 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-55372124",
+      "title": "Phase T2: State Sync + Task Management (Epic — all 5 stories complete)",
+      "type": "epic",
+      "feature": "teams",
+      "status": "completed",
+      "priority": "P1",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T07:10:00.000Z",
+      "completedAt": "2026-02-26T13:00:00.000Z"
+    },
+    {
+      "id": "wf-9976667c",
+      "title": "T2-S5: Team Presence + Status",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "wf-55372124",
+      "status": "completed",
+      "priority": "P2",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T12:00:00.000Z",
+      "completedAt": "2026-02-26T13:00:00.000Z"
+    },
+    {
+      "id": "wf-7ee14d40",
+      "title": "T2-S4: Client Sync Hooks + Offline Queue",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "wf-55372124",
+      "status": "completed",
+      "priority": "P1",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T11:00:00.000Z",
+      "completedAt": "2026-02-26T12:00:00.000Z"
+    },
+    {
+      "id": "wf-669671eb",
+      "title": "T2-S3: Task Claiming, Locking & Assignment",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "wf-55372124",
+      "status": "completed",
+      "priority": "P1",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T10:00:00.000Z",
+      "completedAt": "2026-02-26T11:00:00.000Z"
+    },
+    {
+      "id": "wf-8cc0ee60",
+      "title": "T2-S2: Server-Side Sync Engine",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "wf-55372124",
+      "status": "completed",
+      "priority": "P1",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T08:00:00.000Z",
+      "completedAt": "2026-02-26T09:30:00.000Z"
+    },
+    {
+      "id": "wf-b7d27fe6",
+      "title": "T2-S1: DB Schema + Sync API Endpoints",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "wf-55372124",
+      "status": "completed",
+      "priority": "P1",
+      "branch": "feature/teams-t2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T07:10:00.000Z",
+      "completedAt": "2026-02-26T09:00:00.000Z"
+    },
     {
       "id": "wf-cr-26feb0",
       "title": "Fix 16 review findings from Phase T1 Teams Foundation (wf-b2532240)",
