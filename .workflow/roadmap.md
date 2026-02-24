@@ -199,7 +199,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T1: Foundation (Sprint 1-2)
 
-**Status:** Planned
+**Status:** COMPLETE (wf-b2532240, 2026-02-26). OAuth 2.0 (GitHub + Google), JWT RS256 + opaque refresh tokens, RFC 8628 device auth, teams/projects CRUD, PostgreSQL schema (8 tables), CloudFormation (4 Lambdas), dashboard login + device approval pages, 150 unit tests.
 **Depends On:** None
 
 **Scope:**
@@ -210,12 +210,20 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 - Web dashboard: login, org creation, member invite
 - Auth token storage: `~/.wogiflow/auth.json`
 
-**Key Files (new repo):**
-- `packages/server/db/migrations/001_foundation.sql`
-- `packages/server/routes/auth.js`, `routes/orgs.js`, `routes/projects.js`
-- `packages/client/flow-cloud-auth.js` — CLI auth (device flow, OAuth)
-- `packages/client/flow-team.js` — Team management CLI
-- `packages/dashboard/app/` — Next.js pages
+**Key Files (wogiflow-cloud):**
+- `packages/server/db/003_teams.sql` — 8 tables with indexes/constraints
+- `packages/server/lib/auth.js` — JWT + refresh tokens + auth middleware
+- `packages/server/lib/oauth.js` — GitHub + Google OAuth + user upsert
+- `packages/server/lib/device-auth.js` — RFC 8628 device code management
+- `packages/server/lib/teams.js` — Team/member/project CRUD + audit log
+- `packages/server/lib/validate.js` — 6 new validators
+- `packages/server/routes/auth.js` — OAuth authorize/callback + refresh
+- `packages/server/routes/device-auth.js` — Device auth flow endpoints
+- `packages/server/routes/teams.js` — Teams CRUD + member management
+- `packages/server/routes/projects.js` — Projects CRUD under teams
+- `packages/dashboard/login.html` — OAuth login page
+- `packages/dashboard/device.html` — Device code approval page
+- `deploy/cloudformation.yaml` — 4 new Lambdas, secrets, API routes
 
 **Minimal changes to free wogiflow:**
 - `lib/installer.js` — Detect @wogiflow/teams, auto-register its hooks

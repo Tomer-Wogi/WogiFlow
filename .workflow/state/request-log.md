@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-177 | 2026-02-26 04:00
+**Type**: new
+**Tags**: #feature:teams #component:auth #component:oauth #component:device-auth #component:teams #component:projects #infra:cloudformation
+**Task**: wf-b2532240
+**Request**: "Phase T1: Teams Foundation — OAuth, teams, CLI device auth"
+**Result**: Built the full Teams Foundation in wogiflow-cloud on feature/teams-t1 branch. Created 003_teams.sql DB migration with 8 tables (users, teams, team_members, projects, refresh_tokens, oauth_state, device_codes, audit_log). Implemented JWT auth (RS256, 15min TTL) + opaque refresh tokens (30 days, rotated on use). Added GitHub and Google OAuth 2.0 flows with one-time state tokens. Implemented RFC 8628 Device Authorization Grant for CLI auth with rate limiting. Built Teams CRUD with role hierarchy (owner>admin>member>viewer) and Projects CRUD with per-team slug uniqueness. Updated CloudFormation with 4 new Lambda functions, API routes, and 3 secrets. Created dashboard login.html and device.html pages. 150 unit tests passing.
+**Files**: `packages/server/db/003_teams.sql` (new), `packages/server/lib/auth.js` (new), `packages/server/lib/oauth.js` (new), `packages/server/lib/device-auth.js` (new), `packages/server/lib/teams.js` (new), `packages/server/routes/auth.js` (new), `packages/server/routes/device-auth.js` (new), `packages/server/routes/teams.js` (new), `packages/server/routes/projects.js` (new), `packages/server/lib/validate.js`, `packages/server/package.json`, `deploy/cloudformation.yaml`, `packages/dashboard/login.html` (new), `packages/dashboard/device.html` (new), `packages/server/tests/unit/auth.test.js` (new), `packages/server/tests/unit/device-auth.test.js` (new), `packages/server/tests/unit/teams.test.js` (new), `packages/server/tests/unit/validate-teams.test.js` (new)
+
 ### R-176 | 2026-02-26 00:00
 **Type**: new
 **Tags**: #feature:community #component:pipeline-worker #component:admin-api #component:embeddings #component:github-api
