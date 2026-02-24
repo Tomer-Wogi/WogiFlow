@@ -52,3 +52,7 @@ Documented bugs or limitations:
 Auto-learned patterns from usage. New entries are added automatically when repeated mistakes are detected.
 
 <!-- New learnings will be appended below this line -->
+
+## Community Learnings
+<!-- community-knowledge-v1 -->
+- Community tip: use numbered steps for multi-step tasks

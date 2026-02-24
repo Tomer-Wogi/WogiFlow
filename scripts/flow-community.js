@@ -809,6 +809,244 @@ function saveCommunityCache(data) {
 }
 
 // ──────────────────────────────────────────────
+// Community Knowledge Merge (Phase C2)
+// ──────────────────────────────────────────────
+
+const COMMUNITY_MARKER = '<!-- community-knowledge-v1 -->';
+
+/**
+ * Merge pulled community knowledge into local state files.
+ * Idempotent — safe to call multiple times with the same data.
+ *
+ * @param {Object} knowledge - Pulled community knowledge from server/cache
+ * @param {Object} config - WogiFlow config
+ * @returns {{ modelIntelligence: number, errorStrategies: number, patterns: number }} Merge counts
+ */
+function mergeCommunityKnowledge(knowledge, config) {
+  const counts = { modelIntelligence: 0, errorStrategies: 0, patterns: 0 };
+  if (!knowledge || typeof knowledge !== 'object') return counts;
+
+  try {
+    if (Array.isArray(knowledge.modelIntelligence)) {
+      counts.modelIntelligence = mergeModelIntelligence(knowledge.modelIntelligence);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-community] Model intelligence merge failed: ${err.message}`);
+    }
+  }
+
+  try {
+    if (Array.isArray(knowledge.errorStrategies)) {
+      counts.errorStrategies = mergeErrorStrategies(knowledge.errorStrategies);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-community] Error strategies merge failed: ${err.message}`);
+    }
+  }
+
+  try {
+    if (Array.isArray(knowledge.patterns)) {
+      counts.patterns = mergePatterns(knowledge.patterns);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-community] Patterns merge failed: ${err.message}`);
+    }
+  }
+
+  return counts;
+}
+
+/**
+ * Merge community model intelligence into local model adapter files.
+ * Only updates files that already exist — never creates new adapter files.
+ *
+ * @param {Array} items - Model intelligence entries [{model, strengths, weaknesses, adjustments}]
+ * @returns {number} Number of entries merged
+ */
+function mergeModelIntelligence(items) {
+  let merged = 0;
+  const adaptersDir = PATHS.modelAdapters;
+
+  try {
+    if (!fs.existsSync(adaptersDir)) return 0;
+  } catch {
+    return 0;
+  }
+
+  for (const item of items.slice(0, 20)) {
+    if (!item.model) continue;
+
+    // Normalize model name to kebab-case filename
+    const modelFile = item.model.toLowerCase().replace(/[^a-z0-9.-]/g, '-').replace(/-+/g, '-');
+    const filePath = path.join(adaptersDir, `${modelFile}.md`);
+
+    try {
+      if (!fs.existsSync(filePath)) continue;
+
+      const content = fs.readFileSync(filePath, 'utf-8');
+
+      // Check if community section already exists
+      if (content.includes(COMMUNITY_MARKER)) {
+        // Section exists — check for this specific item
+        const detail = item.adjustments || item.strengths || item.weaknesses || '';
+        if (!detail || content.includes(detail.slice(0, 80))) {
+          continue; // Already merged
+        }
+        // Append to existing section
+        const markerIndex = content.indexOf(COMMUNITY_MARKER);
+        const insertPoint = content.indexOf('\n', markerIndex) + 1;
+        const newLine = `- ${detail}\n`;
+        const updated = content.slice(0, insertPoint) + newLine + content.slice(insertPoint);
+        fs.writeFileSync(filePath, updated, 'utf-8');
+        merged++;
+      } else {
+        // Add new community section at end of file
+        const detail = item.adjustments || item.strengths || item.weaknesses || '';
+        if (!detail) continue;
+        const section = `\n\n## Community Learnings\n${COMMUNITY_MARKER}\n- ${detail}\n`;
+        fs.writeFileSync(filePath, content.trimEnd() + section, 'utf-8');
+        merged++;
+      }
+    } catch {
+      // Skip individual file failures
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Merge community error strategies into local adaptive-learning.json.
+ * Deduplicates by category+strategy pair.
+ *
+ * @param {Array} items - Error strategy entries [{category, strategy, successRate}]
+ * @returns {number} Number of entries merged
+ */
+function mergeErrorStrategies(items) {
+  const filePath = path.join(PATHS.state, 'adaptive-learning.json');
+  let data = {};
+
+  try {
+    if (fs.existsSync(filePath)) {
+      data = safeJsonParse(filePath, {});
+    }
+  } catch {
+    data = {};
+  }
+
+  if (!data.communityStrategies) {
+    data.communityStrategies = [];
+  }
+
+  // Build dedup set from existing community strategies
+  const existing = new Set(
+    data.communityStrategies.map(s => `${(s.category || '').toLowerCase()}::${(s.strategy || '').toLowerCase()}`)
+  );
+
+  let merged = 0;
+  for (const item of items.slice(0, 50)) {
+    if (!item.category || !item.strategy) continue;
+
+    const key = `${item.category.toLowerCase()}::${item.strategy.toLowerCase()}`;
+    if (existing.has(key)) continue;
+
+    data.communityStrategies.push({
+      category: item.category,
+      strategy: item.strategy,
+      successRate: item.successRate || null,
+      source: 'community',
+      mergedAt: new Date().toISOString()
+    });
+    existing.add(key);
+    merged++;
+  }
+
+  if (merged > 0) {
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[flow-community] Failed to write adaptive-learning.json: ${err.message}`);
+      }
+    }
+  }
+
+  return merged;
+}
+
+/**
+ * Merge community patterns into local feedback-patterns.md.
+ * Adds with "community-" prefix and "Informational" status.
+ * Deduplicates by checking for existing community entries with same pattern name.
+ *
+ * @param {Array} items - Pattern entries [{pattern, description, occurrences}]
+ * @returns {number} Number of entries merged
+ */
+function mergePatterns(items) {
+  const filePath = PATHS.feedbackPatterns;
+
+  let content = '';
+  try {
+    if (fs.existsSync(filePath)) {
+      content = fs.readFileSync(filePath, 'utf-8');
+    } else {
+      return 0; // Don't create the file if it doesn't exist
+    }
+  } catch {
+    return 0;
+  }
+
+  let merged = 0;
+  const today = new Date().toISOString().split('T')[0];
+  const newRows = [];
+
+  for (const item of items.slice(0, 20)) {
+    if (!item.description) continue;
+
+    const patternName = item.pattern
+      ? `community-${item.pattern}`
+      : `community-${item.description.slice(0, 30).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+    // Check if this community pattern already exists
+    if (content.includes(patternName)) continue;
+
+    const description = item.description.replace(/\|/g, '/'); // Escape pipes for table
+    const occurrences = item.occurrences || 1;
+    newRows.push(`| ${today} | ${patternName} | Community: ${description} | ${occurrences} | Informational |`);
+    merged++;
+  }
+
+  if (newRows.length > 0) {
+    // Find the end of the Patterns Log table to insert before pending patterns
+    const tableEnd = content.indexOf('\n\n### ');
+    if (tableEnd !== -1) {
+      const updated = content.slice(0, tableEnd) + '\n' + newRows.join('\n') + content.slice(tableEnd);
+      try {
+        fs.writeFileSync(filePath, updated, 'utf-8');
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[flow-community] Failed to write feedback-patterns.md: ${err.message}`);
+        }
+      }
+    } else {
+      // Append at end
+      try {
+        fs.writeFileSync(filePath, content.trimEnd() + '\n' + newRows.join('\n') + '\n', 'utf-8');
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[flow-community] Failed to write feedback-patterns.md: ${err.message}`);
+        }
+      }
+    }
+  }
+
+  return merged;
+}
+
+// ──────────────────────────────────────────────
 // Exports
 // ──────────────────────────────────────────────
 
@@ -817,6 +1055,7 @@ module.exports = {
   stripPII,
   pushToServer,
   pullFromServer,
+  mergeCommunityKnowledge,
   getOrCreateAnonId,
   submitSuggestion,
   retryPendingSuggestions,

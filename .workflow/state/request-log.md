@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-173 | 2026-02-25 02:30
+**Type**: new
+**Tags**: #feature:community #component:flow-community #hook:session-start
+**Task**: wf-ec88195b
+**Request**: "Phase C2 Client-Side — Community Knowledge Local Surfacing"
+**Result**: Added community knowledge merge system — pulled knowledge is now merged into local model adapters (Community Learnings section), adaptive-learning.json (communityStrategies key), and feedback-patterns.md (community- prefixed informational entries). Idempotent merging prevents duplicates. Session-start hook calls merge after pull.
+**Files**: scripts/flow-community.js, scripts/hooks/entry/claude-code/session-start.js
+
 ### R-172 | 2026-02-25 01:15
 **Type**: new
 **Tags**: #feature:teams-extension #component:extension-registry #hook:postinstall

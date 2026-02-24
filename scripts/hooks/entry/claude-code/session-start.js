@@ -102,6 +102,15 @@ async function main() {
         const knowledge = await community.pullFromServer(config);
         if (knowledge && coreResult && coreResult.context) {
           coreResult.context.communityKnowledge = knowledge;
+
+          // Merge community knowledge into local state files (Phase C2)
+          try {
+            community.mergeCommunityKnowledge(knowledge, config);
+          } catch (mergeErr) {
+            if (process.env.DEBUG) {
+              console.error(`[session-start] Community merge failed: ${mergeErr.message}`);
+            }
+          }
         }
       }
     } catch (err) {

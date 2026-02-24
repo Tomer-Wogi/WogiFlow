@@ -1,0 +1,11 @@
+{
+  "communityStrategies": [
+    {
+      "category": "IMPORT_ERROR",
+      "strategy": "use explicit imports",
+      "successRate": 0.87,
+      "source": "community",
+      "mergedAt": "2026-02-24T11:58:19.153Z"
+    }
+  ]
+}

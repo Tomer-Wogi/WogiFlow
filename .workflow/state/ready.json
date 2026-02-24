@@ -1,9 +1,21 @@
 {
-  "lastUpdated": "2026-02-25T01:15:00.000Z",
+  "lastUpdated": "2026-02-25T02:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-ec88195b",
+      "title": "Phase C2 Client-Side — Community Knowledge Local Surfacing",
+      "type": "story",
+      "feature": "community",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-25T02:00:00.000Z",
+      "startedAt": "2026-02-25T02:00:00.000Z",
+      "completedAt": "2026-02-25T02:30:00.000Z",
+      "specPath": ".workflow/changes/wf-ec88195b.md"
+    },
     {
       "id": "wf-dcf132cb",
       "title": "Free Package Extension Points — Enable Teams Hook Integration",
