@@ -17,14 +17,21 @@
 
 const registeredExtensions = new Map();
 
+// Extension names must be DNS-label-like: lowercase alphanumeric + hyphens, max 64 chars
+const VALID_EXTENSION_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 /**
  * Register an extension's hook module.
+ * Note: This registry is in-process only — each hook invocation runs in a fresh
+ * Node.js process, so registrations do not persist across hook calls.
+ * For cross-invocation extension state, use settings.json (as postinstall.js does).
+ *
  * @param {string} name - Extension name (e.g., 'teams')
  * @param {Object} hookModule - Module object with hook functions
  * @returns {boolean} True if registered, false if already exists
  */
 function register(name, hookModule) {
-  if (!name || typeof name !== 'string') {
+  if (!name || typeof name !== 'string' || !VALID_EXTENSION_NAME.test(name)) {
     if (process.env.DEBUG) {
       console.error(`[extension-registry] Invalid extension name: ${name}`);
     }

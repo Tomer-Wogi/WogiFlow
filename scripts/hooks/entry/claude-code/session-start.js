@@ -42,7 +42,8 @@ async function main() {
       inputData += chunk;
     }
 
-    const input = inputData ? JSON.parse(inputData) : {};
+    const { safeJsonParseString } = require('../../../flow-utils');
+    const input = inputData ? (safeJsonParseString(inputData, {}) || {}) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Store CLI session ID for tracking (CLI-agnostic via session-state)
@@ -109,17 +110,20 @@ async function main() {
         // Retry pending suggestions (fire-and-forget)
         community.retryPendingSuggestions(config).catch(() => {});
 
-        // Pull community knowledge (fire-and-forget, updates cache)
-        const knowledge = await community.pullFromServer(config);
-        if (knowledge && coreResult && coreResult.context) {
-          coreResult.context.communityKnowledge = knowledge;
+        // Pull community knowledge (respects pullOnSessionStart toggle)
+        if (config.community?.pullOnSessionStart !== false) {
+          // Non-blocking pull with 5s timeout — uses cache if unavailable
+          const knowledge = await community.pullFromServer(config);
+          if (knowledge && coreResult && coreResult.context) {
+            coreResult.context.communityKnowledge = knowledge;
 
-          // Merge community knowledge into local state files (Phase C2)
-          try {
-            community.mergeCommunityKnowledge(knowledge, config);
-          } catch (mergeErr) {
-            if (process.env.DEBUG) {
-              console.error(`[session-start] Community merge failed: ${mergeErr.message}`);
+            // Merge community knowledge into local state files (Phase C2)
+            try {
+              community.mergeCommunityKnowledge(knowledge, config);
+            } catch (mergeErr) {
+              if (process.env.DEBUG) {
+                console.error(`[session-start] Community merge failed: ${mergeErr.message}`);
+              }
             }
           }
         }

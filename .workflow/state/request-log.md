@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-175 | 2026-02-25 17:00
+**Type**: fix
+**Tags**: #feature:security #feature:community #component:flow-community #component:flow-script-resolver #component:extension-registry #component:session-start #component:flow-regression
+**Task**: wf-cr-b25f16
+**Request**: "Fix 20 review findings from v1.5.13 multi-pass code review"
+**Result**: Fixed 15 of 20 findings across 5 files. Security: replaced all raw JSON.parse with safeJsonParseString (prototype pollution), added SSRF protection (isAllowedServerUrl blocking RFC-1918/link-local), added HTTP response body size limit (512KB), added PII stripping to suggestions, fixed script resolver config override validation to check ALL tokens, added extension name regex validation. Logic: fixed mergeModelIntelligence empty-detail bug and insert-point -1 bug, added 500-char cap on inbound community data. Integration: wired pullOnSessionStart config toggle. Structure: removed unused getConfig import, memoized getWogiFlowVersion. Deferred 5 findings: pushOnSessionEnd unwired (separate scope), blocking await (intentional), retry duplicates (low impact), file decomposition (structural refactor), anonymousId config cleanup (harmless).
+**Files**: `scripts/flow-community.js`, `scripts/flow-script-resolver.js`, `scripts/hooks/core/extension-registry.js`, `scripts/hooks/entry/claude-code/session-start.js`, `scripts/flow-regression.js`
+
 ### R-174 | 2026-02-25 12:15
 **Type**: new
 **Tags**: #feature:script-resolver #component:flow-script-resolver #hook:session-start

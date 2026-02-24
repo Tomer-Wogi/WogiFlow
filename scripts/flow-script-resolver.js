@@ -183,8 +183,9 @@ function getCommand(name, options = {}) {
   // 1. Check config override
   const configScripts = config.scripts || {};
   if (configScripts[name] && typeof configScripts[name] === 'string') {
-    // Validate config override is safe
-    if (!isSafeScriptName(configScripts[name].split(' ')[0])) return null;
+    // Validate entire config override — reject if any part contains shell metacharacters
+    const overrideParts = configScripts[name].split(/\s+/);
+    if (!overrideParts.every(part => isSafeScriptName(part))) return null;
     return configScripts[name];
   }
 

@@ -17,7 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
 const { getExec, getCommand } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -37,7 +37,7 @@ function getCompletedTasks() {
   }
 
   try {
-    const ready = JSON.parse(fs.readFileSync(READY_PATH, 'utf8'));
+    const ready = safeJsonParse(READY_PATH, {});
     return ready.recentlyCompleted || [];
   } catch (err) {
     log('yellow', `Warning: Could not parse ready.json: ${err.message}`);
@@ -158,7 +158,7 @@ function detectTestRunner(testFiles) {
 
   if (fs.existsSync(packageJson)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf8'));
+      const pkg = safeJsonParse(packageJson, {});
 
       // Check scripts
       if (pkg.scripts?.test) {

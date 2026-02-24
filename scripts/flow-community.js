@@ -17,7 +17,7 @@ const http = require('http');
 const crypto = require('crypto');
 const os = require('os');
 
-const { getConfig, PATHS, safeJsonParse } = require('./flow-utils');
+const { PATHS, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 
 // ~/.wogiflow/ directory for user-level state (persists across projects)
 const WOGIFLOW_HOME = path.join(os.homedir(), '.wogiflow');
@@ -28,6 +28,7 @@ const LAST_PUSH_PATH = path.join(WOGIFLOW_HOME, 'last-community-push');
 const CONSENT_PATH = path.join(WOGIFLOW_HOME, 'consent-acknowledged');
 
 const REQUEST_TIMEOUT_MS = 5000;
+const MAX_RESPONSE_BYTES = 512 * 1024; // 512KB max response size
 
 // ──────────────────────────────────────────────
 // Anonymous ID
@@ -266,11 +267,14 @@ function collectShareableData(config) {
  * Get WogiFlow version from package.json.
  * @returns {string}
  */
+let _cachedVersion = null;
 function getWogiFlowVersion() {
+  if (_cachedVersion) return _cachedVersion;
   try {
     const pkgPath = path.join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    return pkg.version || 'unknown';
+    const pkg = safeJsonParse(pkgPath, {});
+    _cachedVersion = pkg.version || 'unknown';
+    return _cachedVersion;
   } catch {
     return 'unknown';
   }
@@ -506,6 +510,35 @@ function collectSkillLearnings() {
 // ──────────────────────────────────────────────
 
 /**
+ * Validate server URL to prevent SSRF attacks.
+ * Enforces HTTPS-only and blocks private/internal addresses.
+ * @param {string} urlStr
+ * @returns {boolean}
+ */
+function isAllowedServerUrl(urlStr) {
+  try {
+    const url = new URL(urlStr);
+    // Enforce HTTPS only
+    if (url.protocol !== 'https:') return false;
+    // Block localhost and loopback
+    const hostname = url.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+    // Block private IP ranges (RFC-1918 + link-local)
+    const ipMatch = hostname.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
+    if (ipMatch) {
+      const [, a, b] = ipMatch.map(Number);
+      if (a === 10) return false;                          // 10.0.0.0/8
+      if (a === 172 && b >= 16 && b <= 31) return false;  // 172.16.0.0/12
+      if (a === 192 && b === 168) return false;            // 192.168.0.0/16
+      if (a === 169 && b === 254) return false;            // 169.254.0.0/16 (link-local)
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Make an HTTPS request with timeout. Fire-and-forget pattern.
  * @param {string} method - HTTP method
  * @param {string} urlStr - Full URL
@@ -516,6 +549,14 @@ function collectSkillLearnings() {
 function httpRequest(method, urlStr, body = null, timeoutMs = REQUEST_TIMEOUT_MS) {
   return new Promise((resolve) => {
     try {
+      if (!isAllowedServerUrl(urlStr)) {
+        if (process.env.DEBUG) {
+          console.error(`[flow-community] Blocked request to disallowed URL: ${urlStr}`);
+        }
+        resolve(null);
+        return;
+      }
+
       const url = new URL(urlStr);
       const isHttps = url.protocol === 'https:';
       const transport = isHttps ? https : http;
@@ -535,7 +576,13 @@ function httpRequest(method, urlStr, body = null, timeoutMs = REQUEST_TIMEOUT_MS
 
       const req = transport.request(options, (res) => {
         let data = '';
-        res.on('data', (chunk) => { data += chunk; });
+        res.on('data', (chunk) => {
+          data += chunk;
+          if (data.length > MAX_RESPONSE_BYTES) {
+            req.destroy();
+            resolve(null);
+          }
+        });
         res.on('end', () => {
           resolve({ statusCode: res.statusCode, body: data });
         });
@@ -626,7 +673,8 @@ async function pullFromServer(config) {
 
     if (result && result.statusCode >= 200 && result.statusCode < 300) {
       try {
-        const knowledge = JSON.parse(result.body);
+        const knowledge = safeJsonParseString(result.body);
+        if (!knowledge || typeof knowledge !== 'object') return cached || null;
         knowledge._cachedAt = new Date().toISOString();
         saveCommunityCache(knowledge);
         return knowledge;
@@ -663,10 +711,13 @@ async function submitSuggestion(text, type, config) {
   const validTypes = ['idea', 'bug', 'improvement'];
   const suggestionType = validTypes.includes(type) ? type : 'idea';
 
+  // Strip PII from suggestion text before sending
+  const strippedText = stripPII(text.trim(), config);
+
   const suggestion = {
     anonId: getOrCreateAnonId(),
     type: suggestionType,
-    content: text.trim(),
+    content: typeof strippedText === 'string' ? strippedText : text.trim(),
     wogiflowVersion: getWogiFlowVersion(),
     submittedAt: new Date().toISOString()
   };
@@ -701,7 +752,7 @@ function queuePendingSuggestion(suggestion) {
     if (fs.existsSync(PENDING_SUGGESTIONS_PATH)) {
       try {
         const content = fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8');
-        const parsed = JSON.parse(content);
+        const parsed = safeJsonParseString(content, []);
         if (Array.isArray(parsed)) {
           pending = parsed;
         }
@@ -737,7 +788,7 @@ async function retryPendingSuggestions(config) {
     const content = fs.readFileSync(PENDING_SUGGESTIONS_PATH, 'utf-8');
     let pending;
     try {
-      pending = JSON.parse(content);
+      pending = safeJsonParseString(content, null);
     } catch {
       return;
     }
@@ -785,7 +836,7 @@ function loadCommunityCache() {
   try {
     if (!fs.existsSync(COMMUNITY_CACHE_PATH)) return null;
     const content = fs.readFileSync(COMMUNITY_CACHE_PATH, 'utf-8');
-    return JSON.parse(content);
+    return safeJsonParseString(content, null);
   } catch {
     return null;
   }
@@ -887,25 +938,25 @@ function mergeModelIntelligence(items) {
       if (!fs.existsSync(filePath)) continue;
 
       const content = fs.readFileSync(filePath, 'utf-8');
+      const detail = (item.adjustments || item.strengths || item.weaknesses || '').slice(0, 500);
+      if (!detail) continue;
 
       // Check if community section already exists
       if (content.includes(COMMUNITY_MARKER)) {
-        // Section exists — check for this specific item
-        const detail = item.adjustments || item.strengths || item.weaknesses || '';
-        if (!detail || content.includes(detail.slice(0, 80))) {
+        // Section exists — check for this specific item (full string match)
+        if (content.includes(detail)) {
           continue; // Already merged
         }
-        // Append to existing section
+        // Append to existing section (safe insert point calculation)
         const markerIndex = content.indexOf(COMMUNITY_MARKER);
-        const insertPoint = content.indexOf('\n', markerIndex) + 1;
+        const nlIndex = content.indexOf('\n', markerIndex);
+        const insertPoint = nlIndex === -1 ? content.length : nlIndex + 1;
         const newLine = `- ${detail}\n`;
         const updated = content.slice(0, insertPoint) + newLine + content.slice(insertPoint);
         fs.writeFileSync(filePath, updated, 'utf-8');
         merged++;
       } else {
         // Add new community section at end of file
-        const detail = item.adjustments || item.strengths || item.weaknesses || '';
-        if (!detail) continue;
         const section = `\n\n## Community Learnings\n${COMMUNITY_MARKER}\n- ${detail}\n`;
         fs.writeFileSync(filePath, content.trimEnd() + section, 'utf-8');
         merged++;
@@ -1013,7 +1064,7 @@ function mergePatterns(items) {
     // Check if this community pattern already exists
     if (content.includes(patternName)) continue;
 
-    const description = item.description.replace(/\|/g, '/'); // Escape pipes for table
+    const description = item.description.slice(0, 500).replace(/\|/g, '/'); // Escape pipes for table, cap length
     const occurrences = item.occurrences || 1;
     newRows.push(`| ${today} | ${patternName} | Community: ${description} | ${occurrences} | Informational |`);
     merged++;
