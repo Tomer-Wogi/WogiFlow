@@ -5,17 +5,6 @@
   "blocked": [],
   "recentlyCompleted": [
     {
-      "id": "wf-dc1ac7e5",
-      "title": "Fix 9 review findings — security hardening, cache key mismatch, template syntax (wf-f837a262 review)",
-      "type": "fix",
-      "feature": "review",
-      "status": "completed",
-      "priority": "P0",
-      "createdAt": "2026-02-25T14:00:00.000Z",
-      "startedAt": "2026-02-25T14:00:00.000Z",
-      "completedAt": "2026-02-25T14:30:00.000Z"
-    },
-    {
       "id": "wf-e28a6f68",
       "title": "Remove Teams implementation from public repo",
       "type": "story",
@@ -26,6 +15,17 @@
       "startedAt": "2026-02-25T03:00:00.000Z",
       "completedAt": "2026-02-25T13:00:00.000Z",
       "specPath": ".workflow/changes/wf-e28a6f68.md"
+    },
+    {
+      "id": "wf-dc1ac7e5",
+      "title": "Fix 9 review findings — security hardening, cache key mismatch, template syntax (wf-f837a262 review)",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-25T14:00:00.000Z",
+      "startedAt": "2026-02-25T14:00:00.000Z",
+      "completedAt": "2026-02-25T14:30:00.000Z"
     },
     {
       "id": "wf-f837a262",

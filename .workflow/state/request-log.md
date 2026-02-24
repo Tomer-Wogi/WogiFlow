@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-175 | 2026-02-25 13:00
+**Type**: refactor
+**Tags**: #feature:security #component:flow-agent-teams #hook:teammate-idle
+**Task**: wf-e28a6f68
+**Request**: "Remove Teams implementation from public repo"
+**Result**: Deleted 3 Teams implementation files (flow-agent-teams.js, teammate-idle core hook, teammate-idle entry hook). Removed all consumer code from 4 core hooks (flow-parallel.js, session-context.js, task-gate.js, task-completed.js). Removed TeammateIdle hook registration from settings.json. Removed agentTeams config section and teammateIdle hook rule from config.json. Updated documentation (wogi-status.md, claude-code-compatibility.md). All JS files pass syntax check, all JSON files parse correctly.
+**Files**: scripts/flow-agent-teams.js (deleted), scripts/hooks/core/teammate-idle.js (deleted), scripts/hooks/entry/claude-code/teammate-idle.js (deleted), scripts/flow-parallel.js, scripts/hooks/core/session-context.js, scripts/hooks/core/task-gate.js, scripts/hooks/core/task-completed.js, .claude/settings.json, .workflow/config.json, .claude/commands/wogi-status.md, .claude/docs/claude-code-compatibility.md
+
 ### R-174 | 2026-02-25 12:15
 **Type**: new
 **Tags**: #feature:script-resolver #component:flow-script-resolver #hook:session-start

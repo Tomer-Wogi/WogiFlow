@@ -147,20 +147,6 @@ function handleTaskCompleted(input) {
       // Non-critical - don't fail the hook for history logging
     }
 
-    // Update teammate state if agent teams tracking is enabled
-    try {
-      const { getAgentTeamsConfig, updateTeammate } = require('../../flow-agent-teams');
-      const agentTeamsConfig = getAgentTeamsConfig();
-      if (agentTeamsConfig.stateTracking.enabled) {
-        const teammateId = input.sessionId || input.source;
-        if (teammateId) {
-          updateTeammate(teammateId, { status: 'idle', taskId: null });
-        }
-      }
-    } catch {
-      // Non-critical - agent teams module may not be available
-    }
-
     // Mark all non-rejected observations for this task as committed (fire-and-forget)
     try {
       const memoryDb = require('../../flow-memory-db');
