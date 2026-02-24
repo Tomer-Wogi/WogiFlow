@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-176 | 2026-02-26 00:00
+**Type**: new
+**Tags**: #feature:community #component:pipeline-worker #component:admin-api #component:embeddings #component:github-api
+**Task**: wf-e50c90c7
+**Request**: "Phase C2 Server-Side — pgvector dedup, priority detection, GitHub issues"
+**Result**: Replaced Haiku text-based dedup with pgvector cosine similarity in pipeline-worker.js (thresholds: >0.92 exact dup, 0.75-0.92 near match, <0.75 new). Added embedding generation via OpenAI text-embedding-3-small at intake, promotion, and consolidation stages. Added suggestion dedup (>0.85 similarity merges, increments vote_count). Added priority detection (10+ votes auto-flags priority_flagged column). Added GitHub issue auto-creation on suggestion accept via lib/github.js. Added /api/admin/priority endpoint. Created db/002_pgvector_indexes.sql with HNSW indexes on all 3 tables. Added GitHubToken secret to CloudFormation.
+**Files**: `packages/server/curation/pipeline-worker.js`, `packages/server/routes/admin.js`, `packages/server/lib/embeddings.js` (new), `packages/server/lib/github.js` (new), `packages/server/db/002_pgvector_indexes.sql` (new), `deploy/cloudformation.yaml`
+
 ### R-175 | 2026-02-25 17:00
 **Type**: fix
 **Tags**: #feature:security #feature:community #component:flow-community #component:flow-script-resolver #component:extension-registry #component:session-start #component:flow-regression

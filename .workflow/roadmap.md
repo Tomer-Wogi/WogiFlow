@@ -134,7 +134,7 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 #### Phase C2: Community Intelligence (1 sprint)
 
-**Status:** Client-side COMPLETE (wf-ec88195b, 2026-02-25). Server-side (pgvector dedup, priority detection, dashboard stats) remaining.
+**Status:** COMPLETE. Client-side (wf-ec88195b, 2026-02-25). Server-side pgvector dedup + priority detection + GitHub issues (wf-e50c90c7, 2026-02-26).
 **Created:** 2026-02-23
 **Depends On:** Phase C1: Community Knowledge Foundation
 
