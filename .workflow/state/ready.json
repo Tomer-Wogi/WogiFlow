@@ -1,7 +1,80 @@
 {
-  "lastUpdated": "2026-02-27T16:00:00.000Z",
+  "lastUpdated": "2026-02-27T18:00:00.000Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-66f269ee",
+      "title": "T5-S1: Marketplace Schema + Listings API",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-66f269ee.md"
+    },
+    {
+      "id": "wf-daaf0644",
+      "title": "T5-S2: Marketplace Search + Install Flow",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-daaf0644.md"
+    },
+    {
+      "id": "wf-97851770",
+      "title": "T5-S3: Publisher Program + Verification",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-97851770.md"
+    },
+    {
+      "id": "wf-cbb3004e",
+      "title": "T5-S4: Marketplace Dashboard UI",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-cbb3004e.md"
+    },
+    {
+      "id": "wf-71b0ba7a",
+      "title": "T5-S5: Global Knowledge — Team Curation Layer",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-71b0ba7a.md"
+    },
+    {
+      "id": "wf-f8896007",
+      "title": "T5-S6: Team Model Intelligence + Memory Export",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t5",
+      "status": "ready",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-f8896007.md"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
     {

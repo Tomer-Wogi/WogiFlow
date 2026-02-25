@@ -78,6 +78,27 @@
       "updatedAt": "2026-02-27T15:00:00.000Z"
     }
   },
+    "epic-teams-t5": {
+      "id": "epic-teams-t5",
+      "title": "T5: Marketplace & Global Knowledge",
+      "description": "Marketplace for templates, skills, and knowledge packs with browse/search/install, publisher verification program, star ratings, and download tracking. Global Knowledge team curation layer extends Community Knowledge (C1-C2) with team-level promotion flow. Team model intelligence aggregation and memory export.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-66f269ee",
+        "wf-daaf0644",
+        "wf-97851770",
+        "wf-cbb3004e",
+        "wf-71b0ba7a",
+        "wf-f8896007"
+      ],
+      "features": [],
+      "status": "ready",
+      "progress": 0,
+      "createdAt": "2026-02-27T18:00:00.000Z",
+      "updatedAt": "2026-02-27T18:00:00.000Z"
+    }
+  },
   "version": "1.0.0",
-  "lastUpdated": "2026-02-27T02:00:00.000Z"
+  "lastUpdated": "2026-02-27T18:00:00.000Z"
 }
