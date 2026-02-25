@@ -10,7 +10,28 @@ When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start 
 
 **Is this a task ID or a quoted request?**
 - Task ID format: `wf-XXXXXXXX` (letters, numbers, hyphens) → Skip triage, go to Structured Execution
-- Quoted request or natural language → Read the Command Catalog below, understand the user's intent, and invoke the right command
+- Quoted request or natural language → Continue to Step 0.1
+
+### Step 0.1: Long Input Detection (Automatic)
+
+**Before any triage, check prompt length against `config.longInputGate`.**
+
+When `config.longInputGate.enabled` is `true`:
+
+1. Count the number of lines in the user's prompt
+2. If line count exceeds `config.longInputGate.lineThreshold` (default: 60 lines):
+   - **Auto-invoke `/wogi-extract-review`** with the full prompt as input
+   - **Skip normal triage** — long inputs need zero-loss extraction, not classification
+   - Display: `Long input detected (N lines, threshold: 60). Routing to /wogi-extract-review for zero-loss extraction.`
+
+3. If line count is within threshold → Continue to normal triage (Command Catalog below)
+
+**Why this exists**: When prompts exceed 60 lines, normal triage and story creation lose details buried in the middle. `/wogi-extract-review` uses a structured extraction protocol that captures EVERY statement, scores by confidence, and requires human review — ensuring no detail is lost.
+
+**Skip conditions**:
+- `config.longInputGate.enabled` is `false` → skip this check entirely
+- Prompt is a task ID → already handled in Step 0
+- Prompt content is primarily code (>80% code blocks) → skip, as code pastes are better handled by normal triage
 
 ### Command Catalog
 
@@ -46,6 +67,7 @@ These commands are used automatically during task execution. You don't need to r
 
 | Command | Auto-invoked when |
 |---------|-------------------|
+| `/wogi-extract-review` | Step 0.1 detects prompt exceeds lineThreshold (60 lines) |
 | `/wogi-compact` | Step 0.25 detects context will exceed safe threshold |
 | `/wogi-bulk` | After epic creation adds multiple stories to ready queue |
 | `/wogi-log` | After every task completion (request-log update) |

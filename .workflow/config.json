@@ -1134,9 +1134,9 @@
     "maxHistoryEntries": 100
   },
   "longInputGate": {
-    "enabled": false,
-    "charThreshold": 2000,
-    "lineThreshold": 50,
+    "enabled": true,
+    "charThreshold": 3000,
+    "lineThreshold": 60,
     "smartDefault": true,
     "contentRules": {
       "transcript": "full",

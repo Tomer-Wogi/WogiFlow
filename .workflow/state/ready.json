@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-02-26T13:00:00.000Z",
+  "lastUpdated": "2026-02-26T14:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -56,6 +56,16 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-07b0059a",
+      "title": "Enable longInputGate by default and add auto-routing",
+      "type": "feature",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-26T14:00:00.000Z",
+      "completedAt": "2026-02-26T14:15:00.000Z"
+    },
     {
       "id": "wf-fa82f23d",
       "title": "Harden routing enforcement — close post-compaction bypass gap",

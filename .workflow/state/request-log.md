@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-181 | 2026-02-26 14:00
+**Type**: new
+**Tags**: #feature:workflow #component:longInputGate #component:installer #component:upgrader #component:wogi-start
+**Task**: wf-07b0059a
+**Request**: "Enable longInputGate by default and add auto-routing"
+**Result**: Enabled longInputGate as default for all installs (enabled: true, lineThreshold: 60). Added longInputGate section to installer.js configContent so fresh installs get it. Added upgrade migration in upgrader.js that flips enabled: false → true for existing installs. Updated this project's config.json. Added Step 0.1 "Long Input Detection" to wogi-start.md that auto-invokes /wogi-extract-review when prompt exceeds 60 lines.
+**Files**: `lib/installer.js`, `lib/upgrader.js`, `.workflow/config.json`, `.claude/commands/wogi-start.md`, `CLAUDE.md` (regenerated)
+
 ### R-180 | 2026-02-25 16:00
 **Type**: fix
 **Tags**: #feature:workflow #component:routing-gate #component:implementation-gate #component:stop-hook #component:claude-md
