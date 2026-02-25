@@ -1715,3 +1715,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Fix 17 review findings from a684a46 code review — security hardening, logic fixes, architecture cleanup"
 **Result**: Fixed 16 of 17 findings across 6 files. Critical: IPv6 SSRF bypass (bracket-delimited hostnames). High: response size TOCTOU (check before append), testFiles command injection (execFileSync + path validation). Medium: PII path coverage, path traversal in UNSAFE_CHARS, config override whitespace, mergeModelIntelligence insertion order, JSDoc accuracy. Low: try-catch, version cache, dedup scope, DNS-label regex, module-level imports, dead http import, parseInt consistency. Deferred: arch-001 (SSRF validator dedup with flow-links.js — architectural task).
 **Files**: `scripts/flow-community.js`, `scripts/flow-regression.js`, `scripts/flow-script-resolver.js`, `scripts/hooks/core/extension-registry.js`, `scripts/hooks/entry/claude-code/session-start.js`, `scripts/flow-utils.js`
+
+### R-147 | 2026-02-26 15:00
+**Type**: feature
+**Tags**: #feature:extract-review #component:flow-extraction-review #component:flow-long-input #component:flow-long-input-stories #command:wogi-extract-review
+**Task**: wf-94bd09bb
+**Request**: "Unify /wogi-extract-review into single end-to-end flow — combine zero-loss extraction, 4-pass pipeline, clarification questions, and story generation into one automated flow"
+**Result**: Added autoReview(), batchConfirm(), autoComplete() to flow-extraction-review.js for automated batch review. Added runFullPipeline() to flow-long-input.js to chain passes 2-4 in one call. Added generateAndExportStories() to flow-long-input-stories.js for one-call story generation and ready.json export. Rewrote wogi-extract-review.md with 6-phase AI orchestration protocol. Old manual CLI preserved as advanced mode. User's only touchpoint: answering clarifying questions when AI can't auto-resolve contradictions.
+**Files**: `scripts/flow-extraction-review.js`, `scripts/flow-long-input.js`, `scripts/flow-long-input-stories.js`, `.claude/commands/wogi-extract-review.md`

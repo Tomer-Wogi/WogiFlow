@@ -2157,6 +2157,104 @@ function cleanupTempFiles(digestId) {
 }
 
 // ============================================================================
+// UNIFIED PIPELINE: Generate Stories and Add to ready.json
+// ============================================================================
+
+/**
+ * Generate all stories from topics and add them to ready.json in one call.
+ * Used by the unified extract-review pipeline.
+ *
+ * Chains: generateAllStories → save stories → initializePresentation →
+ *         auto-approve all → exportApprovedStories → addTasksToReadyJson →
+ *         exportStoryFiles
+ *
+ * @param {Object} options
+ * @param {string} options.featureName - Feature name for file export (default: 'extract-review')
+ * @param {boolean} options.keepTempFiles - Keep temp files after completion
+ * @returns {Object} Result with story count, tasks added, and file paths
+ */
+function generateAndExportStories(options = {}) {
+  const featureName = options.featureName || 'extract-review';
+
+  // Step 1: Generate stories from all active topics
+  const genResult = generateAllStories();
+  if (genResult.error) {
+    return { error: `Story generation failed: ${genResult.error}` };
+  }
+
+  if (genResult.stories.length === 0) {
+    return { error: 'No stories generated from topics', summary: genResult.summary };
+  }
+
+  // Step 2: Save each story
+  for (const story of genResult.stories) {
+    saveStory(story);
+  }
+
+  // Step 3: Initialize presentation queue and auto-approve all stories
+  const queue = initializePresentation();
+  if (queue.error) {
+    return { error: `Presentation init failed: ${queue.error}` };
+  }
+
+  // Auto-approve all stories (unified pipeline skips manual review)
+  for (const entry of queue.stories) {
+    entry.status = 'approved';
+    entry.approved_at = now();
+  }
+  queue.summary.approved = queue.stories.length;
+  queue.summary.pending = 0;
+  queue.presentation.status = 'completed';
+  saveQueue(queue);
+
+  // Step 4: Export approved stories as workflow tasks
+  const exportResult = exportApprovedStories({ featureName });
+  if (exportResult.error) {
+    return { error: `Export failed: ${exportResult.error}` };
+  }
+
+  // Step 5: Add tasks to ready.json
+  const addResult = addTasksToReadyJson(exportResult.tasks);
+
+  // Step 6: Export story markdown files
+  const fileExport = exportStoryFiles(exportResult.tasks, featureName);
+
+  // Step 7: Mark digest as complete
+  const activeDigest = loadActiveDigest();
+  if (activeDigest.session) {
+    activeDigest.session.status = 'completed';
+    activeDigest.session.completed_at = now();
+    activeDigest.session.exported = {
+      task_count: addResult.added || 0,
+      skipped_count: addResult.skipped || 0,
+      timestamp: now()
+    };
+    saveActiveDigest(activeDigest);
+  }
+
+  return {
+    success: true,
+    summary: {
+      topics_processed: genResult.summary.total_topics,
+      stories_generated: genResult.summary.stories_generated,
+      total_criteria: genResult.summary.total_criteria,
+      average_coverage: genResult.summary.average_coverage,
+      tasks_added_to_ready: addResult.added || 0,
+      tasks_skipped: addResult.skipped || 0,
+      files_exported: fileExport.exported.length,
+      export_directory: fileExport.directory
+    },
+    stories: genResult.stories.map(s => ({
+      id: s.id,
+      title: s.title,
+      criteria_count: s.acceptance_criteria.length,
+      coverage: s.coverage.coverage_percent
+    })),
+    errors: genResult.errors
+  };
+}
+
+// ============================================================================
 // Module Exports
 // ============================================================================
 
@@ -2237,6 +2335,9 @@ module.exports = {
   exportStoryFiles,
   previewExport,
   finalizeDigestion,
+
+  // Unified Pipeline
+  generateAndExportStories,
 
   // Temp File Cleanup
   cleanupTempFiles
