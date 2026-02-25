@@ -357,7 +357,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T5: Marketplace & Global Knowledge (Sprint 9-10)
 
-**Status:** Planned
+**Status:** COMPLETE (epic-teams-t5, 2026-02-27). 6 stories, 4 batches. 3 DB migrations (014-016), 4 new route files, 3 new lib files, 5 dashboard pages. 6440+ lines of code across 25 files.
 **Depends On:** Phase T4: Approval Flow, Phase C1-C2 (Community Knowledge)
 
 **Scope:**

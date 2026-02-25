@@ -1,7 +1,7 @@
 # Epic: T5 — Marketplace & Global Knowledge
 
 **ID**: epic-teams-t5
-**Status**: In Progress
+**Status**: Completed
 **Created**: 2026-02-27
 **Depends On**: T4 (Approval Flow) COMPLETE, C1-C2 (Community Knowledge) COMPLETE
 
@@ -41,9 +41,9 @@ S1 and S5 can run in parallel (independent). S4 waits for S1-S3. S6 waits for S5
 
 ## Progress
 
-- [ ] S1: Marketplace Schema + Listings API
-- [ ] S2: Marketplace Search + Install Flow
-- [ ] S3: Publisher Program + Verification
-- [ ] S4: Marketplace Dashboard UI
-- [ ] S5: Global Knowledge — Team Curation Layer
-- [ ] S6: Team Model Intelligence + Memory Export
+- [x] S1: Marketplace Schema + Listings API
+- [x] S2: Marketplace Search + Install Flow
+- [x] S3: Publisher Program + Verification
+- [x] S4: Marketplace Dashboard UI
+- [x] S5: Global Knowledge — Team Curation Layer
+- [x] S6: Team Model Intelligence + Memory Export

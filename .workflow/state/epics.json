@@ -93,10 +93,10 @@
         "wf-f8896007"
       ],
       "features": [],
-      "status": "ready",
-      "progress": 0,
+      "status": "completed",
+      "progress": 100,
       "createdAt": "2026-02-27T18:00:00.000Z",
-      "updatedAt": "2026-02-27T18:00:00.000Z"
+      "updatedAt": "2026-02-27T20:00:00.000Z"
     }
   },
   "version": "1.0.0",
