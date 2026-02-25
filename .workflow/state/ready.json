@@ -1,31 +1,21 @@
 {
   "lastUpdated": "2026-02-27T02:00:00.000Z",
   "inProgress": [],
-  "ready": [
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
-      "id": "wf-5e7d92b2",
-      "title": "T4-S1: Pattern Aggregation Engine",
+      "id": "wf-5cc1b1a5",
+      "title": "T4-S5: Notification System",
       "type": "story",
       "feature": "teams",
       "parentEpic": "epic-teams-t4",
-      "status": "ready",
-      "priority": "P1",
+      "status": "completed",
+      "priority": "P2",
       "repo": "wogiflow-cloud",
       "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-5e7d92b2.md"
-    },
-    {
-      "id": "wf-8188b390",
-      "title": "T4-S2: Approval Request System",
-      "type": "story",
-      "feature": "teams",
-      "parentEpic": "epic-teams-t4",
-      "status": "ready",
-      "priority": "P1",
-      "repo": "wogiflow-cloud",
-      "dependencies": ["wf-5e7d92b2"],
-      "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-8188b390.md"
+      "startedAt": "2026-02-27T14:00:00.000Z",
+      "completedAt": "2026-02-27T15:00:00.000Z"
     },
     {
       "id": "wf-d8e65112",
@@ -33,12 +23,12 @@
       "type": "story",
       "feature": "teams",
       "parentEpic": "epic-teams-t4",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
       "repo": "wogiflow-cloud",
-      "dependencies": ["wf-8188b390"],
       "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-d8e65112.md"
+      "startedAt": "2026-02-27T13:00:00.000Z",
+      "completedAt": "2026-02-27T14:00:00.000Z"
     },
     {
       "id": "wf-0c966f37",
@@ -46,25 +36,12 @@
       "type": "story",
       "feature": "teams",
       "parentEpic": "epic-teams-t4",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
       "repo": "wogiflow-cloud",
-      "dependencies": ["wf-5e7d92b2", "wf-8188b390"],
       "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-0c966f37.md"
-    },
-    {
-      "id": "wf-5cc1b1a5",
-      "title": "T4-S5: Notification System",
-      "type": "story",
-      "feature": "teams",
-      "parentEpic": "epic-teams-t4",
-      "status": "ready",
-      "priority": "P2",
-      "repo": "wogiflow-cloud",
-      "dependencies": ["wf-8188b390", "wf-0c966f37"],
-      "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-5cc1b1a5.md"
+      "startedAt": "2026-02-27T13:00:00.000Z",
+      "completedAt": "2026-02-27T14:00:00.000Z"
     },
     {
       "id": "wf-6c425e29",
@@ -72,16 +49,41 @@
       "type": "story",
       "feature": "teams",
       "parentEpic": "epic-teams-t4",
-      "status": "ready",
+      "status": "completed",
       "priority": "P2",
       "repo": "wogiflow-cloud",
-      "dependencies": ["wf-5e7d92b2", "wf-8188b390"],
       "createdAt": "2026-02-27T02:00:00.000Z",
-      "specPath": ".workflow/changes/teams/wf-6c425e29.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "startedAt": "2026-02-27T13:00:00.000Z",
+      "completedAt": "2026-02-27T14:00:00.000Z"
+    },
+    {
+      "id": "wf-8188b390",
+      "title": "T4-S2: Approval Request System",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "startedAt": "2026-02-27T12:00:00.000Z",
+      "completedAt": "2026-02-27T13:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-8188b390.md"
+    },
+    {
+      "id": "wf-5e7d92b2",
+      "title": "T4-S1: Pattern Aggregation Engine",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "startedAt": "2026-02-27T10:00:00.000Z",
+      "completedAt": "2026-02-27T11:30:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-5e7d92b2.md"
+    },
     {
       "id": "wf-cr-t3rv01",
       "title": "Fix 37 review findings from T3 review (context-aware batching)",

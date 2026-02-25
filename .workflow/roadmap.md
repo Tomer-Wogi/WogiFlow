@@ -325,32 +325,33 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T4: Approval Flow (Sprint 7-8)
 
-**Status:** IN PROGRESS (epic-teams-t4, 6 stories, started 2026-02-27)
+**Status:** COMPLETE (epic-teams-t4, 6 stories, 2026-02-27). S1 Pattern Aggregation Engine (wf-5e7d92b2), S2 Approval Request System (wf-8188b390), S3 Review Queue Dashboard (wf-d8e65112), S4 Promotion Paths (wf-0c966f37), S5 Notification System (wf-5cc1b1a5), S6 Team Analytics Dashboard (wf-6c425e29). 20+ new files across server/dashboard.
 **Depends On:** Phase T3: Team Knowledge (COMPLETE)
 
 **Scope:**
 - Pattern aggregation engine (cross-user pattern detection)
-- Pending review queue on web dashboard (like PR review)
-- Approve/Modify/Dismiss with comments and audit trail
-- Auto-flagging: pattern appears across 3+ users → surfaces for admin review
-- Promotion paths:
-  - Project correction → Project decision
-  - Project pattern (3+ occurrences) → Team rule
-  - User model learning → Team knowledge
-  - Team pattern (cross-project) → Global knowledge candidate
-- Notification system (email + in-dashboard)
-- Bulk approve for low-risk patterns
-- Command metrics aggregation for team analytics dashboard
-- Gate confidence trends for quality analytics
+- Approval request system (8 CRUD + action endpoints, role-based access)
+- Review queue dashboard (GitHub dark theme, bulk actions, detail panel)
+- 4 promotion pipelines (correction→decision, pattern→rule, learning→knowledge, team→global)
+- Notification system (in-dashboard + AWS SES email, 30s polling, preferences)
+- Team analytics dashboard (Chart.js, 6 metric endpoints, date range selection)
 
-**Key Files (new repo):**
-- `packages/server/routes/reviews.js`
-- `packages/server/aggregation/pattern-engine.js`
-- `packages/dashboard/app/reviews/`
+**Key Files (wogiflow-cloud):**
+- `packages/server/aggregation/pattern-engine.js` — Cross-user pattern detection
+- `packages/server/aggregation/promotion-engine.js` — 4 promotion pipelines
+- `packages/server/lib/approvals.js` — Approval lifecycle management
+- `packages/server/lib/notifications.js` — Event-driven notifications
+- `packages/server/lib/analytics.js` — Aggregation queries
+- `packages/server/routes/approvals.js` — 8 endpoints
+- `packages/server/routes/notifications.js` — 6 endpoints
+- `packages/server/routes/analytics.js` — 6 endpoints
+- `packages/dashboard/approvals.html` + `.js` — Review queue UI
+- `packages/dashboard/analytics.html` + `.js` — Analytics charts
 
 **DB tables:**
-- `feedback_patterns` (extended with `users_affected`, `status`)
-- Reuse `audit_log` for all approval decisions
+- `aggregated_patterns`, `pattern_occurrences`, `approval_requests` (S1)
+- `approval_comments` (S2)
+- `notifications`, `notification_preferences` (S5)
 
 ---
 
