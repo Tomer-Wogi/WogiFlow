@@ -325,8 +325,8 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T4: Approval Flow (Sprint 7-8)
 
-**Status:** Planned
-**Depends On:** Phase T3: Team Knowledge
+**Status:** IN PROGRESS (epic-teams-t4, 6 stories, started 2026-02-27)
+**Depends On:** Phase T3: Team Knowledge (COMPLETE)
 
 **Scope:**
 - Pattern aggregation engine (cross-user pattern detection)
@@ -514,6 +514,26 @@ Record screen + audio → Extract tasks with visual context → Generate WogiFlo
 ### Move npm to @wogi Organization
 
 **Why deferred**: Current `wogiflow` package works fine. Migration adds complexity (scoped package, update all docs). Consider when team grows or branding matters.
+
+---
+
+### Claude Code Plugin Marketplace Manifest
+
+**Priority**: Low
+**Status**: Idea
+**Created**: 2026-02-25
+**Source**: Comparison research with obra/superpowers
+
+Create a `.claude-plugin/plugin.json` manifest to enable distribution via the Claude Code plugin marketplace alongside the existing npm distribution. Superpowers uses this for one-line installs (`/plugin install superpowers@superpowers-marketplace`). Would give WogiFlow a second discovery/install channel.
+
+**Scope:**
+- Create `.claude-plugin/plugin.json` with plugin metadata
+- Create `hooks/hooks.json` for hook registration
+- Ensure SessionStart hook works via plugin system (currently works via `.claude/settings.json`)
+- Test plugin install/uninstall lifecycle
+- Submit to `anthropic/claude-code-plugins` marketplace (or equivalent)
+
+**Why Low Priority:** npm distribution works well. Plugin marketplace is an additional channel, not a replacement. Do after all Teams phases are complete.
 
 ---
 

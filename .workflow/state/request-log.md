@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-185 | 2026-02-25 15:34
+**Type**: new
+**Tags**: #feature:workflow #command:wogi-finalize #config #research:superpowers
+**Task**: wf-7b6dae6e
+**Request**: "Add branch finalization workflow, TDD enforcement, and plugin marketplace to roadmap — from superpowers comparison research"
+**Result**: Four actions from superpowers vs WogiFlow research: (1) Enabled TDD enforcement in config (`tdd.enforced: true`, `defaultForTypes: ["bugfix"]`). (2) Created `/wogi-finalize` command — guides merge/PR/discard decision after worktree task completion, with auto-PR generation, squash options, and config-driven behavior. Added natural language detection and config section. (3) Analyzed anti-rationalization blocks — concluded not needed since mechanical hooks already prevent bypass; edge cases manageable. (4) Added plugin marketplace manifest to roadmap Ideas section at low priority.
+**Files**: `.claude/commands/wogi-finalize.md`, `.workflow/config.json`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md`, `.workflow/roadmap.md`
+
 ### R-184 | 2026-02-26 23:45
 **Type**: new
 **Tags**: #feature:workflow #component:flow-context-estimator #command:wogi-review-fix #config

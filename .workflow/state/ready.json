@@ -1,7 +1,85 @@
 {
-  "lastUpdated": "2026-02-26T23:50:00.000Z",
+  "lastUpdated": "2026-02-27T02:00:00.000Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-5e7d92b2",
+      "title": "T4-S1: Pattern Aggregation Engine",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-5e7d92b2.md"
+    },
+    {
+      "id": "wf-8188b390",
+      "title": "T4-S2: Approval Request System",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "dependencies": ["wf-5e7d92b2"],
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-8188b390.md"
+    },
+    {
+      "id": "wf-d8e65112",
+      "title": "T4-S3: Review Queue Dashboard",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "dependencies": ["wf-8188b390"],
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-d8e65112.md"
+    },
+    {
+      "id": "wf-0c966f37",
+      "title": "T4-S4: Promotion Paths",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "dependencies": ["wf-5e7d92b2", "wf-8188b390"],
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-0c966f37.md"
+    },
+    {
+      "id": "wf-5cc1b1a5",
+      "title": "T4-S5: Notification System",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "dependencies": ["wf-8188b390", "wf-0c966f37"],
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-5cc1b1a5.md"
+    },
+    {
+      "id": "wf-6c425e29",
+      "title": "T4-S6: Team Analytics Dashboard",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t4",
+      "status": "ready",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "dependencies": ["wf-5e7d92b2", "wf-8188b390"],
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "specPath": ".workflow/changes/teams/wf-6c425e29.md"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
     {

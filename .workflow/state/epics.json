@@ -52,12 +52,32 @@
         "wf-e8d21b8e"
       ],
       "features": [],
+      "status": "completed",
+      "progress": 100,
+      "createdAt": "2026-02-25T09:53:00.038Z",
+      "updatedAt": "2026-02-27T02:00:00.000Z"
+    },
+    "epic-teams-t4": {
+      "id": "epic-teams-t4",
+      "title": "T4: Approval Flow",
+      "description": "Cross-user pattern aggregation, approval request workflow with review queue dashboard, 4 promotion pipelines (correction→decision, pattern→rule, learning→knowledge, team→global), notification system (in-dashboard + email), and team analytics dashboard. Builds on T3 (team knowledge + integrations) foundation.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-5e7d92b2",
+        "wf-8188b390",
+        "wf-d8e65112",
+        "wf-0c966f37",
+        "wf-5cc1b1a5",
+        "wf-6c425e29"
+      ],
+      "features": [],
       "status": "ready",
       "progress": 0,
-      "createdAt": "2026-02-25T09:53:00.038Z",
-      "updatedAt": "2026-02-25T09:53:00.039Z"
+      "createdAt": "2026-02-27T02:00:00.000Z",
+      "updatedAt": "2026-02-27T02:00:00.000Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-02-25T09:53:00.039Z"
+  "lastUpdated": "2026-02-27T02:00:00.000Z"
 }

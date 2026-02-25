@@ -5,21 +5,12 @@
   "cli": {
     "type": "claude-code",
     "autoSync": {
-      "enabled": false,
+      "enabled": true,
       "onSessionStart": true
     }
   },
   "autoLog": true,
   "autoUpdateAppMap": true,
-  "_comment_scripts": "Script name overrides. null = auto-detect from package.json. Set to a string to override (e.g., \"npm run type-check\").",
-  "scripts": {
-    "lint": null,
-    "typecheck": null,
-    "test": null,
-    "build": null,
-    "fix": null,
-    "coverage": null
-  },
   "requireApproval": [],
   "enforcement": {
     "strictMode": true,
@@ -44,7 +35,6 @@
       }
     }
   },
-  "_comment_tasks_vs_loops": "tasks = script-level config (flow-start.js). loops = AI-level loop enforcement. Shared keys (maxIterations, maxRetries, blockExitUntilComplete, autoInferVerification) must stay in sync.",
   "tasks": {
     "maxIterations": 20,
     "stuckThreshold": 3,
@@ -65,17 +55,11 @@
     }
   },
   "errorRecovery": {
-    "enabled": false,
+    "enabled": true,
     "hierarchicalAnalysis": true,
     "autoSuggestFixes": true,
     "trackSuccessfulStrategies": true,
     "maxAttemptsPerLevel": 3,
-    "architecturalReassessment": {
-      "enabled": false,
-      "strikeCount": 3,
-      "autoResearch": true,
-      "requireApproval": true
-    },
     "recursive": {
       "enabled": false,
       "maxDepth": 3,
@@ -97,7 +81,7 @@
     "agentStructure": "unified"
   },
   "loops": {
-    "enabled": false,
+    "enabled": true,
     "enforced": true,
     "blockExitUntilComplete": true,
     "requireVerification": true,
@@ -108,8 +92,9 @@
     "pauseBetweenScenarios": false,
     "autoInferVerification": true,
     "fallbackToManual": true,
+    "suggestBrowserTests": true,
     "simpleMode": {
-      "enabled": false,
+      "enabled": true,
       "completionPromise": "TASK_COMPLETE",
       "maxIterations": 10
     },
@@ -117,26 +102,26 @@
     "regressionOnRecheck": "warn"
   },
   "taskQueue": {
-    "enabled": false,
+    "enabled": true,
     "autoContinue": true,
     "pauseBetweenTasks": false,
     "maxQueueSize": 10,
     "showProgressSummary": true
   },
   "durableSteps": {
-    "enabled": false,
+    "enabled": true,
     "autoResume": true,
     "checkSuspensionsOnStart": true,
     "defaultMaxAttempts": 5
   },
   "suspension": {
-    "enabled": false,
+    "enabled": true,
     "pollIntervalSeconds": 60,
     "maxPollAttempts": 120,
     "reminderAfterHours": 24
   },
   "parallel": {
-    "enabled": false,
+    "enabled": true,
     "maxConcurrent": 3,
     "autoApprove": false,
     "requireWorktree": true,
@@ -147,7 +132,7 @@
     "minTasksForParallel": 2
   },
   "bulkOrchestrator": {
-    "enabled": false,
+    "enabled": true,
     "parallelLimit": 3,
     "useWorktrees": true,
     "onFailure": "stop-dependent",
@@ -164,7 +149,7 @@
     "groupingThreshold": 0.5,
     "maxGroupSize": 5,
     "routing": {
-      "enabled": false,
+      "enabled": true,
       "defaultCertainty": "certain",
       "autoDetect": true
     }
@@ -274,7 +259,7 @@
     "loadingStates": true,
     "errorStates": true,
     "classification": {
-      "enabled": false,
+      "enabled": true,
       "autoClassify": true,
       "warnOnMismatch": true,
       "thresholds": {
@@ -327,7 +312,7 @@
     "propagateProgress": true
   },
   "epics": {
-    "enabled": false,
+    "enabled": true,
     "autoUpdateProgress": true,
     "showInReady": true,
     "progressWeights": {
@@ -338,13 +323,13 @@
     }
   },
   "clarifyingQuestions": {
-    "enabled": false,
+    "enabled": true,
     "maxQuestions": 5,
     "skipForSmallTasks": true,
     "smallTaskThreshold": 2
   },
   "specificationMode": {
-    "enabled": false,
+    "enabled": true,
     "mandatory": true,
     "mandatoryFor": [
       "medium",
@@ -366,59 +351,30 @@
       "rollbackPlan": false
     },
     "autoDetectFiles": true,
-    "autoSuggestTests": true,
-    "needsClarification": {
-      "enabled": false,
-      "_comment_needsClarification": "Force spec generation to mark uncertain points with [NEEDS CLARIFICATION: reason]. Implementation is blocked until all markers are resolved.",
-      "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
-      "blockImplementation": true,
-      "minMarkersForReview": 0,
-      "categories": [
-        "assumption",
-        "ambiguity",
-        "missing-context",
-        "dependency-unknown",
-        "edge-case"
-      ]
-    }
+    "autoSuggestTests": true
   },
   "qualityGates": {
-    "preTaskBaseline": {
-      "enabled": false,
-      "failureThreshold": 5,
-      "skipForTypes": [
-        "bugfix",
-        "quick-fix"
-      ],
-      "command": null
-    },
     "feature": {
       "require": [
         "loopComplete",
         "tests",
         "appMapUpdate",
         "requestLogEntry",
-        "integrationWiring",
-        "standardsCompliance"
+        "integrationWiring"
       ],
       "optional": [
         "review",
-        "docs",
-        "webmcpVerification"
+        "docs"
       ]
     },
     "bugfix": {
       "require": [
         "loopComplete",
         "tests",
-        "requestLogEntry",
-        "standardsCompliance",
-        "learningEnforcement",
-        "resolutionPopulated"
+        "requestLogEntry"
       ],
       "optional": [
-        "review",
-        "webmcpVerification"
+        "review"
       ]
     },
     "refactor": {
@@ -426,38 +382,16 @@
         "loopComplete",
         "tests",
         "noNewFeatures",
-        "smokeTest",
-        "standardsCompliance"
+        "smokeTest"
       ],
       "optional": [
-        "review",
-        "webmcpVerification"
+        "review"
       ]
     }
   },
-  "standardsCompliance": {
-    "enabled": false,
-    "mode": "block",
-    "scopeByTaskType": true,
-    "alwaysCheck": [
-      "naming",
-      "security"
-    ],
-    "similarityThreshold": 0.8,
-    "_comment_similarityThreshold": "Legacy — prefer semanticMatching.thresholds. Kept for backward compatibility.",
-    "similarityWarningThreshold": 0.6,
-    "learning": {
-      "enabled": false,
-      "promotionThreshold": 3,
-      "includePreventionPrompts": true,
-      "autoSyncRules": true
-    }
-  },
   "validation": {
-    "_comment_afterFileEdit": "Hook-based auto-validation is disabled. CLAUDE.md instructs AI to self-validate. Enable for hook-enforced validation.",
     "afterFileEdit": {
       "enabled": false,
-      "_comment_commands": "Commands per file extension. Use actual commands or null to auto-detect via flow-script-resolver.js at runtime.",
       "commands": {
         "*.ts": [
           "npx tsc --noEmit"
@@ -475,25 +409,28 @@
       },
       "fixErrorsBeforeContinuing": true
     },
-    "_comment_afterTaskComplete": "Commands run after task completion. These are disabled by default. When enabled, flow-script-resolver.js resolves commands at runtime.",
     "afterTaskComplete": {
-      "enabled": false,
+      "enabled": true,
       "commands": [
         "npm run lint",
         "npm run typecheck"
       ]
     },
     "beforeCommit": {
-      "enabled": false,
+      "enabled": true,
       "commands": [
         "npm run lint",
         "npm run typecheck",
-        "npm test"
+        "npm run test"
       ]
     }
   },
+  "testing": {
+    "runAfterTask": false,
+    "runBeforeCommit": false
+  },
   "checkpoint": {
-    "enabled": false,
+    "enabled": true,
     "onTaskComplete": true,
     "maxCheckpoints": 20,
     "autoCommit": false,
@@ -501,17 +438,19 @@
     "includeStateFiles": true
   },
   "regressionTesting": {
-    "enabled": false,
+    "enabled": true,
     "sampleSize": 3,
     "runOnTaskComplete": true,
     "onFailure": "warn"
   },
-  "tdd": {
-    "enforced": true,
-    "_comment_enforced": "When true, task execution uses test-first order: write test → verify fails → implement → verify passes. Inspired by obra/superpowers mandatory TDD enforcement.",
-    "defaultForTypes": ["bugfix"],
-    "requireFailingTestFirst": true,
-    "testFrameworkDetection": true
+  "browserTesting": {
+    "enabled": true,
+    "runOnTaskComplete": true,
+    "runForUITasks": true,
+    "autoRun": false,
+    "timeout": 30000,
+    "screenshotOnFailure": true,
+    "baseUrl": "http://localhost:3000"
   },
   "componentRules": {
     "preferVariants": true,
@@ -520,7 +459,6 @@
     "autoGenerateStorybook": false,
     "storybookPath": "src/stories"
   },
-  "_comment_strictMode_collision": "This 'strictMode' controls verification checklists. NOT the same as enforcement.strictMode (task gating) or research.strictMode (citation rules). Three distinct features share the key name.",
   "strictMode": {
     "verificationChecklist": false,
     "correctionReportsOnFail": false,
@@ -533,20 +471,13 @@
     "comingSoon": [],
     "autoInvoke": true,
     "autoDiscoverNested": true,
-    "minRelevanceScore": 2,
-    "_comment_minRelevanceScore": "Replaced maxSkillsPerTask: 3. All skills scoring above this threshold are loaded, no arbitrary cap.",
-    "autoFetchDocs": true,
-    "_comment_autoFetchDocs": "Auto-fetch library documentation via Context7 MCP during onboarding/rescan.",
-    "contentPriority": ["skill.md", "conventions.md", "anti-patterns.md", "learnings.md", "library-reference.md"],
-    "_comment_contentPriority": "Loading order for skill content layers. Last item (library-reference.md) is first to trim if token budget tight.",
+    "maxSkillsPerTask": 3,
     "loadPatterns": true,
     "loadAntiPatterns": true,
-    "loadLearnings": true,
-    "loadLibraryReference": true,
-    "loadConventions": true
+    "loadLearnings": true
   },
   "skillLearning": {
-    "enabled": false,
+    "enabled": true,
     "autoExtract": true,
     "triggers": {
       "onCommit": true,
@@ -610,8 +541,18 @@
     "loopRetryThreshold": 3,
     "autoSuggestPatternUpdates": true
   },
+  "autoLearning": {
+    "enabled": true,
+    "captureFrom": {
+      "sessionReview": true,
+      "bugFix": true
+    },
+    "confidenceThreshold": 80,
+    "promotionThreshold": 3,
+    "autoPromote": false
+  },
   "sessionLearning": {
-    "enabled": false,
+    "enabled": true,
     "autoApplyThreshold": 90,
     "minOccurrences": 2,
     "confidenceThreshold": 70,
@@ -620,74 +561,27 @@
     "analyzeRetries": true,
     "analyzeFixes": true
   },
-  "bugFlow": {
-    "investigationAgents": {
-      "errorSourceFinder": { "enabled": false },
-      "patternChecker": { "enabled": false },
-      "dependencyAnalyzer": { "enabled": false, "minSeverity": "high" }
-    },
-    "autoRoute": true,
-    "learningEnforcement": {
-      "enabled": false,
-      "requireResolution": true,
-      "requireFeedbackPattern": true,
-      "promotionThreshold": 3
-    },
-    "inlineDiscovery": {
-      "maxSearchOperations": 3,
-      "maxFileReads": 2,
-      "autoPriorityBoost": true,
-      "skipDependencyAnalysis": true
-    },
-    "severityOverride": {
-      "enabled": false,
-      "requireJustification": true
-    }
-  },
   "crossSessionLearning": {
-    "enabled": false,
+    "enabled": true,
     "lookbackDays": 30,
     "minOccurrences": 3,
     "similarityThreshold": 0.5,
     "autoPromptOnSessionEnd": true,
     "saveTo": "both"
   },
-  "_comment_promotionPaths": "Three paths promote patterns to decisions.md: (1) autoLearning/automaticPromotion — auto from bug/review pipeline, (2) crossSessionLearning — on session-end, (3) /wogi-learn — manual interactive. All share the canonical promotionThreshold from autoLearning.promotionThreshold (default: 3).",
-  "decide": {
-    "requireRationale": true,
-    "scanForViolations": true,
-    "maxClarifyingQuestions": 4,
-    "violationRouting": {
-      "_comment": "Severity thresholds for routing violations found during /wogi-decide scans",
-      "quickFixThreshold": 3,
-      "storyThreshold": 10,
-      "epicThreshold": 25
-    }
-  },
-  "learning": {
-    "_comment": "Used by /wogi-learn. promotionThreshold reads from autoLearning.promotionThreshold for consistency.",
-    "autoPromoteEnabled": false,
-    "requireUserConfirmation": true
-  },
-  "retrospective": {
-    "maxQuestions": 3,
-    "autoSuggestRules": true,
-    "saveReviewFile": true,
-    "quickModeDefault": false
-  },
   "memory": {
-    "enabled": false,
+    "enabled": true,
     "localDb": ".workflow/memory/local.db",
     "embeddingModel": "Xenova/all-MiniLM-L6-v2",
     "maxLocalFacts": 1000,
     "autoRemember": false
   },
   "automaticMemory": {
-    "enabled": false,
+    "enabled": true,
     "entropyThreshold": 0.7,
     "compactOnSessionEnd": true,
     "relevanceDecay": {
-      "enabled": false,
+      "enabled": true,
       "decayRate": 0.033,
       "neverAccessedPenalty": 0.1
     },
@@ -699,23 +593,10 @@
       "enabled": false,
       "adjustOnOverflow": true,
       "adjustOnFailures": true
-    },
-    "observationCapture": {
-      "enabled": false,
-      "skipTools": [],
-      "maxInputSize": 2000,
-      "maxOutputSize": 2000,
-      "_comment_retentionDays": "Also defines the extraction window for observationExtraction below",
-      "retentionDays": 30
-    },
-    "observationExtraction": {
-      "enabled": false,
-      "minDurationMs": 100,
-      "excludeTools": ["Read", "Glob", "Grep"]
     }
   },
   "automaticPromotion": {
-    "enabled": false,
+    "enabled": true,
     "threshold": 3,
     "minRelevance": 0.8,
     "destinations": [
@@ -730,19 +611,19 @@
     "modelSpecificLearning": true
   },
   "modelAdapters": {
-    "enabled": false,
+    "enabled": true,
     "autoLearn": true,
     "directory": ".workflow/model-adapters"
   },
   "prd": {
-    "enabled": false,
+    "enabled": true,
     "maxContextTokens": 2000,
     "chunkSize": 500,
     "autoRetrieve": false
   },
   "context": {
     "compaction": {
-      "enabled": false,
+      "enabled": true,
       "thresholds": {
         "warnAt": 50000,
         "compactAt": 80000,
@@ -754,7 +635,7 @@
         "detailMaxLength": 1000
       },
       "relevanceDecay": {
-        "enabled": false,
+        "enabled": true,
         "decayPerTurn": 0.05
       },
       "autoCleanup": true,
@@ -785,7 +666,7 @@
     ]
   },
   "autoContext": {
-    "enabled": false,
+    "enabled": true,
     "strategy": "dynamic",
     "showLoadedFiles": true,
     "includeContent": true,
@@ -802,7 +683,7 @@
       "maxTokensHard": 150000
     },
     "lspEnrichment": {
-      "enabled": false,
+      "enabled": true,
       "maxFiles": 5,
       "timeoutMs": 5000,
       "showExports": true,
@@ -811,7 +692,7 @@
     }
   },
   "sessionState": {
-    "enabled": false,
+    "enabled": true,
     "autoRestore": true,
     "maxGapHours": 24,
     "trackFiles": true,
@@ -820,7 +701,7 @@
     "maxRecentDecisions": 10
   },
   "contextMonitor": {
-    "enabled": false,
+    "enabled": true,
     "warnAt": 0.7,
     "criticalAt": 0.85,
     "contextWindow": 200000,
@@ -828,7 +709,7 @@
     "checkAfterTask": true
   },
   "morningBriefing": {
-    "enabled": false,
+    "enabled": true,
     "showLastSession": true,
     "showChanges": true,
     "showRecommendedTasks": 3,
@@ -837,27 +718,15 @@
     "showKeyContext": true,
     "showTechDebt": true,
     "checkKnowledgeSync": true,
-    "autoRegenerateKnowledge": true,
-    "showRuleViolations": true,
-    "_comment_showRuleViolations": "Show deferred rule violations from /wogi-decide scans",
-    "showAutoPromotedRules": true,
-    "_comment_showAutoPromotedRules": "Show rules auto-promoted from feedback-patterns since last briefing"
-  },
-  "bulkLoop": {
-    "enabled": false,
-    "maxIterations": 100,
-    "pollInterval": 10,
-    "errorThreshold": 3,
-    "contextThreshold": 0.8,
-    "taskTimeout": 1800
+    "autoRegenerateKnowledge": true
   },
   "techDebt": {
-    "enabled": false,
+    "enabled": true,
     "promptOnSessionEnd": true,
     "showInMorningBriefing": true,
     "agingThreshold": 3,
     "autoFix": {
-      "enabled": false,
+      "enabled": true,
       "types": [
         "console.log",
         "unused-import",
@@ -871,7 +740,7 @@
     }
   },
   "requestLog": {
-    "enabled": false,
+    "enabled": true,
     "autoArchive": true,
     "maxRecentEntries": 50,
     "keepRecent": 30,
@@ -904,7 +773,7 @@
     ]
   },
   "functionRegistry": {
-    "enabled": false,
+    "enabled": true,
     "directories": [
       "src/utils",
       "src/lib",
@@ -917,7 +786,7 @@
     "autoUpdate": true
   },
   "apiRegistry": {
-    "enabled": false,
+    "enabled": true,
     "directories": [
       "src/api",
       "src/services"
@@ -928,16 +797,8 @@
     ],
     "autoUpdate": true
   },
-  "registries": [
-    { "id": "components", "enabled": false, "activateWhen": "frontend" },
-    { "id": "functions", "enabled": false, "activateWhen": "always" },
-    { "id": "apis", "enabled": false, "activateWhen": "always" },
-    { "id": "schemas", "enabled": "auto", "activateWhen": "orm" },
-    { "id": "services", "enabled": "auto", "activateWhen": "backend" }
-  ],
-  "_comment_registries": "Unified registry config. 'auto' = activate only when stack condition is met. Old-format keys (functionRegistry, apiRegistry, componentIndex) are still read for backwards compatibility.",
   "semanticMatching": {
-    "enabled": false,
+    "enabled": true,
     "thresholds": {
       "definiteMatch": 90,
       "likelyMatch": 70,
@@ -949,8 +810,28 @@
     },
     "useAIReview": true
   },
+  "figmaAnalyzer": {
+    "enabled": true,
+    "thresholds": {
+      "exactMatch": 95,
+      "strongMatch": 80,
+      "variantCandidate": 60
+    },
+    "componentDirs": [
+      "src/components",
+      "components",
+      "src/ui",
+      "ui"
+    ],
+    "mcpServer": {
+      "port": 3847,
+      "autoStart": false
+    },
+    "autoScanOnAnalyze": true,
+    "generatePrompts": true
+  },
   "guidedEdit": {
-    "enabled": false,
+    "enabled": true,
     "sessionFile": ".workflow/state/guided-edit-session.json",
     "extensions": [
       "ts",
@@ -967,23 +848,10 @@
     "generateDiagrams": true
   },
   "worktree": {
-    "enabled": false,
+    "enabled": true,
     "autoCleanupHours": 24,
     "keepOnFailure": false,
     "squashOnMerge": true
-  },
-  "finalization": {
-    "enabled": true,
-    "_comment_finalization": "Branch finalization workflow — guides merge/PR/discard decision after task completion. Inspired by obra/superpowers finishing-a-development-branch skill.",
-    "defaultAction": "ask",
-    "autoMergeForTypes": ["bugfix", "quick-fix"],
-    "requirePRForTypes": [],
-    "squashOnMerge": true,
-    "prTemplate": {
-      "includeTaskSpec": true,
-      "includeCommitList": true,
-      "includeFileSummary": true
-    }
   },
   "hybrid": {
     "enabled": false,
@@ -1013,7 +881,7 @@
       "outputReserveRatio": 0.3,
       "outputReserveMax": 4096,
       "tokenEstimation": {
-        "enabled": false,
+        "enabled": true,
         "minTokens": 1000,
         "maxTokens": 8000,
         "defaultLevel": "medium",
@@ -1046,22 +914,8 @@
         "envKey": "GOOGLE_API_KEY"
       }
     },
-    "routing": {
-      "enabled": true,
-      "rules": [
-        { "taskType": "simple-edit", "model": "cheapest", "description": "Typos, text changes, config edits" },
-        { "taskType": "code-generation", "model": "mid-tier", "description": "New functions, components, tests" },
-        { "taskType": "refactoring", "model": "planner", "description": "Keep on Opus — too complex to delegate" },
-        { "taskType": "documentation", "model": "cheapest", "description": "README, comments, docs" }
-      ],
-      "tiers": {
-        "cheapest": ["claude-3-5-haiku-latest", "gpt-4o-mini", "gemini-2.0-flash-exp"],
-        "mid-tier": ["claude-3-5-sonnet-latest", "gpt-4o", "gemini-1.5-pro"],
-        "planner": "current"
-      }
-    },
     "templates": {
-      "directory": ".workflow/templates/hybrid"
+      "directory": "templates/hybrid"
     },
     "projectContext": {
       "uiFramework": null,
@@ -1089,7 +943,7 @@
     }
   },
   "multiModel": {
-    "enabled": false,
+    "enabled": true,
     "routingStrategy": "quality-first",
     "strategies": {
       "quality-first": "Select highest-capability model matching requirements",
@@ -1099,7 +953,7 @@
     "fallbackEnabled": true,
     "maxEscalations": 2,
     "promptFragments": {
-      "enabled": false,
+      "enabled": true,
       "directory": ".workflow/prompts/fragments",
       "autoCompose": true
     },
@@ -1111,7 +965,7 @@
     }
   },
   "cascade": {
-    "enabled": false,
+    "enabled": true,
     "maxFailuresBeforeEscalate": 3,
     "escalateOnCategories": [
       "capability_mismatch",
@@ -1121,8 +975,37 @@
     "resetAfterMinutes": 30,
     "persistState": false
   },
+  "tieredLearning": {
+    "enabled": true,
+    "tiers": {
+      "autoApply": {
+        "minSuccessRate": 0.9,
+        "minSamples": 5,
+        "action": "apply-silently"
+      },
+      "applyWithLog": {
+        "minSuccessRate": 0.7,
+        "minSamples": 3,
+        "action": "apply-and-log"
+      },
+      "queueForReview": {
+        "minSuccessRate": 0,
+        "minSamples": 0,
+        "action": "queue"
+      }
+    }
+  },
+  "parallelDispatch": {
+    "enabled": true,
+    "maxConcurrent": 3,
+    "taskTimeout": 300000,
+    "minIndependenceConfidence": 0.7,
+    "aggregationStrategy": "merge",
+    "retryOnFailure": true,
+    "maxRetries": 2
+  },
   "contextScoring": {
-    "enabled": false,
+    "enabled": true,
     "maxContextTokens": 100000,
     "reserveOutputTokens": 8000,
     "includeMinScore": 0.3,
@@ -1146,7 +1029,7 @@
     }
   },
   "gateConfidence": {
-    "enabled": false,
+    "enabled": true,
     "autoApplyThreshold": 0.7,
     "requireApprovalThreshold": 0.5,
     "blockThreshold": 0.3,
@@ -1155,8 +1038,8 @@
   },
   "longInputGate": {
     "enabled": true,
-    "charThreshold": 3000,
-    "lineThreshold": 60,
+    "charThreshold": 2000,
+    "lineThreshold": 50,
     "smartDefault": true,
     "contentRules": {
       "transcript": "full",
@@ -1188,7 +1071,7 @@
     "chunkOverlap": 500,
     "outputLanguage": "en",
     "adaptiveComplexity": {
-      "enabled": false,
+      "enabled": true,
       "smallThreshold": {
         "topics": 3,
         "statements": 10
@@ -1200,13 +1083,13 @@
     }
   },
   "lsp": {
-    "enabled": false,
+    "enabled": true,
     "server": "typescript-language-server",
     "timeout": 5000,
     "cacheTypes": true
   },
   "codebaseInsights": {
-    "enabled": false,
+    "enabled": true,
     "generateOn": [
       "onboarding",
       "manual"
@@ -1223,6 +1106,18 @@
     "smallFixThreshold": 3,
     "squashTaskCommits": true,
     "commitMessageFormat": "conventional"
+  },
+  "export": {
+    "defaultFlags": [
+      "--rules"
+    ],
+    "sanitizeTemplates": true,
+    "includeSkillLearnings": true,
+    "excludePatterns": [
+      "*.local.*",
+      "*.secret.*",
+      ".env*"
+    ]
   },
   "security": {
     "scanBeforeCommit": true,
@@ -1256,21 +1151,6 @@
     "onAsk": "prompt",
     "logging": true
   },
-  "agentTeams": {
-    "enabled": false,
-    "teammateDispatch": {
-      "mode": "suggest",
-      "includeContext": true,
-      "avoidFileConflicts": true
-    },
-    "leadEnforcement": {
-      "enabled": false,
-      "mode": "warn"
-    },
-    "stateTracking": {
-      "enabled": false
-    }
-  },
   "agents": {
     "enabled": [
       "orchestrator",
@@ -1289,7 +1169,7 @@
     ]
   },
   "multiApproach": {
-    "enabled": false,
+    "enabled": true,
     "mode": "suggest",
     "triggerOn": [
       "large",
@@ -1299,7 +1179,7 @@
     "selectionStrategy": "first-passing"
   },
   "hooks": {
-    "enabled": false,
+    "enabled": true,
     "targets": [
       "claude-code"
     ],
@@ -1307,12 +1187,12 @@
     "timeout": 600000,
     "rules": {
       "taskGating": {
-        "enabled": false,
+        "enabled": true,
         "blockWithoutTask": true,
         "autoCreateTask": false
       },
       "scopeGating": {
-        "enabled": false,
+        "enabled": true,
         "mode": "warn",
         "exemptPatterns": [
           ".workflow/state/**",
@@ -1324,29 +1204,29 @@
         ]
       },
       "validation": {
-        "enabled": false,
+        "enabled": true,
         "runAfterEdit": true
       },
       "loopEnforcement": {
-        "enabled": false
+        "enabled": true
       },
       "componentReuse": {
-        "enabled": false,
+        "enabled": true,
         "threshold": 80,
         "blockOnSimilar": false,
         "injectContext": true
       },
       "sessionContext": {
-        "enabled": false,
+        "enabled": true,
         "loadSuspendedTasks": true,
         "loadDecisions": true,
         "loadRecentActivity": true
       },
       "autoLogging": {
-        "enabled": false
+        "enabled": true
       },
       "setup": {
-        "enabled": false,
+        "enabled": true,
         "autoOnboard": false,
         "maintenanceTasks": [
           "healthCheck",
@@ -1354,29 +1234,13 @@
         ]
       },
       "implementationGate": {
-        "enabled": false
+        "enabled": true,
+        "softMode": false,
+        "mode": "warn"
       },
       "todoWriteGate": {
-        "enabled": false,
-        "blockImplementationWithoutTask": true
-      },
-      "routingGate": {
-        "enabled": false,
-        "_comment": "Blocks Bash calls before a /wogi-* command is invoked. Fail-open on errors."
-      },
-      "taskCompleted": {
-        "enabled": false
-      },
-      "teammateIdle": {
-        "enabled": false
-      },
-      "configChange": {
-        "enabled": false,
-        "_comment": "Mid-session config change detection. Re-syncs bridge when .workflow/config.json changes."
-      },
-      "phaseGate": {
         "enabled": true,
-        "_comment": "State machine workflow enforcement. Controls which tools are available in each workflow phase (idle, routing, exploring, spec_review, coding, validating, completing). Stale phases auto-expire after 2 hours."
+        "blockImplementationWithoutTask": true
       }
     },
     "claudeCode": {
@@ -1384,7 +1248,7 @@
     }
   },
   "metrics": {
-    "enabled": false,
+    "enabled": true,
     "trackCommands": true,
     "retentionDays": 30,
     "alertOnFailureRate": 0.3
@@ -1393,53 +1257,8 @@
     "mode": "inline",
     "detailPath": ".workflow/corrections"
   },
-  "reviewFix": {
-    "persistUnfixed": true,
-    "taskPrefix": "wf-rv-",
-    "severityRouting": {
-      "criticalHighRoute": "full",
-      "mediumLowRoute": "light",
-      "securityAlwaysFlag": true
-    },
-    "batchExecution": {
-      "groupBy": ["file", "category"],
-      "sortBy": "priority"
-    },
-    "autoRecommendBatchThreshold": 10,
-    "contextBudget": {
-      "enabled": true,
-      "_comment_contextBudget": "Dynamic context-aware batching. Uses sub-agents with fresh context per batch. Batch sizes are calculated from finding complexity, not hardcoded.",
-      "useSubAgents": true,
-      "subAgentContextBudget": 0.70,
-      "compactionBuffer": 0.15,
-      "orchestratorOverhead": 0.10,
-      "findingCosts": {
-        "critical": 0.05,
-        "high": 0.04,
-        "medium": 0.03,
-        "low": 0.02
-      },
-      "progressFile": ".workflow/state/review-fix-progress.json"
-    }
-  },
-  "originTaskTracing": {
-    "enabled": false,
-    "annotateCompletedTasks": true,
-    "traceOrigin": true,
-    "sameSessionWindow": "2h",
-    "learningSignal": {
-      "enabled": false,
-      "threshold": 3,
-      "groupBy": ["type", "feature"]
-    }
-  },
-  "triage": {
-    "enabled": false,
-    "autoSuggestAfterReview": true,
-    "learnFromDismissals": true
-  },
   "peerReview": {
-    "enabled": false,
+    "enabled": true,
     "provider": "api",
     "models": [
       "openai:gpt-4o-mini"
@@ -1451,51 +1270,26 @@
     }
   },
   "review": {
-    "specFirstGating": true,
-    "minFindings": 3,
-    "_comment_minFindings": "AI-instruction-only (not enforced by runtime code). Guides AI review agents to find at least this many findings or justify why fewer exist.",
-    "requireJustificationIfClean": true,
-    "_comment_requireJustificationIfClean": "AI-instruction-only (not enforced by runtime code). Guides AI agents to justify when finding fewer than minFindings.",
-    "gitVerifiedClaims": {
-      "enabled": false,
-      "_comment_gitVerifiedClaims": "AI-instruction-only (not enforced by runtime code). Intended to cross-reference spec claims against git diff. Not yet implemented.",
-      "verifyFileCreation": true,
-      "verifyContentMatch": true,
-      "blockOnMismatch": true
-    },
-    "agents": {
-      "core": [
-        "code-logic",
-        "security",
-        "architecture"
-      ],
-      "optional": [
-        "performance"
-      ],
-      "projectRules": true,
-      "projectRulesSource": "decisions.md",
-      "maxParallelAgents": 6
-    },
     "multiPass": {
-      "enabled": false,
+      "enabled": true,
       "earlyExitOnCritical": true,
       "passForward": true,
       "passes": {
         "structure": {
-          "enabled": false,
+          "enabled": true,
           "model": "haiku"
         },
         "logic": {
-          "enabled": false,
+          "enabled": true,
           "model": "sonnet"
         },
         "security": {
-          "enabled": false,
+          "enabled": true,
           "model": "sonnet",
           "conditional": true
         },
         "integration": {
-          "enabled": false,
+          "enabled": true,
           "model": "sonnet",
           "conditional": true
         }
@@ -1504,12 +1298,22 @@
   },
   "workflowSteps": {
     "regressionTest": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask"
     },
+    "browserTest": {
+      "enabled": true,
+      "mode": "prompt",
+      "when": "afterTask",
+      "triggerFor": [
+        "*.tsx",
+        "*.jsx",
+        "*.vue"
+      ]
+    },
     "securityScan": {
-      "enabled": false,
+      "enabled": true,
       "mode": "block",
       "when": "beforeCommit",
       "config": {
@@ -1517,17 +1321,17 @@
       }
     },
     "updateKnowledgeBase": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "afterTask"
     },
     "updateChangelog": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "beforeCommit"
     },
     "codeComplexityCheck": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
@@ -1543,7 +1347,7 @@
       }
     },
     "codeSimplifier": {
-      "enabled": false,
+      "enabled": true,
       "mode": "prompt",
       "when": "afterTask",
       "config": {
@@ -1569,7 +1373,7 @@
       }
     },
     "prTestAnalyzer": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "beforeCommit",
       "config": {
@@ -1579,7 +1383,7 @@
       }
     },
     "silentFailureHunter": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
@@ -1590,7 +1394,7 @@
       }
     },
     "commentAnalyzer": {
-      "enabled": false,
+      "enabled": true,
       "mode": "warn",
       "when": "afterTask",
       "config": {
@@ -1602,33 +1406,9 @@
       }
     }
   },
-  "planMode": {
-    "explorePhase": {
-      "enabled": false,
-      "minTaskLevel": "L2"
-    },
-    "researchAgents": {
-      "codebaseAnalyzer": {
-        "enabled": false
-      },
-      "bestPractices": {
-        "enabled": false,
-        "maxWebSearches": 3
-      },
-      "versionVerifier": {
-        "enabled": false
-      },
-      "riskHistory": {
-        "enabled": false,
-        "_comment": "Queries feedback-patterns, corrections, and memory-db for past failures in this task area"
-      },
-      "standardsPreview": {
-        "enabled": false,
-        "_comment": "Pre-computes which standards rules apply and checks component duplication before coding"
-      }
-    },
-    "researchDepth": "thorough",
-    "deepenPromptThreshold": "L1"
+  "planning": {
+    "plansDirectory": ".workflow/plans",
+    "exemptFromTaskGating": true
   },
   "models": {
     "providers": {},
@@ -1636,21 +1416,11 @@
       "includeClaude": false
     }
   },
-  "webmcp": {
-    "enabled": false,
-    "toolsPath": ".workflow/webmcp/tools.json",
-    "fallbackEnabled": true,
-    "maxToolCalls": 20,
-    "uiExtensions": [".tsx", ".jsx", ".vue", ".svelte"]
-  },
   "research": {
-    "enabled": false,
+    "enabled": true,
     "defaultDepth": "standard",
     "strictMode": true,
     "autoTrigger": true,
-    "requireVerificationFormat": true,
-    "mandatoryInExplorePhase": true,
-    "mandatoryForHistoryResearch": true,
     "maxTokensPerDepth": {
       "quick": 5000,
       "standard": 20000,
@@ -1660,12 +1430,6 @@
     "requireCitations": true,
     "cacheVerifications": true,
     "cacheExpiryHours": 24,
-    "cache": {
-      "enabled": false,
-      "ttlHours": 24,
-      "maxEntries": 200,
-      "path": ".workflow/state/research-cache.json"
-    },
     "triggers": {
       "feasibilityQuestions": "deep",
       "capabilityQuestions": "standard",
@@ -1676,58 +1440,5 @@
     "budgetMode": "soft",
     "negativeEvidenceRule": true,
     "assumptionTracking": true
-  },
-  "decisions": {
-    "amendmentTracking": {
-      "enabled": false,
-      "_comment_amendmentTracking": "Track all changes to decisions.md with rationale, timestamp, impact assessment, and source pattern. Creates audit trail for rule evolution.",
-      "logFile": ".workflow/state/decision-amendments.json",
-      "requireRationale": true,
-      "requireImpactAssessment": false,
-      "trackSource": true,
-      "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
-    }
-  },
-  "team": {
-    "enabled": false,
-    "_comment_team": "WogiFlow for Teams integration. Requires @wogiflow/teams package. Free users can ignore this section.",
-    "projectId": null,
-    "orgId": null
-  },
-  "community": {
-    "enabled": false,
-    "_comment_community": "Anonymous community knowledge sharing. Opt-in, privacy-first. No code, paths, or personal info leaves the machine.",
-    "anonymousId": null,
-    "categories": {
-      "modelIntelligence": true,
-      "errorRecovery": true,
-      "patternConvergence": true,
-      "sessionStatistics": true,
-      "skillLearnings": true
-    },
-    "pushOnSessionEnd": true,
-    "pullOnSessionStart": true,
-    "cacheTtlHours": 24,
-    "serverUrl": "https://api.wogiflow.com"
-  },
-  "consistency": {
-    "enabled": false,
-    "_comment_consistency": "Cross-artifact consistency analysis. Validates app-map, function-map, and api-map against each other and the actual codebase.",
-    "runOn": ["afterTask", "beforeCommit"],
-    "checks": {
-      "appMapVsCodebase": true,
-      "_comment_appMapVsCodebase": "Verify components listed in app-map.md actually exist in the codebase.",
-      "functionMapVsCodebase": true,
-      "_comment_functionMapVsCodebase": "Verify functions listed in function-map.md actually exist.",
-      "apiMapVsCodebase": true,
-      "_comment_apiMapVsCodebase": "Verify API endpoints listed in api-map.md actually exist.",
-      "crossMapConsistency": true,
-      "_comment_crossMapConsistency": "Check that components referenced in one map exist in others (e.g., a function used by a component is in function-map).",
-      "orphanDetection": true,
-      "_comment_orphanDetection": "Find files in codebase that exist but are not registered in any map."
-    },
-    "mode": "warn",
-    "_comment_mode": "'warn' reports inconsistencies, 'block' prevents completion until fixed.",
-    "maxOrphans": 10
   }
 }
