@@ -33,6 +33,22 @@ Check `.workflow/state/ready.json` for existing tasks.
 | L0 | Epic | 15+ | **STOP** — Run `/wogi-epics` first, wait for approval |
 
 ---
+
+## Post-Compaction Routing (CRITICAL)
+
+**After context compaction or conversation resumption, the routing requirement is NOT relaxed.**
+
+When you resume from a compacted/summarized conversation:
+1. You may have compressed context from prior work — that is fine
+2. But every NEW user message still requires `/wogi-*` routing — NO exceptions
+3. Do NOT answer from compacted memory without routing first
+4. Do NOT assume "I already know the answer" justifies skipping routing
+5. The compaction summary preserves context but does NOT grant routing bypass
+
+**Why this matters**: After compaction, CLAUDE.md rules may be compressed. The AI may "feel" confident answering directly because it has context from the summary. This is the exact scenario that causes routing bypass. The routing hooks (UserPromptSubmit, PreToolUse, Stop) enforce this mechanically, but this instruction ensures you comply proactively.
+
+**If you catch yourself about to respond without routing**: STOP. Invoke the Skill tool with skill="wogi-start" first. The Stop hook will block you from completing a response that bypassed routing.
+
 {{/if}}
 
 {{#if config.strictAdherence.enabled}}

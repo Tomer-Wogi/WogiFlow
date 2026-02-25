@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-180 | 2026-02-25 16:00
+**Type**: fix
+**Tags**: #feature:workflow #component:routing-gate #component:implementation-gate #component:stop-hook #component:claude-md
+**Task**: wf-fa82f23d
+**Request**: "Harden routing enforcement — close post-compaction bypass gap"
+**Result**: Closed the gap where AI could bypass mandatory /wogi-start routing after context compaction by responding from compressed memory without calling any tools. Implemented 4 hardening layers: (1) Hardened generateRoutingContext() in implementation-gate.js with explicit post-compaction warning and stronger "STOP" messaging, (2) Added compaction routing anchor to wogi-compact.md so routing instruction survives context compression, (3) Added routing enforcement to Stop hook — if AI tries to stop with routing-pending flag still set, it's caught and forced to route through /wogi-start, (4) Added "Post-Compaction Routing (CRITICAL)" section to claude-md.hbs template and regenerated CLAUDE.md. Full verification chain confirmed: no race conditions, no infinite loops, session-isolated flags.
+**Files**: `scripts/hooks/core/implementation-gate.js`, `scripts/hooks/entry/claude-code/stop.js`, `.claude/commands/wogi-compact.md`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md` (regenerated), `.workflow/state/ready.json`
+
 ### R-177 | 2026-02-26 04:00
 **Type**: new
 **Tags**: #feature:teams #component:auth #component:oauth #component:device-auth #component:teams #component:projects #infra:cloudformation
