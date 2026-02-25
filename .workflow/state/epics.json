@@ -36,8 +36,28 @@
       "progress": 0,
       "createdAt": "2026-02-21T10:20:45.472Z",
       "updatedAt": "2026-02-21T10:22:34.560Z"
+    },
+    "epic-teams-t3": {
+      "id": "epic-teams-t3",
+      "title": "T3: Team Knowledge + Integrations",
+      "description": "Team rules CRUD with cascade, team templates, knowledge sharing (models, skills, config), and external integrations (Jira, GitHub). Builds on T1 (auth) and T2 (sync engine) foundations. Bitbucket deferred to T4+.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-a01e3149",
+        "wf-9eb7323a",
+        "wf-8203b06b",
+        "wf-2d0af595",
+        "wf-98c1c0b2",
+        "wf-e8d21b8e"
+      ],
+      "features": [],
+      "status": "ready",
+      "progress": 0,
+      "createdAt": "2026-02-25T09:53:00.038Z",
+      "updatedAt": "2026-02-25T09:53:00.039Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-02-21T10:22:34.560Z"
+  "lastUpdated": "2026-02-25T09:53:00.039Z"
 }

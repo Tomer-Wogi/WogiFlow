@@ -106,7 +106,125 @@ Options:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**0.4. Execute each batch**:
+### Context-Aware Orchestrated Mode (MANDATORY for 10+ findings)
+
+**When `config.reviewFix.contextBudget.enabled` is true AND there are 10+ findings to process, the review-fix flow MUST use sub-agent orchestration instead of processing all findings in the main conversation.**
+
+This prevents the "Conversation too long" compaction failure that occurs when processing many findings sequentially in one context.
+
+**How it works:**
+
+1. **Budget calculation**: Run the context budget estimator to split findings into dynamic batches:
+   ```
+   The batch size is NOT hardcoded. It is calculated from:
+   - Each finding's severity (critical=5%, high=4%, medium=3%, low=2% of context)
+   - Whether the finding is autoFixable (0.6x multiplier — simpler)
+   - Whether the finding involves cross-file changes (1.3x multiplier — harder)
+   - Available sub-agent context budget (default: 70% of fresh context)
+   - Compaction buffer reserve (default: 15%)
+   - Orchestrator overhead (default: 10%)
+   ```
+
+2. **Display the budget plan**:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 CONTEXT BUDGET PLAN
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Total findings: 39
+   Batches needed: 4 (dynamic — based on finding complexity)
+   Strategy: Sub-agent per batch (fresh context each)
+
+   Batch 1: 12 findings (3 critical, 4 high, 5 medium) — est. 42% context
+   Batch 2: 11 findings (2 high, 6 medium, 3 low) — est. 35% context
+   Batch 3: 10 findings (4 medium, 6 low) — est. 28% context
+   Batch 4: 6 findings (2 medium, 4 low) — est. 16% context
+
+   Each batch runs in a fresh sub-agent context.
+   Progress is saved between batches.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+3. **Execute batches via sub-agents**: For each batch, spawn a `Task` agent with `subagent_type=Bash` or `subagent_type=general-purpose` that:
+   - Receives ONLY the findings for this batch (not all 39)
+   - Receives the file paths and recommendations
+   - Processes each finding: read file → apply fix → verify (node --check / lint)
+   - Returns a structured result: which findings were fixed, which failed, any notes
+   - The sub-agent has a **completely fresh context** — no accumulation from previous batches
+
+4. **Track progress** between batches:
+   - After each batch completes, save progress to `config.reviewFix.contextBudget.progressFile` (default: `.workflow/state/review-fix-progress.json`):
+     ```json
+     {
+       "reviewDate": "2026-02-26T...",
+       "taskId": "wf-cr-t3rv01",
+       "totalFindings": 39,
+       "processedIds": ["i-001", "sec-004", ...],
+       "failedIds": ["l-012"],
+       "currentBatch": 2,
+       "totalBatches": 4,
+       "startedAt": "...",
+       "lastBatchAt": "..."
+     }
+     ```
+   - This file survives compaction. If the orchestrator itself needs to compact, it can resume from this checkpoint.
+
+5. **Orchestrator stays lean**: The main conversation only:
+   - Calculates the budget plan
+   - Spawns sub-agents for each batch
+   - Collects results
+   - Updates the progress file
+   - Runs final verification across all modified files
+   - Commits
+
+6. **After all batches complete**:
+   - Display consolidated summary
+   - Run final verification (lint, typecheck, tests) across ALL modified files
+   - Commit: `fix: N review findings fixed across M batches (wf-XXXXXXXX)`
+   - Clean up the progress file
+
+**Resume after interruption**: If a session ends mid-fix (crash, context overflow, user abort):
+- On next `/wogi-review-fix --pending` or `/wogi-start wf-XXXXXXXX`, check for progress file
+- If progress file exists and has remaining findings:
+  ```
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔄 RESUMING REVIEW-FIX SESSION
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Previous session: 15/39 findings processed (batch 2/4)
+  Remaining: 24 findings in 2 batches
+
+  Continuing from batch 3...
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ```
+- Skip already-processed findings and continue with remaining batches
+
+**Also applies to direct finding processing from `last-review.json`**:
+When a task like `wf-cr-XXXXXXXX` is created to fix findings from `last-review.json`, the SAME orchestrated mode applies. Read findings from `last-review.json`, calculate budget, execute in batches.
+
+**Skip condition**: When `contextBudget.enabled` is false OR fewer than 10 findings exist, use the traditional single-context batch execution below.
+
+**Config** (`config.reviewFix.contextBudget`):
+```json
+{
+  "enabled": true,
+  "useSubAgents": true,
+  "subAgentContextBudget": 0.70,
+  "compactionBuffer": 0.15,
+  "orchestratorOverhead": 0.10,
+  "findingCosts": {
+    "critical": 0.05,
+    "high": 0.04,
+    "medium": 0.03,
+    "low": 0.02
+  },
+  "progressFile": ".workflow/state/review-fix-progress.json"
+}
+```
+
+---
+
+**0.4. Execute each batch** (traditional mode — used when contextBudget is disabled or < 10 findings):
 
 For each batch:
 1. **Create batch task**: Generate `wf-rvb-XXXXXXXX` (8-char hash of batch files + categories). Add to `inProgress` in `ready.json`. This satisfies the task-gate for edits.

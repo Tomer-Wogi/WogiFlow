@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-184 | 2026-02-26 23:45
+**Type**: new
+**Tags**: #feature:workflow #component:flow-context-estimator #command:wogi-review-fix #config
+**Task**: wf-911123c5
+**Request**: "Implement smart auto-compaction for review-fix sessions — dynamic context-aware batching"
+**Result**: Added dynamic context-aware batching to review-fix sessions. Extended `flow-context-estimator.js` with finding-level estimation functions: `estimateFindingContextCost()` calculates context per finding based on severity/complexity, `calculateDynamicBatchSize()` packs findings into available context, `createFindingBudget()` splits all findings into sub-agent batches. Updated `wogi-review-fix.md` with "Context-Aware Orchestrated Mode" — when 10+ findings exist, the orchestrator spawns sub-agents with fresh context per batch instead of processing everything in one conversation. Batch sizes are dynamic (not hardcoded), calculated from finding complexity. Progress tracked in state file that survives compaction/interruption. Enabled `smartCompaction` in config and added `contextBudget` config to `reviewFix`. Tested with actual 37 T3 findings → 3 batches of 9/12/16 findings.
+**Files**: `scripts/flow-context-estimator.js`, `.claude/commands/wogi-review-fix.md`, `.workflow/config.json`, `.workflow/state/ready.json`, `.workflow/state/pending-skill.json`
+
 ### R-183 | 2026-02-26 23:30
 **Type**: fix
 **Tags**: #feature:teams #security #architecture #component:db #component:cloudformation #component:shared

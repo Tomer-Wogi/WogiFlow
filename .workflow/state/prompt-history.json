@@ -1887,6 +1887,266 @@
         "content": "I wanted to work on the community learning that we created a new branch for but we now need to update that branch with everything we did here before we started because we fixed and changed a lot of things to make sure that everything now will work and before that we also need to commit the changes that we've done now and create a release ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T11:33:04.513Z",
+        "content": "Ok, push to GitHub and create a release for master. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T11:33:33.692Z",
+        "content": "Let's continue with the rest of the development that we have on the roadmap. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:03:13.064Z",
+        "content": "To my understanding There are flows that Run certain scripts. In some cases the scripts can change the name and then the flows will not work. So maybe a suggestion is to scan at the beginning of a session the scripts just to make sure nothing has changed and everything is aligned. Review what the developer sent me. I did not read it myself and after that talk to me about the solution so I can approve it before implementing. \nfrom my developer:\n# BUG Report: Hardcoded Script Names in WogiFlow Bypass package.json\n\n**Date**: 2026-02-24\n**Severity**: High\n**Affected scripts**: `flow-done.js`, `flow-review.js`, `flow-spec-generator.js`, `flow-verify.js`\n**Status**: Partially fixed (manual local patch applied)\n\n---\n\n## 1. Case Description\n\n### What the user was trying to do\n\nThe user was working with WogiFlow to manage development tasks. Multiple tasks were completed and closed via `flow done`, which runs quality gates (lint, typecheck, requestLogEntry) before marking a task as complete.\n\n### How the problem was discovered\n\nAt a certain point the user noticed that **type checking was simply not happening** — no errors, no warnings, nothing. It was silently skipped.\n\nUpon investigation, it was found that `flow-done.js` (line 228) executes `npm run typecheck`, but the project's `package.json` defines the script as `type-check` (with a hyphen):\n\n```json\n// package.json\n\"scripts\": {\n  \"type-check\": \"tsc --build --force\"\n}\n```\n\nThe `npm run typecheck` call failed with \"Missing script\", but WogiFlow treated the failure silently and continued the completion flow without alerting the user.\n\n### Impact\n\n**Type checking was not performed for ANY task** during the entire project lifetime. Every task that passed through `flow done` was marked as completed without actual TypeScript verification. The quality gate appeared to exist but provided zero protection.\n\nThe user believed the workflow was validating types on every task completion. In reality, the gate was broken from day one due to a script name mismatch.\n\n---\n\n## 2. Root Cause\n\nWogiFlow **hardcodes npm script names** in multiple files instead of reading them from the project's `package.json`:\n\n| File | Line | Hardcoded Command |\n|------|------|-------------------|\n| `flow-done.js` | 228 | `spawnSync('npm', ['run', 'typecheck'])` |\n| `flow-review.js` | 184 | `execFileSync('npm', ['run', 'typecheck'])` |\n| `flow-spec-generator.js` | 385 | `command: 'npm run typecheck'` |\n\nAdditionally, WogiFlow hardcodes **`npm`** as the package manager, while this project uses **`bun`**:\n\n| File | Lines | Hardcoded `npm` calls |\n|------|-------|----------------------|\n| `flow-done.js` | 164, 189, 203, 228 | `lint`, `test`, `typecheck` |\n| `flow-review.js` | 173, 184, 195 | `lint`, `typecheck`, `test` |\n| `flow-verify.js` | 138 | `build` |\n\nThe combination of hardcoded script names + hardcoded package manager means WogiFlow quality gates can silently fail in any project where scripts are named differently from WogiFlow's assumptions.\n\n---\n\n## 3. Applied Fix\n\nChanged `flow-done.js:228`:\n\n```diff\n- const result = spawnSync('npm', ['run', 'typecheck'], {\n+ const result = spawnSync('npm', ['run', 'type-check'], {\n```\n\nThis is a **local patch only** and will be overwritten on the next WogiFlow update. Only `flow-done.js` was patched; `flow-review.js` and `flow-spec-generator.js` still contain the wrong script name.\n\n---\n\n## 4. Full Audit of Affected Files\n\nAll WogiFlow files that hardcode `npm run <script>`:\n\n| File | Purpose | Hardcoded Scripts |\n|------|---------|-------------------|\n| `flow-done.js` | Task completion quality gates | `lint`, `typecheck`, `test` |\n| `flow-review.js` | Code review quality gates | `lint`, `typecheck`, `test` |\n| `flow-verify.js` | Build verification | `build` |\n| `flow-spec-generator.js` | Spec template generation | `lint`, `typecheck`, `build` |\n| `flow-step-coverage.js` | Coverage analysis | `test:coverage`, `coverage` |\n| `flow-workflow.js` | Workflow command definitions | `lint`, `test`, `build`, `fix` |\n \n# Recommendations: WogiFlow Script Resolution from package.json\n\n**Related bug report**: `BUG-REPORT-typecheck-silent-failure.md`\n**Date**: 2026-02-24\n\n---\n\n## Core Principle\n\nAll WogiFlow scripts that invoke project commands (lint, typecheck, test, build) **must resolve script names from `package.json`** at runtime, not use hardcoded values.\n\n---\n\n## 1. Script Resolver with Alias Matching\n\nCreate a shared utility that maps WogiFlow intents to actual `package.json` script names using alias lists:\n\n```js\nconst SCRIPT_ALIASES = {\n  typecheck: ['typecheck', 'type-check', 'tsc', 'check-types', 'types'],\n  lint:      ['lint', 'eslint', 'lint:check'],\n  test:      ['test', 'jest', 'vitest', 'mocha'],\n  build:     ['build', 'compile', 'bundle'],\n  format:    ['format', 'prettier', 'prettier:fix'],\n}\n\nfunction resolveScript(projectRoot, intent) {\n  const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf-8'))\n  const scripts = pkg.scripts || {}\n  const candidates = SCRIPT_ALIASES[intent] || [intent]\n  return candidates.find((name) => name in scripts) || null\n}\n```\n\nWhen no matching script is found, the quality gate should be **explicitly skipped with a visible warning**, not silently treated as passed or failed.\n\n---\n\n## 2. Package Manager Auto-Detection\n\nWogiFlow should detect the project's package manager from lockfiles instead of hardcoding `npm`:\n\n| Lockfile | Package Manager |\n|----------|----------------|\n| `bun.lockb` or `bun.lock` | `bun` |\n| `pnpm-lock.yaml` | `pnpm` |\n| `yarn.lock` | `yarn` |\n| `package-lock.json` (fallback) | `npm` |\n\nAll `spawnSync('npm', ...)` calls should use the detected package manager.\n\n---\n\n## 3. Script Registry in `.workflow/config.json`\n\nAdd a `scripts` section to the WogiFlow config that acts as the single source of truth for how to invoke project commands:\n\n```json\n{\n  \"scripts\": {\n    \"packageManager\": \"bun\",\n    \"registry\": {\n      \"lint\": \"lint\",\n      \"typecheck\": \"type-check\",\n      \"test\": null,\n      \"build\": \"build\",\n      \"dev\": \"dev\",\n      \"format\": \"prettier:fix\"\n    },\n    \"packageJsonHash\": \"a1b2c3d4...\",\n    \"lastSyncedAt\": \"2026-02-24T10:00:00.000Z\"\n  }\n}\n```\n\n- **Auto-generated** during `wogi-onboard` by scanning `package.json`\n- **`null` values** indicate the project has no script for that intent (gate is skipped)\n- **`packageJsonHash`** enables drift detection\n\n---\n\n## 4. Session Start Validation\n\nThe `SessionStart` hook should verify the script registry is still in sync with `package.json`:\n\n1. Compute hash of the `scripts` section in `package.json`\n2. Compare with stored `scripts.packageJsonHash` in config\n3. If mismatch — re-scan `package.json` and update the registry\n4. If a required quality gate script is now missing — show a warning\n\nExample output when drift is detected:\n\n```\nSessionStart:\n  Script drift detected:\n    - \"typecheck\" was mapped to \"type-check\", but script renamed to \"type-check-2\" in package.json\n    - Updated scripts.registry.typecheck -> \"type-check-2\"\n```\n\nThis ensures that renaming or removing a script in `package.json` is immediately reflected in WogiFlow, preventing silent failures.\n\n---\n\n## 5. Implementation Priority\n\n| Change | Effort | Impact |\n|--------|--------|--------|\n| Script resolver utility | Low | Fixes the core issue for all scripts |\n| Package manager detection | Low | Correct runner for bun/pnpm/yarn projects |\n| Config registry + onboard integration | Medium | Single source of truth, explicit null for missing scripts |\n| SessionStart validation | Medium | Prevents future drift after package.json changes |\n\nThe script resolver alone would have prevented this bug entirely.\n\n ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:10:33.401Z",
+        "content": "Okay, approved. Do what you recommended. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:14:15.967Z",
+        "content": "I just want to make sure that you remember that all the code that is related to the theme functionality is supposed to be in a private repo or I don't know like not available for anyone to see, download. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:14:29.580Z",
+        "content": "theme = team",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:16:28.535Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:23:25.651Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:24:29.134Z",
+        "content": "Please describe to me how the community feature we added works and then describe to me is there any potential for other things breaking because of it? If not, I want us to merge it to master and everything that we did for team, we need another branch for it. Like it shouldn't be the community is different and then the team functionality and it should sit on another branch. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:58:00.156Z",
+        "content": "Ok, push to GitHub and create a release for master. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T12:59:22.411Z",
+        "content": "I applied a few fixes on the other terminal to master so please get those update and then push everything like what you said Those are the changes.  changes in this release:\n  - Script resolver — auto-detects package manager + script names, replacing hardcoded npm/npx across 8+ scripts\n  - Community knowledge C1 + C2 client-side\n  - Teams extension points\n  - Security hardening — shell injection fix, metacharacter sanitization, safeJsonParse",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T14:24:15.577Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T14:51:20.883Z",
+        "content": "1",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T18:26:29.213Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T20:31:25.775Z",
+        "content": "/wogi-session-end ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T20:34:02.698Z",
+        "content": "/wogi-morning ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T20:36:16.590Z",
+        "content": "Let's start working on the team foundation P1, just make sure you're on the correct branch. This should be developed on a different branch than master. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T20:49:02.532Z",
+        "content": "lgtm",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T21:09:44.662Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T21:55:47.365Z",
+        "content": "let's continue to phase 2 ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-24T22:44:15.895Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T08:29:04.188Z",
+        "content": "Did we finish everything on the roadmap? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T08:29:54.295Z",
+        "content": "Why didn't you send it to Woggy Start? Like how were you able to skip the tightly enforced rule right now? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T08:36:23.201Z",
+        "content": "I also want to know why the last unanswered question was not routed properly because there's a loose end, there's a way for you to skip the wogiflow start which I need to close when I give people wogiflow my promise to them is everything is going to be up to a certain standard and there's a procedure that every task and every request goes through to prevent cloud from making assumptions or from hallucinating or from doing things, being opinionated in code you can't be opinionated especially when you work in teams everyone needs to be aligned, perfectly aligned and once cloud gets opinionated it's not aligned to the rest of the team so I cannot have cloud going rogue, so to speak and doing stuff and skipping the steps that I defined ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T08:59:14.089Z",
+        "content": "We had a command or a flow for digesting very long prompts. Do we still have it? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:03:20.837Z",
+        "content": "Is it something that is still operational and Wogistart can use? because I gave wogistart a few long prompts and I did not see it invoke it or use it so what maybe we need to think just about the threshold again, tell me what you think about how many rows is too much and you start missing things ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:08:35.043Z",
+        "content": "Yes, I want you to make sure it's also enabled as a default so when everyone downloads or installs Wogi Flow this is what is expected. Also if someone updates Wogi Flow it will change the long input gate into enabled. Now you said that in 50 to 150 lines you can see specs may miss edge cases buried in the middle. So for me the threshold should be 50 lines, 60 lines. The idea here is that for Wogi Flow is that there's no compromise. Someone yesterday asked me are you basically competing with Wogi Flow? I said I'm not competing with Wogi Flow because I'm not worried about Claude. Claude will get there. So I told him I'm not worried about Claude doing what we do because they won't. It's like we're Apple. We're developing for one type of user and they're Microsoft. They need to support everything. For 90% of people giving them a system that makes Claude spend two times, three times, four times the tokens that it does now will not make sense. But for companies that needs to keep a certain standard that needs to have 10 developers working with agents and everyone producing the same quality and level of code it makes a lot of sense. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:20:04.021Z",
+        "content": "I want you to review what we have in Mogi X-Attack review and make sure that nothing is missed and if we can improve it or if it's good enough as is. I'll explain. Now I have meetings with my employees. I can have a meeting with my designer. The meeting will take an hour. It could be 2000 rows of text if we transcript a meeting like that. And I will just go over the design and tell them what to do. And every task that I give, they will edit, edit, edit the comment, create a checklist, create just a list of to-dos. And in the end, if even if in 10 minutes I say like, let's do this button black and 10 minutes later, I'll say, you know what, let's do it red instead. They will know how to update the task. So it will not they will not use the previous statement, which I changed my mind on. And nothing gets missed. Same thing here. Like if I want it, like let's say I created a feature with you and I just want to update it. I just want to record myself reviewing everything. I can riff, I can change my mind, but I can also just give so many small comments. And then when I give it to AI, a lot of things get missed. So I need you to do something smart, like going over it and writing down every task, going over all the tasks and organizing them in a way that makes sense in order, combining tasks into like one story, if it makes sense. Then reviewing it. And then doing everything again, making sure nothing will miss. If we have orphan tasks, if we have anything. And in the end, if anything, something is not clear, ask the customer, like ask the user. But like this is what I expect. I just want to make sure that this is what the Wogextract review does. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:30:49.919Z",
+        "content": "Yes, definitely. Everything needs to be done at one go without user intervention. The only thing that the user needs to do is clarify a question if the agent has any. We need to combine all of it to one flow that runs from start to finish. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:34:29.473Z",
+        "content": "approved",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:46:24.431Z",
+        "content": "Sometimes I want to discuss ideas with you and I don't mind running it directly. Do you think it would be a benefit to add something like \"wogi brainstorm\" as a command that once you run you go into like a conversation plan mode where we can discuss everything and once we finish that discussion it sends it to \"wogi start\"? Do you think it's needed? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:49:15.281Z",
+        "content": "So let's skip it \nWhat else do we have on the roadmap? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:51:49.813Z",
+        "content": "ok let's continue with t3 ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T09:59:04.864Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      }
+    ],
+    "refinementCount": 0
+  },
+  "wf-a01e3149": {
+    "taskId": "wf-a01e3149",
+    "title": null,
+    "startedAt": "2026-02-25T11:58:53.380Z",
+    "prompts": [
+      {
+        "timestamp": "2026-02-25T11:58:53.381Z",
+        "content": "continue",
+        "isInitial": true,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T12:20:04.180Z",
+        "content": "continue",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T13:14:01.928Z",
+        "content": "continue",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T13:14:37.542Z",
+        "content": "2 > 1",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T13:33:03.210Z",
+        "content": "fix all ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T14:00:57.372Z",
+        "content": "fix all ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T14:02:12.788Z",
+        "content": "We did a very long review and then you started to fix everything and got stuck with this error. So first go see what's still pending, what needs to be fixed, what was already fixed. It's supposed to be on a request log or bug files or whatever. Just check everything and then Let's figure out how to prevent this message from ever appearing ❯ /compact\n  ⎿  Error: Error during compaction: Error: Conversation too long. Press esc twice to go up a few messages and try again.",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-25T14:05:40.961Z",
+        "content": "So the prevention strategies, let's implement them. I don't want it to be hard coded like 5 or 8 findings or 8 to 10 findings. It needs to follow how much context he has and do the compact way before it gets into any issues. And after that fix whatever is still remaining from that review ",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0

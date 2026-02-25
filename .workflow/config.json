@@ -755,7 +755,7 @@
     }
   },
   "smartCompaction": {
-    "enabled": false,
+    "enabled": true,
     "safeThreshold": 0.95,
     "emergencyThreshold": 0.9,
     "estimation": {
@@ -1385,7 +1385,22 @@
       "groupBy": ["file", "category"],
       "sortBy": "priority"
     },
-    "autoRecommendBatchThreshold": 10
+    "autoRecommendBatchThreshold": 10,
+    "contextBudget": {
+      "enabled": true,
+      "_comment_contextBudget": "Dynamic context-aware batching. Uses sub-agents with fresh context per batch. Batch sizes are calculated from finding complexity, not hardcoded.",
+      "useSubAgents": true,
+      "subAgentContextBudget": 0.70,
+      "compactionBuffer": 0.15,
+      "orchestratorOverhead": 0.10,
+      "findingCosts": {
+        "critical": 0.05,
+        "high": 0.04,
+        "medium": 0.03,
+        "low": 0.02
+      },
+      "progressFile": ".workflow/state/review-fix-progress.json"
+    }
   },
   "originTaskTracing": {
     "enabled": false,
