@@ -1,23 +1,20 @@
 {
-  "lastUpdated": "2026-02-26T15:30:00.000Z",
+  "lastUpdated": "2026-02-26T23:30:00.000Z",
   "inProgress": [],
-  "ready": [
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
-      "id": "wf-rv-t1sec002",
-      "title": "Review fix: Enable SSL cert verification for RDS connections (t1-002)",
+      "id": "wf-rv-t1refact",
+      "title": "Review fix: Extract shared utilities — logAudit, parseJsonBody, secrets cache (t1-016/017/022)",
       "type": "fix",
       "feature": "teams",
       "source": "review",
-      "finding": {
-        "id": "t1-002",
-        "severity": "critical",
-        "category": "security",
-        "file": "packages/server/lib/db.js",
-        "issue": "SSL certificate verification disabled (rejectUnauthorized: false)"
-      },
-      "status": "ready",
-      "priority": "P1",
-      "createdAt": "2026-02-26T06:00:00.000Z"
+      "status": "completed",
+      "priority": "P3",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T23:15:00.000Z",
+      "completedAt": "2026-02-26T23:30:00.000Z"
     },
     {
       "id": "wf-rv-t1infra5",
@@ -25,37 +22,24 @@
       "type": "fix",
       "feature": "teams",
       "source": "review",
-      "finding": {
-        "id": "t1-005",
-        "severity": "high",
-        "category": "security",
-        "file": "deploy/cloudformation.yaml",
-        "issue": "RDS SecurityGroup allows 0.0.0.0/0 — needs VPC private subnets"
-      },
-      "status": "ready",
+      "status": "completed",
       "priority": "P2",
-      "createdAt": "2026-02-26T06:00:00.000Z"
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T23:00:00.000Z",
+      "completedAt": "2026-02-26T23:15:00.000Z"
     },
     {
-      "id": "wf-rv-t1refact",
-      "title": "Review fix: Extract shared utilities — logAudit, parseJsonBody, secrets cache (t1-016/017/022)",
+      "id": "wf-rv-t1sec002",
+      "title": "Review fix: Enable SSL cert verification for RDS connections (t1-002)",
       "type": "fix",
       "feature": "teams",
       "source": "review",
-      "finding": {
-        "id": "t1-016+017+022",
-        "severity": "medium",
-        "category": "architecture",
-        "file": "packages/server/lib/teams.js",
-        "issue": "Duplicated logAudit, parseJsonBody, and secrets caching across multiple files"
-      },
-      "status": "ready",
-      "priority": "P3",
-      "createdAt": "2026-02-26T06:00:00.000Z"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T22:45:00.000Z",
+      "completedAt": "2026-02-26T23:00:00.000Z"
+    },
     {
       "id": "wf-e8d21b8e",
       "title": "T3-S6: GitHub Integration",

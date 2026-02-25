@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-183 | 2026-02-26 23:30
+**Type**: fix
+**Tags**: #feature:teams #security #architecture #component:db #component:cloudformation #component:shared
+**Task**: wf-rv-t1sec002, wf-rv-t1infra5, wf-rv-t1refact
+**Request**: "Fix 3 remaining review findings from T1 review"
+**Result**: (1) SSL cert verification: enabled rejectUnauthorized by default, configurable via DB_SSL_REJECT_UNAUTHORIZED env var. (2) VPC migration: full VPC with private subnets, NAT Gateway, VPC endpoints, 11 Lambdas in VPC, DB restricted to Lambda SG only (was 0.0.0.0/0). (3) Shared utilities: created lib/shared.js with parseJsonBody, getClientIp, getSecretCached — 81 duplications removed across 20 files. 370 tests passing.
+**Files**: `packages/server/lib/db.js`, `deploy/cloudformation.yaml`, `packages/server/lib/shared.js` (new), 20+ route/lib files refactored
+
 ### R-182 | 2026-02-26 22:00
 **Type**: new
 **Tags**: #feature:teams #epic:epic-teams-t3 #component:team-rules #component:templates #component:knowledge #component:integrations #component:jira #component:github
