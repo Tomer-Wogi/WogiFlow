@@ -57,6 +57,78 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-e8d21b8e",
+      "title": "T3-S6: GitHub Integration",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T21:00:00.000Z",
+      "completedAt": "2026-02-26T22:00:00.000Z"
+    },
+    {
+      "id": "wf-98c1c0b2",
+      "title": "T3-S5: Jira Integration",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T20:00:00.000Z",
+      "completedAt": "2026-02-26T21:00:00.000Z"
+    },
+    {
+      "id": "wf-8203b06b",
+      "title": "T3-S3: Team Knowledge Sharing (Models, Skills, Config)",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P2",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T19:00:00.000Z",
+      "completedAt": "2026-02-26T20:00:00.000Z"
+    },
+    {
+      "id": "wf-2d0af595",
+      "title": "T3-S4: Integration Framework + Base Adapter",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T18:00:00.000Z",
+      "completedAt": "2026-02-26T19:00:00.000Z"
+    },
+    {
+      "id": "wf-9eb7323a",
+      "title": "T3-S2: Team Templates System",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T17:00:00.000Z",
+      "completedAt": "2026-02-26T18:00:00.000Z"
+    },
+    {
+      "id": "wf-a01e3149",
+      "title": "T3-S1: Team Rules CRUD + Rule Cascade",
+      "type": "story",
+      "feature": "teams",
+      "parentEpic": "epic-teams-t3",
+      "status": "completed",
+      "priority": "P1",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T16:00:00.000Z",
+      "completedAt": "2026-02-26T17:00:00.000Z"
+    },
+    {
       "id": "wf-94bd09bb",
       "title": "Unify /wogi-extract-review into single end-to-end flow",
       "type": "story",

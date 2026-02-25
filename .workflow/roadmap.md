@@ -286,8 +286,8 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T3: Team Knowledge + Integrations (Sprint 5-6)
 
-**Status:** Planned
-**Depends On:** Phase T2: State Sync
+**Status:** COMPLETE (epic-teams-t3, 6 stories, 2026-02-26). S1 Team Rules CRUD (wf-a01e3149), S2 Team Templates (wf-9eb7323a), S3 Knowledge Sharing (wf-8203b06b), S4 Integration Framework (wf-2d0af595), S5 Jira Integration (wf-98c1c0b2), S6 GitHub Integration (wf-e8d21b8e). 39 new files, 370 tests passing.
+**Depends On:** Phase T2: State Sync (COMPLETE)
 
 **Scope:**
 - Team rules CRUD (web dashboard)

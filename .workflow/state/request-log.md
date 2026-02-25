@@ -13,6 +13,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-182 | 2026-02-26 22:00
+**Type**: new
+**Tags**: #feature:teams #epic:epic-teams-t3 #component:team-rules #component:templates #component:knowledge #component:integrations #component:jira #component:github
+**Task**: epic-teams-t3 (wf-a01e3149, wf-9eb7323a, wf-8203b06b, wf-2d0af595, wf-98c1c0b2, wf-e8d21b8e)
+**Request**: "Plan and implement T3: Team Knowledge + Integrations phase from the roadmap"
+**Result**: Implemented all 6 stories of Phase T3 in wogiflow-cloud repo. S1: Team Rules CRUD with rule cascade (enforced/overridable), category management, sync status. S2: Team Templates system with export/apply/versioning/defaults. S3: Knowledge Sharing with model learnings, skill learnings, model profiles, shared configs, session hooks for push/pull. S4: Integration Framework with BaseAdapter pattern, AES-256-GCM credential encryption, HMAC-SHA256 webhook verification, adapter registry. S5: Jira Integration with OAuth 2.0 3LO, webhook handling, bidirectional sync, description-to-AC parsing (5 strategies), configurable field mapping. S6: GitHub Integration with OAuth, issues/PRs/push webhook handling, PR linking, commit attribution, label-to-priority mapping. 4 DB migrations (005-008), 39 new files total, 370 tests passing.
+**Files**: `packages/server/db/005_team_rules.sql`, `006_team_templates.sql`, `007_integrations.sql`, `008_knowledge.sql`, `packages/server/lib/team-rules.js`, `templates.js`, `integrations.js`, `knowledge-sync.js`, `packages/server/routes/team-rules.js`, `templates.js`, `integrations.js`, `webhooks.js`, `team-knowledge.js`, `packages/server/integrations/base-adapter.js`, `index.js`, `jira-adapter.js`, `jira-field-mapper.js`, `github-adapter.js`, `github-field-mapper.js`, `packages/client/flow-team-templates.js`, `lib/knowledge-client.js`, `hooks/task-completed-cloud.js`, `packages/dashboard/team-rules.html`, `team-rules.js`, `templates.html`, `templates.js`, `integrations.html`, `integrations.js`, `knowledge.html`, `knowledge.js`, `jira-config.html`, `jira-config.js`, `github-config.html`, `github-config.js`, `packages/server/tests/unit/integrations.test.js` (modified: `validate.js`, `teams.js`, `session-start-cloud.js`, `session-end-cloud.js`, `index.html`, `cloudformation.yaml`)
+
 ### R-181 | 2026-02-26 14:00
 **Type**: new
 **Tags**: #feature:workflow #component:longInputGate #component:installer #component:upgrader #component:wogi-start
