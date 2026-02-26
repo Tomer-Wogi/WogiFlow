@@ -1,9 +1,34 @@
 {
-  "lastUpdated": "2026-02-26T19:05:00.000Z",
+  "lastUpdated": "2026-02-26T21:15:12.507Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-a702e434",
+      "title": "Set up independent WogiFlow workflows in 3 repos",
+      "type": "story",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "repos": [
+        "wogi-flow",
+        "wogiflow-cloud",
+        "wogiflow-portal"
+      ],
+      "startedAt": "2026-02-26T21:01:36.469Z",
+      "completedAt": "2026-02-26T21:15:12.507Z"
+    },
+    {
+      "id": "wf-c22771dd",
+      "title": "Document dual-repo architecture rules and version awareness",
+      "type": "task",
+      "feature": "architecture",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-28T18:00:00.000Z",
+      "completedAt": "2026-02-28T18:15:00.000Z"
+    },
     {
       "id": "wf-cr-018f27",
       "title": "Fix 4 review findings from reuse detection implementation",

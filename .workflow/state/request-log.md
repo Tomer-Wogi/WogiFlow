@@ -11,7 +11,25 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-XXX | 2026-02-28 22:15
+**Type**: new
+**Tags**: #workflow #setup #cross-repo
+**Task**: wf-a702e434
+**Request**: "Set up independent WogiFlow workflows in 3 repos"
+**Result**: Installed wogiflow as devDependency in wogiflow-cloud and wogiflow-portal, triggering full postinstall bootstrap. Created tailored config.json, decisions.md, and registry maps for each repo. Cloud: api-map (180+ endpoints), function-map (36 libs), schema-map (22 migrations), service-map. Portal: app-map (6 pages), lightweight config (no lint/typecheck/tests). Generated CLAUDE.md and settings.local.json for both. Updated partner-versions.json across all 3 repos for mutual awareness.
+**Files**: (wogiflow-cloud) .workflow/config.json, .workflow/state/*.md, .workflow/state/*.json, CLAUDE.md, .claude/settings.local.json, package.json; (wogiflow-portal) same; (wogi-flow) .workflow/state/partner-versions.json
+
+---
+
 <!-- Entries below. Format: R-001, R-002, etc. -->
+
+### R-189 | 2026-02-28 18:00
+**Type**: new
+**Tags**: #feature:architecture #rules #decisions #dual-repo #version-awareness
+**Task**: wf-c22771dd
+**Request**: "Document dual-repo architecture rules and set up cross-repo version awareness"
+**Result**: Created formal dual-repo management documentation: (1) `.claude/rules/architecture/dual-repo-management.md` — repo ownership, code separation, version management, interface contracts, change propagation rules, release order, verification checklists. (2) Added "Dual-Repo Architecture" decision to `decisions.md` — independent semver, mutual version awareness, OSS-first release policy. (3) Created `.workflow/state/partner-versions.json` in both wogi-flow and wogiflow-cloud — each repo knows the other's current version, package name, and compatibility range. (4) Documented the public API surface that cloud depends on (exported functions, hook interfaces, state file formats, config keys).
+**Files**: `.claude/rules/architecture/dual-repo-management.md`, `.workflow/state/decisions.md`, `.workflow/state/partner-versions.json`, `../wogiflow-cloud/.workflow/state/partner-versions.json`
 
 ### R-188 | 2026-02-27 16:00
 **Type**: new
