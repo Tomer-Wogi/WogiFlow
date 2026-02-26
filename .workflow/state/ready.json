@@ -5,6 +5,18 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-fe46f82d",
+      "title": "Wire wogi-init zip import to flow-import-profile",
+      "type": "story",
+      "feature": "enforcement",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-02-26T19:40:00.000Z",
+      "startedAt": "2026-02-26T19:45:00.000Z",
+      "completedAt": "2026-02-26T19:50:00.000Z",
+      "specPath": ".workflow/changes/enforcement/wf-fe46f82d.md"
+    },
+    {
       "id": "wf-cr-a7b2e1",
       "title": "Fix 20 review findings from export/import review",
       "type": "fix",
