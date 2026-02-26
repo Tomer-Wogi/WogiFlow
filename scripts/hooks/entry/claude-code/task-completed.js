@@ -22,7 +22,7 @@ async function main() {
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Handle task completion
-    const coreResult = handleTaskCompleted(parsedInput);
+    const coreResult = await handleTaskCompleted(parsedInput);
 
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('TaskCompleted', coreResult);

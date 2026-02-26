@@ -157,12 +157,29 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 ---
 
-### WogiFlow for Teams — Paid SaaS Extension (Option B: Separate Repo)
+### WogiFlow for Teams — Paid SaaS Extension (Option B: Thin Adapter + Server-Side)
 
 **Status:** Planned
 **Created:** 2026-02-22
+**Updated:** 2026-02-26 (Architecture decision: Option B — thin adapter, server-side team logic)
 **Depends On:** None (existing hook architecture is the extension point)
-**Architecture:** Option B — separate private repo (`wogiflow-cloud`) with `@wogiflow/teams` npm package extending the free `wogiflow` package via hooks.
+**Architecture:** Option B — thin adapter interface in the free `wogiflow` package (login/logout + API client), all team logic lives server-side in `wogiflow-cloud`. No private npm package (`@wogiflow/teams` is NOT needed).
+
+**Architecture Decision (2026-02-26):**
+The free `wogiflow` npm package contains a thin "team adapter" layer:
+- `flow login` / `flow logout` commands — clean toggle that connects/disconnects a project to a team
+- API client for team server communication (HTTP calls only)
+- Login adds `team` section to config, enables sync hooks
+- Logout removes `team` section, reverts to local-only, keeps all local state intact
+- All real team logic (sync engine, permissions, approvals, marketplace) stays server-side
+- **No team code in the free repo** — strict boundary enforced
+
+**Benefits over @wogiflow/teams npm approach:**
+- No private npm package to manage or distribute
+- No team code ships in any client package
+- Easier to update team features without requiring CLI updates
+- Open source repo never touches team logic
+- Users don't need to install a separate package — `flow login` just works
 
 **Revenue Model:**
 - Solo WogiFlow: Free forever (everything that exists today, MIT license)
@@ -174,16 +191,41 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 ```
 Repo 1: wogi-flow (existing, public, MIT, npm: wogiflow)
   - All existing code unchanged
-  - Add minimal extension points for Teams hooks
-  - Export internal APIs Teams needs (state readers, config helpers)
+  - Thin team adapter: login/logout + API client (HTTP calls only)
+  - No team logic — just the interface to connect
 
-Repo 2: wogiflow-cloud (new, private monorepo)
+Repo 2: wogiflow-cloud (private monorepo)
   packages/
-    client/      → npm: @wogiflow/teams (extends wogiflow via hooks)
-    server/      → API server (Node.js + PostgreSQL)
-    dashboard/   → Next.js web app (wogiflow.com)
+    server/      → API server (Node.js + PostgreSQL) — ALL team logic here
+    dashboard/   → Web app (wogiflow.com)
     shared/      → Shared TypeScript types and constants
 ```
+
+**Login/Logout Flow:**
+```
+npx flow login                    # Authenticate with email
+  → OAuth flow (GitHub/Google/email)
+  → Server returns team config + API endpoints
+  → Adds team section to .workflow/config.json
+  → Enables sync hooks (session-start pull, session-end push)
+  → State files get server backing (bidirectional sync)
+
+npx flow logout                   # Revert to local-only
+  → Removes team section from config
+  → Disables sync hooks
+  → All local state preserved (nothing lost)
+  → Works exactly like free WogiFlow again
+```
+
+**What changes after login:**
+| Aspect | Free (default) | After `flow login` |
+|--------|----------------|---------------------|
+| State files | Local `.workflow/state/` only | Local + synced to team server |
+| Knowledge base | Community only (local) | Community + team shared knowledge |
+| Config | `config.json` with local settings | Adds `team` section with team ID, role |
+| Reviews | Local review reports | Reviews visible to team |
+| Decisions/rules | Per-project only | Team rules inherited + local overrides |
+| Marketplace | N/A | Access to team marketplace |
 
 **Four-Layer Knowledge Architecture:**
 ```
@@ -409,19 +451,26 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 ---
 
-#### Free Package Extension Points (Minimal Changes)
+#### Free Package Extension Points (Thin Team Adapter)
 
-**Status:** COMPLETE (wf-dcf132cb, 2026-02-25)
+**Status:** PARTIALLY COMPLETE (wf-dcf132cb, 2026-02-25 — config schema + hook registration done)
+**Updated:** 2026-02-26 (Architecture change: replaced @wogiflow/teams detection with thin adapter)
 **Depends On:** None
 
-**Scope:** Small changes to the free `wogiflow` package to enable Teams extension:
+**Scope:** Changes to the free `wogiflow` package to enable team connectivity:
 
-1. **`lib/installer.js`** — Detect `@wogiflow/teams` in node_modules, auto-register its hooks in `.claude/settings.local.json`
-2. **`scripts/flow-utils.js`** — Ensure state reader functions are exported (most already are)
-3. **`.workflow/config.json` schema** — Add empty `team: {}` section with `projectId`, `orgId`, `enabled` fields
-4. **`scripts/hooks/core/index.js`** — Add extension hook registration (allow Teams to register additional core hooks)
+**Already done:**
+1. **`scripts/flow-utils.js`** — State reader functions exported
+2. **`.workflow/config.json` schema** — Empty `team: {}` section with `projectId`, `orgId`, `enabled` fields
+3. **`scripts/hooks/core/index.js`** — Extension hook registration
 
-These are backwards-compatible. Free users see no change.
+**Still needed (new architecture):**
+4. **`scripts/flow-team-adapter.js`** — Thin API client for team server communication (HTTP calls only, no team logic)
+5. **`flow login` / `flow logout` CLI commands** — OAuth flow, config toggle, hook enable/disable
+6. **Session hooks update** — When team is connected: pull on start, push on end (delegates to server API)
+7. **Remove** `@wogiflow/teams` detection from `lib/installer.js` — no longer needed (thin adapter replaces npm package approach)
+
+These are backwards-compatible. Free users see no change. `flow login` is the only entry point to team features.
 
 ---
 

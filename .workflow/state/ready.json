@@ -1,9 +1,42 @@
 {
-  "lastUpdated": "2026-02-27T20:00:00.000Z",
+  "lastUpdated": "2026-02-28T01:10:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-bc3ca75f",
+      "title": "Fix withLock vulnerability in task-completed.js and flow-long-input-stories.js",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "createdAt": "2026-02-28T01:00:00.000Z",
+      "startedAt": "2026-02-28T01:00:00.000Z",
+      "completedAt": "2026-02-28T01:10:00.000Z"
+    },
+    {
+      "id": "wf-939ec61b",
+      "title": "Enforce auto-memory boundary — prevent Claude Code auto-memory from conflicting with WogiFlow",
+      "type": "task",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-02-28T01:00:00.000Z",
+      "startedAt": "2026-02-28T01:00:00.000Z",
+      "completedAt": "2026-02-28T01:10:00.000Z"
+    },
+    {
+      "id": "wf-cr-t5rv01",
+      "title": "Fix 13 review findings from T5: Marketplace & Global Knowledge",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "repo": "wogiflow-cloud",
+      "startedAt": "2026-02-26T05:45:00.000Z",
+      "completedAt": "2026-02-26T08:50:00.000Z"
+    },
     {
       "id": "wf-f8896007",
       "title": "T5-S6: Team Model Intelligence + Memory Export",

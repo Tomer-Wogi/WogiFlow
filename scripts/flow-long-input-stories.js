@@ -16,7 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Import safe utilities
-const { safeJsonParse, writeJson, generateTaskId } = require('./flow-utils');
+const { safeJsonParse, writeJson, generateTaskId, withLock } = require('./flow-utils');
 
 // Utility: ISO timestamp
 function now() {
@@ -1917,7 +1917,7 @@ function createFeatureTask(stories, featureName) {
 /**
  * Add tasks to ready.json
  */
-function addTasksToReadyJson(tasks, _options = {}) {
+async function addTasksToReadyJson(tasks, _options = {}) {
   const readyPath = path.join(process.cwd(), '.workflow', 'state', 'ready.json');
 
   const defaultReady = {
@@ -1927,33 +1927,36 @@ function addTasksToReadyJson(tasks, _options = {}) {
     blocked: [],
     recentlyCompleted: []
   };
-  const readyData = safeJsonParse(readyPath, defaultReady);
 
-  // Check for duplicates by source story_id
-  const existingStoryIds = new Set(
-    readyData.ready
-      .filter(t => t.source?.type === 'transcript-digestion')
-      .map(t => t.source?.story_id)
-  );
+  return await withLock(readyPath, async () => {
+    const readyData = safeJsonParse(readyPath, defaultReady);
 
-  const newTasks = tasks.filter(t => !existingStoryIds.has(t.source?.story_id));
+    // Check for duplicates by source story_id
+    const existingStoryIds = new Set(
+      readyData.ready
+        .filter(t => t.source?.type === 'transcript-digestion')
+        .map(t => t.source?.story_id)
+    );
 
-  if (newTasks.length === 0) {
-    return { error: 'All tasks already exist in ready.json', skipped: tasks.length };
-  }
+    const newTasks = tasks.filter(t => !existingStoryIds.has(t.source?.story_id));
 
-  // Add new tasks
-  readyData.ready.push(...newTasks);
-  readyData.lastUpdated = now();
+    if (newTasks.length === 0) {
+      return { error: 'All tasks already exist in ready.json', skipped: tasks.length };
+    }
 
-  fs.writeFileSync(readyPath, JSON.stringify(readyData, null, 2));
+    // Add new tasks
+    readyData.ready.push(...newTasks);
+    readyData.lastUpdated = now();
 
-  return {
-    success: true,
-    added: newTasks.length,
-    skipped: tasks.length - newTasks.length,
-    total_ready: readyData.ready.length
-  };
+    fs.writeFileSync(readyPath, JSON.stringify(readyData, null, 2));
+
+    return {
+      success: true,
+      added: newTasks.length,
+      skipped: tasks.length - newTasks.length,
+      total_ready: readyData.ready.length
+    };
+  });
 }
 
 /**
@@ -2040,7 +2043,7 @@ function previewExport() {
 /**
  * Finalize the digestion process and export to ready.json
  */
-function finalizeDigestion(options = {}) {
+async function finalizeDigestion(options = {}) {
   // 1. Check presentation status
   const queue = loadQueue();
   if (!queue) {
@@ -2065,7 +2068,7 @@ function finalizeDigestion(options = {}) {
   }
 
   // 3. Add to ready.json
-  const addResult = addTasksToReadyJson(exportResult.tasks, options);
+  const addResult = await addTasksToReadyJson(exportResult.tasks, options);
   if (addResult.error && addResult.skipped !== exportResult.tasks.length) {
     return addResult;
   }
@@ -2173,7 +2176,7 @@ function cleanupTempFiles(digestId) {
  * @param {boolean} options.keepTempFiles - Keep temp files after completion
  * @returns {Object} Result with story count, tasks added, and file paths
  */
-function generateAndExportStories(options = {}) {
+async function generateAndExportStories(options = {}) {
   const featureName = options.featureName || 'extract-review';
 
   // Step 1: Generate stories from all active topics
@@ -2214,7 +2217,7 @@ function generateAndExportStories(options = {}) {
   }
 
   // Step 5: Add tasks to ready.json
-  const addResult = addTasksToReadyJson(exportResult.tasks);
+  const addResult = await addTasksToReadyJson(exportResult.tasks);
 
   // Step 6: Export story markdown files
   const fileExport = exportStoryFiles(exportResult.tasks, featureName);

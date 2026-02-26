@@ -4904,7 +4904,7 @@ transcriptChunking.init({
 /**
  * CLI handler
  */
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -7516,7 +7516,7 @@ function main() {
         finalizeOptions.featureName = args[featureIdx + 1];
       }
 
-      const finalizeResult = finalizeDigestion(finalizeOptions);
+      const finalizeResult = await finalizeDigestion(finalizeOptions);
 
       if (finalizeResult.error) {
         console.error(`${c.red}Error: ${finalizeResult.error}${c.reset}`);

@@ -131,7 +131,7 @@ resolveContradictionWithChoice(contradictionId, userChoice);
 
 ```javascript
 const { generateAndExportStories } = require('./scripts/flow-long-input-stories');
-const exportResult = generateAndExportStories({ featureName: 'extract-review' });
+const exportResult = await generateAndExportStories({ featureName: 'extract-review' });
 ```
 
 Display final summary:
