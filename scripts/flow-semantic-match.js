@@ -27,6 +27,7 @@ const DEFAULT_CONFIG = {
     definiteMatch: 90,      // >= 90%: Definite match, block/warn strongly
     likelyMatch: 70,        // 70-89%: Likely match, suggest AI review
     possibleMatch: 50,      // 50-69%: Possible match, show as candidate
+    preFilterThreshold: 30, // >= 30%: Low threshold for AI-as-judge pre-filtering
     noMatch: 0              // < 50%: No match
   },
   // Weight for combined scoring
@@ -83,6 +84,26 @@ const SEMANTIC_KEYWORDS = {
     payment: ['payment', 'checkout', 'order', 'cart', 'invoice', 'subscription', 'billing', 'price'],
     analytics: ['analytics', 'track', 'log', 'metric', 'event', 'report', 'stats', 'monitor'],
     config: ['config', 'settings', 'preferences', 'options', 'feature', 'flag', 'toggle', 'env']
+  },
+
+  // Schema/Model categories
+  schemas: {
+    entity: ['entity', 'model', 'schema', 'table', 'collection', 'document', 'record', 'object'],
+    field: ['field', 'column', 'property', 'attribute', 'key', 'value', 'type', 'enum'],
+    relation: ['relation', 'association', 'reference', 'foreign', 'join', 'link', 'belongs', 'has'],
+    identity: ['id', 'uuid', 'slug', 'identifier', 'primary', 'unique', 'index', 'key'],
+    temporal: ['date', 'time', 'timestamp', 'created', 'updated', 'deleted', 'expires', 'schedule'],
+    status: ['status', 'state', 'active', 'archived', 'draft', 'published', 'pending', 'approved']
+  },
+
+  // Service/Architecture categories
+  services: {
+    controller: ['controller', 'handler', 'endpoint', 'route', 'action', 'resolver', 'resource'],
+    service: ['service', 'provider', 'manager', 'processor', 'engine', 'orchestrator', 'coordinator'],
+    middleware: ['middleware', 'interceptor', 'guard', 'filter', 'pipe', 'decorator', 'hook'],
+    repository: ['repository', 'dao', 'store', 'adapter', 'gateway', 'client', 'connector'],
+    module: ['module', 'plugin', 'extension', 'bundle', 'package', 'feature', 'domain'],
+    event: ['event', 'listener', 'subscriber', 'emitter', 'bus', 'queue', 'worker', 'job']
   }
 };
 
@@ -344,7 +365,9 @@ function generateAIDecisionPrompt(newName, newPurpose, similar, domain) {
   const domainLabels = {
     components: 'component',
     functions: 'function',
-    apis: 'API call'
+    apis: 'API call',
+    schemas: 'schema/model',
+    services: 'service'
   };
   const domainLabel = domainLabels[domain] || 'item';
 
@@ -428,6 +451,53 @@ function generateContextBlock(newName, similar, domain) {
 }
 
 // ============================================================
+// Reuse Candidate Discovery (AI-as-Judge Pre-Filter)
+// ============================================================
+
+/**
+ * Find reuse candidates using a low pre-filter threshold for AI-as-judge evaluation.
+ * Unlike findSimilarItems() which uses 50% (possibleMatch), this uses 30% (preFilterThreshold)
+ * to catch cases where names differ but purpose overlaps (e.g., InfoPanel vs DataDetailPanel).
+ *
+ * Results are tagged as 'reuse-candidate' and intended for AI reasoning, NOT auto-blocking.
+ *
+ * @param {string} name - Name to search for
+ * @param {Array} registry - Registry to search in
+ * @param {string} domain - Domain: 'components', 'functions', 'apis', 'schemas', 'services'
+ * @param {Object} options - Optional: { purpose }
+ * @returns {Array} Reuse candidates sorted by combined score
+ */
+function findReuseCandidates(name, registry, domain, options = {}) {
+  const config = getMatchConfig();
+  const minThreshold = config.thresholds.preFilterThreshold || 30;
+  const results = [];
+
+  for (const item of registry) {
+    const itemName = item.name || item.title || '';
+    const itemPurpose = item.description || item.purpose || '';
+
+    // Skip exact name matches (not a reuse candidate — it's the same thing)
+    if (name.replace(/-/g, '').toLowerCase() === itemName.replace(/-/g, '').toLowerCase()) continue;
+
+    const scores = calculateCombinedSimilarity(name, itemName, domain, {
+      purposeA: options.purpose,
+      purposeB: itemPurpose
+    });
+
+    if (scores.combined >= minThreshold) {
+      results.push({
+        ...item,
+        scores,
+        matchLevel: getMatchLevel(scores.combined, config.thresholds),
+        type: 'reuse-candidate'
+      });
+    }
+  }
+
+  return results.sort((a, b) => b.scores.combined - a.scores.combined);
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -449,6 +519,7 @@ module.exports = {
 
   // Match finding
   findSimilarItems,
+  findReuseCandidates,
   getMatchLevel,
 
   // AI prompt generation

@@ -938,7 +938,9 @@
   "_comment_registries": "Unified registry config. 'auto' = activate only when stack condition is met. Old-format keys (functionRegistry, apiRegistry, componentIndex) are still read for backwards compatibility.",
   "semanticMatching": {
     "enabled": false,
+    "aiAsJudge": true,
     "thresholds": {
+      "preFilterThreshold": 30,
       "definiteMatch": 90,
       "likelyMatch": 70,
       "possibleMatch": 50
@@ -949,6 +951,7 @@
     },
     "useAIReview": true
   },
+  "_comment_semanticMatching": "aiAsJudge: true = AI reasons about purpose before presenting candidates (no auto-blocking). preFilterThreshold: 30 = intentionally low to catch lean-vs-rich component pairs. When aiAsJudge: false, old threshold blocking (90/70/50) is used.",
   "guidedEdit": {
     "enabled": false,
     "sessionFile": ".workflow/state/guided-edit-session.json",
@@ -1332,10 +1335,13 @@
       },
       "componentReuse": {
         "enabled": false,
-        "threshold": 80,
+        "threshold": 30,
+        "allRegistries": true,
+        "aiAsJudge": true,
         "blockOnSimilar": false,
         "injectContext": true
       },
+      "_comment_componentReuse": "threshold: 30 = low pre-filter for AI-as-judge. allRegistries: true = check all registry types (components, functions, APIs, schemas, services), not just app-map. aiAsJudge: true = AI reasons about purpose overlap instead of score-driven auto-blocking.",
       "sessionContext": {
         "enabled": false,
         "loadSuspendedTasks": true,

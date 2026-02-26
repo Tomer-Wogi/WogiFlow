@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-188 | 2026-02-27 16:00
+**Type**: new
+**Tags**: #feature:reuse-detection #script:flow-semantic-match #script:flow-standards-checker #script:flow-standards-gate #config
+**Request**: "Implement Reuse Detection System — AI-as-Judge + Full Registry Coverage"
+**Result**: Replaced score-driven auto-blocking with AI-as-Judge + user choice pattern. Added: (1) schemas/services keyword domains in flow-semantic-match.js. (2) `findReuseCandidates()` with 30% pre-filter threshold. (3) `checkApiDuplication()`, `checkRegistryDuplication()`, `parseSchemaMap()`, `parseServiceMap()`, `parseGenericMap()` in flow-standards-checker.js. (4) `discoverAllRegistries()` with manifest + disk fallback. (5) `collectReuseCandidates()` scans ALL registries. (6) `formatReuseCandidatesForAI()` generates structured AI context in flow-standards-gate.js. (7) Updated config with `aiAsJudge`, `preFilterThreshold`, `allRegistries` keys. (8) Updated wogi-start.md Agent 5 and Step 3.7 for AI-as-Judge flow. Backward compatible: `aiAsJudge: false` reverts to old threshold blocking.
+**Files**: scripts/flow-semantic-match.js, scripts/flow-standards-checker.js, scripts/flow-standards-gate.js, .workflow/config.json, .claude/commands/wogi-start.md, .workflow/state/request-log.md
+
 ### R-187 | 2026-02-26 18:00
 **Type**: fix
 **Tags**: #feature:export-import #script:flow-export-profile #script:flow-import-profile #command:wogi-export #command:wogi-import

@@ -21,6 +21,7 @@ const {
 const {
   runStandardsCheck,
   formatStandardsResults,
+  collectReuseCandidates,
   TASK_CHECK_MAP
 } = require('./flow-standards-checker');
 
@@ -207,6 +208,31 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     feedback = formatViolationsForRetry(results.violations, taskType);
   }
 
+  // Collect reuse candidates (AI-as-judge, separate from violations)
+  let reuseCandidates = [];
+  const semanticConfig = config.semanticMatching || {};
+  const reuseConfig = config.hooks?.rules?.componentReuse || {};
+  const aiAsJudge = semanticConfig.aiAsJudge !== false && reuseConfig.aiAsJudge !== false;
+  const allRegistries = reuseConfig.allRegistries !== false;
+
+  if (aiAsJudge && allRegistries) {
+    try {
+      reuseCandidates = collectReuseCandidates(files, {
+        taskType,
+        changedPaths,
+        allRegistries
+      });
+    } catch (err) {
+      // Non-blocking — reuse candidate collection is best-effort
+    }
+  }
+
+  // Format reuse candidates for AI consumption
+  let reuseCandidateContext = null;
+  if (reuseCandidates.length > 0) {
+    reuseCandidateContext = formatReuseCandidatesForAI(reuseCandidates, aiAsJudge);
+  }
+
   // Learn from violations if learning is enabled
   let learningResults = null;
   if (standardsConfig.learning?.enabled !== false && results.violations.length > 0 && standardsLearner) {
@@ -227,6 +253,9 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     taskId: taskContext?.id,
     feedback,
     checksRun: results.checksRun,
+    reuseCandidates,
+    reuseCandidateContext,
+    aiAsJudge,
     learningResults,
     preventionPrompts
   };
@@ -291,6 +320,77 @@ function formatViolationsForRetry(violations, taskType) {
   }
 
   lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  return lines.join('\n');
+}
+
+/**
+ * Format reuse candidates for AI-as-judge reasoning.
+ * Instructs the AI to reason about PURPOSE (not just scores) and present
+ * choices to the user via AskUserQuestion.
+ *
+ * @param {Array} candidates - From collectReuseCandidates()
+ * @param {boolean} aiAsJudge - Whether AI-as-judge mode is active
+ * @returns {string} Structured context for AI consumption
+ */
+function formatReuseCandidatesForAI(candidates, aiAsJudge) {
+  if (!candidates || candidates.length === 0) return null;
+
+  const lines = [];
+
+  lines.push('');
+  lines.push('<reuse-candidates>');
+  lines.push('## Reuse Candidate Check (AI-as-Judge)');
+  lines.push('');
+  lines.push('The following items in your changes are similar to existing registry entries.');
+  lines.push('These are NOT violations — they are candidates for your review.');
+  lines.push('');
+
+  if (aiAsJudge) {
+    lines.push('**Instructions for AI:**');
+    lines.push('1. Read the source code of BOTH the new item and each match');
+    lines.push('2. Reason about PURPOSE overlap — do they solve the same problem?');
+    lines.push('3. If purpose overlaps significantly, present a multi-select AskUserQuestion:');
+    lines.push('   - Option: "Use existing [name]" — reuse directly');
+    lines.push('   - Option: "Extend [name]" — add variant to existing');
+    lines.push('   - Option: "Create new [name]" — genuinely different purpose');
+    lines.push('4. If names are similar but purpose clearly differs, proceed silently');
+    lines.push('5. NEVER auto-block based on scores alone — always reason about purpose');
+    lines.push('');
+  }
+
+  // Group by domain for readability
+  const byDomain = {};
+  for (const c of candidates) {
+    if (!byDomain[c.domain]) byDomain[c.domain] = [];
+    byDomain[c.domain].push(c);
+  }
+
+  for (const [domain, domainCandidates] of Object.entries(byDomain)) {
+    lines.push(`### ${domain} candidates`);
+    lines.push('');
+
+    for (const candidate of domainCandidates) {
+      lines.push(`**New: "${candidate.newItem}"** (${candidate.file}:${candidate.line || '?'})`);
+      lines.push(`Registry: ${candidate.registryFile}`);
+      lines.push('');
+
+      for (const match of candidate.matches.slice(0, 3)) {
+        const name = match.name || match.title || '?';
+        lines.push(`  - **${name}** — ${match.scores.combined}% match`);
+        lines.push(`    String: ${match.scores.string}%, Semantic: ${match.scores.semantic}%`);
+        if (match.description || match.purpose) {
+          lines.push(`    Purpose: ${match.description || match.purpose}`);
+        }
+        if (match.file || match.path) {
+          lines.push(`    Location: \`${match.file || match.path}\``);
+        }
+      }
+      lines.push('');
+    }
+  }
+
+  lines.push('</reuse-candidates>');
 
   return lines.join('\n');
 }
@@ -414,6 +514,7 @@ module.exports = {
   inferTaskType,
   runTaskStandardsCheck,
   formatViolationsForRetry,
+  formatReuseCandidatesForAI,
   hasPassedStandards,
   markStandardsPassed
 };
