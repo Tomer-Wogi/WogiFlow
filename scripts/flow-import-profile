@@ -2,7 +2,7 @@
 
 # Wogi Flow - Import Profile
 # Import workflow configuration from team
-# v2.1: Enhanced with rules, learnings, and templates support
+# v3.0: Enhanced with rules, learnings, skills, templates, and tech stack support
 
 set -e
 
@@ -228,12 +228,13 @@ if [ "$SCAN_MODE" = true ]; then
 
     # Create temp directory for extraction results
     TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
     PATTERNS_FILE="$TEMP_DIR/patterns.json"
 
     # Run pattern extraction on the source project
     echo -e "${YELLOW}Extracting patterns...${NC}"
 
-    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode \"$ANALYSIS_MODE\""
+    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
 
     if ! node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_FILE" --project "$SCAN_PATH" 2>/dev/null; then
         echo -e "${RED}Error: Pattern extraction failed${NC}"
@@ -257,7 +258,11 @@ if [ "$SCAN_MODE" = true ]; then
         echo -e "${YELLOW}Scanning operational standards (--strict mode)...${NC}"
         OPERATIONAL_FILE="$TEMP_DIR/operational.json"
 
-        if node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
+        if [ ! -f "$SCRIPT_DIR/flow-operational-scanner.js" ]; then
+            echo -e "  ${YELLOW}!${NC} flow-operational-scanner.js not found — --strict requires this script"
+            echo -e "  ${YELLOW}!${NC} Continuing without strict mode"
+            STRICT_MODE=false
+        elif node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
             PKG_MANAGER=$(safe_read_json "$OPERATIONAL_FILE" "operationalPackageManager" || echo "unknown")
             DEV_PORT=$(safe_read_json "$OPERATIONAL_FILE" "operationalDevPort" || echo "3000")
             FILE_NAMING=$(safe_read_json "$OPERATIONAL_FILE" "patternFileNaming" || echo "unknown")
@@ -329,6 +334,7 @@ if [ "$SCAN_MODE" = true ]; then
         mkdir -p "$BACKUP_DIR"
         [ -f "$WORKFLOW_DIR/state/decisions.md" ] && cp "$WORKFLOW_DIR/state/decisions.md" "$BACKUP_DIR/"
         [ -d ".claude/rules" ] && cp -r ".claude/rules" "$BACKUP_DIR/"
+        [ -f "$WORKFLOW_DIR/config.json" ] && cp "$WORKFLOW_DIR/config.json" "$BACKUP_DIR/"
         echo -e "${GREEN}✓${NC} Backup created: $BACKUP_DIR"
         echo ""
     fi
@@ -384,7 +390,11 @@ if [ "$SCAN_MODE" = true ]; then
                 const configPath = process.argv[1];
                 const sourcePath = process.argv[2];
                 try {
-                    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+                    const raw = fs.readFileSync(configPath, "utf-8");
+                    if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]/i.test(raw)) {
+                        console.error("Suspicious content in config"); process.exit(1);
+                    }
+                    const config = JSON.parse(raw);
                     config.strictAdherence = {
                         enabled: true,
                         aiMode: "block",
@@ -403,8 +413,8 @@ if [ "$SCAN_MODE" = true ]; then
                         overrideLog: ".workflow/state/adherence-overrides.json"
                     };
                     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-                } catch (e) {
-                    console.error("Failed to update config:", e.message);
+                } catch (err) {
+                    console.error("Failed to update config:", err.message);
                     process.exit(1);
                 }
             ' "$WORKFLOW_DIR/config.json" "$SCAN_PATH"
@@ -414,7 +424,11 @@ if [ "$SCAN_MODE" = true ]; then
         # Add operational standards to decisions.md
         OPERATIONAL_CONTENT=$(node -e '
             const fs = require("fs");
-            const data = JSON.parse(fs.readFileSync(process.argv[1], "utf-8"));
+            const raw = fs.readFileSync(process.argv[1], "utf-8");
+            if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]/i.test(raw)) {
+                console.error("Suspicious content"); process.exit(1);
+            }
+            const data = JSON.parse(raw);
             const lines = [];
 
             lines.push("### Operational Standards (Auto-detected)");
@@ -461,8 +475,7 @@ if [ "$SCAN_MODE" = true ]; then
         fi
     fi
 
-    # Cleanup
-    rm -rf "$TEMP_DIR"
+    # TEMP_DIR cleaned up by EXIT trap
 
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
@@ -508,6 +521,7 @@ fi
 
 # Create temp directory
 TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
 
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║  Importing Profile                                        ║${NC}"
@@ -517,8 +531,23 @@ echo ""
 # Extract profile (with path traversal protection)
 unzip -q "$PROFILE_FILE" -d "$TEMP_DIR"
 
-# Validate no path traversal in extracted files
-if find "$TEMP_DIR" -name "*../*" -o -name "*\.\.*" 2>/dev/null | grep -q .; then
+# Validate no path traversal in extracted files (check full paths, not just basenames)
+TRAVERSAL_FOUND=false
+while IFS= read -r extracted_file; do
+    real_path=$(readlink -f "$extracted_file" 2>/dev/null || true)
+    if [ -n "$real_path" ] && [[ ! "$real_path" == "$TEMP_DIR"* ]]; then
+        TRAVERSAL_FOUND=true
+        break
+    fi
+    # Also check for .. in the relative path
+    rel_path="${extracted_file#$TEMP_DIR/}"
+    if [[ "$rel_path" == *".."* ]]; then
+        TRAVERSAL_FOUND=true
+        break
+    fi
+done < <(find "$TEMP_DIR" -mindepth 1 2>/dev/null)
+
+if [ "$TRAVERSAL_FOUND" = true ]; then
     echo -e "${RED}Error: Profile contains suspicious paths (potential path traversal)${NC}"
     rm -rf "$TEMP_DIR"
     exit 1
@@ -606,6 +635,7 @@ if [ "$SKIP_RULES" != true ]; then
         HAS_RULES=true
     fi
 
+    rule_count=0
     if [ -d "$PROFILE_DIR/.claude/rules" ]; then
         rule_count=$(find "$PROFILE_DIR/.claude/rules" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
         if [ "$rule_count" -gt 0 ]; then
@@ -622,18 +652,15 @@ if [ "$SKIP_RULES" != true ]; then
             RULES_COUNT=$((RULES_COUNT + 1))
         fi
 
-        if [ -d "$PROFILE_DIR/.claude/rules" ]; then
-            rule_count=$(find "$PROFILE_DIR/.claude/rules" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
-            if [ "$rule_count" -gt 0 ]; then
-                # Show subdirectories
-                for subdir in "$PROFILE_DIR/.claude/rules"/*/; do
-                    if [ -d "$subdir" ]; then
-                        sub_count=$(find "$subdir" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
-                        echo -e "  ${GREEN}→${NC} .claude/rules/$(basename "$subdir")/ ($sub_count rules)"
-                    fi
-                done
-                RULES_COUNT=$((RULES_COUNT + rule_count))
-            fi
+        if [ "$rule_count" -gt 0 ]; then
+            # Show subdirectories
+            for subdir in "$PROFILE_DIR/.claude/rules"/*/; do
+                if [ -d "$subdir" ]; then
+                    sub_count=$(find "$subdir" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+                    echo -e "  ${GREEN}→${NC} .claude/rules/$(basename "$subdir")/ ($sub_count rules)"
+                fi
+            done
+            RULES_COUNT=$((RULES_COUNT + rule_count))
         fi
 
         # Review agent checklists
@@ -806,7 +833,7 @@ fi
 # agents/
 if [ -d "$PROFILE_DIR/agents" ]; then
     mkdir -p agents
-    cp "$PROFILE_DIR/agents"/*.md agents/
+    cp "$PROFILE_DIR/agents"/*.md agents/ 2>/dev/null || true
     echo -e "  ${GREEN}✓${NC} agents/"
 fi
 
@@ -818,6 +845,11 @@ if [ -f "$PROFILE_DIR/.workflow/config.json" ]; then
         if command -v jq &> /dev/null; then
             # Merge: profile values override, but keep local additions
             jq -s '.[0] * .[1]' "$WORKFLOW_DIR/config.json" "$PROFILE_DIR/.workflow/config.json" > "$WORKFLOW_DIR/config.json.tmp"
+            if ! jq empty "$WORKFLOW_DIR/config.json.tmp" 2>/dev/null; then
+                echo -e "${RED}Error: Merged config.json is invalid JSON${NC}"
+                rm -f "$WORKFLOW_DIR/config.json.tmp"
+                exit 1
+            fi
             mv "$WORKFLOW_DIR/config.json.tmp" "$WORKFLOW_DIR/config.json"
             echo -e "  ${GREEN}✓${NC} config.json ${DIM}(merged)${NC}"
         else
@@ -959,17 +991,19 @@ if [ "$SKIP_TEMPLATES" != true ] && [ -d "$PROFILE_DIR/templates" ]; then
     echo -e "  ${GREEN}✓${NC} templates/ (story/bug/task)"
 fi
 
-# State templates (.workflow/state/*.template)
-STATE_TMPL_IMPORTED=0
-for tpl in "$PROFILE_DIR/.workflow/state/"*.template; do
-    if [ -f "$tpl" ]; then
-        mkdir -p "$WORKFLOW_DIR/state"
-        cp "$tpl" "$WORKFLOW_DIR/state/"
-        STATE_TMPL_IMPORTED=$((STATE_TMPL_IMPORTED + 1))
+# State templates (.workflow/state/*.template) — guarded by --skip-templates
+if [ "$SKIP_TEMPLATES" != true ]; then
+    STATE_TMPL_IMPORTED=0
+    for tpl in "$PROFILE_DIR/.workflow/state/"*.template; do
+        if [ -f "$tpl" ]; then
+            mkdir -p "$WORKFLOW_DIR/state"
+            cp "$tpl" "$WORKFLOW_DIR/state/"
+            STATE_TMPL_IMPORTED=$((STATE_TMPL_IMPORTED + 1))
+        fi
+    done
+    if [ "$STATE_TMPL_IMPORTED" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} state templates ($STATE_TMPL_IMPORTED .template files)"
     fi
-done
-if [ "$STATE_TMPL_IMPORTED" -gt 0 ]; then
-    echo -e "  ${GREEN}✓${NC} state templates ($STATE_TMPL_IMPORTED .template files)"
 fi
 
 # App-map (ask before importing)
@@ -991,8 +1025,7 @@ if [ -f "$PROFILE_DIR/.workflow/state/app-map.md" ]; then
     fi
 fi
 
-# Cleanup
-rm -rf "$TEMP_DIR"
+# TEMP_DIR cleaned up by EXIT trap
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"

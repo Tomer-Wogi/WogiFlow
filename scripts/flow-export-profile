@@ -2,7 +2,7 @@
 
 # Wogi Flow - Export Profile
 # Export workflow configuration for team sharing
-# v2.1: Enhanced with rules, learnings, and templates
+# v3.0: Enhanced with rules, learnings, skills, templates, and tech stack
 
 set -e
 
@@ -88,11 +88,12 @@ safe_read_json() {
         try {
             const content = fs.readFileSync(file, "utf-8");
             // Check for prototype pollution attempts
-            if (/__proto__|constructor\s*["'"'"'`:]|prototype\s*["'"'"'`:]/i.test(content)) {
+            if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]|\["__proto__"\]|\["constructor"\]|\["prototype"\]/i.test(content)) {
                 console.error("Suspicious content detected");
                 process.exit(1);
             }
-            const p = JSON.parse(content);
+            let p;
+            try { p = JSON.parse(content); } catch(parseErr) { console.error(parseErr.message); process.exit(1); }
             // Safe property access based on query type
             if (query === "conflicts.length") {
                 console.log(p.conflicts ? p.conflicts.length : 0);
@@ -104,8 +105,8 @@ safe_read_json() {
                 console.error("Unknown query: " + query);
                 process.exit(1);
             }
-        } catch(e) {
-            console.error(e.message);
+        } catch(err) {
+            console.error(err.message);
             process.exit(1);
         }
     ' -- "$file" "$query" 2>/dev/null
@@ -152,7 +153,12 @@ while [ $# -gt 0 ]; do
             ;;
         --analysis-mode)
             shift
-            ANALYSIS_MODE="$1"
+            if [[ "$1" =~ ^(balanced|deep)$ ]]; then
+                ANALYSIS_MODE="$1"
+            else
+                echo -e "${RED}Error: Invalid analysis mode '$1'. Use 'balanced' or 'deep'${NC}"
+                exit 1
+            fi
             ;;
         --include-examples)
             INCLUDE_EXAMPLES=true
@@ -181,6 +187,7 @@ mkdir -p "$PROFILES_DIR"
 
 # Create temp directory for profile
 TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
 PROFILE_DIR="$TEMP_DIR/$PROFILE_NAME"
 mkdir -p "$PROFILE_DIR/agents"
 mkdir -p "$PROFILE_DIR/.workflow"
@@ -323,7 +330,7 @@ if [ "$INCLUDE_TEMPLATES" = true ]; then
     # Story/bug/correction templates
     if [ -d "templates" ]; then
         mkdir -p "$PROFILE_DIR/templates"
-        find templates -type f -name "*.md" -o -name "*.json" -o -name "*.tsx" | while read -r file; do
+        find templates -type f \( -name "*.md" -o -name "*.json" -o -name "*.tsx" \) | while read -r file; do
             rel_dir=$(dirname "$file")
             mkdir -p "$PROFILE_DIR/$rel_dir"
             cp "$file" "$PROFILE_DIR/$file"
@@ -477,7 +484,10 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
                     for (const category in p.patterns) {
                         for (const pattern of p.patterns[category] || []) {
                             if (pattern.examples && pattern.examples.length > 0) {
-                                const filename = pattern.subcategory.replace(/\\./g, '-') + '.txt';
+                                const safeName = require('path').basename(
+                                    pattern.subcategory.replace(/\\./g, '-')
+                                ) + '.txt';
+                                const filename = safeName;
                                 const fileContent = pattern.name + '\\n' + '='.repeat(40) + '\\n\\n' +
                                     pattern.examples.slice(0, 5).join('\\n');
                                 fs.writeFileSync(
@@ -489,8 +499,8 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
                         }
                     }
                     console.log(count);
-                } catch(e) {
-                    console.error(e.message);
+                } catch(err) {
+                    console.error(err.message);
                     process.exit(1);
                 }
             " 2>/dev/null || true
@@ -513,8 +523,8 @@ cat > "$PROFILE_DIR/PROFILE.md" << EOF
 # Wogi Flow Profile: $PROFILE_NAME
 
 Exported: $(date +%Y-%m-%d\ %H:%M)
-Source: $(git remote get-url origin 2>/dev/null || echo "local")
-Version: 2.1
+Source: $(git remote get-url origin 2>/dev/null | sed 's|.*[:/]\([^/]*/[^/]*\)\.git$|\1|; s|.*[:/]\([^/]*/[^/]*\)$|\1|' || echo "local")
+Version: 3.0
 
 ## Contents
 $(echo -e "$CONTENTS")
@@ -547,8 +557,14 @@ $(echo -e "$CONTENTS")
 
 ## Configuration Summary
 \`\`\`json
-$(head -30 "$WORKFLOW_DIR/config.json")
-...
+$(node -e '
+const fs = require("fs");
+try {
+  const c = JSON.parse(fs.readFileSync("'$WORKFLOW_DIR'/config.json", "utf-8"));
+  const safe = { version: c.version, qualityGates: c.qualityGates, review: c.review };
+  console.log(JSON.stringify(safe, null, 2));
+} catch(err) { console.log("{}"); }
+')
 \`\`\`
 EOF
 
@@ -559,10 +575,7 @@ OUTPUT_FILE="$PROFILES_DIR/$PROFILE_NAME.zip"
 (cd "$TEMP_DIR" && zip -r "$PROFILE_NAME.zip" "$PROFILE_NAME" > /dev/null)
 mv "$TEMP_DIR/$PROFILE_NAME.zip" "$OUTPUT_FILE"
 
-# Cleanup
-rm -rf "$TEMP_DIR"
-
-# Calculate size
+# Calculate size (TEMP_DIR cleaned up by EXIT trap)
 SIZE=$(ls -lh "$OUTPUT_FILE" | awk '{print $5}')
 
 echo ""

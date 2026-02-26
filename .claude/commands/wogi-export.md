@@ -24,6 +24,10 @@ Export workflow configuration as a shareable profile.
 | `--templates` | + .workflow/templates/ (HBS), templates/ (story/bug), state templates |
 | `--full` | All of the above + pattern extraction |
 | `--include-app-map` | Include app-map.md (project-specific, not in --full) |
+| `--extract-patterns` | Scan codebase and extract patterns (included in --full) |
+| `--resolve-conflicts` | Interactive conflict resolution (with --extract-patterns) |
+| `--analysis-mode MODE` | Analysis depth: `balanced` (default), `deep` |
+| `--include-examples` | Include code snippets as pattern examples |
 
 ## What Gets Exported (Generic Enforcement)
 

@@ -21,6 +21,10 @@ Import a team workflow profile.
 | `--skip-learnings` | Don't import learnings (feedback-patterns, skill learnings) |
 | `--skip-rules` | Don't import rules (.claude/rules/, agents, stack) |
 | `--skip-templates` | Don't import templates |
+| `--scan <folder>` | Scan another project folder for patterns (scan mode) |
+| `--strict` | Enable strict adherence mode (with --scan) |
+| `--resolve-conflicts` | Interactive conflict resolution (with --scan) |
+| `--analysis-mode MODE` | Analysis depth: `balanced` (default), `deep` |
 
 ## What Gets Imported
 
