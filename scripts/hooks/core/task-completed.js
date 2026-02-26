@@ -18,7 +18,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS, safeJsonParse, withLock } = require('../../flow-utils');
+const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId } = require('../../flow-utils');
 const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
 
 /**
@@ -69,7 +69,8 @@ async function handleTaskCompleted(input) {
 
       // Try to match a specific task from input (supports parallel execution),
       // fall back to inProgress[0] when no identifying info is available
-      const inputTaskId = input.taskId || input.toolInput?.taskId;
+      const rawTaskId = input.taskId || input.toolInput?.taskId;
+      const inputTaskId = rawTaskId && validateTaskId(rawTaskId) ? rawTaskId : null;
       if (inputTaskId) {
         completedTask = ready.inProgress.find(t => t.id === inputTaskId);
       }
@@ -108,13 +109,13 @@ async function handleTaskCompleted(input) {
       // Update timestamp
       ready.lastUpdated = new Date().toISOString();
 
-      // Write back
+      // Write back (atomic via writeJson)
       try {
-        fs.writeFileSync(readyPath, JSON.stringify(ready, null, 2) + '\n', 'utf-8');
+        writeJson(readyPath, ready);
         result.completed = true;
         result.message = `Task ${completedTask.id} (${completedTask.title}) moved to completed`;
       } catch (err) {
-        result.message = `Failed to update ready.json: ${err.message}`;
+        result.message = 'Failed to update ready.json';
       }
     });
 
@@ -135,26 +136,30 @@ async function handleTaskCompleted(input) {
     }
 
     // Update durable history if it exists (under lock to prevent concurrent corruption)
-    try {
-      const historyPath = path.join(PATHS.state, 'durable-history.json');
-      if (fs.existsSync(historyPath)) {
-        await withLock(historyPath, async () => {
-          const history = safeJsonParse(historyPath, { completions: [] });
-          if (!history.completions) {
-            history.completions = [];
-          }
-          history.completions.push({
-            taskId: completedTask.id,
-            title: completedTask.title,
-            completedAt: completedTask.completedAt,
-            type: completedTask.type,
-            feature: completedTask.feature
+    if (result.completed) {
+      try {
+        const historyPath = path.join(PATHS.state, 'durable-history.json');
+        if (fs.existsSync(historyPath)) {
+          await withLock(historyPath, async () => {
+            const history = safeJsonParse(historyPath, { completions: [] });
+            if (!history.completions) {
+              history.completions = [];
+            }
+            history.completions.push({
+              taskId: completedTask.id,
+              title: completedTask.title,
+              completedAt: completedTask.completedAt,
+              type: completedTask.type,
+              feature: completedTask.feature
+            });
+            writeJson(historyPath, history);
           });
-          fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + '\n', 'utf-8');
-        });
+        }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] History write failed: ${err.message}`);
+        }
       }
-    } catch {
-      // Non-critical - don't fail the hook for history logging
     }
 
     // Update teammate state if agent teams tracking is enabled

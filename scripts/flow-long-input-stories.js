@@ -16,7 +16,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Import safe utilities
-const { safeJsonParse, writeJson, generateTaskId, withLock } = require('./flow-utils');
+const { safeJsonParse, writeJson, generateTaskId, withLock, PATHS } = require('./flow-utils');
 
 // Utility: ISO timestamp
 function now() {
@@ -1918,7 +1918,7 @@ function createFeatureTask(stories, featureName) {
  * Add tasks to ready.json
  */
 async function addTasksToReadyJson(tasks, _options = {}) {
-  const readyPath = path.join(process.cwd(), '.workflow', 'state', 'ready.json');
+  const readyPath = path.join(PATHS.state, 'ready.json');
 
   const defaultReady = {
     lastUpdated: now(),
@@ -1948,7 +1948,7 @@ async function addTasksToReadyJson(tasks, _options = {}) {
     readyData.ready.push(...newTasks);
     readyData.lastUpdated = now();
 
-    fs.writeFileSync(readyPath, JSON.stringify(readyData, null, 2));
+    writeJson(readyPath, readyData);
 
     return {
       success: true,
@@ -2068,7 +2068,12 @@ async function finalizeDigestion(options = {}) {
   }
 
   // 3. Add to ready.json
-  const addResult = await addTasksToReadyJson(exportResult.tasks, options);
+  let addResult;
+  try {
+    addResult = await addTasksToReadyJson(exportResult.tasks, options);
+  } catch (err) {
+    return { error: `Failed to add tasks to ready.json: ${err.message}` };
+  }
   if (addResult.error && addResult.skipped !== exportResult.tasks.length) {
     return addResult;
   }
@@ -2217,7 +2222,15 @@ async function generateAndExportStories(options = {}) {
   }
 
   // Step 5: Add tasks to ready.json
-  const addResult = await addTasksToReadyJson(exportResult.tasks);
+  let addResult;
+  try {
+    addResult = await addTasksToReadyJson(exportResult.tasks);
+  } catch (err) {
+    return { error: `Failed to add tasks to ready.json: ${err.message}` };
+  }
+  if (addResult.error && addResult.skipped !== exportResult.tasks.length) {
+    return addResult;
+  }
 
   // Step 6: Export story markdown files
   const fileExport = exportStoryFiles(exportResult.tasks, featureName);

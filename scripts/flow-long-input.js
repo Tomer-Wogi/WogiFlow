@@ -8433,5 +8433,8 @@ module.exports = {
 
 // Run CLI if called directly
 if (require.main === module) {
-  main();
+  main().catch(err => {
+    console.error(`[flow-long-input] Fatal error: ${err.message}`);
+    process.exit(1);
+  });
 }
