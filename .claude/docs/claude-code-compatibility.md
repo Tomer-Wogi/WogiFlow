@@ -62,7 +62,7 @@ flow parallel check  # See available parallel tasks
 | 1.0.44+ | 2.1.7+ | TodoWrite sync, OOM fixes |
 | 1.0.45+ | 2.1.19+ | Native task system awareness |
 | 1.0.46+ | 2.1.20+ | Task deletion, improved compaction |
-| 1.2.0+ | 2.1.33+ | TaskCompleted, TeammateIdle hooks, agent frontmatter |
+| 1.2.0+ | 2.1.33+ | TaskCompleted hook, agent frontmatter |
 | 1.3.0+ | 2.1.33+ | WebMCP integration, model registry (Opus 4.6/Sonnet 4.6) |
 | 1.5.0+ | latest | ConfigChange hook, native worktree awareness, settings.json plugin, Sonnet 4.6 1M context |
 
@@ -141,7 +141,6 @@ await cancelTask('wf-123', 'superseded', false);
 ### Features in 2.1.33+
 
 - **TaskCompleted hook event**: New hook event fired when Claude Code completes a task. Wogi Flow uses this to automatically move completed tasks in ready.json.
-- **TeammateIdle hook event**: Fired when a teammate agent becomes idle. Wogi Flow suggests next available parallel task (experimental, opt-in via `hooks.rules.teammateIdle.enabled`).
 - **Agent frontmatter**: Agent `.md` files support YAML frontmatter with `memory: project` and `Task(agent_type)` restrictions.
 - **Claude Opus 4.6 / Sonnet 4.6**: Latest model family supported in Wogi Flow's model registry.
 - **WebMCP (W3C Standard)**: `navigator.modelContext` API replaces Playwright-based browser testing.
@@ -158,7 +157,6 @@ await cancelTask('wf-123', 'superseded', false);
 | Stop | stop.js | Session cleanup |
 | SessionEnd | session-end.js | Request logging, progress update |
 | TaskCompleted | task-completed.js | Move task to recentlyCompleted |
-| TeammateIdle | teammate-idle.js | Suggest next task (disabled by default) |
 | ConfigChange | config-change.js | Re-sync bridge on mid-session config changes |
 
 ### Features in Latest Release

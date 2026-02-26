@@ -1259,21 +1259,6 @@
     "onAsk": "prompt",
     "logging": true
   },
-  "agentTeams": {
-    "enabled": false,
-    "teammateDispatch": {
-      "mode": "suggest",
-      "includeContext": true,
-      "avoidFileConflicts": true
-    },
-    "leadEnforcement": {
-      "enabled": false,
-      "mode": "warn"
-    },
-    "stateTracking": {
-      "enabled": false
-    }
-  },
   "agents": {
     "enabled": [
       "orchestrator",
@@ -1371,9 +1356,6 @@
         "_comment": "Blocks Bash calls before a /wogi-* command is invoked. Fail-open on errors."
       },
       "taskCompleted": {
-        "enabled": false
-      },
-      "teammateIdle": {
         "enabled": false
       },
       "configChange": {
@@ -1693,12 +1675,6 @@
       "trackSource": true,
       "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
     }
-  },
-  "team": {
-    "enabled": false,
-    "_comment_team": "WogiFlow for Teams integration. Requires @wogiflow/teams package. Free users can ignore this section.",
-    "projectId": null,
-    "orgId": null
   },
   "community": {
     "enabled": false,

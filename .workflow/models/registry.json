@@ -129,7 +129,6 @@
       "notes": {
         "contextWindowBetaHeader": "anthropic-beta: max-tokens-1m-2025-02-05",
         "adaptiveThinking": "GA with effort levels: low, medium, high, max",
-        "agentTeams": "Parallel Claude Code agents supported",
         "prefillRemoved": "Assistant message prefill returns 400 error"
       }
     },

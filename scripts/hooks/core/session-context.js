@@ -320,33 +320,6 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
-  // Agent Teams detection (auto-enable features when env detected)
-  try {
-    const { detectTeamLead, getActiveTeammates, getFilesInProgress } = require('../../flow-agent-teams');
-    const leadInfo = detectTeamLead();
-    if (leadInfo.isLead || leadInfo.reason === 'agent_teams_enabled_role_unclear') {
-      const activeTeammates = getActiveTeammates();
-      const filesMap = getFilesInProgress();
-      // getFilesInProgress returns a Map; convert to array of file paths
-      const filesList = filesMap instanceof Map ? [...filesMap.keys()] : [];
-      context.agentTeams = {
-        detected: true,
-        isLead: leadInfo.isLead,
-        confidence: leadInfo.confidence,
-        reason: leadInfo.reason,
-        teammateCount: activeTeammates.length,
-        teammates: activeTeammates.map(t => ({ id: t.id, status: t.status, taskId: t.taskId })),
-        filesInProgress: filesList.slice(0, 10),
-        totalFilesInProgress: filesList.length
-      };
-    }
-  } catch (err) {
-    // Non-critical - flow-agent-teams module may not be available
-    if (process.env.DEBUG) {
-      console.error(`[session-context] Agent Teams detection failed: ${err.message}`);
-    }
-  }
-
   // Rejected approach warnings (surface past failed approaches for current task)
   try {
     const currentTaskId = context.currentTask?.id;
@@ -514,24 +487,6 @@ function formatContextForInjection(context) {
       output += `Worktree isolation: ⚠️ disabled (enable for safe parallel execution)\n`;
     }
     output += `\nConsider running these tasks in parallel for faster completion.\n\n`;
-  }
-
-  // Agent Teams status
-  if (ctx.agentTeams && ctx.agentTeams.detected) {
-    const at = ctx.agentTeams;
-    output += `### 🤖 Agent Teams Mode\n`;
-    output += `Role: **${at.isLead ? 'Team Lead' : 'Teammate'}** (${at.confidence} confidence)\n`;
-    if (at.teammateCount > 0) {
-      output += `Active teammates: ${at.teammateCount}\n`;
-      for (const t of at.teammates) {
-        output += `  - ${t.id}: ${t.status}${t.taskId ? ` (working on ${t.taskId})` : ''}\n`;
-      }
-    }
-    if (at.totalFilesInProgress > 0) {
-      output += `Files in progress: ${at.totalFilesInProgress}\n`;
-    }
-    output += `\nAgent Teams features are auto-enabled. Lead enforcement and file-conflict avoidance are active.\n`;
-    output += `Use \`/wogi-debug-hypothesis\` for parallel bug investigation.\n\n`;
   }
 
   // Key decisions

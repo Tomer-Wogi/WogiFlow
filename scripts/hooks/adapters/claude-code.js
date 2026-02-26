@@ -59,8 +59,6 @@ const CLAUDE_CODE_EVENTS = [
 //   'SubagentStart',   // Supported but not yet used by WogiFlow
 //   'SubagentStop',    // Supported but not yet used by WogiFlow
 //   'Notification',    // Supported but not yet used by WogiFlow
-//   'TeammateIdle',    // Supported but not yet used by WogiFlow
-//   'TeammateIdle',    // Speculated for teammate idle
 //   'ConfigChange',    // Speculated for config changes
 //   'WorktreeCreate',  // Speculated for worktree creation
 //   'WorktreeRemove',  // Speculated for worktree removal
@@ -145,8 +143,6 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformUserPromptSubmit(coreResult);
       case 'TaskCompleted':
         return this.transformTaskCompleted(coreResult);
-      case 'TeammateIdle':
-        return this.transformTeammateIdle(coreResult);
       case 'ConfigChange':
         return this.transformConfigChange(coreResult);
       case 'WorktreeCreate':
@@ -418,47 +414,6 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
         hookEventName: 'TaskCompleted',
         completed: coreResult.completed,
         taskId: coreResult.taskId
-      }
-    };
-  }
-
-  /**
-   * Transform TeammateIdle result (Claude Code 2.1.33+)
-   * Supports both "suggest" mode (task ID only) and "dispatch" mode (full context)
-   */
-  transformTeammateIdle(coreResult) {
-    if (!coreResult.enabled) {
-      return { continue: true };
-    }
-
-    if (coreResult.hasTask) {
-      const output = {
-        continue: true,
-        hookSpecificOutput: {
-          hookEventName: 'TeammateIdle',
-          hasTask: true,
-          suggestedTaskId: coreResult.suggestedTaskId,
-          dispatchMode: coreResult.dispatchMode || 'suggest'
-        }
-      };
-
-      // In dispatch mode, include task context as additional context for the teammate
-      if (coreResult.dispatchMode === 'dispatch' && coreResult.taskContext) {
-        output.hookSpecificOutput.additionalContext = coreResult.message;
-        output.hookSpecificOutput.taskContext = coreResult.taskContext;
-      } else {
-        output.systemMessage = coreResult.message;
-      }
-
-      return output;
-    }
-
-    return {
-      continue: true,
-      ...(coreResult.message && { systemMessage: coreResult.message }),
-      hookSpecificOutput: {
-        hookEventName: 'TeammateIdle',
-        hasTask: false
       }
     };
   }
