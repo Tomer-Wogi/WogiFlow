@@ -1,104 +1,27 @@
 {
   "epics": {
-    "epic-init-onboard": {
-      "id": "epic-init-onboard",
-      "title": "Complete Init/Onboard 100% Coverage",
-      "description": "Three paths to perfection: (1) wogi-init fresh wizard, (2) wogi-init with reference project, (3) wogi-onboard existing/mature project. Wire pattern extraction → persistence, add missing pattern categories, template extraction, git-based temporal analysis, function-map/api-map generation, conflict resolution. AI-written code must be indistinguishable from reference/existing project code.",
+    "epic-teams-t6": {
+      "id": "epic-teams-t6",
+      "title": "T6: Polish & Launch",
+      "description": "Team dashboard (presence, health analytics, activity feed), Project Health Dashboard, cross-project search, anomaly detection, session summaries, onboarding intelligence, review insights, enterprise tier (SSO/SAML, audit logs), and documentation + launch materials. Final Teams phase before GA.",
       "level": "L0",
       "type": "epic",
       "stories": [
-        "wf-init-s1",
-        "wf-init-s2",
-        "wf-init-s3",
-        "wf-init-s4",
-        "wf-init-s5"
-      ],
-      "features": [],
-      "status": "ready",
-      "progress": 0,
-      "createdAt": "2026-02-19T16:34:09.101Z",
-      "updatedAt": "2026-02-21T10:19:05.209Z"
-    },
-    "epic-universal-registry": {
-      "id": "epic-universal-registry",
-      "title": "Universal Registry & Framework-Driven Scanner",
-      "description": "Replace hardcoded file patterns with framework-driven discovery, and replace three fixed maps with an extensible registry system that adapts to any tech stack. Fixes Prisma multi-file schema scanning bug.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-fwk-discovery",
-        "wf-ext-registry",
-        "wf-65ea1bdb",
-        "wf-c7a3804f"
-      ],
-      "features": [],
-      "status": "ready",
-      "progress": 0,
-      "createdAt": "2026-02-21T10:20:45.472Z",
-      "updatedAt": "2026-02-21T10:22:34.560Z"
-    },
-    "epic-teams-t3": {
-      "id": "epic-teams-t3",
-      "title": "T3: Team Knowledge + Integrations",
-      "description": "Team rules CRUD with cascade, team templates, knowledge sharing (models, skills, config), and external integrations (Jira, GitHub). Builds on T1 (auth) and T2 (sync engine) foundations. Bitbucket deferred to T4+.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-a01e3149",
-        "wf-9eb7323a",
-        "wf-8203b06b",
-        "wf-2d0af595",
-        "wf-98c1c0b2",
-        "wf-e8d21b8e"
+        "wf-e6dcbe53",
+        "wf-8882f678",
+        "wf-7136dcd6",
+        "wf-d442d1f1",
+        "wf-2fb327a9",
+        "wf-74ca67ad",
+        "wf-6c2ea871"
       ],
       "features": [],
       "status": "completed",
       "progress": 100,
-      "createdAt": "2026-02-25T09:53:00.038Z",
-      "updatedAt": "2026-02-27T02:00:00.000Z"
-    },
-    "epic-teams-t4": {
-      "id": "epic-teams-t4",
-      "title": "T4: Approval Flow",
-      "description": "Cross-user pattern aggregation, approval request workflow with review queue dashboard, 4 promotion pipelines (correction→decision, pattern→rule, learning→knowledge, team→global), notification system (in-dashboard + email), and team analytics dashboard. Builds on T3 (team knowledge + integrations) foundation.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-5e7d92b2",
-        "wf-8188b390",
-        "wf-d8e65112",
-        "wf-0c966f37",
-        "wf-5cc1b1a5",
-        "wf-6c425e29"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 100,
-      "createdAt": "2026-02-27T02:00:00.000Z",
-      "updatedAt": "2026-02-27T15:00:00.000Z"
-    }
-  },
-    "epic-teams-t5": {
-      "id": "epic-teams-t5",
-      "title": "T5: Marketplace & Global Knowledge",
-      "description": "Marketplace for templates, skills, and knowledge packs with browse/search/install, publisher verification program, star ratings, and download tracking. Global Knowledge team curation layer extends Community Knowledge (C1-C2) with team-level promotion flow. Team model intelligence aggregation and memory export.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-66f269ee",
-        "wf-daaf0644",
-        "wf-97851770",
-        "wf-cbb3004e",
-        "wf-71b0ba7a",
-        "wf-f8896007"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 100,
-      "createdAt": "2026-02-27T18:00:00.000Z",
-      "updatedAt": "2026-02-27T20:00:00.000Z"
+      "createdAt": "2026-02-26T12:33:56.712Z",
+      "updatedAt": "2026-02-26T12:36:34.430Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-02-27T18:00:00.000Z"
+  "lastUpdated": "2026-02-26T12:36:34.430Z"
 }

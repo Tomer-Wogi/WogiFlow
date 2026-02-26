@@ -430,8 +430,8 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T6: Polish & Launch (Sprint 11-12)
 
-**Status:** Planned
-**Depends On:** Phase T5: Marketplace
+**Status:** COMPLETE (epic-teams-t6, 7 stories, 2026-02-28). S1 Team Dashboard (wf-e6dcbe53), S2 Project Health Dashboard (wf-8882f678), S3 Cross-Project Search (wf-7136dcd6), S4 Anomaly Detection & Review Insights (wf-d442d1f1), S5 Onboarding Intelligence (wf-2fb327a9), S6 Enterprise Tier (wf-74ca67ad), S7 Documentation & Launch Materials (wf-6c2ea871). All 7 stories committed. Full Teams roadmap (T1-T6) COMPLETE.
+**Depends On:** Phase T5: Marketplace (COMPLETE)
 
 **Scope:**
 - Team dashboard: presence, health analytics, activity feed
