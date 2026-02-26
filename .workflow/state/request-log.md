@@ -13,6 +13,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-187 | 2026-02-26 18:00
+**Type**: fix
+**Tags**: #feature:export-import #script:flow-export-profile #script:flow-import-profile #command:wogi-export #command:wogi-import
+**Request**: "Review and fix import/export functionality — ensure export captures all generic enforcement artifacts but excludes session-specific data"
+**Result**: Comprehensive review found 7 categories of artifacts missing from export/import. Fixed: (1) `.claude/rules/` now exports recursively (was only matching top-level *.md, missing security/, code-style/, architecture/, operations/ subdirs). (2) Added skill definitions export (`.claude/skills/*/skill.md`). (3) Added review agent checklists (`.workflow/agents/`). (4) Added tech stack export (`.claude/docs/stack.md`). (5) Added workflow HBS templates (`.workflow/templates/`). (6) Added story/bug/task templates (`templates/`). (7) Added state init templates (`.workflow/state/*.template`). Removed app-map from `--full` (project-specific). Updated both slash command docs to v3.0.
+**Files**: `scripts/flow-export-profile`, `scripts/flow-import-profile`, `.claude/commands/wogi-export.md`, `.claude/commands/wogi-import.md`
+
 ### R-186 | 2026-02-27 15:00
 **Type**: new
 **Tags**: #feature:teams #epic:epic-teams-t4 #phase:T4 #repo:wogiflow-cloud
