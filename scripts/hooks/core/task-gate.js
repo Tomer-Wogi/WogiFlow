@@ -196,28 +196,6 @@ function checkTaskGate(options = {}) {
     };
   }
 
-  // Check for team lead enforcement (Agent Teams integration)
-  // If the current session is a team lead, warn or block direct edits
-  try {
-    const { checkLeadEnforcement } = require('../../flow-agent-teams');
-    const leadCheck = checkLeadEnforcement();
-    if (leadCheck.enforce) {
-      if (leadCheck.mode === 'block') {
-        return {
-          allowed: false,
-          blocked: true,
-          warning: false,
-          message: leadCheck.message,
-          reason: 'team_lead_enforcement'
-        };
-      }
-      // warn mode - allow but inject warning
-      // (continues to normal task gate logic below, warning will be in message)
-    }
-  } catch {
-    // flow-agent-teams not available or errored, continue normally
-  }
-
   // Check for active task
   const activeTask = getActiveTask();
 

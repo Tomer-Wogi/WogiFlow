@@ -495,6 +495,203 @@ function formatItemsForReview(filter = 'pending', limit = 10) {
 }
 
 // =============================================================================
+// AUTO-REVIEW (Unified Pipeline Support)
+// =============================================================================
+
+/**
+ * Automated review for unified pipeline.
+ *
+ * Performs batch review in one call:
+ * 1. Auto-confirms all high-confidence items
+ * 2. Auto-dismisses filler items
+ * 3. Returns medium/low items grouped for batch presentation
+ * 4. After user batch approval, auto-confirms completeness
+ *
+ * @param {Object} extractionResult - Result from extractZeroLoss()
+ * @param {Object} options - Configuration
+ * @param {boolean} options.autoConfirmMedium - Auto-confirm medium items too (default: false)
+ * @returns {Object} Review result with items needing user attention
+ */
+function autoReview(extractionResult, options = {}) {
+  // Initialize the review session
+  const session = initializeReview(extractionResult);
+
+  // Step 1: Auto-confirm high-confidence items
+  const highItems = session.items.filter(
+    i => i.confidence === 'high' && i.review_status === 'pending'
+  );
+  for (const item of highItems) {
+    item.review_status = 'confirmed';
+    item.reviewed_at = new Date().toISOString();
+  }
+  logAction(session, 'bulk_confirm', 'high_confidence', `${highItems.length} items auto-confirmed`);
+
+  // Step 2: Auto-dismiss filler items
+  const fillerItems = session.items.filter(
+    i => i.is_filler && i.review_status === 'pending'
+  );
+  for (const item of fillerItems) {
+    item.review_status = 'removed';
+    item.removed_reason = 'conversational_filler';
+    item.reviewed_at = new Date().toISOString();
+  }
+  logAction(session, 'bulk_dismiss', 'filler', `${fillerItems.length} filler items dismissed`);
+
+  // Step 3: Optionally auto-confirm medium items
+  if (options.autoConfirmMedium) {
+    const mediumItems = session.items.filter(
+      i => i.confidence === 'medium' && i.review_status === 'pending'
+    );
+    for (const item of mediumItems) {
+      item.review_status = 'confirmed';
+      item.reviewed_at = new Date().toISOString();
+    }
+    logAction(session, 'bulk_confirm', 'medium_confidence', `${mediumItems.length} medium items auto-confirmed`);
+  }
+
+  // Collect items that need user attention
+  const mediumPending = session.items.filter(
+    i => i.confidence === 'medium' && i.review_status === 'pending'
+  );
+  const lowPending = session.items.filter(
+    i => i.confidence === 'low' && i.review_status === 'pending'
+  );
+
+  // Update progress
+  updateProgress(session);
+  saveReviewSession(session);
+
+  return {
+    session_id: session.id,
+    summary: {
+      total_extracted: session.source.total_extracted,
+      auto_confirmed_high: highItems.length,
+      auto_dismissed_filler: fillerItems.length,
+      medium_for_review: mediumPending.length,
+      low_for_review: lowPending.length,
+      pending_total: session.progress.pending
+    },
+    // Items needing user attention (batched for quick review)
+    medium_items: mediumPending.map(i => ({
+      id: i.id,
+      text: i.text,
+      confidence: i.confidence,
+      score: i.score,
+      signals: i.signals,
+      speaker: i.speaker
+    })),
+    low_items: lowPending.map(i => ({
+      id: i.id,
+      text: i.text,
+      confidence: i.confidence,
+      score: i.score,
+      signals: i.signals,
+      speaker: i.speaker
+    }))
+  };
+}
+
+/**
+ * Batch-confirm a list of item IDs (used after user approves batch).
+ * Items not in the list are removed with reason "batch_rejected".
+ *
+ * @param {string[]} confirmIds - Item IDs to confirm
+ * @param {string[]} rejectIds - Item IDs to reject (optional)
+ * @returns {Object} Updated progress summary
+ */
+function batchConfirm(confirmIds, rejectIds = []) {
+  const session = loadReviewSession();
+  if (!session) throw new Error('No review session active');
+
+  const confirmSet = new Set(confirmIds);
+  const rejectSet = new Set(rejectIds);
+
+  for (const item of session.items) {
+    if (item.review_status !== 'pending') continue;
+
+    if (confirmSet.has(item.id)) {
+      item.review_status = 'confirmed';
+      item.reviewed_at = new Date().toISOString();
+    } else if (rejectSet.has(item.id)) {
+      item.review_status = 'removed';
+      item.removed_reason = 'batch_rejected';
+      item.reviewed_at = new Date().toISOString();
+    }
+  }
+
+  updateProgress(session);
+  logAction(session, 'batch_confirm', null,
+    `${confirmIds.length} confirmed, ${rejectIds.length} rejected`);
+  saveReviewSession(session);
+
+  return {
+    confirmed: confirmIds.length,
+    rejected: rejectIds.length,
+    still_pending: session.progress.pending
+  };
+}
+
+/**
+ * Auto-confirm completeness — confirms all remaining pending items
+ * and marks the review as complete. Used by the unified pipeline
+ * after user has reviewed/approved the batches.
+ *
+ * @returns {Object} Completeness result with confirmed task list
+ */
+function autoComplete() {
+  const session = loadReviewSession();
+  if (!session) throw new Error('No review session active');
+
+  // Auto-confirm any remaining pending items
+  const remaining = session.items.filter(i => i.review_status === 'pending');
+  for (const item of remaining) {
+    item.review_status = 'confirmed';
+    item.reviewed_at = new Date().toISOString();
+  }
+
+  if (remaining.length > 0) {
+    logAction(session, 'bulk_confirm', 'remaining',
+      `${remaining.length} remaining items auto-confirmed for pipeline`);
+  }
+
+  // Update progress
+  updateProgress(session);
+
+  // Mark completeness
+  session.completeness_confirmed = true;
+  session.completeness_confirmed_at = new Date().toISOString();
+  session.status = 'completed';
+  logAction(session, 'confirm_completeness', null,
+    `${session.progress.confirmed} tasks confirmed, ${session.progress.removed} removed (auto-complete)`);
+
+  saveReviewSession(session);
+
+  // Return confirmed tasks
+  const confirmedTasks = session.items
+    .filter(i => i.review_status === 'confirmed')
+    .map(i => ({
+      id: i.id,
+      text: i.text,
+      confidence: i.confidence,
+      score: i.score,
+      speaker: i.speaker,
+      timestamp: i.timestamp,
+      user_notes: i.user_notes,
+      merged_texts: i.merged_texts
+    }));
+
+  return {
+    success: true,
+    summary: {
+      confirmed_tasks: session.progress.confirmed,
+      removed_items: session.progress.removed,
+      merged_items: session.progress.merged
+    },
+    confirmed_tasks: confirmedTasks
+  };
+}
+
+// =============================================================================
 // CLEANUP
 // =============================================================================
 
@@ -582,6 +779,11 @@ module.exports = {
   // Completeness
   confirmCompleteness,
   isReviewComplete,
+
+  // Unified pipeline (auto-review)
+  autoReview,
+  batchConfirm,
+  autoComplete,
 
   // Get results
   getConfirmedTasks,

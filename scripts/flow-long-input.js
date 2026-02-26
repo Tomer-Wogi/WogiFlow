@@ -4904,7 +4904,7 @@ transcriptChunking.init({
 /**
  * CLI handler
  */
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -7516,7 +7516,7 @@ function main() {
         finalizeOptions.featureName = args[featureIdx + 1];
       }
 
-      const finalizeResult = finalizeDigestion(finalizeOptions);
+      const finalizeResult = await finalizeDigestion(finalizeOptions);
 
       if (finalizeResult.error) {
         console.error(`${c.red}Error: ${finalizeResult.error}${c.reset}`);
@@ -8020,6 +8020,137 @@ function generateQuickSummary(statementCount, topicCount, contradictions) {
   return summary;
 }
 
+// =============================================================================
+// UNIFIED PIPELINE (runs all passes in sequence)
+// =============================================================================
+
+/**
+ * Run the full 4-pass pipeline in one call.
+ *
+ * Chains: createSession → runPass2 → runPass3 → runPass4
+ *
+ * Pass 1 (topic extraction) is handled by the AI via the command spec —
+ * the AI reads the confirmed statements and generates topics.json before
+ * calling this function. This function handles Passes 2-4.
+ *
+ * @param {Object} options
+ * @param {string} options.transcript - The full transcript text
+ * @param {Object[]} options.topics - Topics array (from AI or extractTopics)
+ * @param {string} options.contentType - Content type classification
+ * @returns {Object} Consolidated pipeline result
+ */
+function runFullPipeline(options = {}) {
+  const { transcript, topics, contentType } = options;
+
+  if (!transcript) throw new Error('transcript is required');
+  if (!topics || !topics.length) throw new Error('topics array is required');
+
+  // Step 1: Create session with transcript
+  const session = createSession(transcript, { contentType: contentType || 'transcript' });
+  const digestId = session.id || session.session?.id;
+
+  // Step 2: Save the topics (normally done by AI in Pass 1)
+  const topicsData = {
+    topics: topics.map((t, i) => ({
+      id: t.id || `topic-${String(i + 1).padStart(3, '0')}`,
+      title: t.title,
+      keywords: t.keywords || [],
+      description: t.description || '',
+      priority: t.priority || 'medium',
+      statement_count: 0,
+      status: 'active'
+    })),
+    metadata: {
+      total_topics: topics.length,
+      active_topics: topics.length,
+      clarified_topics: 0,
+      generated_topics: 0,
+      detected_at: now(),
+      last_updated: now(),
+      transcript_word_count: countWords(transcript),
+      detection_method: 'unified-pipeline'
+    }
+  };
+  saveTopics(topicsData);
+  updatePhase('topic_extraction', 'completed', { topics_found: topics.length });
+
+  // Step 3: Run Pass 2 — statement mapping + contradiction detection
+  let pass2Result;
+  try {
+    pass2Result = runPass2();
+  } catch (err) {
+    return { error: `Pass 2 failed: ${err.message}`, phase: 'statement_mapping' };
+  }
+
+  // Step 4: Run Pass 3 — orphan check and resolution
+  let pass3Result;
+  try {
+    pass3Result = runPass3();
+  } catch (err) {
+    return { error: `Pass 3 failed: ${err.message}`, phase: 'orphan_check' };
+  }
+
+  // Step 5: Run Pass 4 — contradiction resolution
+  let pass4Result;
+  try {
+    pass4Result = runPass4();
+  } catch (err) {
+    return { error: `Pass 4 failed: ${err.message}`, phase: 'contradiction_resolution' };
+  }
+
+  // Step 6: Collect clarification questions (from contradictions + orphans)
+  const clarifications = loadClarifications();
+  const pendingContradictions = (clarifications?.contradictions || [])
+    .filter(c => c.status === 'pending');
+
+  const orphanQuestions = (pass3Result?.orphans || [])
+    .filter(o => o.needs_clarification)
+    .map(o => ({
+      type: 'orphan',
+      statement_id: o.id,
+      question: o.clarification_question,
+      text: o.text
+    }));
+
+  const allClarificationQuestions = [
+    ...pendingContradictions.map(c => ({
+      type: 'contradiction',
+      id: c.id,
+      question: c.question,
+      options: c.options
+    })),
+    ...orphanQuestions
+  ];
+
+  // Step 7: Load final state for summary
+  const stmtMap = loadStatementMap();
+  const finalTopics = loadTopics();
+
+  return {
+    success: true,
+    digest_id: digestId,
+    summary: {
+      topics_count: finalTopics?.topics?.length || 0,
+      statements_total: stmtMap?.metadata?.total_statements || 0,
+      statements_meaningful: stmtMap?.metadata?.meaningful_statements || 0,
+      statements_mapped: stmtMap?.metadata?.mapped_statements || 0,
+      orphans_found: pass3Result?.orphans?.length || 0,
+      orphans_resolved: pass3Result?.resolved?.length || 0,
+      new_topics_created: pass3Result?.new_topics_created?.length || 0,
+      contradictions_total: pass4Result?.stats?.total || 0,
+      contradictions_auto_resolved: pass4Result?.stats?.auto_resolved || 0,
+      contradictions_needs_clarification: pass4Result?.stats?.needs_clarification || 0,
+      additive_not_contradiction: pass4Result?.stats?.additive_not_contradiction || 0,
+      coverage_percentage: pass3Result?.coverage?.percentage || 0
+    },
+    clarification_questions: allClarificationQuestions,
+    topics: finalTopics?.topics || [],
+    pass2: pass2Result,
+    pass3: pass3Result,
+    pass4: pass4Result
+  };
+}
+
 // Export for use as module
 module.exports = {
   // Utilities
@@ -8183,6 +8314,7 @@ module.exports = {
   exportStoryFiles: transcriptStories.exportStoryFiles,
   previewExport: transcriptStories.previewExport,
   finalizeDigestion: transcriptStories.finalizeDigestion,
+  generateAndExportStories: transcriptStories.generateAndExportStories,
   // Large Input Detection (E4-S1)
   measureInputMetrics,
   estimateTokens,
@@ -8294,10 +8426,15 @@ module.exports = {
   getChunkingStatus: transcriptChunking.getChunkingStatus,
   // Quick Processing Mode (for gate integration)
   quickProcess,
-  generateQuickSummary
+  generateQuickSummary,
+  // Unified Pipeline (runs all passes in sequence)
+  runFullPipeline
 };
 
 // Run CLI if called directly
 if (require.main === module) {
-  main();
+  main().catch(err => {
+    console.error(`[flow-long-input] Fatal error: ${err.message}`);
+    process.exit(1);
+  });
 }

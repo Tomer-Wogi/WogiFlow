@@ -103,6 +103,9 @@ mcp-memory-server/node_modules/
 .workflow/plans/
 .workflow/state/research-cache.json
 
+# Team connection (contains tokens - never commit)
+.workflow/team-connection.json
+
 # Team state files (deprecated)
 .workflow/state/team-state.json
 .workflow/state/offline-queue.json

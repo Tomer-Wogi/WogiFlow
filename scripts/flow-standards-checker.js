@@ -25,7 +25,8 @@ const {
 const {
   calculateCombinedSimilarity,
   getMatchLevel,
-  getMatchConfig
+  getMatchConfig,
+  findReuseCandidates
 } = require('./flow-semantic-match');
 
 // ============================================================================
@@ -79,15 +80,15 @@ const TASK_CHECK_MAP = {
   'component': ['naming', 'components', 'security'],
   'utility': ['naming', 'functions', 'security'],
   'api': ['naming', 'api', 'security'],
-  'feature': ['naming', 'components', 'functions', 'api', 'security'],
+  'feature': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
   'bugfix': ['naming', 'security'],
-  'refactor': ['naming', 'components', 'functions', 'api', 'security'],
-  'story': ['naming', 'components', 'functions', 'api', 'security'],
-  'default': ['naming', 'components', 'functions', 'api', 'security']
+  'refactor': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
+  'story': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
+  'default': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security']
 };
 
 // All available check types
-const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'security'];
+const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'];
 
 // ============================================================================
 // Parse Standards Files
@@ -488,6 +489,379 @@ function checkSecurityPatterns(file, securityRules) {
   return violations;
 }
 
+/**
+ * Check for API duplication using semantic matching
+ * @param {Object} file - File with path and content
+ * @param {Object[]} existingEndpoints - Endpoints from api-map
+ * @param {Object} matchConfig - Semantic match config — optional, auto-loaded if omitted
+ * @returns {Object[]} Array of violations
+ */
+function checkApiDuplication(file, existingEndpoints, matchConfig) {
+  const violations = [];
+  const content = file.content || '';
+  const config = matchConfig || getMatchConfig();
+
+  // Detect route declarations: .get('/path'), .post('/path'), @Get('/path'), router.get('/path')
+  const routeRegex = /(?:\.(?:get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]|@(?:Get|Post|Put|Patch|Delete)\s*\(\s*['"`]([^'"`]+)['"`])/gi;
+  let match;
+
+  while ((match = routeRegex.exec(content)) !== null) {
+    const routePath = match[1] || match[2];
+    if (!routePath) continue;
+
+    for (const existing of existingEndpoints) {
+      const existingPath = existing.path || existing.name || '';
+      if (routePath === existingPath) continue; // Exact same path — skip
+
+      const scores = calculateCombinedSimilarity(routePath, existingPath, 'apis');
+      const matchLevel = getMatchLevel(scores.combined, config.thresholds);
+      const severity = MATCH_LEVEL_SEVERITY[matchLevel];
+
+      if (!severity || severity === 'info') continue;
+
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+
+      violations.push({
+        type: 'api-duplication',
+        severity,
+        file: file.path,
+        line: lineNumber,
+        message: `Route "${routePath}" is ${scores.combined}% similar to existing "${existingPath}" (${existing.method || ''} ${existingPath})`,
+        suggestion: 'Consider reusing or extending the existing API endpoint',
+        rule: 'api-map.md'
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check for schema/service/generic registry duplication using semantic matching
+ * @param {Object} file - File with path and content
+ * @param {Object[]} existingItems - Items from the registry map
+ * @param {string} domain - Domain: 'schemas', 'services', or any registry domain
+ * @param {Object} matchConfig - Semantic match config — optional, auto-loaded if omitted
+ * @returns {Object[]} Array of violations
+ */
+function checkRegistryDuplication(file, existingItems, domain, matchConfig) {
+  const violations = [];
+  const content = file.content || '';
+  const config = matchConfig || getMatchConfig();
+
+  // Extract declared names from file content based on domain
+  const declaredNames = extractDeclaredNames(content, domain);
+
+  for (const declaredName of declaredNames) {
+    for (const existing of existingItems) {
+      const existingName = existing.name || existing.title || '';
+      if (declaredName.name.toLowerCase() === existingName.toLowerCase()) continue;
+
+      const scores = calculateCombinedSimilarity(declaredName.name, existingName, domain);
+      const matchLevel = getMatchLevel(scores.combined, config.thresholds);
+      const severity = MATCH_LEVEL_SEVERITY[matchLevel];
+
+      if (!severity || severity === 'info') continue;
+
+      violations.push({
+        type: `${domain}-duplication`,
+        severity,
+        file: file.path,
+        line: declaredName.line,
+        message: `${domain} item "${declaredName.name}" is ${scores.combined}% similar to existing "${existingName}" (${existing.description || 'no description'})`,
+        suggestion: `Consider reusing existing ${domain} entry from ${domain === 'schemas' ? 'schema-map.md' : 'service-map.md'}`,
+        rule: `${domain === 'schemas' ? 'schema-map.md' : 'service-map.md'}`
+      });
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Extract declared names from file content based on domain
+ * @param {string} content - File content
+ * @param {string} domain - Domain for context
+ * @returns {Array<{name: string, line: number}>}
+ */
+function extractDeclaredNames(content, domain) {
+  const names = [];
+  const lines = content.split('\n');
+
+  // Patterns by domain
+  const patterns = {
+    schemas: [
+      // Prisma: model User { ... }
+      /^\s*model\s+(\w+)\s*\{/,
+      // TypeORM: @Entity('table_name') / class UserEntity
+      /@Entity\s*\(\s*['"]?(\w+)['"]?\s*\)/,
+      /class\s+(\w+Entity)\b/,
+      // Mongoose: new Schema / mongoose.model('Name')
+      /mongoose\.model\s*\(\s*['"](\w+)['"]/,
+      // Django: class UserModel(models.Model)
+      /class\s+(\w+)\s*\(\s*models\.Model\s*\)/
+    ],
+    services: [
+      // NestJS: @Controller(), @Injectable()
+      /@(?:Controller|Injectable)\s*\([\s\S]*?\)\s*(?:export\s+)?class\s+(\w+)/,
+      // Express: router/controller pattern
+      /class\s+(\w+(?:Controller|Service|Provider|Repository))\b/,
+      // Generic exported class
+      /export\s+class\s+(\w+(?:Service|Manager|Handler|Processor))\b/
+    ]
+  };
+
+  const domainPatterns = patterns[domain] || [
+    // Fallback: any class or const export
+    /export\s+(?:class|const)\s+(\w+)/
+  ];
+
+  for (let i = 0; i < lines.length; i++) {
+    for (const pattern of domainPatterns) {
+      const match = lines[i].match(pattern);
+      if (match && match[1]) {
+        names.push({ name: match[1], line: i + 1 });
+      }
+    }
+  }
+
+  return names;
+}
+
+/**
+ * Parse schema-map.md into schema registry
+ * @returns {Object[]} Array of schema items
+ */
+function parseSchemaMap() {
+  const schemaMapPath = path.join(PATHS.state, 'schema-map.md');
+  if (!fileExists(schemaMapPath)) return [];
+  return parseGenericMap(schemaMapPath);
+}
+
+/**
+ * Parse service-map.md into service registry
+ * @returns {Object[]} Array of service items
+ */
+function parseServiceMap() {
+  const serviceMapPath = path.join(PATHS.state, 'service-map.md');
+  if (!fileExists(serviceMapPath)) return [];
+  return parseGenericMap(serviceMapPath);
+}
+
+/**
+ * Generic map parser for any markdown map with table or list entries.
+ * Handles future registry types automatically.
+ * @param {string} mapPath - Absolute path to the map file
+ * @returns {Object[]} Array of { name, description, path, source }
+ */
+function parseGenericMap(mapPath) {
+  const content = readFile(mapPath, '');
+  if (!content) return [];
+
+  const items = [];
+  const source = path.basename(mapPath);
+
+  // Strategy 1: Parse markdown table rows (| Name | Path | Description |)
+  const tableRows = content.match(/\|\s*`?([A-Za-z_][A-Za-z0-9_.-]*)`?\s*\|\s*([^\|]+)\s*\|/g) || [];
+  for (const row of tableRows) {
+    const match = row.match(/\|\s*`?([A-Za-z_][A-Za-z0-9_.-]*)`?\s*\|\s*([^\|]+)\s*\|/);
+    if (match) {
+      items.push({
+        name: match[1].trim(),
+        description: match[2].trim(),
+        source
+      });
+    }
+  }
+
+  // Strategy 2: Parse markdown list entries (- **Name**: description)
+  if (items.length === 0) {
+    const listItems = content.match(/^-\s+\*\*([A-Za-z_][A-Za-z0-9_.-]*)\*\*:?\s*([^\n]+)?/gm) || [];
+    for (const item of listItems) {
+      const match = item.match(/-\s+\*\*([A-Za-z_][A-Za-z0-9_.-]*)\*\*:?\s*([^\n]+)?/);
+      if (match) {
+        items.push({
+          name: match[1].trim(),
+          description: match[2]?.trim() || '',
+          source
+        });
+      }
+    }
+  }
+
+  // Strategy 3: Parse simple list entries (- `name` — description)
+  if (items.length === 0) {
+    const simpleItems = content.match(/^-\s+`([A-Za-z_][A-Za-z0-9_.-]*)`\s*[—–-]\s*([^\n]+)?/gm) || [];
+    for (const item of simpleItems) {
+      const match = item.match(/-\s+`([A-Za-z_][A-Za-z0-9_.-]*)`\s*[—–-]\s*([^\n]+)?/);
+      if (match) {
+        items.push({
+          name: match[1].trim(),
+          description: match[2]?.trim() || '',
+          source
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Discover all registry map files — from manifest first, then disk fallback.
+ * Returns a unified list regardless of whether registries are "active".
+ * @returns {Array<{id: string, domain: string, mapFile: string, mapPath: string, source: string}>}
+ */
+function discoverAllRegistries() {
+  const registries = [];
+  const seen = new Set();
+
+  // 1. Load from registry-manifest.json
+  const manifestPath = path.join(PATHS.state, 'registry-manifest.json');
+  if (fileExists(manifestPath)) {
+    try {
+      const manifest = safeJsonParse(manifestPath, null);
+      if (manifest && manifest.registries) {
+        for (const reg of manifest.registries) {
+          // Validate mapFile is a safe filename (no path traversal)
+          if (!reg.mapFile || !/^[a-z0-9-]+\.md$/.test(reg.mapFile)) continue;
+          const mapPath = path.join(PATHS.state, reg.mapFile);
+          if (fileExists(mapPath)) {
+            registries.push({
+              id: reg.id,
+              domain: reg.type || reg.id,
+              mapFile: reg.mapFile,
+              mapPath,
+              source: 'manifest'
+            });
+            seen.add(reg.mapFile);
+          }
+        }
+      }
+    } catch (err) {
+      // Fall through to disk scan
+    }
+  }
+
+  // 2. Disk fallback — scan .workflow/state/*-map.md for files not in manifest
+  try {
+    const stateDir = PATHS.state;
+    const entries = fs.readdirSync(stateDir);
+    for (const entry of entries) {
+      if (entry.endsWith('-map.md') && !seen.has(entry) && /^[a-z0-9-]+\.md$/.test(entry)) {
+        const mapPath = path.join(stateDir, entry);
+        const id = entry.replace('-map.md', '');
+        registries.push({
+          id,
+          domain: id,
+          mapFile: entry,
+          mapPath,
+          source: 'disk'
+        });
+        seen.add(entry);
+      }
+    }
+  } catch (err) {
+    // Disk scan failed — proceed with manifest-only results
+  }
+
+  return registries;
+}
+
+/**
+ * Collect reuse candidates from ALL registries for AI-as-judge evaluation.
+ * Uses a low 30% pre-filter threshold — the AI filters before the user sees results.
+ *
+ * @param {Object[]} files - Files with path and content
+ * @param {Object} options - Options: { taskType, changedPaths, allRegistries }
+ * @returns {Array<{newItem: string, file: string, domain: string, matches: Object[]}>}
+ */
+function collectReuseCandidates(files, options = {}) {
+  const config = getMatchConfig();
+  const candidates = [];
+
+  // Map domain → parser
+  const domainParsers = {
+    components: parseAppMap,
+    functions: parseFunctionMap,
+    apis: parseApiMap,
+    schemas: parseSchemaMap,
+    services: parseServiceMap
+  };
+
+  // Discover registries — all when allRegistries is true (default), active-only otherwise
+  const allRegs = options.allRegistries !== false;
+  let registries;
+  if (allRegs) {
+    registries = discoverAllRegistries();
+  } else {
+    // Only check active registries (from manifest)
+    try {
+      const { getActiveRegistries } = require('./flow-utils');
+      registries = getActiveRegistries().map(r => ({
+        id: r.id,
+        domain: r.type || r.id,
+        mapFile: r.mapFile,
+        mapPath: path.join(PATHS.state, r.mapFile),
+        source: 'active'
+      }));
+    } catch (err) {
+      registries = discoverAllRegistries();
+    }
+  }
+
+  for (const registry of registries) {
+    // Parse registry items
+    let items;
+    const parser = domainParsers[registry.domain];
+    if (parser) {
+      items = parser();
+    } else {
+      // Generic fallback for unknown registry types
+      items = parseGenericMap(registry.mapPath);
+    }
+
+    if (!items || items.length === 0) continue;
+
+    // For each file, extract declared names and find candidates
+    for (const file of files) {
+      if (!file.content) continue;
+
+      // Extract names relevant to this domain
+      const declaredNames = extractDeclaredNames(file.content, registry.domain);
+
+      // Also check file name for component-like registries
+      if (['components'].includes(registry.domain)) {
+        const fileName = path.basename(file.path, path.extname(file.path));
+        if (fileName && /^[A-Z]/.test(fileName)) {
+          // Avoid duplicate if extractDeclaredNames already found the same name
+          if (!declaredNames.some(d => d.name === fileName)) {
+            declaredNames.push({ name: fileName, line: 1 });
+          }
+        }
+      }
+
+      for (const declared of declaredNames) {
+        const matches = findReuseCandidates(declared.name, items, registry.domain);
+
+        if (matches.length > 0) {
+          candidates.push({
+            newItem: declared.name,
+            file: file.path,
+            line: declared.line,
+            domain: registry.domain,
+            registryFile: registry.mapFile,
+            matches
+          });
+        }
+      }
+    }
+  }
+
+  return candidates;
+}
+
 // ============================================================================
 // Utility Functions
 // ============================================================================
@@ -574,12 +948,18 @@ function runStandardsCheck(files, options = {}) {
   const endpoints = checksToRun.includes('api') ? parseApiMap() : [];
   const rulesFiles = checksToRun.includes('security') ? loadRulesDir() : [];
 
+  // Load schema/service registries if needed
+  const schemas = checksToRun.includes('schemas') ? parseSchemaMap() : [];
+  const services = checksToRun.includes('services') ? parseServiceMap() : [];
+
   const allViolations = [];
   const checksSummary = {
     'decisions.md': { checked: true, violations: 0 },
     'app-map.md': { checked: checksToRun.includes('components') && components.length > 0, violations: 0 },
     'function-map.md': { checked: checksToRun.includes('functions') && functions.length > 0, violations: 0 },
     'api-map.md': { checked: checksToRun.includes('api') && endpoints.length > 0, violations: 0 },
+    'schema-map.md': { checked: checksToRun.includes('schemas') && schemas.length > 0, violations: 0 },
+    'service-map.md': { checked: checksToRun.includes('services') && services.length > 0, violations: 0 },
     'naming-conventions': { checked: checksToRun.includes('naming'), violations: 0 },
     'security-patterns': { checked: checksToRun.includes('security'), violations: 0 }
   };
@@ -611,6 +991,27 @@ function runStandardsCheck(files, options = {}) {
       const functionViolations = checkFunctionDuplication(file, functions, matchConfig);
       allViolations.push(...functionViolations);
       checksSummary['function-map.md'].violations += functionViolations.length;
+    }
+
+    // API duplication
+    if (checksToRun.includes('api') && endpoints.length > 0) {
+      const apiViolations = checkApiDuplication(file, endpoints, matchConfig);
+      allViolations.push(...apiViolations);
+      checksSummary['api-map.md'].violations += apiViolations.length;
+    }
+
+    // Schema duplication
+    if (checksToRun.includes('schemas') && schemas.length > 0) {
+      const schemaViolations = checkRegistryDuplication(file, schemas, 'schemas', matchConfig);
+      allViolations.push(...schemaViolations);
+      checksSummary['schema-map.md'].violations += schemaViolations.length;
+    }
+
+    // Service duplication
+    if (checksToRun.includes('services') && services.length > 0) {
+      const serviceViolations = checkRegistryDuplication(file, services, 'services', matchConfig);
+      allViolations.push(...serviceViolations);
+      checksSummary['service-map.md'].violations += serviceViolations.length;
     }
 
     // Security patterns
@@ -768,10 +1169,18 @@ module.exports = {
   parseAppMap,
   parseFunctionMap,
   parseApiMap,
+  parseSchemaMap,
+  parseServiceMap,
+  parseGenericMap,
   checkNamingConventions,
   checkComponentDuplication,
   checkFunctionDuplication,
+  checkApiDuplication,
+  checkRegistryDuplication,
   checkSecurityPatterns,
+  extractDeclaredNames,
+  discoverAllRegistries,
+  collectReuseCandidates,
   getCheckTypesForTask,
   isInChangedPaths,
   STANDARDS_FILES,

@@ -1,43 +1,27 @@
 {
   "epics": {
-    "epic-init-onboard": {
-      "id": "epic-init-onboard",
-      "title": "Complete Init/Onboard 100% Coverage",
-      "description": "Three paths to perfection: (1) wogi-init fresh wizard, (2) wogi-init with reference project, (3) wogi-onboard existing/mature project. Wire pattern extraction → persistence, add missing pattern categories, template extraction, git-based temporal analysis, function-map/api-map generation, conflict resolution. AI-written code must be indistinguishable from reference/existing project code.",
+    "epic-teams-t6": {
+      "id": "epic-teams-t6",
+      "title": "T6: Polish & Launch",
+      "description": "Team dashboard (presence, health analytics, activity feed), Project Health Dashboard, cross-project search, anomaly detection, session summaries, onboarding intelligence, review insights, enterprise tier (SSO/SAML, audit logs), and documentation + launch materials. Final Teams phase before GA.",
       "level": "L0",
       "type": "epic",
       "stories": [
-        "wf-init-s1",
-        "wf-init-s2",
-        "wf-init-s3",
-        "wf-init-s4",
-        "wf-init-s5"
+        "wf-e6dcbe53",
+        "wf-8882f678",
+        "wf-7136dcd6",
+        "wf-d442d1f1",
+        "wf-2fb327a9",
+        "wf-74ca67ad",
+        "wf-6c2ea871"
       ],
       "features": [],
-      "status": "ready",
-      "progress": 0,
-      "createdAt": "2026-02-19T16:34:09.101Z",
-      "updatedAt": "2026-02-21T10:19:05.209Z"
-    },
-    "epic-universal-registry": {
-      "id": "epic-universal-registry",
-      "title": "Universal Registry & Framework-Driven Scanner",
-      "description": "Replace hardcoded file patterns with framework-driven discovery, and replace three fixed maps with an extensible registry system that adapts to any tech stack. Fixes Prisma multi-file schema scanning bug.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-fwk-discovery",
-        "wf-ext-registry",
-        "wf-65ea1bdb",
-        "wf-c7a3804f"
-      ],
-      "features": [],
-      "status": "ready",
-      "progress": 0,
-      "createdAt": "2026-02-21T10:20:45.472Z",
-      "updatedAt": "2026-02-21T10:22:34.560Z"
+      "status": "completed",
+      "progress": 100,
+      "createdAt": "2026-02-26T12:33:56.712Z",
+      "updatedAt": "2026-02-26T12:36:34.430Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-02-21T10:22:34.560Z"
+  "lastUpdated": "2026-02-26T12:36:34.430Z"
 }

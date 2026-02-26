@@ -15,18 +15,6 @@ Gather information from:
 5. `git status` - Branch and uncommitted changes
 6. `.workflow/state/request-log.md` - Recent activity (last 5 entries)
 
-7. `scripts/flow-agent-teams.js` - Agent Teams state (if enabled)
-
-**Agent Teams Status** (auto-detected from environment):
-
-When `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` or `CLAUDE_CODE_AGENT_TEAMS=1` is set, also display:
-- Current role (lead/teammate)
-- Active teammates and their current tasks
-- Files currently being worked on across all teammates
-- Any file conflicts detected
-
-Run `node scripts/flow-agent-teams.js status` for detailed teammate state.
-
 Output format:
 ```
 📊 Project Status
@@ -45,11 +33,6 @@ Components: 24 mapped
 Git:
   Branch: feature/auth
   Uncommitted: 3 files
-
-Agent Teams:
-  Mode: active (lead)
-  Teammates: 2 active, 1 idle
-  Files in progress: 5
 
 Recent Activity:
   • R-045: Added login form validation

@@ -577,6 +577,196 @@ Usage:
   }
 }
 
+/**
+ * Default context cost per review finding by severity.
+ * Values represent fraction of total context window.
+ * Each finding requires: read file (~1%), understand issue (~1%), edit (~1%), verify (~1%).
+ * Critical/high findings often involve multi-file reads and more complex reasoning.
+ */
+const DEFAULT_FINDING_COSTS = {
+  critical: 0.05,   // 5% — complex fixes, often multi-file
+  high: 0.04,       // 4% — significant fixes
+  medium: 0.03,     // 3% — moderate fixes
+  low: 0.02         // 2% — simple fixes
+};
+
+/**
+ * Estimate context cost for a single review finding.
+ * Uses severity + file size heuristics + autoFixable flag.
+ * @param {Object} finding - Finding object from last-review.json
+ * @param {Object} [costOverrides] - Override costs per severity
+ * @returns {number} Estimated context fraction (0-1)
+ */
+function estimateFindingContextCost(finding, costOverrides = null) {
+  const costs = { ...DEFAULT_FINDING_COSTS, ...(costOverrides || {}) };
+  const severity = (finding.severity || 'medium').toLowerCase();
+  let cost = costs[severity] || costs.medium;
+
+  // Auto-fixable findings cost less (mechanical changes)
+  if (finding.autoFixable) {
+    cost *= 0.6;
+  }
+
+  // Findings that require multi-file changes cost more
+  if (finding.type === 'contract' || finding.type === 'import' || finding.category === 'integration') {
+    cost *= 1.3;
+  }
+
+  return cost;
+}
+
+/**
+ * Calculate dynamic batch size based on available context.
+ * Returns how many findings can fit in the available context window,
+ * leaving a buffer for compaction overhead.
+ *
+ * @param {Array} findings - Array of finding objects
+ * @param {number} availableContextPercent - Available context as fraction (0-1)
+ * @param {Object} [options] - Options
+ * @param {number} [options.compactionBuffer] - Reserve for compaction overhead (default: 0.15)
+ * @param {number} [options.orchestratorOverhead] - Reserve for orchestrator context (default: 0.10)
+ * @param {Object} [options.costOverrides] - Override costs per severity
+ * @returns {Object} Batch plan with sizes and costs
+ */
+function calculateDynamicBatchSize(findings, availableContextPercent, options = {}) {
+  const {
+    compactionBuffer = 0.15,
+    orchestratorOverhead = 0.10,
+    costOverrides = null
+  } = options;
+
+  // Available context for actual finding work (subtract buffers)
+  const usableContext = Math.max(0, availableContextPercent - compactionBuffer - orchestratorOverhead);
+
+  if (usableContext <= 0 || findings.length === 0) {
+    return {
+      batchSize: 0,
+      totalCost: 0,
+      usableContext,
+      findings: [],
+      reason: usableContext <= 0 ? 'No usable context available' : 'No findings to process'
+    };
+  }
+
+  // Calculate cost for each finding
+  const findingsWithCost = findings.map(f => ({
+    finding: f,
+    cost: estimateFindingContextCost(f, costOverrides)
+  }));
+
+  // Greedily pack findings into the available context
+  let totalCost = 0;
+  const batchFindings = [];
+
+  for (const item of findingsWithCost) {
+    if (totalCost + item.cost <= usableContext) {
+      batchFindings.push(item);
+      totalCost += item.cost;
+    } else {
+      break; // No more room
+    }
+  }
+
+  // Ensure at least 1 finding per batch (even if it exceeds budget slightly)
+  if (batchFindings.length === 0 && findings.length > 0) {
+    batchFindings.push(findingsWithCost[0]);
+    totalCost = findingsWithCost[0].cost;
+  }
+
+  return {
+    batchSize: batchFindings.length,
+    totalCost,
+    usableContext,
+    findings: batchFindings.map(f => f.finding),
+    remainingFindings: findings.slice(batchFindings.length),
+    reason: `Packed ${batchFindings.length}/${findings.length} findings into ${Math.round(usableContext * 100)}% available context`
+  };
+}
+
+/**
+ * Create a complete finding budget plan — splits all findings into batches
+ * that each fit within a fresh sub-agent's context.
+ *
+ * @param {Array} findings - All findings to process
+ * @param {Object} [options] - Options
+ * @param {number} [options.subAgentContextBudget] - Context available per sub-agent (default: 0.70 = 70%)
+ * @param {number} [options.compactionBuffer] - Reserved for compaction (default: 0.15)
+ * @param {number} [options.orchestratorOverhead] - Reserved for orchestrator (default: 0.10)
+ * @param {Object} [options.costOverrides] - Override costs per severity
+ * @returns {Object} Complete budget plan with batches
+ */
+function createFindingBudget(findings, options = {}) {
+  const {
+    subAgentContextBudget = 0.70,
+    compactionBuffer = 0.15,
+    orchestratorOverhead = 0.10,
+    costOverrides = null
+  } = options;
+
+  const batches = [];
+  let remaining = [...findings];
+  let batchNumber = 0;
+
+  while (remaining.length > 0) {
+    batchNumber++;
+    const result = calculateDynamicBatchSize(remaining, subAgentContextBudget, {
+      compactionBuffer,
+      orchestratorOverhead,
+      costOverrides
+    });
+
+    if (result.batchSize === 0) break; // Safety: prevent infinite loop
+
+    batches.push({
+      batchNumber,
+      findings: result.findings,
+      estimatedCost: result.totalCost,
+      findingCount: result.findings.length
+    });
+
+    remaining = result.remainingFindings || [];
+  }
+
+  // Calculate totals
+  const totalCost = batches.reduce((sum, b) => sum + b.estimatedCost, 0);
+
+  return {
+    totalFindings: findings.length,
+    totalBatches: batches.length,
+    totalEstimatedCost: totalCost,
+    batches,
+    config: { subAgentContextBudget, compactionBuffer, orchestratorOverhead },
+    summary: `${findings.length} findings → ${batches.length} batches (avg ${batches.length > 0 ? Math.round(findings.length / batches.length) : 0} per batch)`
+  };
+}
+
+/**
+ * Format a finding budget plan for display
+ * @param {Object} budget - Result from createFindingBudget
+ * @returns {string} Formatted string
+ */
+function formatFindingBudget(budget) {
+  const lines = [];
+
+  lines.push(`📊 Context Budget Plan`);
+  lines.push(`   Total findings: ${budget.totalFindings}`);
+  lines.push(`   Batches needed: ${budget.totalBatches}`);
+  lines.push(`   Strategy: Sub-agent per batch (fresh context each)`);
+  lines.push('');
+
+  for (const batch of budget.batches) {
+    const severities = {};
+    for (const f of batch.findings) {
+      const sev = f.severity || 'unknown';
+      severities[sev] = (severities[sev] || 0) + 1;
+    }
+    const sevStr = Object.entries(severities).map(([k, v]) => `${v} ${k}`).join(', ');
+    lines.push(`   Batch ${batch.batchNumber}: ${batch.findingCount} findings (${sevStr}) — est. ${Math.round(batch.estimatedCost * 100)}% context`);
+  }
+
+  return lines.join('\n');
+}
+
 module.exports = {
   getSmartCompactionConfig,
   estimateTaskContextNeeds,
@@ -586,5 +776,11 @@ module.exports = {
   extractCriteriaCount,
   extractFileCount,
   isValidTaskId,
-  VALID_TASK_ID_PATTERN
+  VALID_TASK_ID_PATTERN,
+  // Finding-level estimation (for review-fix sessions)
+  estimateFindingContextCost,
+  calculateDynamicBatchSize,
+  createFindingBudget,
+  formatFindingBudget,
+  DEFAULT_FINDING_COSTS
 };

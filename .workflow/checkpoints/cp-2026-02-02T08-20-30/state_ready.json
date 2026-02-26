@@ -1,0 +1,138 @@
+{
+  "lastUpdated": "2026-02-02T08:20:29.886Z",
+  "inProgress": [],
+  "ready": [
+    {
+      "id": "wf-cc-007",
+      "title": "Test WogiFlow on Windows with Claude Code 2.1.7 fixes",
+      "type": "bugfix",
+      "feature": "claude-code-integration",
+      "status": "ready",
+      "priority": "P3",
+      "description": "Claude Code 2.1.7 fixed Windows-specific issues: false 'file modified' errors with cloud sync/antivirus, and bash temp directory path escape sequences. Verify WogiFlow works correctly on Windows with these fixes."
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
+    {
+      "id": "wf-175171e3",
+      "title": "Fix auto-regenerate bug in flow-morning.js - calls bash script with node",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-02-02T08:20:01.551Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-175171e3.md",
+      "startedAt": "2026-02-02T08:20:04.814Z",
+      "completedAt": "2026-02-02T08:20:29.886Z"
+    },
+    {
+      "id": "wf-49394857",
+      "title": "Enhanced wogi-review with project standards compliance and solution optimization agents",
+      "type": "story",
+      "feature": "code-review",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-01-31T09:00:00.000Z",
+      "startedAt": "2026-01-31T09:00:00.000Z",
+      "completedAt": "2026-02-01T10:00:00.000Z"
+    },
+    {
+      "id": "wf-364df165",
+      "title": "Fix code review findings: validation, cleanup, and safety issues",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "status": "completed",
+      "createdAt": "2026-01-31T07:30:38.322Z",
+      "startedAt": "2026-01-31T07:30:42.434Z",
+      "completedAt": "2026-01-31T08:16:00.000Z"
+    },
+    {
+      "id": "wf-917c85b7",
+      "title": "Implement Video Methodologies: Prompt Capture, Correction Detection, and Bulk Loop",
+      "type": "story",
+      "feature": "learning-system",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-01-30T21:55:35.632Z",
+      "completedAt": "2026-01-30T22:03:29.035Z"
+    },
+    {
+      "id": "wf-36d79345",
+      "title": "Fix security issues in browser testing: raw JSON.parse, command injection, path traversal",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "medium",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-01-30T17:38:15.099Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-36d79345.md",
+      "startedAt": "2026-01-30T17:38:18.588Z",
+      "completedAt": "2026-01-30T17:39:44.429Z"
+    },
+    {
+      "id": "wf-9d449855",
+      "title": "Implement browser test execution with Chrome integration and smart failure suggestions",
+      "type": "story",
+      "feature": "browser-testing",
+      "status": "completed",
+      "priority": "P2",
+      "description": "Complete browser testing feature with Chrome MCP integration. Add execution runner for test flows and smart failure detection that suggests browser tests when user reports 'not working' for UI tasks.",
+      "createdAt": "2026-01-30T13:15:00.000Z",
+      "startedAt": "2026-01-30T13:20:00.000Z",
+      "completedAt": "2026-01-30T13:45:00.000Z"
+    },
+    {
+      "id": "wf-release-119",
+      "title": "Release v1.1.9 and v1.1.10 with Continuous Learning Protocol",
+      "type": "operational",
+      "feature": "release",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Bumped version and created releases with Continuous Learning Protocol and CLI cleanup changes.",
+      "createdAt": "2026-01-30T12:40:00.000Z",
+      "startedAt": "2026-01-30T12:40:00.000Z",
+      "completedAt": "2026-01-30T13:10:00.000Z"
+    },
+    {
+      "id": "wf-learning-001",
+      "title": "Expand Self-Correction Protocol into comprehensive learning system",
+      "type": "story",
+      "feature": "learning-system",
+      "status": "completed",
+      "priority": "P0",
+      "description": "Replace the basic 'Repeated Issue Detection' rule with a comprehensive Continuous Learning Protocol that includes: pre-task pattern checks, post-failure capture, and pattern promotion.",
+      "createdAt": "2026-01-30T12:20:00.000Z",
+      "startedAt": "2026-01-30T12:25:00.000Z",
+      "completedAt": "2026-01-30T12:35:00.000Z"
+    },
+    {
+      "id": "wf-f698b7fb",
+      "title": "Add GitHub release workflow rule to prevent race condition failures",
+      "type": "story",
+      "feature": "documentation",
+      "status": "completed",
+      "priority": "P1",
+      "description": "Document the correct GitHub release procedure to prevent npm publish failures from race conditions.",
+      "createdAt": "2026-01-30T12:04:00.000Z",
+      "startedAt": "2026-01-30T12:05:00.000Z",
+      "completedAt": "2026-01-30T12:10:00.000Z"
+    },
+    {
+      "id": "wf-80c41aef",
+      "title": "Add background task execution for non-blocking operations",
+      "type": "story",
+      "feature": "task-management",
+      "status": "completed",
+      "priority": "P3",
+      "description": "Run non-critical tasks (memory compaction, skill learning) in background processes.",
+      "createdAt": "2026-01-30T10:00:00.000Z",
+      "startedAt": "2026-01-30T11:32:00.000Z",
+      "completedAt": "2026-01-30T11:38:00.000Z",
+      "source": "crush-research"
+    }
+  ],
+  "backlog": []
+}

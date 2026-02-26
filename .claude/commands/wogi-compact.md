@@ -95,7 +95,17 @@ Provide this information for the compaction system:
 **Context to Preserve**:
 - [Important context that should survive compaction]
 
+**⚠️ ROUTING ENFORCEMENT (MANDATORY — survives compaction)**:
+Every new user message after resuming from this compacted context MUST be
+routed through a `/wogi-*` command BEFORE any other action. This includes
+questions, conversations, follow-ups, and implementation requests.
+Do NOT answer directly from compacted memory. Do NOT skip routing because
+"the answer seems obvious." The routing requirement applies unconditionally.
+If no Natural Language Detection match → invoke `/wogi-start` with the full
+user message as args.
+
 **ON RESUME**: Check `.workflow/state/ready.json` for pending work.
+Route ALL new user messages through `/wogi-start` or a matching `/wogi-*` command.
 ```
 
 ## Context Pressure Monitoring

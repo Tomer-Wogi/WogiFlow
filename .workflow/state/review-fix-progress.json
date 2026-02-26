@@ -1,0 +1,15 @@
+{
+  "reviewDate": "2026-02-25T10:30:00.000Z",
+  "taskId": "wf-cr-t3rv01",
+  "totalFindings": 37,
+  "processedIds": ["i-001", "i-002", "i-004", "l-001", "l-002", "sec-004", "s-005", "i-003", "i-005", "i-006", "l-005", "l-006", "l-011", "l-012", "sec-006", "sec-007", "sec-003", "sec-005", "l-007", "l-008", "l-009", "l-010", "l-014", "l-015", "l-018", "l-019", "l-020", "l-021", "l-022", "l-023", "sec-008", "sec-010", "sec-014", "s-011", "i-007", "i-008"],
+  "failedIds": [],
+  "currentBatch": 3,
+  "totalBatches": 3,
+  "status": "completed",
+  "startedAt": "2026-02-26T23:50:00.000Z",
+  "lastBatchAt": "2026-02-27T01:00:00.000Z",
+  "completedAt": "2026-02-27T01:00:00.000Z",
+  "repo": "wogiflow-cloud",
+  "repoPath": "/Users/tomergilboa/Developer/wogiflow-cloud"
+}

@@ -2,7 +2,7 @@
 
 # Wogi Flow - Export Profile
 # Export workflow configuration for team sharing
-# v2.1: Enhanced with rules, learnings, and templates
+# v3.0: Enhanced with rules, learnings, skills, templates, and tech stack
 
 set -e
 
@@ -23,12 +23,13 @@ show_help() {
     echo "Usage: flow export-profile <profile-name> [options]"
     echo ""
     echo "Categories:"
-    echo "  --rules          Include .claude/rules/ and decisions.md"
+    echo "  --rules          Include .claude/rules/ (recursive) and decisions.md"
     echo "  --learnings      Include feedback-patterns.md and skill learnings"
-    echo "  --templates      Include sanitized project.md and roadmap templates"
+    echo "  --templates      Include workflow templates (HBS, story, bug report, etc.)"
+    echo "  --skills         Include skill definitions (.claude/skills/*/skill.md)"
     echo "  --full           Include everything (all categories + patterns)"
     echo ""
-    echo "Pattern Extraction (NEW):"
+    echo "Pattern Extraction:"
     echo "  --extract-patterns    Scan codebase and extract patterns"
     echo "  --resolve-conflicts   Interactive conflict resolution (with --extract-patterns)"
     echo "  --analysis-mode MODE  Analysis depth: balanced (default), deep"
@@ -38,11 +39,28 @@ show_help() {
     echo "  --include-decisions    Include decisions.md only"
     echo "  --include-app-map      Include app-map.md (component registry)"
     echo ""
+    echo "Included with --full:"
+    echo "  - CLAUDE.md, agents/, config.json (always)"
+    echo "  - .claude/rules/ (recursive: security, code-style, architecture, etc.)"
+    echo "  - .workflow/state/decisions.md"
+    echo "  - .workflow/agents/ (review checklists)"
+    echo "  - .claude/skills/*/skill.md (skill definitions)"
+    echo "  - .claude/skills/*/knowledge/ (skill patterns & learnings)"
+    echo "  - .claude/docs/stack.md (tech stack)"
+    echo "  - .workflow/templates/ (CLAUDE.md HBS templates)"
+    echo "  - templates/ (story, bug report, etc.)"
+    echo "  - .workflow/state/feedback-patterns.md"
+    echo ""
+    echo "Excluded (session-specific, never exported):"
+    echo "  - request-log.md, progress.md, session-state.json"
+    echo "  - ready.json, epics.json, task-queue.json"
+    echo "  - prompt-history.json, last-review.json"
+    echo "  - app-map.md, function-map.md, api-map.md (project-specific)"
+    echo ""
     echo "Examples:"
     echo "  flow export-profile my-team --full"
+    echo "  flow export-profile my-team --rules --learnings --skills"
     echo "  flow export-profile my-team --extract-patterns --resolve-conflicts"
-    echo "  flow export-profile my-team --rules --learnings"
-    echo "  flow export-profile my-team --include-decisions"
 }
 
 if [ -z "$1" ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
@@ -70,11 +88,12 @@ safe_read_json() {
         try {
             const content = fs.readFileSync(file, "utf-8");
             // Check for prototype pollution attempts
-            if (/__proto__|constructor\s*["'"'"'`:]|prototype\s*["'"'"'`:]/i.test(content)) {
+            if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]|\["__proto__"\]|\["constructor"\]|\["prototype"\]/i.test(content)) {
                 console.error("Suspicious content detected");
                 process.exit(1);
             }
-            const p = JSON.parse(content);
+            let p;
+            try { p = JSON.parse(content); } catch(parseErr) { console.error(parseErr.message); process.exit(1); }
             // Safe property access based on query type
             if (query === "conflicts.length") {
                 console.log(p.conflicts ? p.conflicts.length : 0);
@@ -86,8 +105,8 @@ safe_read_json() {
                 console.error("Unknown query: " + query);
                 process.exit(1);
             }
-        } catch(e) {
-            console.error(e.message);
+        } catch(err) {
+            console.error(err.message);
             process.exit(1);
         }
     ' -- "$file" "$query" 2>/dev/null
@@ -99,6 +118,7 @@ INCLUDE_APP_MAP=false
 INCLUDE_RULES=false
 INCLUDE_LEARNINGS=false
 INCLUDE_TEMPLATES=false
+INCLUDE_SKILLS=false
 EXTRACT_PATTERNS=false
 RESOLVE_CONFLICTS=false
 ANALYSIS_MODE="balanced"
@@ -122,6 +142,9 @@ while [ $# -gt 0 ]; do
         --templates)
             INCLUDE_TEMPLATES=true
             ;;
+        --skills)
+            INCLUDE_SKILLS=true
+            ;;
         --extract-patterns)
             EXTRACT_PATTERNS=true
             ;;
@@ -130,17 +153,22 @@ while [ $# -gt 0 ]; do
             ;;
         --analysis-mode)
             shift
-            ANALYSIS_MODE="$1"
+            if [[ "$1" =~ ^(balanced|deep)$ ]]; then
+                ANALYSIS_MODE="$1"
+            else
+                echo -e "${RED}Error: Invalid analysis mode '$1'. Use 'balanced' or 'deep'${NC}"
+                exit 1
+            fi
             ;;
         --include-examples)
             INCLUDE_EXAMPLES=true
             ;;
         --full)
             INCLUDE_DECISIONS=true
-            INCLUDE_APP_MAP=true
             INCLUDE_RULES=true
             INCLUDE_LEARNINGS=true
             INCLUDE_TEMPLATES=true
+            INCLUDE_SKILLS=true
             EXTRACT_PATTERNS=true
             ;;
         *)
@@ -159,6 +187,7 @@ mkdir -p "$PROFILES_DIR"
 
 # Create temp directory for profile
 TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
 PROFILE_DIR="$TEMP_DIR/$PROFILE_NAME"
 mkdir -p "$PROFILE_DIR/agents"
 mkdir -p "$PROFILE_DIR/.workflow"
@@ -203,18 +232,17 @@ if [ "$INCLUDE_DECISIONS" = true ] || [ "$INCLUDE_RULES" = true ]; then
         CONTENTS="$CONTENTS\n- .workflow/state/decisions.md (project rules)"
     fi
 
-    # .claude/rules/
+    # .claude/rules/ (recursive — rules live in subdirectories)
     if [ "$INCLUDE_RULES" = true ] && [ -d ".claude/rules" ]; then
-        mkdir -p "$PROFILE_DIR/.claude/rules"
-        # Copy all rule files except README.md (auto-generated)
-        for file in .claude/rules/*.md; do
-            if [ -f "$file" ] && [ "$(basename "$file")" != "README.md" ]; then
-                cp "$file" "$PROFILE_DIR/.claude/rules/"
-            fi
+        # Copy entire rules tree, excluding README.md (auto-generated)
+        find .claude/rules -name "*.md" ! -name "README.md" -type f | while read -r file; do
+            rel_dir=$(dirname "$file")
+            mkdir -p "$PROFILE_DIR/$rel_dir"
+            cp "$file" "$PROFILE_DIR/$file"
         done
-        RULE_COUNT=$(ls "$PROFILE_DIR/.claude/rules/"*.md 2>/dev/null | wc -l | tr -d ' ')
+        RULE_COUNT=$(find "$PROFILE_DIR/.claude/rules" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
         if [ "$RULE_COUNT" -gt 0 ]; then
-            echo -e "  ${GREEN}✓${NC} .claude/rules/ ($RULE_COUNT rules)"
+            echo -e "  ${GREEN}✓${NC} .claude/rules/ ($RULE_COUNT rules, recursive)"
             CONTENTS="$CONTENTS\n- .claude/rules/ (coding rules)"
         fi
     fi
@@ -276,74 +304,114 @@ if [ "$INCLUDE_LEARNINGS" = true ]; then
 fi
 
 # ==========================================
-# TEMPLATES (sanitized)
+# TEMPLATES (workflow templates for code generation)
 # ==========================================
 if [ "$INCLUDE_TEMPLATES" = true ]; then
     echo ""
     echo -e "${YELLOW}Templates:${NC}"
-    mkdir -p "$PROFILE_DIR/templates"
 
-    # Sanitize and export project.md as template
-    if [ -f "$WORKFLOW_DIR/specs/project.md" ]; then
-        # Create a sanitized template (remove project-specific content)
-        cat > "$PROFILE_DIR/templates/project-template.md" << 'TEMPLATE_EOF'
-# Project Specification Template
-
-## Overview
-<!-- Fill in your project details -->
-**Name**: [PROJECT_NAME]
-**Description**: [PROJECT_DESCRIPTION]
-
-## Tech Stack
-<!-- Detected during onboarding -->
-- **Language**:
-- **Framework**:
-- **Database**:
-- **Package Manager**:
-
-## Architecture
-<!-- Document your architecture here -->
-
-## Key Components
-<!-- Auto-populated from codebase scan -->
-
-## Conventions
-<!-- Team conventions and standards -->
-
-## Goals
-<!-- Current project goals -->
-TEMPLATE_EOF
-        echo -e "  ${GREEN}✓${NC} project-template.md"
-        CONTENTS="$CONTENTS\n- templates/project-template.md"
+    # Workflow HBS templates (used to generate CLAUDE.md)
+    if [ -d "$WORKFLOW_DIR/templates" ]; then
+        mkdir -p "$PROFILE_DIR/.workflow/templates"
+        # Copy all template files (HBS, MD)
+        find "$WORKFLOW_DIR/templates" -type f \( -name "*.hbs" -o -name "*.md" \) | while read -r file; do
+            rel_path="${file#$WORKFLOW_DIR/templates/}"
+            rel_dir=$(dirname "$rel_path")
+            mkdir -p "$PROFILE_DIR/.workflow/templates/$rel_dir"
+            cp "$file" "$PROFILE_DIR/.workflow/templates/$rel_path"
+        done
+        WF_TEMPLATE_COUNT=$(find "$PROFILE_DIR/.workflow/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$WF_TEMPLATE_COUNT" -gt 0 ]; then
+            echo -e "  ${GREEN}✓${NC} .workflow/templates/ ($WF_TEMPLATE_COUNT files, CLAUDE.md generation)"
+            CONTENTS="$CONTENTS\n- .workflow/templates/ (CLAUDE.md HBS templates)"
+        fi
     fi
 
-    # Sanitize and export roadmap as template
-    if [ -f "$WORKFLOW_DIR/roadmap/roadmap.md" ]; then
-        cat > "$PROFILE_DIR/templates/roadmap-template.md" << 'ROADMAP_EOF'
-# Project Roadmap Template
-
-## Priority Levels
-- **P0**: Critical - Drop everything
-- **P1**: High - Do today
-- **P2**: Medium - Do this week
-- **P3**: Low - Do when possible
-- **P4**: Backlog - Someday
-
-## Current Sprint
-<!-- Add current sprint items -->
-
-## Upcoming
-<!-- Add upcoming work -->
-
-## Backlog
-<!-- Add backlog items -->
-
-## Completed
-<!-- Move completed items here -->
-ROADMAP_EOF
-        echo -e "  ${GREEN}✓${NC} roadmap-template.md"
-        CONTENTS="$CONTENTS\n- templates/roadmap-template.md"
+    # Story/bug/correction templates
+    if [ -d "templates" ]; then
+        mkdir -p "$PROFILE_DIR/templates"
+        find templates -type f \( -name "*.md" -o -name "*.json" -o -name "*.tsx" \) | while read -r file; do
+            rel_dir=$(dirname "$file")
+            mkdir -p "$PROFILE_DIR/$rel_dir"
+            cp "$file" "$PROFILE_DIR/$file"
+        done
+        TMPL_COUNT=$(find "$PROFILE_DIR/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$TMPL_COUNT" -gt 0 ]; then
+            echo -e "  ${GREEN}✓${NC} templates/ ($TMPL_COUNT story/bug/task templates)"
+            CONTENTS="$CONTENTS\n- templates/ (story, bug report, task templates)"
+        fi
     fi
+
+    # State file templates (.template suffix) — used during project init
+    TEMPLATE_STATE_COUNT=0
+    for tpl in "$WORKFLOW_DIR/state/"*.template; do
+        if [ -f "$tpl" ]; then
+            mkdir -p "$PROFILE_DIR/.workflow/state"
+            cp "$tpl" "$PROFILE_DIR/.workflow/state/"
+            TEMPLATE_STATE_COUNT=$((TEMPLATE_STATE_COUNT + 1))
+        fi
+    done
+    if [ "$TEMPLATE_STATE_COUNT" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} state templates ($TEMPLATE_STATE_COUNT .template files)"
+        CONTENTS="$CONTENTS\n- .workflow/state/*.template (init templates)"
+    fi
+fi
+
+# ==========================================
+# SKILLS (skill definitions and knowledge)
+# ==========================================
+if [ "$INCLUDE_SKILLS" = true ] && [ -d ".claude/skills" ]; then
+    echo ""
+    echo -e "${YELLOW}Skills:${NC}"
+
+    SKILL_DEF_COUNT=0
+    for skill_dir in .claude/skills/*/; do
+        skill_name=$(basename "$skill_dir")
+        # Skip template
+        if [ "$skill_name" = "_template" ]; then continue; fi
+
+        # Copy skill.md (the skill definition)
+        if [ -f "$skill_dir/skill.md" ]; then
+            mkdir -p "$PROFILE_DIR/.claude/skills/$skill_name"
+            cp "$skill_dir/skill.md" "$PROFILE_DIR/.claude/skills/$skill_name/"
+            SKILL_DEF_COUNT=$((SKILL_DEF_COUNT + 1))
+        fi
+    done
+
+    if [ "$SKILL_DEF_COUNT" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} skill definitions ($SKILL_DEF_COUNT skills)"
+        CONTENTS="$CONTENTS\n- .claude/skills/*/skill.md (skill definitions)"
+    fi
+fi
+
+# ==========================================
+# REVIEW AGENTS (review checklists)
+# ==========================================
+if [ "$INCLUDE_RULES" = true ] && [ -d "$WORKFLOW_DIR/agents" ]; then
+    echo ""
+    echo -e "${YELLOW}Review Agents:${NC}"
+    mkdir -p "$PROFILE_DIR/.workflow/agents"
+    AGENT_COUNT=0
+    for agent_file in "$WORKFLOW_DIR/agents/"*.md; do
+        if [ -f "$agent_file" ]; then
+            cp "$agent_file" "$PROFILE_DIR/.workflow/agents/"
+            AGENT_COUNT=$((AGENT_COUNT + 1))
+        fi
+    done
+    if [ "$AGENT_COUNT" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} .workflow/agents/ ($AGENT_COUNT review checklists)"
+        CONTENTS="$CONTENTS\n- .workflow/agents/ (review checklists: security, performance)"
+    fi
+fi
+
+# ==========================================
+# TECH STACK (generic project stack definition)
+# ==========================================
+if [ "$INCLUDE_RULES" = true ] && [ -f ".claude/docs/stack.md" ]; then
+    mkdir -p "$PROFILE_DIR/.claude/docs"
+    cp ".claude/docs/stack.md" "$PROFILE_DIR/.claude/docs/"
+    echo -e "  ${GREEN}✓${NC} .claude/docs/stack.md (tech stack)"
+    CONTENTS="$CONTENTS\n- .claude/docs/stack.md (tech stack definition)"
 fi
 
 # ==========================================
@@ -416,7 +484,10 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
                     for (const category in p.patterns) {
                         for (const pattern of p.patterns[category] || []) {
                             if (pattern.examples && pattern.examples.length > 0) {
-                                const filename = pattern.subcategory.replace(/\\./g, '-') + '.txt';
+                                const safeName = require('path').basename(
+                                    pattern.subcategory.replace(/\\./g, '-')
+                                ) + '.txt';
+                                const filename = safeName;
                                 const fileContent = pattern.name + '\\n' + '='.repeat(40) + '\\n\\n' +
                                     pattern.examples.slice(0, 5).join('\\n');
                                 fs.writeFileSync(
@@ -428,8 +499,8 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
                         }
                     }
                     console.log(count);
-                } catch(e) {
-                    console.error(e.message);
+                } catch(err) {
+                    console.error(err.message);
                     process.exit(1);
                 }
             " 2>/dev/null || true
@@ -452,8 +523,8 @@ cat > "$PROFILE_DIR/PROFILE.md" << EOF
 # Wogi Flow Profile: $PROFILE_NAME
 
 Exported: $(date +%Y-%m-%d\ %H:%M)
-Source: $(git remote get-url origin 2>/dev/null || echo "local")
-Version: 2.1
+Source: $(git remote get-url origin 2>/dev/null | sed 's|.*[:/]\([^/]*/[^/]*\)\.git$|\1|; s|.*[:/]\([^/]*/[^/]*\)$|\1|' || echo "local")
+Version: 3.0
 
 ## Contents
 $(echo -e "$CONTENTS")
@@ -486,8 +557,14 @@ $(echo -e "$CONTENTS")
 
 ## Configuration Summary
 \`\`\`json
-$(head -30 "$WORKFLOW_DIR/config.json")
-...
+$(node -e '
+const fs = require("fs");
+try {
+  const c = JSON.parse(fs.readFileSync("'$WORKFLOW_DIR'/config.json", "utf-8"));
+  const safe = { version: c.version, qualityGates: c.qualityGates, review: c.review };
+  console.log(JSON.stringify(safe, null, 2));
+} catch(err) { console.log("{}"); }
+')
 \`\`\`
 EOF
 
@@ -498,10 +575,7 @@ OUTPUT_FILE="$PROFILES_DIR/$PROFILE_NAME.zip"
 (cd "$TEMP_DIR" && zip -r "$PROFILE_NAME.zip" "$PROFILE_NAME" > /dev/null)
 mv "$TEMP_DIR/$PROFILE_NAME.zip" "$OUTPUT_FILE"
 
-# Cleanup
-rm -rf "$TEMP_DIR"
-
-# Calculate size
+# Calculate size (TEMP_DIR cleaned up by EXIT trap)
 SIZE=$(ls -lh "$OUTPUT_FILE" | awk '{print $5}')
 
 echo ""

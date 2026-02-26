@@ -157,12 +157,29 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 ---
 
-### WogiFlow for Teams — Paid SaaS Extension (Option B: Separate Repo)
+### WogiFlow for Teams — Paid SaaS Extension (Option B: Thin Adapter + Server-Side)
 
 **Status:** Planned
 **Created:** 2026-02-22
+**Updated:** 2026-02-26 (Architecture decision: Option B — thin adapter, server-side team logic)
 **Depends On:** None (existing hook architecture is the extension point)
-**Architecture:** Option B — separate private repo (`wogiflow-cloud`) with `@wogiflow/teams` npm package extending the free `wogiflow` package via hooks.
+**Architecture:** Option B — thin adapter interface in the free `wogiflow` package (login/logout + API client), all team logic lives server-side in `wogiflow-cloud`. No private npm package (`@wogiflow/teams` is NOT needed).
+
+**Architecture Decision (2026-02-26):**
+The free `wogiflow` npm package contains a thin "team adapter" layer:
+- `flow login` / `flow logout` commands — clean toggle that connects/disconnects a project to a team
+- API client for team server communication (HTTP calls only)
+- Login adds `team` section to config, enables sync hooks
+- Logout removes `team` section, reverts to local-only, keeps all local state intact
+- All real team logic (sync engine, permissions, approvals, marketplace) stays server-side
+- **No team code in the free repo** — strict boundary enforced
+
+**Benefits over @wogiflow/teams npm approach:**
+- No private npm package to manage or distribute
+- No team code ships in any client package
+- Easier to update team features without requiring CLI updates
+- Open source repo never touches team logic
+- Users don't need to install a separate package — `flow login` just works
 
 **Revenue Model:**
 - Solo WogiFlow: Free forever (everything that exists today, MIT license)
@@ -174,16 +191,41 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 ```
 Repo 1: wogi-flow (existing, public, MIT, npm: wogiflow)
   - All existing code unchanged
-  - Add minimal extension points for Teams hooks
-  - Export internal APIs Teams needs (state readers, config helpers)
+  - Thin team adapter: login/logout + API client (HTTP calls only)
+  - No team logic — just the interface to connect
 
-Repo 2: wogiflow-cloud (new, private monorepo)
+Repo 2: wogiflow-cloud (private monorepo)
   packages/
-    client/      → npm: @wogiflow/teams (extends wogiflow via hooks)
-    server/      → API server (Node.js + PostgreSQL)
-    dashboard/   → Next.js web app (wogiflow.com)
+    server/      → API server (Node.js + PostgreSQL) — ALL team logic here
+    dashboard/   → Web app (wogiflow.com)
     shared/      → Shared TypeScript types and constants
 ```
+
+**Login/Logout Flow:**
+```
+npx flow login                    # Authenticate with email
+  → OAuth flow (GitHub/Google/email)
+  → Server returns team config + API endpoints
+  → Adds team section to .workflow/config.json
+  → Enables sync hooks (session-start pull, session-end push)
+  → State files get server backing (bidirectional sync)
+
+npx flow logout                   # Revert to local-only
+  → Removes team section from config
+  → Disables sync hooks
+  → All local state preserved (nothing lost)
+  → Works exactly like free WogiFlow again
+```
+
+**What changes after login:**
+| Aspect | Free (default) | After `flow login` |
+|--------|----------------|---------------------|
+| State files | Local `.workflow/state/` only | Local + synced to team server |
+| Knowledge base | Community only (local) | Community + team shared knowledge |
+| Config | `config.json` with local settings | Adds `team` section with team ID, role |
+| Reviews | Local review reports | Reviews visible to team |
+| Decisions/rules | Per-project only | Team rules inherited + local overrides |
+| Marketplace | N/A | Access to team marketplace |
 
 **Four-Layer Knowledge Architecture:**
 ```
@@ -199,7 +241,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T1: Foundation (Sprint 1-2)
 
-**Status:** Planned
+**Status:** COMPLETE (wf-b2532240, 2026-02-26). OAuth 2.0 (GitHub + Google), JWT RS256 + opaque refresh tokens, RFC 8628 device auth, teams/projects CRUD, PostgreSQL schema (8 tables), CloudFormation (4 Lambdas), dashboard login + device approval pages, 150 unit tests.
 **Depends On:** None
 
 **Scope:**
@@ -210,12 +252,20 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 - Web dashboard: login, org creation, member invite
 - Auth token storage: `~/.wogiflow/auth.json`
 
-**Key Files (new repo):**
-- `packages/server/db/migrations/001_foundation.sql`
-- `packages/server/routes/auth.js`, `routes/orgs.js`, `routes/projects.js`
-- `packages/client/flow-cloud-auth.js` — CLI auth (device flow, OAuth)
-- `packages/client/flow-team.js` — Team management CLI
-- `packages/dashboard/app/` — Next.js pages
+**Key Files (wogiflow-cloud):**
+- `packages/server/db/003_teams.sql` — 8 tables with indexes/constraints
+- `packages/server/lib/auth.js` — JWT + refresh tokens + auth middleware
+- `packages/server/lib/oauth.js` — GitHub + Google OAuth + user upsert
+- `packages/server/lib/device-auth.js` — RFC 8628 device code management
+- `packages/server/lib/teams.js` — Team/member/project CRUD + audit log
+- `packages/server/lib/validate.js` — 6 new validators
+- `packages/server/routes/auth.js` — OAuth authorize/callback + refresh
+- `packages/server/routes/device-auth.js` — Device auth flow endpoints
+- `packages/server/routes/teams.js` — Teams CRUD + member management
+- `packages/server/routes/projects.js` — Projects CRUD under teams
+- `packages/dashboard/login.html` — OAuth login page
+- `packages/dashboard/device.html` — Device code approval page
+- `deploy/cloudformation.yaml` — 4 new Lambdas, secrets, API routes
 
 **Minimal changes to free wogiflow:**
 - `lib/installer.js` — Detect @wogiflow/teams, auto-register its hooks
@@ -226,7 +276,7 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T2: State Sync + Task Management (Sprint 3-4)
 
-**Status:** Planned
+**Status:** COMPLETE (wf-55372124, 2026-02-26). 5 stories: S1 DB schema + sync API (wf-b7d27fe6), S2 server-side merge engine (wf-8cc0ee60), S3 task claiming/locking/assignment (wf-669671eb), S4 client sync hooks + offline queue (wf-7ee14d40), S5 team presence + status (wf-9976667c). 363 tests passing, feature/teams-t2 branch.
 **Depends On:** Phase T1: Foundation
 
 **Scope:**
@@ -278,8 +328,8 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T3: Team Knowledge + Integrations (Sprint 5-6)
 
-**Status:** Planned
-**Depends On:** Phase T2: State Sync
+**Status:** COMPLETE (epic-teams-t3, 6 stories, 2026-02-26). S1 Team Rules CRUD (wf-a01e3149), S2 Team Templates (wf-9eb7323a), S3 Knowledge Sharing (wf-8203b06b), S4 Integration Framework (wf-2d0af595), S5 Jira Integration (wf-98c1c0b2), S6 GitHub Integration (wf-e8d21b8e). 39 new files, 370 tests passing.
+**Depends On:** Phase T2: State Sync (COMPLETE)
 
 **Scope:**
 - Team rules CRUD (web dashboard)
@@ -317,38 +367,39 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T4: Approval Flow (Sprint 7-8)
 
-**Status:** Planned
-**Depends On:** Phase T3: Team Knowledge
+**Status:** COMPLETE (epic-teams-t4, 6 stories, 2026-02-27). S1 Pattern Aggregation Engine (wf-5e7d92b2), S2 Approval Request System (wf-8188b390), S3 Review Queue Dashboard (wf-d8e65112), S4 Promotion Paths (wf-0c966f37), S5 Notification System (wf-5cc1b1a5), S6 Team Analytics Dashboard (wf-6c425e29). 20+ new files across server/dashboard. Post-review: 43 findings, 35+ fixed across 16 files (wf-cr-t4rv01).
+**Depends On:** Phase T3: Team Knowledge (COMPLETE)
 
 **Scope:**
 - Pattern aggregation engine (cross-user pattern detection)
-- Pending review queue on web dashboard (like PR review)
-- Approve/Modify/Dismiss with comments and audit trail
-- Auto-flagging: pattern appears across 3+ users → surfaces for admin review
-- Promotion paths:
-  - Project correction → Project decision
-  - Project pattern (3+ occurrences) → Team rule
-  - User model learning → Team knowledge
-  - Team pattern (cross-project) → Global knowledge candidate
-- Notification system (email + in-dashboard)
-- Bulk approve for low-risk patterns
-- Command metrics aggregation for team analytics dashboard
-- Gate confidence trends for quality analytics
+- Approval request system (8 CRUD + action endpoints, role-based access)
+- Review queue dashboard (GitHub dark theme, bulk actions, detail panel)
+- 4 promotion pipelines (correction→decision, pattern→rule, learning→knowledge, team→global)
+- Notification system (in-dashboard + AWS SES email, 30s polling, preferences)
+- Team analytics dashboard (Chart.js, 6 metric endpoints, date range selection)
 
-**Key Files (new repo):**
-- `packages/server/routes/reviews.js`
-- `packages/server/aggregation/pattern-engine.js`
-- `packages/dashboard/app/reviews/`
+**Key Files (wogiflow-cloud):**
+- `packages/server/aggregation/pattern-engine.js` — Cross-user pattern detection
+- `packages/server/aggregation/promotion-engine.js` — 4 promotion pipelines
+- `packages/server/lib/approvals.js` — Approval lifecycle management
+- `packages/server/lib/notifications.js` — Event-driven notifications
+- `packages/server/lib/analytics.js` — Aggregation queries
+- `packages/server/routes/approvals.js` — 8 endpoints
+- `packages/server/routes/notifications.js` — 6 endpoints
+- `packages/server/routes/analytics.js` — 6 endpoints
+- `packages/dashboard/approvals.html` + `.js` — Review queue UI
+- `packages/dashboard/analytics.html` + `.js` — Analytics charts
 
 **DB tables:**
-- `feedback_patterns` (extended with `users_affected`, `status`)
-- Reuse `audit_log` for all approval decisions
+- `aggregated_patterns`, `pattern_occurrences`, `approval_requests` (S1)
+- `approval_comments` (S2)
+- `notifications`, `notification_preferences` (S5)
 
 ---
 
 #### Phase T5: Marketplace & Global Knowledge (Sprint 9-10)
 
-**Status:** Planned
+**Status:** COMPLETE (epic-teams-t5, 2026-02-27). 6 stories, 4 batches. 3 DB migrations (014-016), 4 new route files, 3 new lib files, 5 dashboard pages. 6440+ lines of code across 25 files.
 **Depends On:** Phase T4: Approval Flow, Phase C1-C2 (Community Knowledge)
 
 **Scope:**
@@ -379,8 +430,8 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 #### Phase T6: Polish & Launch (Sprint 11-12)
 
-**Status:** Planned
-**Depends On:** Phase T5: Marketplace
+**Status:** COMPLETE (epic-teams-t6, 7 stories, 2026-02-28). S1 Team Dashboard (wf-e6dcbe53), S2 Project Health Dashboard (wf-8882f678), S3 Cross-Project Search (wf-7136dcd6), S4 Anomaly Detection & Review Insights (wf-d442d1f1), S5 Onboarding Intelligence (wf-2fb327a9), S6 Enterprise Tier (wf-74ca67ad), S7 Documentation & Launch Materials (wf-6c2ea871). All 7 stories committed. Full Teams roadmap (T1-T6) COMPLETE.
+**Depends On:** Phase T5: Marketplace (COMPLETE)
 
 **Scope:**
 - Team dashboard: presence, health analytics, activity feed
@@ -400,19 +451,26 @@ Layer 1: USER       — session-state, preferences, draft corrections, local mem
 
 ---
 
-#### Free Package Extension Points (Minimal Changes)
+#### Free Package Extension Points (Thin Team Adapter)
 
-**Status:** COMPLETE (wf-dcf132cb, 2026-02-25)
+**Status:** PARTIALLY COMPLETE (wf-dcf132cb, 2026-02-25 — config schema + hook registration done)
+**Updated:** 2026-02-26 (Architecture change: replaced @wogiflow/teams detection with thin adapter)
 **Depends On:** None
 
-**Scope:** Small changes to the free `wogiflow` package to enable Teams extension:
+**Scope:** Changes to the free `wogiflow` package to enable team connectivity:
 
-1. **`lib/installer.js`** — Detect `@wogiflow/teams` in node_modules, auto-register its hooks in `.claude/settings.local.json`
-2. **`scripts/flow-utils.js`** — Ensure state reader functions are exported (most already are)
-3. **`.workflow/config.json` schema** — Add empty `team: {}` section with `projectId`, `orgId`, `enabled` fields
-4. **`scripts/hooks/core/index.js`** — Add extension hook registration (allow Teams to register additional core hooks)
+**Already done:**
+1. **`scripts/flow-utils.js`** — State reader functions exported
+2. **`.workflow/config.json` schema** — Empty `team: {}` section with `projectId`, `orgId`, `enabled` fields
+3. **`scripts/hooks/core/index.js`** — Extension hook registration
 
-These are backwards-compatible. Free users see no change.
+**Still needed (new architecture):**
+4. **`scripts/flow-team-adapter.js`** — Thin API client for team server communication (HTTP calls only, no team logic)
+5. **`flow login` / `flow logout` CLI commands** — OAuth flow, config toggle, hook enable/disable
+6. **Session hooks update** — When team is connected: pull on start, push on end (delegates to server API)
+7. **Remove** `@wogiflow/teams` detection from `lib/installer.js` — no longer needed (thin adapter replaces npm package approach)
+
+These are backwards-compatible. Free users see no change. `flow login` is the only entry point to team features.
 
 ---
 
@@ -506,6 +564,26 @@ Record screen + audio → Extract tasks with visual context → Generate WogiFlo
 ### Move npm to @wogi Organization
 
 **Why deferred**: Current `wogiflow` package works fine. Migration adds complexity (scoped package, update all docs). Consider when team grows or branding matters.
+
+---
+
+### Claude Code Plugin Marketplace Manifest
+
+**Priority**: Low
+**Status**: Idea
+**Created**: 2026-02-25
+**Source**: Comparison research with obra/superpowers
+
+Create a `.claude-plugin/plugin.json` manifest to enable distribution via the Claude Code plugin marketplace alongside the existing npm distribution. Superpowers uses this for one-line installs (`/plugin install superpowers@superpowers-marketplace`). Would give WogiFlow a second discovery/install channel.
+
+**Scope:**
+- Create `.claude-plugin/plugin.json` with plugin metadata
+- Create `hooks/hooks.json` for hook registration
+- Ensure SessionStart hook works via plugin system (currently works via `.claude/settings.json`)
+- Test plugin install/uninstall lifecycle
+- Submit to `anthropic/claude-code-plugins` marketplace (or equivalent)
+
+**Why Low Priority:** npm distribution works well. Plugin marketplace is an additional channel, not a replacement. Do after all Teams phases are complete.
 
 ---
 

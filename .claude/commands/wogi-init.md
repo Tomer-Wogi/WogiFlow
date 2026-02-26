@@ -461,11 +461,67 @@ After all phases complete, display:
 - Display: `No source files found in reference project. Only package.json patterns imported.`
 
 #### If "Exported WogiFlow profile" selected:
-1. Ask for the .zip file path
-2. Extract to temp folder
-3. Read `profile.json` for metadata
-4. Display contents: rules, skills, decisions, tech stack
-5. Same conflict detection as above
+
+**Delegate to `flow-import-profile`** — the hardened import script with full merge semantics, security checks, and cleanup.
+
+1. Ask for the .zip file path:
+   ```javascript
+   AskUserQuestion({
+     questions: [{
+       question: "What is the path to the exported WogiFlow profile (.zip)?",
+       header: "Zip path",
+       options: [
+         { label: "Browse", description: "Enter the full path to the .zip file" }
+       ],
+       multiSelect: false
+     }]
+   });
+   ```
+
+2. Validate the zip path exists:
+   ```bash
+   if [ ! -f "<zip-path>" ]; then
+     echo "File not found: <zip-path>"
+     # Offer retry or skip
+   fi
+   ```
+
+3. Invoke the import script with init-appropriate flags:
+   ```bash
+   ./scripts/flow-import-profile "<zip-path>" --force
+   ```
+   - `--force`: Skip confirmation prompts (init is setting up fresh, no conflicts possible)
+   - No `--skip-*` flags: Import everything during init (rules, learnings, skills, templates)
+   - The script handles: smart config merge (jq), append-with-separator for decisions.md,
+     skip-if-exists for templates, path traversal protection, prototype-pollution checks,
+     zip-slip prevention, and trap-based temp directory cleanup
+
+4. Capture and display the import summary:
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Profile Import Complete
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Source: <zip-path>
+   Imported: CLAUDE.md, agents/, config.json, rules, skills, templates
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+5. If the import script exits non-zero (e.g., security check failed, invalid zip):
+   - Display the error message from the script
+   - Offer options:
+     ```
+     Import failed. Options:
+     [1] Try a different zip file
+     [2] Skip profile import and continue setup
+     ```
+
+**Why delegate?** The import script was hardened with 19 security and correctness fixes
+(path traversal containment, prototype-pollution regex, zip-slip prevention, trap cleanup,
+jq merge validation, etc.). Reimplementing this logic inline would miss these protections.
+
+**Combined with other sources**: If the user also selected "Other project folder", run the
+zip import FIRST (establishes baseline rules), then the project folder scan SECOND (adds
+project-specific patterns on top). Conflicts between the two are detected normally.
 
 #### If "PRD or project description" selected:
 1. Ask user to paste or provide file path

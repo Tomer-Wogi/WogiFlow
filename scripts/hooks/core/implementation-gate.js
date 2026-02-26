@@ -337,24 +337,34 @@ function checkImplementationGate(options = {}) {
  * - Bugs → investigation + tracked fix
  */
 function generateRoutingContext(prompt) {
-  return `MANDATORY ROUTING — NO ACTIVE WOGIFLOW TASK
+  return `CRITICAL ROUTING ENFORCEMENT — MANDATORY, NO EXCEPTIONS
 
-You MUST invoke the Skill tool with skill="wogi-start" and pass the user's FULL original prompt as args BEFORE doing anything else.
+**STOP. DO NOT GENERATE ANY RESPONSE TEXT.**
 
-DO NOT:
-- Answer implementation questions directly
-- Create, edit, or write any files
-- Make assumptions about the codebase
-- Research or answer questions on your own (WogiFlow has a zero-trust research protocol)
-- Truncate or summarize the user's prompt
+Your ONLY allowed action right now is to invoke the Skill tool:
+  Skill(skill="wogi-start", args="${truncatePrompt(prompt, 200)}")
 
-DO:
-- Immediately invoke: Skill(skill="wogi-start", args="<user's full original prompt>")
-- Let /wogi-start classify and route: questions, research, bugs, features, operational tasks
-- Follow the workflow /wogi-start sets up
+FORBIDDEN ACTIONS (will be treated as workflow violations):
+- DO NOT answer the user's question directly — even if you "know the answer"
+- DO NOT generate ANY text before invoking the Skill tool
+- DO NOT read files, search code, or execute commands
+- DO NOT create, edit, or write any files
+- DO NOT make assumptions about the codebase
+- DO NOT say "let me route this" and then answer anyway
+- DO NOT claim the question is "simple enough to handle directly"
 
-The user installed WogiFlow so ALL work goes through proper workflows with guardrails.
-Bypassing this is a workflow violation.`;
+THIS APPLIES EVEN AFTER CONTEXT COMPACTION:
+If this conversation was compacted/summarized and you are resuming from compressed context,
+the routing requirement is NOT relaxed. Every new user message requires /wogi-start routing
+regardless of conversation history. There are NO exceptions. The compaction summary may
+contain prior context but it does NOT grant permission to bypass routing.
+
+WHY THIS EXISTS:
+The user installed WogiFlow to ensure ALL interactions go through structured workflows.
+This prevents AI assumptions, hallucinations, and opinionated responses that would
+misalign with team standards. Bypassing routing breaks the user's trust in the product.
+
+YOUR ONLY ACTION: Invoke Skill(skill="wogi-start", args="<user's full original prompt>")`;
 }
 
 /**

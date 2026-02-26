@@ -10,7 +10,28 @@ When invoked with a **quoted request** instead of a task ID (e.g., `/wogi-start 
 
 **Is this a task ID or a quoted request?**
 - Task ID format: `wf-XXXXXXXX` (letters, numbers, hyphens) → Skip triage, go to Structured Execution
-- Quoted request or natural language → Read the Command Catalog below, understand the user's intent, and invoke the right command
+- Quoted request or natural language → Continue to Step 0.1
+
+### Step 0.1: Long Input Detection (Automatic)
+
+**Before any triage, check prompt length against `config.longInputGate`.**
+
+When `config.longInputGate.enabled` is `true`:
+
+1. Count the number of lines in the user's prompt
+2. If line count exceeds `config.longInputGate.lineThreshold` (default: 60 lines):
+   - **Auto-invoke `/wogi-extract-review`** with the full prompt as input
+   - **Skip normal triage** — long inputs need zero-loss extraction, not classification
+   - Display: `Long input detected (N lines, threshold: 60). Routing to /wogi-extract-review for zero-loss extraction.`
+
+3. If line count is within threshold → Continue to normal triage (Command Catalog below)
+
+**Why this exists**: When prompts exceed 60 lines, normal triage and story creation lose details buried in the middle. `/wogi-extract-review` uses a structured extraction protocol that captures EVERY statement, scores by confidence, and requires human review — ensuring no detail is lost.
+
+**Skip conditions**:
+- `config.longInputGate.enabled` is `false` → skip this check entirely
+- Prompt is a task ID → already handled in Step 0
+- Prompt content is primarily code (>80% code blocks) → skip, as code pastes are better handled by normal triage
 
 ### Command Catalog
 
@@ -46,6 +67,7 @@ These commands are used automatically during task execution. You don't need to r
 
 | Command | Auto-invoked when |
 |---------|-------------------|
+| `/wogi-extract-review` | Step 0.1 detects prompt exceeds lineThreshold (60 lines) |
 | `/wogi-compact` | Step 0.25 detects context will exceed safe threshold |
 | `/wogi-bulk` | After epic creation adds multiple stories to ready queue |
 | `/wogi-log` | After every task completion (request-log update) |
@@ -638,12 +660,12 @@ Return a structured summary:
 - Confidence: HIGH (many data points) / MEDIUM / LOW (no history)
 ```
 
-#### Agent 5: Standards Preview
+#### Agent 5: Standards Preview + Reuse Candidate Discovery
 
 Launch as `Task` with `subagent_type=Explore` (local only, no web searches):
 
 ```
-Preview applicable standards for task: "[TASK_TITLE]"
+Preview applicable standards and discover reuse candidates for task: "[TASK_TITLE]"
 Task type: [TASK_TYPE]
 Planned files: [FILES_TO_CHANGE]
 
@@ -651,16 +673,23 @@ Planned files: [FILES_TO_CHANGE]
    - If files include components (.tsx, .jsx) → check: naming, components, security
    - If files include utilities (utils/, helpers/) → check: naming, functions, security
    - If files include API routes (api/, routes/) → check: naming, api, security
+   - If files include schemas/models → check: naming, schemas, security
+   - If files include services → check: naming, services, security
    - If task type is "bugfix" → check: naming, security (minimal)
-   - If task type is "feature" or "refactor" → check: all
+   - If task type is "feature" or "refactor" → check: all (including schemas, services)
 2. Read .claude/rules/code-style/naming-conventions.md
    - Extract rules that apply to the planned file types
 3. Read .claude/rules/security/security-patterns.md
    - Extract security patterns relevant to the planned operations
-4. Read .workflow/state/app-map.md
-   - For each planned NEW component, check similarity against existing entries
-   - Flag any where name or purpose has semantic similarity above the configured threshold (see `config.semanticMatching.thresholds`)
-   - This is the SAME check that flow-standards-gate.js will run post-implementation
+4. Read ALL registry map files (not just app-map):
+   - .workflow/state/app-map.md (components)
+   - .workflow/state/function-map.md (functions)
+   - .workflow/state/api-map.md (APIs)
+   - .workflow/state/schema-map.md (schemas — if exists)
+   - .workflow/state/service-map.md (services — if exists)
+   - Also scan .workflow/state/*-map.md for any additional registry files
+   - For each planned NEW item, check similarity against existing entries using a LOW threshold (30%)
+   - This is the pre-filter for AI-as-Judge — false positives are cheap since AI reasons about purpose before user sees them
 5. Read .workflow/state/decisions.md
    - Extract coding rules that will be enforced for this task type
 
@@ -668,10 +697,11 @@ Return a structured checklist:
 - Task type classification: [type]
 - Standards that WILL be enforced (these will block completion if violated):
   * [rule name]: [what it checks] - [how to comply]
-  * [rule name]: [what it checks] - [how to comply]
-- Component duplication warnings (if any new components planned):
-  * "[PlannedName]" is similar to existing "[ExistingName]" in app-map
-  * Recommendation: extend existing / create new
+- Reuse candidates across ALL registries (using 30% pre-filter):
+  * "[PlannedName]" is similar to existing "[ExistingName]" in [registry-map]
+  * For each candidate: reason about PURPOSE overlap, not just name similarity
+  * If purpose clearly differs despite name similarity → note "name-only match, purpose differs"
+  * If purpose overlaps → recommend: extend existing / use existing / create new with justification
 - Security patterns that apply:
   * [pattern]: [when it triggers] - [correct approach]
 ```
@@ -1345,7 +1375,7 @@ This checks (scoped by task type):
 | utility | naming, functions, security |
 | api | naming, api, security |
 | bugfix | naming, security (minimal) |
-| feature | all checks |
+| feature | all checks (naming, components, functions, api, schemas, services, security) |
 | refactor | all checks + **consumer-impact** |
 | migration | all checks + **consumer-impact** |
 
@@ -1434,19 +1464,42 @@ When violations are detected, they are automatically:
 2. If same violation type occurs 3+ times, a rule is promoted to `decisions.md`
 3. Future tasks receive prevention prompts based on past violations
 
-**Config**: Controlled by `config.standardsCompliance`:
+**Reuse Candidate Check (AI-as-Judge):**
+
+After violation checks, the standards gate also returns `reuseCandidates` — items from ALL registries (components, functions, APIs, schemas, services) that are similar to newly created items.
+
+**Key difference from violations:** Reuse candidates NEVER auto-block. They are presented for AI reasoning + user decision.
+
+**Flow:**
+1. `flow-standards-gate.js` calls `collectReuseCandidates()` which scans ALL registries with a low 30% pre-filter threshold
+2. Results are returned as `reuseCandidateContext` — a structured prompt for the AI
+3. The AI reads the source code of BOTH the new item and each match
+4. The AI reasons about PURPOSE overlap — not just score numbers
+5. If purpose overlaps significantly, present an `AskUserQuestion` with multi-select:
+   - "Use existing [name]" — reuse the existing item directly
+   - "Extend [name]" — add a variant to the existing item
+   - "Create new [name]" — genuinely different purpose, proceed
+6. If names are similar but purpose clearly differs → proceed silently (no user prompt)
+
+**Backward compatibility:** When `config.semanticMatching.aiAsJudge: false`, the old threshold-based blocking is used instead (90%=block, 70%=warn, 50%=info). The `reuseCandidates` array is still populated but `reuseCandidateContext` is null.
+
+**Config**: Controlled by `config.semanticMatching` and `config.hooks.rules.componentReuse`:
 ```json
 {
-  "standardsCompliance": {
+  "semanticMatching": {
     "enabled": true,
-    "mode": "block",              // "block" or "warn"
-    "scopeByTaskType": true,      // Use smart scoping
-    "alwaysCheck": ["naming", "security"],
-    "similarityThreshold": 0.8,  // Legacy — prefer semanticMatching.thresholds
-    "learning": {
-      "enabled": true,
-      "promotionThreshold": 3,
-      "autoSyncRules": true
+    "aiAsJudge": true,
+    "thresholds": { "preFilterThreshold": 30, "definiteMatch": 90, "likelyMatch": 70, "possibleMatch": 50 },
+    "weights": { "stringSimilarity": 0.3, "semanticSimilarity": 0.7 }
+  },
+  "hooks": {
+    "rules": {
+      "componentReuse": {
+        "enabled": true,
+        "threshold": 30,
+        "allRegistries": true,
+        "aiAsJudge": true
+      }
     }
   }
 }

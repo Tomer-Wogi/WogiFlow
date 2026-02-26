@@ -393,25 +393,18 @@ function loadConfig() {
 
 /**
  * Get parallelizability scores for a set of tasks.
- * Delegates to flow-agent-teams.js for the scoring logic.
  *
  * @param {Array} tasks - Tasks to score
  * @returns {Object} { parallelCount, sequentialCount, summary, scores }
  */
 function getParallelizabilityScores(tasks) {
-  try {
-    const { getParallelizabilitySummary } = require('./flow-agent-teams');
-    return getParallelizabilitySummary(tasks);
-  } catch {
-    // Fallback if flow-agent-teams not available
-    const parallelizable = findParallelizable(tasks);
-    return {
-      parallelCount: parallelizable.length,
-      sequentialCount: tasks.length - parallelizable.length,
-      summary: `${parallelizable.length} of ${tasks.length} tasks can run in parallel`,
-      scores: []
-    };
-  }
+  const parallelizable = findParallelizable(tasks);
+  return {
+    parallelCount: parallelizable.length,
+    sequentialCount: tasks.length - parallelizable.length,
+    summary: `${parallelizable.length} of ${tasks.length} tasks can run in parallel`,
+    scores: []
+  };
 }
 
 module.exports = {

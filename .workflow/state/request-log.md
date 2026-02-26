@@ -13,6 +13,84 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 <!-- Entries below. Format: R-001, R-002, etc. -->
 
+### R-188 | 2026-02-27 16:00
+**Type**: new
+**Tags**: #feature:reuse-detection #script:flow-semantic-match #script:flow-standards-checker #script:flow-standards-gate #config
+**Request**: "Implement Reuse Detection System — AI-as-Judge + Full Registry Coverage"
+**Result**: Replaced score-driven auto-blocking with AI-as-Judge + user choice pattern. Added: (1) schemas/services keyword domains in flow-semantic-match.js. (2) `findReuseCandidates()` with 30% pre-filter threshold. (3) `checkApiDuplication()`, `checkRegistryDuplication()`, `parseSchemaMap()`, `parseServiceMap()`, `parseGenericMap()` in flow-standards-checker.js. (4) `discoverAllRegistries()` with manifest + disk fallback. (5) `collectReuseCandidates()` scans ALL registries. (6) `formatReuseCandidatesForAI()` generates structured AI context in flow-standards-gate.js. (7) Updated config with `aiAsJudge`, `preFilterThreshold`, `allRegistries` keys. (8) Updated wogi-start.md Agent 5 and Step 3.7 for AI-as-Judge flow. Backward compatible: `aiAsJudge: false` reverts to old threshold blocking.
+**Files**: scripts/flow-semantic-match.js, scripts/flow-standards-checker.js, scripts/flow-standards-gate.js, .workflow/config.json, .claude/commands/wogi-start.md, .workflow/state/request-log.md
+
+### R-187 | 2026-02-26 18:00
+**Type**: fix
+**Tags**: #feature:export-import #script:flow-export-profile #script:flow-import-profile #command:wogi-export #command:wogi-import
+**Request**: "Review and fix import/export functionality — ensure export captures all generic enforcement artifacts but excludes session-specific data"
+**Result**: Comprehensive review found 7 categories of artifacts missing from export/import. Fixed: (1) `.claude/rules/` now exports recursively (was only matching top-level *.md, missing security/, code-style/, architecture/, operations/ subdirs). (2) Added skill definitions export (`.claude/skills/*/skill.md`). (3) Added review agent checklists (`.workflow/agents/`). (4) Added tech stack export (`.claude/docs/stack.md`). (5) Added workflow HBS templates (`.workflow/templates/`). (6) Added story/bug/task templates (`templates/`). (7) Added state init templates (`.workflow/state/*.template`). Removed app-map from `--full` (project-specific). Updated both slash command docs to v3.0.
+**Files**: `scripts/flow-export-profile`, `scripts/flow-import-profile`, `.claude/commands/wogi-export.md`, `.claude/commands/wogi-import.md`
+
+### R-186 | 2026-02-27 15:00
+**Type**: new
+**Tags**: #feature:teams #epic:epic-teams-t4 #phase:T4 #repo:wogiflow-cloud
+**Task**: epic-teams-t4
+**Request**: "Continue with the next teams phase on the roadmap — T4: Approval Flow"
+**Result**: Completed entire T4 epic (6 stories) via `/wogi-bulk` orchestrator. Batch 1: S1 Pattern Aggregation Engine (ae93fa8). Batch 2: S2 Approval Request System (002f876). Batch 3 (parallel): S3 Review Queue Dashboard (53eca72), S4 Promotion Paths (5195f0e), S6 Team Analytics Dashboard (3b3b605). Batch 4: S5 Notification System (d682239). 20+ new files: pattern aggregation engine, approval CRUD (8 endpoints), review queue dashboard, 4 promotion pipelines (correction→decision, pattern→rule, learning→knowledge, team→global), notification system (in-dashboard + AWS SES email), team analytics dashboard (Chart.js, 6 metric endpoints). All on feature/teams-t2 branch in wogiflow-cloud.
+**Files**: `packages/server/aggregation/pattern-engine.js`, `packages/server/aggregation/promotion-engine.js`, `packages/server/aggregation/promotions/*.js`, `packages/server/lib/approvals.js`, `packages/server/lib/approval-requests.js`, `packages/server/lib/notifications.js`, `packages/server/lib/email.js`, `packages/server/lib/analytics.js`, `packages/server/routes/approvals.js`, `packages/server/routes/patterns.js`, `packages/server/routes/notifications.js`, `packages/server/routes/analytics.js`, `packages/dashboard/approvals.html`, `packages/dashboard/approvals.js`, `packages/dashboard/analytics.html`, `packages/dashboard/analytics.js`, `packages/dashboard/notifications.js`, `packages/server/db/010_approval_flow.sql`, `packages/server/db/011_approval_comments.sql`, `packages/server/db/013_notifications.sql`
+
+### R-185 | 2026-02-25 15:34
+**Type**: new
+**Tags**: #feature:workflow #command:wogi-finalize #config #research:superpowers
+**Task**: wf-7b6dae6e
+**Request**: "Add branch finalization workflow, TDD enforcement, and plugin marketplace to roadmap — from superpowers comparison research"
+**Result**: Four actions from superpowers vs WogiFlow research: (1) Enabled TDD enforcement in config (`tdd.enforced: true`, `defaultForTypes: ["bugfix"]`). (2) Created `/wogi-finalize` command — guides merge/PR/discard decision after worktree task completion, with auto-PR generation, squash options, and config-driven behavior. Added natural language detection and config section. (3) Analyzed anti-rationalization blocks — concluded not needed since mechanical hooks already prevent bypass; edge cases manageable. (4) Added plugin marketplace manifest to roadmap Ideas section at low priority.
+**Files**: `.claude/commands/wogi-finalize.md`, `.workflow/config.json`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md`, `.workflow/roadmap.md`
+
+### R-184 | 2026-02-26 23:45
+**Type**: new
+**Tags**: #feature:workflow #component:flow-context-estimator #command:wogi-review-fix #config
+**Task**: wf-911123c5
+**Request**: "Implement smart auto-compaction for review-fix sessions — dynamic context-aware batching"
+**Result**: Added dynamic context-aware batching to review-fix sessions. Extended `flow-context-estimator.js` with finding-level estimation functions: `estimateFindingContextCost()` calculates context per finding based on severity/complexity, `calculateDynamicBatchSize()` packs findings into available context, `createFindingBudget()` splits all findings into sub-agent batches. Updated `wogi-review-fix.md` with "Context-Aware Orchestrated Mode" — when 10+ findings exist, the orchestrator spawns sub-agents with fresh context per batch instead of processing everything in one conversation. Batch sizes are dynamic (not hardcoded), calculated from finding complexity. Progress tracked in state file that survives compaction/interruption. Enabled `smartCompaction` in config and added `contextBudget` config to `reviewFix`. Tested with actual 37 T3 findings → 3 batches of 9/12/16 findings.
+**Files**: `scripts/flow-context-estimator.js`, `.claude/commands/wogi-review-fix.md`, `.workflow/config.json`, `.workflow/state/ready.json`, `.workflow/state/pending-skill.json`
+
+### R-183 | 2026-02-26 23:30
+**Type**: fix
+**Tags**: #feature:teams #security #architecture #component:db #component:cloudformation #component:shared
+**Task**: wf-rv-t1sec002, wf-rv-t1infra5, wf-rv-t1refact
+**Request**: "Fix 3 remaining review findings from T1 review"
+**Result**: (1) SSL cert verification: enabled rejectUnauthorized by default, configurable via DB_SSL_REJECT_UNAUTHORIZED env var. (2) VPC migration: full VPC with private subnets, NAT Gateway, VPC endpoints, 11 Lambdas in VPC, DB restricted to Lambda SG only (was 0.0.0.0/0). (3) Shared utilities: created lib/shared.js with parseJsonBody, getClientIp, getSecretCached — 81 duplications removed across 20 files. 370 tests passing.
+**Files**: `packages/server/lib/db.js`, `deploy/cloudformation.yaml`, `packages/server/lib/shared.js` (new), 20+ route/lib files refactored
+
+### R-182 | 2026-02-26 22:00
+**Type**: new
+**Tags**: #feature:teams #epic:epic-teams-t3 #component:team-rules #component:templates #component:knowledge #component:integrations #component:jira #component:github
+**Task**: epic-teams-t3 (wf-a01e3149, wf-9eb7323a, wf-8203b06b, wf-2d0af595, wf-98c1c0b2, wf-e8d21b8e)
+**Request**: "Plan and implement T3: Team Knowledge + Integrations phase from the roadmap"
+**Result**: Implemented all 6 stories of Phase T3 in wogiflow-cloud repo. S1: Team Rules CRUD with rule cascade (enforced/overridable), category management, sync status. S2: Team Templates system with export/apply/versioning/defaults. S3: Knowledge Sharing with model learnings, skill learnings, model profiles, shared configs, session hooks for push/pull. S4: Integration Framework with BaseAdapter pattern, AES-256-GCM credential encryption, HMAC-SHA256 webhook verification, adapter registry. S5: Jira Integration with OAuth 2.0 3LO, webhook handling, bidirectional sync, description-to-AC parsing (5 strategies), configurable field mapping. S6: GitHub Integration with OAuth, issues/PRs/push webhook handling, PR linking, commit attribution, label-to-priority mapping. 4 DB migrations (005-008), 39 new files total, 370 tests passing.
+**Files**: `packages/server/db/005_team_rules.sql`, `006_team_templates.sql`, `007_integrations.sql`, `008_knowledge.sql`, `packages/server/lib/team-rules.js`, `templates.js`, `integrations.js`, `knowledge-sync.js`, `packages/server/routes/team-rules.js`, `templates.js`, `integrations.js`, `webhooks.js`, `team-knowledge.js`, `packages/server/integrations/base-adapter.js`, `index.js`, `jira-adapter.js`, `jira-field-mapper.js`, `github-adapter.js`, `github-field-mapper.js`, `packages/client/flow-team-templates.js`, `lib/knowledge-client.js`, `hooks/task-completed-cloud.js`, `packages/dashboard/team-rules.html`, `team-rules.js`, `templates.html`, `templates.js`, `integrations.html`, `integrations.js`, `knowledge.html`, `knowledge.js`, `jira-config.html`, `jira-config.js`, `github-config.html`, `github-config.js`, `packages/server/tests/unit/integrations.test.js` (modified: `validate.js`, `teams.js`, `session-start-cloud.js`, `session-end-cloud.js`, `index.html`, `cloudformation.yaml`)
+
+### R-181 | 2026-02-26 14:00
+**Type**: new
+**Tags**: #feature:workflow #component:longInputGate #component:installer #component:upgrader #component:wogi-start
+**Task**: wf-07b0059a
+**Request**: "Enable longInputGate by default and add auto-routing"
+**Result**: Enabled longInputGate as default for all installs (enabled: true, lineThreshold: 60). Added longInputGate section to installer.js configContent so fresh installs get it. Added upgrade migration in upgrader.js that flips enabled: false → true for existing installs. Updated this project's config.json. Added Step 0.1 "Long Input Detection" to wogi-start.md that auto-invokes /wogi-extract-review when prompt exceeds 60 lines.
+**Files**: `lib/installer.js`, `lib/upgrader.js`, `.workflow/config.json`, `.claude/commands/wogi-start.md`, `CLAUDE.md` (regenerated)
+
+### R-180 | 2026-02-25 16:00
+**Type**: fix
+**Tags**: #feature:workflow #component:routing-gate #component:implementation-gate #component:stop-hook #component:claude-md
+**Task**: wf-fa82f23d
+**Request**: "Harden routing enforcement — close post-compaction bypass gap"
+**Result**: Closed the gap where AI could bypass mandatory /wogi-start routing after context compaction by responding from compressed memory without calling any tools. Implemented 4 hardening layers: (1) Hardened generateRoutingContext() in implementation-gate.js with explicit post-compaction warning and stronger "STOP" messaging, (2) Added compaction routing anchor to wogi-compact.md so routing instruction survives context compression, (3) Added routing enforcement to Stop hook — if AI tries to stop with routing-pending flag still set, it's caught and forced to route through /wogi-start, (4) Added "Post-Compaction Routing (CRITICAL)" section to claude-md.hbs template and regenerated CLAUDE.md. Full verification chain confirmed: no race conditions, no infinite loops, session-isolated flags.
+**Files**: `scripts/hooks/core/implementation-gate.js`, `scripts/hooks/entry/claude-code/stop.js`, `.claude/commands/wogi-compact.md`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md` (regenerated), `.workflow/state/ready.json`
+
+### R-177 | 2026-02-26 04:00
+**Type**: new
+**Tags**: #feature:teams #component:auth #component:oauth #component:device-auth #component:teams #component:projects #infra:cloudformation
+**Task**: wf-b2532240
+**Request**: "Phase T1: Teams Foundation — OAuth, teams, CLI device auth"
+**Result**: Built the full Teams Foundation in wogiflow-cloud on feature/teams-t1 branch. Created 003_teams.sql DB migration with 8 tables (users, teams, team_members, projects, refresh_tokens, oauth_state, device_codes, audit_log). Implemented JWT auth (RS256, 15min TTL) + opaque refresh tokens (30 days, rotated on use). Added GitHub and Google OAuth 2.0 flows with one-time state tokens. Implemented RFC 8628 Device Authorization Grant for CLI auth with rate limiting. Built Teams CRUD with role hierarchy (owner>admin>member>viewer) and Projects CRUD with per-team slug uniqueness. Updated CloudFormation with 4 new Lambda functions, API routes, and 3 secrets. Created dashboard login.html and device.html pages. 150 unit tests passing.
+**Files**: `packages/server/db/003_teams.sql` (new), `packages/server/lib/auth.js` (new), `packages/server/lib/oauth.js` (new), `packages/server/lib/device-auth.js` (new), `packages/server/lib/teams.js` (new), `packages/server/routes/auth.js` (new), `packages/server/routes/device-auth.js` (new), `packages/server/routes/teams.js` (new), `packages/server/routes/projects.js` (new), `packages/server/lib/validate.js`, `packages/server/package.json`, `deploy/cloudformation.yaml`, `packages/dashboard/login.html` (new), `packages/dashboard/device.html` (new), `packages/server/tests/unit/auth.test.js` (new), `packages/server/tests/unit/device-auth.test.js` (new), `packages/server/tests/unit/teams.test.js` (new), `packages/server/tests/unit/validate-teams.test.js` (new)
+
 ### R-176 | 2026-02-26 00:00
 **Type**: new
 **Tags**: #feature:community #component:pipeline-worker #component:admin-api #component:embeddings #component:github-api
@@ -1691,3 +1769,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Fix 17 review findings from a684a46 code review — security hardening, logic fixes, architecture cleanup"
 **Result**: Fixed 16 of 17 findings across 6 files. Critical: IPv6 SSRF bypass (bracket-delimited hostnames). High: response size TOCTOU (check before append), testFiles command injection (execFileSync + path validation). Medium: PII path coverage, path traversal in UNSAFE_CHARS, config override whitespace, mergeModelIntelligence insertion order, JSDoc accuracy. Low: try-catch, version cache, dedup scope, DNS-label regex, module-level imports, dead http import, parseInt consistency. Deferred: arch-001 (SSRF validator dedup with flow-links.js — architectural task).
 **Files**: `scripts/flow-community.js`, `scripts/flow-regression.js`, `scripts/flow-script-resolver.js`, `scripts/hooks/core/extension-registry.js`, `scripts/hooks/entry/claude-code/session-start.js`, `scripts/flow-utils.js`
+
+### R-147 | 2026-02-26 15:00
+**Type**: feature
+**Tags**: #feature:extract-review #component:flow-extraction-review #component:flow-long-input #component:flow-long-input-stories #command:wogi-extract-review
+**Task**: wf-94bd09bb
+**Request**: "Unify /wogi-extract-review into single end-to-end flow — combine zero-loss extraction, 4-pass pipeline, clarification questions, and story generation into one automated flow"
+**Result**: Added autoReview(), batchConfirm(), autoComplete() to flow-extraction-review.js for automated batch review. Added runFullPipeline() to flow-long-input.js to chain passes 2-4 in one call. Added generateAndExportStories() to flow-long-input-stories.js for one-call story generation and ready.json export. Rewrote wogi-extract-review.md with 6-phase AI orchestration protocol. Old manual CLI preserved as advanced mode. User's only touchpoint: answering clarifying questions when AI can't auto-resolve contradictions.
+**Files**: `scripts/flow-extraction-review.js`, `scripts/flow-long-input.js`, `scripts/flow-long-input-stories.js`, `.claude/commands/wogi-extract-review.md`

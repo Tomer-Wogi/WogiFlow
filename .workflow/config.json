@@ -506,6 +506,13 @@
     "runOnTaskComplete": true,
     "onFailure": "warn"
   },
+  "tdd": {
+    "enforced": true,
+    "_comment_enforced": "When true, task execution uses test-first order: write test → verify fails → implement → verify passes. Inspired by obra/superpowers mandatory TDD enforcement.",
+    "defaultForTypes": ["bugfix"],
+    "requireFailingTestFirst": true,
+    "testFrameworkDetection": true
+  },
   "componentRules": {
     "preferVariants": true,
     "requireAppMapEntry": true,
@@ -755,7 +762,7 @@
     }
   },
   "smartCompaction": {
-    "enabled": false,
+    "enabled": true,
     "safeThreshold": 0.95,
     "emergencyThreshold": 0.9,
     "estimation": {
@@ -931,7 +938,9 @@
   "_comment_registries": "Unified registry config. 'auto' = activate only when stack condition is met. Old-format keys (functionRegistry, apiRegistry, componentIndex) are still read for backwards compatibility.",
   "semanticMatching": {
     "enabled": false,
+    "aiAsJudge": true,
     "thresholds": {
+      "preFilterThreshold": 30,
       "definiteMatch": 90,
       "likelyMatch": 70,
       "possibleMatch": 50
@@ -942,6 +951,7 @@
     },
     "useAIReview": true
   },
+  "_comment_semanticMatching": "aiAsJudge: true = AI reasons about purpose before presenting candidates (no auto-blocking). preFilterThreshold: 30 = intentionally low to catch lean-vs-rich component pairs. When aiAsJudge: false, old threshold blocking (90/70/50) is used.",
   "guidedEdit": {
     "enabled": false,
     "sessionFile": ".workflow/state/guided-edit-session.json",
@@ -964,6 +974,19 @@
     "autoCleanupHours": 24,
     "keepOnFailure": false,
     "squashOnMerge": true
+  },
+  "finalization": {
+    "enabled": true,
+    "_comment_finalization": "Branch finalization workflow — guides merge/PR/discard decision after task completion. Inspired by obra/superpowers finishing-a-development-branch skill.",
+    "defaultAction": "ask",
+    "autoMergeForTypes": ["bugfix", "quick-fix"],
+    "requirePRForTypes": [],
+    "squashOnMerge": true,
+    "prTemplate": {
+      "includeTaskSpec": true,
+      "includeCommitList": true,
+      "includeFileSummary": true
+    }
   },
   "hybrid": {
     "enabled": false,
@@ -1134,9 +1157,9 @@
     "maxHistoryEntries": 100
   },
   "longInputGate": {
-    "enabled": false,
-    "charThreshold": 2000,
-    "lineThreshold": 50,
+    "enabled": true,
+    "charThreshold": 3000,
+    "lineThreshold": 60,
     "smartDefault": true,
     "contentRules": {
       "transcript": "full",
@@ -1236,21 +1259,6 @@
     "onAsk": "prompt",
     "logging": true
   },
-  "agentTeams": {
-    "enabled": false,
-    "teammateDispatch": {
-      "mode": "suggest",
-      "includeContext": true,
-      "avoidFileConflicts": true
-    },
-    "leadEnforcement": {
-      "enabled": false,
-      "mode": "warn"
-    },
-    "stateTracking": {
-      "enabled": false
-    }
-  },
   "agents": {
     "enabled": [
       "orchestrator",
@@ -1312,10 +1320,13 @@
       },
       "componentReuse": {
         "enabled": false,
-        "threshold": 80,
+        "threshold": 30,
+        "allRegistries": true,
+        "aiAsJudge": true,
         "blockOnSimilar": false,
         "injectContext": true
       },
+      "_comment_componentReuse": "threshold: 30 = low pre-filter for AI-as-judge. allRegistries: true = check all registry types (components, functions, APIs, schemas, services), not just app-map. aiAsJudge: true = AI reasons about purpose overlap instead of score-driven auto-blocking.",
       "sessionContext": {
         "enabled": false,
         "loadSuspendedTasks": true,
@@ -1345,9 +1356,6 @@
         "_comment": "Blocks Bash calls before a /wogi-* command is invoked. Fail-open on errors."
       },
       "taskCompleted": {
-        "enabled": false
-      },
-      "teammateIdle": {
         "enabled": false
       },
       "configChange": {
@@ -1385,7 +1393,22 @@
       "groupBy": ["file", "category"],
       "sortBy": "priority"
     },
-    "autoRecommendBatchThreshold": 10
+    "autoRecommendBatchThreshold": 10,
+    "contextBudget": {
+      "enabled": true,
+      "_comment_contextBudget": "Dynamic context-aware batching. Uses sub-agents with fresh context per batch. Batch sizes are calculated from finding complexity, not hardcoded.",
+      "useSubAgents": true,
+      "subAgentContextBudget": 0.70,
+      "compactionBuffer": 0.15,
+      "orchestratorOverhead": 0.10,
+      "findingCosts": {
+        "critical": 0.05,
+        "high": 0.04,
+        "medium": 0.03,
+        "low": 0.02
+      },
+      "progressFile": ".workflow/state/review-fix-progress.json"
+    }
   },
   "originTaskTracing": {
     "enabled": false,
@@ -1652,12 +1675,6 @@
       "trackSource": true,
       "_comment_trackSource": "Record where the change originated: manual, auto-promoted, review-finding, user-feedback"
     }
-  },
-  "team": {
-    "enabled": false,
-    "_comment_team": "WogiFlow for Teams integration. Requires @wogiflow/teams package. Free users can ignore this section.",
-    "projectId": null,
-    "orgId": null
   },
   "community": {
     "enabled": false,

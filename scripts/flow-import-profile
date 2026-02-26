@@ -2,7 +2,7 @@
 
 # Wogi Flow - Import Profile
 # Import workflow configuration from team
-# v2.1: Enhanced with rules, learnings, and templates support
+# v3.0: Enhanced with rules, learnings, skills, templates, and tech stack support
 
 set -e
 
@@ -228,12 +228,13 @@ if [ "$SCAN_MODE" = true ]; then
 
     # Create temp directory for extraction results
     TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
     PATTERNS_FILE="$TEMP_DIR/patterns.json"
 
     # Run pattern extraction on the source project
     echo -e "${YELLOW}Extracting patterns...${NC}"
 
-    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode \"$ANALYSIS_MODE\""
+    EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
 
     if ! node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_FILE" --project "$SCAN_PATH" 2>/dev/null; then
         echo -e "${RED}Error: Pattern extraction failed${NC}"
@@ -257,7 +258,11 @@ if [ "$SCAN_MODE" = true ]; then
         echo -e "${YELLOW}Scanning operational standards (--strict mode)...${NC}"
         OPERATIONAL_FILE="$TEMP_DIR/operational.json"
 
-        if node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
+        if [ ! -f "$SCRIPT_DIR/flow-operational-scanner.js" ]; then
+            echo -e "  ${YELLOW}!${NC} flow-operational-scanner.js not found — --strict requires this script"
+            echo -e "  ${YELLOW}!${NC} Continuing without strict mode"
+            STRICT_MODE=false
+        elif node "$SCRIPT_DIR/flow-operational-scanner.js" "$SCAN_PATH" --json > "$OPERATIONAL_FILE" 2>/dev/null; then
             PKG_MANAGER=$(safe_read_json "$OPERATIONAL_FILE" "operationalPackageManager" || echo "unknown")
             DEV_PORT=$(safe_read_json "$OPERATIONAL_FILE" "operationalDevPort" || echo "3000")
             FILE_NAMING=$(safe_read_json "$OPERATIONAL_FILE" "patternFileNaming" || echo "unknown")
@@ -329,6 +334,7 @@ if [ "$SCAN_MODE" = true ]; then
         mkdir -p "$BACKUP_DIR"
         [ -f "$WORKFLOW_DIR/state/decisions.md" ] && cp "$WORKFLOW_DIR/state/decisions.md" "$BACKUP_DIR/"
         [ -d ".claude/rules" ] && cp -r ".claude/rules" "$BACKUP_DIR/"
+        [ -f "$WORKFLOW_DIR/config.json" ] && cp "$WORKFLOW_DIR/config.json" "$BACKUP_DIR/"
         echo -e "${GREEN}✓${NC} Backup created: $BACKUP_DIR"
         echo ""
     fi
@@ -384,7 +390,11 @@ if [ "$SCAN_MODE" = true ]; then
                 const configPath = process.argv[1];
                 const sourcePath = process.argv[2];
                 try {
-                    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+                    const raw = fs.readFileSync(configPath, "utf-8");
+                    if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]/i.test(raw)) {
+                        console.error("Suspicious content in config"); process.exit(1);
+                    }
+                    const config = JSON.parse(raw);
                     config.strictAdherence = {
                         enabled: true,
                         aiMode: "block",
@@ -403,8 +413,8 @@ if [ "$SCAN_MODE" = true ]; then
                         overrideLog: ".workflow/state/adherence-overrides.json"
                     };
                     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-                } catch (e) {
-                    console.error("Failed to update config:", e.message);
+                } catch (err) {
+                    console.error("Failed to update config:", err.message);
                     process.exit(1);
                 }
             ' "$WORKFLOW_DIR/config.json" "$SCAN_PATH"
@@ -414,7 +424,11 @@ if [ "$SCAN_MODE" = true ]; then
         # Add operational standards to decisions.md
         OPERATIONAL_CONTENT=$(node -e '
             const fs = require("fs");
-            const data = JSON.parse(fs.readFileSync(process.argv[1], "utf-8"));
+            const raw = fs.readFileSync(process.argv[1], "utf-8");
+            if (/__proto__|constructor\s*["\x27\x60:\[]|prototype\s*["\x27\x60:\[]/i.test(raw)) {
+                console.error("Suspicious content"); process.exit(1);
+            }
+            const data = JSON.parse(raw);
             const lines = [];
 
             lines.push("### Operational Standards (Auto-detected)");
@@ -461,8 +475,7 @@ if [ "$SCAN_MODE" = true ]; then
         fi
     fi
 
-    # Cleanup
-    rm -rf "$TEMP_DIR"
+    # TEMP_DIR cleaned up by EXIT trap
 
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
@@ -508,6 +521,7 @@ fi
 
 # Create temp directory
 TEMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TEMP_DIR"' EXIT INT TERM
 
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║  Importing Profile                                        ║${NC}"
@@ -517,8 +531,23 @@ echo ""
 # Extract profile (with path traversal protection)
 unzip -q "$PROFILE_FILE" -d "$TEMP_DIR"
 
-# Validate no path traversal in extracted files
-if find "$TEMP_DIR" -name "*../*" -o -name "*\.\.*" 2>/dev/null | grep -q .; then
+# Validate no path traversal in extracted files (check full paths, not just basenames)
+TRAVERSAL_FOUND=false
+while IFS= read -r extracted_file; do
+    real_path=$(readlink -f "$extracted_file" 2>/dev/null || true)
+    if [ -n "$real_path" ] && [[ ! "$real_path" == "$TEMP_DIR"* ]]; then
+        TRAVERSAL_FOUND=true
+        break
+    fi
+    # Also check for .. in the relative path
+    rel_path="${extracted_file#$TEMP_DIR/}"
+    if [[ "$rel_path" == *".."* ]]; then
+        TRAVERSAL_FOUND=true
+        break
+    fi
+done < <(find "$TEMP_DIR" -mindepth 1 2>/dev/null)
+
+if [ "$TRAVERSAL_FOUND" = true ]; then
     echo -e "${RED}Error: Profile contains suspicious paths (potential path traversal)${NC}"
     rm -rf "$TEMP_DIR"
     exit 1
@@ -606,8 +635,9 @@ if [ "$SKIP_RULES" != true ]; then
         HAS_RULES=true
     fi
 
+    rule_count=0
     if [ -d "$PROFILE_DIR/.claude/rules" ]; then
-        rule_count=$(ls "$PROFILE_DIR/.claude/rules"/*.md 2>/dev/null | wc -l | tr -d ' ')
+        rule_count=$(find "$PROFILE_DIR/.claude/rules" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
         if [ "$rule_count" -gt 0 ]; then
             HAS_RULES=true
         fi
@@ -622,13 +652,41 @@ if [ "$SKIP_RULES" != true ]; then
             RULES_COUNT=$((RULES_COUNT + 1))
         fi
 
-        if [ -d "$PROFILE_DIR/.claude/rules" ]; then
-            rule_count=$(ls "$PROFILE_DIR/.claude/rules"/*.md 2>/dev/null | wc -l | tr -d ' ')
-            if [ "$rule_count" -gt 0 ]; then
-                echo -e "  ${GREEN}→${NC} .claude/rules/ ($rule_count rules)"
-                RULES_COUNT=$((RULES_COUNT + rule_count))
+        if [ "$rule_count" -gt 0 ]; then
+            # Show subdirectories
+            for subdir in "$PROFILE_DIR/.claude/rules"/*/; do
+                if [ -d "$subdir" ]; then
+                    sub_count=$(find "$subdir" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+                    echo -e "  ${GREEN}→${NC} .claude/rules/$(basename "$subdir")/ ($sub_count rules)"
+                fi
+            done
+            RULES_COUNT=$((RULES_COUNT + rule_count))
+        fi
+
+        # Review agent checklists
+        if [ -d "$PROFILE_DIR/.workflow/agents" ]; then
+            agent_count=$(ls "$PROFILE_DIR/.workflow/agents"/*.md 2>/dev/null | wc -l | tr -d ' ')
+            if [ "$agent_count" -gt 0 ]; then
+                echo -e "  ${GREEN}→${NC} .workflow/agents/ ($agent_count review checklists)"
+                RULES_COUNT=$((RULES_COUNT + agent_count))
             fi
         fi
+
+        # Tech stack
+        if [ -f "$PROFILE_DIR/.claude/docs/stack.md" ]; then
+            echo -e "  ${GREEN}→${NC} .claude/docs/stack.md (tech stack)"
+            RULES_COUNT=$((RULES_COUNT + 1))
+        fi
+    fi
+fi
+
+# SKILLS (definitions)
+if [ -d "$PROFILE_DIR/.claude/skills" ]; then
+    skill_def_count=$(find "$PROFILE_DIR/.claude/skills" -name "skill.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$skill_def_count" -gt 0 ]; then
+        echo ""
+        echo -e "${DIM}Skill Definitions:${NC}"
+        echo -e "  ${GREEN}→${NC} skill definitions ($skill_def_count skills)"
     fi
 fi
 
@@ -667,24 +725,59 @@ if [ "$SKIP_LEARNINGS" != true ]; then
 fi
 
 # TEMPLATES
-if [ "$SKIP_TEMPLATES" != true ] && [ -d "$PROFILE_DIR/templates" ]; then
-    template_count=$(ls "$PROFILE_DIR/templates"/*.md 2>/dev/null | wc -l | tr -d ' ')
-    if [ "$template_count" -gt 0 ]; then
+if [ "$SKIP_TEMPLATES" != true ]; then
+    HAS_TEMPLATES=false
+
+    # Workflow templates (HBS)
+    if [ -d "$PROFILE_DIR/.workflow/templates" ]; then
+        wf_tmpl_count=$(find "$PROFILE_DIR/.workflow/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$wf_tmpl_count" -gt 0 ]; then
+            HAS_TEMPLATES=true
+        fi
+    fi
+
+    # Story/bug templates
+    if [ -d "$PROFILE_DIR/templates" ]; then
+        tmpl_count=$(find "$PROFILE_DIR/templates" -type f 2>/dev/null | wc -l | tr -d ' ')
+        if [ "$tmpl_count" -gt 0 ]; then
+            HAS_TEMPLATES=true
+        fi
+    fi
+
+    # State templates
+    state_tmpl_count=0
+    for tpl in "$PROFILE_DIR/.workflow/state/"*.template; do
+        if [ -f "$tpl" ]; then
+            state_tmpl_count=$((state_tmpl_count + 1))
+            HAS_TEMPLATES=true
+        fi
+    done
+
+    if [ "$HAS_TEMPLATES" = true ]; then
         echo ""
         echo -e "${DIM}Templates:${NC}"
-        for template in "$PROFILE_DIR/templates"/*.md; do
-            if [ -f "$template" ]; then
-                echo -e "  ${GREEN}→${NC} $(basename "$template")"
-                TEMPLATES_COUNT=$((TEMPLATES_COUNT + 1))
-            fi
-        done
+
+        if [ -d "$PROFILE_DIR/.workflow/templates" ]; then
+            echo -e "  ${GREEN}→${NC} .workflow/templates/ ($wf_tmpl_count CLAUDE.md generation files)"
+            TEMPLATES_COUNT=$((TEMPLATES_COUNT + wf_tmpl_count))
+        fi
+
+        if [ -d "$PROFILE_DIR/templates" ]; then
+            echo -e "  ${GREEN}→${NC} templates/ ($tmpl_count story/bug/task templates)"
+            TEMPLATES_COUNT=$((TEMPLATES_COUNT + tmpl_count))
+        fi
+
+        if [ "$state_tmpl_count" -gt 0 ]; then
+            echo -e "  ${GREEN}→${NC} state templates ($state_tmpl_count .template files)"
+            TEMPLATES_COUNT=$((TEMPLATES_COUNT + state_tmpl_count))
+        fi
     fi
 fi
 
-# APP MAP (optional)
+# APP MAP (optional — project-specific, NOT included by default)
 if [ -f "$PROFILE_DIR/.workflow/state/app-map.md" ]; then
     echo ""
-    echo -e "${DIM}Component Registry (optional):${NC}"
+    echo -e "${DIM}Component Registry (optional, project-specific):${NC}"
     echo -e "  ${YELLOW}→${NC} app-map.md ${DIM}(will ask)${NC}"
 fi
 
@@ -740,7 +833,7 @@ fi
 # agents/
 if [ -d "$PROFILE_DIR/agents" ]; then
     mkdir -p agents
-    cp "$PROFILE_DIR/agents"/*.md agents/
+    cp "$PROFILE_DIR/agents"/*.md agents/ 2>/dev/null || true
     echo -e "  ${GREEN}✓${NC} agents/"
 fi
 
@@ -752,6 +845,11 @@ if [ -f "$PROFILE_DIR/.workflow/config.json" ]; then
         if command -v jq &> /dev/null; then
             # Merge: profile values override, but keep local additions
             jq -s '.[0] * .[1]' "$WORKFLOW_DIR/config.json" "$PROFILE_DIR/.workflow/config.json" > "$WORKFLOW_DIR/config.json.tmp"
+            if ! jq empty "$WORKFLOW_DIR/config.json.tmp" 2>/dev/null; then
+                echo -e "${RED}Error: Merged config.json is invalid JSON${NC}"
+                rm -f "$WORKFLOW_DIR/config.json.tmp"
+                exit 1
+            fi
             mv "$WORKFLOW_DIR/config.json.tmp" "$WORKFLOW_DIR/config.json"
             echo -e "  ${GREEN}✓${NC} config.json ${DIM}(merged)${NC}"
         else
@@ -784,15 +882,35 @@ if [ "$SKIP_RULES" != true ] && [ -f "$PROFILE_DIR/.workflow/state/decisions.md"
     fi
 fi
 
-# .claude/rules/
+# .claude/rules/ (recursive — preserves subdirectory structure)
 if [ "$SKIP_RULES" != true ] && [ -d "$PROFILE_DIR/.claude/rules" ]; then
-    mkdir -p ".claude/rules"
-    for rule_file in "$PROFILE_DIR/.claude/rules"/*.md; do
-        if [ -f "$rule_file" ]; then
-            cp "$rule_file" ".claude/rules/"
+    find "$PROFILE_DIR/.claude/rules" -name "*.md" -type f | while read -r rule_file; do
+        # Compute relative path from profile's .claude/rules/
+        rel_path="${rule_file#$PROFILE_DIR/.claude/rules/}"
+        rel_dir=$(dirname "$rel_path")
+        mkdir -p ".claude/rules/$rel_dir"
+        cp "$rule_file" ".claude/rules/$rel_path"
+    done
+    rule_count=$(find ".claude/rules" -name "*.md" -type f 2>/dev/null | wc -l | tr -d ' ')
+    echo -e "  ${GREEN}✓${NC} .claude/rules/ ($rule_count rules, recursive)"
+fi
+
+# .workflow/agents/ (review checklists)
+if [ "$SKIP_RULES" != true ] && [ -d "$PROFILE_DIR/.workflow/agents" ]; then
+    mkdir -p "$WORKFLOW_DIR/agents"
+    for agent_file in "$PROFILE_DIR/.workflow/agents/"*.md; do
+        if [ -f "$agent_file" ]; then
+            cp "$agent_file" "$WORKFLOW_DIR/agents/"
         fi
     done
-    echo -e "  ${GREEN}✓${NC} .claude/rules/"
+    echo -e "  ${GREEN}✓${NC} .workflow/agents/ (review checklists)"
+fi
+
+# .claude/docs/stack.md (tech stack)
+if [ "$SKIP_RULES" != true ] && [ -f "$PROFILE_DIR/.claude/docs/stack.md" ]; then
+    mkdir -p ".claude/docs"
+    cp "$PROFILE_DIR/.claude/docs/stack.md" ".claude/docs/"
+    echo -e "  ${GREEN}✓${NC} .claude/docs/stack.md"
 fi
 
 # feedback-patterns.md (append if exists)
@@ -813,14 +931,23 @@ if [ "$SKIP_LEARNINGS" != true ] && [ -f "$PROFILE_DIR/.workflow/state/feedback-
     fi
 fi
 
-# Skill learnings
-if [ "$SKIP_LEARNINGS" != true ] && [ -d "$PROFILE_DIR/.claude/skills" ]; then
+# Skills (definitions + learnings)
+if [ -d "$PROFILE_DIR/.claude/skills" ]; then
     for skill_dir in "$PROFILE_DIR/.claude/skills"/*/; do
-        if [ -d "$skill_dir/knowledge" ]; then
-            skill_name=$(basename "$skill_dir")
+        skill_name=$(basename "$skill_dir")
+        # Skip _template
+        if [ "$skill_name" = "_template" ]; then continue; fi
+
+        # Import skill.md (skill definition) — always import if present
+        if [ -f "$skill_dir/skill.md" ]; then
+            mkdir -p ".claude/skills/$skill_name"
+            cp "$skill_dir/skill.md" ".claude/skills/$skill_name/"
+        fi
+
+        # Import knowledge/ (patterns + learnings) — only if not skipping learnings
+        if [ "$SKIP_LEARNINGS" != true ] && [ -d "$skill_dir/knowledge" ]; then
             mkdir -p ".claude/skills/$skill_name/knowledge"
 
-            # Copy patterns.md and learnings.md
             for file in patterns.md learnings.md; do
                 if [ -f "$skill_dir/knowledge/$file" ]; then
                     if [ -f ".claude/skills/$skill_name/knowledge/$file" ]; then
@@ -836,22 +963,47 @@ if [ "$SKIP_LEARNINGS" != true ] && [ -d "$PROFILE_DIR/.claude/skills" ]; then
             done
         fi
     done
-    echo -e "  ${GREEN}✓${NC} skill learnings"
+    echo -e "  ${GREEN}✓${NC} skills (definitions + learnings)"
 fi
 
-# Templates (copy to .workflow/templates/)
+# Workflow templates (.workflow/templates/ — HBS files for CLAUDE.md generation)
+if [ "$SKIP_TEMPLATES" != true ] && [ -d "$PROFILE_DIR/.workflow/templates" ]; then
+    find "$PROFILE_DIR/.workflow/templates" -type f | while read -r tmpl_file; do
+        rel_path="${tmpl_file#$PROFILE_DIR/.workflow/templates/}"
+        rel_dir=$(dirname "$rel_path")
+        mkdir -p "$WORKFLOW_DIR/templates/$rel_dir"
+        cp "$tmpl_file" "$WORKFLOW_DIR/templates/$rel_path"
+    done
+    echo -e "  ${GREEN}✓${NC} .workflow/templates/ (CLAUDE.md generation)"
+fi
+
+# Story/bug/task templates (templates/)
 if [ "$SKIP_TEMPLATES" != true ] && [ -d "$PROFILE_DIR/templates" ]; then
-    mkdir -p "$WORKFLOW_DIR/templates"
-    for template in "$PROFILE_DIR/templates"/*.md; do
-        if [ -f "$template" ]; then
-            template_name=$(basename "$template")
-            # Only copy if doesn't exist (templates are starting points)
-            if [ ! -f "$WORKFLOW_DIR/templates/$template_name" ]; then
-                cp "$template" "$WORKFLOW_DIR/templates/"
-            fi
+    find "$PROFILE_DIR/templates" -type f | while read -r tmpl_file; do
+        rel_path="${tmpl_file#$PROFILE_DIR/templates/}"
+        rel_dir=$(dirname "$rel_path")
+        mkdir -p "templates/$rel_dir"
+        # Only copy if doesn't exist (templates are starting points)
+        if [ ! -f "templates/$rel_path" ]; then
+            cp "$tmpl_file" "templates/$rel_path"
         fi
     done
-    echo -e "  ${GREEN}✓${NC} templates"
+    echo -e "  ${GREEN}✓${NC} templates/ (story/bug/task)"
+fi
+
+# State templates (.workflow/state/*.template) — guarded by --skip-templates
+if [ "$SKIP_TEMPLATES" != true ]; then
+    STATE_TMPL_IMPORTED=0
+    for tpl in "$PROFILE_DIR/.workflow/state/"*.template; do
+        if [ -f "$tpl" ]; then
+            mkdir -p "$WORKFLOW_DIR/state"
+            cp "$tpl" "$WORKFLOW_DIR/state/"
+            STATE_TMPL_IMPORTED=$((STATE_TMPL_IMPORTED + 1))
+        fi
+    done
+    if [ "$STATE_TMPL_IMPORTED" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} state templates ($STATE_TMPL_IMPORTED .template files)"
+    fi
 fi
 
 # App-map (ask before importing)
@@ -873,8 +1025,7 @@ if [ -f "$PROFILE_DIR/.workflow/state/app-map.md" ]; then
     fi
 fi
 
-# Cleanup
-rm -rf "$TEMP_DIR"
+# TEMP_DIR cleaned up by EXIT trap
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"

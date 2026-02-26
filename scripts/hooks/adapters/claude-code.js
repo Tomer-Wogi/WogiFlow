@@ -47,20 +47,18 @@ const CLAUDE_CODE_EVENTS = [
   'Stop',
   'SessionEnd',
   'UserPromptSubmit',
+  'TaskCompleted',
 ];
 
 /**
- * Extended hook events — NOT part of official Claude Code schema.
- * These were speculatively added and cause schema validation errors.
- * Kept here for reference in case Claude Code adds them in the future.
- * See: https://github.com/anthropics/claude-code/issues (check for hook API updates)
+ * Extended hook events — some now officially supported in Claude Code 2.1.59+.
+ * TaskCompleted was added to CLAUDE_CODE_EVENTS above.
+ * See: https://code.claude.com/docs/en/hooks for the full event list.
  */
-// const EXTENDED_EVENTS_NOT_YET_SUPPORTED = [
-//   'Setup',           // Speculated for --init/--maintenance
-//   'SubagentStop',    // Speculated for sub-agent stop
-//   'Notification',    // Speculated for notifications
-//   'TaskCompleted',   // Speculated for task completion
-//   'TeammateIdle',    // Speculated for teammate idle
+// const EXTENDED_EVENTS_NOT_YET_VERIFIED = [
+//   'SubagentStart',   // Supported but not yet used by WogiFlow
+//   'SubagentStop',    // Supported but not yet used by WogiFlow
+//   'Notification',    // Supported but not yet used by WogiFlow
 //   'ConfigChange',    // Speculated for config changes
 //   'WorktreeCreate',  // Speculated for worktree creation
 //   'WorktreeRemove',  // Speculated for worktree removal
@@ -145,8 +143,6 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformUserPromptSubmit(coreResult);
       case 'TaskCompleted':
         return this.transformTaskCompleted(coreResult);
-      case 'TeammateIdle':
-        return this.transformTeammateIdle(coreResult);
       case 'ConfigChange':
         return this.transformConfigChange(coreResult);
       case 'WorktreeCreate':
@@ -423,47 +419,6 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
-   * Transform TeammateIdle result (Claude Code 2.1.33+)
-   * Supports both "suggest" mode (task ID only) and "dispatch" mode (full context)
-   */
-  transformTeammateIdle(coreResult) {
-    if (!coreResult.enabled) {
-      return { continue: true };
-    }
-
-    if (coreResult.hasTask) {
-      const output = {
-        continue: true,
-        hookSpecificOutput: {
-          hookEventName: 'TeammateIdle',
-          hasTask: true,
-          suggestedTaskId: coreResult.suggestedTaskId,
-          dispatchMode: coreResult.dispatchMode || 'suggest'
-        }
-      };
-
-      // In dispatch mode, include task context as additional context for the teammate
-      if (coreResult.dispatchMode === 'dispatch' && coreResult.taskContext) {
-        output.hookSpecificOutput.additionalContext = coreResult.message;
-        output.hookSpecificOutput.taskContext = coreResult.taskContext;
-      } else {
-        output.systemMessage = coreResult.message;
-      }
-
-      return output;
-    }
-
-    return {
-      continue: true,
-      ...(coreResult.message && { systemMessage: coreResult.message }),
-      hookSpecificOutput: {
-        hookEventName: 'TeammateIdle',
-        hasTask: false
-      }
-    };
-  }
-
-  /**
    * Transform ConfigChange result (Claude Code latest)
    * Always non-blocking - informational only
    */
@@ -581,11 +536,16 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       }];
     }
 
-    // NOTE: TaskCompleted, TeammateIdle, ConfigChange, WorktreeCreate, WorktreeRemove
-    // hooks removed — not in official Claude Code schema. Registering them causes
-    // schema validation errors that block Claude Code from loading settings.
-    // Entry scripts still exist in scripts/hooks/entry/claude-code/ for future use
-    // if/when Claude Code officially supports these events.
+    // TaskCompleted hook for post-task cleanup (Claude Code 2.1.33+)
+    if (rules.taskCompleted?.enabled !== false) {
+      hooks.TaskCompleted = [{
+        hooks: [{
+          type: 'command',
+          command: `node "${path.join(scriptsDir, 'task-completed.js')}"`,
+          timeout: HOOK_TIMEOUTS.TASK_COMPLETED
+        }]
+      }];
+    }
 
     // Final safety filter: only emit hooks that are in CLAUDE_CODE_EVENTS
     const filteredHooks = {};

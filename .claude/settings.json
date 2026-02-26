@@ -89,19 +89,6 @@
         ]
       }
     ],
-    "TeammateIdle": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node scripts/hooks/entry/claude-code/teammate-idle.js",
-            "timeout": 5
-          }
-        ],
-        "disabled": true,
-        "_comment": "Experimental - enable via config: hooks.rules.teammateIdle.enabled = true"
-      }
-    ],
     "ConfigChange": [
       {
         "hooks": [

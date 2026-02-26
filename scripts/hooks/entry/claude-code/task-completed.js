@@ -9,6 +9,7 @@
 
 const { handleTaskCompleted } = require('../../core/task-completed');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { safeJsonParseString } = require('../../flow-utils');
 
 async function main() {
   try {
@@ -18,11 +19,11 @@ async function main() {
       inputData += chunk;
     }
 
-    const input = inputData ? JSON.parse(inputData) : {};
+    const input = inputData ? safeJsonParseString(inputData, {}) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Handle task completion
-    const coreResult = handleTaskCompleted(parsedInput);
+    const coreResult = await handleTaskCompleted(parsedInput);
 
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('TaskCompleted', coreResult);

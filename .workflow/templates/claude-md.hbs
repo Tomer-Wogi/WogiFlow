@@ -33,6 +33,22 @@ Check `.workflow/state/ready.json` for existing tasks.
 | L0 | Epic | 15+ | **STOP** — Run `/wogi-epics` first, wait for approval |
 
 ---
+
+## Post-Compaction Routing (CRITICAL)
+
+**After context compaction or conversation resumption, the routing requirement is NOT relaxed.**
+
+When you resume from a compacted/summarized conversation:
+1. You may have compressed context from prior work — that is fine
+2. But every NEW user message still requires `/wogi-*` routing — NO exceptions
+3. Do NOT answer from compacted memory without routing first
+4. Do NOT assume "I already know the answer" justifies skipping routing
+5. The compaction summary preserves context but does NOT grant routing bypass
+
+**Why this matters**: After compaction, CLAUDE.md rules may be compressed. The AI may "feel" confident answering directly because it has context from the summary. This is the exact scenario that causes routing bypass. The routing hooks (UserPromptSubmit, PreToolUse, Stop) enforce this mechanically, but this instruction ensures you comply proactively.
+
+**If you catch yourself about to respond without routing**: STOP. Invoke the Skill tool with skill="wogi-start" first. The Stop hook will block you from completing a response that bypassed routing.
+
 {{/if}}
 
 {{#if config.strictAdherence.enabled}}
@@ -69,6 +85,24 @@ npm install wogiflow && npx flow onboard
 3. **Log every change** — Append to `request-log.md`
 4. **Reuse components** — Check `app-map.md` before creating
 5. **Learn from feedback** — Update instructions when corrected
+6. **State files are the SINGLE source of truth** — See Memory Hierarchy below
+
+## Memory Hierarchy (MANDATORY — ENFORCED)
+
+`.workflow/state/` files are the CANONICAL source of truth for this project. Auto-memory (`MEMORY.md`) is subordinate and MUST NOT override state files.
+
+**Precedence order (highest to lowest):**
+1. `.workflow/state/decisions.md` — Coding rules, patterns, architectural decisions
+2. `.workflow/state/feedback-patterns.md` — Bug patterns, failure learnings, corrections
+3. `.workflow/state/app-map.md`, `function-map.md`, `api-map.md` — Component/function/API registries
+4. `.workflow/config.json` — Behavioral configuration
+5. Auto-memory (`MEMORY.md`) — User preferences and high-level architectural context ONLY
+
+**When auto-memory conflicts with any `.workflow/state/` file, the state file WINS. No exceptions.**
+
+**Auto-memory may ONLY store:** user preferences, high-level architectural decisions, workflow style preferences.
+
+**Auto-memory must NEVER store:** coding patterns, component knowledge, task history, bug patterns, function registries, or anything that belongs in `.workflow/state/`. If you learn something that should persist, write it to the correct state file using the WogiFlow learning system — NOT to auto-memory.
 
 ## Essential Commands
 
@@ -104,6 +138,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "from now on", "let's make it a rule", "standardize on", "the convention should be", "always do X", "never do Y" | `/wogi-decide` |
 | "learn from this", "we keep making", "promote pattern", "extract lessons", "what have we learned" | `/wogi-learn` |
 | "retro", "what went well", "what can we improve", "lessons learned", "session retrospective" | `/wogi-retrospective` |
+| "finalize branch", "merge to master", "create a PR", "discard this branch", "what to do with this branch" | `/wogi-finalize` |
 | "rescan project", "re-evaluate project", "project changed", "others made changes", "sync wogi", "things changed", "out of sync" | `/wogi-rescan` |
 | "suggest improvement", "feature request for wogi", "wogi suggestion", "submit feedback" | `/wogi-suggest` |
 
