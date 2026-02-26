@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-28T06:30:00.000Z",
+  "lastUpdated": "2026-02-28T10:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-t6rv01",
+      "title": "Fix 31 T6 review findings (6 critical, 10 high, 14 medium, 1 low)",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-28T09:00:00.000Z",
+      "completedAt": "2026-02-28T10:30:00.000Z"
+    },
     {
       "id": "wf-6c2ea871",
       "title": "T6-S7: Documentation & Launch Materials",

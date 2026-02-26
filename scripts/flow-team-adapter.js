@@ -100,6 +100,9 @@ function request(url, options) {
   });
 }
 
+// Shared refresh promise to prevent concurrent refresh race conditions
+let _refreshPromise = null;
+
 /**
  * Make an authenticated API request.
  */
@@ -118,9 +121,12 @@ async function apiRequest(endpoint, options) {
     }
   });
 
-  // Handle token expiry
+  // Handle token expiry with single-flight refresh (prevents race condition)
   if (result.statusCode === 401 && conn.refreshToken) {
-    const refreshed = await refreshAccessToken(conn);
+    if (!_refreshPromise) {
+      _refreshPromise = refreshAccessToken(conn).finally(() => { _refreshPromise = null; });
+    }
+    const refreshed = await _refreshPromise;
     if (refreshed) {
       return request(url, {
         ...options,
