@@ -1,9 +1,29 @@
 {
-  "lastUpdated": "2026-02-27T23:30:00.000Z",
+  "lastUpdated": "2026-02-28T00:15:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2b1ab455",
+      "title": "Close Edit/Write routing gate bypass — session continuation loophole",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T21:50:00.000Z",
+      "completedAt": "2026-02-28T00:15:00.000Z"
+    },
+    {
+      "id": "wf-cr-a7f201",
+      "title": "Fix 14 review findings from wf-1bd2a207 review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T23:45:00.000Z",
+      "completedAt": "2026-02-28T00:00:00.000Z"
+    },
     {
       "id": "wf-1bd2a207",
       "title": "Fix routing enforcement gaps + enhance /wogi-review NL scoping + add /wogi-audit",

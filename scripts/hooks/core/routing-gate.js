@@ -177,10 +177,14 @@ function isRoutingPending() {
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
 function checkRoutingGate(toolName) {
-  // Gate Bash, EnterPlanMode, and read tools (Read/Glob/Grep)
-  // EnterPlanMode bypasses /wogi-start routing — must be blocked before routing
-  // Read/Glob/Grep allow codebase exploration without routing — must also be gated
-  const GATED_TOOLS = new Set(['Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep']);
+  // Gate ALL tools that allow the AI to act without routing through /wogi-start.
+  // Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
+  // from task gate) to create a fake active task, then edit anything freely.
+  // This set must include EVERY tool that reads, writes, or executes.
+  const GATED_TOOLS = new Set([
+    'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
+    'Edit', 'Write', 'NotebookEdit'
+  ]);
   if (!GATED_TOOLS.has(toolName)) {
     return { allowed: true, blocked: false, reason: 'not_gated_tool', message: null };
   }
@@ -211,11 +215,13 @@ function checkRoutingGate(toolName) {
     blocked: true,
     reason: 'routing_pending',
     message: [
-      'BLOCKED: You must route through /wogi-start before using Bash, Read, Glob, Grep, or EnterPlanMode.',
+      'BLOCKED: You must route through /wogi-start before using ANY tool (Bash, Read, Glob, Grep, Edit, Write, NotebookEdit, EnterPlanMode).',
       'ACTION REQUIRED: Invoke the Skill tool with skill="wogi-start" and pass the user\'s request as args.',
       'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
       '/wogi-start will classify the request (operational, exploration, implementation) and unblock the appropriate tools.',
-      'Do NOT read files, search code, or execute commands without routing first.',
+      'Do NOT read files, search code, edit files, or execute commands without routing first.',
+      'Do NOT edit ready.json or any state file to create tasks manually — that is a routing bypass.',
+      'Do NOT treat session continuation as implicit permission to skip routing.',
       'Do NOT try alternative approaches to bypass this gate.'
     ].join(' ')
   };

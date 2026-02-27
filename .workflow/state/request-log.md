@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-194 | 2026-02-27 22:00
+**Type**: fix
+**Tags**: #security #routing #enforcement #session-continuation
+**Task**: wf-2b1ab455
+**Request**: "Close Edit/Write routing gate bypass — session continuation loophole. AI bypassed routing after session continuation by editing ready.json directly (exempt from task gate, not covered by routing gate) to create fake tasks."
+**Result**: Added Edit, Write, NotebookEdit to routing gate's GATED_TOOLS set in routing-gate.js. Updated pre-tool-use.js routing gate condition to include Edit/Write/NotebookEdit. Added setRoutingPending() call in session-start.js as defense-in-depth. Added explicit "Session Continuation Is NOT Routing Bypass" rule to decisions.md. Updated CLAUDE.md template with stronger post-compaction/continuation language. Regenerated CLAUDE.md.
+**Files**: `scripts/hooks/core/routing-gate.js`, `scripts/hooks/entry/claude-code/pre-tool-use.js`, `scripts/hooks/entry/claude-code/session-start.js`, `.workflow/state/decisions.md`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md`
+
 ### R-193 | 2026-02-27 21:46
 **Type**: fix
 **Tags**: #review #security #code-quality #routing #audit
