@@ -11,7 +11,57 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-194 | 2026-02-27 22:00
+**Type**: fix
+**Tags**: #security #routing #enforcement #session-continuation
+**Task**: wf-2b1ab455
+**Request**: "Close Edit/Write routing gate bypass — session continuation loophole. AI bypassed routing after session continuation by editing ready.json directly (exempt from task gate, not covered by routing gate) to create fake tasks."
+**Result**: Added Edit, Write, NotebookEdit to routing gate's GATED_TOOLS set in routing-gate.js. Updated pre-tool-use.js routing gate condition to include Edit/Write/NotebookEdit. Added setRoutingPending() call in session-start.js as defense-in-depth. Added explicit "Session Continuation Is NOT Routing Bypass" rule to decisions.md. Updated CLAUDE.md template with stronger post-compaction/continuation language. Regenerated CLAUDE.md.
+**Files**: `scripts/hooks/core/routing-gate.js`, `scripts/hooks/entry/claude-code/pre-tool-use.js`, `scripts/hooks/entry/claude-code/session-start.js`, `.workflow/state/decisions.md`, `.workflow/templates/claude-md.hbs`, `CLAUDE.md`
+
+### R-193 | 2026-02-27 21:46
+**Type**: fix
+**Tags**: #review #security #code-quality #routing #audit
+**Task**: wf-cr-a7f201
+**Request**: "Fix all 14 review findings from code review of routing gaps + NL review + audit implementation"
+**Result**: Fixed 14 findings across 4 files: 4 high (SHA regex blocks HEAD in getFilesBetweenCommits, SESSION_ID path injection in routing-gate, unbounded stdin + raw JSON.parse in stop.js, 5x raw JSON.parse in flow-audit.js), 7 medium (D- score asymmetry, blocklist date validation replaced with allowlist, loadFileContent path traversal, ReDoS from config patterns, raw JSON.parse in routing-gate isRoutingPending and incrementStopAttempts, bare catch block), 3 low (system grep replaced with git grep, misleading stdin comment in score command, ROUTING_FLAG_TTL_MS comment updated).
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/stop.js, scripts/flow-review.js, scripts/flow-audit.js
+
+### R-192 | 2026-02-27 23:30
+**Type**: new
+**Tags**: #workflow #routing #review #audit #enforcement
+**Task**: wf-1bd2a207
+**Request**: "Fix 5 routing enforcement gaps + enhance /wogi-review with NL scoping + add /wogi-audit"
+**Result**: Part A: Fixed 5 routing enforcement gaps (fail-closed error handling in routing-gate.js and pre-tool-use.js, session ID fallback using shared file, counter-based stop enforcement with 3 attempts, fail-closed stop hook). Part B: Added natural language scope resolution to /wogi-review (session-based, feature-based, branch-based, time-based, path-based). Created /wogi-audit command with 7-dimension parallel analysis (architecture, dependencies, duplication, performance, consistency, modernization, tech debt) and weighted health scoring. Updated config.json, templates, and CLAUDE.md.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/stop.js, scripts/flow-review.js, scripts/flow-audit.js, .claude/commands/wogi-review.md, .claude/commands/wogi-audit.md, .workflow/config.json, .workflow/templates/claude-md.hbs, .workflow/templates/partials/user-commands.hbs, CLAUDE.md
+
+### R-191 | 2026-02-27 22:00
+**Type**: fix
+**Tags**: #review #codebase-review #bugfix #performance #security
+**Task**: wf-cr-e13894
+**Request**: "Fix all 25 review findings from comprehensive codebase review"
+**Result**: Fixed all 25 findings across 14 files: 3 critical (exponentialBackoff ignored, race condition in trackTaskComplete, WASM init on every hook), 8 high (wrong field name in ready.json access, non-atomic writes, renamed config key, redundant getProjectRoot calls, missing caching), 9 medium (DRY violations, non-atomic writes in 3 files, overflow archiving, read-modify-write race, config consolidation), 5 low (regex tightening, stdout pollution, missing config keys, raw JSON.parse security violations).
+**Files**: scripts/flow-utils.js, scripts/flow-session-state.js, scripts/flow-parallel.js, scripts/flow-long-input.js, scripts/flow-durable-session.js, scripts/flow-start.js, scripts/flow-cascade.js, scripts/flow-memory-blocks.js, scripts/flow-memory-sync.js, scripts/hooks/core/observation-capture.js, scripts/hooks/core/loop-check.js, scripts/hooks/core/task-gate.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/scope-gate.js
+
+### R-190 | 2026-02-28 22:15
+**Type**: new
+**Tags**: #workflow #setup #cross-repo
+**Task**: wf-a702e434
+**Request**: "Set up independent WogiFlow workflows in 3 repos"
+**Result**: Installed wogiflow as devDependency in wogiflow-cloud and wogiflow-portal, triggering full postinstall bootstrap. Created tailored config.json, decisions.md, and registry maps for each repo. Cloud: api-map (180+ endpoints), function-map (36 libs), schema-map (22 migrations), service-map. Portal: app-map (6 pages), lightweight config (no lint/typecheck/tests). Generated CLAUDE.md and settings.local.json for both. Updated partner-versions.json across all 3 repos for mutual awareness.
+**Files**: (wogiflow-cloud) .workflow/config.json, .workflow/state/*.md, .workflow/state/*.json, CLAUDE.md, .claude/settings.local.json, package.json; (wogiflow-portal) same; (wogi-flow) .workflow/state/partner-versions.json
+
+---
+
 <!-- Entries below. Format: R-001, R-002, etc. -->
+
+### R-189 | 2026-02-28 18:00
+**Type**: new
+**Tags**: #feature:architecture #rules #decisions #dual-repo #version-awareness
+**Task**: wf-c22771dd
+**Request**: "Document dual-repo architecture rules and set up cross-repo version awareness"
+**Result**: Created formal dual-repo management documentation: (1) `.claude/rules/architecture/dual-repo-management.md` — repo ownership, code separation, version management, interface contracts, change propagation rules, release order, verification checklists. (2) Added "Dual-Repo Architecture" decision to `decisions.md` — independent semver, mutual version awareness, OSS-first release policy. (3) Created `.workflow/state/partner-versions.json` in both wogi-flow and wogiflow-cloud — each repo knows the other's current version, package name, and compatibility range. (4) Documented the public API surface that cloud depends on (exported functions, hook interfaces, state file formats, config keys).
+**Files**: `.claude/rules/architecture/dual-repo-management.md`, `.workflow/state/decisions.md`, `.workflow/state/partner-versions.json`, `../wogiflow-cloud/.workflow/state/partner-versions.json`
 
 ### R-188 | 2026-02-27 16:00
 **Type**: new

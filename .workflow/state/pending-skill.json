@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-02-25T17:57:47.668Z",
+  "markedAt": "2026-02-26T21:00:55.327Z",
   "context": {
-    "args": "Push all changes to GitHub and create a release for master (not teams branches). Teams feature stays on feature branches, not merged to master yet."
+    "args": "Implement the plan to set up independent WogiFlow workflows in 3 repos (wogi-flow, wogiflow-cloud, wogiflow-portal). This involves: installing wogiflow as devDependency in cloud and portal repos, creating config.json/state files/CLAUDE.md for each, and updating cross-repo partner-versions.json."
   },
   "status": "pending"
 }

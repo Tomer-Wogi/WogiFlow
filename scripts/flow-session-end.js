@@ -531,6 +531,54 @@ function archiveRequestLogIfNeeded() {
 }
 
 /**
+ * v10.0: Archive old review files, keeping only the most recent ones
+ */
+function archiveOldReviews() {
+  try {
+    const reviewsDir = path.join(PATHS.workflow, 'reviews');
+    if (!fs.existsSync(reviewsDir)) return;
+
+    const config = getConfig();
+    const keepCount = config.reviews?.keepRecent ?? 3;
+
+    const files = fs.readdirSync(reviewsDir)
+      .filter(f => f.endsWith('-review.md') || f.endsWith('-review-cross-session.md'))
+      .sort()
+      .reverse(); // newest first (date-prefixed filenames sort chronologically)
+
+    if (files.length <= keepCount) return;
+
+    const toArchive = files.slice(keepCount);
+    const now = new Date();
+    const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const archiveDir = path.join(PATHS.workflow, 'archive', 'reviews', yearMonth);
+
+    let archivedCount = 0;
+    for (const file of toArchive) {
+      try {
+        const srcPath = path.join(reviewsDir, file);
+        if (!fs.existsSync(archiveDir)) {
+          fs.mkdirSync(archiveDir, { recursive: true });
+        }
+        fs.renameSync(srcPath, path.join(archiveDir, file));
+        archivedCount++;
+      } catch (err) {
+        if (process.env.DEBUG) console.error(`[DEBUG] Archive review ${file}: ${err.message}`);
+      }
+    }
+
+    if (archivedCount > 0) {
+      console.log('');
+      success(`Archived ${archivedCount} old review file(s)`);
+      console.log(color('dim', `  Archive: ${archiveDir}`));
+      console.log(color('dim', `  Kept ${keepCount} most recent reviews`));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Review archive: ${err.message}`);
+  }
+}
+
+/**
  * v1.7.0: Show context health summary
  */
 function showContextHealthSummary() {
@@ -1124,6 +1172,9 @@ async function main() {
 
   // v1.7.0: Auto-archive request log
   archiveRequestLogIfNeeded();
+
+  // v10.0: Archive old review files
+  archiveOldReviews();
 
   // v1.7.0: Show context health
   showContextHealthSummary();

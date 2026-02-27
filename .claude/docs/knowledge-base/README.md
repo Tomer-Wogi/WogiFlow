@@ -21,7 +21,9 @@ Welcome to the comprehensive knowledge base for WogiFlow, an AI workflow framewo
 
 ### Install
 ```bash
-npm install wogiflow
+npm install -D wogiflow
+# or
+bun add -d --trust wogiflow   # --trust is required for bun to run postinstall
 ```
 
 ### Analyze Existing Project

@@ -27,8 +27,13 @@ const DEFAULTS = {
 // Lazy-loaded Dependencies (avoid circular imports)
 // ============================================================
 
+const fs = require('fs');
+
 // Import from parent scripts directory
-const { getConfig } = require('../../flow-utils');
+const { getConfig, PATHS } = require('../../flow-utils');
+
+// Fast path: check if memory DB file exists before loading expensive sql.js WASM
+const MEMORY_DB_PATH = path.join(PATHS.workflow, 'memory', 'local.db');
 
 // Lazy-load memory-db to avoid circular dependencies
 let memoryDb = null;
@@ -317,6 +322,11 @@ async function captureObservation(options) {
       }
     } catch (err) {
       fullOutput = '[serialization failed]';
+    }
+
+    // Fast path: skip DB init if no database file exists yet (avoids 200-800ms WASM load)
+    if (!fs.existsSync(MEMORY_DB_PATH)) {
+      return { skipped: true, reason: 'no_memory_db' };
     }
 
     // Store observation

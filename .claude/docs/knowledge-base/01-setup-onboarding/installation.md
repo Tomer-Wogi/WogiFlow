@@ -7,13 +7,29 @@ Set up WogiFlow for your project.
 ## Quick Install
 
 ```bash
-npm install wogiflow
+npm install -D wogiflow
+# or
+bun add -d --trust wogiflow
 ```
 
 This automatically:
 1. Creates the `.workflow/` directory structure
 2. Copies template files to `.workflow/state/`
-3. Sets up necessary subdirectories
+3. Generates a bootstrap `CLAUDE.md` for immediate use
+4. Sets up necessary subdirectories
+
+### Bun Users
+
+Bun does not run lifecycle scripts (postinstall) from third-party packages by default — this is a security measure. The `--trust` flag is **required** for WogiFlow to set up properly.
+
+Without `--trust`, the postinstall script never runs, so no `.workflow/` directory, no `.claude/commands/`, no scripts — nothing gets set up.
+
+To persist trust so future updates also run lifecycle scripts, add to `bunfig.toml`:
+
+```toml
+[install]
+trustedDependencies = ["wogiflow"]
+```
 
 ---
 
@@ -96,6 +112,8 @@ Or in Claude:
 
 ```bash
 npm update wogiflow
+# or
+bun update wogiflow   # requires trustedDependencies in bunfig.toml (see above)
 ```
 
 ---
@@ -117,6 +135,24 @@ The installer creates a balanced config:
 
 ## Troubleshooting
 
+### Bun: Nothing Got Set Up
+
+If `.workflow/` and `.claude/` directories don't exist after install, you likely forgot `--trust`:
+
+```bash
+# Remove and reinstall with --trust
+bun remove wogiflow
+bun add -d --trust wogiflow
+```
+
+Or add to `bunfig.toml` for persistent trust:
+```toml
+[install]
+trustedDependencies = ["wogiflow"]
+```
+
+Then reinstall: `bun install`
+
 ### Permission Denied
 
 ```bash
@@ -125,9 +161,10 @@ chmod +x ./node_modules/wogiflow/scripts/flow*
 
 ### Missing Dependencies
 
-Ensure Node.js 18+ is installed:
+Ensure Node.js 18+ or Bun 1.0+ is installed:
 ```bash
 node --version  # Should be 18+
+bun --version   # Should be 1.0+
 ```
 
 ### Config Validation Errors

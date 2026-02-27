@@ -94,6 +94,8 @@ function createQuickTask(filePath, operation) {
     };
 
     // Add to inProgress
+    // NOTE: Uses unlocked saveReadyData because this function is sync.
+    // Race condition risk is low since auto-task creation is opt-in and rare.
     const readyData = getReadyData();
     readyData.inProgress = readyData.inProgress || [];
     readyData.inProgress.unshift(task);

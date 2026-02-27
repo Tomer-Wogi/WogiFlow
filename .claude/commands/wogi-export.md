@@ -81,7 +81,7 @@ Run the export script directly:
 After installing WogiFlow, import a team profile:
 
 ```bash
-npm install wogiflow
+npm install -D wogiflow
 npx flow import-profile ~/my-team.zip
 ```
 

@@ -11,6 +11,7 @@ const { gatherSessionContext } = require('../../core/session-context');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 const { checkAndResetStalePhase } = require('../../core/phase-gate');
+const { setRoutingPending } = require('../../core/routing-gate');
 const { safeJsonParseString } = require('../../../flow-utils');
 
 // Lazy-load bridge state to avoid circular dependencies
@@ -79,6 +80,23 @@ async function main() {
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Failed to check stale phase: ${err.message}`);
+      }
+    }
+
+    // Defense-in-depth: Set routing-pending flag at session start.
+    // UserPromptSubmit also sets this, but a fresh/continued session should
+    // start with the gate active. This closes the loophole where session
+    // continuation ("Continue with the last task") bypasses routing because
+    // the AI treats it as implicit permission to skip /wogi-start.
+    try {
+      const routingResult = setRoutingPending();
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Set routing-pending: ${routingResult.reason}`);
+      }
+    } catch (err) {
+      // Non-blocking — UserPromptSubmit will also set this flag
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Failed to set routing-pending: ${err.message}`);
       }
     }
 

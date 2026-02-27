@@ -26,7 +26,8 @@ const {
   readFile,
   writeFile,
   fileExists,
-  printHeader
+  printHeader,
+  safeJsonParseString
 } = require('./flow-utils');
 
 // ============================================================
@@ -143,9 +144,8 @@ function readMemoryBlocks() {
     }
 
     // Use safe JSON parsing to prevent prototype pollution (Security Rule 2)
-    const parsed = JSON.parse(jsonMatch[1].trim());
-    // Basic validation - memory blocks should have expected structure
-    if (typeof parsed !== 'object' || parsed === null) {
+    const parsed = safeJsonParseString(jsonMatch[1].trim(), null);
+    if (parsed === null) {
       return null;
     }
     return parsed;
@@ -204,9 +204,9 @@ ${BLOCK_END}`;
     }
   }
 
-  // Wrap in try-catch per Security Rule 1
+  // Use atomic writeFile (temp + rename) per Security Rule 1
   try {
-    fs.writeFileSync(PROGRESS_PATH, content);
+    writeFile(PROGRESS_PATH, content);
     return true;
   } catch (err) {
     if (process.env.DEBUG) {

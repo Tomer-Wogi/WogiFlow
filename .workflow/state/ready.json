@@ -1,9 +1,74 @@
 {
-  "lastUpdated": "2026-02-26T19:05:00.000Z",
+  "lastUpdated": "2026-02-28T00:15:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2b1ab455",
+      "title": "Close Edit/Write routing gate bypass — session continuation loophole",
+      "type": "fix",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T21:50:00.000Z",
+      "completedAt": "2026-02-28T00:15:00.000Z"
+    },
+    {
+      "id": "wf-cr-a7f201",
+      "title": "Fix 14 review findings from wf-1bd2a207 review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T23:45:00.000Z",
+      "completedAt": "2026-02-28T00:00:00.000Z"
+    },
+    {
+      "id": "wf-1bd2a207",
+      "title": "Fix routing enforcement gaps + enhance /wogi-review NL scoping + add /wogi-audit",
+      "type": "feature",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T23:00:00.000Z",
+      "completedAt": "2026-02-27T23:30:00.000Z"
+    },
+    {
+      "id": "wf-cr-e13894",
+      "title": "Fix 25 review findings from full codebase review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-26T21:51:49.586Z",
+      "completedAt": "2026-02-28T22:00:00.000Z"
+    },
+    {
+      "id": "wf-a702e434",
+      "title": "Set up independent WogiFlow workflows in 3 repos",
+      "type": "story",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "repos": [
+        "wogi-flow",
+        "wogiflow-cloud",
+        "wogiflow-portal"
+      ],
+      "startedAt": "2026-02-26T21:01:36.469Z",
+      "completedAt": "2026-02-26T21:15:12.507Z"
+    },
+    {
+      "id": "wf-c22771dd",
+      "title": "Document dual-repo architecture rules and version awareness",
+      "type": "task",
+      "feature": "architecture",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-02-28T18:00:00.000Z",
+      "completedAt": "2026-02-28T18:15:00.000Z"
+    },
     {
       "id": "wf-cr-018f27",
       "title": "Fix 4 review findings from reuse detection implementation",

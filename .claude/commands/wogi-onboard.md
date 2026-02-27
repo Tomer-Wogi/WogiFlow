@@ -691,6 +691,36 @@ Display:
 
 ---
 
+### Phase 6.5: Generate CLAUDE.md (CRITICAL)
+
+**Now that config.json exists, generate the full CLAUDE.md from templates.**
+
+This replaces the bootstrap CLAUDE.md (created by postinstall) with the complete version rendered from Handlebars templates using the project's actual config values.
+
+```bash
+npx flow bridge sync
+```
+
+This runs the bridge which:
+1. Reads `.workflow/config.json` (just created in Phase 6)
+2. Renders `.workflow/templates/claude-md.hbs` with config values
+3. Writes the full `CLAUDE.md` with all enforcement rules, file locations, and commands
+
+Display:
+```
+  CLAUDE.md...           ✓ Generated from templates (full version)
+```
+
+**If bridge sync fails:**
+- Log warning: `⚠️ CLAUDE.md generation failed: [error]. Bootstrap version remains.`
+- The bootstrap CLAUDE.md from postinstall still provides basic task gating
+- User can manually run `npx flow bridge sync` later
+
+**Why this step matters:**
+Without it, the user completes onboarding but CLAUDE.md is either missing or still the bootstrap version. The full CLAUDE.md contains file locations, quality gate configs, commit behavior rules, and natural language command detection — all essential for the full WogiFlow experience.
+
+---
+
 ### Phase 7: Summary
 
 Display:
@@ -718,6 +748,8 @@ Pattern extraction...    ✓ Found 18 patterns, 3 conflicts resolved
 Template extraction...   ✓ Found 4 templates (component, service, test, hook)
 
 ━━━ Generated Files ━━━
+
+CLAUDE.md                    # Full project instructions (from templates)
 
 .workflow/
   config.json              # Project configuration
@@ -778,6 +810,7 @@ You can:
 
 | File | Purpose |
 |------|---------|
+| `CLAUDE.md` | Full project instructions for Claude Code (generated from templates) |
 | `.workflow/config.json` | Project configuration (quality gates, temporal thresholds) |
 | `.workflow/context/stack.md` | Detected tech stack |
 | `.workflow/context/product.md` | Product description and features |

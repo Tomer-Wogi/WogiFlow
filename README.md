@@ -3,7 +3,10 @@
 A self-improving AI development workflow that learns from your feedback. Currently supports **Claude Code 2.1.23+**.
 
 ```bash
-npm install wogiflow
+npm install -D wogiflow
+# or
+bun add -d --trust wogiflow   # --trust is required for bun to run postinstall
+
 npx flow onboard        # Analyze your project
 npx flow bridge sync    # Sync to Claude Code
 ```

@@ -439,7 +439,24 @@ function deleteEpic(epicId) {
   delete state.epics[epicId];
   saveEpicsState(state);
 
-  return { deleted: epicId };
+  // Archive the .md file if it exists
+  const mdPath = path.join(EPICS_DIR, `${epicId}.md`);
+  let archived = false;
+  if (fs.existsSync(mdPath)) {
+    try {
+      const now = new Date();
+      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const archiveDir = path.join(PATHS.workflow, 'archive', 'epics', yearMonth);
+      ensureDir(archiveDir);
+      fs.renameSync(mdPath, path.join(archiveDir, `${epicId}.md`));
+      archived = true;
+    } catch (err) {
+      // Fallback: delete if archive fails
+      try { fs.unlinkSync(mdPath); } catch (_err) { /* ignore */ }
+    }
+  }
+
+  return { deleted: epicId, archived };
 }
 
 // ============================================================

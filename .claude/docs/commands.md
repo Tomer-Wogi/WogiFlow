@@ -169,7 +169,7 @@ When user types these commands, execute the corresponding action immediately.
 
 ```bash
 # Setup
-npm install wogiflow              # Install WogiFlow in your project
+npm install -D wogiflow            # Install WogiFlow as dev dependency
 npx flow onboard                  # Analyze existing project & set up context
 
 # Task Management

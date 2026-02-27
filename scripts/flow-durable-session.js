@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse } = require('./flow-utils');
+const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse, PATHS } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
 const { validatePathWithinProject } = require('./flow-security');
 
@@ -69,18 +69,15 @@ const RESUME_CONDITION = {
 // ============================================================================
 
 function getSessionPath() {
-  const projectRoot = getProjectRoot();
-  return path.join(projectRoot, '.workflow', 'state', SESSION_FILE);
+  return path.join(PATHS.state, SESSION_FILE);
 }
 
 function getHistoryPath() {
-  const projectRoot = getProjectRoot();
-  return path.join(projectRoot, '.workflow', 'state', HISTORY_FILE);
+  return path.join(PATHS.state, HISTORY_FILE);
 }
 
 function getLegacyHybridPath() {
-  const projectRoot = getProjectRoot();
-  return path.join(projectRoot, '.workflow', 'state', LEGACY_HYBRID_FILE);
+  return path.join(PATHS.state, LEGACY_HYBRID_FILE);
 }
 
 /**
@@ -92,7 +89,9 @@ function cleanupLegacyHybridSession() {
   if (fs.existsSync(legacyPath)) {
     try {
       fs.unlinkSync(legacyPath);
-      console.log('[Migration] Removed legacy hybrid-session.json - now using durable-session.json');
+      if (process.env.DEBUG) {
+        console.log('[Migration] Removed legacy hybrid-session.json - now using durable-session.json');
+      }
     } catch (err) {
       // Non-fatal - just log and continue
       console.warn(`[Warning] Could not remove legacy hybrid-session.json: ${err.message}`);

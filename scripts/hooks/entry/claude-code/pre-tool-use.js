@@ -167,9 +167,11 @@ async function main() {
       }
     }
 
-    // v6.0: Routing gate check (for Bash, EnterPlanMode, Read, Glob, Grep)
-    // Blocks tool calls when no /wogi-* command has been invoked first
-    if (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
+    // v6.0: Routing gate check (for Bash, EnterPlanMode, Read, Glob, Grep, Edit, Write, NotebookEdit)
+    // Blocks ALL tool calls when no /wogi-* command has been invoked first.
+    // Edit/Write MUST be gated here — without this, AI can edit ready.json
+    // (exempt from task gate) to create a fake active task, then edit freely.
+    if (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
       try {
         const routingResult = checkRoutingGate(toolName);
         if (routingResult.blocked) {
@@ -185,10 +187,22 @@ async function main() {
           return;
         }
       } catch (err) {
-        // Fail-open for routing gate (convenience enforcement, not security boundary)
+        // Fail-CLOSED for routing gate — users installed WogiFlow for enforcement.
+        // If the gate check itself errors, deny the tool rather than silently allowing
+        // the exact bypass this system exists to prevent.
         if (process.env.DEBUG) {
-          console.error(`[Hook] Routing gate error (fail-open): ${err.message}`);
+          console.error(`[Hook] Routing gate error (fail-closed): ${err.message}`);
         }
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Routing gate error: ${err.message}`,
+          message: 'Routing gate check failed. Please invoke /wogi-start first. Use Skill(skill="wogi-start", args="<your request>").'
+        };
+        const errOutput = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        console.log(JSON.stringify(errOutput));
+        process.exit(0);
+        return;
       }
     }
 

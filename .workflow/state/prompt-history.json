@@ -2219,6 +2219,36 @@
         "content": "I worked on another terminal adding some features so make sure that you push everything to the right place on github and also create a release for the master like the team functionality I don't want it live yet ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-26T19:31:59.702Z",
+        "content": "okay so now let's just add something for decisions that or in any other place that makes sense this is not for wogiflow in general this is for us developing wogiflow we need to have one release that is for like the open source part we have the part that is for teams but there are a lot of things that we need to make sure are aligned because when we update something in the open source version it probably needs to update the same for the team version and if I update something for the team version it probably needs to update not necessarily for the open source version so we need to think how to manage both repos and make sure that when we do something like that it's I don't know separate maybe we need to keep each project like separately the portal itself definitely needs to be separate like the portal is again like a different project but it's more associated to teams because basically what we have on the website is like either you go into and install it through npm or after we'll add it as a plugin to cloud code or we log in and create an account and then it's in order to use it with the team's functionality Let's have a review also all repos to make sure that everything sits in the right place ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-26T20:40:23.015Z",
+        "content": "1. Yes, wogi-hub is a different product \n2. I don't know what you did there, We currently have a wogi website and a wogi  portal on wogi.ai. Those are the relevant files for portal and for website.  \n3. yes but also do what you wrote under What needs attention: 1, 2. each should have a different version - but both need to know what the current version of the other 3. please explain 4. can you run the dashboard you created - admin UI - so i can see what is there. it might be another portral you developed or something different. 5. wogi hub is sperate product\n",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-26T20:48:48.797Z",
+        "content": "Do you think we should place the files for each one of them separately? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-26T20:52:31.941Z",
+        "content": "I want you to separate them to 3 different folders like in the wogiflow itself have a main cloud and portal and for each one of them create the relevant wogiflow workflow I think it would be the best and what do you think? like I'm asking for an opinion before I do it ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-26T21:16:27.692Z",
+        "content": "/wogi-session-end ",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0

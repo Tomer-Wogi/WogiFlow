@@ -245,8 +245,7 @@ function getCliSessionId() {
  * Track task start
  */
 function trackTaskStart(taskId, taskTitle, metadata = {}) {
-  // Load state to ensure we have latest data before save
-  loadSessionState();
+  // saveSessionState already loads current state and merges
   return saveSessionState({
     currentTask: {
       id: taskId,
@@ -263,12 +262,20 @@ function trackTaskStart(taskId, taskTitle, metadata = {}) {
  * @returns {Promise<Object>} Updated session state
  */
 async function trackTaskCompleteAsync(_taskId) {
-  return saveSessionStateAsync({
-    currentTask: null,
-    metrics: {
-      ...(loadSessionState().metrics || {}),
-      tasksCompleted: ((loadSessionState().metrics?.tasksCompleted) || 0) + 1
-    }
+  return withLock(SESSION_PATH, async () => {
+    const current = loadSessionState();
+    const metrics = current.metrics || {};
+    const newState = {
+      ...current,
+      currentTask: null,
+      metrics: {
+        ...metrics,
+        tasksCompleted: (metrics.tasksCompleted || 0) + 1
+      },
+      lastActive: new Date().toISOString()
+    };
+    writeJson(SESSION_PATH, newState);
+    return newState;
   });
 }
 

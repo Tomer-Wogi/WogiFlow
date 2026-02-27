@@ -18,7 +18,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId } = require('../../flow-utils');
+const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId, archiveCompletedTasksToLog } = require('../../flow-utils');
 const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
 
 /**
@@ -101,8 +101,10 @@ async function handleTaskCompleted(input) {
       }
       ready.recentlyCompleted.unshift(completedTask);
 
-      // Keep recentlyCompleted trimmed to last 10
+      // Keep recentlyCompleted trimmed to last 10, archive overflow
       if (ready.recentlyCompleted.length > 10) {
+        const overflow = ready.recentlyCompleted.slice(10);
+        archiveCompletedTasksToLog(overflow);
         ready.recentlyCompleted = ready.recentlyCompleted.slice(0, 10);
       }
 

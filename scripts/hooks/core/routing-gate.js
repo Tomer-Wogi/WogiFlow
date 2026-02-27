@@ -16,12 +16,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
+const { getConfig, getReadyData, PATHS, safeJsonParseString } = require('../../flow-utils');
 
 // Include session ID in flag path to prevent concurrent sessions from
-// interfering with each other. Falls back to PID-based path if no session ID.
-const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || `pid-${process.ppid || process.pid}`;
-const ROUTING_FLAG_PATH = path.join(PATHS.state, `.routing-pending-${SESSION_ID}`);
+// interfering with each other.
+// CRITICAL FIX (Gap 3): When CLAUDE_CODE_SESSION_ID is not set, use a single
+// shared flag file instead of PID-based paths. PIDs differ between hook processes
+// (UserPromptSubmit writes pid-123, PreToolUse reads pid-456 — never match).
+// With session ID set, each session gets its own flag. Without it, a single
+// shared flag works for the common single-session use case.
+// Sanitize SESSION_ID to prevent path traversal (only allow alphanumeric, hyphens, underscores)
+const RAW_SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || null;
+const SESSION_ID = RAW_SESSION_ID ? RAW_SESSION_ID.replace(/[^a-zA-Z0-9_-]/g, '') : null;
+const ROUTING_FLAG_PATH = SESSION_ID
+  ? path.join(PATHS.state, `.routing-pending-${SESSION_ID}`)
+  : path.join(PATHS.state, '.routing-pending');
 
 /**
  * Check if routing gate is enabled in config
@@ -136,21 +145,17 @@ function isRoutingPending() {
   try {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
     // Check TTL — stale flags from crashed sessions shouldn't block
-    try {
-      const data = JSON.parse(content);
-      if (data.timestamp) {
-        const age = Date.now() - new Date(data.timestamp).getTime();
-        if (age > ROUTING_FLAG_TTL_MS) {
-          // Flag is stale — clean it up and return false
-          try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
-          if (process.env.DEBUG) {
-            console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
-          }
-          return false;
+    const data = safeJsonParseString(content, {});
+    if (data.timestamp) {
+      const age = Date.now() - new Date(data.timestamp).getTime();
+      if (age > ROUTING_FLAG_TTL_MS) {
+        // Flag is stale — clean it up and return false
+        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (err) { /* ignore cleanup failure */ }
+        if (process.env.DEBUG) {
+          console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
         }
+        return false;
       }
-    } catch {
-      // Can't parse flag content — treat as valid (recently written)
     }
     return true;
   } catch (err) {
@@ -158,8 +163,10 @@ function isRoutingPending() {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Failed to check flag: ${err.message}`);
     }
-    // Fail-open: if can't check, assume not pending
-    return false;
+    // Fail-CLOSED: if can't check flag, assume routing IS pending.
+    // Users installed WogiFlow for enforcement — failing open silently
+    // allows the exact bypass this system exists to prevent.
+    return true;
   }
 }
 
@@ -170,10 +177,14 @@ function isRoutingPending() {
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
 function checkRoutingGate(toolName) {
-  // Gate Bash, EnterPlanMode, and read tools (Read/Glob/Grep)
-  // EnterPlanMode bypasses /wogi-start routing — must be blocked before routing
-  // Read/Glob/Grep allow codebase exploration without routing — must also be gated
-  const GATED_TOOLS = new Set(['Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep']);
+  // Gate ALL tools that allow the AI to act without routing through /wogi-start.
+  // Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
+  // from task gate) to create a fake active task, then edit anything freely.
+  // This set must include EVERY tool that reads, writes, or executes.
+  const GATED_TOOLS = new Set([
+    'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
+    'Edit', 'Write', 'NotebookEdit'
+  ]);
   if (!GATED_TOOLS.has(toolName)) {
     return { allowed: true, blocked: false, reason: 'not_gated_tool', message: null };
   }
@@ -204,14 +215,55 @@ function checkRoutingGate(toolName) {
     blocked: true,
     reason: 'routing_pending',
     message: [
-      'BLOCKED: You must route through /wogi-start before using Bash, Read, Glob, Grep, or EnterPlanMode.',
+      'BLOCKED: You must route through /wogi-start before using ANY tool (Bash, Read, Glob, Grep, Edit, Write, NotebookEdit, EnterPlanMode).',
       'ACTION REQUIRED: Invoke the Skill tool with skill="wogi-start" and pass the user\'s request as args.',
       'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
       '/wogi-start will classify the request (operational, exploration, implementation) and unblock the appropriate tools.',
-      'Do NOT read files, search code, or execute commands without routing first.',
+      'Do NOT read files, search code, edit files, or execute commands without routing first.',
+      'Do NOT edit ready.json or any state file to create tasks manually — that is a routing bypass.',
+      'Do NOT treat session continuation as implicit permission to skip routing.',
       'Do NOT try alternative approaches to bypass this gate.'
     ].join(' ')
   };
+}
+
+/**
+ * Increment the stop-attempt counter in the routing flag.
+ * Used by the Stop hook instead of clearing the flag outright,
+ * giving the AI multiple chances to comply before giving up.
+ * @param {number} maxAttempts - Max attempts before clearing for real
+ * @returns {{ cleared: boolean, attempts: number }}
+ */
+function incrementStopAttempts(maxAttempts = 3) {
+  try {
+    const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
+    const data = safeJsonParseString(content, { timestamp: new Date().toISOString() });
+
+    const attempts = (data.stopAttempts || 0) + 1;
+    if (attempts >= maxAttempts) {
+      // Max retries reached — clear flag to prevent infinite loop
+      try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+      if (process.env.DEBUG) {
+        console.error(`[routing-gate] Max stop attempts (${maxAttempts}) reached, clearing flag`);
+      }
+      return { cleared: true, attempts };
+    }
+
+    // Increment counter — flag stays active
+    data.stopAttempts = attempts;
+    fs.writeFileSync(ROUTING_FLAG_PATH, JSON.stringify(data), 'utf-8');
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] Stop attempt ${attempts}/${maxAttempts}`);
+    }
+    return { cleared: false, attempts };
+  } catch (err) {
+    if (err.code === 'ENOENT') return { cleared: true, attempts: 0 };
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] Failed to increment stop attempts: ${err.message}`);
+    }
+    // Fail-closed: assume flag still active
+    return { cleared: false, attempts: -1 };
+  }
 }
 
 module.exports = {
@@ -221,5 +273,6 @@ module.exports = {
   clearRoutingPending,
   isRoutingPending,
   checkRoutingGate,
+  incrementStopAttempts,
   ROUTING_FLAG_PATH
 };

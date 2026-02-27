@@ -206,6 +206,17 @@ async function checkLoopExit() {
   }
 
   // Approach thrashing detection: 3+ rejected observations on same file within last hour
+  // Fast path: skip thrashing detection if no memory DB exists (avoids 200-800ms WASM load)
+  const memoryDbPath = path.join(PATHS.workflow, 'memory', 'local.db');
+  if (!fs.existsSync(memoryDbPath)) {
+    return {
+      canExit: false,
+      blocked: true,
+      message: generateBlockMessage(criteriaStatus, session),
+      reason: 'criteria_incomplete',
+      criteriaStatus
+    };
+  }
   try {
     const memoryDb = require('../../flow-memory-db');
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
