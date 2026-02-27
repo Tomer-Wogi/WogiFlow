@@ -115,6 +115,7 @@ npm install -D wogiflow && npx flow onboard
 | `/wogi-health` | Check workflow health |
 | `/wogi-roadmap` | View/manage deferred work |
 | `/wogi-suggest "text"` | Submit suggestion for WogiFlow |
+| `/wogi-audit` | Comprehensive project-wide analysis (7 dimensions) |
 
 See `.claude/docs/commands.md` for complete command reference.
 
@@ -141,6 +142,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "finalize branch", "merge to master", "create a PR", "discard this branch", "what to do with this branch" | `/wogi-finalize` |
 | "rescan project", "re-evaluate project", "project changed", "others made changes", "sync wogi", "things changed", "out of sync" | `/wogi-rescan` |
 | "suggest improvement", "feature request for wogi", "wogi suggestion", "submit feedback" | `/wogi-suggest` |
+| "audit project", "project audit", "full project analysis", "full analysis" | `/wogi-audit` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation. These `/wogi-*` commands satisfy the mandatory routing requirement — you do NOT also need to invoke `/wogi-start` when a detection match exists. `/wogi-start` is the fallback for messages that don't match this table.
 

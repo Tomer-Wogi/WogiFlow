@@ -13,7 +13,7 @@
  */
 
 const { checkLoopExit } = require('../../core/loop-check');
-const { isRoutingPending, clearRoutingPending } = require('../../core/routing-gate');
+const { isRoutingPending, clearRoutingPending, incrementStopAttempts } = require('../../core/routing-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 
 async function main() {
@@ -33,33 +33,51 @@ async function main() {
     // This is the exact bypass we need to prevent (especially after context compaction).
     try {
       if (isRoutingPending()) {
-        // Clear the flag to prevent infinite loops on retry
-        clearRoutingPending();
+        // Use counter-based approach instead of clearing immediately.
+        // This gives the AI multiple chances to comply before giving up.
+        // Gap 4 fix: clearing immediately made this single-shot protection.
+        const { cleared, attempts } = incrementStopAttempts(3);
 
-        // Block the stop — force the AI to route through /wogi-start
-        const routingMessage = [
-          'ROUTING VIOLATION DETECTED: You responded to the user without invoking a /wogi-* command first.',
-          'This is a mandatory WogiFlow workflow requirement that applies to ALL user messages — including after context compaction.',
-          '',
-          'ACTION REQUIRED: You must invoke the Skill tool with skill="wogi-start" and pass the user\'s original request as args.',
-          'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
-          '',
-          'Do NOT apologize and stop. Do NOT explain why you skipped routing.',
-          'Instead: invoke /wogi-start NOW with the user\'s most recent message.'
-        ].join('\n');
+        if (cleared) {
+          // Max attempts reached — allow stop to prevent infinite loop
+          if (process.env.DEBUG) {
+            console.error(`[Stop] Max routing enforcement attempts reached (${attempts}), allowing stop`);
+          }
+          // Fall through to normal stop logic
+        } else {
+          // Block the stop — force the AI to route through /wogi-start
+          const routingMessage = [
+            `ROUTING VIOLATION DETECTED (attempt ${attempts}/3): You responded to the user without invoking a /wogi-* command first.`,
+            'This is a mandatory WogiFlow workflow requirement that applies to ALL user messages — including after context compaction.',
+            '',
+            'ACTION REQUIRED: You must invoke the Skill tool with skill="wogi-start" and pass the user\'s original request as args.',
+            'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
+            '',
+            'Do NOT apologize and stop. Do NOT explain why you skipped routing.',
+            'Instead: invoke /wogi-start NOW with the user\'s most recent message.'
+          ].join('\n');
 
-        console.log(JSON.stringify({
-          continue: true, // Force continue — don't let the AI stop
-          stopReason: routingMessage
-        }));
-        process.exit(0);
-        return;
+          console.log(JSON.stringify({
+            continue: true, // Force continue — don't let the AI stop
+            stopReason: routingMessage
+          }));
+          process.exit(0);
+          return;
+        }
       }
     } catch (err) {
-      // Fail-open for routing check in Stop hook — don't trap users in unexitable sessions
+      // Fail-CLOSED for routing check — force continuation on errors.
+      // Gap 5 fix: failing open here disabled the last line of defense.
+      // Worst case: AI retries and hits the 3-attempt limit, which clears naturally.
       if (process.env.DEBUG) {
-        console.error(`[Stop] Routing check error (fail-open): ${err.message}`);
+        console.error(`[Stop] Routing check error (fail-closed, forcing continue): ${err.message}`);
       }
+      console.log(JSON.stringify({
+        continue: true,
+        stopReason: 'Routing enforcement check encountered an error. Please invoke /wogi-start with your request.'
+      }));
+      process.exit(0);
+      return;
     }
 
     // Check if loop can exit

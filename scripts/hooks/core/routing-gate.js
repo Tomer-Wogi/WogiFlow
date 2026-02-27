@@ -19,9 +19,16 @@ const path = require('path');
 const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
 
 // Include session ID in flag path to prevent concurrent sessions from
-// interfering with each other. Falls back to PID-based path if no session ID.
-const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || `pid-${process.ppid || process.pid}`;
-const ROUTING_FLAG_PATH = path.join(PATHS.state, `.routing-pending-${SESSION_ID}`);
+// interfering with each other.
+// CRITICAL FIX (Gap 3): When CLAUDE_CODE_SESSION_ID is not set, use a single
+// shared flag file instead of PID-based paths. PIDs differ between hook processes
+// (UserPromptSubmit writes pid-123, PreToolUse reads pid-456 — never match).
+// With session ID set, each session gets its own flag. Without it, a single
+// shared flag works for the common single-session use case.
+const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || null;
+const ROUTING_FLAG_PATH = SESSION_ID
+  ? path.join(PATHS.state, `.routing-pending-${SESSION_ID}`)
+  : path.join(PATHS.state, '.routing-pending');
 
 /**
  * Check if routing gate is enabled in config
@@ -158,8 +165,10 @@ function isRoutingPending() {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Failed to check flag: ${err.message}`);
     }
-    // Fail-open: if can't check, assume not pending
-    return false;
+    // Fail-CLOSED: if can't check flag, assume routing IS pending.
+    // Users installed WogiFlow for enforcement — failing open silently
+    // allows the exact bypass this system exists to prevent.
+    return true;
   }
 }
 
@@ -214,6 +223,50 @@ function checkRoutingGate(toolName) {
   };
 }
 
+/**
+ * Increment the stop-attempt counter in the routing flag.
+ * Used by the Stop hook instead of clearing the flag outright,
+ * giving the AI multiple chances to comply before giving up.
+ * @param {number} maxAttempts - Max attempts before clearing for real
+ * @returns {{ cleared: boolean, attempts: number }}
+ */
+function incrementStopAttempts(maxAttempts = 3) {
+  try {
+    const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
+    let data;
+    try {
+      data = JSON.parse(content);
+    } catch {
+      data = { timestamp: new Date().toISOString() };
+    }
+
+    const attempts = (data.stopAttempts || 0) + 1;
+    if (attempts >= maxAttempts) {
+      // Max retries reached — clear flag to prevent infinite loop
+      try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+      if (process.env.DEBUG) {
+        console.error(`[routing-gate] Max stop attempts (${maxAttempts}) reached, clearing flag`);
+      }
+      return { cleared: true, attempts };
+    }
+
+    // Increment counter — flag stays active
+    data.stopAttempts = attempts;
+    fs.writeFileSync(ROUTING_FLAG_PATH, JSON.stringify(data), 'utf-8');
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] Stop attempt ${attempts}/${maxAttempts}`);
+    }
+    return { cleared: false, attempts };
+  } catch (err) {
+    if (err.code === 'ENOENT') return { cleared: true, attempts: 0 };
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] Failed to increment stop attempts: ${err.message}`);
+    }
+    // Fail-closed: assume flag still active
+    return { cleared: false, attempts: -1 };
+  }
+}
+
 module.exports = {
   isRoutingGateEnabled,
   hasActiveTask,
@@ -221,5 +274,6 @@ module.exports = {
   clearRoutingPending,
   isRoutingPending,
   checkRoutingGate,
+  incrementStopAttempts,
   ROUTING_FLAG_PATH
 };

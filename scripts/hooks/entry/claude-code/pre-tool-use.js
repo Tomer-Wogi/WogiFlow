@@ -185,10 +185,22 @@ async function main() {
           return;
         }
       } catch (err) {
-        // Fail-open for routing gate (convenience enforcement, not security boundary)
+        // Fail-CLOSED for routing gate — users installed WogiFlow for enforcement.
+        // If the gate check itself errors, deny the tool rather than silently allowing
+        // the exact bypass this system exists to prevent.
         if (process.env.DEBUG) {
-          console.error(`[Hook] Routing gate error (fail-open): ${err.message}`);
+          console.error(`[Hook] Routing gate error (fail-closed): ${err.message}`);
         }
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Routing gate error: ${err.message}`,
+          message: 'Routing gate check failed. Please invoke /wogi-start first. Use Skill(skill="wogi-start", args="<your request>").'
+        };
+        const errOutput = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        console.log(JSON.stringify(errOutput));
+        process.exit(0);
+        return;
       }
     }
 

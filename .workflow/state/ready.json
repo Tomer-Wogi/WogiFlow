@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-26T21:51:49.587Z",
+  "lastUpdated": "2026-02-27T23:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-1bd2a207",
+      "title": "Fix routing enforcement gaps + enhance /wogi-review NL scoping + add /wogi-audit",
+      "type": "feature",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-27T23:00:00.000Z",
+      "completedAt": "2026-02-27T23:30:00.000Z"
+    },
     {
       "id": "wf-cr-e13894",
       "title": "Fix 25 review findings from full codebase review",

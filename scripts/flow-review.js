@@ -57,6 +57,142 @@ try {
 }
 
 // ============================================================
+// Scope Resolution Helpers (v6.0 — NL scoping)
+// ============================================================
+
+/**
+ * Get the last N session boundary commits.
+ * Session-end commits follow the pattern: "chore: End session —"
+ * @param {number} count - Number of session boundaries to find
+ * @returns {string[]} Array of commit SHAs (most recent first)
+ */
+function getSessionBoundaryCommits(count = 1) {
+  const safeCount = Math.max(1, Math.min(Math.floor(count), 50));
+  try {
+    const output = execFileSync('git', [
+      'log', '--grep=End session', '--format=%H', `-${safeCount * 2}`
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    return output.trim().split('\n').filter(Boolean).slice(0, safeCount);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Session boundary error: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Get files changed between two commits.
+ * @param {string} fromSha - Start commit SHA
+ * @param {string} toSha - End commit SHA (defaults to HEAD)
+ * @returns {string[]} List of changed file paths
+ */
+function getFilesBetweenCommits(fromSha, toSha = 'HEAD') {
+  // Validate SHAs look like hex strings to prevent injection
+  if (!/^[a-f0-9]+$/i.test(fromSha) || !/^[a-f0-9]+$/i.test(toSha)) {
+    return [];
+  }
+  try {
+    const output = execFileSync('git', [
+      'diff', '--name-only', fromSha, toSha
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    return output.trim().split('\n').filter(Boolean);
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Commit diff error: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Get files changed since a date string.
+ * @param {string} dateStr - Date string (e.g., "2 days ago", "2026-02-25", "last Monday")
+ * @returns {{ files: string[], fromSha: string|null, toSha: string }}
+ */
+function getFilesSinceDate(dateStr) {
+  // Validate dateStr doesn't contain shell metacharacters
+  if (/[;&|`$(){}]/.test(dateStr)) {
+    return { files: [], fromSha: null, toSha: 'HEAD' };
+  }
+  try {
+    // Find the earliest commit since the date
+    const shaOutput = execFileSync('git', [
+      'log', `--since=${dateStr}`, '--format=%H', '--reverse'
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const shas = shaOutput.trim().split('\n').filter(Boolean);
+    if (shas.length === 0) return { files: [], fromSha: null, toSha: 'HEAD' };
+
+    const fromSha = `${shas[0]}~1`;
+    const files = execFileSync('git', [
+      'diff', '--name-only', fromSha, 'HEAD'
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    return {
+      files: files.trim().split('\n').filter(Boolean),
+      fromSha: shas[0],
+      toSha: 'HEAD'
+    };
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Date-based diff error: ${err.message}`);
+    return { files: [], fromSha: null, toSha: 'HEAD' };
+  }
+}
+
+/**
+ * Get files changed on a branch compared to its merge-base.
+ * @param {string} baseBranch - Base branch name (default: 'master')
+ * @returns {{ files: string[], mergeBase: string|null }}
+ */
+function getBranchFiles(baseBranch = 'master') {
+  // Validate branch name
+  if (/[;&|`$(){}]/.test(baseBranch)) {
+    return { files: [], mergeBase: null };
+  }
+  try {
+    const mergeBase = execFileSync('git', [
+      'merge-base', baseBranch, 'HEAD'
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+
+    const output = execFileSync('git', [
+      'diff', '--name-only', mergeBase, 'HEAD'
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    return {
+      files: output.trim().split('\n').filter(Boolean),
+      mergeBase
+    };
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Branch diff error: ${err.message}`);
+    return { files: [], mergeBase: null };
+  }
+}
+
+/**
+ * Get all tracked project files (excluding generated/dependency dirs).
+ * @returns {string[]} List of tracked file paths
+ */
+function getAllProjectFiles() {
+  try {
+    const output = execFileSync('git', [
+      'ls-files', '--cached', '--others', '--exclude-standard'
+    ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const excludePatterns = [
+      /^node_modules\//,
+      /^\.workflow\/state\//,
+      /^dist\//,
+      /^build\//,
+      /^\.git\//,
+      /^coverage\//,
+      /\.min\.js$/,
+      /package-lock\.json$/,
+      /yarn\.lock$/,
+      /bun\.lockb$/
+    ];
+    return output.trim().split('\n').filter(f =>
+      f && !excludePatterns.some(p => p.test(f))
+    );
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] ls-files error: ${err.message}`);
+    return [];
+  }
+}
+
+// ============================================================
 // Get Changed Files
 // ============================================================
 
@@ -592,7 +728,26 @@ Configure in config.json under review.autoMultiPass.
   }
 }
 
-main().catch(err => {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
-});
+// ============================================================
+// Exports (for AI scope resolution and external callers)
+// ============================================================
+
+module.exports = {
+  getChangedFiles,
+  loadFileContent,
+  runVerificationGates,
+  shouldAutoEnableMultiPass,
+  getSessionBoundaryCommits,
+  getFilesBetweenCommits,
+  getFilesSinceDate,
+  getBranchFiles,
+  getAllProjectFiles
+};
+
+// Run main only when executed directly (not when required)
+if (require.main === module) {
+  main().catch(err => {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  });
+}

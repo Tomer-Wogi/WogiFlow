@@ -87,6 +87,70 @@ The review system has **two layers**:
 
 **The runtime script does NOT execute all 5 phases.** It handles pre-flight only. You (the AI) are responsible for orchestrating the complete review.
 
+## Step 0: Scope Resolution (Natural Language Scoping)
+
+**Before Phase 1, resolve what files to review.** When the user provides a description instead of (or in addition to) flags, the AI interprets it and resolves a file list.
+
+**Default behavior (no args)**: Standard git diff — unchanged from previous behavior. Skip this step.
+
+**When args are provided**, interpret the natural language and resolve scope:
+
+```
+Step 0: Scope Resolution
+  ├── No args (just /wogi-review)? → Default git diff, skip this step
+  ├── Has --commits, --staged flags? → Use those flags directly, skip NL
+  └── Has natural language args? → AI interprets:
+        ├── Session-based ("last 3 sessions", "since yesterday's session")
+        │     → Use getSessionBoundaryCommits(n) from flow-review.js
+        │     → git diff between session boundary commits
+        ├── Feature-based ("auth feature", "payment flow")
+        │     → Grep codebase for related files
+        │     → Check app-map.md, function-map.md for feature groupings
+        │     → Read request-log.md for tagged entries (#screen:X, #component:Y)
+        ├── Branch-based ("this branch", "feature/xyz", "everything on this branch")
+        │     → Use getBranchFiles() from flow-review.js
+        │     → git diff main...HEAD (or specified branch)
+        ├── Time-based ("last week", "since Monday", "past 2 days")
+        │     → Use getFilesSinceDate() from flow-review.js
+        │     → git log --since to find commit range
+        ├── Path-based ("the API layer", "all services", "just the hooks")
+        │     → Glob for matching file patterns (e.g., scripts/hooks/**)
+        └── Full project ("everything", "the whole project", "all files")
+              → Use getAllProjectFiles() from flow-review.js
+              → Auto-enable multi-pass mode for large file sets
+```
+
+**After resolving scope, display it before proceeding:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCOPE RESOLUTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Request: "check the last 3 sessions"
+Resolved: 23 files from last 3 sessions (commits abc1234..xyz5678)
+
+Files:
+  scripts/flow-review.js
+  scripts/hooks/core/routing-gate.js
+  ... (list first 10, summarize rest)
+
+Mode: multi-pass (auto-enabled: 23 files)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Helper functions available** (exported from `scripts/flow-review.js`):
+- `getSessionBoundaryCommits(n)` — finds last N "End session" commits
+- `getFilesBetweenCommits(fromSha, toSha)` — git diff between two commits
+- `getFilesSinceDate(dateStr)` — git log --since to find commit range
+- `getBranchFiles(baseBranch)` — git diff against merge-base
+- `getAllProjectFiles()` — all tracked files excluding node_modules, dist, etc.
+
+**When scope resolves to 20+ files**: Auto-suggest multi-pass mode.
+**When scope is "full project"**: Cap to relevant code files, always use multi-pass.
+
+The resolved file list replaces the default git diff in Phase 1. All subsequent phases operate on the resolved scope.
+
+---
+
 ## How It Works (MANDATORY 5-PHASE SEQUENTIAL EXECUTION)
 
 **CRITICAL: You MUST execute ALL 5 phases sequentially. Do NOT stop after Phase 2.**

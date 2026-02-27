@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-192 | 2026-02-27 23:30
+**Type**: new
+**Tags**: #workflow #routing #review #audit #enforcement
+**Task**: wf-1bd2a207
+**Request**: "Fix 5 routing enforcement gaps + enhance /wogi-review with NL scoping + add /wogi-audit"
+**Result**: Part A: Fixed 5 routing enforcement gaps (fail-closed error handling in routing-gate.js and pre-tool-use.js, session ID fallback using shared file, counter-based stop enforcement with 3 attempts, fail-closed stop hook). Part B: Added natural language scope resolution to /wogi-review (session-based, feature-based, branch-based, time-based, path-based). Created /wogi-audit command with 7-dimension parallel analysis (architecture, dependencies, duplication, performance, consistency, modernization, tech debt) and weighted health scoring. Updated config.json, templates, and CLAUDE.md.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/stop.js, scripts/flow-review.js, scripts/flow-audit.js, .claude/commands/wogi-review.md, .claude/commands/wogi-audit.md, .workflow/config.json, .workflow/templates/claude-md.hbs, .workflow/templates/partials/user-commands.hbs, CLAUDE.md
+
 ### R-191 | 2026-02-27 22:00
 **Type**: fix
 **Tags**: #review #codebase-review #bugfix #performance #security

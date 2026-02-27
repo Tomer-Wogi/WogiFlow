@@ -1711,5 +1711,30 @@
     "mode": "warn",
     "_comment_mode": "'warn' reports inconsistencies, 'block' prevents completion until fixed.",
     "maxOrphans": 10
+  },
+  "audit": {
+    "agents": {
+      "architecture": true,
+      "dependencies": true,
+      "duplication": true,
+      "performance": true,
+      "consistency": true,
+      "modernization": true,
+      "techDebt": true
+    },
+    "scoring": {
+      "enabled": true,
+      "weights": {
+        "architecture": 0.25,
+        "dependencies": 0.15,
+        "duplication": 0.15,
+        "performance": 0.15,
+        "consistency": 0.10,
+        "modernization": 0.10,
+        "techDebt": 0.10
+      }
+    },
+    "exclude": ["node_modules", ".workflow/state", "dist", "build"],
+    "maxFilesPerAgent": 100
   }
 }
