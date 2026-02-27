@@ -516,7 +516,7 @@ function main() {
         for (const missing of hookScriptsMissing.slice(0, 5)) {
           console.log(`    - ${missing}`);
         }
-        console.log(`    ${color('dim', "→ Run 'npm install wogiflow' or 'flow init' to restore scripts")}`);
+        console.log(`    ${color('dim', "→ Run 'npm install -D wogiflow' or 'flow init' to restore scripts")}`);
         issues++;
       } else if (preToolHooks.length > 0) {
         console.log(`  ${color('green', '✓')} All hook scripts exist`);

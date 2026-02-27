@@ -4,7 +4,7 @@ Claude Code is the primary CLI for WogiFlow and has full feature support with ha
 
 ## Setup
 
-1. Install WogiFlow: `npm install wogiflow`
+1. Install WogiFlow: `npm install -D wogiflow`
 2. Initialize: `npx flow onboard` or `npx flow init`
 3. Sync bridge: `npx flow bridge sync claude-code`
 
