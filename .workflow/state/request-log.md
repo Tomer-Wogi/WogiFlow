@@ -11,7 +11,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
-### R-XXX | 2026-02-28 22:15
+### R-191 | 2026-02-27 22:00
+**Type**: fix
+**Tags**: #review #codebase-review #bugfix #performance #security
+**Task**: wf-cr-e13894
+**Request**: "Fix all 25 review findings from comprehensive codebase review"
+**Result**: Fixed all 25 findings across 14 files: 3 critical (exponentialBackoff ignored, race condition in trackTaskComplete, WASM init on every hook), 8 high (wrong field name in ready.json access, non-atomic writes, renamed config key, redundant getProjectRoot calls, missing caching), 9 medium (DRY violations, non-atomic writes in 3 files, overflow archiving, read-modify-write race, config consolidation), 5 low (regex tightening, stdout pollution, missing config keys, raw JSON.parse security violations).
+**Files**: scripts/flow-utils.js, scripts/flow-session-state.js, scripts/flow-parallel.js, scripts/flow-long-input.js, scripts/flow-durable-session.js, scripts/flow-start.js, scripts/flow-cascade.js, scripts/flow-memory-blocks.js, scripts/flow-memory-sync.js, scripts/hooks/core/observation-capture.js, scripts/hooks/core/loop-check.js, scripts/hooks/core/task-gate.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/scope-gate.js
+
+### R-190 | 2026-02-28 22:15
 **Type**: new
 **Tags**: #workflow #setup #cross-repo
 **Task**: wf-a702e434
