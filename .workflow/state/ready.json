@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-26T21:15:12.507Z",
+  "lastUpdated": "2026-02-26T21:51:49.587Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-e13894",
+      "title": "Fix 25 review findings from full codebase review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-02-26T21:51:49.586Z",
+      "completedAt": "2026-02-28T22:00:00.000Z"
+    },
     {
       "id": "wf-a702e434",
       "title": "Set up independent WogiFlow workflows in 3 repos",

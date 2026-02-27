@@ -453,7 +453,7 @@ if (require.main === module) {
       }
 
       const ready = JSON.parse(fs.readFileSync(readyPath, 'utf-8'));
-      const tasks = (ready.tasks || []).filter(t => t.status === 'pending' || t.status === 'ready');
+      const tasks = (ready.ready || []).filter(t => t.status === 'pending' || t.status === 'ready');
 
       if (tasks.length === 0) {
         console.log('No tasks ready for execution');

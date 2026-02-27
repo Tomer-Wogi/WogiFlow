@@ -21,19 +21,32 @@ const { checkTaskGate, getActiveTask } = require('./task-gate');
 const { getSessionFileScope, getSessionBoundaries } = require('../../flow-durable-session');
 
 /**
+ * Get all scope gating settings from config (single read)
+ * @returns {{ enabled: boolean, mode: string, exemptPatterns: string[] }}
+ */
+function getScopeGatingSettings() {
+  const config = getConfig();
+  const scopeConfig = config.hooks?.rules?.scopeGating || {};
+  return {
+    enabled: scopeConfig.enabled !== false,
+    mode: scopeConfig.mode || 'warn',
+    exemptPatterns: scopeConfig.exemptPatterns || [
+      '.workflow/state/**',
+      '.workflow/specs/**',
+      '.workflow/plans/**',
+      'package.json',
+      'tsconfig.json',
+      'package-lock.json'
+    ]
+  };
+}
+
+/**
  * Check if scope gating is enabled
  * @returns {boolean}
  */
 function isScopeGatingEnabled() {
-  const config = getConfig();
-
-  // Check hooks config
-  if (config.hooks?.rules?.scopeGating?.enabled === false) {
-    return false;
-  }
-
-  // Default to enabled if not explicitly disabled
-  return true;
+  return getScopeGatingSettings().enabled;
 }
 
 /**
@@ -41,8 +54,7 @@ function isScopeGatingEnabled() {
  * @returns {string} 'warn' | 'block'
  */
 function getScopeGatingMode() {
-  const config = getConfig();
-  return config.hooks?.rules?.scopeGating?.mode || 'warn';
+  return getScopeGatingSettings().mode;
 }
 
 /**
@@ -50,15 +62,7 @@ function getScopeGatingMode() {
  * @returns {string[]}
  */
 function getExemptPatterns() {
-  const config = getConfig();
-  return config.hooks?.rules?.scopeGating?.exemptPatterns || [
-    '.workflow/state/**',
-    '.workflow/specs/**',
-    '.workflow/plans/**',
-    'package.json',
-    'tsconfig.json',
-    'package-lock.json'
-  ];
+  return getScopeGatingSettings().exemptPatterns;
 }
 
 /**

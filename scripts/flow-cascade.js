@@ -27,6 +27,7 @@ const {
   error,
   getConfig,
   fileExists,
+  writeJson,
   printHeader,
   printSection
 } = require('./flow-utils');
@@ -146,7 +147,7 @@ function saveState() {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(STATE_PATH, JSON.stringify(failureTracker, null, 2));
+    writeJson(STATE_PATH, failureTracker);
   } catch (err) {
     warn(`Could not save cascade state: ${err.message}`);
   }

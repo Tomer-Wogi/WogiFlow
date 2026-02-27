@@ -386,11 +386,24 @@ function info(message) {
 // ============================================================
 
 /**
+ * Generate a hash-based ID with a given prefix
+ * Uses SHA256 hash of seed + title + timestamp for collision resistance.
+ *
+ * @param {string} prefix - ID prefix (e.g., 'wf', 'ep', 'ft', 'pl')
+ * @param {string} seed - Seed string for the hash (e.g., '', 'epic-', 'feature-')
+ * @param {string} title - Title to include in hash input
+ * @returns {string} ID in format prefix-XXXXXXXX
+ */
+function generateHashId(prefix, seed, title) {
+  const randomHex = crypto.randomBytes(8).toString('hex');
+  const input = `${seed}${title}${Date.now()}${randomHex}`;
+  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
+  return `${prefix}-${hash}`;
+}
+
+/**
  * Generate a hash-based task ID
  * Format: wf-XXXXXXXX (8-char hex hash)
- *
- * Uses SHA256 hash of title + timestamp for collision resistance.
- * This prevents merge conflicts in multi-agent/multi-branch workflows.
  *
  * @param {string} title - Task title
  * @returns {string} Task ID in format wf-XXXXXXXX
@@ -399,11 +412,7 @@ function info(message) {
  * generateTaskId('Fix login bug') // => 'wf-a1b2c3d4'
  */
 function generateTaskId(title) {
-  // Use crypto.randomBytes for secure entropy instead of Math.random()
-  const randomHex = crypto.randomBytes(8).toString('hex');
-  const input = `${title}${Date.now()}${randomHex}`;
-  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
-  return `wf-${hash}`;
+  return generateHashId('wf', '', title);
 }
 
 /**
@@ -414,11 +423,7 @@ function generateTaskId(title) {
  * @returns {string} Epic ID in format ep-XXXXXXXX
  */
 function generateEpicId(title) {
-  // Use crypto.randomBytes for secure entropy instead of Math.random()
-  const randomHex = crypto.randomBytes(8).toString('hex');
-  const input = `epic-${title}${Date.now()}${randomHex}`;
-  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
-  return `ep-${hash}`;
+  return generateHashId('ep', 'epic-', title);
 }
 
 /**
@@ -429,11 +434,7 @@ function generateEpicId(title) {
  * @returns {string} Feature ID in format ft-XXXXXXXX
  */
 function generateFeatureId(title) {
-  // Use crypto.randomBytes for secure entropy instead of Math.random()
-  const randomHex = crypto.randomBytes(8).toString('hex');
-  const input = `feature-${title}${Date.now()}${randomHex}`;
-  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
-  return `ft-${hash}`;
+  return generateHashId('ft', 'feature-', title);
 }
 
 /**
@@ -444,11 +445,7 @@ function generateFeatureId(title) {
  * @returns {string} Plan ID in format pl-XXXXXXXX
  */
 function generatePlanId(title) {
-  // Use crypto.randomBytes for secure entropy instead of Math.random()
-  const randomHex = crypto.randomBytes(8).toString('hex');
-  const input = `plan-${title}${Date.now()}${randomHex}`;
-  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
-  return `pl-${hash}`;
+  return generateHashId('pl', 'plan-', title);
 }
 
 /**
@@ -850,60 +847,46 @@ function validateJson(filePath) {
 // Config cache for performance (avoids repeated file reads)
 let _configCache = null;
 let _configMtime = null;
+let _configCacheTime = 0; // Timestamp of last cache population (ms)
 
 // Known config keys for validation (prevents typos causing silent failures)
 const KNOWN_CONFIG_KEYS = [
-  'hybrid',
-  'parallel',
-  'worktree',
-  'qualityGates',
-  'testing',
-  'componentRules',
-  'mandatorySteps',
-  'phases',
-  'corrections',
-  'skills',
-  'autoContext',
-  'metrics',
-  'figmaAnalyzer',
-  'learning',
-  'hooks',
-  'project',
-  'projectType',
-  // v1.7.0 context memory management
-  'contextMonitor',
-  'requestLog',
-  'sessionState',
-  // v1.9.0 features
-  'priorities',
-  'morningBriefing',
-  // v2.0.0 classification system
-  'storyDecomposition',
-  'enforcement',
-  'tasks',
-  'workflow',
-  'loops',
-  'taskQueue',
-  'durableSteps',
-  'suspension',
-  'specificationMode',
-  'validation',
-  // v1.5.0 registry system
-  'registries',
-  // v2.0.0+ features
-  'commits',
-  'review',
-  'reviewFix',
-  'originTaskTracing',
-  'standardsCompliance',
-  'semanticMatching',
-  'planMode',
-  'research',
-  'bulkOrchestrator',
-  'smartCompaction',
-  'clarifyingQuestions',
-  'tdd',
-  'webmcp'
+  // Core
+  'version', 'projectName', 'cli', 'scripts', 'requireApproval',
+  // Feature toggles
+  'autoLog', 'autoUpdateAppMap', 'strictMode',
+  // Execution
+  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'workflow',
+  'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
+  // Quality & validation
+  'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
+  // Components & registries
+  'componentRules', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
+  // Learning & memory
+  'learning', 'corrections', 'automaticMemory', 'automaticPromotion',
+  'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
+  'codebaseInsights', 'knowledgeRouting',
+  // Skills & context
+  'skills', 'autoContext', 'context', 'contextMonitor', 'contextScoring',
+  // Review & analysis
+  'review', 'reviewFix', 'originTaskTracing', 'standardsCompliance',
+  'semanticMatching', 'peerReview', 'triage', 'consistency',
+  // Planning & research
+  'planMode', 'research', 'clarifyingQuestions', 'multiApproach',
+  // Session management
+  'metrics', 'requestLog', 'sessionState', 'smartCompaction',
+  // Features (alphabetical)
+  'agents', 'bugFlow', 'bulkLoop', 'bulkOrchestrator', 'capture',
+  'cascade', 'checkpoint', 'clarifyingQuestions', 'commits', 'community',
+  'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
+  'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
+  'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
+  'models', 'morningBriefing', 'multiModel', 'prd', 'priorities',
+  'project', 'projectType', 'regressionTesting', 'retrospective',
+  'security', 'storyDecomposition', 'techDebt', 'traces',
+  'webmcp', 'workflowSteps',
+  // v2.0.0+
+  'bulkOrchestrator', 'research'
 ];
 
 // Known nested keys for common config sections
@@ -975,8 +958,15 @@ function getConfig() {
   const configPath = PATHS.config;
 
   try {
+    // Fast path: skip statSync if cache was populated within last 2 seconds
+    // (config can't change during a hook's ~50ms lifetime)
+    if (_configCache && (Date.now() - _configCacheTime) < 2000) {
+      return _configCache;
+    }
+
     const stat = fs.statSync(configPath);
     if (_configCache && _configMtime === stat.mtimeMs) {
+      _configCacheTime = Date.now();
       return _configCache;
     }
 
@@ -993,6 +983,7 @@ function getConfig() {
     }
 
     _configMtime = stat.mtimeMs;
+    _configCacheTime = Date.now();
 
     // Validate on first load (DEBUG mode or explicit request)
     if (process.env.DEBUG || process.env.VALIDATE_CONFIG) {
@@ -1283,6 +1274,11 @@ function validateReadyJson(data) {
   return { valid: errors.length === 0, errors };
 }
 
+// Ready data cache (avoids repeated file reads within same process)
+let _readyDataCache = null;
+let _readyDataMtime = null;
+let _readyDataCacheTime = 0;
+
 /**
  * Read ready.json task queue with optional validation
  * @param {boolean} [validate=false] - Whether to validate structure
@@ -1290,6 +1286,11 @@ function validateReadyJson(data) {
  * @throws {Error} If validate is true and structure is invalid
  */
 function getReadyData(validate = false) {
+  // Fast path: skip file read if cache is fresh (within 1 second)
+  if (_readyDataCache && !validate && (Date.now() - _readyDataCacheTime) < 1000) {
+    return _readyDataCache;
+  }
+
   const data = readJson(PATHS.ready, {
     ready: [],
     inProgress: [],
@@ -1304,7 +1305,18 @@ function getReadyData(validate = false) {
     }
   }
 
+  _readyDataCache = data;
+  _readyDataCacheTime = Date.now();
+
   return data;
+}
+
+/**
+ * Invalidate the ready data cache (call after writes)
+ */
+function invalidateReadyDataCache() {
+  _readyDataCache = null;
+  _readyDataCacheTime = 0;
 }
 
 /**
@@ -1376,6 +1388,7 @@ function saveReadyData(data) {
   }
   validateReadyDataIds(data, previousData);
   const toSave = { ...data, lastUpdated: new Date().toISOString() };
+  invalidateReadyDataCache();
   return writeJson(PATHS.ready, toSave);
 }
 
@@ -1396,6 +1409,7 @@ async function saveReadyDataAsync(data) {
     }
     validateReadyDataIds(data, previousData);
     const toSave = { ...data, lastUpdated: new Date().toISOString() };
+    invalidateReadyDataCache();
     return writeJson(PATHS.ready, toSave);
   });
 }
@@ -1437,7 +1451,7 @@ function archiveCompletedTasksToLog(tasks) {
       archive = archive.slice(-1000);
     }
 
-    fs.writeFileSync(archiveLogPath, JSON.stringify(archive, null, 2));
+    writeJson(archiveLogPath, archive);
 
     if (process.env.DEBUG) {
       console.log(`[DEBUG] Archived ${tasks.length} completed task(s) to completed-archive.json`);
@@ -1756,8 +1770,8 @@ function addRequestLogEntry(entry) {
 `;
 
   try {
-    const content = readFile(PATHS.requestLog, '');
-    writeFile(PATHS.requestLog, content + logEntry);
+    // Use appendFileSync for atomic append (avoids read-modify-write race)
+    fs.appendFileSync(PATHS.requestLog, logEntry);
     return id;
   } catch (err) {
     error(`Failed to add request log entry: ${err.message}`);
@@ -2011,7 +2025,8 @@ async function acquireLock(filePath, options = {}) {
   const {
     retries = LOCK_MAX_RETRIES,
     retryDelay = LOCK_RETRY_DELAY_MS,
-    staleMs = LOCK_STALE_THRESHOLD_MS
+    staleMs = LOCK_STALE_THRESHOLD_MS,
+    exponentialBackoff = false
   } = options;
 
   const lockDir = `${filePath}.lock`;
@@ -2106,8 +2121,11 @@ async function acquireLock(filePath, options = {}) {
         }
 
         if (attempt < retries) {
-          // Wait and retry with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+          // Wait and retry
+          const delay = exponentialBackoff
+            ? retryDelay * Math.pow(2, attempt)
+            : retryDelay * (attempt + 1);
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
       }
@@ -3399,8 +3417,10 @@ module.exports = {
 
   // Ready.json
   getReadyData,
+  invalidateReadyDataCache,
   validateReadyJson,
   saveReadyData,
+  archiveCompletedTasksToLog,
   saveReadyDataAsync,   // Async with locking
   findTask,
   moveTask,

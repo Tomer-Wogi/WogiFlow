@@ -41,9 +41,18 @@ const DECISIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      const parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      // Basic prototype pollution check
+      if (parsed && (parsed.__proto__ || parsed.constructor || parsed.prototype)) {
+        return {};
+      }
+      return parsed;
     }
-  } catch {}
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[memory-sync] Failed to load config: ${err.message}`);
+    }
+  }
   return {};
 }
 

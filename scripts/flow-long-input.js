@@ -125,7 +125,7 @@ const c = {
 function loadConfig() {
   try {
     const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    return config.transcriptDigestion || {};
+    return config.longInputGate || config.transcriptDigestion || {};
   } catch (_err) {
     return {};
   }
@@ -160,7 +160,10 @@ function loadActiveDigest() {
  * Save active digest session
  */
 function saveActiveDigest(data) {
-  fs.writeFileSync(ACTIVE_DIGEST_FILE, JSON.stringify(data, null, 2));
+  const content = JSON.stringify(data, null, 2);
+  const tmpPath = ACTIVE_DIGEST_FILE + '.tmp';
+  fs.writeFileSync(tmpPath, content);
+  fs.renameSync(tmpPath, ACTIVE_DIGEST_FILE);
 }
 
 /**

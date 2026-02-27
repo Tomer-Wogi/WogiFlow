@@ -312,7 +312,7 @@ async function main() {
 
   // v4.2: Check if this is a quoted request or non-task-ID input
   // Task IDs match pattern: wf-XXXXXXXX (hex hash)
-  const isTaskId = /^wf-[a-f0-9]+$/i.test(taskIdArg);
+  const isTaskId = /^wf-[a-f0-9]{8}$/i.test(taskIdArg);
 
   if (!isTaskId) {
     // This is a quoted request, not a task ID - run triage
