@@ -21,7 +21,9 @@ The setup and onboarding process gathers this context automatically and stores i
 ### Install
 
 ```bash
-npm install wogiflow
+npm install -D wogiflow
+# or
+bun add -d --trust wogiflow   # --trust is required for bun to run postinstall
 ```
 
 The postinstall script automatically creates the `.workflow/` directory structure.
@@ -150,7 +152,7 @@ This analyzes your codebase and populates:
 
 | Command | Purpose |
 |---------|---------|
-| `npm install wogiflow` | Install WogiFlow and create .workflow structure |
+| `npm install -D wogiflow` (or `bun add -d --trust wogiflow`) | Install WogiFlow and create .workflow structure |
 | `npx flow onboard` | Analyze existing project |
 | `/wogi-map-index` | Show/regenerate component index |
 | `/wogi-map-scan` | Scan for unmapped components |
