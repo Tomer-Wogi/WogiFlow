@@ -18,7 +18,8 @@ const {
   success,
   warn,
   error,
-  info
+  info,
+  isPathWithinProject
 } = require('./flow-utils');
 
 // v3.1 spec verification
@@ -86,8 +87,9 @@ function getSessionBoundaryCommits(count = 1) {
  * @returns {string[]} List of changed file paths
  */
 function getFilesBetweenCommits(fromSha, toSha = 'HEAD') {
-  // Validate SHAs look like hex strings to prevent injection
-  if (!/^[a-f0-9]+$/i.test(fromSha) || !/^[a-f0-9]+$/i.test(toSha)) {
+  // Validate refs: hex SHAs or well-known symbolic refs (HEAD, ORIG_HEAD, etc.)
+  const isValidRef = s => /^[a-f0-9]+$/i.test(s) || /^[A-Z_]+$/.test(s);
+  if (!isValidRef(fromSha) || !isValidRef(toSha)) {
     return [];
   }
   try {
@@ -107,8 +109,12 @@ function getFilesBetweenCommits(fromSha, toSha = 'HEAD') {
  * @returns {{ files: string[], fromSha: string|null, toSha: string }}
  */
 function getFilesSinceDate(dateStr) {
-  // Validate dateStr doesn't contain shell metacharacters
-  if (/[;&|`$(){}]/.test(dateStr)) {
+  // Allowlist-based validation: accept ISO dates, relative phrases, and named days
+  const isValidDate = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?$/.test(dateStr)
+    || /^\d+\s+(day|week|month|hour|minute)s?\s+ago$/i.test(dateStr)
+    || /^(last\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i.test(dateStr)
+    || /^yesterday$/i.test(dateStr);
+  if (!isValidDate) {
     return { files: [], fromSha: null, toSha: 'HEAD' };
   }
   try {
@@ -251,6 +257,10 @@ function getChangedFiles(options = {}) {
 function loadFileContent(filePath) {
   try {
     const fullPath = path.resolve(filePath);
+    // Verify path stays within project to prevent path traversal
+    if (!isPathWithinProject(fullPath)) {
+      return { path: filePath, content: '', error: 'Path outside project' };
+    }
     // Read directly and let the try-catch handle missing files
     // Avoids TOCTOU race condition between exists check and read
     const content = fs.readFileSync(fullPath, 'utf-8');

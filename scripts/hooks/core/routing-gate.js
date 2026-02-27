@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
+const { getConfig, getReadyData, PATHS, safeJsonParseString } = require('../../flow-utils');
 
 // Include session ID in flag path to prevent concurrent sessions from
 // interfering with each other.
@@ -25,7 +25,9 @@ const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
 // (UserPromptSubmit writes pid-123, PreToolUse reads pid-456 — never match).
 // With session ID set, each session gets its own flag. Without it, a single
 // shared flag works for the common single-session use case.
-const SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || null;
+// Sanitize SESSION_ID to prevent path traversal (only allow alphanumeric, hyphens, underscores)
+const RAW_SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || null;
+const SESSION_ID = RAW_SESSION_ID ? RAW_SESSION_ID.replace(/[^a-zA-Z0-9_-]/g, '') : null;
 const ROUTING_FLAG_PATH = SESSION_ID
   ? path.join(PATHS.state, `.routing-pending-${SESSION_ID}`)
   : path.join(PATHS.state, '.routing-pending');
@@ -143,21 +145,17 @@ function isRoutingPending() {
   try {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
     // Check TTL — stale flags from crashed sessions shouldn't block
-    try {
-      const data = JSON.parse(content);
-      if (data.timestamp) {
-        const age = Date.now() - new Date(data.timestamp).getTime();
-        if (age > ROUTING_FLAG_TTL_MS) {
-          // Flag is stale — clean it up and return false
-          try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
-          if (process.env.DEBUG) {
-            console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
-          }
-          return false;
+    const data = safeJsonParseString(content, {});
+    if (data.timestamp) {
+      const age = Date.now() - new Date(data.timestamp).getTime();
+      if (age > ROUTING_FLAG_TTL_MS) {
+        // Flag is stale — clean it up and return false
+        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (err) { /* ignore cleanup failure */ }
+        if (process.env.DEBUG) {
+          console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
         }
+        return false;
       }
-    } catch {
-      // Can't parse flag content — treat as valid (recently written)
     }
     return true;
   } catch (err) {
@@ -233,12 +231,7 @@ function checkRoutingGate(toolName) {
 function incrementStopAttempts(maxAttempts = 3) {
   try {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
-    let data;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      data = { timestamp: new Date().toISOString() };
-    }
+    const data = safeJsonParseString(content, { timestamp: new Date().toISOString() });
 
     const attempts = (data.stopAttempts || 0) + 1;
     if (attempts >= maxAttempts) {

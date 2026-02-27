@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-193 | 2026-02-27 21:46
+**Type**: fix
+**Tags**: #review #security #code-quality #routing #audit
+**Task**: wf-cr-a7f201
+**Request**: "Fix all 14 review findings from code review of routing gaps + NL review + audit implementation"
+**Result**: Fixed 14 findings across 4 files: 4 high (SHA regex blocks HEAD in getFilesBetweenCommits, SESSION_ID path injection in routing-gate, unbounded stdin + raw JSON.parse in stop.js, 5x raw JSON.parse in flow-audit.js), 7 medium (D- score asymmetry, blocklist date validation replaced with allowlist, loadFileContent path traversal, ReDoS from config patterns, raw JSON.parse in routing-gate isRoutingPending and incrementStopAttempts, bare catch block), 3 low (system grep replaced with git grep, misleading stdin comment in score command, ROUTING_FLAG_TTL_MS comment updated).
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/stop.js, scripts/flow-review.js, scripts/flow-audit.js
+
 ### R-192 | 2026-02-27 23:30
 **Type**: new
 **Tags**: #workflow #routing #review #audit #enforcement

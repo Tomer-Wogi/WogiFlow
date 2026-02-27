@@ -22,7 +22,8 @@ const {
   PATHS,
   getConfig,
   color,
-  safeJsonParse
+  safeJsonParse,
+  safeJsonParseString
 } = require('./flow-utils');
 
 // Default exclusion patterns for project file scanning
@@ -51,8 +52,14 @@ function getProjectFiles(extraExcludes = []) {
     ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
     const config = getConfig();
-    const configExcludes = (config.audit?.exclude || []).map(p => new RegExp(`^${p}/`));
-    const allExcludes = [...DEFAULT_EXCLUDE, ...configExcludes, ...extraExcludes.map(p => new RegExp(p))];
+    // Escape config-sourced strings before RegExp to prevent ReDoS/injection
+    const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const configExcludes = (config.audit?.exclude || []).map(p => {
+      try { return new RegExp(`^${escapeRegex(p)}/`); } catch (err) { return null; }
+    }).filter(Boolean);
+    const allExcludes = [...DEFAULT_EXCLUDE, ...configExcludes, ...extraExcludes.map(p => {
+      try { return new RegExp(p); } catch (err) { return null; }
+    }).filter(Boolean)];
 
     return output.trim().split('\n').filter(f =>
       f && !allExcludes.some(p => p.test(f))
@@ -72,13 +79,12 @@ function findTodos() {
   const results = [];
 
   try {
+    // Use git grep instead of system grep — cross-platform, auto-respects .gitignore
     for (const pattern of patterns) {
       try {
-        const output = execFileSync('grep', [
-          '-rn', '--include=*.js', '--include=*.ts', '--include=*.tsx',
-          '--include=*.jsx', '--include=*.mjs', '--include=*.cjs',
-          pattern,
-          '.'
+        const output = execFileSync('git', [
+          'grep', '-n', pattern, '--',
+          '*.js', '*.ts', '*.tsx', '*.jsx', '*.mjs', '*.cjs'
         ], {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -87,10 +93,7 @@ function findTodos() {
 
         for (const line of output.trim().split('\n')) {
           if (!line) continue;
-          // Skip node_modules and other excluded paths
-          if (/node_modules|\.git\/|dist\/|build\//.test(line)) continue;
-
-          const match = line.match(/^\.\/(.+):(\d+):(.+)$/);
+          const match = line.match(/^(.+):(\d+):(.+)$/);
           if (match) {
             results.push({
               type: pattern,
@@ -101,7 +104,7 @@ function findTodos() {
           }
         }
       } catch {
-        // grep returns exit code 1 when no matches — not an error
+        // git grep returns exit code 1 when no matches — not an error
       }
     }
   } catch (err) {
@@ -122,7 +125,7 @@ function getOutdatedDeps() {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    const data = JSON.parse(output || '{}');
+    const data = safeJsonParseString(output || '{}', {});
     return Object.entries(data).map(([name, info]) => ({
       name,
       current: info.current || 'N/A',
@@ -134,7 +137,7 @@ function getOutdatedDeps() {
     // npm outdated exits with code 1 when outdated deps exist
     try {
       if (err.stdout) {
-        const data = JSON.parse(err.stdout || '{}');
+        const data = safeJsonParseString(err.stdout || '{}', {});
         return Object.entries(data).map(([name, info]) => ({
           name,
           current: info.current || 'N/A',
@@ -161,7 +164,7 @@ function getAuditResults() {
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
-    const data = JSON.parse(output || '{}');
+    const data = safeJsonParseString(output || '{}', {});
     const meta = data.metadata?.vulnerabilities || {};
     return {
       vulnerabilities: meta.total || 0,
@@ -175,7 +178,7 @@ function getAuditResults() {
     // npm audit exits with non-zero when vulnerabilities exist
     try {
       if (err.stdout) {
-        const data = JSON.parse(err.stdout || '{}');
+        const data = safeJsonParseString(err.stdout || '{}', {});
         const meta = data.metadata?.vulnerabilities || {};
         return {
           vulnerabilities: meta.total || 0,
@@ -198,7 +201,7 @@ const SCORE_MAP = {
   'A+': 97, 'A': 93, 'A-': 90,
   'B+': 87, 'B': 83, 'B-': 80,
   'C+': 77, 'C': 73, 'C-': 70,
-  'D+': 67, 'D': 63, 'D-': 60,
+  'D+': 67, 'D': 63, 'D-': 57,
   'F': 40
 };
 
@@ -288,14 +291,13 @@ function main() {
     }
 
     case 'score': {
-      // Read scores from stdin or args
-      // Usage: echo '{"architecture":"B+","dependencies":"A-"}' | flow-audit.js score
+      // Read scores from CLI arg
+      // Usage: node scripts/flow-audit.js score '{"architecture":"B+","dependencies":"A-"}'
       let scores = {};
       const scoresArg = process.argv[3];
       if (scoresArg) {
-        try {
-          scores = JSON.parse(scoresArg);
-        } catch {
+        scores = safeJsonParseString(scoresArg, null);
+        if (scores === null) {
           console.error('Invalid JSON scores argument');
           process.exit(1);
         }
