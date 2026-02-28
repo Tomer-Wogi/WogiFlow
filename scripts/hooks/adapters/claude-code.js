@@ -48,21 +48,64 @@ const CLAUDE_CODE_EVENTS = [
   'SessionEnd',
   'UserPromptSubmit',
   'TaskCompleted',
+  'WorktreeCreate',   // Claude Code 2.1.50+ — copy state to new worktree
+  'WorktreeRemove',   // Claude Code 2.1.50+ — clean up worktree state
+  'ConfigChange',     // Claude Code 2.1.63+ — mid-session config change detection
 ];
 
 /**
- * Extended hook events — some now officially supported in Claude Code 2.1.59+.
- * TaskCompleted was added to CLAUDE_CODE_EVENTS above.
+ * Extended hook events — supported but not yet used by WogiFlow.
  * See: https://code.claude.com/docs/en/hooks for the full event list.
  */
-// const EXTENDED_EVENTS_NOT_YET_VERIFIED = [
+// const UNUSED_SUPPORTED_EVENTS = [
 //   'SubagentStart',   // Supported but not yet used by WogiFlow
 //   'SubagentStop',    // Supported but not yet used by WogiFlow
 //   'Notification',    // Supported but not yet used by WogiFlow
-//   'ConfigChange',    // Speculated for config changes
-//   'WorktreeCreate',  // Speculated for worktree creation
-//   'WorktreeRemove',  // Speculated for worktree removal
 // ];
+
+/**
+ * HTTP hook transport is NOT supported for SessionStart.
+ * These events must always use 'command' transport.
+ */
+const COMMAND_ONLY_EVENTS = new Set(['SessionStart']);
+
+/**
+ * Build a hook entry based on transport config.
+ *
+ * @param {'command'|'http'} transport - Hook transport type
+ * @param {string} eventName - Hook event name (used to force command for COMMAND_ONLY_EVENTS)
+ * @param {Object} commandOpts - Command transport options: { command, timeout }
+ * @param {Object} httpOpts - HTTP transport options: { url, headers, allowedEnvVars, timeout }
+ * @returns {Object} Claude Code hook entry
+ */
+function buildHookEntry(transport, eventName, commandOpts, httpOpts) {
+  // SessionStart always uses command transport (HTTP not supported)
+  if (transport === 'http' && COMMAND_ONLY_EVENTS.has(eventName)) {
+    transport = 'command';
+  }
+
+  if (transport === 'http' && httpOpts?.url) {
+    const entry = {
+      type: 'http',
+      url: httpOpts.url,
+      timeout: httpOpts.timeout || commandOpts.timeout
+    };
+    if (httpOpts.headers && Object.keys(httpOpts.headers).length > 0) {
+      entry.headers = httpOpts.headers;
+    }
+    if (httpOpts.allowedEnvVars && httpOpts.allowedEnvVars.length > 0) {
+      entry.allowedEnvVars = httpOpts.allowedEnvVars;
+    }
+    return entry;
+  }
+
+  // Default: command transport
+  return {
+    type: 'command',
+    command: commandOpts.command,
+    timeout: commandOpts.timeout
+  };
+}
 
 /**
  * Claude Code Adapter
@@ -454,18 +497,30 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   /**
    * Generate Claude Code hook configuration
    */
-  generateConfig(rules, projectRoot) {
+  generateConfig(rules, projectRoot, transportConfig) {
     const scriptsDir = path.join(projectRoot, 'scripts', 'hooks', 'entry', 'claude-code');
     const hooks = {};
 
-    // SessionStart hook
+    // Transport config: { transport: 'command'|'http', url, headers, allowedEnvVars }
+    // Default: 'command' (local script execution)
+    const transport = transportConfig?.transport || 'command';
+    const httpOpts = transport === 'http' ? {
+      url: transportConfig.url,
+      headers: transportConfig.headers || {},
+      allowedEnvVars: transportConfig.allowedEnvVars || []
+    } : null;
+
+    // Helper to build hook entry for a given event
+    const hookEntry = (eventName, scriptFile, timeout) => buildHookEntry(
+      transport, eventName,
+      { command: `node "${path.join(scriptsDir, scriptFile)}"`, timeout },
+      httpOpts ? { ...httpOpts, timeout } : null
+    );
+
+    // SessionStart hook (always 'command' — HTTP not supported)
     if (rules.sessionContext?.enabled !== false) {
       hooks.SessionStart = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'session-start.js')}"`,
-          timeout: HOOK_TIMEOUTS.SESSION_START
-        }]
+        hooks: [hookEntry('SessionStart', 'session-start.js', HOOK_TIMEOUTS.SESSION_START)]
       }];
     }
 
@@ -475,11 +530,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     // UserPromptSubmit hook (implementation gate)
     if (rules.implementationGate?.enabled !== false) {
       hooks.UserPromptSubmit = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'user-prompt-submit.js')}"`,
-          timeout: HOOK_TIMEOUTS.USER_PROMPT_SUBMIT
-        }]
+        hooks: [hookEntry('UserPromptSubmit', 'user-prompt-submit.js', HOOK_TIMEOUTS.USER_PROMPT_SUBMIT)]
       }];
     }
 
@@ -490,11 +541,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.taskGating?.enabled !== false || rules.todoWriteGate?.enabled !== false) {
       preToolUseMatchers.push({
         matcher: 'Edit|Write|TodoWrite|Skill|Bash|Read|Glob|Grep|EnterPlanMode',
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'pre-tool-use.js')}"`,
-          timeout: HOOK_TIMEOUTS.PRE_TOOL_USE
-        }]
+        hooks: [hookEntry('PreToolUse', 'pre-tool-use.js', HOOK_TIMEOUTS.PRE_TOOL_USE)]
       });
     }
 
@@ -506,44 +553,49 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.validation?.enabled !== false) {
       hooks.PostToolUse = [{
         // No matcher - fires for ALL tools so observation capture works universally
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'post-tool-use.js')}"`,
-          timeout: HOOK_TIMEOUTS.POST_TOOL_USE
-        }]
+        hooks: [hookEntry('PostToolUse', 'post-tool-use.js', HOOK_TIMEOUTS.POST_TOOL_USE)]
       }];
     }
 
     // Stop hook for loop enforcement
     if (rules.loopEnforcement?.enabled !== false) {
       hooks.Stop = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'stop.js')}"`,
-          timeout: HOOK_TIMEOUTS.STOP
-        }]
+        hooks: [hookEntry('Stop', 'stop.js', HOOK_TIMEOUTS.STOP)]
       }];
     }
 
     // SessionEnd hook for auto-logging
     if (rules.autoLogging?.enabled !== false) {
       hooks.SessionEnd = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'session-end.js')}"`,
-          timeout: HOOK_TIMEOUTS.SESSION_END
-        }]
+        hooks: [hookEntry('SessionEnd', 'session-end.js', HOOK_TIMEOUTS.SESSION_END)]
       }];
     }
 
     // TaskCompleted hook for post-task cleanup (Claude Code 2.1.33+)
     if (rules.taskCompleted?.enabled !== false) {
       hooks.TaskCompleted = [{
-        hooks: [{
-          type: 'command',
-          command: `node "${path.join(scriptsDir, 'task-completed.js')}"`,
-          timeout: HOOK_TIMEOUTS.TASK_COMPLETED
-        }]
+        hooks: [hookEntry('TaskCompleted', 'task-completed.js', HOOK_TIMEOUTS.TASK_COMPLETED)]
+      }];
+    }
+
+    // WorktreeCreate hook — copy essential state to new worktree (Claude Code 2.1.50+)
+    if (rules.worktreeLifecycle?.enabled !== false) {
+      hooks.WorktreeCreate = [{
+        hooks: [hookEntry('WorktreeCreate', 'worktree-create.js', HOOK_TIMEOUTS.WORKTREE_CREATE)]
+      }];
+    }
+
+    // WorktreeRemove hook — clean up session state from removed worktree (Claude Code 2.1.50+)
+    if (rules.worktreeLifecycle?.enabled !== false) {
+      hooks.WorktreeRemove = [{
+        hooks: [hookEntry('WorktreeRemove', 'worktree-remove.js', HOOK_TIMEOUTS.WORKTREE_REMOVE)]
+      }];
+    }
+
+    // ConfigChange hook — detect mid-session config changes (Claude Code 2.1.63+)
+    if (rules.configChange?.enabled !== false) {
+      hooks.ConfigChange = [{
+        hooks: [hookEntry('ConfigChange', 'config-change.js', HOOK_TIMEOUTS.CONFIG_CHANGE)]
       }];
     }
 

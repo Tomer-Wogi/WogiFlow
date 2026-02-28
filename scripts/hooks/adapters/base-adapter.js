@@ -54,9 +54,11 @@ class BaseAdapter {
   /**
    * Generate hook configuration for this CLI
    * @param {Object} rules - Hook rules from config
+   * @param {string} projectRoot - Project root path
+   * @param {Object} [transportConfig] - Transport config: { transport, url, headers, allowedEnvVars }
    * @returns {Object} CLI-specific hook configuration
    */
-  generateConfig(rules) {
+  generateConfig(rules, projectRoot, transportConfig) {
     throw new Error('generateConfig() must be implemented by subclass');
   }
 

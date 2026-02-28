@@ -1,9 +1,29 @@
 {
-  "lastUpdated": "2026-02-28T00:15:00.000Z",
+  "lastUpdated": "2026-02-28T14:45:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2db50af6",
+      "title": "Enable WorktreeCreate/WorktreeRemove/ConfigChange hook events in adapter",
+      "type": "task",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-28T14:35:00.000Z",
+      "completedAt": "2026-02-28T14:40:00.000Z"
+    },
+    {
+      "id": "wf-761dade9",
+      "title": "Add HTTP hook transport option to generateConfig()",
+      "type": "task",
+      "feature": "hooks",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-02-28T14:40:00.000Z",
+      "completedAt": "2026-02-28T14:45:00.000Z"
+    },
     {
       "id": "wf-2b1ab455",
       "title": "Close Edit/Write routing gate bypass — session continuation loophole",

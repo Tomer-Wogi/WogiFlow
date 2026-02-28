@@ -2249,6 +2249,12 @@
         "content": "/wogi-session-end ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T13:47:32.743Z",
+        "content": "/wogi-session-end ",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0

@@ -102,7 +102,13 @@ function installForTarget(targetName) {
   console.log(`  Installing hooks for ${targetName}...`);
 
   const config = getHooksConfig();
-  const hooksConfig = adapter.generateConfig(config.rules, PROJECT_ROOT);
+  const transportConfig = config.transport ? {
+    transport: config.transport,
+    url: config.httpUrl,
+    headers: config.httpHeaders || {},
+    allowedEnvVars: config.httpAllowedEnvVars || []
+  } : undefined;
+  const hooksConfig = adapter.generateConfig(config.rules, PROJECT_ROOT, transportConfig);
 
   // For Claude Code, we need to merge into settings.local.json
   if (targetName === 'claude-code') {

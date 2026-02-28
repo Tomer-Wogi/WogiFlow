@@ -11,6 +11,16 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-195 | 2026-02-28 14:45
+**Type**: change
+**Tags**: #hooks #adapter #claude-code #http-transport #worktree #config-change
+**Tasks**: wf-2db50af6, wf-761dade9
+**Request**: "Enable WorktreeCreate/WorktreeRemove/ConfigChange hook events and add HTTP hook transport option for Claude Code 2.1.63 compatibility"
+**Result**: (1) Added WorktreeCreate, WorktreeRemove, ConfigChange to CLAUDE_CODE_EVENTS array and generateConfig() — all 10 hooks now generated. Entry point scripts already existed. (2) Added buildHookEntry() helper and transportConfig parameter to generateConfig(). HTTP transport emits type:'http' with url/headers/allowedEnvVars. SessionStart forced to 'command' (HTTP not supported). Updated flow-hooks.js caller to pass transport config from config.hooks. Backwards compatible — default is 'command'.
+**Files**: scripts/hooks/adapters/claude-code.js, scripts/hooks/adapters/base-adapter.js, scripts/flow-hooks.js
+
+---
+
 ### R-194 | 2026-02-27 22:00
 **Type**: fix
 **Tags**: #security #routing #enforcement #session-continuation
