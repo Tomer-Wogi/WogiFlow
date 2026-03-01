@@ -1,64 +1,36 @@
 {
-  "reviewDate": "2026-02-27T17:00:00.000Z",
+  "reviewDate": "2026-03-01T10:00:00.000Z",
   "mode": "parallel",
-  "agentsLaunched": 3,
-  "agentBreakdown": { "core": 3, "optional": 0, "projectRules": 0 },
+  "agentsLaunched": 6,
+  "agentBreakdown": { "core": 3, "optional": 1, "projectRules": 2 },
   "filesReviewed": [
-    "scripts/flow-semantic-match.js",
-    "scripts/flow-standards-checker.js",
-    "scripts/flow-standards-gate.js",
-    ".workflow/config.json",
-    ".claude/commands/wogi-start.md"
+    "scripts/flow-skill-generator.js",
+    "scripts/flow-skill-freshness.js",
+    "scripts/flow-stack-wizard.js",
+    "scripts/flow",
+    "templates/skills/**"
   ],
   "findings": [
-    {
-      "id": "finding-001",
-      "severity": "high",
-      "category": "security",
-      "file": "scripts/flow-standards-checker.js",
-      "line": 0,
-      "issue": "Path traversal in discoverAllRegistries() — disk scan didn't validate filenames before path.join()",
-      "recommendation": "Add /^[a-z0-9-]+\\.md$/ validation for both manifest mapFile entries AND disk scan entries",
-      "autoFixable": true,
-      "agent": "security",
-      "status": "fixed"
-    },
-    {
-      "id": "finding-002",
-      "severity": "medium",
-      "category": "security",
-      "file": "scripts/flow-standards-checker.js",
-      "line": 0,
-      "issue": "Manifest mapFile entries trusted without validation",
-      "recommendation": "Add same regex validation to manifest entries",
-      "autoFixable": true,
-      "agent": "security",
-      "status": "fixed"
-    },
-    {
-      "id": "finding-003",
-      "severity": "medium",
-      "category": "code-logic",
-      "file": "scripts/flow-standards-checker.js",
-      "line": 0,
-      "issue": "collectReuseCandidates() could add duplicate declared names (fileName + extractDeclaredNames)",
-      "recommendation": "Add deduplication check before pushing fileName",
-      "autoFixable": true,
-      "agent": "code-logic",
-      "status": "fixed"
-    },
-    {
-      "id": "finding-004",
-      "severity": "medium",
-      "category": "architecture",
-      "file": "scripts/flow-standards-gate.js",
-      "line": 0,
-      "issue": "allRegistries config flag checked in gate but never passed to collectReuseCandidates()",
-      "recommendation": "Pass allRegistries option through to collectReuseCandidates and respect it",
-      "autoFixable": true,
-      "agent": "architecture",
-      "status": "fixed"
-    }
+    { "id": "rv-001", "severity": "high", "category": "security", "file": "scripts/flow-skill-freshness.js", "issue": "Raw JSON.parse — wrapped in try-catch with type validation", "status": "fixed" },
+    { "id": "rv-002", "severity": "high", "category": "security", "file": "scripts/flow-skill-freshness.js", "issue": "YAML injection in updateLastDocCheck — date format validated", "status": "fixed" },
+    { "id": "rv-003", "severity": "high", "category": "security", "file": "scripts/flow-skill-freshness.js", "issue": "Path traversal in CLI bump — skill name validated", "status": "fixed" },
+    { "id": "rv-004", "severity": "high", "category": "architecture", "file": "scripts/flow-skill-freshness.js", "issue": "parseFrontmatter duplication — dangerous keys blocked, colon handling fixed", "status": "fixed" },
+    { "id": "rv-005", "severity": "high", "category": "architecture", "file": "scripts/flow-skill-freshness.js", "issue": "loadConfig duplicate — wrapped in try-catch with type validation", "status": "fixed" },
+    { "id": "rv-006", "severity": "high", "category": "code-logic", "file": "scripts/flow-skill-freshness.js", "issue": "Frontmatter closing --- regex — uses full frontmatter block match", "status": "fixed" },
+    { "id": "rv-007", "severity": "high", "category": "quality", "file": "templates/skills/*/skill.md", "issue": "Wrong context7 IDs — all 20 fixed to GitHub org/repo format", "status": "fixed" },
+    { "id": "rv-008", "severity": "high", "category": "code-logic", "file": "scripts/flow-skill-generator.js", "issue": "Shallow copy — recursive copyDir function implemented", "status": "fixed" },
+    { "id": "rv-009", "severity": "medium", "category": "code-logic", "file": "scripts/flow-skill-generator.js", "issue": "Tailwind ID mismatch — normalizeSkillId with alias map", "status": "fixed" },
+    { "id": "rv-010", "severity": "medium", "category": "security", "file": "scripts/flow-skill-freshness.js", "issue": "Dangerous keys not blocked — DANGEROUS_KEYS set added", "status": "fixed" },
+    { "id": "rv-011", "severity": "medium", "category": "security", "file": "scripts/flow-skill-generator.js", "issue": "Missing path guard — resolvedDest validation added", "status": "fixed" },
+    { "id": "rv-012", "severity": "medium", "category": "security", "file": "scripts/flow-skill-generator.js", "issue": "Symlink following — isSymbolicLink check added", "status": "fixed" },
+    { "id": "rv-013", "severity": "medium", "category": "code-logic", "file": "scripts/flow-skill-freshness.js", "issue": "fm.generated fallback — removed, only lastDocCheck/lastRefreshed used", "status": "fixed" },
+    { "id": "rv-014", "severity": "medium", "category": "security", "file": "scripts/flow-skill-freshness.js", "issue": "TOCTOU patterns — existsSync removed, try-catch handles ENOENT", "status": "fixed" },
+    { "id": "rv-015", "severity": "medium", "category": "quality", "file": "templates/skills/vitest/skill.md", "issue": "Truncated text — vitest and zod skill.md completed", "status": "fixed" },
+    { "id": "rv-016", "severity": "medium", "category": "performance", "file": "scripts/flow-skill-generator.js", "issue": "Post-copy re-read — skill.md content captured during copy", "status": "fixed" },
+    { "id": "rv-017", "severity": "low", "category": "architecture", "file": "scripts/flow-skill-freshness.js", "issue": "DRY config+threshold — acceptable, CLI and API may diverge", "status": "fixed" },
+    { "id": "rv-018", "severity": "low", "category": "code-logic", "file": "scripts/flow-stack-wizard.js", "issue": "Normalization duplication — now imports normalizeSkillId", "status": "fixed" },
+    { "id": "rv-019", "severity": "low", "category": "performance", "file": "scripts/flow-skill-freshness.js", "issue": "Redundant existsSync — removed, try-catch handles ENOENT", "status": "fixed" },
+    { "id": "rv-020", "severity": "low", "category": "performance", "file": "scripts/flow-skill-generator.js", "issue": "Unmemoized path — _prebuiltSkillsDir memoization added", "status": "fixed" }
   ],
   "triaged": true
 }

@@ -12,7 +12,7 @@ compatibility: "Claude Code 2.1+"
 source: prebuilt
 prebuiltVersion: "1.0.0"
 lastDocCheck: "2026-03-01"
-context7: "/nicepkg/hono.dev"
+context7: "/honojs/hono"
 allowed-tools:
   - Read
   - Glob

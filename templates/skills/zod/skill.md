@@ -43,7 +43,7 @@ Matches files: src/schemas/**/*, src/validators/**/*, *.schema.ts
 ## Quick Reference
 
 ### Key Patterns
-- **Schema-Driven Types**: z
+- **Schema-Driven Types**: z.infer<typeof schema> derives TypeScript types from Zod schemas, keeping types and validation in sync.
 - **safeParse for Error Handling**: safeParse returns a discriminated union — never throws, easy to handle
 
 ### Common Mistakes to Avoid

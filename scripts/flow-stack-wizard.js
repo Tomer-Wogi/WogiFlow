@@ -723,9 +723,9 @@ class EnhancedStackWizard {
 
     // Show which technologies have pre-built templates
     try {
-      const { listPrebuiltSkills } = require('./flow-skill-generator');
+      const { listPrebuiltSkills, normalizeSkillId } = require('./flow-skill-generator');
       const prebuiltSet = new Set(listPrebuiltSkills());
-      const prebuiltCount = technologies.filter(t => prebuiltSet.has(t.value.toLowerCase().replace(/[^a-z0-9]/g, '-'))).length;
+      const prebuiltCount = technologies.filter(t => prebuiltSet.has(normalizeSkillId(t.value))).length;
       const generateCount = technologies.length - prebuiltCount;
 
       console.log(`\n  Creating skills for ${technologies.length} technologies:`);

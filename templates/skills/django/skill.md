@@ -12,7 +12,7 @@ compatibility: "Claude Code 2.1+"
 source: prebuilt
 prebuiltVersion: "1.0.0"
 lastDocCheck: "2026-03-01"
-context7: "/nicepkg/djangoproject.com"
+context7: "/django/django"
 allowed-tools:
   - Read
   - Glob

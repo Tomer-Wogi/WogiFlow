@@ -1,9 +1,28 @@
 {
   "lastUpdated": "2026-03-01T12:43:19.020Z",
-  "inProgress": [
-  ],
+  "inProgress": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-50acc0e1",
+      "title": "Add task ID validation guardrail to prevent manual ID construction",
+      "type": "task",
+      "feature": "workflow",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-01T15:00:00.000Z",
+      "completedAt": "2026-03-01T15:10:00.000Z"
+    },
+    {
+      "id": "wf-cr-a1e8f7",
+      "title": "Fix 20 review findings from v1.7.0 pre-built skills review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-01T14:00:00.000Z",
+      "completedAt": "2026-03-01T14:30:00.000Z"
+    },
     {
       "id": "wf-e8548b57",
       "title": "Pre-built skill templates + sub-agent isolation + doc freshness tracking",

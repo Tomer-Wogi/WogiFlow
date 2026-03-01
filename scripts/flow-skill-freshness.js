@@ -14,12 +14,17 @@ const path = require('path');
 
 const DEFAULT_FRESHNESS_THRESHOLD_DAYS = 90;
 
+// Dangerous keys that could cause prototype pollution
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 // ============================================
 // FRESHNESS CHECKING
 // ============================================
 
 /**
  * Parse YAML frontmatter from a skill.md file.
+ * Handles colons in values correctly by only splitting on the first colon.
+ * Blocks dangerous keys (__proto__, constructor, prototype).
  * @param {string} content - File content
  * @returns {Object} Parsed frontmatter key-value pairs
  */
@@ -32,8 +37,9 @@ function parseFrontmatter(content) {
     const colonIdx = line.indexOf(':');
     if (colonIdx === -1) continue;
     const key = line.slice(0, colonIdx).trim();
+    if (!key || DANGEROUS_KEYS.has(key)) continue;
     const value = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, '');
-    if (key) result[key] = value;
+    result[key] = value;
   }
   return result;
 }
@@ -48,8 +54,6 @@ function getSkillFreshnessReport(projectRoot) {
   const threshold = config?.skills?.freshnessThreshold || DEFAULT_FRESHNESS_THRESHOLD_DAYS;
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
 
-  if (!fs.existsSync(skillsDir)) return [];
-
   const now = new Date();
   const report = [];
 
@@ -60,13 +64,13 @@ function getSkillFreshnessReport(projectRoot) {
       if (!entry.isDirectory() || entry.name === '_template') continue;
 
       const skillMdPath = path.join(skillsDir, entry.name, 'skill.md');
-      if (!fs.existsSync(skillMdPath)) continue;
 
       try {
         const content = fs.readFileSync(skillMdPath, 'utf-8');
         const fm = parseFrontmatter(content);
 
-        const lastDocCheck = fm.lastDocCheck || fm.lastRefreshed || fm.generated || null;
+        // Only use lastDocCheck and lastRefreshed for freshness (not generated — that's creation date)
+        const lastDocCheck = fm.lastDocCheck || fm.lastRefreshed || null;
         let daysSinceCheck = null;
         let isStale = false;
 
@@ -91,11 +95,12 @@ function getSkillFreshnessReport(projectRoot) {
           context7: fm.context7 || null
         });
       } catch (err) {
-        // Skip unreadable skills
+        // Skip unreadable skills (ENOENT, permission errors, etc.)
       }
     }
   } catch (err) {
-    console.error(`Error reading skills directory: ${err.message}`);
+    // Skills directory doesn't exist or is unreadable
+    return [];
   }
 
   return report.sort((a, b) => {
@@ -121,18 +126,27 @@ function getStaleSkills(projectRoot) {
  */
 function updateLastDocCheck(skillDir, date) {
   const skillMdPath = path.join(skillDir, 'skill.md');
-  if (!fs.existsSync(skillMdPath)) return;
 
+  // Validate date format to prevent YAML injection
   const dateStr = date || new Date().toISOString().split('T')[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    console.error(`Invalid date format: ${dateStr} (expected YYYY-MM-DD)`);
+    return;
+  }
 
   try {
     let content = fs.readFileSync(skillMdPath, 'utf-8');
 
     if (content.match(/^lastDocCheck:/m)) {
       content = content.replace(/^lastDocCheck:.*$/m, `lastDocCheck: "${dateStr}"`);
-    } else if (content.match(/^---\n/)) {
-      // Add lastDocCheck before the closing ---
-      content = content.replace(/\n---/, `\nlastDocCheck: "${dateStr}"\n---`);
+    } else {
+      // Insert before the CLOSING --- delimiter (second occurrence)
+      // Match the frontmatter block and insert before its closing ---
+      const fmMatch = content.match(/^(---\n[\s\S]*?)\n---/);
+      if (fmMatch) {
+        const fmContent = fmMatch[1];
+        content = content.replace(fmMatch[0], `${fmContent}\nlastDocCheck: "${dateStr}"\n---`);
+      }
     }
 
     fs.writeFileSync(skillMdPath, content, 'utf-8');
@@ -148,13 +162,15 @@ function updateLastDocCheck(skillDir, date) {
 function loadConfig(projectRoot) {
   const configPath = path.join(projectRoot, '.workflow', 'config.json');
   try {
-    if (fs.existsSync(configPath)) {
-      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    const content = fs.readFileSync(configPath, 'utf-8');
+    const parsed = JSON.parse(content);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return {};
     }
+    return parsed;
   } catch (err) {
-    // Silently fail
+    return {};
   }
-  return {};
 }
 
 // ============================================
@@ -207,10 +223,15 @@ if (require.main === module) {
       console.log(JSON.stringify(stale, null, 2));
     }
   } else if (command === 'bump' && args[1]) {
-    // Bump lastDocCheck for a specific skill
-    const skillDir = path.join(projectRoot, '.claude', 'skills', args[1]);
+    // Validate skill name to prevent path traversal
+    const skillName = args[1];
+    if (!/^[a-z0-9-]+$/.test(skillName)) {
+      console.error(`Invalid skill name: ${skillName} (must be lowercase alphanumeric with hyphens)`);
+      process.exit(1);
+    }
+    const skillDir = path.join(projectRoot, '.claude', 'skills', skillName);
     updateLastDocCheck(skillDir);
-    console.log(`Updated lastDocCheck for ${args[1]}`);
+    console.log(`Updated lastDocCheck for ${skillName}`);
   } else {
     console.log('Usage: node flow-skill-freshness.js [check|stale|bump <skill-name>]');
   }

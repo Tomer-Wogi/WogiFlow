@@ -38,10 +38,14 @@ function syncDecisionsToRules() {
 /**
  * Resolve the path to pre-built skill templates.
  * Templates live in templates/skills/ relative to the package root.
+ * Memoized to avoid recomputing on every call.
  */
+let _prebuiltSkillsDir = null;
 function getPrebuiltSkillsDir() {
-  // __dirname is scripts/, package root is one level up
-  return path.join(__dirname, '..', 'templates', 'skills');
+  if (!_prebuiltSkillsDir) {
+    _prebuiltSkillsDir = path.join(__dirname, '..', 'templates', 'skills');
+  }
+  return _prebuiltSkillsDir;
 }
 
 /**
@@ -49,8 +53,24 @@ function getPrebuiltSkillsDir() {
  * @param {string} techValue - Technology identifier (e.g., 'react', 'prisma')
  * @returns {string|null} Path to pre-built skill dir, or null if not available
  */
+// Normalization map: tech values that don't match directory names
+const SKILL_ID_ALIASES = {
+  'tailwind': 'tailwindcss',
+  'tailwind-css': 'tailwindcss'
+};
+
+/**
+ * Normalize a tech value to a skill ID.
+ * @param {string} techValue - Technology identifier
+ * @returns {string} Normalized skill ID
+ */
+function normalizeSkillId(techValue) {
+  const baseId = techValue.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return SKILL_ID_ALIASES[baseId] || baseId;
+}
+
 function getPrebuiltSkillPath(techValue) {
-  const skillId = techValue.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const skillId = normalizeSkillId(techValue);
   const prebuiltDir = path.join(getPrebuiltSkillsDir(), skillId);
 
   try {
@@ -74,36 +94,59 @@ function getPrebuiltSkillPath(techValue) {
  */
 function copyPrebuiltSkill(prebuiltPath, projectRoot, skillId) {
   const destDir = path.join(projectRoot, '.claude', 'skills', skillId);
+
+  // Validate paths stay within expected boundaries
+  const resolvedDest = path.resolve(destDir);
+  const resolvedProject = path.resolve(projectRoot);
+  if (!resolvedDest.startsWith(resolvedProject + path.sep)) {
+    throw new Error(`Destination path escapes project root: ${destDir}`);
+  }
+
   ensureDir(destDir);
   ensureDir(path.join(destDir, 'knowledge'));
 
-  // Copy all files from pre-built template
-  const entries = fs.readdirSync(prebuiltPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(prebuiltPath, entry.name);
-    const destPath = path.join(destDir, entry.name);
+  // Recursive copy helper that skips symlinks
+  let skillMdContent = null;
 
-    if (entry.isDirectory()) {
-      ensureDir(destPath);
-      const subEntries = fs.readdirSync(srcPath);
-      for (const subEntry of subEntries) {
-        fs.copyFileSync(path.join(srcPath, subEntry), path.join(destPath, subEntry));
+  function copyDir(src, dest) {
+    try {
+      const entries = fs.readdirSync(src, { withFileTypes: true });
+      for (const entry of entries) {
+        // Skip symlinks to prevent escaping the template directory
+        if (entry.isSymbolicLink()) continue;
+
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+
+        if (entry.isDirectory()) {
+          ensureDir(destPath);
+          copyDir(srcPath, destPath);
+        } else {
+          fs.copyFileSync(srcPath, destPath);
+          // Capture skill.md content during copy to avoid re-reading
+          if (entry.name === 'skill.md' && src === prebuiltPath) {
+            try {
+              skillMdContent = fs.readFileSync(srcPath, 'utf8');
+            } catch (err) {
+              // Will fall back to default type
+            }
+          }
+        }
       }
-    } else {
-      fs.copyFileSync(srcPath, destPath);
+    } catch (err) {
+      // Skip unreadable directories
     }
   }
 
-  // Determine type from skill.md frontmatter
+  copyDir(prebuiltPath, destDir);
+
+  // Determine type from skill.md frontmatter (using content captured during copy)
   let type = 'library';
-  try {
-    const skillMd = fs.readFileSync(path.join(destDir, 'skill.md'), 'utf8');
-    const typeMatch = skillMd.match(/^type:\s*(.+)$/m);
+  if (skillMdContent) {
+    const typeMatch = skillMdContent.match(/^type:\s*(.+)$/m);
     if (typeMatch) {
-      type = typeMatch[1].trim();
+      type = typeMatch[1].trim().replace(/^["']|["']$/g, '');
     }
-  } catch (err) {
-    // Default to library
   }
 
   return { skillDir: destDir, type, skillId };
@@ -116,9 +159,16 @@ function copyPrebuiltSkill(prebuiltPath, projectRoot, skillId) {
 function listPrebuiltSkills() {
   const dir = getPrebuiltSkillsDir();
   try {
-    if (!fs.existsSync(dir)) return [];
     return fs.readdirSync(dir, { withFileTypes: true })
-      .filter(e => e.isDirectory() && fs.existsSync(path.join(dir, e.name, 'skill.md')))
+      .filter(e => e.isDirectory() && !e.isSymbolicLink())
+      .filter(e => {
+        try {
+          fs.accessSync(path.join(dir, e.name, 'skill.md'));
+          return true;
+        } catch (err) {
+          return false;
+        }
+      })
       .map(e => e.name);
   } catch (err) {
     return [];
@@ -855,7 +905,13 @@ function updateConfigJson(technologies, projectRoot) {
 
   let config;
   try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const content = fs.readFileSync(configPath, 'utf8');
+    const parsed = JSON.parse(content);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      console.log('  Warning: config.json is not a valid object');
+      return;
+    }
+    config = parsed;
   } catch (err) {
     console.log(`  Warning: Failed to parse config.json: ${err.message}`);
     return;
@@ -1332,6 +1388,7 @@ module.exports = {
   copyPrebuiltSkill,
   listPrebuiltSkills,
   getPrebuiltSkillsDir,
+  normalizeSkillId,
   SKILL_TOPICS,
   TECH_KEYWORDS
 };
@@ -1419,7 +1476,13 @@ For manual use, run the wizard first: node flow-stack-wizard.js
 
     let selections;
     try {
-      selections = JSON.parse(fs.readFileSync(selectionsPath, 'utf8'));
+      const content = fs.readFileSync(selectionsPath, 'utf8');
+      const parsed = JSON.parse(content);
+      if (typeof parsed !== 'object' || parsed === null) {
+        console.error('stack-selections.json is not a valid object');
+        process.exit(1);
+      }
+      selections = parsed;
     } catch (err) {
       console.error(`Failed to parse stack-selections.json: ${err.message}`);
       process.exit(1);

@@ -1320,19 +1320,43 @@ function invalidateReadyDataCache() {
 }
 
 /**
+ * Check if a task ID matches any valid WogiFlow ID format.
+ * Valid formats:
+ *   - wf-[8 hex]           Standard task (e.g., wf-a1b2c3d4)
+ *   - wf-[8 hex]-NN        Sub-task (e.g., wf-a1b2c3d4-01)
+ *   - wf-cr-[6 hex]        Review fix task (e.g., wf-cr-a1e8f7)
+ *   - wf-rv-[8 hex]        Review finding task (e.g., wf-rv-a1b2c3d4)
+ *   - ep-[8 hex]           Epic (e.g., ep-a1b2c3d4)
+ *   - ft-[8 hex]           Feature (e.g., ft-a1b2c3d4)
+ *   - pl-[8 hex]           Plan (e.g., pl-a1b2c3d4)
+ *   - TASK-NNN / BUG-NNN   Legacy format
+ *
+ * @param {string} id - ID to check
+ * @returns {boolean}
+ */
+function isValidWogiId(id) {
+  if (!id || typeof id !== 'string') return false;
+  // Standard task, sub-task, review fix (wf-cr-), review finding (wf-rv-)
+  if (/^wf-[a-f0-9]{8}(-\d{2})?$/i.test(id)) return true;
+  if (/^wf-cr-[a-f0-9]{6}$/i.test(id)) return true;
+  if (/^wf-rv-[a-f0-9]{8}$/i.test(id)) return true;
+  // Epic, feature, plan IDs
+  if (/^(ep|ft|pl)-[a-f0-9]{8}$/i.test(id)) return true;
+  // Legacy format
+  if (/^(TASK|BUG)-\d{3,}$/i.test(id)) return true;
+  return false;
+}
+
+/**
  * Validate all task IDs in a ready.json data object before writing.
- * Checks ready, inProgress, and recentlyCompleted arrays.
- * Only validates NEW entries — historical descriptive IDs in recentlyCompleted are allowed.
+ * Checks ALL arrays: ready, inProgress, blocked, backlog, recentlyCompleted.
+ * Only validates NEW entries — historical descriptive IDs are grandfathered.
  *
  * @param {Object} data - ready.json data to validate
  * @param {Object} [previousData] - Previous ready.json data to detect new entries
  * @throws {Error} If any new task ID fails validation
  */
 function validateReadyDataIds(data, previousData) {
-  // Allowed ID patterns: wf-[8 hex], sub-tasks wf-[8 hex]-NN, legacy TASK-NNN/BUG-NNN
-  const VALID_TASK_ID = /^wf-[a-f0-9]{8}(-\d{2})?$/i;
-  const LEGACY_TASK_ID = /^(TASK|BUG)-\d{3,}$/i;
-
   // Collect all existing IDs from previous data to skip historical entries
   const existingIds = new Set();
   if (previousData) {
@@ -1347,21 +1371,32 @@ function validateReadyDataIds(data, previousData) {
   }
 
   const violations = [];
-  for (const list of ['ready', 'inProgress']) {
+  // Validate ALL arrays, not just ready/inProgress
+  const allLists = ['ready', 'inProgress', 'blocked'];
+  for (const list of allLists) {
     for (const task of (data[list] || [])) {
       if (!task || !task.id) continue;
       // Skip IDs that already existed (historical)
       if (existingIds.has(task.id)) continue;
-      if (!VALID_TASK_ID.test(task.id) && !LEGACY_TASK_ID.test(task.id)) {
+      if (!isValidWogiId(task.id)) {
         violations.push(`${list}: "${task.id}" (title: "${task.title || 'unknown'}")`);
       }
     }
   }
+  // Also validate backlog (separate because it's not an array of the same shape sometimes)
+  for (const task of (data.backlog || [])) {
+    if (!task || !task.id) continue;
+    if (existingIds.has(task.id)) continue;
+    if (!isValidWogiId(task.id)) {
+      violations.push(`backlog: "${task.id}" (title: "${task.title || 'unknown'}")`);
+    }
+  }
 
   if (violations.length > 0) {
-    const msg = `Task ID validation failed — descriptive IDs are not allowed.\n` +
+    const msg = `Task ID validation failed — manually constructed IDs are not allowed.\n` +
       `Use generateTaskId() from flow-utils.js to create IDs.\n` +
-      `Format: wf-[8 hex chars] (e.g., wf-a1b2c3d4)\n\n` +
+      `Valid formats: wf-[8 hex], wf-[8 hex]-NN, wf-cr-[6 hex], wf-rv-[8 hex]\n` +
+      `Example: wf-a1b2c3d4 (NOT wf-health-001, wf-my-task, etc.)\n\n` +
       `Violations:\n${violations.map(v => `  - ${v}`).join('\n')}`;
     console.error(`[TASK-ID-VIOLATION] ${msg}`);
     // In strict mode, throw to prevent write. In non-strict, warn only.
@@ -3369,9 +3404,10 @@ module.exports = {
   error,
   info,
 
-  // Task ID Generation (v1.9.0)
+  // Task ID Generation & Validation (v1.9.0)
   generateTaskId,
   validateTaskId,
+  isValidWogiId,
   validateReadyDataIds,
   isLegacyTaskId,
 

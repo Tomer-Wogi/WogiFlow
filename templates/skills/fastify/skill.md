@@ -12,7 +12,7 @@ compatibility: "Claude Code 2.1+"
 source: prebuilt
 prebuiltVersion: "1.0.0"
 lastDocCheck: "2026-03-01"
-context7: "/nicepkg/fastify.dev"
+context7: "/fastify/fastify"
 allowed-tools:
   - Read
   - Glob

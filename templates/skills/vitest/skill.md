@@ -12,7 +12,7 @@ compatibility: "Claude Code 2.1+"
 source: prebuilt
 prebuiltVersion: "1.0.0"
 lastDocCheck: "2026-03-01"
-context7: "/nicepkg/vitest.dev"
+context7: "/vitest-dev/vitest"
 allowed-tools:
   - Read
   - Glob
@@ -44,7 +44,7 @@ Matches files: **/*.test.ts, **/*.test.tsx, **/*.spec.ts, vitest.config.*, vite.
 
 ### Key Patterns
 - **In-Source Testing**: In-source tests are tree-shaken in production but run during testing
-- **vi.mock for Module Mocking**: vi
+- **vi.mock for Module Mocking**: vi.mock hoists to the top of the file and replaces the module. Use factory function for custom implementations.
 
 ### Common Mistakes to Avoid
 - **Not Using vi.clearAllMocks**: Mock state leaks between tests
