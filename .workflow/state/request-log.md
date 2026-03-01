@@ -11,6 +11,26 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-197 | 2026-03-01 13:45
+**Type**: new
+**Tags**: #skills #prebuilt #freshness #sub-agent #onboarding
+**Tasks**: wf-e8548b57, wf-e8548b57-01, wf-e8548b57-02, wf-e8548b57-03, wf-e8548b57-04
+**Request**: "Ship pre-built skill templates for top 30 libraries + sub-agent isolation for unknown libraries + documentation freshness tracking"
+**Result**: (1) Created 31 pre-built skill templates in templates/skills/ with real patterns, anti-patterns, and conventions for: react, next, vue, angular, svelte, tailwindcss, express, nestjs, fastify, hono, prisma, sequelize, mongoose, drizzle, typeorm, jest, vitest, playwright, cypress, mocha, zod, typescript, graphql, eslint, django, flask, fastapi, sqlalchemy, pytest, docker, terraform. (2) Modified flow-skill-generator.js to check pre-built templates first — copies instantly instead of generating via Context7. Added getPrebuiltSkillPath(), copyPrebuiltSkill(), listPrebuiltSkills(). (3) Updated flow-stack-wizard.js to show pre-built vs generated counts. (4) Added sub-agent isolation docs to wogi-setup-stack.md for unknown library generation. (5) Created flow-skill-freshness.js for documentation freshness tracking with CLI and programmatic API. (6) Integrated freshness alerts into wogi-morning.md briefing template.
+**Files**: templates/skills/**/*, scripts/flow-skill-generator.js, scripts/flow-skill-freshness.js, scripts/flow-stack-wizard.js, scripts/flow, .claude/commands/wogi-setup-stack.md, .claude/commands/wogi-morning.md
+
+---
+
+### R-196 | 2026-03-01 12:00
+**Type**: fix
+**Tags**: #commands #frontmatter #skill-discovery
+**Tasks**: wf-e0297540
+**Request**: "Add YAML frontmatter with description to all 67 wogi-*.md command files for Skill tool discovery"
+**Result**: Added YAML frontmatter with short description field to all 67 .claude/commands/wogi-*.md files. Fixed nested quote issues and unquoted descriptions in 6 pre-existing files. All 67 files validated. Released as v1.6.3.
+**Files**: .claude/commands/wogi-*.md (67 files)
+
+---
+
 ### R-195 | 2026-02-28 14:45
 **Type**: change
 **Tags**: #hooks #adapter #claude-code #http-transport #worktree #config-change

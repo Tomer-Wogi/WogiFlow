@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-03-01T11:46:27.242Z",
-  "inProgress": [],
-  "ready": [],
+  "lastUpdated": "2026-03-01T12:43:19.020Z",
+  "inProgress": [
+  ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e8548b57",
+      "title": "Pre-built skill templates + sub-agent isolation + doc freshness tracking",
+      "type": "story",
+      "feature": "skills",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-01T12:43:19.019Z",
+      "completedAt": "2026-03-01T13:45:00.000Z"
+    },
     {
       "id": "wf-e0297540",
       "title": "Add YAML frontmatter with description to all wogi-*.md command files",

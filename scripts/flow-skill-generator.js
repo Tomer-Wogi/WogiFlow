@@ -32,6 +32,100 @@ function syncDecisionsToRules() {
 }
 
 // ============================================
+// PRE-BUILT SKILL TEMPLATES
+// ============================================
+
+/**
+ * Resolve the path to pre-built skill templates.
+ * Templates live in templates/skills/ relative to the package root.
+ */
+function getPrebuiltSkillsDir() {
+  // __dirname is scripts/, package root is one level up
+  return path.join(__dirname, '..', 'templates', 'skills');
+}
+
+/**
+ * Check if a pre-built skill template exists for a given technology.
+ * @param {string} techValue - Technology identifier (e.g., 'react', 'prisma')
+ * @returns {string|null} Path to pre-built skill dir, or null if not available
+ */
+function getPrebuiltSkillPath(techValue) {
+  const skillId = techValue.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const prebuiltDir = path.join(getPrebuiltSkillsDir(), skillId);
+
+  try {
+    if (fs.existsSync(prebuiltDir) && fs.existsSync(path.join(prebuiltDir, 'skill.md'))) {
+      return prebuiltDir;
+    }
+  } catch (err) {
+    // Silently fail — pre-built not available
+  }
+
+  return null;
+}
+
+/**
+ * Copy a pre-built skill template to the project's .claude/skills/ directory.
+ * Preserves frontmatter and adds project-specific metadata.
+ * @param {string} prebuiltPath - Path to the pre-built skill template
+ * @param {string} projectRoot - Project root path
+ * @param {string} skillId - Skill identifier
+ * @returns {{ skillDir: string, type: string, skillId: string }}
+ */
+function copyPrebuiltSkill(prebuiltPath, projectRoot, skillId) {
+  const destDir = path.join(projectRoot, '.claude', 'skills', skillId);
+  ensureDir(destDir);
+  ensureDir(path.join(destDir, 'knowledge'));
+
+  // Copy all files from pre-built template
+  const entries = fs.readdirSync(prebuiltPath, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(prebuiltPath, entry.name);
+    const destPath = path.join(destDir, entry.name);
+
+    if (entry.isDirectory()) {
+      ensureDir(destPath);
+      const subEntries = fs.readdirSync(srcPath);
+      for (const subEntry of subEntries) {
+        fs.copyFileSync(path.join(srcPath, subEntry), path.join(destPath, subEntry));
+      }
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+
+  // Determine type from skill.md frontmatter
+  let type = 'library';
+  try {
+    const skillMd = fs.readFileSync(path.join(destDir, 'skill.md'), 'utf8');
+    const typeMatch = skillMd.match(/^type:\s*(.+)$/m);
+    if (typeMatch) {
+      type = typeMatch[1].trim();
+    }
+  } catch (err) {
+    // Default to library
+  }
+
+  return { skillDir: destDir, type, skillId };
+}
+
+/**
+ * List all available pre-built skill template names.
+ * @returns {string[]} Array of skill identifiers (e.g., ['react', 'prisma', ...])
+ */
+function listPrebuiltSkills() {
+  const dir = getPrebuiltSkillsDir();
+  try {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter(e => e.isDirectory() && fs.existsSync(path.join(dir, e.name, 'skill.md')))
+      .map(e => e.name);
+  } catch (err) {
+    return [];
+  }
+}
+
+// ============================================
 // CONFIGURATION
 // ============================================
 
@@ -816,8 +910,10 @@ async function generateSkills(technologies, selections) {
   console.log(`    Frameworks (hubs): ${frameworks.map(f => f.label).join(', ') || 'none'}`);
   console.log(`    Libraries (spokes): ${libraries.map(l => l.label).join(', ') || 'none'}`);
 
-  // Track what needs MCP fetching
+  // Track what needs MCP fetching (unknown libraries without pre-built templates)
   const needsMCPFetch = [];
+  const prebuiltCopied = [];
+  const generated = [];
 
   // Build ecosystem mapping: which libraries belong to which frameworks
   const frameworkEcosystems = new Map();
@@ -847,49 +943,75 @@ async function generateSkills(technologies, selections) {
 
   // Generate framework (hub) skills first
   for (const fw of frameworks) {
-    console.log(`\n  Processing framework: ${fw.label} (hub)...`);
+    const skillId = fw.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const prebuiltPath = getPrebuiltSkillPath(fw.value);
 
-    const docResult = await fetchDocsViaContext7(fw);
-    if (docResult?.needsMCPFetch) {
-      needsMCPFetch.push(docResult);
+    if (prebuiltPath) {
+      // Pre-built skill available — copy instead of generating
+      console.log(`\n  Copying pre-built framework: ${fw.label} (hub)...`);
+      const result = copyPrebuiltSkill(prebuiltPath, projectRoot, skillId);
+      prebuiltCopied.push(fw.value);
+      console.log(`    ✓ Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
+    } else {
+      // No pre-built — generate from scratch (may need Context7)
+      console.log(`\n  Generating framework: ${fw.label} (hub)...`);
+
+      const docResult = await fetchDocsViaContext7(fw);
+      if (docResult?.needsMCPFetch) {
+        needsMCPFetch.push(docResult);
+      }
+
+      const ecosystem = frameworkEcosystems.get(fw.value);
+      const ecosystemSkills = ecosystem.libraries.map(lib => ({
+        id: lib.value.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        label: lib.label
+      }));
+
+      const result = await writeSkillFiles(fw, null, projectRoot, {
+        type: 'framework',
+        ecosystemSkills
+      });
+
+      // Write ecosystem link files
+      if (Object.keys(ecosystem.categories).length > 0) {
+        await writeEcosystemLinks(result.skillId, ecosystem.categories, projectRoot);
+        console.log(`    ✓ Created ecosystem links in: ${result.skillId}/ecosystem/`);
+      }
+
+      generated.push(fw.value);
+      console.log(`    ✓ Generated: ${path.relative(projectRoot, result.skillDir)}`);
     }
-
-    const ecosystem = frameworkEcosystems.get(fw.value);
-    const ecosystemSkills = ecosystem.libraries.map(lib => ({
-      id: lib.value.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-      label: lib.label
-    }));
-
-    const result = await writeSkillFiles(fw, null, projectRoot, {
-      type: 'framework',
-      ecosystemSkills
-    });
-
-    // Write ecosystem link files
-    if (Object.keys(ecosystem.categories).length > 0) {
-      await writeEcosystemLinks(result.skillId, ecosystem.categories, projectRoot);
-      console.log(`    ✓ Created ecosystem links in: ${result.skillId}/ecosystem/`);
-    }
-
-    console.log(`    ✓ Created: ${path.relative(projectRoot, result.skillDir)}`);
   }
 
   // Generate library (spoke) skills
   for (const lib of libraries) {
-    console.log(`\n  Processing library: ${lib.label} (spoke)...`);
+    const skillId = lib.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const prebuiltPath = getPrebuiltSkillPath(lib.value);
 
-    const docResult = await fetchDocsViaContext7(lib);
-    if (docResult?.needsMCPFetch) {
-      needsMCPFetch.push(docResult);
+    if (prebuiltPath) {
+      // Pre-built skill available — copy instead of generating
+      console.log(`\n  Copying pre-built library: ${lib.label} (spoke)...`);
+      const result = copyPrebuiltSkill(prebuiltPath, projectRoot, skillId);
+      prebuiltCopied.push(lib.value);
+      console.log(`    ✓ Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
+    } else {
+      // No pre-built — generate from scratch (may need Context7)
+      console.log(`\n  Generating library: ${lib.label} (spoke)...`);
+
+      const docResult = await fetchDocsViaContext7(lib);
+      if (docResult?.needsMCPFetch) {
+        needsMCPFetch.push(docResult);
+      }
+
+      const parentFramework = getParentFramework(lib.value, selections);
+      const result = await writeSkillFiles(lib, null, projectRoot, {
+        type: 'library',
+        parentFramework
+      });
+
+      generated.push(lib.value);
+      console.log(`    ✓ Generated: ${path.relative(projectRoot, result.skillDir)}`);
     }
-
-    const parentFramework = getParentFramework(lib.value, selections);
-    const result = await writeSkillFiles(lib, null, projectRoot, {
-      type: 'library',
-      parentFramework
-    });
-
-    console.log(`    ✓ Created: ${path.relative(projectRoot, result.skillDir)}`);
   }
 
   // Generate skills index (v2.0)
@@ -923,13 +1045,22 @@ async function generateSkills(technologies, selections) {
     console.log();
   }
 
-  // Summary with hub-spoke info
+  // Summary with hub-spoke info and pre-built stats
   console.log('\n' + '─'.repeat(60));
-  console.log('  Skills generated with hub-spoke structure:');
+  console.log('  Skills summary:');
   console.log('─'.repeat(60));
+  if (prebuiltCopied.length > 0) {
+    console.log(`  Pre-built (zero context cost): ${prebuiltCopied.length}`);
+    console.log(`    ${prebuiltCopied.join(', ')}`);
+  }
+  if (generated.length > 0) {
+    console.log(`  Generated (needs Context7): ${generated.length}`);
+    console.log(`    ${generated.join(', ')}`);
+  }
   console.log(`  Frameworks (always loaded): ${frameworks.length}`);
   console.log(`  Libraries (loaded on-demand): ${libraries.length}`);
   console.log('\n  Loading strategy:');
+  console.log('    • Pre-built skills are ready immediately (no network calls)');
   console.log('    • Framework skills load when working on framework files');
   console.log('    • Library skills load when file imports that library');
   console.log('    • This saves tokens while keeping relevant context available');
@@ -939,6 +1070,8 @@ async function generateSkills(technologies, selections) {
     skillsCreated: technologies.map(t => t.value),
     indexPath,
     needsMCPFetch,
+    prebuiltCopied,
+    generated,
     hubSpokeStats: {
       frameworks: frameworks.length,
       libraries: libraries.length
@@ -1194,6 +1327,11 @@ module.exports = {
   categorizeLibrary,
   listSkillsNeedingDocs,
   prepareFetchRequest,
+  // Pre-built skill functions
+  getPrebuiltSkillPath,
+  copyPrebuiltSkill,
+  listPrebuiltSkills,
+  getPrebuiltSkillsDir,
   SKILL_TOPICS,
   TECH_KEYWORDS
 };

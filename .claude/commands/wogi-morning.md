@@ -41,6 +41,11 @@ NEW RULES LEARNED (auto-promoted from patterns)
   → Fix now? Routes through /wogi-start with quality gates.
   → Dismiss? Grandfathers existing violations.
 
+STALE SKILLS (documentation may be outdated)
+  3 skills older than 90 days:
+    react (95 days), express (120 days), prisma (91 days)
+  → Run `/wogi-setup-stack --refresh-stale` to update.
+
 CHANGES SINCE LAST SESSION
   - 2 new commits
   - 1 new bug filed
@@ -141,8 +146,26 @@ Configuration in `.workflow/config.json`:
   "showBlockers": true,
   "showKeyContext": true,
   "showRuleViolations": true,
-  "showAutoPromotedRules": true
+  "showAutoPromotedRules": true,
+  "showStaleSkills": true
 }
 ```
 
 Set `enabled: false` to disable this command.
+
+## Stale Skills Section (Implementation Details)
+
+When `morningBriefing.showStaleSkills` is true, the morning briefing checks skill documentation freshness:
+
+1. Run `node scripts/flow-skill-freshness.js check` or call `getSkillFreshnessReport()` programmatically
+2. If any skills have `lastDocCheck` older than `config.skills.freshnessThreshold` days (default: 90):
+   - Display the skill names and ages
+   - Offer to run `/wogi-setup-stack --refresh-stale`
+3. If no stale skills, omit this section entirely
+
+Configuration in `.workflow/config.json`:
+```json
+"skills": {
+  "freshnessThreshold": 90
+}
+```

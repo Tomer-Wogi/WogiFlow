@@ -721,7 +721,23 @@ class EnhancedStackWizard {
       return;
     }
 
-    console.log(`\n  Creating skills for ${technologies.length} technologies...`);
+    // Show which technologies have pre-built templates
+    try {
+      const { listPrebuiltSkills } = require('./flow-skill-generator');
+      const prebuiltSet = new Set(listPrebuiltSkills());
+      const prebuiltCount = technologies.filter(t => prebuiltSet.has(t.value.toLowerCase().replace(/[^a-z0-9]/g, '-'))).length;
+      const generateCount = technologies.length - prebuiltCount;
+
+      console.log(`\n  Creating skills for ${technologies.length} technologies:`);
+      if (prebuiltCount > 0) {
+        console.log(c('green', `    ${prebuiltCount} pre-built (instant, zero context cost)`));
+      }
+      if (generateCount > 0) {
+        console.log(c('yellow', `    ${generateCount} will be generated (may use Context7)`));
+      }
+    } catch (err) {
+      console.log(`\n  Creating skills for ${technologies.length} technologies...`);
+    }
 
     try {
       const generator = require('./flow-skill-generator');

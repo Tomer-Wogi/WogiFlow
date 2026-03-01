@@ -201,6 +201,72 @@ Check the tech options in `flow-tech-options.js` for known `skillsShId` mappings
 }
 ```
 
+## Pre-Built Skills (v1.7)
+
+WogiFlow ships with pre-built skill templates for the top 30 most common libraries. During skill generation:
+
+1. **Pre-built skills** are copied instantly (zero context cost, no network)
+2. **Unknown libraries** fall back to Context7 generation via sub-agent isolation
+
+Pre-built libraries include: react, next, vue, angular, svelte, tailwindcss, express, nestjs, fastify, hono, prisma, sequelize, mongoose, drizzle, typeorm, jest, vitest, playwright, cypress, mocha, zod, typescript, graphql, eslint, django, flask, fastapi, sqlalchemy, pytest, docker, terraform.
+
+### Sub-Agent Isolation for Unknown Libraries
+
+When `--fetch-docs` encounters libraries not in the pre-built set:
+
+1. **Skip Context7 in main context** — do NOT fetch docs directly
+2. **Spawn a sub-agent** using the Agent tool with `subagent_type=general-purpose`:
+   ```
+   Agent(subagent_type="general-purpose", prompt="Generate a WogiFlow skill for [library].
+
+   1. Call mcp__MCP_DOCKER__resolve-library-id with libraryName='[library]'
+   2. Call mcp__MCP_DOCKER__get-library-docs with the resolved ID, topic='best practices patterns common mistakes', tokens=8000
+   3. Extract patterns, anti-patterns, and conventions from the docs
+   4. Write skill files to .claude/skills/[library]/ using the skill template format
+   5. Return ONLY the file paths created (not the doc content)
+   ")
+   ```
+3. **Main context receives only file paths** — the full docs stay in the sub-agent's context
+4. **If sub-agent fails**, create a stub skill with placeholder content
+
+This prevents unknown libraries from consuming the main context window.
+
+## Documentation Freshness (`--check-freshness`)
+
+Check if pre-built skills have stale documentation:
+
+```
+/wogi-setup-stack --check-freshness
+```
+
+This reads `lastDocCheck` from each skill's frontmatter and flags skills older than 90 days (configurable via `config.skills.freshnessThreshold`).
+
+Output:
+```
+Documentation Freshness Check:
+  3 skills may have outdated documentation:
+    react (95 days since last check)
+    express (120 days)
+    prisma (91 days)
+
+  Run `/wogi-setup-stack --refresh-stale` to update.
+```
+
+## Refresh Stale Skills (`--refresh-stale`)
+
+Update skills flagged as stale:
+
+```
+/wogi-setup-stack --refresh-stale
+```
+
+For each stale skill:
+1. Spawn a sub-agent to fetch latest docs via Context7
+2. Compare new docs against existing skill content
+3. If changes detected: update skill files and `lastDocCheck` date
+4. If no changes: bump `lastDocCheck` only
+5. Display summary of changes
+
 ## Re-running the Wizard
 
 You can run the wizard again to:

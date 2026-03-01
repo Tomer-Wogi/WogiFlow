@@ -438,6 +438,9 @@ case "${1:-}" in
     morning)
         node "$SCRIPT_DIR/flow-morning.js" "${@:2}"
         ;;
+    freshness)
+        node "$SCRIPT_DIR/flow-skill-freshness.js" "${@:2}"
+        ;;
     session-end)
         node "$SCRIPT_DIR/flow-session-end.js" "${@:2}"
         ;;
