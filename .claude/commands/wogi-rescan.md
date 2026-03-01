@@ -1,3 +1,6 @@
+---
+description: "Re-scan project after external changes and sync WogiFlow state"
+---
 Re-scan the project after external changes and sync WogiFlow state.
 
 Usage: `/wogi-rescan`

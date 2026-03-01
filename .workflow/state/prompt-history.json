@@ -2255,6 +2255,66 @@
         "content": "/wogi-session-end ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T13:49:30.019Z",
+        "content": "/wogi-morning ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T13:50:14.237Z",
+        "content": "Cloud just released another version that looks like it has a lot of changes. Please review all the changes, tell me how it affects Wogi Flow. If there is anything we need to change, update, any opportunities, any risks, any adjustments that we need to do. Added /simplify and /batch bundled slash commands\nFixed local slash command output like /cost appearing as user-sent messages instead of system messages in the UI\nProject configs & auto memory now shared across git worktrees of the same repository\nAdded ENABLE_CLAUDEAI_MCP_SERVERS=false env var to opt out from making claude.ai MCP servers available\nImproved /model command to show the currently active model in the slash command menu\nAdded HTTP hooks, which can POST JSON to a URL and receive JSON instead of running a shell command\nFixed listener leak in bridge polling loop\nFixed listener leak in MCP OAuth flow cleanup\nAdded manual URL paste fallback during MCP OAuth authentication. If the automatic localhost redirect doesn't work, you can paste the callback URL to complete authentication.\nFixed memory leak when navigating hooks configuration menu\nFixed listener leak in interactive permission handler during auto-approvals\nFixed file count cache ignoring glob ignore patterns\nFixed memory leak in bash command prefix cache\nFixed MCP tool/resource cache leak on server reconnect\nFixed IDE host IP detection cache incorrectly sharing results across ports\nFixed WebSocket listener leak on transport reconnect\nFixed memory leak in git root detection cache that could cause unbounded growth in long-running sessions\nFixed memory leak in JSON parsing cache that grew unbounded over long sessions\nVSCode: Fixed remote sessions not appearing in conversation history\nFixed a race condition in the REPL bridge where new messages could arrive at the server interleaved with historical messages during the initial connection flush, causing message ordering issues.\nFixed memory leak where long-running teammates retained all messages in AppState even after conversation compaction\nFixed a memory leak where MCP server fetch caches were not cleared on disconnect, causing growing memory usage with servers that reconnect frequently\nImproved memory usage in long sessions with subagents by stripping heavy progress message payloads during context compaction\nAdded \"Always copy full response\" option to the /copy picker. When selected, future /copy commands will skip the code block picker and copy the full response directly.\nVSCode: Added session rename and remove actions to the sessions list\nFixed /clear not resetting cached skills, which could cause stale skill content to persist in the new conversation",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T13:56:17.988Z",
+        "content": "There were a lot of things here that you are not clear about. Go online, do the research. If you need to test anything, test and get back to me with answers on what is the best approach for each one of your suggestions. The opportunities that we have for the team functionality create after you do the research for that as well, create a prompt for me to paste in that repo because this is now a separate project. unless it's something that needs to be addressed here and in that second repo. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T14:16:03.002Z",
+        "content": "yes, create the tasks for you recommendations",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T14:23:46.417Z",
+        "content": "do both",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T14:37:18.497Z",
+        "content": "What do you mean add when ready? This is something that needs to come from the cloud repository? Or this is something that like we need to make sure that when you add a theme, if this is needed, it gets added automatically when you log in? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-02-28T14:39:05.457Z",
+        "content": "Update the GitHub and create a release. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-01T11:36:15.370Z",
+        "content": "This is from another project investigate if it's something with us or something with that project  I see the issue - the wogi-start command file exists but the Skill tool isn't finding it. This is likely a Claude Code      \n  configuration issue where the commands aren't registered as invocable skills.                                               \n                                                                                                                              \n  Here's where I stand:                                                                                                       \n                                                   \n  1. I reverted all unauthorized code - all files I created are deleted                                                       \n  2. The Skill tool can't find wogi-start - it's not in the registered skills list. The .claude/commands/ files exist but   \n  aren't loading as skills                         \n                                                                                                                              \n  You may need to check your WogiFlow setup - the commands in .claude/commands/ aren't being recognized by the Skill tool. You\n   could try:                                                                                                                 \n  - Running flow bridge sync to regenerate                                                                                    \n  - Checking if there's a skills registration step that was missed                                                            \n  - Checking .claude/settings.local.json for skill configuration                                                              \n                                                                                                                            \n  Once /wogi-start is working, I'll route everything through it properly before touching any code. Would you like me to help\n  debug why the commands aren't loading, or would you prefer to fix that first and then come back?\n",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-01T11:38:49.756Z",
+        "content": "The file exists at 82KB but the Skill tool doesn't recognize it. The issue is that Claude Code's Skill tool looks for skills\n   listed in the system reminder, and the ones available are: keybindings-help, claude-developer-platform, commit, _template, \n  and figma-analyzer. The wogi-* commands aren't registering as skills.                                                       \n                                                                                                                              \n  This seems like a WogiFlow/Claude Code integration issue. The .claude/commands/ directory has the files, but they're not    \n  appearing as invocable skills.                                                                                              \n                                                                                                                              \n  Would you like to:                                                                                                          \n  1. Debug the WogiFlow skill registration - I can check .claude/settings.local.json and the bridge config to see why commands\n   aren't registering                                                                                                       \n  2. Try running npx flow commands directly to see if there's a setup step needed                                             \n  3. You fix the skill registration yourself and come back when /wogi-start works ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-01T11:42:26.875Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0

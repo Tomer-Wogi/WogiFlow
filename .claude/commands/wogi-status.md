@@ -1,3 +1,6 @@
+---
+description: "Show full project overview with task status and health"
+---
 Show full project overview.
 
 Run `./scripts/flow status` to see the overview.

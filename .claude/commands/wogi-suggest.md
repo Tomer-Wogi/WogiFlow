@@ -1,3 +1,6 @@
+---
+description: "Submit a suggestion or feature request for WogiFlow"
+---
 Submit a suggestion, feature request, or improvement idea for WogiFlow.
 
 Your suggestion is sent anonymously to the WogiFlow community server where AI agents evaluate and prioritize it. Popular suggestions get fast-tracked for implementation.

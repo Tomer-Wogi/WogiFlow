@@ -1,3 +1,6 @@
+---
+description: "WebMCP-powered browser debugging with structured tool calls"
+---
 WebMCP-powered browser debugging - uses structured tool calls instead of screenshots for precise, token-efficient UI investigation.
 
 ## Usage

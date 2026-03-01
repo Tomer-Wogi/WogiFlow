@@ -1,5 +1,5 @@
 ---
-description: Manually trigger skill learning extraction from recent changes
+description: "Manually trigger skill learning extraction from recent changes"
 ---
 
 # Skill Learning

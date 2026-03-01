@@ -1,3 +1,6 @@
+---
+description: "Create a bug report with investigation and structured fix execution"
+---
 <!-- PINS: bug-protocol, bug-cli, bug-investigation, bug-phases, bug-population, bug-severity, bug-creation, bug-execution, bug-specific-execution, bug-learning, bug-discovery, bug-output, bug-configuration, bug-comparison -->
 
 Create a bug report with full investigation and execution. Provide title: `/wogi-bug Login button not responding`

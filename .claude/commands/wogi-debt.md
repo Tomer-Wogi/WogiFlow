@@ -1,3 +1,6 @@
+---
+description: "View and manage technical debt across sessions"
+---
 View and manage technical debt across sessions.
 
 **Triggers**: `/wogi-debt`, "show debt", "technical debt", "debt status"

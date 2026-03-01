@@ -1,3 +1,6 @@
+---
+description: "Morning briefing with everything needed to start the day"
+---
 Show a morning briefing with everything needed to start the day.
 
 Run `./scripts/flow morning` to generate the briefing.

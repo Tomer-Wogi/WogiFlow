@@ -1,3 +1,6 @@
+---
+description: "Manage epics (large initiatives) with hierarchical progress tracking"
+---
 Manage epics (large initiatives) with hierarchical progress tracking.
 
 ## Overview

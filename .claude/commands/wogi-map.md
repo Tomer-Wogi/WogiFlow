@@ -1,3 +1,6 @@
+---
+description: "Display the component registry (app-map)"
+---
 Display the component registry (app-map).
 
 Read `.workflow/state/app-map.md` and show:

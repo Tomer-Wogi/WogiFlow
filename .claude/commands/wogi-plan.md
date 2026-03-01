@@ -1,3 +1,6 @@
+---
+description: "Manage plans - strategic initiatives coordinating epics and features"
+---
 Manage plans - strategic initiatives that coordinate epics and features.
 
 ## Overview

@@ -1,5 +1,5 @@
 ---
-description: Enable hybrid mode - Claude plans, cheaper/faster models execute
+description: "Enable hybrid mode - Claude plans, cheaper/faster models execute"
 ---
 
 # Enable Multi-Model Hybrid Execution

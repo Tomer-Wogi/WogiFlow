@@ -1,3 +1,6 @@
+---
+description: "Analyze an existing project and set up workflow with full context"
+---
 Analyze an existing project and set up workflow with full context.
 
 Usage: `/wogi-onboard`

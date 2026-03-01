@@ -1,3 +1,6 @@
+---
+description: "Run a multi-model peer review with different AI perspectives"
+---
 Run a multi-model peer review where different AI models review the same code.
 
 ## Step 0: Model Selection (Session Persistent)

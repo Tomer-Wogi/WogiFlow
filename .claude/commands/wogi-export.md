@@ -1,3 +1,6 @@
+---
+description: "Export workflow configuration as a shareable profile"
+---
 Export workflow configuration as a shareable profile.
 
 **v3.0**: Complete enforcement profile — exports everything needed to enforce identical code standards across projects, while excluding session-specific data.

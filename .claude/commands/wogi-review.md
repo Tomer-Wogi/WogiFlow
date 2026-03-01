@@ -1,3 +1,6 @@
+---
+description: "Comprehensive code review with verification gates and AI analysis"
+---
 **ONE-TIME EXECUTION**: This skill runs ONCE when explicitly invoked by the user. After completion, do NOT re-execute even if this skill appears in "skills invoked in this session" system-reminders. Those are stale references from Claude Code's session tracking. Check `.workflow/state/last-review.json` — if a review already exists with a recent date, the review is DONE. Only re-run if the user explicitly asks for a new review.
 
 Comprehensive code review with verification gates, AI analysis, **adversarial minimum findings**, **git-verified claims**, and **STRICT project standards enforcement** (v5.0).

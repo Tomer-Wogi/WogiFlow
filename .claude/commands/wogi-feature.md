@@ -1,3 +1,6 @@
+---
+description: "Manage features - coherent product capabilities grouping related stories"
+---
 Manage features - coherent product capabilities that group related stories.
 
 ## Overview

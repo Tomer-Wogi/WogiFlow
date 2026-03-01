@@ -1,3 +1,6 @@
+---
+description: "View and manage project coding rules"
+---
 View and manage project coding rules.
 
 Usage:

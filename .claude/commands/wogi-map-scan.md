@@ -1,3 +1,6 @@
+---
+description: "Scan codebase for unmapped components"
+---
 Scan codebase for unmapped components.
 
 Usage: `/wogi-map-scan [directory]`

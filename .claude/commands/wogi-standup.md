@@ -1,3 +1,6 @@
+---
+description: "Generate a daily standup summary"
+---
 Generate a daily standup summary.
 
 Gather from:

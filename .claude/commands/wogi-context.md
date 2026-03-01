@@ -1,3 +1,6 @@
+---
+description: "Load all context needed to implement a task"
+---
 Load all context needed to implement a task. Provide task ID: `/wogi-context wf-012`
 
 ## What It Loads

@@ -1,3 +1,6 @@
+---
+description: "Configure Claude Code status line for WogiFlow task info"
+---
 # Status Line Setup
 
 Configure Claude Code's status line to show WogiFlow task information and context usage.

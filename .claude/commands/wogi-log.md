@@ -1,3 +1,6 @@
+---
+description: "Add an entry to the request log"
+---
 Add an entry to the request log.
 
 Usage: `/wogi-log` (interactive) or with parameters

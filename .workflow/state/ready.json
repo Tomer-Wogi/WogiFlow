@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-02-28T14:45:00.000Z",
+  "lastUpdated": "2026-03-01T11:46:27.242Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e0297540",
+      "title": "Add YAML frontmatter with description to all wogi-*.md command files",
+      "type": "fix",
+      "feature": "commands",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-01T11:46:27.242Z",
+      "completedAt": "2026-03-01T11:46:27.242Z"
+    },
     {
       "id": "wf-2db50af6",
       "title": "Enable WorktreeCreate/WorktreeRemove/ConfigChange hook events in adapter",

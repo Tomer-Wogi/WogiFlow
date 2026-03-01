@@ -1,3 +1,6 @@
+---
+description: "Suspend the current task with a resume condition"
+---
 Suspend the current task with a resume condition.
 
 ## Usage

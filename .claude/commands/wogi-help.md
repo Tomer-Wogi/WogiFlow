@@ -1,3 +1,6 @@
+---
+description: "Show all available WogiFlow commands"
+---
 Show all available Wogi Flow commands.
 
 Usage: `/wogi-help`

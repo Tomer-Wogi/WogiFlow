@@ -1,3 +1,6 @@
+---
+description: "WebMCP-powered browser testing with structured assertions"
+---
 WebMCP-powered browser testing - defines test flows as structured tool call sequences with expected-vs-actual assertions. Token-efficient alternative to screenshot comparison.
 
 ## Usage

@@ -1,3 +1,6 @@
+---
+description: "Manage skill packages for specialized development workflows"
+---
 Manage skill packages for specialized development workflows.
 
 Usage:

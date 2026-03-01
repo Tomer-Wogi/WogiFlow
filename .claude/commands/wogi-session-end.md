@@ -1,3 +1,6 @@
+---
+description: "Properly end a work session with state preservation"
+---
 Properly end a work session.
 
 Steps:

@@ -1,3 +1,6 @@
+---
+description: "Create a detailed story with acceptance criteria"
+---
 Create a detailed story with acceptance criteria. Provide title: `/wogi-story Add login form`
 
 Run `./scripts/flow story "<title>"` to create a story.

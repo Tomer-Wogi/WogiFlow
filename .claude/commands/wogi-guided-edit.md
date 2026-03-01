@@ -1,3 +1,6 @@
+---
+description: "Guide through multi-file changes step by step"
+---
 Guide through multi-file changes step by step.
 
 Usage:

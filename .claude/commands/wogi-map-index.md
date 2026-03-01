@@ -1,3 +1,6 @@
+---
+description: "Show or regenerate the auto-generated component index"
+---
 Show or regenerate the auto-generated component index.
 
 Usage:

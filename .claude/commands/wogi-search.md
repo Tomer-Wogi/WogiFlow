@@ -1,3 +1,6 @@
+---
+description: "Search the request log by tag or keyword"
+---
 Search the request log by tag or keyword. Provide search term: `/wogi-search #screen:login`
 
 Search `.workflow/state/request-log.md` for:

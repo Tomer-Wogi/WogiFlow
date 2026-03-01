@@ -1,3 +1,6 @@
+---
+description: "Configure external models for peer review and hybrid mode"
+---
 Configure external models for WogiFlow features (peer review, hybrid mode).
 
 ## Overview

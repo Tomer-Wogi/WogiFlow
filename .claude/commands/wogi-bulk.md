@@ -1,3 +1,6 @@
+---
+description: "Execute multiple tasks in sequence following all workflow rules"
+---
 Execute multiple tasks in sequence, following all workflow rules.
 
 **v3.0**: Now supports **orchestrator mode** where each task executes in a fresh sub-agent context, preventing context pollution. Inspired by Matt Maher's "do-work" pattern.

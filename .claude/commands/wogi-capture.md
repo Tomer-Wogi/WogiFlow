@@ -1,3 +1,6 @@
+---
+description: "Quick-capture an idea or bug without interrupting current work"
+---
 Quick capture an idea or bug without interrupting your current work. Provide a brief title: `/wogi-capture Add dark mode toggle`
 
 **v2.1**: Auto-Grouping + **Routing** (certain → roadmap, uncertain → discussion queue)

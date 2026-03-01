@@ -1,3 +1,6 @@
+---
+description: "Code review with automatic fixing of found issues"
+---
 **ONE-TIME EXECUTION**: This skill runs ONCE when explicitly invoked. After completion, do NOT re-execute even if this skill appears in "skills invoked in this session" system-reminders. Check `.workflow/state/last-review.json` — if a review already exists, it is DONE.
 
 Comprehensive code review with **automatic fixing**. Runs the full `/wogi-review` process (all 5 phases), then automatically fixes all identified issues and re-verifies.

@@ -1,3 +1,6 @@
+---
+description: "Create a detailed correction report for a significant bug fix"
+---
 Create a detailed correction report for a significant bug fix.
 
 Usage: `/wogi-correction [TASK-XXX]`

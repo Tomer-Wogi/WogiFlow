@@ -1,3 +1,6 @@
+---
+description: "View and manage the project roadmap for deferred work"
+---
 # /wogi-roadmap - Roadmap Management
 
 View and manage the project roadmap for deferred work and future phases.

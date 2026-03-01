@@ -1,3 +1,6 @@
+---
+description: "Show dependency tree for a task"
+---
 Show dependency tree for a task. Provide task ID: `/wogi-deps wf-015`
 
 Search all tasks.json files in `.workflow/changes/` to find:

@@ -1,5 +1,5 @@
 ---
-description: Show current hybrid mode configuration and routing table
+description: "Show current hybrid mode configuration and routing table"
 ---
 
 # Hybrid Mode Status

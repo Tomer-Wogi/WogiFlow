@@ -1,3 +1,6 @@
+---
+description: "AI-driven project setup for new projects"
+---
 # /wogi-init - AI-Driven Project Setup
 
 Initialize WogiFlow for a new project through conversational setup.

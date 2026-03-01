@@ -1,3 +1,6 @@
+---
+description: "Resume a suspended task"
+---
 Resume a suspended task.
 
 ## Usage

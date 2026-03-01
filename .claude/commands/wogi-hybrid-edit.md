@@ -1,5 +1,5 @@
 ---
-description: View and edit the current hybrid execution plan
+description: "View and edit the current hybrid execution plan"
 ---
 
 # Edit Hybrid Execution Plan

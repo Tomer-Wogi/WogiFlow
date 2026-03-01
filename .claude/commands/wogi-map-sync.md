@@ -1,3 +1,6 @@
+---
+description: "Compare auto-generated index with curated app-map and suggest updates"
+---
 Compare auto-generated index with curated app-map and suggest updates.
 
 Usage: `/wogi-map-sync`

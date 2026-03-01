@@ -1,3 +1,6 @@
+---
+description: "Compact conversation context using the recursive summary tree"
+---
 Compact the conversation to free up context space using the recursive summary tree.
 
 ## Recursive Context Compaction

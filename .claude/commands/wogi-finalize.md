@@ -1,3 +1,6 @@
+---
+description: "Branch finalization workflow - merge, PR, or discard decision"
+---
 # /wogi-finalize - Branch Finalization Workflow
 
 Guides the merge/PR/discard decision after completing work on a branch or worktree.

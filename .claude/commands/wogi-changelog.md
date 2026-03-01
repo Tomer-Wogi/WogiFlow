@@ -1,3 +1,6 @@
+---
+description: "Generate a CHANGELOG from request-log entries"
+---
 Generate a CHANGELOG from request-log entries.
 
 Parse `.workflow/state/request-log.md` and group by type:

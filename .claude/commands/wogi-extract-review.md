@@ -1,3 +1,6 @@
+---
+description: "Zero-loss extraction from long input with automated pipeline"
+---
 # /wogi-extract-review - Zero-Loss Extraction with Automated Pipeline
 
 Extract tasks from long input with 100% capture rate, then automatically process them into organized stories — all in one seamless flow.

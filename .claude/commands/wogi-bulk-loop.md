@@ -1,3 +1,6 @@
+---
+description: "Continuous work loop processing captured ideas and tasks automatically"
+---
 Continuous work loop - processes captured ideas and tasks automatically.
 
 **v1.0**: Implements Matt Maher's "do-work" pattern with safety mechanisms.

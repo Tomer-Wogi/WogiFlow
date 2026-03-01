@@ -1,3 +1,6 @@
+---
+description: "Generate a code trace for a specific feature or behavior"
+---
 Generate a task-focused code trace showing how code flows for a specific feature or behavior.
 
 Usage:

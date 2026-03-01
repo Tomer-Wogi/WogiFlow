@@ -1,3 +1,6 @@
+---
+description: "Check for drift between app-map and codebase"
+---
 Check for drift between app-map and codebase.
 
 Verifies that all components listed in app-map.md still exist at their specified paths.

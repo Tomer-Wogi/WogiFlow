@@ -1,3 +1,6 @@
+---
+description: "Universal entry point - start a task or route any request"
+---
 Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXXXX`
 
 **UNIVERSAL ENTRY POINT**: This is the single entry point for ALL requests. Route everything through `/wogi-start` - it will intelligently classify and route to the appropriate action.

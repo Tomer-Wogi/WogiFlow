@@ -1,3 +1,6 @@
+---
+description: "View or modify workflow configuration"
+---
 View or modify workflow configuration.
 
 **View config:** `/wogi-config`

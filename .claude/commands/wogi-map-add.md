@@ -1,3 +1,6 @@
+---
+description: "Add a component to the app-map"
+---
 Add a component to the app-map.
 
 Usage: `/wogi-map-add [name] [path] [variants]`

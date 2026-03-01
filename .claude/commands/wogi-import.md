@@ -1,3 +1,6 @@
+---
+description: "Import a team workflow profile"
+---
 Import a team workflow profile.
 
 **v3.0**: Imports complete enforcement profile — rules, skills, templates, review checklists, tech stack.

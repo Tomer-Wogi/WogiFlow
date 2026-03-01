@@ -1,3 +1,6 @@
+---
+description: "Show all tasks organized by status from ready.json"
+---
 Read `.workflow/state/ready.json` and show all tasks organized by status:
 
 Run `./scripts/flow ready` to see the task queue.

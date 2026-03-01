@@ -1,3 +1,6 @@
+---
+description: "Zero-trust research protocol for capability and feasibility questions"
+---
 # /wogi-research - Zero-Trust Research Protocol
 
 Execute rigorous research before answering questions about capabilities, feasibility, or existence.

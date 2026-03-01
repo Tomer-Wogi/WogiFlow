@@ -1,3 +1,6 @@
+---
+description: "Interactive rule creation for 'from now on' and 'make it a rule' requests"
+---
 Interactive rule creation with clarifying questions. Invoke when user says "from now on...", "let's make it a rule", "always do X", "never do Y", or "standardize on...".
 
 ## Usage
