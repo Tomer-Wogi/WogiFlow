@@ -22,7 +22,8 @@ const {
   PATHS,
   readJson,
   writeJson,
-  fileExists
+  fileExists,
+  safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================
@@ -204,20 +205,31 @@ function aggregateScores(judgeScores) {
 function parseJudgeResponse(response) {
   if (!response || typeof response !== 'string') return null;
 
-  // Try direct JSON parse first
+  // Try direct JSON parse first (use safe parse to prevent prototype pollution)
   try {
     const parsed = JSON.parse(response.trim());
-    if (isValidScoreObject(parsed)) return parsed;
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Reject keys that could cause prototype pollution
+      if ('__proto__' in parsed || 'constructor' in parsed || 'prototype' in parsed) {
+        return null;
+      }
+      if (isValidScoreObject(parsed)) return parsed;
+    }
   } catch {
     // Not direct JSON
   }
 
-  // Try extracting JSON from text
-  const jsonMatch = response.match(/\{[\s\S]*?\}/);
+  // Try extracting JSON from text (use greedy match to capture full object)
+  const jsonMatch = response.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      if (isValidScoreObject(parsed)) return parsed;
+      if (typeof parsed === 'object' && parsed !== null) {
+        if ('__proto__' in parsed || 'constructor' in parsed || 'prototype' in parsed) {
+          return null;
+        }
+        if (isValidScoreObject(parsed)) return parsed;
+      }
     } catch {
       // Failed to parse extracted JSON
     }

@@ -25,6 +25,7 @@ const {
   fileExists
 } = require('./flow-utils');
 const { anonymizeBatch, createUploadPayload } = require('./flow-sync-anonymizer');
+const { loadStats } = require('./flow-stats-collector');
 
 // ============================================================
 // Constants
@@ -163,8 +164,10 @@ function mergeWithLocal(communityData, localData) {
       const lVal = local[key];
 
       if (typeof lVal === 'number' && typeof cVal === 'number') {
-        // Weighted merge: local has higher weight if user has data
-        const localWeight = local._sampleSize > 5 ? 0.7 : 0.3;
+        // Weighted merge: local has higher weight if user has enough task data
+        // Count numeric score entries as sample size proxy
+        const localSampleSize = Object.values(local).filter((v) => typeof v === 'number').length;
+        const localWeight = localSampleSize > 5 ? 0.7 : 0.3;
         const communityWeight = 1 - localWeight;
         merged[model][key] = +(localWeight * lVal + communityWeight * cVal).toFixed(2);
       } else if (typeof lVal === 'number') {
@@ -201,7 +204,6 @@ async function syncUp() {
 
   try {
     // Load current stats
-    const { loadStats } = require('./flow-stats-collector');
     const stats = loadStats();
     const records = stats.recentTasks || [];
 

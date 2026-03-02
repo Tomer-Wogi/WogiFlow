@@ -49,7 +49,7 @@ const EVALS_DIR = path.join(PATHS.root, '.workflow', 'evals');
  * @returns {Object|null} Eval input data or null if not found
  */
 function prepareEvalData(taskId) {
-  if (!taskId || !validateTaskId(taskId)) {
+  if (!taskId || !validateTaskId(taskId).valid) {
     return null;
   }
 
@@ -109,8 +109,8 @@ function getTaskDiff(taskId, taskRecord) {
       timeout: 10000
     }).trim();
 
-    if (output) {
-      // Get the diff for that commit
+    if (output && /^[a-f0-9]{40}$/.test(output)) {
+      // Get the diff for that commit (SHA validated)
       const diff = execFileSync('git', [
         'diff',
         `${output}^..${output}`,
@@ -154,14 +154,9 @@ function getTaskDiff(taskId, taskRecord) {
     }
   }
 
-  // Fallback: diff the changed files against HEAD if we have them
+  // Fallback: list the changed files if we have them
   if (taskRecord?.changedFiles?.length > 0) {
-    try {
-      const files = taskRecord.changedFiles.slice(0, 10).join(' ');
-      return `Changed files: ${taskRecord.changedFiles.join(', ')}\n(No commit found for diff)`;
-    } catch {
-      // Ignore
-    }
+    return `Changed files: ${taskRecord.changedFiles.join(', ')}\n(No commit found for diff)`;
   }
 
   return '(No diff available)';
@@ -216,7 +211,9 @@ function findSpecFile(taskId) {
     ];
     const task = allTasks.find((t) => t.id === taskId);
     if (task?.specPath) {
-      const fullPath = path.join(PATHS.root, task.specPath);
+      const fullPath = path.resolve(PATHS.root, task.specPath);
+      // Validate path stays within project root (prevent path traversal)
+      if (!fullPath.startsWith(PATHS.root)) return null;
       if (fs.existsSync(fullPath)) return fullPath;
     }
   } catch {
@@ -334,7 +331,8 @@ function generateComparisonReport() {
 
     const avg = +(overalls.reduce((s, v) => s + v, 0) / overalls.length).toFixed(2);
     const trend = overalls.length >= 3
-      ? (overalls[0] > overalls[overalls.length - 1] ? 'improving' : 'declining')
+      ? (overalls[0] > overalls[overalls.length - 1] ? 'improving'
+        : overalls[0] === overalls[overalls.length - 1] ? 'stable' : 'declining')
       : 'insufficient data';
 
     lines.push(`${model}: ${evals.length} evals, avg ${avg}/10 (${trend})`);

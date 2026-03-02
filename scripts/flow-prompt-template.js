@@ -322,9 +322,9 @@ function composePrompt(modelFamily, variables) {
 function getAgentModel(taskType, options = {}) {
   const config = getConfig();
 
-  // If hybrid mode is disabled, always use the current model (no routing)
+  // If hybrid mode is disabled, return null (no routing — Claude Code uses its own model)
   if (!config.hybrid?.enabled) {
-    return 'sonnet'; // Default when hybrid is off — Claude Code uses its own model
+    return null;
   }
 
   // Routing table: task type → Agent model parameter
@@ -406,22 +406,30 @@ function getCapabilityScore(modelFamily, taskType) {
     const parsed = parseSimpleYaml(content);
     const scores = parsed.taskScores || {};
 
-    // Map common task types to capability file keys
+    // Map common task types to YAML capability file keys
+    // YAML keys: simple-edit, multi-file-refactor, architecture, code-generation,
+    //            documentation, debugging, test-generation, bugfix
     const keyMap = {
       explore: 'simple-edit',
-      research: 'code-review',
-      'code-review': 'code-review',
-      feature: 'feature-implementation',
-      bugfix: 'bug-diagnosis',
+      research: 'debugging',
+      'code-review': 'debugging',
+      feature: 'code-generation',
+      bugfix: 'bugfix',
       refactor: 'multi-file-refactor',
-      architecture: 'architecture-design',
-      test: 'test-writing',
+      architecture: 'architecture',
+      test: 'test-generation',
       search: 'simple-edit',
       lookup: 'simple-edit',
       classification: 'simple-edit',
       summary: 'documentation',
       docs: 'documentation',
-      boilerplate: 'simple-edit'
+      boilerplate: 'simple-edit',
+      implementation: 'code-generation',
+      planning: 'architecture',
+      'complex-reasoning': 'architecture',
+      judging: 'debugging',
+      compaction: 'documentation',
+      metadata: 'simple-edit'
     };
 
     const capKey = keyMap[taskType] || taskType;

@@ -1,6 +1,6 @@
 {
-  "phase": "coding",
-  "taskId": "wf-e8548b57",
-  "updatedAt": "2026-03-01T12:43:12.902Z",
-  "previousPhase": "routing"
+  "phase": "idle",
+  "taskId": null,
+  "updatedAt": "2026-03-02T10:15:20.628Z",
+  "previousPhase": null
 }

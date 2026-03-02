@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-03-02T11:30:00.000Z",
+  "lastUpdated": "2026-03-02T11:38:40.634Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-96787d",
+      "title": "Fix 29 review findings from epic implementation",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-02T11:38:40.633Z",
+      "completedAt": "2026-03-02T12:15:00.000Z"
+    },
     {
       "id": "wf-e12092c6",
       "title": "S6: Community Knowledge Sync — Anonymous model performance sharing",

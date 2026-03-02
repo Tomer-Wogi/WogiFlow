@@ -100,9 +100,25 @@ function checkTaskForRevisions(task) {
   const { changedFiles, timestamp } = task;
   if (!changedFiles || changedFiles.length === 0) return [];
 
+  // Validate timestamp is an ISO-8601 date string (prevent injection via --since)
+  if (!timestamp || !/^\d{4}-\d{2}-\d{2}T[\d:.Z+-]+$/.test(timestamp)) {
+    if (process.env.DEBUG) {
+      console.error(`[revision-tracker] Invalid timestamp format: ${timestamp}`);
+    }
+    return [];
+  }
+
   const revisedFiles = [];
 
   for (const filePath of changedFiles) {
+    // Validate filePath: no shell metacharacters, must be relative, no path traversal
+    if (!filePath || /[;&|`$]/.test(filePath) || filePath.includes('..') || path.isAbsolute(filePath)) {
+      if (process.env.DEBUG) {
+        console.error(`[revision-tracker] Skipping invalid file path: ${filePath}`);
+      }
+      continue;
+    }
+
     try {
       // Check if file has been modified since task completion
       // Use git log to find commits after the task timestamp

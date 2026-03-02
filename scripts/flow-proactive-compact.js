@@ -13,12 +13,8 @@
  * Part of S1: Smart Context Compaction
  */
 
-const path = require('path');
 const {
-  getConfig,
-  STATE_DIR,
-  readJson,
-  writeJson
+  getConfig
 } = require('./flow-utils');
 const { saveCheckpoint, loadCheckpoint, formatCheckpointSummary } = require('./flow-task-checkpoint');
 const { getSmartCompactionConfig } = require('./flow-context-estimator');

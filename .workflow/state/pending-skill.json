@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-02-26T21:00:55.327Z",
+  "markedAt": "2026-03-02T10:27:39.348Z",
   "context": {
-    "args": "Implement the plan to set up independent WogiFlow workflows in 3 repos (wogi-flow, wogiflow-cloud, wogiflow-portal). This involves: installing wogiflow as devDependency in cloud and portal repos, creating config.json/state files/CLAUDE.md for each, and updating cross-repo partner-versions.json."
+    "args": "Implement the Epic: Intelligent Model Management & Quality System - 6 stories (S1: Smart Context Compaction, S2: Model Performance Tracking, S3: Eval System, S4: Hybrid Mode + Prompt Templates, S5: Best-of-N Pattern, S6: Community Knowledge Sync). Full plan provided with acceptance criteria, file lists, and dependencies. Start with S1 (independent) then S2, as S3-S6 depend on S2."
   },
   "status": "pending"
 }

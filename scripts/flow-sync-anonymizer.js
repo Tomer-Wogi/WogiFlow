@@ -73,11 +73,9 @@ function anonymizeRecord(record) {
       continue;
     }
 
-    // Unknown fields: strip by default (conservative approach)
-    // Only include if it's a simple number or boolean
-    if (typeof value === 'number' || typeof value === 'boolean') {
-      anonymized[key] = value;
-    }
+    // Unknown fields: strip by default (deny-by-default for privacy safety)
+    // Do NOT pass through unknown fields, even if numeric/boolean —
+    // new fields must be explicitly added to SAFE_FIELDS
   }
 
   return anonymized;

@@ -101,7 +101,7 @@ function getDefaultCheckpoint() {
 async function saveCheckpoint(params) {
   const { taskId, taskTitle, currentPhase } = params;
 
-  if (!taskId || !validateTaskId(taskId)) {
+  if (!taskId || !validateTaskId(taskId).valid) {
     if (process.env.DEBUG) {
       console.error(`[checkpoint] Invalid task ID: ${taskId}`);
     }
@@ -135,9 +135,11 @@ async function saveCheckpoint(params) {
         autoCompactRecovery: false
       };
 
-      // Track completed phases
-      if (currentPhase && !checkpoint.completedPhases.includes(currentPhase)) {
-        checkpoint.completedPhases.push(currentPhase);
+      // Track completed phases — add the PREVIOUS phase (not the one just starting)
+      // This prevents marking a phase as "completed" before it actually finishes
+      if (existing.currentPhase && existing.currentPhase !== currentPhase
+          && !checkpoint.completedPhases.includes(existing.currentPhase)) {
+        checkpoint.completedPhases.push(existing.currentPhase);
       }
 
       writeJson(CHECKPOINT_PATH, checkpoint);
