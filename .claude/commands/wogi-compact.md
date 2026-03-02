@@ -123,6 +123,55 @@ With smart compaction enabled (`config.smartCompaction.enabled`), context is man
 
 This means fixed thresholds are less relevant - compaction happens when actually needed based on the specific task.
 
+### Proactive Phase-Boundary Compaction (v2.3)
+
+With proactive compaction enabled (`config.proactiveCompaction.enabled`), WogiFlow compacts between task phases:
+
+- **Phase boundaries**: After explore, spec, each scenario, criteria check, validation
+- **Trigger threshold**: Default 75% context usage (configurable via `triggerThreshold`)
+- **Task checkpoints**: Full task state saved to `.workflow/state/task-checkpoint.json` at every phase boundary
+- **Auto-compact recovery**: If Claude's auto-compact fires, checkpoint enables lossless recovery
+
+**How it works:**
+1. At each phase boundary, `/wogi-start` saves a task checkpoint (task ID, phase, scenarios, files changed)
+2. If context exceeds the trigger threshold, proactive compaction fires before the next phase
+3. If Claude auto-compacts (at ~95%), session resume reads the checkpoint and restores full state
+
+**Recovery flow:**
+```
+Auto-compact fires at ~95% → Session resumes with compressed context
+→ /wogi-start detects checkpoint exists → Reads task-checkpoint.json
+→ Displays: "Auto-compact detected. Restoring task state from checkpoint..."
+→ Continues from the exact phase where it left off
+```
+
+**Config** (`config.proactiveCompaction`):
+```json
+{
+  "enabled": true,
+  "triggerThreshold": 0.75,
+  "useHaiku": true,
+  "phases": ["exploring", "spec_review", "scenario", "criteria_check", "validating"]
+}
+```
+
+**CLI commands:**
+```bash
+# Check if compaction needed at a phase
+node scripts/flow-proactive-compact.js check exploring 0.78 wf-a1b2c3d4
+
+# Show current config
+node scripts/flow-proactive-compact.js config
+
+# Generate compaction context from checkpoint
+node scripts/flow-proactive-compact.js context
+
+# View/manage checkpoints
+node scripts/flow-task-checkpoint.js load
+node scripts/flow-task-checkpoint.js check
+node scripts/flow-task-checkpoint.js clear wf-a1b2c3d4
+```
+
 ### Legacy Fixed Thresholds
 
 If smart compaction is disabled, check context pressure status:

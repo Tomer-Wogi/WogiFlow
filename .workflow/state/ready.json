@@ -1,8 +1,75 @@
 {
-  "lastUpdated": "2026-03-01T12:43:19.020Z",
+  "lastUpdated": "2026-03-02T11:30:00.000Z",
   "inProgress": [],
+  "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e12092c6",
+      "title": "S6: Community Knowledge Sync — Anonymous model performance sharing",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P3",
+      "startedAt": "2026-03-02T11:15:00.000Z",
+      "completedAt": "2026-03-02T11:30:00.000Z"
+    },
+    {
+      "id": "wf-72af53e2",
+      "title": "S5: Best-of-N Pattern — Multi-approach generation for high-risk tasks",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P3",
+      "startedAt": "2026-03-02T11:00:00.000Z",
+      "completedAt": "2026-03-02T11:15:00.000Z"
+    },
+    {
+      "id": "wf-40e2cb70",
+      "title": "S4: Hybrid Mode Defaults + Prompt Templates — Smart model routing enabled by default",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-03-02T10:45:00.000Z",
+      "completedAt": "2026-03-02T11:00:00.000Z"
+    },
+    {
+      "id": "wf-b166f7b8",
+      "title": "S3: Eval System — Multi-judge scoring with /wogi-eval command",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-03-02T10:30:00.000Z",
+      "completedAt": "2026-03-02T10:45:00.000Z"
+    },
+    {
+      "id": "wf-4a96c915",
+      "title": "S2: Model Performance Tracking — Per-model, per-task-type metrics collection",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-02T10:15:00.000Z",
+      "completedAt": "2026-03-02T10:30:00.000Z"
+    },
+    {
+      "id": "wf-8db8fe7c",
+      "title": "S1: Smart Context Compaction — Proactive phase-boundary compaction + checkpoint persistence",
+      "type": "story",
+      "feature": "model-management",
+      "parentEpic": "wf-d0570b9d",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-02T10:00:00.000Z",
+      "completedAt": "2026-03-02T10:15:00.000Z"
+    },
     {
       "id": "wf-50acc0e1",
       "title": "Add task ID validation guardrail to prevent manual ID construction",

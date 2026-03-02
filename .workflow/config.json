@@ -784,6 +784,46 @@
       "rearchitect"
     ]
   },
+  "proactiveCompaction": {
+    "enabled": true,
+    "triggerThreshold": 0.75,
+    "useHaiku": true,
+    "_comment_phases": "Phase boundaries where compaction is checked. Checkpoint is always saved at every phase.",
+    "phases": [
+      "exploring",
+      "spec_review",
+      "scenario",
+      "criteria_check",
+      "validating"
+    ]
+  },
+  "eval": {
+    "judges": { "opus": 1, "sonnet": 2 },
+    "scoringDimensions": ["completeness", "accuracy", "workflowCompliance", "tokenEfficiency", "quality"],
+    "passingThreshold": 6
+  },
+  "promptTemplates": {
+    "enabled": true,
+    "directory": ".workflow/templates/prompts",
+    "_comment": "Model prompt templates for Agent tool sub-agents. Templates are form-filling patterns."
+  },
+  "communitySync": {
+    "enabled": false,
+    "_comment": "Set to true after wogi login to share anonymized model performance with the community",
+    "endpoint": "https://api.wogi.ai/v1/community",
+    "syncOnSessionStart": true,
+    "syncOnSessionEnd": true,
+    "maxQueuedSessions": 10
+  },
+  "bestOfN": {
+    "enabled": true,
+    "autoSuggestThreshold": "high",
+    "_comment_autoSuggest": "Risk level that triggers auto-suggestion: low, medium, high",
+    "defaultN": 3,
+    "temperatureRange": [0.3, 0.7, 1.0],
+    "maxConcurrent": 3,
+    "failureThresholdForFallback": 3
+  },
   "autoContext": {
     "enabled": false,
     "strategy": "dynamic",
@@ -989,7 +1029,13 @@
     }
   },
   "hybrid": {
-    "enabled": false,
+    "enabled": true,
+    "_comment_enabled": "Smart routing: Opus orchestrates, Sonnet/Haiku for sub-tasks via Agent model parameter",
+    "routing": {
+      "_comment_overrides": "Override default routing: taskType → model (opus/sonnet/haiku)",
+      "overrides": {},
+      "capabilityThreshold": 5
+    },
     "executor": {
       "type": "local",
       "provider": null,

@@ -164,6 +164,38 @@ async function handleTaskCompleted(input) {
       }
     }
 
+    // Record task performance stats (fire-and-forget)
+    try {
+      const { recordTaskCompletion } = require('../../flow-stats-collector');
+      const statsRecord = {
+        taskId: completedTask.id,
+        model: input.model || process.env.CLAUDE_MODEL || 'unknown',
+        taskType: completedTask.type || 'unknown',
+        iterations: input.iterations || 1,
+        firstAttemptPass: input.firstAttemptPass !== false,
+        tokenEstimate: input.tokenEstimate || 0,
+        wallClockMs: input.wallClockMs || 0,
+        qualityGateResults: input.qualityGateResults || [],
+        changedFiles: input.changedFiles || [],
+        scenarioCount: input.scenarioCount || 0
+      };
+      recordTaskCompletion(statsRecord).catch((err) => {
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Stats recording failed: ${err.message}`);
+        }
+      });
+    } catch {
+      // Non-critical - stats collector may not be available
+    }
+
+    // Clear task checkpoint after completion (fire-and-forget)
+    try {
+      const { clearCheckpoint } = require('../../flow-task-checkpoint');
+      clearCheckpoint(completedTask.id);
+    } catch {
+      // Non-critical - checkpoint may not exist
+    }
+
     // Mark all non-rejected observations for this task as committed (fire-and-forget)
     try {
       const memoryDb = require('../../flow-memory-db');

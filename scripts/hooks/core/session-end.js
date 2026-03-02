@@ -66,6 +66,18 @@ function handleSessionEnd(input) {
       // Could integrate with flow-session-end.js in the future
       result.logged = false;
     }
+
+    // Community sync: upload anonymized stats (fire-and-forget)
+    try {
+      const { syncUp } = require('../../flow-community-sync');
+      syncUp().catch((err) => {
+        if (process.env.DEBUG) {
+          console.error(`[Session End] Community sync-up failed: ${err.message}`);
+        }
+      });
+    } catch (err) {
+      // Non-critical — community sync module may not be available
+    }
   } catch (err) {
     result.warning = `Session end handler error: ${err.message}`;
   }

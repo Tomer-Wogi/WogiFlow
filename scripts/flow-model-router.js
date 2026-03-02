@@ -1121,6 +1121,16 @@ module.exports = {
   loadStats,
   loadMultiModelConfig,
 
+  // Phase 5: Agent model routing (Hybrid Mode)
+  getAgentModel: (() => {
+    try {
+      return require('./flow-prompt-template').getAgentModel;
+    } catch (err) {
+      // Fallback if prompt template module not available
+      return () => 'sonnet';
+    }
+  })(),
+
   // Constants
   ROUTING_STRATEGIES,
   COST_TIER_ORDER,

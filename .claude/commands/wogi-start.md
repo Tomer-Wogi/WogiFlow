@@ -330,6 +330,34 @@ At each execution milestone, update the workflow phase. These are no-ops when ph
 
 If a transition fails (wrong current phase), it's non-blocking — log and continue.
 
+### Task Checkpoints (when `config.proactiveCompaction.enabled`)
+
+At each phase boundary, save a task checkpoint and check if proactive compaction is needed. This enables lossless recovery after auto-compact.
+
+**At EVERY phase transition listed above**, also:
+1. Save checkpoint: Record task ID, current phase, completed scenarios, changed files, verification results to `.workflow/state/task-checkpoint.json`
+2. Check compaction: If context usage >= `proactiveCompaction.triggerThreshold` (default 75%), display compaction message and run `/wogi-compact` before proceeding
+
+**Checkpoint integration points:**
+| When | Checkpoint Action |
+|------|-------------------|
+| After explore phase completes | Save exploration summary + related files |
+| After spec is generated | Save spec path + acceptance criteria count |
+| After each scenario completes | Update scenario progress (completed/pending) |
+| After criteria check | Save verification results |
+| Before final validation | Save all changed files list |
+| After task completion | Clear checkpoint |
+
+**Auto-compact recovery** (on session resume):
+1. Check `.workflow/state/task-checkpoint.json` for an active checkpoint
+2. If checkpoint exists with incomplete scenarios → display recovery message:
+   `Auto-compact detected. Restoring task state from checkpoint...`
+3. Reload: task ID, current phase, completed scenarios, spec path, changed files
+4. Continue execution from the next pending scenario
+
+**Haiku-powered summaries** (when `proactiveCompaction.useHaiku: true`):
+When compacting between phases, use the Agent tool with `model: "haiku"` to generate the compaction summary. This preserves Opus context for the actual implementation work.
+
 ### Execution Flow
 
 ```
@@ -804,6 +832,10 @@ Return a structured report:
 
 ```javascript
 // Launch all in parallel (single message, multiple Task tool calls)
+// When hybrid mode is enabled (config.hybrid.enabled), use the model parameter
+// to route sub-agents to the appropriate model tier.
+// Routing is provided by getAgentModel() from flow-prompt-template.js:
+//   explore → sonnet, research → sonnet, search → haiku, judging → opus
 Task(subagent_type=Explore, prompt="Codebase Analyzer: ...")
 Task(subagent_type=Explore, prompt="Best Practices: ...")
 Task(subagent_type=Explore, prompt="Version Verifier: ...")
@@ -812,6 +844,21 @@ Task(subagent_type=Explore, prompt="Standards Preview: ...")
 // Agent 6 — ONLY for refactor/migration/architecture tasks:
 Task(subagent_type=Explore, prompt="Consumer Impact Analyzer: ...")
 ```
+
+**Hybrid Model Routing (S4):**
+
+When `config.hybrid.enabled` is `true`, use the Agent tool's `model` parameter to route sub-agents:
+
+| Sub-Agent Type | Agent `model` Parameter | Rationale |
+|----------------|------------------------|-----------|
+| Explore/Research | `"sonnet"` | Good analysis capability, saves Opus context |
+| Code Review | `"sonnet"` | Balanced quality for review tasks |
+| Simple Lookup/Search | `"haiku"` | Fast and cheap for file searches |
+| Complex Reasoning | `"opus"` | Only for architecture/planning decisions |
+| Compaction Summary | `"haiku"` | Summaries don't need premium models |
+| Eval Judging | `"opus"` (1) + `"sonnet"` (2) | Multi-judge composition from eval config |
+
+The routing table is configured in `scripts/flow-prompt-template.js` and can be overridden via `config.hybrid.routing.overrides`. Capability scores from `.workflow/models/capabilities/*.yaml` are consulted when `checkCapabilities` is true — if a model's score for the task type is below the `capabilityThreshold` (default: 5), the task is escalated to the next tier.
 
 **After all agents complete**, display a consolidated research summary:
 
@@ -1801,8 +1848,31 @@ Phase commands:
 ### Scenario keeps failing after max retries
 - Stop and report: "Scenario X failed after N attempts. Issue: [description]"
 - Leave task in inProgress
-- **Auto-suggest hypothesis debugging**: When a scenario fails 3+ times, suggest running `/wogi-debug-hypothesis "[failure description]"` to spawn parallel investigation agents that analyze competing theories about the root cause
+- **Best-of-N fallback (high-risk tasks)**: When a HIGH-RISK task (architecture, migration, refactor, or complexity HIGH + files > 10) fails 3+ times, auto-suggest Best-of-N:
+  ```
+  This high-risk task has failed 3 times. Would you like to try Best-of-N?
+  → Spawn 2 alternative implementation approaches in isolated worktrees
+  → Opus judges the best approach against the spec
+  ```
+  Use `checkFallbackTrigger()` from `flow-best-of-n.js` to determine if Best-of-N applies.
+  If the task is NOT high-risk: suggest `/wogi-debug-hypothesis` instead (competing theories about root cause).
+- **Auto-suggest hypothesis debugging**: For non-high-risk tasks, when a scenario fails 3+ times, suggest running `/wogi-debug-hypothesis "[failure description]"` to spawn parallel investigation agents
 - User can investigate and re-run `/wogi-start TASK-XXX` to continue
+
+### Best-of-N auto-suggestion (high-risk tasks)
+
+When starting a task, if `config.bestOfN.enabled` is true:
+1. Run `assessRisk()` from `flow-best-of-n.js` with the task's type, description, and file count
+2. If `shouldSuggest` is true, display:
+   ```
+   This is a high-risk task. Would you like to use Best-of-N?
+   → Spawn 3 approaches in parallel (isolated worktrees)
+   → Opus selects the best implementation
+   Options: [Yes, use Best-of-N] [No, proceed normally]
+   ```
+3. If user confirms: spawn N agents using `Agent(isolation: "worktree")` with variation strategy from `getVariationStrategy()`
+4. After all complete: spawn Opus judge using `buildSelectionPrompt()` to select winner
+5. Apply winner, clean up losing worktrees
 
 ### Quality gate keeps failing
 - Report which gate is failing and why

@@ -655,6 +655,52 @@ Display:
     // Check for conventional commits, ticket prefixes, etc.
     ```
 
+    **Model Routing Configuration:**
+
+    Present the user with a model routing choice using `AskUserQuestion`:
+
+    ```
+    How should WogiFlow route sub-tasks to AI models?
+
+    1. "Full Opus (Recommended)" — Maximum quality. All sub-agents use Opus.
+       Best for complex projects where quality matters most.
+
+    2. "Smart Routing" — Opus orchestrates, Sonnet handles implementation/review,
+       Haiku handles searches/lookups. Best quality-to-cost balance.
+       Preserves context window by offloading sub-tasks to lighter models.
+
+    3. "Custom" — Configure your own routing rules per task type.
+    ```
+
+    Based on choice:
+    - Option 1: Set `config.hybrid.enabled = false` (all tasks stay with current model)
+    - Option 2: Set `config.hybrid.enabled = true` with default routing table (already configured)
+    - Option 3: Set `config.hybrid.enabled = true` and guide user through per-task-type routing overrides
+
+    Display: `  Model routing...      ✓ [Smart Routing | Full Opus | Custom]`
+
+    **Community Knowledge Sync:**
+
+    Present opt-in question using `AskUserQuestion`:
+
+    ```
+    Would you like to share anonymized model performance data with the WogiFlow community?
+
+    What's shared: model ID, task type, iteration count, token usage, wall clock time
+    What's NOT shared: file paths, code, project names, task descriptions
+
+    You'll receive back: community-optimized model routing rules and capability scores.
+
+    1. "Enable (Recommended)" — Help improve WogiFlow for everyone
+    2. "Disable" — Keep all data local only
+    ```
+
+    Based on choice:
+    - Option 1: Set `config.communitySync.enabled = true`
+    - Option 2: Set `config.communitySync.enabled = false` (default)
+
+    Display: `  Community sync...     ✓ [Enabled | Disabled]`
+
     **Commit style detection:**
     ```bash
     git log --oneline -20 --format="%s"

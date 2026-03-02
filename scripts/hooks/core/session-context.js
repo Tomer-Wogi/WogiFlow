@@ -395,6 +395,18 @@ async function gatherSessionContext(options = {}) {
     };
   }
 
+  // Community sync: download latest community data (fire-and-forget)
+  try {
+    const { syncDown } = require('../../flow-community-sync');
+    syncDown().catch((err) => {
+      if (process.env.DEBUG) {
+        console.error(`[session-context] Community sync-down failed: ${err.message}`);
+      }
+    });
+  } catch (err) {
+    // Non-critical — community sync module may not be available
+  }
+
   return {
     enabled: true,
     context

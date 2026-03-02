@@ -1,0 +1,43 @@
+# Model Capability File: Claude Sonnet 4.6
+# Auto-generated from registry.json, updated from real performance data
+
+model: claude-sonnet-4-6
+provider: anthropic
+costTier: standard
+
+taskScores:
+  simple-edit: 9
+  multi-file-refactor: 7
+  architecture: 6
+  code-generation: 9
+  documentation: 9
+  debugging: 7
+  test-generation: 8
+  bugfix: 8
+
+languages:
+  typescript: 10
+  javascript: 10
+  python: 9
+  go: 7
+  rust: 5
+  java: 7
+  sql: 7
+  shell: 7
+
+strengths:
+  - SWE-bench within 1.2% of Opus at 1/5th cost
+  - Fast output speed
+  - Strong code generation
+  - Good for routine implementation
+
+limitations:
+  - Weaker on long-context retrieval (18.5% vs Opus 76%)
+  - Less reliable on ambiguous requirements
+  - May need escalation for complex multi-file work
+
+costQualityRatio: 0.35
+
+dataSource: registry
+lastUpdated: "2026-03-02"
+sampleSize: 0
