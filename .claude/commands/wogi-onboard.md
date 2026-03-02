@@ -345,12 +345,31 @@ Display:
 
    If user approves, create task entries in ready.json backlog, grouped by category.
 
+   **CRITICAL: Task ID Generation**
+   For EACH task created from health findings:
+   1. Generate the ID by running: `node -e "const { generateTaskId } = require('./scripts/flow-utils'); console.log(generateTaskId('[category] health findings'));"` — or call `generateTaskId()` programmatically
+   2. The ID MUST be in format `wf-[8 hex chars]` (e.g., `wf-a1b2c3d4`)
+   3. **NEVER** manually construct descriptive IDs like `WF-health-1`, `wf-redundancy-check`, etc.
+   4. The descriptive name goes in the `title` field, NOT the `id` field
+   5. Example entry:
+      ```json
+      {
+        "id": "wf-a1b2c3d4",
+        "title": "Health: Consolidate 3 redundant button components",
+        "type": "refactor",
+        "feature": "health-scan",
+        "status": "ready",
+        "priority": "P2",
+        "createdAt": "[ISO timestamp]"
+      }
+      ```
+
    **If "Paste known issues":**
    ```
    Paste your known issues or tech debt below.
    (One per line, or a comma-separated list)
    ```
-   If issues provided, create task entries in ready.json backlog.
+   If issues provided, create task entries in ready.json backlog using the same ID generation rules above (call `generateTaskId()`, never construct IDs manually).
 
    **If "Skip for now":**
    Continue to Phase 4. User can run `/wogi-review` or `/wogi-health` later.
