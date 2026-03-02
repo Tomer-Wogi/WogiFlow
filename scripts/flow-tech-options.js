@@ -256,7 +256,10 @@ const ADDITIONAL_TOOLS = [
   { key: '6', value: 'websockets', label: 'WebSockets', context7: '/websockets/ws' },
   { key: '7', value: 'stripe', label: 'Stripe (Payments)', context7: '/stripe/stripe-node' },
   { key: '8', value: 'sentry', label: 'Sentry (Error Tracking)', context7: '/getsentry/sentry-javascript' },
-  { key: '9', value: 'analytics', label: 'Analytics (Posthog/Mixpanel)', context7: '/PostHog/posthog' }
+  { key: '9', value: 'analytics', label: 'Analytics (Posthog/Mixpanel)', context7: '/PostHog/posthog' },
+  { key: 'a', value: 'commander', label: 'Commander.js (CLI)', context7: '/tj/commander.js' },
+  { key: 'b', value: 'anthropic', label: 'Anthropic SDK (Claude API)', context7: '/anthropics/anthropic-sdk-typescript' },
+  { key: 'c', value: 'openai', label: 'OpenAI SDK (GPT API)', context7: '/openai/openai-node' }
 ];
 
 // ============================================
