@@ -36,9 +36,9 @@ When `config.longInputGate.enabled` is `true`:
 - Prompt is a task ID → already handled in Step 0
 - Prompt content is primarily code (>80% code blocks) → skip, as code pastes are better handled by normal triage
 
-### Step 0.2: Plugin Registry Routing (Automatic)
+### Step 0.4: Plugin Registry Routing (Automatic)
 
-**Before checking the command catalog, check if the request matches a registered plugin.**
+**After the command catalog finds no match, check if the request matches a registered plugin.** Plugin routing has lower priority than built-in `/wogi-*` commands.
 
 When `config.plugins.enabled` is `true`:
 

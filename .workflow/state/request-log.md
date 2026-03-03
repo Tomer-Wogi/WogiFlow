@@ -11,6 +11,19 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-199 | 2026-03-03 15:00
+**Type**: fix
+**Tags**: #feature:plugin-system #component:plugin-registry #review
+**Request**: "Code review of plugin registration system (commit 629bfee)"
+**Result**: Multi-pass review (4 passes: structure, logic, security, integration) found 19 findings (11 high, 6 medium, 2 low). All fixed:
+- Security: path traversal prevention, atomic writes, API key leak prevention, prototype pollution guards, name sanitization
+- Logic: dedup in scan, null guards, preserve registeredAt, fix trigger scoring, fix color() args
+- Structure: extracted deactivateStaleMcpPlugins() from session-start to registry module, hoisted imports, added config schema
+- Standards: catch variable naming
+**Files**: scripts/flow-plugin-registry.js, scripts/hooks/entry/claude-code/session-start.js, .claude/commands/wogi-start.md, .workflow/config.schema.json
+
+---
+
 ### R-198 | 2026-03-03 14:00
 **Type**: new
 **Tags**: #feature:plugin-system #component:plugin-registry

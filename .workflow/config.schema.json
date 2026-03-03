@@ -2962,6 +2962,42 @@
         }
       }
     },
+    "plugins": {
+      "type": "object",
+      "description": "CATEGORY: PLUGINS - Generic plugin registration system for /wogi-start routing. Auto-discovers MCP server capabilities.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable the plugin registry system.",
+          "default": true
+        },
+        "registryPath": {
+          "type": "string",
+          "description": "Relative path to the plugin registry JSON file.",
+          "default": ".workflow/state/plugin-registry.json"
+        },
+        "autoDiscoverMcp": {
+          "type": "boolean",
+          "description": "Auto-discover plugin capabilities by inspecting MCP tool definitions.",
+          "default": true
+        },
+        "autoScanOnSessionStart": {
+          "type": "boolean",
+          "description": "Scan for unregistered MCP servers on every session start and auto-register them.",
+          "default": true
+        },
+        "webSearchFallback": {
+          "type": "boolean",
+          "description": "Fall back to web search for plugin documentation when MCP inspection yields insufficient results.",
+          "default": true
+        },
+        "trackPluginActions": {
+          "type": "boolean",
+          "description": "Track plugin invocations in the request log for auditing.",
+          "default": true
+        }
+      }
+    },
     "community": {
       "type": "object",
       "description": "CATEGORY: COMMUNITY - Anonymous knowledge sharing with other WogiFlow users. Opt-in, privacy-first.",

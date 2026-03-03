@@ -21,18 +21,21 @@ const path = require('path');
 const {
   getProjectRoot,
   safeJsonParse,
+  writeJson,
   fileExists,
+  isPathWithinProject,
   color,
-  printHeader,
-  printSection
+  printHeader
 } = require('./flow-utils');
+
+// Dangerous keys that must never be used as plugin names or metadata keys
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 // ============================================================
 // Configuration
 // ============================================================
 
 const PROJECT_ROOT = getProjectRoot();
-const DEFAULT_REGISTRY_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'plugin-registry.json');
 
 /**
  * Get plugin config from workflow config
@@ -58,7 +61,12 @@ function getPluginConfig() {
 function getRegistryPath() {
   const pluginConfig = getPluginConfig();
   const registryRelPath = pluginConfig.registryPath || '.workflow/state/plugin-registry.json';
-  return path.join(PROJECT_ROOT, registryRelPath);
+  const resolved = path.resolve(PROJECT_ROOT, registryRelPath);
+  if (!isPathWithinProject(resolved)) {
+    console.error(`[plugin-registry] Unsafe registryPath in config: ${registryRelPath}`);
+    return path.join(PROJECT_ROOT, '.workflow', 'state', 'plugin-registry.json');
+  }
+  return resolved;
 }
 
 // ============================================================
@@ -87,12 +95,15 @@ function readRegistry() {
  */
 function writeRegistry(registry) {
   const registryPath = getRegistryPath();
-  const dir = path.dirname(registryPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!isPathWithinProject(registryPath)) {
+    throw new Error(`Refusing to write registry outside project: ${registryPath}`);
   }
   try {
-    fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2) + '\n', 'utf-8');
+    const dir = path.dirname(registryPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    writeJson(registryPath, registry);
   } catch (err) {
     console.error(`Failed to write plugin registry: ${err.message}`);
     throw err;
@@ -126,12 +137,12 @@ function discoverMcpTools(pluginName) {
       const settings = safeJsonParse(settingsPath, {});
       const mcpServers = settings.mcpServers || {};
 
-      for (const [serverName, serverConfig] of Object.entries(mcpServers)) {
+      for (const [serverName] of Object.entries(mcpServers)) {
         const normalizedServer = serverName.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (normalizedServer.includes(normalizedName) || normalizedName.includes(normalizedServer)) {
+          // Never include serverConfig — it may contain API keys in the env block
           tools.push({
             serverName,
-            serverConfig,
             source: 'mcp-settings',
             tools: [] // Will be populated by AI via ToolSearch at registration time
           });
@@ -189,10 +200,18 @@ function scanUnregisteredMcpServers() {
   const registeredPluginNames = new Set(Object.keys(registry.plugins).map(n => n.toLowerCase()));
 
   const unregistered = [];
+  const seen = new Set(); // Dedup across multiple settings files
 
   const settingsLocations = [
     path.join(PROJECT_ROOT, '.claude', 'settings.local.json'),
     path.join(PROJECT_ROOT, '.claude', 'settings.json')
+  ];
+
+  // Internal/built-in servers that should not be auto-registered as plugins
+  const internalPatterns = [
+    'memory', 'filesystem', 'brave-search', 'puppeteer',
+    'github', 'fetch', 'sequential-thinking', 'everything',
+    'sqlite', 'postgres', 'git', 'docker', 'kubernetes'
   ];
 
   for (const settingsPath of settingsLocations) {
@@ -201,18 +220,22 @@ function scanUnregisteredMcpServers() {
       const settings = safeJsonParse(settingsPath, {});
       const mcpServers = settings.mcpServers || {};
 
-      for (const [serverName, serverConfig] of Object.entries(mcpServers)) {
+      for (const [serverName] of Object.entries(mcpServers)) {
         const normalizedServer = serverName.toLowerCase();
+        // Skip if already seen in another settings file
+        if (seen.has(normalizedServer)) continue;
+        seen.add(normalizedServer);
+
         // Skip if already registered (by server name or plugin name)
         if (registeredNames.has(normalizedServer)) continue;
         if (registeredPluginNames.has(normalizedServer)) continue;
 
-        // Skip internal/built-in servers (e.g., memory, filesystem)
-        const internalPatterns = ['memory', 'filesystem', 'brave-search', 'puppeteer'];
-        const isInternal = internalPatterns.some(p => normalizedServer.includes(p));
+        // Skip internal/built-in servers
+        const isInternal = internalPatterns.some(pattern => normalizedServer.includes(pattern));
         if (isInternal) continue;
 
-        unregistered.push({ serverName, serverConfig });
+        // Only include serverName — never serverConfig (may contain API keys)
+        unregistered.push({ serverName });
       }
     } catch (err) {
       if (process.env.DEBUG) {
@@ -222,6 +245,47 @@ function scanUnregisteredMcpServers() {
   }
 
   return unregistered;
+}
+
+/**
+ * Deactivate plugins whose MCP servers are no longer available.
+ * Called by session-start hook to keep registry in sync.
+ *
+ * @returns {string[]} Names of deactivated plugins
+ */
+function deactivateStaleMcpPlugins() {
+  const registry = readRegistry();
+  const settingsLocations = [
+    path.join(PROJECT_ROOT, '.claude', 'settings.local.json'),
+    path.join(PROJECT_ROOT, '.claude', 'settings.json')
+  ];
+
+  const availableServers = new Set();
+  for (const sp of settingsLocations) {
+    if (!fileExists(sp)) continue;
+    try {
+      const settings = safeJsonParse(sp, {});
+      for (const name of Object.keys(settings.mcpServers || {})) {
+        availableServers.add(name.toLowerCase());
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[plugin-registry] Error reading settings: ${err.message}`);
+      }
+    }
+  }
+
+  const deactivated = [];
+  for (const plugin of Object.values(registry.plugins)) {
+    if (plugin.status === 'active' && plugin.metadata?.mcpServer) {
+      if (!availableServers.has(plugin.metadata.mcpServer.toLowerCase())) {
+        deactivatePlugin(plugin.name);
+        deactivated.push(plugin.name);
+      }
+    }
+  }
+
+  return deactivated;
 }
 
 // ============================================================
@@ -246,14 +310,31 @@ function registerPlugin(pluginData) {
     return { success: false, error: 'Plugin name is required' };
   }
 
-  const registry = readRegistry();
-  const isUpdate = !!registry.plugins[pluginData.name];
-  const existing = registry.plugins[pluginData.name] || {};
+  // Sanitize plugin name — reject dangerous keys
+  const name = String(pluginData.name).replace(/[^\w\s.:-]/g, '').trim().slice(0, 128);
+  if (!name || DANGEROUS_KEYS.has(name)) {
+    return { success: false, error: `Invalid plugin name: ${pluginData.name}` };
+  }
 
+  const registry = readRegistry();
+  const isUpdate = !!registry.plugins[name];
+  const existing = registry.plugins[name] || {};
+
+  // Guard against prototype pollution in metadata
+  const incomingMeta = pluginData.metadata || {};
+  const safeMeta = {};
+  for (const key of Object.keys(incomingMeta)) {
+    if (!DANGEROUS_KEYS.has(key)) {
+      safeMeta[key] = incomingMeta[key];
+    }
+  }
+
+  const now = new Date().toISOString();
   const plugin = {
-    name: pluginData.name,
+    name,
     description: pluginData.description || existing.description || '',
-    registeredAt: new Date().toISOString(),
+    registeredAt: existing.registeredAt || now,
+    updatedAt: isUpdate ? now : undefined,
     source: pluginData.source || existing.source || 'manual',
     status: 'active',
     triggers: pluginData.triggers || existing.triggers || [],
@@ -266,11 +347,11 @@ function registerPlugin(pluginData) {
     })),
     metadata: {
       ...(existing.metadata || {}),
-      ...(pluginData.metadata || {})
+      ...safeMeta
     }
   };
 
-  registry.plugins[pluginData.name] = plugin;
+  registry.plugins[name] = plugin;
   writeRegistry(registry);
 
   return { success: true, isUpdate, plugin };
@@ -342,6 +423,8 @@ function listPlugins(options = {}) {
  *   { plugin, capability, score, trigger }
  */
 function matchPluginTriggers(request) {
+  if (!request || typeof request !== 'string') return null;
+
   const registry = readRegistry();
   const normalizedRequest = request.toLowerCase().trim();
   let bestMatch = null;
@@ -385,13 +468,13 @@ function matchPluginTriggers(request) {
  * @returns {number} Score between 0 and 1
  */
 function calculateTriggerScore(request, trigger) {
+  // Exact substring match gets highest score (check before word filtering)
+  if (request.includes(trigger)) return 1.0;
+
   const requestWords = new Set(request.split(/\s+/).filter(w => w.length > 1));
   const triggerWords = trigger.split(/\s+/).filter(w => w.length > 1);
 
   if (triggerWords.length === 0) return 0;
-
-  // Exact substring match gets high score
-  if (request.includes(trigger)) return 1.0;
 
   // Word overlap scoring
   let matches = 0;
@@ -457,8 +540,8 @@ function handleCli() {
       }
       printHeader(`Registered Plugins (${plugins.length})`);
       for (const plugin of plugins) {
-        const status = plugin.status === 'inactive' ? color(' [inactive]', 'yellow') : '';
-        console.log(`\n  ${color(plugin.name, 'cyan')}${status}`);
+        const status = plugin.status === 'inactive' ? color('yellow', ' [inactive]') : '';
+        console.log(`\n  ${color('cyan', plugin.name)}${status}`);
         console.log(`  ${plugin.description}`);
         console.log(`  Capabilities: ${(plugin.capabilities || []).length}`);
         console.log(`  Triggers: ${(plugin.triggers || []).join(', ')}`);
@@ -531,6 +614,7 @@ module.exports = {
   writeRegistry,
   discoverMcpTools,
   scanUnregisteredMcpServers,
+  deactivateStaleMcpPlugins,
   registerPlugin,
   removePlugin,
   deactivatePlugin,

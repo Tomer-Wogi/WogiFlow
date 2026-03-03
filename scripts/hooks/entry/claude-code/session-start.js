@@ -12,7 +12,7 @@ const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 const { checkAndResetStalePhase } = require('../../core/phase-gate');
 const { setRoutingPending } = require('../../core/routing-gate');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { safeJsonParseString, getConfig } = require('../../../flow-utils');
 
 // Lazy-load bridge state to avoid circular dependencies
 let autoSyncBridge = null;
@@ -121,10 +121,9 @@ async function main() {
     // Plugin auto-scan (non-blocking)
     // Checks for unregistered MCP servers and auto-registers them
     try {
-      const { getConfig } = require('../../../flow-utils');
       const config = getConfig();
       if (config.plugins?.enabled && config.plugins?.autoScanOnSessionStart) {
-        const { scanUnregisteredMcpServers, registerPlugin, deactivatePlugin, readRegistry, listPlugins } = require('../../../flow-plugin-registry');
+        const { scanUnregisteredMcpServers, registerPlugin, deactivateStaleMcpPlugins, listPlugins } = require('../../../flow-plugin-registry');
 
         // Scan for new unregistered MCP servers
         const unregistered = scanUnregisteredMcpServers();
@@ -143,30 +142,10 @@ async function main() {
           }
         }
 
-        // Check for previously registered plugins whose MCP servers are gone
-        const registry = readRegistry();
-        const settingsLocations = [
-          require('path').join(require('../../../flow-utils').getProjectRoot(), '.claude', 'settings.local.json'),
-          require('path').join(require('../../../flow-utils').getProjectRoot(), '.claude', 'settings.json')
-        ];
-        const availableServers = new Set();
-        for (const sp of settingsLocations) {
-          try {
-            const settings = require('../../../flow-utils').safeJsonParse(sp, {});
-            for (const name of Object.keys(settings.mcpServers || {})) {
-              availableServers.add(name.toLowerCase());
-            }
-          } catch (_) { /* skip */ }
-        }
-        for (const plugin of Object.values(registry.plugins)) {
-          if (plugin.status === 'active' && plugin.metadata?.mcpServer) {
-            if (!availableServers.has(plugin.metadata.mcpServer.toLowerCase())) {
-              deactivatePlugin(plugin.name);
-              if (process.env.DEBUG) {
-                console.error(`[session-start] Deactivated plugin (server gone): ${plugin.name}`);
-              }
-            }
-          }
+        // Deactivate plugins whose MCP servers are no longer available
+        const deactivated = deactivateStaleMcpPlugins();
+        if (deactivated.length > 0 && process.env.DEBUG) {
+          console.error(`[session-start] Deactivated ${deactivated.length} stale plugin(s): ${deactivated.join(', ')}`);
         }
 
         // Inject plugin scan results into context
@@ -188,27 +167,26 @@ async function main() {
 
     // Community knowledge pull + suggestion retry (non-blocking)
     try {
-      const { getConfig: getConfigForCommunity } = require('../../../flow-utils');
-      const config = getConfigForCommunity();
-      if (config.community?.enabled) {
+      const communityConfig = getConfig();
+      if (communityConfig.community?.enabled) {
         const community = require('../../../flow-community');
 
         // Retry pending suggestions (fire-and-forget)
-        community.retryPendingSuggestions(config).catch(() => {});
+        community.retryPendingSuggestions(communityConfig).catch(() => {});
 
         // Pull community knowledge (respects pullOnSessionStart toggle)
-        if (config.community?.pullOnSessionStart !== false) {
+        if (communityConfig.community?.pullOnSessionStart !== false) {
           // Non-blocking pull with 5s timeout — uses cache if unavailable
-          const knowledge = await community.pullFromServer(config);
+          const knowledge = await community.pullFromServer(communityConfig);
           if (knowledge && coreResult && coreResult.context) {
             coreResult.context.communityKnowledge = knowledge;
 
             // Merge community knowledge into local state files (Phase C2)
             try {
-              community.mergeCommunityKnowledge(knowledge, config);
-            } catch (mergeErr) {
+              community.mergeCommunityKnowledge(knowledge, communityConfig);
+            } catch (err) {
               if (process.env.DEBUG) {
-                console.error(`[session-start] Community merge failed: ${mergeErr.message}`);
+                console.error(`[session-start] Community merge failed: ${err.message}`);
               }
             }
           }
