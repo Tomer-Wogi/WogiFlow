@@ -118,10 +118,78 @@ async function main() {
       includeActivity: true
     });
 
-    // Community knowledge pull + suggestion retry (non-blocking)
+    // Plugin auto-scan (non-blocking)
+    // Checks for unregistered MCP servers and auto-registers them
     try {
       const { getConfig } = require('../../../flow-utils');
       const config = getConfig();
+      if (config.plugins?.enabled && config.plugins?.autoScanOnSessionStart) {
+        const { scanUnregisteredMcpServers, registerPlugin, deactivatePlugin, readRegistry, listPlugins } = require('../../../flow-plugin-registry');
+
+        // Scan for new unregistered MCP servers
+        const unregistered = scanUnregisteredMcpServers();
+        for (const server of unregistered) {
+          // Auto-register with minimal info — AI will enrich via /wogi-register later
+          registerPlugin({
+            name: server.serverName,
+            description: `Auto-discovered MCP server: ${server.serverName}`,
+            source: 'auto-scan',
+            triggers: [`use ${server.serverName}`, `send to ${server.serverName}`, server.serverName],
+            capabilities: [],
+            metadata: { mcpServer: server.serverName }
+          });
+          if (process.env.DEBUG) {
+            console.error(`[session-start] Auto-registered plugin: ${server.serverName}`);
+          }
+        }
+
+        // Check for previously registered plugins whose MCP servers are gone
+        const registry = readRegistry();
+        const settingsLocations = [
+          require('path').join(require('../../../flow-utils').getProjectRoot(), '.claude', 'settings.local.json'),
+          require('path').join(require('../../../flow-utils').getProjectRoot(), '.claude', 'settings.json')
+        ];
+        const availableServers = new Set();
+        for (const sp of settingsLocations) {
+          try {
+            const settings = require('../../../flow-utils').safeJsonParse(sp, {});
+            for (const name of Object.keys(settings.mcpServers || {})) {
+              availableServers.add(name.toLowerCase());
+            }
+          } catch (_) { /* skip */ }
+        }
+        for (const plugin of Object.values(registry.plugins)) {
+          if (plugin.status === 'active' && plugin.metadata?.mcpServer) {
+            if (!availableServers.has(plugin.metadata.mcpServer.toLowerCase())) {
+              deactivatePlugin(plugin.name);
+              if (process.env.DEBUG) {
+                console.error(`[session-start] Deactivated plugin (server gone): ${plugin.name}`);
+              }
+            }
+          }
+        }
+
+        // Inject plugin scan results into context
+        if (coreResult && coreResult.context) {
+          const activePlugins = listPlugins({ activeOnly: true });
+          if (unregistered.length > 0 || activePlugins.length > 0) {
+            coreResult.context.pluginScan = {
+              newlyRegistered: unregistered.map(s => s.serverName),
+              activePlugins: activePlugins.map(p => ({ name: p.name, capabilities: (p.capabilities || []).length }))
+            };
+          }
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Plugin auto-scan failed: ${err.message}`);
+      }
+    }
+
+    // Community knowledge pull + suggestion retry (non-blocking)
+    try {
+      const { getConfig: getConfigForCommunity } = require('../../../flow-utils');
+      const config = getConfigForCommunity();
       if (config.community?.enabled) {
         const community = require('../../../flow-community');
 

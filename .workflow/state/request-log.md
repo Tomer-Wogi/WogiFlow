@@ -11,6 +11,21 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-198 | 2026-03-03 14:00
+**Type**: new
+**Tags**: #feature:plugin-system #component:plugin-registry
+**Request**: "Build generic plugin registration system for /wogi-start routing"
+**Result**: Created plugin registration infrastructure:
+- `scripts/flow-plugin-registry.js` — core registry CRUD, MCP discovery, trigger matching, CLI interface
+- `.claude/commands/wogi-register.md` — slash command for plugin registration with 5-step discovery flow
+- `config.json` — added `plugins` config section (enabled, autoScanOnSessionStart, webSearchFallback)
+- `session-start.js` — auto-scans for unregistered MCP servers, deactivates gone servers
+- `wogi-start.md` — Step 0.2 plugin routing at triage time with trigger matching
+- `claude-md.hbs` — added /wogi-register to Essential Commands, NL Detection, User Commands
+**Files**: scripts/flow-plugin-registry.js, .claude/commands/wogi-register.md, .workflow/config.json, scripts/hooks/entry/claude-code/session-start.js, .claude/commands/wogi-start.md, .workflow/templates/claude-md.hbs, .workflow/templates/partials/user-commands.hbs, CLAUDE.md
+
+---
+
 ### R-197 | 2026-03-01 13:45
 **Type**: new
 **Tags**: #skills #prebuilt #freshness #sub-agent #onboarding

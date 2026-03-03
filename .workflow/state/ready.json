@@ -1,9 +1,20 @@
 {
-  "lastUpdated": "2026-03-02T11:38:40.634Z",
+  "lastUpdated": "2026-03-03T14:00:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2692d9bb",
+      "title": "Plugin Registration System for /wogi-start routing",
+      "type": "story",
+      "feature": "plugin-system",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-03-03T10:30:31.104Z",
+      "startedAt": "2026-03-03T12:00:00.000Z",
+      "completedAt": "2026-03-03T14:00:00.000Z"
+    },
     {
       "id": "wf-cr-96787d",
       "title": "Fix 29 review findings from epic implementation",

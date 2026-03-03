@@ -1782,5 +1782,14 @@
     },
     "exclude": ["node_modules", ".workflow/state", "dist", "build"],
     "maxFilesPerAgent": 100
+  },
+  "plugins": {
+    "enabled": true,
+    "_comment_plugins": "Generic plugin registration system. Discovers capabilities from MCP tools and web search. /wogi-start reads this registry at triage time.",
+    "registryPath": ".workflow/state/plugin-registry.json",
+    "autoDiscoverMcp": true,
+    "autoScanOnSessionStart": true,
+    "webSearchFallback": true,
+    "trackPluginActions": true
   }
 }

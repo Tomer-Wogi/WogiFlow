@@ -36,6 +36,31 @@ When `config.longInputGate.enabled` is `true`:
 - Prompt is a task ID → already handled in Step 0
 - Prompt content is primarily code (>80% code blocks) → skip, as code pastes are better handled by normal triage
 
+### Step 0.2: Plugin Registry Routing (Automatic)
+
+**Before checking the command catalog, check if the request matches a registered plugin.**
+
+When `config.plugins.enabled` is `true`:
+
+1. Read `.workflow/state/plugin-registry.json` (the plugin registry)
+2. For each active plugin, check if the user's request matches any trigger phrase
+3. Use word overlap scoring (minimum threshold: 0.5) to find the best match
+4. **If a plugin match is found** (score >= 0.5):
+   - Display: `Plugin match: "<plugin-name>" (score: X.XX, trigger: "<matched phrase>")`
+   - If the matched capability has an `mcpTool` → use ToolSearch to load and invoke it
+   - If no specific `mcpTool` → display the plugin's capabilities and ask the user which action to take
+   - If `config.plugins.trackPluginActions` is true → create a lightweight task entry for tracking
+5. **If no plugin match** → Continue to the Command Catalog below
+
+**Plugin routing has LOWER priority than built-in `/wogi-*` commands.** If a request matches both a built-in command and a plugin trigger, the built-in command wins. Plugin routing is the fallback AFTER the command catalog finds no match.
+
+**Actual routing order:**
+1. Check if request is a task ID → Structured Execution
+2. Check long input gate → `/wogi-extract-review`
+3. Check Command Catalog → matching `/wogi-*` command
+4. Check Plugin Registry → matching plugin capability
+5. Default → `/wogi-story` (implementation request)
+
 ### Command Catalog
 
 Think of each command below as a tool available to you. Read the user's request, understand what they need, and invoke the best-fit command using the Skill tool.
@@ -63,6 +88,7 @@ Think of each command below as a tool available to you. Read the user's request,
 | `/wogi-decide` | Creates/updates project rules with clarifying questions | User says **"from now on" + rule verb** (always/never/must/should), "let's make it a rule", "update our rules". Note: "from now on" alone is not sufficient — require a follow-on rule verb to distinguish from implementation requests. |
 | `/wogi-learn` | Promotes feedback patterns to decision rules | User says **"let's learn from this"**, "we keep making this mistake", "extract lessons" |
 | `/wogi-retrospective` | Guided session reflection with lesson capture | User says **"retro"**, "what went well", "what can we improve", "lessons learned" |
+| `/wogi-register` | Register Claude Code plugins for /wogi-start routing | User wants to **register a plugin**, list registered plugins, or remove a plugin registration |
 
 ### Internal Tools (Auto-Invoked by wogi-start)
 
@@ -238,6 +264,18 @@ User: "I'm thinking about reorganizing the skills system"
 User: "help me think through how the hook architecture should evolve"
 → Intent: CONVERSATION — brainstorming session
 → Action: Read relevant code, discuss architecture options. No files written, no tasks created.
+```
+
+```
+User: "send this design to Figma"
+→ Intent: PLUGIN ROUTING — request matches a registered plugin trigger
+→ Action: Check plugin-registry.json. If "figma" plugin registered with trigger "send to figma" → route to plugin. If not registered → suggest /wogi-register figma
+```
+
+```
+User: "register the linear plugin"
+→ Intent: Plugin registration
+→ Action: Invoke /wogi-register linear
 ```
 
 ```
