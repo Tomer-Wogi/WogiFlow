@@ -15,6 +15,7 @@
 
 const { execSync } = require('child_process');
 const { getConfig, PATHS } = require('../../flow-utils');
+const { cleanStaleFiles } = require('./session-context');
 
 /**
  * Check if auto-logging is enabled
@@ -65,6 +66,19 @@ function handleSessionEnd(input) {
     if (isAutoLoggingEnabled()) {
       // Could integrate with flow-session-end.js in the future
       result.logged = false;
+    }
+
+    // State folder hygiene — clean stale/orphan files (fire-and-forget)
+    try {
+      const hygiene = cleanStaleFiles();
+      if (hygiene.cleaned > 0) {
+        result.cleaned = hygiene.files;
+      }
+      if (hygiene.warnings.length > 0) {
+        result.hygieneWarnings = hygiene.warnings;
+      }
+    } catch {
+      // Non-critical — never block session end
     }
 
     // Community sync: upload anonymized stats (fire-and-forget)

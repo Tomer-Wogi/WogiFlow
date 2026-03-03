@@ -19,51 +19,212 @@ const { findParallelizable, getParallelConfig } = require('../../flow-parallel')
 const { getBypassTracking } = require('../../flow-session-state');
 const { loadCheckpoint, clearCheckpoint } = require('../../flow-task-checkpoint');
 
+// ============================================================
+// State Folder Hygiene — Whitelist + Age-Based Cleanup
+// ============================================================
+
 /**
- * Clean up stale/orphan files from .workflow/state/ on session start.
- * Removes known transient files that accumulate when sessions crash or are force-quit.
- * Never removes essential state files — only files matching known stale patterns.
+ * Canonical WogiFlow state files and directories.
+ * Any file NOT matching this whitelist is considered unknown.
+ * Unknown files older than STALE_THRESHOLD_DAYS are auto-removed.
+ * Recent unknowns are flagged as warnings.
+ */
+const KNOWN_STATE_FILES = new Set([
+  // Core registries & templates
+  'ready.json',              'ready.json.template',
+  'request-log.md',          'request-log.md.template',
+  'request-log-summary.md',
+  'decisions.md',            'decisions.md.template',
+  'app-map.md',              'app-map.md.template',
+  'function-map.md',         'function-map.md.template',
+  'api-map.md',              'api-map.md.template',
+  'schema-map.md',           'schema-index.json',
+  'service-map.md',          'service-index.json',
+  'feedback-patterns.md',    'feedback-patterns.md.template',
+  'progress.md',             'progress.md.template',
+
+  // Machine-readable indexes
+  'component-index.json',    'component-index.json.template',
+  'function-index.json',
+  'api-index.json',
+  'section-index.json',
+  'registry-manifest.json',
+  'export-map.json',
+
+  // Session & task state
+  'session-state.json',      'session-state.json.template',
+  'durable-session.json',
+  'durable-history.json',
+  'workflow-phase.json',
+  'task-checkpoint.json',
+  'todowrite-state.json',
+  'suspension.json',
+  'task-queue.json',
+  'phased-tasks.json',
+
+  // Config & sync
+  'bridge-sync.json',
+  'plugin-registry.json',
+  'partner-versions.json',
+  'knowledge-sync.json',     'knowledge-sync.json.template',
+
+  // Review & corrections
+  'last-review.json',
+  'last-failure.json',
+  'pending-corrections.json',
+  'review-fix-progress.json',
+  'pending-rule-violations.json',
+
+  // Features, epics & plans
+  'epics.json',
+  'features.json',
+  'plans.json',
+  'current-plan.json',
+
+  // Research & debugging
+  'research-cache.json',
+  'hypothesis-tree.json',
+  'error-recovery.json',
+  'cascade-state.json',
+
+  // Context & memory
+  'context-expansions.json',
+  'context-gaps.json',
+  'context-tree.json',
+  'hybrid-context.md',
+  'hybrid-session.json',
+  'hybrid-metrics.json',
+  'hybrid-results.json',
+  'codebase-insights.md',
+
+  // Analysis & detection
+  'decision-amendments.json',
+  'mcp-tools.json',
+  'tech-debt.json',
+  'permissions.json',
+  'gate-confidence.json',
+  'background-tasks.json',
+  'adaptive-learning.json',
+  'command-metrics.json',
+  'model-stats.json',
+  'implementation-timeline.md',
+  'clarifications.md',
+  'project-patterns.json',
+  'project-standards.json',
+  'adherence-overrides.json',
+  'guided-edit-session.json',
+
+  // Prompts
+  'prompt-history.json',     'prompt-history.json.template',
+  'pending-skill.json',
+  'pending-setup.json',
+
+  // Archive
+  'completed-archive.json',
+
+  // Deprecated but still valid
+  'loop-session.json',
+  'stack.md',
+  'architecture.md',
+  'testing.md',
+
+  // Hidden/transient (kept but not stale)
+  '.claude-md-regen-version',
+  '.routing-pending',
+]);
+
+/** Known directory names within state/ (not files) */
+const KNOWN_STATE_DIRS = new Set([
+  'components',
+  'task-types',
+  'model-profiles',
+]);
+
+/** Stale threshold in days — unknown files older than this are auto-removed */
+const STALE_THRESHOLD_DAYS = 7;
+
+/** Patterns that are ALWAYS stale regardless of age */
+const ALWAYS_STALE_PATTERNS = [
+  /^\.routing-pending-pid-/,   // PID-specific lock files from crashed sessions
+];
+
+/**
+ * Clean up stale/orphan files from .workflow/state/.
  *
- * @returns {{ cleaned: number, files: string[] }} Cleanup result
+ * Strategy: whitelist + age-based.
+ * - Files matching ALWAYS_STALE_PATTERNS → remove immediately
+ * - Files in KNOWN_STATE_FILES → keep (they belong)
+ * - Unknown files older than STALE_THRESHOLD_DAYS → remove
+ * - Unknown files newer than threshold → warn (returned in warnings array)
+ *
+ * Never removes directories — only files. Never removes files outside project.
+ *
+ * @returns {{ cleaned: number, files: string[], warnings: string[] }} Cleanup result
  */
 function cleanStaleFiles() {
   const config = getConfig();
   if (config.hooks?.rules?.sessionCleanup?.enabled === false) {
-    return { cleaned: 0, files: [] };
+    return { cleaned: 0, files: [], warnings: [] };
   }
 
   const stateDir = PATHS.state;
   const cleaned = [];
-
-  // Known stale file patterns (transient lock files from crashed sessions)
-  const stalePatterns = [
-    /^\.routing-pending-pid-/   // PID-specific lock files from crashed sessions
-    // Note: .claude-md-regen-version is intentionally persistent — it controls
-    // postinstall CLAUDE.md regeneration optimization. Do NOT clean it.
-  ];
+  const warnings = [];
+  const now = Date.now();
+  const staleThresholdMs = STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
 
   try {
     const entries = fs.readdirSync(stateDir);
     for (const entry of entries) {
-      for (const pattern of stalePatterns) {
-        if (pattern.test(entry)) {
-          try {
-            const filePath = path.join(stateDir, entry);
-            // Path safety: ensure resolved path is within project
-            if (!isPathWithinProject(filePath)) {
-              break;
-            }
-            const stat = fs.statSync(filePath);
-            // Only remove files, never directories
-            if (stat.isFile()) {
-              fs.unlinkSync(filePath);
-              cleaned.push(entry);
-            }
-          } catch {
-            // Skip files we can't remove (permissions, already deleted, etc.)
-          }
-          break;
+      const filePath = path.join(stateDir, entry);
+
+      // Path safety: ensure resolved path is within project
+      if (!isPathWithinProject(filePath)) continue;
+
+      let stat;
+      try {
+        stat = fs.statSync(filePath);
+      } catch {
+        continue;
+      }
+
+      // Skip directories (known or unknown — we don't remove dirs)
+      if (stat.isDirectory()) {
+        if (!KNOWN_STATE_DIRS.has(entry)) {
+          warnings.push(`Unknown directory in state/: ${entry}`);
         }
+        continue;
+      }
+
+      // Check always-stale patterns first (PID locks, etc.)
+      const isAlwaysStale = ALWAYS_STALE_PATTERNS.some(p => p.test(entry));
+      if (isAlwaysStale) {
+        try {
+          fs.unlinkSync(filePath);
+          cleaned.push(entry);
+        } catch {
+          // Skip files we can't remove
+        }
+        continue;
+      }
+
+      // Known file → keep
+      if (KNOWN_STATE_FILES.has(entry)) continue;
+
+      // Unknown file — check age
+      const ageMs = now - stat.mtimeMs;
+      if (ageMs > staleThresholdMs) {
+        // Old unknown file → remove
+        try {
+          fs.unlinkSync(filePath);
+          cleaned.push(entry);
+        } catch {
+          // Skip files we can't remove
+        }
+      } else {
+        // Recent unknown file → warn but don't remove
+        const ageDays = Math.round(ageMs / (24 * 60 * 60 * 1000));
+        warnings.push(`Unknown file in state/: ${entry} (${ageDays}d old — will auto-remove after ${STALE_THRESHOLD_DAYS}d)`);
       }
     }
   } catch {
@@ -73,8 +234,11 @@ function cleanStaleFiles() {
   if (cleaned.length > 0 && process.env.DEBUG) {
     console.error(`[session-context] Cleaned ${cleaned.length} stale file(s): ${cleaned.join(', ')}`);
   }
+  if (warnings.length > 0 && process.env.DEBUG) {
+    console.error(`[session-context] Hygiene warnings: ${warnings.join('; ')}`);
+  }
 
-  return { cleaned: cleaned.length, files: cleaned };
+  return { cleaned: cleaned.length, files: cleaned, warnings };
 }
 
 /**

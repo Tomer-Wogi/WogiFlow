@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-205 | 2026-03-04 04:00
+**Type**: new
+**Tags**: #feature:core #hook:session-end #hook:session-context #module:state-hygiene
+**Task**: wf-ce5624e4
+**Request**: "State folder hygiene — clean files from .workflow/state/ that don't belong to WogiFlow"
+**Result**: Enhanced cleanStaleFiles() in session-context.js with comprehensive whitelist (80+ known state files), known directory list, always-stale patterns (PID locks), and 7-day age threshold for unknown files. Cleanup runs on both session start and session end. Unknown files older than 7 days are auto-removed; recent unknowns generate warnings.
+**Files**: scripts/hooks/core/session-context.js, scripts/hooks/core/session-end.js
+
 ### R-204 | 2026-03-03 23:30
 **Type**: fix
 **Tags**: #feature:import #script:flow-import-profile #script:flow-decisions-merge
