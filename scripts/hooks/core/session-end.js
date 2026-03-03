@@ -13,7 +13,7 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const { getConfig, PATHS } = require('../../flow-utils');
 const { cleanStaleFiles } = require('./session-context');
 
@@ -32,7 +32,7 @@ function isAutoLoggingEnabled() {
  */
 function getUncommittedCount() {
   try {
-    const output = execSync('git status --porcelain', {
+    const output = execFileSync('git', ['status', '--porcelain'], {
       cwd: PATHS.root,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
@@ -74,7 +74,7 @@ function handleSessionEnd(input) {
       if (hygiene.cleaned > 0) {
         result.cleaned = hygiene.files;
       }
-      if (hygiene.warnings.length > 0) {
+      if (hygiene.warnings && hygiene.warnings.length > 0) {
         result.hygieneWarnings = hygiene.warnings;
       }
     } catch {

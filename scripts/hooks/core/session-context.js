@@ -131,6 +131,7 @@ const KNOWN_STATE_FILES = new Set([
   // Hidden/transient (kept but not stale)
   '.claude-md-regen-version',
   '.routing-pending',
+  '.routing-cleared',
 ]);
 
 /** Known directory names within state/ (not files) */
@@ -143,10 +144,15 @@ const KNOWN_STATE_DIRS = new Set([
 /** Stale threshold in days — unknown files older than this are auto-removed */
 const STALE_THRESHOLD_DAYS = 7;
 
-/** Patterns that are ALWAYS stale regardless of age */
+/** Patterns that are ALWAYS stale regardless of age.
+ * Session-scoped routing files (.routing-pending-<SESSION_ID>, .routing-cleared-<SESSION_ID>)
+ * are cleaned immediately — they belong to crashed/ended sessions.
+ * The shared variants (.routing-pending, .routing-cleared) are in KNOWN_STATE_FILES
+ * and managed by their own TTL logic in routing-gate.js.
+ */
 const ALWAYS_STALE_PATTERNS = [
-  /^\.routing-pending-pid-/,   // PID-specific lock files from crashed sessions
-  /^\.routing-cleared/,        // Routing cleared markers (TTL-managed, safe to clean)
+  /^\.routing-pending-.+/,     // Session-scoped routing flags from crashed/ended sessions
+  /^\.routing-cleared-.+/,     // Session-scoped cleared markers (TTL-managed in routing-gate.js)
 ];
 
 /**
@@ -163,7 +169,13 @@ const ALWAYS_STALE_PATTERNS = [
  * @returns {{ cleaned: number, files: string[], warnings: string[] }} Cleanup result
  */
 function cleanStaleFiles() {
-  const config = getConfig();
+  let config;
+  try {
+    config = getConfig();
+  } catch {
+    // Config unreadable — default to enabled (fail-closed, consistent with routing gate)
+    config = {};
+  }
   if (config.hooks?.rules?.sessionCleanup?.enabled === false) {
     return { cleaned: 0, files: [], warnings: [] };
   }
@@ -184,8 +196,20 @@ function cleanStaleFiles() {
 
       let stat;
       try {
-        stat = fs.statSync(filePath);
+        // lstatSync: don't follow symlinks — prevents deletion of symlink targets outside project
+        stat = fs.lstatSync(filePath);
       } catch {
+        continue;
+      }
+
+      // Remove symlinks unconditionally (should never exist in state/)
+      if (stat.isSymbolicLink()) {
+        try {
+          fs.unlinkSync(filePath);
+          cleaned.push(entry);
+        } catch {
+          // Skip symlinks we can't remove
+        }
         continue;
       }
 
@@ -378,13 +402,17 @@ function getRecentActivity(maxEntries = 3) {
     // Race conditions/permission changes can cause fs.readFileSync to fail even after existsSync
     // Only read the tail of the file to avoid unbounded memory usage on large logs
     const fd = fs.openSync(PATHS.requestLog, 'r');
-    const stat = fs.fstatSync(fd);
-    const TAIL_BYTES = 8192; // 8KB tail is enough for ~20 recent entries
-    const readStart = Math.max(0, stat.size - TAIL_BYTES);
-    const buf = Buffer.alloc(Math.min(stat.size, TAIL_BYTES));
-    fs.readSync(fd, buf, 0, buf.length, readStart);
-    fs.closeSync(fd);
-    const content = buf.toString('utf-8');
+    let content;
+    try {
+      const stat = fs.fstatSync(fd);
+      const TAIL_BYTES = 8192; // 8KB tail is enough for ~20 recent entries
+      const readStart = Math.max(0, stat.size - TAIL_BYTES);
+      const buf = Buffer.alloc(Math.min(stat.size, TAIL_BYTES));
+      fs.readSync(fd, buf, 0, buf.length, readStart);
+      content = buf.toString('utf-8');
+    } finally {
+      fs.closeSync(fd);
+    }
     const entries = [];
 
     // Split-then-parse pattern to avoid ReDoS risk (safer than [\s\S]*? regex)
@@ -401,7 +429,8 @@ function getRecentActivity(maxEntries = 3) {
       const id = `R-${headerMatch[1]}`;
 
       // Extract request line
-      const requestMatch = section.match(/\*\*Request\*\*:\s*"?([^"\n]+)"?/);
+      // Length-capped capture to prevent ReDoS on crafted single-line entries
+      const requestMatch = section.match(/\*\*Request\*\*:\s*"?([^"\n]{1,500})"?/);
       const request = requestMatch ? requestMatch[1] : 'Unknown';
 
       entries.push({ id, request });

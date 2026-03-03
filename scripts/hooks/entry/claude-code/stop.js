@@ -13,7 +13,7 @@
  */
 
 const { checkLoopExit } = require('../../core/loop-check');
-const { isRoutingPending, clearRoutingPending, incrementStopAttempts } = require('../../core/routing-gate');
+const { isRoutingPending, incrementStopAttempts } = require('../../core/routing-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { safeJsonParseString } = require('../../../flow-utils');
 

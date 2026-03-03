@@ -27,7 +27,8 @@ const { getConfig, getReadyData, PATHS, safeJsonParseString } = require('../../f
 // shared flag works for the common single-session use case.
 // Sanitize SESSION_ID to prevent path traversal (only allow alphanumeric, hyphens, underscores)
 const RAW_SESSION_ID = process.env.CLAUDE_CODE_SESSION_ID || null;
-const SESSION_ID = RAW_SESSION_ID ? RAW_SESSION_ID.replace(/[^a-zA-Z0-9_-]/g, '') : null;
+// Sanitize + cap length to prevent path traversal and ENAMETOOLONG errors
+const SESSION_ID = RAW_SESSION_ID ? RAW_SESSION_ID.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64) : null;
 const ROUTING_FLAG_PATH = SESSION_ID
   ? path.join(PATHS.state, `.routing-pending-${SESSION_ID}`)
   : path.join(PATHS.state, '.routing-pending');
@@ -96,8 +97,10 @@ function isRoutingRecentlyCleared() {
       try { fs.unlinkSync(ROUTING_CLEARED_PATH); } catch { /* ignore */ }
     }
     return false;
-  } catch (err) {
-    if (err.code === 'ENOENT') return false;
+  } catch {
+    // ENOENT (no marker) or any other error — treat as not cleared.
+    // Fail-open here is correct: if we can't confirm routing was cleared,
+    // the routing gate should enforce normally rather than silently bypassing.
     return false;
   }
 }
@@ -154,21 +157,25 @@ function setRoutingPending() {
 }
 
 /**
- * Clear the routing-pending flag (called by PreToolUse when Skill wogi-* is invoked)
- * @returns {{ cleared: boolean, reason: string }}
+ * Clear the routing-pending flag (called by PreToolUse when Skill wogi-* is invoked).
+ * Also writes a "routing-cleared" marker to prevent re-setting during chained skill execution.
+ * @returns {{ cleared: boolean, reason: string }} cleared=true if flag was deleted or already absent;
+ *   cleared=false only on non-ENOENT unlink error (flag may still exist on disk).
  */
 function clearRoutingPending() {
+  let flagDeleted = false;
   try {
     // Direct unlink — no TOCTOU race from existsSync+unlinkSync
     fs.unlinkSync(ROUTING_FLAG_PATH);
+    flagDeleted = true;
     if (process.env.DEBUG) {
       console.error('[routing-gate] Cleared routing-pending flag');
     }
   } catch (err) {
-    if (err.code !== 'ENOENT') {
-      if (process.env.DEBUG) {
-        console.error(`[routing-gate] Failed to clear flag: ${err.message}`);
-      }
+    if (err.code === 'ENOENT') {
+      flagDeleted = true; // Already gone — effectively cleared
+    } else if (process.env.DEBUG) {
+      console.error(`[routing-gate] Failed to clear flag: ${err.message}`);
     }
   }
 
@@ -189,7 +196,7 @@ function clearRoutingPending() {
     }
   }
 
-  return { cleared: true, reason: 'flag_cleared' };
+  return { cleared: flagDeleted, reason: flagDeleted ? 'flag_cleared' : 'unlink_error' };
 }
 
 // Max age for routing flag before it's considered stale (30 minutes)
@@ -233,9 +240,19 @@ function isRoutingPending() {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Failed to check flag: ${err.message}`);
     }
-    // Fail-CLOSED: if can't check flag, assume routing IS pending.
-    // Users installed WogiFlow for enforcement — failing open silently
-    // allows the exact bypass this system exists to prevent.
+    // Fail-CLOSED: if can't read flag, assume routing IS pending.
+    // But check if the file is stale via stat — prevents indefinite blocking
+    // from transient errors (EMFILE, EIO) or permanent errors (EACCES).
+    try {
+      const stat = fs.statSync(ROUTING_FLAG_PATH);
+      const age = Date.now() - stat.mtimeMs;
+      if (age > ROUTING_FLAG_TTL_MS) {
+        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+        return false; // Stale flag — don't block
+      }
+    } catch {
+      // statSync also failed — truly can't access the file
+    }
     return true;
   }
 }
@@ -301,6 +318,11 @@ function checkRoutingGate(toolName) {
  * Increment the stop-attempt counter in the routing flag.
  * Used by the Stop hook instead of clearing the flag outright,
  * giving the AI multiple chances to comply before giving up.
+ *
+ * NOTE: Read-modify-write is not atomic — concurrent Stop hooks can lose increments.
+ * This is acceptable: worst case is one extra attempt before clearing. The TTL-based
+ * stale cleanup in isRoutingPending() provides the ultimate safety net.
+ *
  * @param {number} maxAttempts - Max attempts before clearing for real
  * @returns {{ cleared: boolean, attempts: number }}
  */
@@ -309,7 +331,9 @@ function incrementStopAttempts(maxAttempts = 3) {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
     const data = safeJsonParseString(content, { timestamp: new Date().toISOString() });
 
-    const attempts = (data.stopAttempts || 0) + 1;
+    // Validate counter to prevent manipulation (Infinity/NaN would bypass maxAttempts)
+    const rawAttempts = data.stopAttempts;
+    const attempts = (Number.isFinite(rawAttempts) && rawAttempts >= 0 ? Math.floor(rawAttempts) : 0) + 1;
     if (attempts >= maxAttempts) {
       // Max retries reached — clear flag to prevent infinite loop
       try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
@@ -319,9 +343,10 @@ function incrementStopAttempts(maxAttempts = 3) {
       return { cleared: true, attempts };
     }
 
-    // Increment counter — flag stays active
-    data.stopAttempts = attempts;
-    fs.writeFileSync(ROUTING_FLAG_PATH, JSON.stringify(data), 'utf-8');
+    // Increment counter — flag stays active. Reconstruct object to avoid passing through
+    // unexpected keys from the parsed payload.
+    const updated = { timestamp: data.timestamp || new Date().toISOString(), pid: process.pid, stopAttempts: attempts };
+    fs.writeFileSync(ROUTING_FLAG_PATH, JSON.stringify(updated), 'utf-8');
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Stop attempt ${attempts}/${maxAttempts}`);
     }
