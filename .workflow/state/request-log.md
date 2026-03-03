@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-206 | 2026-03-04 04:30
+**Type**: fix
+**Tags**: #fix:core #hook:routing-gate #hook:pre-tool-use #bug:chained-skills
+**Task**: wf-6e9967fc
+**Request**: "Fix routing gate blocking when /wogi-start chains to /wogi-extract-review"
+**Result**: Added "routing-cleared" marker mechanism to routing-gate.js. When clearRoutingPending() runs (on /wogi-* Skill invocation), it writes a short-lived marker file (5-min TTL). setRoutingPending() and isRoutingPending() check for this marker and skip/return-false when present. This prevents UserPromptSubmit from re-setting the routing flag during chained skill execution. Also added .routing-cleared to ALWAYS_STALE_PATTERNS in session-context.js for state folder hygiene.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/core/session-context.js
+
 ### R-205 | 2026-03-04 04:00
 **Type**: new
 **Tags**: #feature:core #hook:session-end #hook:session-context #module:state-hygiene

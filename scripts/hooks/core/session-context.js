@@ -146,6 +146,7 @@ const STALE_THRESHOLD_DAYS = 7;
 /** Patterns that are ALWAYS stale regardless of age */
 const ALWAYS_STALE_PATTERNS = [
   /^\.routing-pending-pid-/,   // PID-specific lock files from crashed sessions
+  /^\.routing-cleared/,        // Routing cleared markers (TTL-managed, safe to clean)
 ];
 
 /**

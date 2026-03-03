@@ -32,6 +32,16 @@ const ROUTING_FLAG_PATH = SESSION_ID
   ? path.join(PATHS.state, `.routing-pending-${SESSION_ID}`)
   : path.join(PATHS.state, '.routing-pending');
 
+// "Routing cleared" marker — prevents re-setting the flag during skill execution.
+// When /wogi-start chains to /wogi-extract-review, the skill expansion text triggers
+// UserPromptSubmit which would re-set the routing flag. The cleared marker prevents this.
+const ROUTING_CLEARED_PATH = SESSION_ID
+  ? path.join(PATHS.state, `.routing-cleared-${SESSION_ID}`)
+  : path.join(PATHS.state, '.routing-cleared');
+
+// TTL for the cleared marker — 5 minutes is enough for any skill chain to complete
+const ROUTING_CLEARED_TTL_MS = 5 * 60 * 1000;
+
 /**
  * Check if routing gate is enabled in config
  * @returns {boolean}
@@ -69,8 +79,33 @@ function hasActiveTask() {
 }
 
 /**
+ * Check if routing was recently cleared (a /wogi-* skill is executing).
+ * Prevents re-setting the flag during chained skill execution.
+ * @returns {boolean}
+ */
+function isRoutingRecentlyCleared() {
+  try {
+    const content = fs.readFileSync(ROUTING_CLEARED_PATH, 'utf-8');
+    const data = safeJsonParseString(content, {});
+    if (data.timestamp) {
+      const age = Date.now() - new Date(data.timestamp).getTime();
+      if (age < ROUTING_CLEARED_TTL_MS) {
+        return true;
+      }
+      // Stale marker — clean up
+      try { fs.unlinkSync(ROUTING_CLEARED_PATH); } catch { /* ignore */ }
+    }
+    return false;
+  } catch (err) {
+    if (err.code === 'ENOENT') return false;
+    return false;
+  }
+}
+
+/**
  * Set the routing-pending flag (called by UserPromptSubmit)
  * Only sets if no active task exists and routing gate is enabled.
+ * Also skips if routing was recently cleared (skill chain in progress).
  * @returns {{ set: boolean, reason: string }}
  */
 function setRoutingPending() {
@@ -80,6 +115,16 @@ function setRoutingPending() {
 
   if (hasActiveTask()) {
     return { set: false, reason: 'active_task_exists' };
+  }
+
+  // Check if a /wogi-* skill recently cleared routing — don't re-set during skill chains.
+  // When /wogi-start chains to /wogi-extract-review, the skill expansion text triggers
+  // UserPromptSubmit. Without this check, the flag gets re-set and blocks subsequent tools.
+  if (isRoutingRecentlyCleared()) {
+    if (process.env.DEBUG) {
+      console.error('[routing-gate] Skipping flag set — routing recently cleared (skill chain active)');
+    }
+    return { set: false, reason: 'routing_recently_cleared' };
   }
 
   try {
@@ -119,17 +164,32 @@ function clearRoutingPending() {
     if (process.env.DEBUG) {
       console.error('[routing-gate] Cleared routing-pending flag');
     }
-    return { cleared: true, reason: 'flag_cleared' };
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      return { cleared: false, reason: 'no_flag_existed' };
+    if (err.code !== 'ENOENT') {
+      if (process.env.DEBUG) {
+        console.error(`[routing-gate] Failed to clear flag: ${err.message}`);
+      }
     }
-    if (process.env.DEBUG) {
-      console.error(`[routing-gate] Failed to clear flag: ${err.message}`);
-    }
-    // Fail-open: if can't delete flag, don't block future calls
-    return { cleared: false, reason: 'delete_error' };
   }
+
+  // Write "routing-cleared" marker to prevent re-setting during skill chains.
+  // Even if the unlink above failed, the marker prevents setRoutingPending() and
+  // isRoutingPending() from blocking tools during an active skill execution.
+  try {
+    fs.writeFileSync(ROUTING_CLEARED_PATH, JSON.stringify({
+      timestamp: new Date().toISOString(),
+      pid: process.pid
+    }), 'utf-8');
+    if (process.env.DEBUG) {
+      console.error('[routing-gate] Wrote routing-cleared marker');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] Failed to write cleared marker: ${err.message}`);
+    }
+  }
+
+  return { cleared: true, reason: 'flag_cleared' };
 }
 
 // Max age for routing flag before it's considered stale (30 minutes)
@@ -142,6 +202,16 @@ const ROUTING_FLAG_TTL_MS = 30 * 60 * 1000;
  * @returns {boolean}
  */
 function isRoutingPending() {
+  // Check cleared marker FIRST — if routing was recently cleared by a /wogi-* skill,
+  // the flag should be considered inactive even if it was re-set by a stale
+  // UserPromptSubmit during skill execution.
+  if (isRoutingRecentlyCleared()) {
+    if (process.env.DEBUG) {
+      console.error('[routing-gate] Routing recently cleared — flag overridden');
+    }
+    return false;
+  }
+
   try {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
     // Check TTL — stale flags from crashed sessions shouldn't block
@@ -272,7 +342,9 @@ module.exports = {
   setRoutingPending,
   clearRoutingPending,
   isRoutingPending,
+  isRoutingRecentlyCleared,
   checkRoutingGate,
   incrementStopAttempts,
-  ROUTING_FLAG_PATH
+  ROUTING_FLAG_PATH,
+  ROUTING_CLEARED_PATH
 };
