@@ -1404,6 +1404,10 @@
       "taskCompleted": {
         "enabled": false
       },
+      "completionSummaries": {
+        "enabled": true,
+        "_comment": "Auto-generates a structured summary file at .workflow/completed/<feature>/wf-XXXXXXXX-completed.md when a task completes. Non-blocking — failures never prevent task completion."
+      },
       "configChange": {
         "enabled": false,
         "_comment": "Mid-session config change detection. Re-syncs bridge when .workflow/config.json changes."

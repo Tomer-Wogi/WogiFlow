@@ -206,6 +206,20 @@ async function handleTaskCompleted(input) {
       // Non-critical - memory DB may not be available
     }
 
+    // Generate completion summary (fire-and-forget)
+    if (result.completed) {
+      try {
+        const { generateCompletionSummary } = require('../../flow-task-completion-summary');
+        generateCompletionSummary(completedTask, input).catch((err) => {
+          if (process.env.DEBUG) {
+            console.error(`[Task Completed] Summary generation failed: ${err.message}`);
+          }
+        });
+      } catch {
+        // Non-critical - summary generator may not be available
+      }
+    }
+
     // Auto-scan all active registries if configured (fire-and-forget)
     try {
       const { RegistryManager } = require('../../flow-registry-manager');

@@ -5,6 +5,17 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-c9530a01",
+      "title": "Add task completion summaries",
+      "type": "feature",
+      "feature": "general",
+      "status": "completed",
+      "priority": "P2",
+      "createdAt": "2026-03-03T18:00:00.000Z",
+      "startedAt": "2026-03-03T18:05:00.000Z",
+      "completedAt": "2026-03-03T18:25:00.000Z"
+    },
+    {
       "id": "wf-cr-2692db",
       "title": "Fix 27 review findings from plugin registration system",
       "type": "fix",

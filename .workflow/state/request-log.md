@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-200 | 2026-03-03 18:25
+**Type**: new
+**Tags**: #feature:general #component:completion-summary #hook:task-completed
+**Request**: "Add task completion summaries — auto-generate a structured summary file when tasks complete"
+**Result**: Created `flow-task-completion-summary.js` with summary generation logic. Modified `task-completed.js` hook to call it as fire-and-forget. Added `completionSummaries` config key under `hooks.rules`. Summaries written to `.workflow/completed/<feature>/wf-XXXXXXXX-completed.md` with: acceptance criteria pass/fail, files changed, verification results, review findings, lessons learned.
+**Files**: scripts/flow-task-completion-summary.js, scripts/hooks/core/task-completed.js, .workflow/config.json, .workflow/changes/general/wf-c9530a01.md
+
 ### R-199 | 2026-03-03 15:00
 **Type**: fix
 **Tags**: #feature:plugin-system #component:plugin-registry #review
