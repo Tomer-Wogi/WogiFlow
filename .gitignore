@@ -29,35 +29,14 @@ mcp-memory-server/node_modules/
 # These are created from templates on npm install
 # ===========================================
 
-# State files
-.workflow/state/ready.json
-.workflow/state/request-log.md
-.workflow/state/progress.md
-.workflow/state/session-state.json
-.workflow/state/knowledge-sync.json
-# Legacy locations (deprecated in v1.0.4 - will be removed in v2.0)
-.workflow/state/architecture.md
-.workflow/state/stack.md
-.workflow/state/testing.md
-
-# New locations (v1.0.4+)
-.workflow/specs/architecture.md
-.workflow/specs/stack.md
-.workflow/specs/testing.md
-.workflow/state/durable-history.json
-.workflow/state/hybrid-session.json
-.workflow/state/gate-confidence.json
-.workflow/state/export-map.json
-.workflow/state/hybrid-context.md
-.workflow/state/component-index.json
-.workflow/state/app-map.md
-.workflow/state/decisions.md
-.workflow/state/feedback-patterns.md
-.workflow/state/durable-*.json
-.workflow/state/bridge-sync.json
-
-# Digest sessions (transcript processing) - legacy location
-.workflow/state/digests/
+# State files — catch-all (all runtime state is user-specific)
+.workflow/state/*
+# Keep templates (shipped with npm, used by installer)
+!.workflow/state/*.template
+# Keep subdirectory structures (shipped with npm)
+!.workflow/state/task-types/
+!.workflow/state/model-profiles/
+!.workflow/state/components/
 
 # Temp processing files (long input processing)
 .workflow/tmp/
@@ -77,8 +56,14 @@ mcp-memory-server/node_modules/
 .workflow/specs/**
 !.workflow/specs/.gitkeep
 
+# Completed task summaries (generated at task completion)
+.workflow/completed/
+
 # Internal roadmap
 .workflow/roadmap/roadmap.md
+
+# Plans (strategic initiatives)
+.workflow/plans/
 
 # ===========================================
 # User-specific settings (Claude Code)
@@ -99,16 +84,6 @@ mcp-memory-server/node_modules/
 .claude/docs/architecture.md
 .claude/docs/stack.md
 .claude/docs/testing.md
-.workflow/state/task-queue.json
-.workflow/plans/
-.workflow/state/research-cache.json
 
 # Team connection (contains tokens - never commit)
 .workflow/team-connection.json
-
-# Team state files (deprecated)
-.workflow/state/team-state.json
-.workflow/state/offline-queue.json
-.workflow/state/sync-daemon.*
-.workflow/state/sync-state.json
-.workflow/state/knowledge-sync.json

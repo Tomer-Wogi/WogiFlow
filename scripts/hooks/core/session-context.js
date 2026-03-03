@@ -19,6 +19,59 @@ const { findParallelizable, getParallelConfig } = require('../../flow-parallel')
 const { getBypassTracking } = require('../../flow-session-state');
 
 /**
+ * Clean up stale/orphan files from .workflow/state/ on session start.
+ * Removes known transient files that accumulate when sessions crash or are force-quit.
+ * Never removes essential state files — only files matching known stale patterns.
+ *
+ * @returns {{ cleaned: number, files: string[] }} Cleanup result
+ */
+function cleanStaleFiles() {
+  const config = getConfig();
+  if (config.hooks?.rules?.sessionCleanup?.enabled === false) {
+    return { cleaned: 0, files: [] };
+  }
+
+  const stateDir = PATHS.state;
+  const cleaned = [];
+
+  // Known stale file patterns (transient markers and lock files)
+  const stalePatterns = [
+    /^\.routing-pending-pid-/,   // PID-specific lock files from crashed sessions
+    /^\.claude-md-regen-version$/ // Transient CLAUDE.md regeneration marker
+  ];
+
+  try {
+    const entries = fs.readdirSync(stateDir);
+    for (const entry of entries) {
+      for (const pattern of stalePatterns) {
+        if (pattern.test(entry)) {
+          try {
+            const filePath = path.join(stateDir, entry);
+            const stat = fs.statSync(filePath);
+            // Only remove files, never directories
+            if (stat.isFile()) {
+              fs.unlinkSync(filePath);
+              cleaned.push(entry);
+            }
+          } catch {
+            // Skip files we can't remove (permissions, already deleted, etc.)
+          }
+          break;
+        }
+      }
+    }
+  } catch {
+    // readdirSync failed — state dir may not exist yet
+  }
+
+  if (cleaned.length > 0 && process.env.DEBUG) {
+    console.error(`[session-context] Cleaned ${cleaned.length} stale file(s): ${cleaned.join(', ')}`);
+  }
+
+  return { cleaned: cleaned.length, files: cleaned };
+}
+
+/**
  * Detect if Claude Code is running in SIMPLE mode.
  * SIMPLE mode (CLAUDE_CODE_SIMPLE=true) disables hooks, MCP, and CLAUDE.md.
  * When detected, WogiFlow enforcement is silently broken.
@@ -234,6 +287,13 @@ async function gatherSessionContext(options = {}) {
       enabled: false,
       context: null
     };
+  }
+
+  // Clean up stale files from previous sessions (fire-and-forget)
+  try {
+    cleanStaleFiles();
+  } catch {
+    // Non-critical — never block session start
   }
 
   const context = {
@@ -611,6 +671,7 @@ function formatContextForInjection(context) {
 module.exports = {
   isSessionContextEnabled,
   detectSimpleMode,
+  cleanStaleFiles,
   getSuspendedTask,
   getCurrentTask,
   getPendingTaskSummary,

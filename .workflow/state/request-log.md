@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-201 | 2026-03-03 19:30
+**Type**: fix
+**Tags**: #feature:general #hygiene:state-folder #hook:session-start #installer
+**Task**: wf-23ec374a
+**Request**: "Fix state folder hygiene — gitignore catch-all, prompt-history template, stale file cleanup"
+**Result**: Replaced individual .gitignore entries with `.workflow/state/*` catch-all + exclusions for templates/subdirs. Created `prompt-history.json.template`. Added prompt-history to both `lib/installer.js` and `scripts/postinstall.js`. Added `cleanStaleFiles()` to session-context.js that removes `.routing-pending-pid-*` and `.claude-md-regen-version` on session start. Added `sessionCleanup` config toggle.
+**Files**: `.gitignore`, `lib/installer.js`, `scripts/postinstall.js`, `scripts/hooks/core/session-context.js`, `.workflow/config.json`, `.workflow/state/prompt-history.json.template`
+
 ### R-200 | 2026-03-03 18:25
 **Type**: new
 **Tags**: #feature:general #component:completion-summary #hook:task-completed

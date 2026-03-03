@@ -5,6 +5,17 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-23ec374a",
+      "title": "Fix state folder hygiene",
+      "type": "fix",
+      "feature": "general",
+      "status": "completed",
+      "priority": "P1",
+      "createdAt": "2026-03-03T19:00:00.000Z",
+      "startedAt": "2026-03-03T19:00:00.000Z",
+      "completedAt": "2026-03-03T19:30:00.000Z"
+    },
+    {
       "id": "wf-c9530a01",
       "title": "Add task completion summaries",
       "type": "feature",

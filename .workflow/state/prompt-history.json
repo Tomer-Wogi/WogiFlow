@@ -2405,6 +2405,132 @@
         "content": "/wogi-review ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T11:49:06.567Z",
+        "content": "Commit changes, do a very small bump in the reales",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T11:49:10.739Z",
+        "content": "I just want for the models comparison it's not based on like correct style first try complete this is amazing we need it but like it needs to be per task type like the granular we can get is better so when there is a task a specific task let's add a fix all the exports let's restyle from styled components objects to this kind of style like we'll know which one can handle it the best \n\nI've made a lot of changes to RogiFlow learning for models and for everything else so please re-review all the learning paths and all the things that we can learn while using models use it with my previous sensor, adjust the plan and create a plan to develop this testing repo \n\n",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T12:08:06.754Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T12:08:57.782Z",
+        "content": "Yes, should we move to another folder on my computer to do it? it's not a park of wogi-flow\n/Users/tomergilboa/Developer/wogiflow-test let's do it here",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T12:32:06.261Z",
+        "content": "Can I just tell you to develop everything and you will develop it to that folder? After that I'll switch to that folder and install WogiFlow there to help us develop the test folder if needed. But for now let's just do phases 2 to 4 from here to that folder. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T13:35:28.322Z",
+        "content": "What do you recommend to let you do the wogiflow review now about everything that was done or should I install wogiflow on that folder or on that repo because it's supposed to be a separate repo and then do the audit ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T14:19:06.572Z",
+        "content": "I just installed Wogi Flow on another project and it went out to contact 7 to create a few skills. Weren't we supposed to add 30 pre-built skills with each Wogi Flow installation? Because I see one of the skills there is TypeScript. So just make sure that we do have it and we do support it so we can avoid the large token consumption. \n\nMCP_DOCKER - get-library-docs (MCP)(context7CompatibleLibraryID: \"/tj/commander.js\", topic: \"commands options    \n                                     arguments parsing\", tokens: 5000)                                             \n  ⎿  ⚠ Large MCP response (~12.7k tokens), this can fill up context quickly                                        \n  ⎿  ### Resolve Commander.js Ambiguity with '--'                                                                \n                                                                                                                   \n     Source: https://github.com/tj/commander.js/blob/master/docs/options-in-depth.md                               \n     … +481 lines (ctrl+o to expand)                                                                               \n                                                                                                                  \n⏺ MCP_DOCKER - get-library-docs (MCP)(context7CompatibleLibraryID: \"/anthropics/anthropic-sdk-typescript\", topic:\n                                     \"messages streaming tool use\", tokens: 5000)                                  \n  ⎿  ⚠ Large MCP response (~11.3k tokens), this can fill up context quickly                                        \n  ⎿  ### Stream Messages with MessageStream - TypeScript                                                          \n                                                                                                                   \n     Source: https://github.com/anthropics/anthropic-sdk-typescript/blob/main/helpers.md                  \n     … +426 lines (ctrl+o to expand)                                                                               \n                                                                                                                \n⏺ MCP_DOCKER - get-library-docs (MCP)(context7CompatibleLibraryID: \"/openai/openai-node\", topic: \"chat completions \n                                     streaming\", tokens: 5000)                                                     \n  ⎿  ⚠ Large MCP response (~11.8k tokens), this can fill up context quickly                                        \n  ⎿  ### Streaming Chat Completions                                                                                \n                                                                                         ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-02T15:02:30.604Z",
+        "content": "commit Someone just unborded a new project and it created a lot of tasks using the hash signal but at the end it created a few WF-health tasks. I think we said that we're not going to use WF-11 anywhere. We need a convention for naming tasks. This was part of the onboarding health",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:12:24.667Z",
+        "content": "I just saw a video showing how they use a new Figma plugin to send designs that were generated using cloud code to Figma and then also being able to implement it back. This is the plugin /plugin install figma@claude-plugin-desktop In the video he just writes send it to Figma and then it sends everything like all the designs to Figma It creates a file there and like everything works great What I wanted to do or consult with you is that we want everything when using wogiflow we want everything to go through wogistart. Maybe when you when user adds plugins like this we can register them or at least give them an option to like command like register and those plugins would be added to the things wogistart can do so like wogistart can like you added a plugin for Figma we understand what it can do and we give wogistart the capability to trigger those commands let me know what you think if it's feasible how hard is it and what is the best approach if it's possible ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:23:59.632Z",
+        "content": "It doesn't sound like the option B is that difficult and I would already prefer having the config plugins registered like a dedicated file for it. Let's just try figuring out ourselves what the plugins can do even if we need to go online to search for it instead of asking the user. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:29:23.721Z",
+        "content": "Why are you researching Figma? This is not only for the Figma plugin. This is something that needs to happen for all plugins regardless. After this would be implemented, when I'll register the plugin, then it will go to Figma to get the information it needs. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:33:48.152Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:34:51.317Z",
+        "content": "another thing I just thought about we already have when you start a session there are hooks that are supposed to check for to sync and check for updates maybe we can run a scan when you open a cloud and and the wogi register will work automatically like if you install it in the middle of a session you'll need to invoke it yourself but if you did not once you will restart it will see it for himself what do you think ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T10:37:31.081Z",
+        "content": "yes update the story and then you can develop ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T11:01:07.866Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T12:18:04.220Z",
+        "content": "commit and create a release ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T12:22:44.810Z",
+        "content": "review this article and let me know what you think when you compare to wogiflow approach /Users/tomergilboa/Downloads/Evaluating-AGENTS.pdf ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T12:49:20.216Z",
+        "content": "What do you think about: create another folder for copmpleted tasks with a summary of what was done using the same original story naming with something addiotnal, what do you think about that?",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T12:55:05.783Z",
+        "content": "Let's go with A",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T13:15:20.481Z",
+        "content": "Someone at my team installed wogiflow when he wanted to see what prompt he did yesterday to compare it to the result but he did not have the prompt history.json can you tell me why it is? plus look at the project that I'm working on, the state folder itself, it looks like we have a lot of files that shouldn't be here the cloudmd.regen version, routing pending like a lot of files that I'm not sure I'm supposed to be here /Users/tomergilboa/Developer/wogi-hub/.workflow/state ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T13:26:00.255Z",
+        "content": "1. yes Let's make sure that we have a template and everything is set up properly. \n2. Add them to gitignore plus you can I don't know maybe we can just add The entire folder to gitignore like the workflow folder if it's not necessary or state or I don't know think about it also Extend the session end or session start or whatever to clean up unnecessary files It doesn't like we need to always make sure that there's no files that Claude and itself decided to create that creep in and then stay there and ",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0

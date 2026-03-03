@@ -109,6 +109,15 @@ function createMinimalStructure() {
       recentlyCompleted: []
     }, null, 2), { mode: FILE_MODE });
   }
+
+  // Create prompt-history.json (so prompt history works from first session)
+  const promptHistoryPath = path.join(STATE_DIR, 'prompt-history.json');
+  if (!fs.existsSync(promptHistoryPath)) {
+    fs.writeFileSync(promptHistoryPath, JSON.stringify({
+      prompts: [],
+      version: 1
+    }, null, 2), { mode: FILE_MODE });
+  }
 }
 
 /**

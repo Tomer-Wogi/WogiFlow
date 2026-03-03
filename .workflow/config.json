@@ -1415,6 +1415,10 @@
       "phaseGate": {
         "enabled": true,
         "_comment": "State machine workflow enforcement. Controls which tools are available in each workflow phase (idle, routing, exploring, spec_review, coding, validating, completing). Stale phases auto-expire after 2 hours."
+      },
+      "sessionCleanup": {
+        "enabled": true,
+        "_comment": "Cleans stale/orphan files from .workflow/state/ on session start. Removes PID lock files and transient markers left by crashed sessions."
       }
     },
     "claudeCode": {
