@@ -43,10 +43,8 @@ const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const REGEN_TIMEOUT = parseInt(process.env.WOGIFLOW_REGEN_TIMEOUT, 10) || 15000;
 
 /**
- * Safe JSON parse with shallow prototype pollution protection.
- * Checks top-level keys only — sufficient for config/settings objects
- * which are flat structures (hooks, version, flags). Nested pollution
- * would require a recursive check, but our configs don't nest untrusted data.
+ * Safe JSON parse with recursive prototype pollution protection.
+ * Checks all nested keys — prevents deep prototype pollution attacks.
  *
  * Inline copy — postinstall.js can't reliably require flow-utils.js
  * because it runs from npm context before scripts/ is fully copied.
@@ -60,16 +58,33 @@ function safeJsonParseString(jsonString, defaultValue = null) {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       return defaultValue;
     }
-    // Check top-level keys only (shallow) — see JSDoc for rationale
-    for (const key of Object.keys(parsed)) {
-      if (DANGEROUS_KEYS.has(key)) {
-        return defaultValue;
-      }
+    if (hasDangerousKeys(parsed)) {
+      return defaultValue;
     }
     return parsed;
   } catch (err) {
     return defaultValue;
   }
+}
+
+/**
+ * Recursively check an object for dangerous prototype-polluting keys.
+ * @param {*} obj - Object to check
+ * @returns {boolean} True if dangerous keys found
+ */
+function hasDangerousKeys(obj) {
+  if (typeof obj !== 'object' || obj === null) return false;
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      if (hasDangerousKeys(item)) return true;
+    }
+    return false;
+  }
+  for (const key of Object.keys(obj)) {
+    if (DANGEROUS_KEYS.has(key)) return true;
+    if (hasDangerousKeys(obj[key])) return true;
+  }
+  return false;
 }
 
 /**
@@ -110,13 +125,32 @@ function createMinimalStructure() {
     }, null, 2), { mode: FILE_MODE });
   }
 
-  // Create prompt-history.json (so prompt history works from first session)
+  // Create prompt-history.json from template (so prompt history works from first session)
   const promptHistoryPath = path.join(STATE_DIR, 'prompt-history.json');
   if (!fs.existsSync(promptHistoryPath)) {
-    fs.writeFileSync(promptHistoryPath, JSON.stringify({
-      prompts: [],
-      version: 1
-    }, null, 2), { mode: FILE_MODE });
+    const templatePath = path.join(STATE_DIR, 'prompt-history.json.template');
+    try {
+      const rawContent = fs.existsSync(templatePath)
+        ? fs.readFileSync(templatePath, 'utf-8')
+        : JSON.stringify({ prompts: [], version: 1 }, null, 2);
+      // Validate template is valid JSON before writing (with proto check)
+      const parsed = JSON.parse(rawContent);
+      if (parsed && typeof parsed === 'object') {
+        for (const k of Object.keys(parsed)) {
+          if (k === '__proto__' || k === 'constructor' || k === 'prototype') delete parsed[k];
+        }
+      }
+      fs.writeFileSync(promptHistoryPath, JSON.stringify(parsed, null, 2), { mode: FILE_MODE });
+    } catch (err) {
+      // Template was corrupted or unreadable — log for debugging, use fallback
+      if (process.env.DEBUG) {
+        console.error(`[postinstall] Template corruption at ${templatePath}: ${err.message}`);
+      }
+      fs.writeFileSync(promptHistoryPath, JSON.stringify({
+        prompts: [],
+        version: 1
+      }, null, 2), { mode: FILE_MODE });
+    }
   }
 }
 

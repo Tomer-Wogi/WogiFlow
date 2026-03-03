@@ -33,6 +33,7 @@ mcp-memory-server/node_modules/
 .workflow/state/*
 # Keep templates (shipped with npm, used by installer)
 !.workflow/state/*.template
+!.workflow/state/**/*.template
 # Keep subdirectory structures (shipped with npm)
 !.workflow/state/task-types/
 !.workflow/state/model-profiles/

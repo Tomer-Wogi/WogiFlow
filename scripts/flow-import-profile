@@ -236,6 +236,7 @@ if [ "$SCAN_MODE" = true ]; then
 
     EXTRACTOR_OPTS="--format json --with-conflicts --analysis-mode $ANALYSIS_MODE"
 
+    # shellcheck disable=SC2086 — intentional word splitting for multiple flags
     if ! node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_FILE" --project "$SCAN_PATH" 2>/dev/null; then
         echo -e "${RED}Error: Pattern extraction failed${NC}"
         rm -rf "$TEMP_DIR"
@@ -781,6 +782,11 @@ if [ -f "$PROFILE_DIR/.workflow/state/app-map.md" ]; then
     echo -e "  ${YELLOW}→${NC} app-map.md ${DIM}(will ask)${NC}"
 fi
 
+# API MAP (optional — includes data-fetching hooks)
+if [ -f "$PROFILE_DIR/.workflow/state/api-map.md" ]; then
+    echo -e "  ${YELLOW}→${NC} api-map.md ${DIM}(will ask)${NC}"
+fi
+
 echo ""
 
 # Dry run stops here
@@ -862,20 +868,107 @@ if [ -f "$PROFILE_DIR/.workflow/config.json" ]; then
     fi
 fi
 
-# decisions.md (append if exists)
+# decisions.md (smart merge if exists)
 if [ "$SKIP_RULES" != true ] && [ -f "$PROFILE_DIR/.workflow/state/decisions.md" ]; then
     mkdir -p "$WORKFLOW_DIR/state"
     if [ -f "$WORKFLOW_DIR/state/decisions.md" ]; then
-        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "---" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "## Imported from profile" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "Source: $(basename "$PROFILE_FILE")" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "Imported: $(date +%Y-%m-%d)" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo "" >> "$WORKFLOW_DIR/state/decisions.md"
-        # Skip the header from the imported file
-        tail -n +3 "$PROFILE_DIR/.workflow/state/decisions.md" >> "$WORKFLOW_DIR/state/decisions.md"
-        echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(appended)${NC}"
+        PROFILE_SOURCE=$(basename "$PROFILE_FILE")
+
+        # Check for conflicts first
+        CONFLICT_JSON=$(node "$SCRIPT_DIR/flow-decisions-merge.js" list-conflicts \
+            "$WORKFLOW_DIR/state/decisions.md" \
+            "$PROFILE_DIR/.workflow/state/decisions.md" 2>/dev/null || echo '{"summary":{"conflicting":0}}')
+        CONFLICT_COUNT=$(echo "$CONFLICT_JSON" | node -e "let d='';process.stdin.setEncoding('utf-8');process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).summary.conflicting)}catch{console.log(0)}})")
+
+        # Validate CONFLICT_COUNT is a number before comparison
+        if ! [[ "$CONFLICT_COUNT" =~ ^[0-9]+$ ]]; then
+            CONFLICT_COUNT=0
+        fi
+        if [ "$CONFLICT_COUNT" -gt 0 ]; then
+            echo ""
+            echo -e "${YELLOW}Found ${CONFLICT_COUNT} conflicting section(s) in decisions.md${NC}"
+            echo -e "${DIM}Sections that exist in both your project and the imported profile.${NC}"
+            echo ""
+            echo "  How should conflicts be resolved?"
+            echo ""
+            echo "  1) Import wins (recommended)"
+            echo "     Imported rules override existing on conflict."
+            echo "     Rules not addressed by the import are preserved."
+            echo ""
+            echo "  2) Resolve manually"
+            echo "     For each conflict, choose which version to keep."
+            echo ""
+            echo "  3) Replace entirely"
+            echo "     Overwrite decisions.md with the imported file."
+            echo ""
+            read -p "  Choose (1/2/3): " MERGE_CHOICE
+
+            case "$MERGE_CHOICE" in
+                1)
+                    node "$SCRIPT_DIR/flow-decisions-merge.js" import-wins \
+                        "$WORKFLOW_DIR/state/decisions.md" \
+                        "$PROFILE_DIR/.workflow/state/decisions.md" \
+                        --output "$WORKFLOW_DIR/state/decisions.md" \
+                        --source "$PROFILE_SOURCE"
+                    echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(merged — import wins on ${CONFLICT_COUNT} conflict(s))${NC}"
+                    ;;
+                2)
+                    # Show each conflict and ask user to choose
+                    # Use a Node.js subprocess for the entire interactive resolution
+                    # to avoid bash subshell variable-loss bugs with piped while-loops
+                    RESOLUTIONS_FILE=$(mktemp)
+                    node -e "
+                        const readline = require('readline');
+                        const fs = require('fs');
+                        const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+                        const conflicts = JSON.parse(process.argv[1]).conflicts || [];
+                        const resolutions = {};
+                        let i = 0;
+                        function askNext() {
+                            if (i >= conflicts.length) {
+                                fs.writeFileSync(process.argv[2], JSON.stringify(resolutions, null, 2));
+                                rl.close();
+                                return;
+                            }
+                            const c = conflicts[i];
+                            process.stderr.write('\n  Conflict: ' + c.existingHeader + '\n');
+                            process.stderr.write('    1) Keep existing version\n');
+                            process.stderr.write('    2) Use imported version\n');
+                            rl.question('    Choose (1/2): ', (answer) => {
+                                resolutions[c.key] = answer === '1' ? 'existing' : 'imported';
+                                i++;
+                                askNext();
+                            });
+                        }
+                        askNext();
+                    " "$CONFLICT_JSON" "$RESOLUTIONS_FILE" </dev/tty 2>&1
+
+                    node "$SCRIPT_DIR/flow-decisions-merge.js" manual \
+                        "$WORKFLOW_DIR/state/decisions.md" \
+                        "$PROFILE_DIR/.workflow/state/decisions.md" \
+                        --resolutions "$RESOLUTIONS_FILE" \
+                        --output "$WORKFLOW_DIR/state/decisions.md" \
+                        --source "$PROFILE_SOURCE"
+                    rm -f "$RESOLUTIONS_FILE"
+                    echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(merged — manual resolution)${NC}"
+                    ;;
+                3)
+                    cp "$PROFILE_DIR/.workflow/state/decisions.md" "$WORKFLOW_DIR/state/decisions.md"
+                    echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(replaced entirely)${NC}"
+                    ;;
+                *)
+                    echo -e "  ${YELLOW}⚠${NC} decisions.md ${DIM}(skipped — invalid choice)${NC}"
+                    ;;
+            esac
+        else
+            # No conflicts — safe to merge (all sections are new additions)
+            node "$SCRIPT_DIR/flow-decisions-merge.js" import-wins \
+                "$WORKFLOW_DIR/state/decisions.md" \
+                "$PROFILE_DIR/.workflow/state/decisions.md" \
+                --output "$WORKFLOW_DIR/state/decisions.md" \
+                --source "$PROFILE_SOURCE"
+            echo -e "  ${GREEN}✓${NC} decisions.md ${DIM}(merged — no conflicts)${NC}"
+        fi
     else
         cp "$PROFILE_DIR/.workflow/state/decisions.md" "$WORKFLOW_DIR/state/"
         echo -e "  ${GREEN}✓${NC} decisions.md"
@@ -1021,6 +1114,25 @@ if [ -f "$PROFILE_DIR/.workflow/state/app-map.md" ]; then
             echo -e "  ${GREEN}✓${NC} app-map.md"
         else
             echo -e "  ${DIM}⊘${NC} app-map.md ${DIM}(skipped)${NC}"
+        fi
+    fi
+fi
+
+# Api-map (ask before importing — includes data-fetching hooks section)
+if [ -f "$PROFILE_DIR/.workflow/state/api-map.md" ]; then
+    if [ "$FORCE" = true ]; then
+        mkdir -p "$WORKFLOW_DIR/state"
+        cp "$PROFILE_DIR/.workflow/state/api-map.md" "$WORKFLOW_DIR/state/"
+        echo -e "  ${GREEN}✓${NC} api-map.md"
+    else
+        echo ""
+        read -p "Import api-map.md? (Includes API registry and data-fetching hooks) (y/N) " import_apimap
+        if [ "$import_apimap" = "y" ] || [ "$import_apimap" = "Y" ]; then
+            mkdir -p "$WORKFLOW_DIR/state"
+            cp "$PROFILE_DIR/.workflow/state/api-map.md" "$WORKFLOW_DIR/state/"
+            echo -e "  ${GREEN}✓${NC} api-map.md"
+        else
+            echo -e "  ${DIM}⊘${NC} api-map.md ${DIM}(skipped)${NC}"
         fi
     fi
 fi

@@ -50,6 +50,7 @@ async function handleTaskCompleted(input) {
   try {
     // Read-modify-write ready.json under lock to prevent concurrent corruption
     const readyPath = path.join(PATHS.state, 'ready.json');
+    // completedTask is set inside the lock callback and read after — intentional closure sharing
     let completedTask;
 
     await withLock(readyPath, async () => {
@@ -70,7 +71,7 @@ async function handleTaskCompleted(input) {
       // Try to match a specific task from input (supports parallel execution),
       // fall back to inProgress[0] when no identifying info is available
       const rawTaskId = input.taskId || input.toolInput?.taskId;
-      const inputTaskId = rawTaskId && validateTaskId(rawTaskId) ? rawTaskId : null;
+      const inputTaskId = rawTaskId && validateTaskId(rawTaskId).valid ? rawTaskId : null;
       if (inputTaskId) {
         completedTask = ready.inProgress.find(t => t.id === inputTaskId);
       }
@@ -93,7 +94,9 @@ async function handleTaskCompleted(input) {
       completedTask.completedAt = new Date().toISOString();
 
       // Remove from inProgress
-      ready.inProgress = ready.inProgress.filter(t => t.id !== completedTask.id);
+      ready.inProgress = ready.inProgress.filter(t =>
+        (typeof t === 'string' ? t : t.id) !== completedTask.id
+      );
 
       // Add to recentlyCompleted (at the beginning)
       if (!ready.recentlyCompleted) {
@@ -210,11 +213,10 @@ async function handleTaskCompleted(input) {
     if (result.completed) {
       try {
         const { generateCompletionSummary } = require('../../flow-task-completion-summary');
-        generateCompletionSummary(completedTask, input).catch((err) => {
-          if (process.env.DEBUG) {
-            console.error(`[Task Completed] Summary generation failed: ${err.message}`);
-          }
-        });
+        const summaryResult = generateCompletionSummary(completedTask, input);
+        if (process.env.DEBUG && !summaryResult.success) {
+          console.error(`[Task Completed] Summary generation: ${summaryResult.reason || 'unknown'}`);
+        }
       } catch {
         // Non-critical - summary generator may not be available
       }

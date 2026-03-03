@@ -15,6 +15,13 @@ const path = require('path');
 const { getProjectRoot } = require('./flow-utils');
 
 const PROJECT_ROOT = process.argv[2] || getProjectRoot();
+
+// Validate PROJECT_ROOT is a real directory (SEC007: prevents path injection via argv)
+if (!fs.existsSync(PROJECT_ROOT) || !fs.statSync(PROJECT_ROOT).isDirectory()) {
+  console.error(`Error: Invalid project root: ${PROJECT_ROOT}`);
+  process.exit(1);
+}
+
 const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
 
 // ============================================================
@@ -44,6 +51,32 @@ function detectUIFramework() {
 
     return null;
   } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect data-fetching library from package.json dependencies.
+ * Returns the primary data-fetching library name or null.
+ * @param {string} [projectRoot] - Project root (defaults to module-level PROJECT_ROOT)
+ */
+function detectDataFetchingLibrary(projectRoot) {
+  const packageJsonPath = path.join(projectRoot || PROJECT_ROOT, 'package.json');
+  if (!fs.existsSync(packageJsonPath)) return null;
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+    // Priority order: higher-level abstractions first, transport libs last
+    if (deps['@tanstack/react-query'] || deps['react-query']) return 'react-query';
+    if (deps['swr']) return 'swr';
+    if (deps['@apollo/client'] || deps['apollo-client']) return 'apollo';
+    if (deps['@trpc/react-query'] || deps['@trpc/client']) return 'trpc';
+    if (deps['axios']) return 'axios'; // Transport library — lowest priority
+
+    return null;
+  } catch (err) { // eslint-disable-line no-unused-vars
     return null;
   }
 }
@@ -97,9 +130,9 @@ function findFiles(dir, pattern, results = [], depth = 0) {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
 
-      // Skip common excluded directories
+      // Skip common excluded directories (including WogiFlow internals)
       if (entry.isDirectory()) {
-        if (['node_modules', '.git', 'dist', 'build', '.next', '.nuxt'].includes(entry.name)) continue;
+        if (['node_modules', '.git', 'dist', 'build', '.next', '.nuxt', '.workflow', '.claude'].includes(entry.name)) continue;
         findFiles(fullPath, pattern, results, depth + 1);
       } else if (pattern.test(entry.name)) {
         results.push(fullPath);
@@ -421,7 +454,7 @@ function generateWarnings(uiFramework, stylingApproach) {
         if (reactVersion && !reactVersion.includes('16.')) {
           warnings.push("Don't import React directly - use named imports (useState, useCallback)");
         }
-      } catch {}
+      } catch { /* package.json parse failure — skip React version check */ }
     }
   }
 
@@ -451,11 +484,8 @@ function detectExcludeDirectories() {
   // Check for monorepo structure and add internal packages
   const packagesDir = path.join(PROJECT_ROOT, 'packages');
   if (fs.existsSync(packagesDir)) {
-    try {
-      const packages = fs.readdirSync(packagesDir);
-      // Internal packages often have types that aren't relevant to app code
-      // User can customize this via config
-    } catch {}
+    // Placeholder for monorepo package exclusion logic
+    // TODO: Read packages/ dir and auto-exclude internal package types
   }
 
   return excludes;
@@ -471,11 +501,26 @@ function detectExcludeTypePatterns() {
 }
 
 // ============================================================
+// Constants (avoids magic numbers scattered through analysis)
+// ============================================================
+const FILE_SAMPLE_LIMIT = 20;       // Max files to sample for convention detection
+const ISSUE_SCAN_LIMIT = 100;       // Max files to scan for potential issues
+const CONSOLE_SCAN_LIMIT = 50;      // Max files to scan for console statements
+const LARGE_FILE_THRESHOLD = 500;   // Lines above which a file is flagged
+const CONSOLE_WARN_THRESHOLD = 10;  // Minimum console statements to flag
+
+/** Log only when running as CLI (not when required as a library) */
+const isCLI = require.main === module;
+function log(...args) {
+  if (isCLI) console.log(...args);
+}
+
+// ============================================================
 // Main Analysis Function
 // ============================================================
 
 function analyzeProject() {
-  console.log('Analyzing project for hybrid mode configuration...\n');
+  log('Analyzing project for hybrid mode configuration...\n');
 
   const analysis = {
     uiFramework: detectUIFramework(),
@@ -501,12 +546,12 @@ function analyzeProject() {
   analysis.projectWarnings = generateWarnings(analysis.uiFramework, analysis.stylingApproach);
 
   // Report findings
-  console.log(`UI Framework: ${analysis.uiFramework || 'not detected'}`);
-  console.log(`Styling: ${analysis.stylingApproach || 'not detected'}`);
-  console.log(`Component dirs: ${analysis.componentDirs.length > 0 ? analysis.componentDirs.join(', ') : 'none found'}`);
-  console.log(`Components found: ${Object.keys(analysis.availableComponents).length}`);
-  console.log(`Type locations: ${Object.keys(analysis.typeLocations).length > 0 ? JSON.stringify(analysis.typeLocations) : 'default'}`);
-  console.log('');
+  log(`UI Framework: ${analysis.uiFramework || 'not detected'}`);
+  log(`Styling: ${analysis.stylingApproach || 'not detected'}`);
+  log(`Component dirs: ${analysis.componentDirs.length > 0 ? analysis.componentDirs.join(', ') : 'none found'}`);
+  log(`Components found: ${Object.keys(analysis.availableComponents).length}`);
+  log(`Type locations: ${Object.keys(analysis.typeLocations).length > 0 ? JSON.stringify(analysis.typeLocations) : 'default'}`);
+  log('');
 
   return analysis;
 }
@@ -516,7 +561,7 @@ function analyzeProject() {
  */
 function updateConfig(analysis) {
   if (!fs.existsSync(CONFIG_PATH)) {
-    console.log('Warning: config.json not found. Run flow init first.');
+    log('Warning: config.json not found. Run flow init first.');
     return false;
   }
 
@@ -548,13 +593,13 @@ function updateConfig(analysis) {
     // Write back
     fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 
-    console.log('✓ Updated config.json with project context');
-    console.log(`  Framework: ${analysis.uiFramework || 'not detected'}`);
-    console.log(`  Styling: ${analysis.stylingApproach || 'not detected'}`);
-    console.log(`  Component patterns: ${config.frameworkConfig.componentPatterns.length}`);
+    log('✓ Updated config.json with project context');
+    log(`  Framework: ${analysis.uiFramework || 'not detected'}`);
+    log(`  Styling: ${analysis.stylingApproach || 'not detected'}`);
+    log(`  Component patterns: ${config.frameworkConfig.componentPatterns.length}`);
     return true;
   } catch (err) {
-    console.log(`Error updating config: ${err.message}`);
+    log(`Error updating config: ${err.message}`);
     return false;
   }
 }
@@ -566,7 +611,7 @@ function clearContextCache() {
   const cachePath = path.join(PROJECT_ROOT, '.workflow/state/hybrid-context.md');
   if (fs.existsSync(cachePath)) {
     fs.unlinkSync(cachePath);
-    console.log('✓ Cleared hybrid context cache');
+    log('✓ Cleared hybrid context cache');
   }
 }
 
@@ -616,7 +661,7 @@ function detectConventions() {
 
   try {
     // Sample some files
-    const tsFiles = findFiles(srcDir, /\.tsx?$/).slice(0, 20);
+    const tsFiles = findFiles(srcDir, /\.tsx?$/).slice(0, FILE_SAMPLE_LIMIT);
 
     // Check file naming
     const fileNames = tsFiles.map(f => path.basename(f, path.extname(f)));
@@ -664,13 +709,13 @@ function detectPotentialIssues() {
   if (!fs.existsSync(srcDir)) return issues;
 
   try {
-    // Check for large files (>500 lines)
+    // Check for large files
     const allFiles = findFiles(srcDir, /\.(ts|tsx|js|jsx)$/);
-    for (const file of allFiles.slice(0, 100)) {
+    for (const file of allFiles.slice(0, ISSUE_SCAN_LIMIT)) {
       try {
         const content = fs.readFileSync(file, 'utf-8');
         const lines = content.split('\n').length;
-        if (lines > 500) {
+        if (lines > LARGE_FILE_THRESHOLD) {
           issues.push({
             type: 'large-file',
             severity: 'warning',
@@ -678,7 +723,7 @@ function detectPotentialIssues() {
             message: `Large file (${lines} lines) - consider splitting`
           });
         }
-      } catch {}
+      } catch { /* File read error during size check — skip */ }
     }
 
     // Check for files without tests
@@ -693,7 +738,7 @@ function detectPotentialIssues() {
       testFiles.map(f => path.basename(f).replace(/\.(test|spec)\.(ts|tsx|js|jsx)$/, ''))
     );
 
-    for (const comp of componentFiles.slice(0, 20)) {
+    for (const comp of componentFiles.slice(0, FILE_SAMPLE_LIMIT)) {
       const baseName = path.basename(comp).replace(/\.(ts|tsx|js|jsx)$/, '');
       if (!testedComponents.has(baseName) && baseName !== 'index') {
         issues.push({
@@ -707,14 +752,14 @@ function detectPotentialIssues() {
 
     // Check for console.log statements
     let consoleCount = 0;
-    for (const file of allFiles.slice(0, 50)) {
+    for (const file of allFiles.slice(0, CONSOLE_SCAN_LIMIT)) {
       try {
         const content = fs.readFileSync(file, 'utf-8');
         const matches = content.match(/console\.(log|warn|error)\(/g);
         if (matches) consoleCount += matches.length;
-      } catch {}
+      } catch { /* File read error during console scan — skip */ }
     }
-    if (consoleCount > 10) {
+    if (consoleCount > CONSOLE_WARN_THRESHOLD) {
       issues.push({
         type: 'console-statements',
         severity: 'info',
@@ -769,6 +814,9 @@ function gatherStatistics() {
     stats.serviceCount = allFiles.filter(f =>
       f.includes('.service.') || f.includes('/services/')
     ).length;
+
+    // Detect data-fetching library
+    stats.dataFetchingLibrary = detectDataFetchingLibrary();
 
   } catch {
     // Ignore errors
@@ -895,7 +943,7 @@ function saveCodebaseInsights() {
   const markdown = generateCodebaseInsights();
   fs.writeFileSync(insightsPath, markdown);
 
-  console.log(`✓ Generated codebase insights: ${insightsPath}`);
+  log(`✓ Generated codebase insights: ${insightsPath}`);
   return insightsPath;
 }
 
@@ -942,15 +990,20 @@ if (require.main === module) {
   clearContextCache();
 
   // Also generate codebase insights during full analysis
-  const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  let config = {};
+  try {
+    config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+  } catch (err) {
+    // Config read failure — skip insights
+  }
   if (config.codebaseInsights?.enabled !== false) {
     saveCodebaseInsights();
   }
 
   if (success) {
-    console.log('\n✓ Project analysis complete!');
-    console.log('  The local LLM will now have accurate context about your project.');
-    console.log('  Run "flow hybrid enable" to start using hybrid mode.');
+    log('\n✓ Project analysis complete!');
+    log('  The local LLM will now have accurate context about your project.');
+    log('  Run "flow hybrid enable" to start using hybrid mode.');
   }
 
   process.exit(success ? 0 : 1);
@@ -960,6 +1013,7 @@ module.exports = {
   analyzeProject,
   updateConfig,
   detectUIFramework,
+  detectDataFetchingLibrary,
   detectStylingApproach,
   scanComponentExports,
   generateComponentGlobPatterns,

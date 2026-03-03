@@ -96,14 +96,14 @@ Display:
 
 4. **Run pattern extractor in deep mode:**
    ```javascript
-   const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
+   const { extractPatterns, formatAsDecisions, formatDataFetchingSection } = require('./scripts/flow-pattern-extractor.js');
    const result = await extractPatterns(projectRoot, {
      analysisMode: 'deep',
-     categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config']
+     categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config', 'data-fetching']
    });
    ```
 
-   Deep mode uses `git log` dates instead of filesystem mtime for reliable temporal analysis. This scans across all 10 pattern categories:
+   Deep mode uses `git log` dates instead of filesystem mtime for reliable temporal analysis. This scans across all 11 pattern categories:
    - **code**: Naming conventions, variable declaration, error handling, async patterns
    - **api**: Response formats, pagination, error formats, status codes
    - **component**: Class vs functional, hooks, state management, styling
@@ -114,11 +114,13 @@ Display:
    - **folders**: Feature-first vs type-first, co-location, index files
    - **comments**: Documentation style, inline comments, TODOs
    - **config**: Environment handling, validation, defaults
+   - **data-fetching**: Hook wrapper patterns (useGet* → useQuery), mock resolvers, library detection
 
    Display:
    ```
      File discovery...      ✓ Found 245 source files
-     Pattern extraction...  ✓ Found 18 patterns across 10 categories
+     Pattern extraction...  ✓ Found 18 patterns across 11 categories
+     Data-fetching scan...  ✓ react-query, 80 useGet* hooks wrapping useQuery
    ```
 
 5. **Classify patterns by temporal age:**
@@ -447,6 +449,37 @@ Display:
 
     Display: `  decisions.md...       ✓ 18 patterns, 3 conflicts resolved (2 auto, 1 manual)`
 
+12b. **Auto-generate data-fetching rules for decisions.md:**
+
+    If data-fetching patterns were detected, generate enforceable anti-pattern rules:
+
+    ```javascript
+    const { generateDataFetchingRules } = require('./scripts/flow-pattern-extractor.js');
+    if (result.dataFetching) {
+      const dfRules = generateDataFetchingRules(result.dataFetching, {
+        minOccurrences: 10,  // Need 10+ hooks to establish a convention
+        minMockOccurrences: 3
+      });
+      if (dfRules) {
+        const decisionsPath = '.workflow/state/decisions.md';
+        try {
+          const existing = fs.readFileSync(decisionsPath, 'utf-8');
+          fs.writeFileSync(decisionsPath, existing + '\n' + dfRules);
+        } catch (err) {
+          console.warn('Could not append data-fetching rules:', err.message);
+        }
+      }
+    }
+    ```
+
+    This generates rules like:
+    - "Data fetching MUST go through `useGet*` hooks — never call `useQuery` directly"
+    - "Mock data MUST be abstracted through `useMockDataResolver`"
+
+    Rules are threshold-based: patterns with fewer than 10 occurrences (or 3 for mocks) are documented in api-map.md but don't generate enforcement rules.
+
+    Display: `  Anti-pattern rules... ✓ 2 rules generated from detected patterns`
+
 13. **Run function scanner:**
     ```javascript
     const { FunctionScanner } = require('./scripts/flow-function-index.js');
@@ -474,6 +507,28 @@ Display:
     If no APIs found, create template `api-map.md`.
 
     Display: `  api-map.md...         ✓ Found 15 API endpoints`
+
+14b. **Append data-fetching patterns to api-map.md:**
+
+    If the pattern extraction detected data-fetching patterns (from `result.dataFetching`), append the "Client-Side Data Hooks" section to api-map.md:
+
+    ```javascript
+    if (result.dataFetching && result.dataFetching.libraries.length > 0) {
+      const dfSection = formatDataFetchingSection(result.dataFetching);
+      if (dfSection) {
+        const apiMapPath = '.workflow/state/api-map.md';
+        try {
+          const existing = fs.readFileSync(apiMapPath, 'utf-8');
+          fs.writeFileSync(apiMapPath, existing + '\n' + dfSection);
+        } catch (err) {
+          // If api-map.md doesn't exist yet, create with just the df section
+          fs.writeFileSync(apiMapPath, '# API Map\n\n' + dfSection);
+        }
+      }
+    }
+    ```
+
+    Display: `  Data-fetching hooks... ✓ react-query, 80 useGet* hooks`
 
 15. **Populate app-map.md from component data:**
     From the pattern extraction result, populate app-map.md with:
@@ -607,26 +662,15 @@ Display:
 
 19. **Generate `.workflow/config.json`:**
 
-    Build config based on detected tooling:
+    **Use `getDefaultConfig()` from `lib/installer.js` as the base**, then overlay project-specific values detected during onboarding. This ensures config parity between `flow init` and `/wogi-onboard`.
 
     ```javascript
-    const config = {
-      version: "1.0",
-      project: {
-        name: productInfo.name,
-        type: productInfo.type,
-        onboardedAt: new Date().toISOString()
-      },
-      qualityGates: {
-        feature: { require: [] },
-        bugfix: { require: [] },
-        refactor: { require: [] }
-      },
-      commits: {
-        requireApproval: { feature: true, bugfix: false, refactor: true, docs: false },
-        autoCommitSmallFixes: true,
-        smallFixThreshold: 3
-      },
+    const { getDefaultConfig } = require(require.resolve('wogiflow/lib/installer'));
+
+    // Start with the FULL default config (all 25+ sections)
+    // This includes planMode, hooks, enforcement, validation, review, research, etc.
+    const config = getDefaultConfig({
+      projectName: productInfo.name,
       onboard: {
         temporal: {
           currentMonths: 6,
@@ -634,20 +678,36 @@ Display:
           autoResolveThreshold: 0.7
         }
       }
-    };
+    });
 
-    // Configure quality gates based on detected tooling
+    // Overlay project-specific quality gates based on detected tooling
+    const featureReqs = ['loopComplete'];
+    const bugfixReqs = ['loopComplete'];
+    const refactorReqs = ['loopComplete', 'noNewFeatures'];
+
     if (detected.linting) {
-      config.qualityGates.feature.require.push('lint');
-      config.qualityGates.bugfix.require.push('lint');
+      featureReqs.push('lint');
+      bugfixReqs.push('lint');
     }
     if (detected.typeChecking || detected.language === 'TypeScript') {
-      config.qualityGates.feature.require.push('typecheck');
-      config.qualityGates.bugfix.require.push('typecheck');
+      featureReqs.push('typecheck');
+      bugfixReqs.push('typecheck');
     }
     if (detected.testing) {
-      config.qualityGates.feature.require.push('tests');
+      featureReqs.push('tests');
     }
+
+    // Always require these
+    for (const reqs of [featureReqs, bugfixReqs, refactorReqs]) {
+      reqs.push('requestLogEntry');
+    }
+    featureReqs.push('appMapUpdate');
+
+    config.qualityGates = {
+      feature: { require: featureReqs },
+      bugfix: { require: bugfixReqs },
+      refactor: { require: refactorReqs }
+    };
 
     // WebMCP detection: If project has a frontend framework with UI components
     const hasWebMCPFramework = detected.frameworks.frontend &&
@@ -660,19 +720,13 @@ Display:
         fallbackEnabled: true,
         maxToolCalls: 20
       };
-      // Auto-generate initial WebMCP tool definitions
-      // Run: flow webmcp-generate scan
     }
-
-    // Always require these
-    for (const type of ['feature', 'bugfix', 'refactor']) {
-      config.qualityGates[type].require.push('requestLogEntry');
-    }
-    config.qualityGates.feature.require.push('appMapUpdate');
 
     // Detect commit style from git log
     // Check for conventional commits, ticket prefixes, etc.
     ```
+
+    **Why `getDefaultConfig()`**: Without it, onboarded projects were missing ~18 config sections (planMode, hooks, enforcement, validation, review, research, semanticMatching, standardsCompliance, etc.), causing silent feature degradation.
 
     **Model Routing Configuration:**
 

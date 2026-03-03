@@ -11,6 +11,28 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-204 | 2026-03-03 23:30
+**Type**: fix
+**Tags**: #feature:import #script:flow-import-profile #script:flow-decisions-merge
+**Request**: "Fix decisions.md combine logic during import — truncated bash script causes garbled rules"
+**Result**: The bash script `flow-import-profile` was truncated at line 929 (mid-printf) during a previous context crash. Option 2 (manual resolution) and option 3 (replace entirely) were completely missing, along with the case/if closing blocks. Fixed by completing the truncated code: option 2 now properly iterates conflicts, builds resolutions JSON, calls `flow-decisions-merge.js manual`; option 3 does a flat copy; added wildcard handler for invalid input; added no-conflicts auto-merge and no-existing-file fallback. The Node.js merge helper was already correct.
+**Files**: scripts/flow-import-profile
+
+### R-203 | 2026-03-03 23:00
+**Type**: fix
+**Tags**: #performance:context-window #command:wogi-start #rules:frontmatter
+**Request**: "Context window limits blocking all work — tasks get stuck, compaction can't save"
+**Result**: Root cause: wogi-start.md was 1,935 lines (~82KB, ~20K tokens) loaded on every task start. Combined with CLAUDE.md, rules, and system prompt, 50-60% of context consumed before any work. Fix: (1) Slimmed wogi-start.md from 1,935 to 286 lines (82% reduction) by removing output templates, config JSON, ASCII diagrams, verbose examples — zero behavioral rules lost. (2) Moved explore phase agent prompts to explore-agents.md and TDD protocol to tdd-mode.md (loaded on-demand). (3) Fixed 3 rules files that were always-loaded without frontmatter (dual-repo-management, document-structure, README) — added alwaysApply:false with proper globs. Net: ~25-30% more context available per session.
+**Files**: .claude/commands/wogi-start.md, .claude/docs/explore-agents.md (new), .claude/docs/tdd-mode.md (new), .claude/rules/architecture/dual-repo-management.md, .claude/rules/architecture/document-structure.md, .claude/rules/README.md
+
+### R-202 | 2026-03-03 21:30
+**Type**: fix
+**Tags**: #feature:onboarding #feature:compaction #bug:naming-scanner #bug:checkpoint-recovery
+**Request**: "Fix naming convention scanner including WogiFlow internal files + fix context compaction recovery"
+**Result**: Two bugs fixed: (1) Added .workflow/** and .claude/** to IGNORE_PATTERNS in flow-pattern-extractor.js and exclusion list in flow-project-analyzer.js so WogiFlow's own kebab-case files don't inflate naming convention detection during onboard. (2) Added checkpoint recovery to session-context.js — now loads task-checkpoint.json at session start, surfaces recovery info to the AI, and cleans up stale checkpoints for tasks that no longer exist.
+**Files**: scripts/flow-pattern-extractor.js, scripts/flow-project-analyzer.js, scripts/hooks/core/session-context.js
+**Tasks**: wf-d9304f42, wf-133037a1
+
 ### R-201 | 2026-03-03 19:30
 **Type**: fix
 **Tags**: #feature:general #hygiene:state-folder #hook:session-start #installer

@@ -86,7 +86,9 @@ const IGNORE_PATTERNS = [
   '*.bundle.js',
   '__pycache__/**',
   '.venv/**',
-  'vendor/**'
+  'vendor/**',
+  '.workflow/**',
+  '.claude/**'
 ];
 
 // Colors for CLI output
@@ -238,8 +240,10 @@ function detectFramework(projectRoot) {
 
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      const raw = fs.readFileSync(packageJsonPath, 'utf-8');
+      const pkg = JSON.parse(raw);
+      if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) return null;
+      const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
 
       // Check for frameworks
       if (deps['next']) return 'nextjs';
@@ -442,6 +446,14 @@ function createConflict(patternA, patternB, options = {}) {
 // Code Pattern Extractors
 // ============================================================================
 
+// Table-driven file naming convention detection
+const FILE_NAMING_RULES = [
+  { pattern: /^[a-z][a-z0-9-]*\.[a-z]+$/, name: 'kebab-case' },
+  { pattern: /^[A-Z][a-zA-Z0-9]*\.[a-z]+$/, name: 'PascalCase' },
+  { pattern: /^[a-z][a-zA-Z0-9]*\.[a-z]+$/, name: 'camelCase' },
+  { pattern: /^[a-z][a-z0-9_]*\.[a-z]+$/, name: 'snake_case' },
+];
+
 /**
  * Extract code-level patterns: naming, error handling, imports
  */
@@ -468,15 +480,12 @@ function extractCodePatterns(projectRoot, files, _options = {}) {
     const basename = path.basename(file);
     const ext = path.extname(file);
 
-    // File naming patterns
-    if (/^[a-z][a-z0-9-]*\.[a-z]+$/.test(basename)) {
-      addPatternOccurrence(patterns['naming.files'], 'kebab-case', file, projectRoot);
-    } else if (/^[A-Z][a-zA-Z0-9]*\.[a-z]+$/.test(basename)) {
-      addPatternOccurrence(patterns['naming.files'], 'PascalCase', file, projectRoot);
-    } else if (/^[a-z][a-zA-Z0-9]*\.[a-z]+$/.test(basename)) {
-      addPatternOccurrence(patterns['naming.files'], 'camelCase', file, projectRoot);
-    } else if (/^[a-z][a-z0-9_]*\.[a-z]+$/.test(basename)) {
-      addPatternOccurrence(patterns['naming.files'], 'snake_case', file, projectRoot);
+    // File naming patterns (table-driven)
+    for (const rule of FILE_NAMING_RULES) {
+      if (rule.pattern.test(basename)) {
+        addPatternOccurrence(patterns['naming.files'], rule.name, file, projectRoot);
+        break;
+      }
     }
 
     // Function naming patterns (JS/TS)
@@ -514,7 +523,7 @@ function extractCodePatterns(projectRoot, files, _options = {}) {
       }
 
       // Import style - absolute vs relative
-      const importMatches = content.matchAll(/import\s+.*\s+from\s+['"]([^'"]+)['"]/g);
+      const importMatches = content.matchAll(/^import\s+[^\n]+\s+from\s+['"]([^'"]+)['"]/gm);
       for (const match of importMatches) {
         const importPath = match[1];
         if (importPath.startsWith('.') || importPath.startsWith('..')) {
@@ -1452,6 +1461,443 @@ function extractConfigPatterns(projectRoot, files, _options = {}) {
 }
 
 // ============================================================================
+// Data-Fetching Architecture Scanner
+// ============================================================================
+
+/**
+ * Known data-fetching libraries and their signatures.
+ * Each entry maps a package name to a display name and the hook/function
+ * names that indicate usage of that library inside hook bodies.
+ */
+const DATA_FETCHING_LIBRARIES = {
+  '@tanstack/react-query': { name: 'react-query', hooks: ['useQuery', 'useMutation', 'useInfiniteQuery', 'useSuspenseQuery', 'useQueryClient'] },
+  'react-query':           { name: 'react-query', hooks: ['useQuery', 'useMutation', 'useInfiniteQuery'] },
+  'swr':                   { name: 'swr',         hooks: ['useSWR', 'useSWRMutation', 'useSWRInfinite'] },
+  '@apollo/client':        { name: 'apollo',       hooks: ['useQuery', 'useMutation', 'useLazyQuery', 'useSubscription'] },
+  'apollo-client':         { name: 'apollo',       hooks: ['useQuery', 'useMutation', 'useLazyQuery'] },
+  '@trpc/react-query':     { name: 'trpc',         hooks: ['useQuery', 'useMutation'] },
+  'axios':                 { name: 'axios',         hooks: ['axios', 'axiosInstance'] },
+  '@nuxtjs/composition-api': { name: 'nuxt',       hooks: ['useFetch', 'useAsync', 'useLazyFetch'] },
+  'nuxt':                  { name: 'nuxt',          hooks: ['useFetch', 'useAsyncData', 'useLazyFetch', 'useLazyAsyncData'] }
+};
+
+/**
+ * Known mock resolver / test data patterns
+ */
+const MOCK_PATTERNS = [
+  { regex: /\buseMockDataResolver\b/, name: 'useMockDataResolver' },
+  { regex: /\buseMockData\b/,         name: 'useMockData' },
+  { regex: /\bmsw\b|setupServer|setupWorker/, name: 'msw' },
+  { regex: /\bfixture[sS]|\.fixture\b/, name: 'fixtures' },
+  { regex: /\bmockServiceWorker\b/,   name: 'mockServiceWorker' }
+];
+
+/**
+ * Extract data-fetching architecture patterns from hook files.
+ *
+ * This function:
+ * 1. Detects data-fetching libraries from package.json
+ * 2. Opens hook files (use*.ts/tsx/js/jsx) and reads their bodies
+ * 3. Identifies naming conventions across hook groups (e.g., useGet* → useQuery)
+ * 4. Detects mock resolver patterns
+ * 5. Returns structured results for api-map.md
+ *
+ * Stack-agnostic: works with React Query, SWR, Apollo, Nuxt composables, etc.
+ *
+ * @param {string} projectRoot - Project root directory
+ * @param {string[]} files - All source files found by the scanner
+ * @param {Object} [options={}] - Options
+ * @returns {{ libraries: Object[], wrapperPatterns: Object[], mockPatterns: Object[], hookGroups: Object[], summary: string }}
+ */
+function extractDataFetchingPatterns(projectRoot, files, _options = {}) {
+  const result = {
+    libraries: [],
+    wrapperPatterns: [],
+    mockPatterns: [],
+    hookGroups: [],
+    summary: ''
+  };
+
+  // --- Step 1: Detect data-fetching libraries from package.json ---
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  let deps = {};
+  try {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  } catch {
+    // No package.json — skip library detection but still scan files
+  }
+
+  const detectedLibs = [];
+  for (const [pkgName, libInfo] of Object.entries(DATA_FETCHING_LIBRARIES)) {
+    if (deps[pkgName]) {
+      detectedLibs.push({
+        package: pkgName,
+        name: libInfo.name,
+        version: deps[pkgName],
+        hookSignatures: libInfo.hooks
+      });
+    }
+  }
+  result.libraries = detectedLibs;
+
+  // Build a set of all known hook signatures from detected libraries
+  const allLibHooks = new Set();
+  for (const lib of detectedLibs) {
+    for (const h of lib.hookSignatures) {
+      allLibHooks.add(h);
+    }
+  }
+
+  // --- Step 2: Find and analyze hook files ---
+  // Hook files match: use*.ts, use*.tsx, use*.js, use*.jsx (any directory)
+  // Also matches Vue composables: use*.vue (SFC with composable logic)
+  const hookFiles = files.filter(f => {
+    const base = path.basename(f);
+    return /^use[A-Z][a-zA-Z]*\.(ts|tsx|js|jsx|vue)$/.test(base);
+  });
+
+  // Track wrapper patterns: hookName → wrappedLibHook
+  const wrapperMap = {};   // { 'useQuery': { count: N, wrappers: [{file, hookName}] } }
+  const namingGroups = {}; // { 'useGet': { count: N, files: [], wrappedHook: 'useQuery' } }
+  const mockUsage = {};    // { 'useMockDataResolver': { count: N, files: [] } }
+  const hookAnalysis = []; // detailed per-hook analysis
+
+  for (const file of hookFiles) {
+    const fullPath = path.join(projectRoot, file);
+    let content;
+    try {
+      content = fs.readFileSync(fullPath, 'utf-8');
+    } catch {
+      continue;
+    }
+
+    const hookName = path.basename(file).replace(/\.(ts|tsx|js|jsx)$/, '');
+
+    // Detect which library hooks are called inside this file
+    const wrappedHooks = [];
+    for (const libHook of allLibHooks) {
+      // Match function call: useQuery(, useQuery<, useQuery({
+      const hookCallRegex = new RegExp(`\\b${libHook}\\s*[<(]`);
+      if (hookCallRegex.test(content)) {
+        wrappedHooks.push(libHook);
+
+        if (!wrapperMap[libHook]) {
+          wrapperMap[libHook] = { count: 0, wrappers: [] };
+        }
+        wrapperMap[libHook].count++;
+        wrapperMap[libHook].wrappers.push({ file, hookName });
+      }
+    }
+
+    // Also detect custom fetch patterns (for projects without known libs)
+    if (wrappedHooks.length === 0) {
+      if (/\bfetch\s*\(/.test(content)) wrappedHooks.push('fetch');
+      if (/\baxios\s*[.(]/.test(content)) wrappedHooks.push('axios');
+      if (/\bhttp\s*\.\s*(get|post|put|delete|patch)\s*\(/.test(content)) wrappedHooks.push('httpClient');
+    }
+
+    // Detect mock resolver patterns
+    for (const mockPat of MOCK_PATTERNS) {
+      if (mockPat.regex.test(content)) {
+        if (!mockUsage[mockPat.name]) {
+          mockUsage[mockPat.name] = { count: 0, files: [] };
+        }
+        mockUsage[mockPat.name].count++;
+        mockUsage[mockPat.name].files.push(file);
+      }
+    }
+
+    // Classify by naming prefix (e.g., useGet*, useCreate*, useFetch*)
+    const prefixMatch = hookName.match(/^(use[A-Z][a-z]+)/);
+    if (prefixMatch) {
+      const prefix = prefixMatch[1];
+      if (!namingGroups[prefix]) {
+        namingGroups[prefix] = { count: 0, files: [], wrappedHooks: {} };
+      }
+      namingGroups[prefix].count++;
+      namingGroups[prefix].files.push(file);
+      for (const wh of wrappedHooks) {
+        namingGroups[prefix].wrappedHooks[wh] = (namingGroups[prefix].wrappedHooks[wh] || 0) + 1;
+      }
+    }
+
+    hookAnalysis.push({
+      file,
+      hookName,
+      wrappedHooks,
+      hasMockPattern: Object.keys(mockUsage).some(k =>
+        mockUsage[k].files.includes(file)
+      )
+    });
+  }
+
+  // --- Step 3: Build wrapper patterns (threshold: 3+ occurrences) ---
+  const MIN_WRAPPER_COUNT = 3;
+
+  for (const [libHook, data] of Object.entries(wrapperMap)) {
+    if (data.count >= MIN_WRAPPER_COUNT) {
+      result.wrapperPatterns.push({
+        libraryHook: libHook,
+        wrapperCount: data.count,
+        examples: data.wrappers.slice(0, 5).map(w => w.hookName),
+        exampleFiles: data.wrappers.slice(0, 5).map(w => w.file)
+      });
+    }
+  }
+
+  // --- Step 4: Build hook groups (naming convention detection) ---
+  for (const [prefix, data] of Object.entries(namingGroups)) {
+    if (data.count >= MIN_WRAPPER_COUNT) {
+      // Find the dominant wrapped hook
+      const dominantHook = Object.entries(data.wrappedHooks)
+        .sort((a, b) => b[1] - a[1])[0];
+
+      result.hookGroups.push({
+        prefix,
+        count: data.count,
+        wrapsHook: dominantHook ? dominantHook[0] : null,
+        wrapsCount: dominantHook ? dominantHook[1] : 0,
+        examples: data.files.slice(0, 5).map(f => path.basename(f).replace(/\.(ts|tsx|js|jsx)$/, ''))
+      });
+    }
+  }
+
+  // --- Step 5: Build mock patterns ---
+  for (const [name, data] of Object.entries(mockUsage)) {
+    if (data.count >= MIN_WRAPPER_COUNT) {
+      result.mockPatterns.push({
+        name,
+        count: data.count,
+        files: data.files.slice(0, 5)
+      });
+    }
+  }
+
+  // --- Step 6: Generate summary ---
+  const parts = [];
+  if (detectedLibs.length > 0) {
+    parts.push(`Libraries: ${detectedLibs.map(l => l.name).join(', ')}`);
+  }
+  if (result.wrapperPatterns.length > 0) {
+    for (const wp of result.wrapperPatterns) {
+      parts.push(`${wp.wrapperCount} hooks wrap ${wp.libraryHook} (e.g., ${wp.examples.slice(0, 3).join(', ')})`);
+    }
+  }
+  if (result.hookGroups.length > 0) {
+    for (const hg of result.hookGroups) {
+      parts.push(`Naming convention: ${hg.prefix}* (${hg.count} hooks${hg.wrapsHook ? `, wrapping ${hg.wrapsHook}` : ''})`);
+    }
+  }
+  if (result.mockPatterns.length > 0) {
+    for (const mp of result.mockPatterns) {
+      parts.push(`Mock pattern: ${mp.name} (${mp.count} hooks)`);
+    }
+  }
+  result.summary = parts.join('; ') || 'No data-fetching patterns detected';
+
+  // --- Also produce aggregated patterns for the standard pipeline ---
+  const patterns = {
+    'data-fetching.library': {},
+    'data-fetching.wrapper-convention': {},
+    'data-fetching.mock-resolver': {}
+  };
+
+  for (const lib of detectedLibs) {
+    const seenFiles = new Set();
+    for (const sig of lib.hookSignatures) {
+      for (const wrapper of (wrapperMap[sig] || { wrappers: [] }).wrappers) {
+        if (!seenFiles.has(wrapper.file)) {
+          seenFiles.add(wrapper.file);
+          addPatternOccurrence(patterns['data-fetching.library'], lib.name, wrapper.file, projectRoot);
+        }
+      }
+    }
+  }
+
+  for (const [prefix, data] of Object.entries(namingGroups)) {
+    if (data.count >= MIN_WRAPPER_COUNT) {
+      for (const file of data.files) {
+        addPatternOccurrence(patterns['data-fetching.wrapper-convention'], prefix + '*', file, projectRoot);
+      }
+    }
+  }
+
+  for (const [name, data] of Object.entries(mockUsage)) {
+    if (data.count >= MIN_WRAPPER_COUNT) {
+      for (const file of data.files) {
+        addPatternOccurrence(patterns['data-fetching.mock-resolver'], name, file, projectRoot);
+      }
+    }
+  }
+
+  result._patterns = aggregatePatterns(patterns, 'data-fetching', files.length);
+
+  return result;
+}
+
+/**
+ * Format data-fetching patterns as a markdown section for api-map.md
+ *
+ * @param {Object} dfResult - Result from extractDataFetchingPatterns()
+ * @returns {string} Markdown section content
+ */
+function formatDataFetchingSection(dfResult) {
+  if (!dfResult || (dfResult.libraries.length === 0 && dfResult.hookGroups.length === 0)) {
+    return '';
+  }
+
+  const lines = [];
+  lines.push('## Client-Side Data Hooks');
+  lines.push('<!-- PIN: client-side-data-hooks -->');
+  lines.push('');
+
+  // Libraries
+  if (dfResult.libraries.length > 0) {
+    lines.push('### Data-Fetching Libraries');
+    lines.push('');
+    lines.push('| Library | Package | Version |');
+    lines.push('|---------|---------|---------|');
+    for (const lib of dfResult.libraries) {
+      lines.push(`| ${lib.name} | \`${lib.package}\` | ${lib.version} |`);
+    }
+    lines.push('');
+  }
+
+  // Wrapper patterns / naming conventions
+  if (dfResult.hookGroups.length > 0) {
+    lines.push('### Hook Conventions');
+    lines.push('');
+    for (const hg of dfResult.hookGroups) {
+      const wrapsInfo = hg.wrapsHook
+        ? ` wrapping \`${hg.wrapsHook}\``
+        : '';
+      lines.push(`- **\`${hg.prefix}*\`** — ${hg.count} hooks${wrapsInfo}`);
+      if (hg.examples.length > 0) {
+        lines.push(`  - Examples: ${hg.examples.map(e => '`' + e + '`').join(', ')}`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Wrapper details
+  if (dfResult.wrapperPatterns.length > 0) {
+    lines.push('### Wrapper Architecture');
+    lines.push('');
+    for (const wp of dfResult.wrapperPatterns) {
+      lines.push(`- **${wp.wrapperCount} hooks** wrap \`${wp.libraryHook}\``);
+      lines.push(`  - Examples: ${wp.examples.map(e => '`' + e + '`').join(', ')}`);
+    }
+    lines.push('');
+  }
+
+  // Mock patterns
+  if (dfResult.mockPatterns.length > 0) {
+    lines.push('### Mock / Test Data Patterns');
+    lines.push('');
+    for (const mp of dfResult.mockPatterns) {
+      lines.push(`- **\`${mp.name}\`** — used in ${mp.count} hooks`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Generate decisions.md rules from detected data-fetching patterns.
+ *
+ * Converts detected architectural patterns into enforceable rules.
+ * Only generates rules when patterns have sufficient occurrences (threshold-based).
+ *
+ * @param {Object} dfResult - Result from extractDataFetchingPatterns()
+ * @param {Object} [options={}] - Options
+ * @param {number} [options.minOccurrences=10] - Minimum occurrences to generate a rule
+ * @param {number} [options.minMockOccurrences=3] - Minimum mock pattern occurrences for a rule
+ * @returns {string} Markdown rules for decisions.md (empty string if no rules qualify)
+ */
+function generateDataFetchingRules(dfResult, options = {}) {
+  const {
+    minOccurrences = 10,
+    minMockOccurrences = 3
+  } = options;
+
+  if (!dfResult) return '';
+
+  const rules = [];
+
+  // Rule 1: Hook wrapper convention
+  // If a naming group has enough hooks wrapping a specific library hook,
+  // generate a "must use domain hooks" rule
+  for (const hg of (dfResult.hookGroups || [])) {
+    if (hg.count >= minOccurrences && hg.wrapsHook) {
+      rules.push({
+        category: 'Data Fetching Architecture',
+        title: `Use \`${hg.prefix}*\` domain hooks for data fetching`,
+        rule: `Data fetching MUST go through \`${hg.prefix}*\` hooks — never call \`${hg.wrapsHook}\` directly from components.`,
+        antiPattern: `Importing \`${hg.wrapsHook}\` directly in page or component files instead of using the established \`${hg.prefix}*\` wrapper convention.`,
+        evidence: `${hg.count} hooks follow this pattern (e.g., ${hg.examples.slice(0, 3).join(', ')}).`
+      });
+    }
+  }
+
+  // Rule 2: Wrapper architecture
+  // If many hooks wrap a specific library hook, enforce the wrapper layer
+  for (const wp of (dfResult.wrapperPatterns || [])) {
+    if (wp.wrapperCount >= minOccurrences) {
+      // Check if this is already covered by a hookGroup rule
+      const alreadyCovered = rules.some(r =>
+        r.rule.includes(wp.libraryHook)
+      );
+      if (!alreadyCovered) {
+        rules.push({
+          category: 'Data Fetching Architecture',
+          title: `Wrap \`${wp.libraryHook}\` in domain-specific hooks`,
+          rule: `All calls to \`${wp.libraryHook}\` MUST be wrapped in domain-specific hooks — never used directly in components.`,
+          antiPattern: `Calling \`${wp.libraryHook}\` directly in a component file instead of through a dedicated hook.`,
+          evidence: `${wp.wrapperCount} domain hooks already wrap \`${wp.libraryHook}\` (e.g., ${wp.examples.slice(0, 3).join(', ')}).`
+        });
+      }
+    }
+  }
+
+  // Rule 3: Mock resolver pattern
+  for (const mp of (dfResult.mockPatterns || [])) {
+    if (mp.count >= minMockOccurrences) {
+      rules.push({
+        category: 'Data Fetching Architecture',
+        title: `Abstract mock data through \`${mp.name}\``,
+        rule: `Mock data MUST be abstracted through \`${mp.name}\` — never import mock data directly in page components.`,
+        antiPattern: `Importing mock/fixture data directly in a page or component file instead of using the established \`${mp.name}\` pattern.`,
+        evidence: `${mp.count} hooks use this pattern.`
+      });
+    }
+  }
+
+  if (rules.length === 0) return '';
+
+  // Format as decisions.md section
+  const lines = [];
+  lines.push('## Data Fetching Architecture');
+  lines.push('<!-- PIN: data-fetching-architecture -->');
+  lines.push('<!-- Auto-generated by data-fetching scanner. Do not edit manually. -->');
+  lines.push('');
+
+  for (const rule of rules) {
+    lines.push(`### ${rule.title}`);
+    lines.push('');
+    lines.push(`**Rule**: ${rule.rule}`);
+    lines.push('');
+    lines.push(`**Anti-pattern**: ${rule.antiPattern}`);
+    lines.push('');
+    lines.push(`**Evidence**: ${rule.evidence}`);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
 // Conflict Detection
 // ============================================================================
 
@@ -1695,7 +2141,7 @@ function formatSubcategory(subcategory) {
  */
 async function extractPatterns(projectRoot, options = {}) {
   const {
-    categories = ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config'],
+    categories = ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config', 'data-fetching'],
     includeConflicts = true,
     includeRecommendations = true,
     maxFiles = DEFAULT_MAX_FILES,
@@ -1801,6 +2247,19 @@ async function extractPatterns(projectRoot, options = {}) {
     allPatterns.push(...configPatterns);
   }
 
+  // Data-fetching architecture patterns (hook bodies, wrapper conventions, mock resolvers)
+  let dataFetchingResult = null;
+  if (categories.includes('data-fetching')) {
+    const dfRaw = extractDataFetchingPatterns(projectRoot, files, { framework });
+    // Only set dataFetching when substantive content exists
+    if (dfRaw && (dfRaw.libraries.length > 0 || dfRaw.hookGroups.length > 0)) {
+      dataFetchingResult = dfRaw;
+      if (dfRaw._patterns) {
+        allPatterns.push(...dfRaw._patterns);
+      }
+    }
+  }
+
   // Detect conflicts
   const conflicts = includeConflicts ? detectConflicts(allPatterns) : [];
 
@@ -1831,8 +2290,10 @@ async function extractPatterns(projectRoot, options = {}) {
       tests: allPatterns.filter(p => p.category === 'tests'),
       folders: allPatterns.filter(p => p.category === 'folders'),
       comments: allPatterns.filter(p => p.category === 'comments'),
-      config: allPatterns.filter(p => p.category === 'config')
+      config: allPatterns.filter(p => p.category === 'config'),
+      'data-fetching': allPatterns.filter(p => p.category === 'data-fetching')
     },
+    dataFetching: dataFetchingResult,
     conflicts,
     recommendations
   };
@@ -1846,7 +2307,7 @@ function parseArgs(args) {
   const options = {
     output: null,
     format: 'json',
-    categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config'],
+    categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config', 'data-fetching'],
     framework: 'auto',
     withConflicts: true,
     resolveConflicts: false,
@@ -2032,6 +2493,9 @@ module.exports = {
   extractFolderPatterns,
   extractCommentPatterns,
   extractConfigPatterns,
+  extractDataFetchingPatterns,
+  formatDataFetchingSection,
+  generateDataFetchingRules,
   // Utilities
   globFiles,
   createPattern,

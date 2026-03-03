@@ -13,10 +13,11 @@ const path = require('path');
 const fs = require('fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS, getReadyData, safeJsonParse } = require('../../flow-utils');
+const { getConfig, PATHS, getReadyData, safeJsonParse, isPathWithinProject } = require('../../flow-utils');
 const setupCheck = require('./setup-check');
 const { findParallelizable, getParallelConfig } = require('../../flow-parallel');
 const { getBypassTracking } = require('../../flow-session-state');
+const { loadCheckpoint, clearCheckpoint } = require('../../flow-task-checkpoint');
 
 /**
  * Clean up stale/orphan files from .workflow/state/ on session start.
@@ -34,10 +35,11 @@ function cleanStaleFiles() {
   const stateDir = PATHS.state;
   const cleaned = [];
 
-  // Known stale file patterns (transient markers and lock files)
+  // Known stale file patterns (transient lock files from crashed sessions)
   const stalePatterns = [
-    /^\.routing-pending-pid-/,   // PID-specific lock files from crashed sessions
-    /^\.claude-md-regen-version$/ // Transient CLAUDE.md regeneration marker
+    /^\.routing-pending-pid-/   // PID-specific lock files from crashed sessions
+    // Note: .claude-md-regen-version is intentionally persistent — it controls
+    // postinstall CLAUDE.md regeneration optimization. Do NOT clean it.
   ];
 
   try {
@@ -47,6 +49,10 @@ function cleanStaleFiles() {
         if (pattern.test(entry)) {
           try {
             const filePath = path.join(stateDir, entry);
+            // Path safety: ensure resolved path is within project
+            if (!isPathWithinProject(filePath)) {
+              break;
+            }
             const stat = fs.statSync(filePath);
             // Only remove files, never directories
             if (stat.isFile()) {
@@ -243,6 +249,59 @@ function getRecentActivity(maxEntries = 3) {
 }
 
 /**
+ * Check for task checkpoint that needs recovery.
+ * Called at session start to detect if a previous session was interrupted
+ * (by auto-compact, crash, or manual session end) mid-task.
+ *
+ * @param {Object} [readyData] - Pre-loaded ready.json data
+ * @returns {Object|null} Checkpoint recovery info or null
+ */
+function getCheckpointRecovery(readyData) {
+  try {
+    const checkpoint = loadCheckpoint();
+    if (!checkpoint || !checkpoint.taskId) {
+      return null;
+    }
+
+    // Check if the task is still active (in progress or ready)
+    const data = readyData || getReadyData();
+    const inProgress = (data.inProgress || []).map(t => typeof t === 'object' ? t.id : t);
+    const ready = (data.ready || []).map(t => typeof t === 'object' ? t.id : t);
+
+    const isActive = inProgress.includes(checkpoint.taskId) || ready.includes(checkpoint.taskId);
+
+    if (!isActive) {
+      // Task no longer exists — checkpoint is stale, clean it up
+      try {
+        clearCheckpoint(checkpoint.taskId);
+      } catch {
+        // Non-critical
+      }
+      return null;
+    }
+
+    return {
+      taskId: checkpoint.taskId,
+      taskTitle: checkpoint.taskTitle,
+      currentPhase: checkpoint.currentPhase,
+      specPath: checkpoint.specPath,
+      scenariosCompleted: checkpoint.scenarios?.completed?.length || 0,
+      scenariosTotal: checkpoint.scenarios?.total || 0,
+      scenariosPending: checkpoint.scenarios?.pending || [],
+      changedFiles: checkpoint.changedFiles || [],
+      completedPhases: checkpoint.completedPhases || [],
+      autoCompactRecovery: checkpoint.autoCompactRecovery || false,
+      lastUpdated: checkpoint.lastUpdated
+    };
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Checkpoint recovery check failed: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+/**
  * Get session state summary
  * @returns {Object|null} Session state or null
  */
@@ -326,6 +385,18 @@ async function gatherSessionContext(options = {}) {
   const currentTask = getCurrentTask(readyData);
   if (currentTask) {
     context.currentTask = currentTask;
+  }
+
+  // Checkpoint recovery (detects interrupted tasks from previous sessions)
+  try {
+    const checkpointRecovery = getCheckpointRecovery(readyData);
+    if (checkpointRecovery) {
+      context.checkpointRecovery = checkpointRecovery;
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Checkpoint recovery failed: ${err.message}`);
+    }
   }
 
   // Key decisions
@@ -526,6 +597,29 @@ function formatContextForInjection(context) {
     output += '\n';
   }
 
+  // Checkpoint recovery (HIGH PRIORITY - interrupted task from previous session)
+  if (ctx.checkpointRecovery) {
+    const cp = ctx.checkpointRecovery;
+    output += `### Task Checkpoint Recovery\n`;
+    output += `A previous session was interrupted mid-task. Checkpoint found:\n\n`;
+    output += `- **Task**: ${cp.taskId}${cp.taskTitle ? ` — ${cp.taskTitle}` : ''}\n`;
+    output += `- **Phase**: ${cp.currentPhase}\n`;
+    if (cp.scenariosTotal > 0) {
+      output += `- **Progress**: ${cp.scenariosCompleted}/${cp.scenariosTotal} scenarios completed\n`;
+    }
+    if (cp.completedPhases.length > 0) {
+      output += `- **Completed phases**: ${cp.completedPhases.join(' → ')}\n`;
+    }
+    if (cp.changedFiles.length > 0) {
+      output += `- **Files already changed**: ${cp.changedFiles.slice(0, 10).join(', ')}${cp.changedFiles.length > 10 ? ` (+${cp.changedFiles.length - 10} more)` : ''}\n`;
+    }
+    if (cp.specPath) {
+      output += `- **Spec**: ${cp.specPath}\n`;
+    }
+    output += `\n**To resume**: Run \`/wogi-start ${cp.taskId}\` — it will read the checkpoint and continue from phase **${cp.currentPhase}**.\n`;
+    output += `**Checkpoint file**: \`.workflow/state/task-checkpoint.json\`\n\n`;
+  }
+
   // Pending work summary (always show if tasks exist - survives compaction)
   if (ctx.pendingTasks) {
     const p = ctx.pendingTasks;
@@ -674,6 +768,7 @@ module.exports = {
   cleanStaleFiles,
   getSuspendedTask,
   getCurrentTask,
+  getCheckpointRecovery,
   getPendingTaskSummary,
   getKeyDecisions,
   getRecentActivity,

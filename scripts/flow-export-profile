@@ -38,6 +38,7 @@ show_help() {
     echo "Legacy options:"
     echo "  --include-decisions    Include decisions.md only"
     echo "  --include-app-map      Include app-map.md (component registry)"
+    echo "  --include-api-map      Include api-map.md (API registry + data-fetching hooks)"
     echo ""
     echo "Included with --full:"
     echo "  - CLAUDE.md, agents/, config.json (always)"
@@ -93,7 +94,7 @@ safe_read_json() {
                 process.exit(1);
             }
             let p;
-            try { p = JSON.parse(content); } catch(parseErr) { console.error(parseErr.message); process.exit(1); }
+            try { p = JSON.parse(content); } catch(err) { console.error(err.message); process.exit(1); }
             // Safe property access based on query type
             if (query === "conflicts.length") {
                 console.log(p.conflicts ? p.conflicts.length : 0);
@@ -115,6 +116,7 @@ safe_read_json() {
 # Parse options
 INCLUDE_DECISIONS=false
 INCLUDE_APP_MAP=false
+INCLUDE_API_MAP=false
 INCLUDE_RULES=false
 INCLUDE_LEARNINGS=false
 INCLUDE_TEMPLATES=false
@@ -131,6 +133,9 @@ while [ $# -gt 0 ]; do
             ;;
         --include-app-map)
             INCLUDE_APP_MAP=true
+            ;;
+        --include-api-map)
+            INCLUDE_API_MAP=true
             ;;
         --rules)
             INCLUDE_RULES=true
@@ -258,6 +263,18 @@ if [ "$INCLUDE_APP_MAP" = true ] && [ -f "$WORKFLOW_DIR/state/app-map.md" ]; the
     cp "$WORKFLOW_DIR/state/app-map.md" "$PROFILE_DIR/.workflow/state/"
     echo -e "  ${GREEN}✓${NC} app-map.md"
     CONTENTS="$CONTENTS\n- .workflow/state/app-map.md (component registry)"
+fi
+
+# ==========================================
+# API MAP (optional — includes Client-Side Data Hooks section)
+# ==========================================
+if [ "$INCLUDE_API_MAP" = true ] && [ -f "$WORKFLOW_DIR/state/api-map.md" ]; then
+    echo ""
+    echo -e "${YELLOW}API Registry:${NC}"
+    mkdir -p "$PROFILE_DIR/.workflow/state"
+    cp "$WORKFLOW_DIR/state/api-map.md" "$PROFILE_DIR/.workflow/state/"
+    echo -e "  ${GREEN}✓${NC} api-map.md"
+    CONTENTS="$CONTENTS\n- .workflow/state/api-map.md (API registry incl. data-fetching hooks)"
 fi
 
 # ==========================================
@@ -430,6 +447,7 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
     echo -e "  ${DIM}Scanning codebase for patterns...${NC}"
     PATTERNS_OUTPUT="$PROFILE_DIR/.workflow/extracted/patterns.json"
 
+    # shellcheck disable=SC2086 — intentional word splitting for multiple flags
     if node "$SCRIPT_DIR/flow-pattern-extractor.js" $EXTRACTOR_OPTS --output "$PATTERNS_OUTPUT" 2>/dev/null; then
         echo -e "  ${GREEN}✓${NC} patterns.json"
         CONTENTS="$CONTENTS\n- .workflow/extracted/patterns.json (extracted patterns)"

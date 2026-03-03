@@ -11,7 +11,8 @@
 
 const path = require('path');
 const fs = require('fs');
-const { getConfig, PATHS, safeJsonParse, readFile, writeFile, ensureDir, isPathWithinProject } = require('./flow-utils');
+const { execFileSync } = require('child_process');
+const { getConfig, PATHS, safeJsonParse, readFile, writeFile, ensureDir, isPathWithinProject, validateTaskId } = require('./flow-utils');
 
 /**
  * Check if completion summaries are enabled in config
@@ -30,11 +31,19 @@ function isSummaryEnabled() {
  * @returns {string|null} Path to the story file, or null
  */
 function findStoryFile(taskId, feature) {
+  // Validate task ID to prevent path traversal
+  if (!validateTaskId(taskId).valid) {
+    return null;
+  }
+
+  // Sanitize feature — only allow alphanumeric, hyphens, underscores
+  const safeFeature = feature ? feature.replace(/[^a-zA-Z0-9_-]/g, '') : null;
+
   const changesDir = path.join(PATHS.workflow, 'changes');
 
   // Try feature subdirectory first (most common)
-  if (feature) {
-    const featurePath = path.join(changesDir, feature, `${taskId}.md`);
+  if (safeFeature) {
+    const featurePath = path.join(changesDir, safeFeature, `${taskId}.md`);
     try {
       if (fs.existsSync(featurePath)) {
         return featurePath;
@@ -106,10 +115,14 @@ function extractAcceptanceCriteria(content) {
         criteria.push(scenarioMatch[1].trim());
         continue;
       }
-      // Match Given/When/Then lines as criteria if no scenario headers
-      const givenMatch = line.match(/^(?:Given|When|Then)\s+(.+)/i);
-      if (givenMatch && criteria.length === 0) {
-        criteria.push(givenMatch[1].trim());
+      // Match Given lines as criteria (works alongside Scenario headers too)
+      const givenMatch = line.match(/^Given\s+(.+)/i);
+      if (givenMatch) {
+        // Only add Given lines that aren't duplicates of already-captured Scenario titles
+        const givenText = givenMatch[1].trim();
+        if (!criteria.some(c => c.toLowerCase() === givenText.toLowerCase())) {
+          criteria.push(givenText);
+        }
       }
     }
   }
@@ -176,20 +189,32 @@ function collectVerificationResults(taskId) {
 /**
  * Collect review findings associated with a task
  * @param {string} taskId
+ * @param {string[]} [changedFiles] - Optional list of changed files to scope findings
  * @returns {{ count: number, fixed: number, deferred: number }}
  */
-function collectReviewFindings(taskId) {
+function collectReviewFindings(taskId, changedFiles) {
   const summary = { count: 0, fixed: 0, deferred: 0 };
 
-  // Check last-review.json for findings referencing this task's files
+  // Check last-review.json for findings scoped to this task's changed files
   const reviewPath = path.join(PATHS.state, 'last-review.json');
   try {
     if (fs.existsSync(reviewPath)) {
       const review = safeJsonParse(reviewPath, null);
       if (review && review.findings) {
-        summary.count = review.findings.length;
-        summary.fixed = review.findings.filter(f => f.status === 'fixed').length;
-        summary.deferred = review.findings.filter(f => f.status !== 'fixed' && f.status !== 'dismissed').length;
+        // Scope findings to this task's files when possible
+        let relevantFindings = review.findings;
+        if (changedFiles && changedFiles.length > 0) {
+          relevantFindings = review.findings.filter(f => {
+            if (!f.file) return true;
+            return changedFiles.some(cf =>
+              f.file === cf || cf === f.file ||
+              f.file.endsWith('/' + cf) || cf.endsWith('/' + f.file)
+            );
+          });
+        }
+        summary.count = relevantFindings.length;
+        summary.fixed = relevantFindings.filter(f => f.status === 'fixed').length;
+        summary.deferred = relevantFindings.filter(f => f.status !== 'fixed' && f.status !== 'dismissed').length;
       }
     }
   } catch {
@@ -206,9 +231,43 @@ function collectReviewFindings(taskId) {
  */
 function getChangedFiles(taskId) {
   try {
-    const { execSync } = require('child_process');
-    // Get files changed in the most recent commit (likely the task commit)
-    const output = execSync('git diff --name-only HEAD~1 HEAD 2>/dev/null', {
+    // Try to find commits by task ID in commit messages for full range
+    if (taskId) {
+      try {
+        const commits = execFileSync('git', ['log', '--format=%H', '--grep', taskId], {
+          encoding: 'utf-8',
+          timeout: 5000
+        }).trim();
+        if (commits) {
+          const commitList = commits.split('\n').filter(Boolean);
+          const oldest = commitList[commitList.length - 1];
+          // Use diff-tree --root for the oldest commit (handles root commits without parent)
+          // then union with diff to HEAD for the range
+          let files = [];
+          try {
+            const rangeOutput = execFileSync('git', ['diff', '--name-only', `${oldest}~1`, 'HEAD'], {
+              encoding: 'utf-8',
+              timeout: 5000
+            });
+            files = rangeOutput.trim().split('\n').filter(Boolean);
+          } catch {
+            // oldest~1 fails on root commit — use diff-tree --root instead
+            const rootOutput = execFileSync('git', ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD'], {
+              encoding: 'utf-8',
+              timeout: 5000
+            });
+            files = rootOutput.trim().split('\n').filter(Boolean);
+          }
+          const output = files.join('\n');
+          return output.trim().split('\n').filter(Boolean);
+        }
+      } catch {
+        // Fall through to single-commit fallback
+      }
+    }
+
+    // Fallback: files changed in the most recent commit
+    const output = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], {
       encoding: 'utf-8',
       timeout: 5000
     });
@@ -248,9 +307,9 @@ function formatDuration(startedAt, completedAt) {
  * Generate a completion summary markdown file
  * @param {Object} task - The completed task object from ready.json
  * @param {Object} [input] - Additional input from the hook
- * @returns {Promise<{ path: string, success: boolean }>}
+ * @returns {{ path: string|null, success: boolean, reason?: string }}
  */
-async function generateCompletionSummary(task, input) {
+function generateCompletionSummary(task, input) {
   if (!isSummaryEnabled()) {
     return { path: null, success: false, reason: 'disabled' };
   }
@@ -259,7 +318,12 @@ async function generateCompletionSummary(task, input) {
     return { path: null, success: false, reason: 'no task' };
   }
 
-  const feature = task.feature || 'general';
+  // Validate task ID to prevent path traversal
+  if (!validateTaskId(task.id).valid) {
+    return { path: null, success: false, reason: 'invalid task ID' };
+  }
+
+  const feature = (task.feature || 'general').replace(/[^a-zA-Z0-9_-]/g, '');
   const completedDir = path.join(PATHS.workflow, 'completed', feature);
 
   // Path safety check
@@ -285,8 +349,8 @@ async function generateCompletionSummary(task, input) {
   }
 
   const verificationResults = collectVerificationResults(task.id);
-  const reviewFindings = collectReviewFindings(task.id);
   const changedFiles = (input && input.changedFiles) || getChangedFiles(task.id);
+  const reviewFindings = collectReviewFindings(task.id, changedFiles);
   const duration = formatDuration(task.startedAt, task.completedAt);
   const completedDate = task.completedAt
     ? new Date(task.completedAt).toISOString().replace('T', ' ').substring(0, 16)
@@ -306,13 +370,35 @@ async function generateCompletionSummary(task, input) {
   lines.push('## Acceptance Criteria Results');
   lines.push('');
   if (criteria.length > 0) {
+    // Determine overall verification status — distinguish partial from total failure
+    const failedGates = verificationResults.filter(v => v.status === 'FAIL');
+    const passedGates = verificationResults.filter(v => v.status === 'PASS');
+    let defaultStatus;
+    if (verificationResults.length === 0) {
+      defaultStatus = 'UNVERIFIED';
+    } else if (failedGates.length === 0) {
+      defaultStatus = 'PASS';
+    } else if (passedGates.length === 0) {
+      defaultStatus = 'FAIL';
+    } else {
+      defaultStatus = 'PARTIAL';
+    }
+
     lines.push('| # | Criterion | Status |');
     lines.push('|---|-----------|--------|');
     for (let i = 0; i < criteria.length; i++) {
-      lines.push(`| ${i + 1} | ${criteria[i]} | PASS |`);
+      lines.push(`| ${i + 1} | ${criteria[i]} | ${defaultStatus} |`);
     }
     lines.push('');
-    lines.push(`**Result**: ${criteria.length}/${criteria.length} passed`);
+    if (defaultStatus === 'UNVERIFIED') {
+      lines.push(`**Result**: ${criteria.length} criteria (no verification artifacts found)`);
+    } else if (defaultStatus === 'PASS') {
+      lines.push(`**Result**: ${criteria.length}/${criteria.length} passed`);
+    } else if (defaultStatus === 'PARTIAL') {
+      lines.push(`**Result**: ${passedGates.length}/${verificationResults.length} gates passed (${failedGates.length} failed)`);
+    } else {
+      lines.push(`**Result**: 0/${criteria.length} passed`);
+    }
   } else {
     lines.push('No acceptance criteria found in story file.');
   }
