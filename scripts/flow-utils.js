@@ -1116,7 +1116,15 @@ function getConfig() {
         logWarnings: true,
         printWarnings: process.env.DEBUG || process.env.VERBOSE_CONFIG
       });
-      _configCache = applyConfigCompatShim(result.value);
+      // Apply defaults for stripped config sections, then compat shim
+      let configWithDefaults = result.value;
+      try {
+        const { mergeWithDefaults } = require('./flow-config-defaults');
+        configWithDefaults = mergeWithDefaults(configWithDefaults);
+      } catch (err) {
+        // Graceful degradation if defaults module not available
+      }
+      _configCache = applyConfigCompatShim(configWithDefaults);
 
       // Log substitution warnings once per session (if DEBUG)
       if (process.env.DEBUG && result.warnings.length > 0) {
@@ -1125,7 +1133,14 @@ function getConfig() {
     } catch (err) {
       // Fallback to raw config if substitution fails
       console.warn(`Warning: Config substitution failed: ${err.message}`);
-      _configCache = applyConfigCompatShim(rawConfig);
+      let configWithDefaults = rawConfig;
+      try {
+        const { mergeWithDefaults } = require('./flow-config-defaults');
+        configWithDefaults = mergeWithDefaults(configWithDefaults);
+      } catch (defaultsErr) {
+        // Graceful degradation
+      }
+      _configCache = applyConfigCompatShim(configWithDefaults);
     }
 
     return _configCache;

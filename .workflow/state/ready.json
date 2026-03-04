@@ -1,27 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T12:02:44.521Z",
+  "lastUpdated": "2026-03-04T12:17:55.393Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-7db613f7",
-      "title": "Config Consolidation - Remove Static Data from Config",
-      "type": "refactor",
-      "feature": "config",
-      "status": "ready",
-      "priority": "P1",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "Framework detection patterns (40 lines) moved to code defaults",
-        "Official docs URLs (8 lines) moved to code defaults",
-        "Phase definitions (60 lines) moved to code defaults",
-        "Priority levels (20 lines) moved to code defaults",
-        "Classification keywords (25 lines) moved to code defaults",
-        "Cloud provider model lists (25 lines) moved to code defaults",
-        "Disabled features store only enabled:false, full sub-config loaded from code defaults when enabled"
-      ],
-      "createdAt": "2026-03-04T11:37:21.925Z"
-    },
     {
       "id": "wf-f7d4afeb",
       "title": "Build Optimized Memory System",
@@ -184,15 +164,13 @@
         "Project type detection added — registries only enabled for relevant project types"
       ],
       "createdAt": "2026-03-04T11:43:35.415Z"
-    }
-  ],
-  "blocked": [
+    },
     {
       "id": "wf-67eee59b",
       "title": "Config Consolidation - Update All Consumers",
       "type": "refactor",
       "feature": "config",
-      "status": "blocked",
+      "status": "ready",
       "priority": "P1",
       "level": "L1",
       "epicId": "wf-ea2c59c1",
@@ -210,6 +188,7 @@
       "createdAt": "2026-03-04T11:37:21.925Z"
     }
   ],
+  "blocked": [],
   "recentlyCompleted": [
     {
       "id": "wf-1d612670",
@@ -1617,6 +1596,28 @@
       "priority": "P0",
       "startedAt": "2026-02-22T15:00:00.000Z",
       "completedAt": "2026-02-22T09:42:00.000Z"
+    },
+    {
+      "id": "wf-7db613f7",
+      "title": "Config Consolidation - Remove Static Data from Config",
+      "type": "refactor",
+      "feature": "config",
+      "status": "recentlyCompleted",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Framework detection patterns (40 lines) moved to code defaults",
+        "Official docs URLs (8 lines) moved to code defaults",
+        "Phase definitions (60 lines) moved to code defaults",
+        "Priority levels (20 lines) moved to code defaults",
+        "Classification keywords (25 lines) moved to code defaults",
+        "Cloud provider model lists (25 lines) moved to code defaults",
+        "Disabled features store only enabled:false, full sub-config loaded from code defaults when enabled"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z",
+      "startedAt": "2026-03-04T12:08:33.249Z",
+      "completedAt": "2026-03-04T12:17:55.392Z"
     }
   ],
   "backlog": [

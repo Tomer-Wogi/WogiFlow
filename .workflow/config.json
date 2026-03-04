@@ -5,8 +5,7 @@
   "cli": {
     "type": "claude-code",
     "autoSync": {
-      "enabled": false,
-      "onSessionStart": true
+      "enabled": false
     }
   },
   "autoLog": true,
@@ -70,9 +69,7 @@
       "pauseBetweenScenarios": false,
       "fallbackToManual": true,
       "simpleMode": {
-        "enabled": false,
-        "completionPromise": "TASK_COMPLETE",
-        "maxIterations": 10
+        "enabled": false
       },
       "recheckAllAfterFix": true,
       "regressionOnRecheck": "warn"
@@ -85,16 +82,10 @@
     "trackSuccessfulStrategies": true,
     "maxAttemptsPerLevel": 3,
     "architecturalReassessment": {
-      "enabled": false,
-      "strikeCount": 3,
-      "autoResearch": true,
-      "requireApproval": true
+      "enabled": false
     },
     "recursive": {
-      "enabled": false,
-      "maxDepth": 3,
-      "maxHypotheses": 5,
-      "timeout": 300000
+      "enabled": false
     },
     "hypothesisGeneration": {
       "usePatterns": true,
@@ -112,22 +103,10 @@
   },
   "parallelExecution": {
     "taskQueue": {
-      "enabled": false,
-      "autoContinue": true,
-      "pauseBetweenTasks": false,
-      "maxQueueSize": 10,
-      "showProgressSummary": true
+      "enabled": false
     },
     "parallel": {
-      "enabled": false,
-      "maxConcurrent": 3,
-      "autoApprove": false,
-      "requireWorktree": true,
-      "showProgress": true,
-      "autoDetect": true,
-      "autoSuggest": true,
-      "autoExecute": false,
-      "minTasksForParallel": 2
+      "enabled": false
     },
     "bulkOrchestrator": {
       "enabled": false,
@@ -136,95 +115,26 @@
       "onFailure": "stop-dependent",
       "summaryDepth": "standard",
       "continuous": {
-        "enabled": false,
-        "idleAction": "stop",
-        "idleTimeout": 60,
-        "maxIdleChecks": 3
+        "enabled": false
       }
     }
   },
   "durableSteps": {
-    "enabled": false,
-    "autoResume": true,
-    "checkSuspensionsOnStart": true,
-    "defaultMaxAttempts": 5
+    "enabled": false
   },
   "suspension": {
-    "enabled": false,
-    "pollIntervalSeconds": 60,
-    "maxPollAttempts": 120,
-    "reminderAfterHours": 24
+    "enabled": false
   },
   "capture": {
     "autoGroup": true,
     "groupingThreshold": 0.5,
     "maxGroupSize": 5,
     "routing": {
-      "enabled": false,
-      "defaultCertainty": "certain",
-      "autoDetect": true
+      "enabled": false
     }
   },
   "phases": {
-    "enabled": false,
-    "autoSuggestForStories": true,
-    "definitions": [
-      {
-        "id": "contract",
-        "name": "Contract",
-        "description": "Define interfaces, types, API contracts",
-        "focus": [
-          "types",
-          "interfaces",
-          "contracts"
-        ],
-        "output": "Type definitions and API contracts"
-      },
-      {
-        "id": "skeleton",
-        "name": "Skeleton",
-        "description": "Create file structure, stub implementations",
-        "focus": [
-          "structure",
-          "stubs",
-          "scaffolding"
-        ],
-        "output": "File structure with stub implementations"
-      },
-      {
-        "id": "core",
-        "name": "Core Logic",
-        "description": "Implement main business logic",
-        "focus": [
-          "logic",
-          "implementation",
-          "happy-path"
-        ],
-        "output": "Working happy-path implementation"
-      },
-      {
-        "id": "edge-cases",
-        "name": "Edge Cases",
-        "description": "Handle edge cases and error states",
-        "focus": [
-          "errors",
-          "edge-cases",
-          "validation"
-        ],
-        "output": "Robust error handling"
-      },
-      {
-        "id": "polish",
-        "name": "Polish",
-        "description": "Optimization, cleanup, documentation",
-        "focus": [
-          "optimization",
-          "cleanup",
-          "docs"
-        ],
-        "output": "Production-ready code"
-      }
-    ]
+    "enabled": false
   },
   "mandatorySteps": {
     "afterTask": [],
@@ -237,29 +147,7 @@
   "priorities": {
     "defaultPriority": "P2",
     "autoBoostDays": 2,
-    "autoBoostAmount": 1,
-    "levels": {
-      "P0": {
-        "label": "Critical",
-        "description": "Drop everything"
-      },
-      "P1": {
-        "label": "High",
-        "description": "Do today"
-      },
-      "P2": {
-        "label": "Medium",
-        "description": "Do this week"
-      },
-      "P3": {
-        "label": "Low",
-        "description": "Do when possible"
-      },
-      "P4": {
-        "label": "Backlog",
-        "description": "Someday"
-      }
-    }
+    "autoBoostAmount": 1
   },
   "storyDecomposition": {
     "autoDetect": true,
@@ -270,74 +158,16 @@
     "loadingStates": true,
     "errorStates": true,
     "classification": {
-      "enabled": false,
-      "autoClassify": true,
-      "warnOnMismatch": true,
-      "thresholds": {
-        "epic": {
-          "minFiles": 15,
-          "minStories": 3
-        },
-        "story": {
-          "minFiles": 5,
-          "maxFiles": 15,
-          "minCriteria": 3
-        },
-        "task": {
-          "minFiles": 1,
-          "maxFiles": 5,
-          "minCriteria": 1
-        }
-      },
-      "keywords": {
-        "epic": [
-          "system",
-          "architecture",
-          "migration",
-          "redesign",
-          "platform",
-          "infrastructure",
-          "overhaul"
-        ],
-        "story": [
-          "feature",
-          "flow",
-          "integration",
-          "module",
-          "workflow",
-          "implement"
-        ],
-        "task": [
-          "add",
-          "fix",
-          "update",
-          "change",
-          "remove",
-          "button",
-          "field",
-          "tweak"
-        ]
-      }
+      "enabled": false
     },
     "supportEpics": true,
     "propagateProgress": true
   },
   "epics": {
-    "enabled": false,
-    "autoUpdateProgress": true,
-    "showInReady": true,
-    "progressWeights": {
-      "completed": 1,
-      "inProgress": 0.5,
-      "ready": 0,
-      "blocked": 0
-    }
+    "enabled": false
   },
   "clarifyingQuestions": {
-    "enabled": false,
-    "maxQuestions": 5,
-    "skipForSmallTasks": true,
-    "smallTaskThreshold": 2
+    "enabled": false
   },
   "specificationMode": {
     "enabled": false,
@@ -364,28 +194,12 @@
     "autoDetectFiles": true,
     "autoSuggestTests": true,
     "needsClarification": {
-      "enabled": false,
-      "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
-      "blockImplementation": true,
-      "minMarkersForReview": 0,
-      "categories": [
-        "assumption",
-        "ambiguity",
-        "missing-context",
-        "dependency-unknown",
-        "edge-case"
-      ]
+      "enabled": false
     }
   },
   "qualityGates": {
     "preTaskBaseline": {
-      "enabled": false,
-      "failureThreshold": 5,
-      "skipForTypes": [
-        "bugfix",
-        "quick-fix"
-      ],
-      "command": null
+      "enabled": false
     },
     "feature": {
       "require": [
@@ -441,61 +255,25 @@
     "similarityThreshold": 0.8,
     "similarityWarningThreshold": 0.6,
     "learning": {
-      "enabled": false,
-      "promotionThreshold": 3,
-      "includePreventionPrompts": true,
-      "autoSyncRules": true
+      "enabled": false
     }
   },
   "validation": {
     "afterFileEdit": {
-      "enabled": false,
-      "commands": {
-        "*.ts": [
-          "npx tsc --noEmit"
-        ],
-        "*.tsx": [
-          "npx tsc --noEmit",
-          "npx eslint {file} --fix"
-        ],
-        "*.js": [
-          "npx eslint {file} --fix"
-        ],
-        "*.jsx": [
-          "npx eslint {file} --fix"
-        ]
-      },
-      "fixErrorsBeforeContinuing": true
+      "enabled": false
     },
     "afterTaskComplete": {
-      "enabled": false,
-      "commands": [
-        "npm run lint",
-        "npm run typecheck"
-      ]
+      "enabled": false
     },
     "beforeCommit": {
-      "enabled": false,
-      "commands": [
-        "npm run lint",
-        "npm run typecheck",
-        "npm test"
-      ]
+      "enabled": false
     }
   },
   "checkpoint": {
-    "enabled": false,
-    "onTaskComplete": true,
-    "maxCheckpoints": 20,
-    "autoCommit": false,
-    "commitPrefix": "[checkpoint]",
-    "includeStateFiles": true
+    "enabled": false
   },
   "regressionTesting": {
-    "enabled": false,
-    "sampleSize": 3,
-    "runOnTaskComplete": true,
-    "onFailure": "warn"
+    "enabled": false
   },
   "tdd": {
     "enforced": true,
@@ -543,22 +321,10 @@
     "autoPromoteEnabled": false,
     "requireUserConfirmation": true,
     "session": {
-      "enabled": false,
-      "autoApplyThreshold": 90,
-      "minOccurrences": 2,
-      "confidenceThreshold": 70,
-      "scope": "today",
-      "analyzeReviews": true,
-      "analyzeRetries": true,
-      "analyzeFixes": true
+      "enabled": false
     },
     "crossSession": {
-      "enabled": false,
-      "lookbackDays": 30,
-      "minOccurrences": 3,
-      "similarityThreshold": 0.5,
-      "autoPromptOnSessionEnd": true,
-      "saveTo": "both"
+      "enabled": false
     },
     "knowledgeRouting": {
       "autoDetect": true,
@@ -567,74 +333,10 @@
       "modelSpecificLearning": true
     },
     "modelAdapters": {
-      "enabled": false,
-      "autoLearn": true,
-      "directory": ".workflow/model-adapters"
+      "enabled": false
     },
     "skill": {
-      "enabled": false,
-      "autoExtract": true,
-      "triggers": {
-        "onCommit": true,
-        "onTaskComplete": true,
-        "onCompact": true
-      },
-      "minCorrectionsToLearn": 1,
-      "autoCreateSkills": "ask",
-      "autoDetectFrameworks": true,
-      "fetchOfficialDocs": true,
-      "frameworkDetectionPatterns": {
-        "nestjs": [
-          "*.module.ts",
-          "*.controller.ts",
-          "*.service.ts",
-          "@nestjs/*"
-        ],
-        "react": [
-          "*.tsx",
-          "*.jsx",
-          "use*.ts",
-          "react",
-          "react-dom"
-        ],
-        "vue": [
-          "*.vue",
-          "vue",
-          "@vue/*"
-        ],
-        "angular": [
-          "*.component.ts",
-          "*.module.ts",
-          "@angular/*"
-        ],
-        "fastapi": [
-          "main.py",
-          "fastapi",
-          "pydantic"
-        ],
-        "django": [
-          "manage.py",
-          "django",
-          "settings.py"
-        ],
-        "express": [
-          "app.js",
-          "express",
-          "router.js"
-        ]
-      },
-      "officialDocsUrls": {
-        "nestjs": "https://docs.nestjs.com",
-        "react": "https://react.dev",
-        "vue": "https://vuejs.org/guide",
-        "angular": "https://angular.io/docs",
-        "fastapi": "https://fastapi.tiangolo.com",
-        "django": "https://docs.djangoproject.com",
-        "express": "https://expressjs.com/en/guide"
-      },
-      "learnFromLoopRetries": true,
-      "loopRetryThreshold": 3,
-      "autoSuggestPatternUpdates": true
+      "enabled": false
     }
   },
   "bugFlow": {
@@ -646,16 +348,12 @@
         "enabled": false
       },
       "dependencyAnalyzer": {
-        "enabled": false,
-        "minSeverity": "high"
+        "enabled": false
       }
     },
     "autoRoute": true,
     "learningEnforcement": {
-      "enabled": false,
-      "requireResolution": true,
-      "requireFeedbackPattern": true,
-      "promotionThreshold": 3
+      "enabled": false
     },
     "inlineDiscovery": {
       "maxSearchOperations": 3,
@@ -664,8 +362,7 @@
       "skipDependencyAnalysis": true
     },
     "severityOverride": {
-      "enabled": false,
-      "requireJustification": true
+      "enabled": false
     }
   },
   "decide": {
@@ -696,51 +393,28 @@
       "entropyThreshold": 0.7,
       "compactOnSessionEnd": true,
       "relevanceDecay": {
-        "enabled": false,
-        "decayRate": 0.033,
-        "neverAccessedPenalty": 0.1
+        "enabled": false
       },
       "demotion": {
         "relevanceThreshold": 0.3,
         "coldRetentionDays": 90
       },
       "selfTuning": {
-        "enabled": false,
-        "adjustOnOverflow": true,
-        "adjustOnFailures": true
+        "enabled": false
       },
       "observationCapture": {
-        "enabled": false,
-        "skipTools": [],
-        "maxInputSize": 2000,
-        "maxOutputSize": 2000,
-        "retentionDays": 30
+        "enabled": false
       },
       "observationExtraction": {
-        "enabled": false,
-        "minDurationMs": 100,
-        "excludeTools": [
-          "Read",
-          "Glob",
-          "Grep"
-        ]
+        "enabled": false
       }
     },
     "promotion": {
-      "enabled": false,
-      "threshold": 3,
-      "minRelevance": 0.8,
-      "destinations": [
-        "decisions.md"
-      ],
-      "requireApproval": true
+      "enabled": false
     }
   },
   "prd": {
-    "enabled": false,
-    "maxContextTokens": 2000,
-    "chunkSize": 500,
-    "autoRetrieve": false
+    "enabled": false
   },
   "context": {
     "compaction": {
@@ -756,8 +430,7 @@
         "detailMaxLength": 1000
       },
       "relevanceDecay": {
-        "enabled": false,
-        "decayPerTurn": 0.05
+        "enabled": false
       },
       "autoCleanup": true,
       "savePath": ".workflow/state/context-tree.json"
@@ -774,16 +447,7 @@
         "defaultSmallTask": 0.1,
         "defaultMediumTask": 0.25,
         "defaultLargeTask": 0.4
-      },
-      "refactorKeywords": [
-        "refactor",
-        "migration",
-        "overhaul",
-        "redesign",
-        "rewrite",
-        "restructure",
-        "rearchitect"
-      ]
+      }
     },
     "proactive": {
       "enabled": true,
@@ -798,36 +462,10 @@
       ]
     },
     "scoring": {
-      "enabled": false,
-      "maxContextTokens": 100000,
-      "reserveOutputTokens": 8000,
-      "includeMinScore": 0.3,
-      "snippetMaxLines": 50,
-      "fullFileMaxLines": 200,
-      "priorities": {
-        "required_types": 1,
-        "target_file": 0.95,
-        "error_context": 0.93,
-        "direct_imports": 0.9,
-        "interface_definitions": 0.88,
-        "api_contracts": 0.85,
-        "related_imports": 0.8,
-        "test_files": 0.75,
-        "patterns": 0.7,
-        "similar_implementations": 0.65,
-        "documentation": 0.5,
-        "examples": 0.45,
-        "config_files": 0.4,
-        "full_files": 0.3
-      }
+      "enabled": false
     },
     "monitor": {
-      "enabled": false,
-      "warnAt": 0.7,
-      "criticalAt": 0.85,
-      "contextWindow": 200000,
-      "checkOnSessionStart": true,
-      "checkAfterTask": true
+      "enabled": false
     },
     "auto": {
       "enabled": false,
@@ -847,22 +485,11 @@
         "maxTokensHard": 150000
       },
       "lspEnrichment": {
-        "enabled": false,
-        "maxFiles": 5,
-        "timeoutMs": 5000,
-        "showExports": true,
-        "showDiagnostics": true,
-        "prioritizeHealthyFiles": true
+        "enabled": false
       }
     },
     "session": {
-      "enabled": false,
-      "autoRestore": true,
-      "maxGapHours": 24,
-      "trackFiles": true,
-      "trackDecisions": true,
-      "maxRecentFiles": 20,
-      "maxRecentDecisions": 10
+      "enabled": false
     }
   },
   "eval": {
@@ -896,26 +523,10 @@
     "failureThresholdForFallback": 3
   },
   "morningBriefing": {
-    "enabled": false,
-    "showLastSession": true,
-    "showChanges": true,
-    "showRecommendedTasks": 3,
-    "generatePrompt": true,
-    "showBlockers": true,
-    "showKeyContext": true,
-    "showTechDebt": true,
-    "checkKnowledgeSync": true,
-    "autoRegenerateKnowledge": true,
-    "showRuleViolations": true,
-    "showAutoPromotedRules": true
+    "enabled": false
   },
   "bulkLoop": {
-    "enabled": false,
-    "maxIterations": 100,
-    "pollInterval": 10,
-    "errorThreshold": 3,
-    "contextThreshold": 0.8,
-    "taskTimeout": 1800
+    "enabled": false
   },
   "techDebt": {
     "enabled": false,
@@ -923,25 +534,14 @@
     "showInMorningBriefing": true,
     "agingThreshold": 3,
     "autoFix": {
-      "enabled": false,
-      "types": [
-        "console.log",
-        "unused-import",
-        "debugger",
-        "empty-catch"
-      ]
+      "enabled": false
     },
     "debtBudget": {
-      "enabled": false,
-      "maxOpenItems": 20
+      "enabled": false
     }
   },
   "requestLog": {
-    "enabled": false,
-    "autoArchive": true,
-    "maxRecentEntries": 50,
-    "keepRecent": 30,
-    "createSummary": true
+    "enabled": false
   },
   "registries": [
     {
@@ -1014,42 +614,17 @@
     }
   ],
   "semanticMatching": {
-    "enabled": false,
-    "aiAsJudge": true,
-    "thresholds": {
-      "preFilterThreshold": 30,
-      "definiteMatch": 90,
-      "likelyMatch": 70,
-      "possibleMatch": 50
-    },
-    "weights": {
-      "stringSimilarity": 0.3,
-      "semanticSimilarity": 0.7
-    },
-    "useAIReview": true
+    "enabled": false
   },
   "guidedEdit": {
-    "enabled": false,
-    "sessionFile": ".workflow/state/guided-edit-session.json",
-    "extensions": [
-      "ts",
-      "tsx",
-      "js",
-      "jsx",
-      "vue",
-      "svelte"
-    ],
-    "srcDir": null
+    "enabled": false
   },
   "traces": {
     "saveTo": ".workflow/traces",
     "generateDiagrams": true
   },
   "worktree": {
-    "enabled": false,
-    "autoCleanupHours": 24,
-    "keepOnFailure": false,
-    "squashOnMerge": true
+    "enabled": false
   },
   "finalization": {
     "enabled": true,
@@ -1099,37 +674,7 @@
         "outputReserveRatio": 0.3,
         "outputReserveMax": 4096,
         "tokenEstimation": {
-          "enabled": false,
-          "minTokens": 1000,
-          "maxTokens": 8000,
-          "defaultLevel": "medium",
-          "logMetrics": true
-        }
-      },
-      "cloudProviders": {
-        "openai": {
-          "models": [
-            "gpt-4o-mini",
-            "gpt-4o"
-          ],
-          "defaultModel": "gpt-4o-mini",
-          "envKey": "OPENAI_API_KEY"
-        },
-        "anthropic": {
-          "models": [
-            "claude-3-5-haiku-latest",
-            "claude-3-haiku-20240307"
-          ],
-          "defaultModel": "claude-3-5-haiku-latest",
-          "envKey": "ANTHROPIC_API_KEY"
-        },
-        "google": {
-          "models": [
-            "gemini-2.0-flash-exp",
-            "gemini-1.5-flash"
-          ],
-          "defaultModel": "gemini-2.0-flash-exp",
-          "envKey": "GOOGLE_API_KEY"
+          "enabled": false
         }
       },
       "routing": {
@@ -1209,36 +754,18 @@
       "fallbackEnabled": true,
       "maxEscalations": 2,
       "promptFragments": {
-        "enabled": false,
-        "directory": ".workflow/prompts/fragments",
-        "autoCompose": true
+        "enabled": false
       },
       "costBudget": {
-        "enabled": false,
-        "daily": 10,
-        "perTask": 0.5,
-        "warnAt": 0.8
+        "enabled": false
       }
     },
     "cascade": {
-      "enabled": false,
-      "maxFailuresBeforeEscalate": 3,
-      "escalateOnCategories": [
-        "capability_mismatch",
-        "context_overflow",
-        "rate_limit"
-      ],
-      "resetAfterMinutes": 30,
-      "persistState": false
+      "enabled": false
     }
   },
   "gateConfidence": {
-    "enabled": false,
-    "autoApplyThreshold": 0.7,
-    "requireApprovalThreshold": 0.5,
-    "blockThreshold": 0.3,
-    "trackHistory": true,
-    "maxHistoryEntries": 100
+    "enabled": false
   },
   "longInputGate": {
     "enabled": true,
@@ -1275,29 +802,14 @@
     "chunkOverlap": 500,
     "outputLanguage": "en",
     "adaptiveComplexity": {
-      "enabled": false,
-      "smallThreshold": {
-        "topics": 3,
-        "statements": 10
-      },
-      "mediumThreshold": {
-        "topics": 8,
-        "statements": 30
-      }
+      "enabled": false
     }
   },
   "lsp": {
-    "enabled": false,
-    "server": "typescript-language-server",
-    "timeout": 5000,
-    "cacheTypes": true
+    "enabled": false
   },
   "codebaseInsights": {
-    "enabled": false,
-    "generateOn": [
-      "onboarding",
-      "manual"
-    ]
+    "enabled": false
   },
   "commits": {
     "requireApproval": {
@@ -1334,10 +846,7 @@
       "prompt": false
     },
     "promptHook": {
-      "enabled": false,
-      "model": "haiku",
-      "timeout": 5000,
-      "skipSafeCommands": true
+      "enabled": false
     },
     "onBlock": "error",
     "onAsk": "prompt",
@@ -1361,14 +870,7 @@
     ]
   },
   "multiApproach": {
-    "enabled": false,
-    "mode": "suggest",
-    "triggerOn": [
-      "large",
-      "xl"
-    ],
-    "maxApproaches": 3,
-    "selectionStrategy": "first-passing"
+    "enabled": false
   },
   "hooks": {
     "enabled": false,
@@ -1464,10 +966,7 @@
     }
   },
   "metrics": {
-    "enabled": false,
-    "trackCommands": true,
-    "retentionDays": 30,
-    "alertOnFailureRate": 0.3
+    "enabled": false
   },
   "corrections": {
     "mode": "inline",
@@ -1478,48 +977,10 @@
     "minFindings": 3,
     "requireJustificationIfClean": true,
     "gitVerifiedClaims": {
-      "enabled": false,
-      "verifyFileCreation": true,
-      "verifyContentMatch": true,
-      "blockOnMismatch": true
-    },
-    "agents": {
-      "core": [
-        "code-logic",
-        "security",
-        "architecture"
-      ],
-      "optional": [
-        "performance"
-      ],
-      "projectRules": true,
-      "projectRulesSource": "decisions.md",
-      "maxParallelAgents": 6
+      "enabled": false
     },
     "multiPass": {
-      "enabled": false,
-      "earlyExitOnCritical": true,
-      "passForward": true,
-      "passes": {
-        "structure": {
-          "enabled": false,
-          "model": "haiku"
-        },
-        "logic": {
-          "enabled": false,
-          "model": "sonnet"
-        },
-        "security": {
-          "enabled": false,
-          "model": "sonnet",
-          "conditional": true
-        },
-        "integration": {
-          "enabled": false,
-          "model": "sonnet",
-          "conditional": true
-        }
-      }
+      "enabled": false
     },
     "fix": {
       "persistUnfixed": true,
@@ -1553,21 +1014,10 @@
       }
     },
     "peer": {
-      "enabled": false,
-      "provider": "api",
-      "models": [
-        "openai:gpt-4o-mini"
-      ],
-      "apiKeys": {
-        "openai": "${OPENAI_API_KEY}",
-        "google": "${GOOGLE_API_KEY}",
-        "anthropic": "${ANTHROPIC_API_KEY}"
-      }
+      "enabled": false
     },
     "triage": {
-      "enabled": false,
-      "autoSuggestAfterReview": true,
-      "learnFromDismissals": true
+      "enabled": false
     }
   },
   "originTaskTracing": {
@@ -1576,112 +1026,7 @@
     "traceOrigin": true,
     "sameSessionWindow": "2h",
     "learningSignal": {
-      "enabled": false,
-      "threshold": 3,
-      "groupBy": [
-        "type",
-        "feature"
-      ]
-    }
-  },
-  "workflowSteps": {
-    "regressionTest": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "afterTask"
-    },
-    "securityScan": {
-      "enabled": false,
-      "mode": "block",
-      "when": "beforeCommit",
-      "config": {
-        "severity": "high"
-      }
-    },
-    "updateKnowledgeBase": {
-      "enabled": false,
-      "mode": "prompt",
-      "when": "afterTask"
-    },
-    "updateChangelog": {
-      "enabled": false,
-      "mode": "prompt",
-      "when": "beforeCommit"
-    },
-    "codeComplexityCheck": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "afterTask",
-      "config": {
-        "threshold": 10
-      }
-    },
-    "coverageCheck": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "beforeCommit",
-      "config": {
-        "minCoverage": 80
-      }
-    },
-    "codeSimplifier": {
-      "enabled": false,
-      "mode": "prompt",
-      "when": "afterTask",
-      "config": {
-        "maxFunctionLines": 50,
-        "maxNestingDepth": 3,
-        "suggestExtraction": true,
-        "requireVerificationAfterApply": true
-      }
-    },
-    "codeReview": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "afterTask",
-      "config": {
-        "multiAgentThreshold": 5,
-        "highRiskPatterns": [
-          "auth",
-          "payment",
-          "security",
-          "crypto"
-        ],
-        "confidenceThreshold": 80
-      }
-    },
-    "prTestAnalyzer": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "beforeCommit",
-      "config": {
-        "checkCoverage": true,
-        "checkQuality": true,
-        "minCoverageForModified": 70
-      }
-    },
-    "silentFailureHunter": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "afterTask",
-      "config": {
-        "checkEmptyCatch": true,
-        "checkLogOnlyCatch": true,
-        "checkUnhandledAsync": true,
-        "checkPromiseChains": true
-      }
-    },
-    "commentAnalyzer": {
-      "enabled": false,
-      "mode": "warn",
-      "when": "afterTask",
-      "config": {
-        "flagTodo": true,
-        "flagFixme": true,
-        "checkJsdoc": true,
-        "flagCommentedCode": true,
-        "flagStale": true
-      }
+      "enabled": false
     }
   },
   "research": {
@@ -1702,33 +1047,21 @@
     "cacheVerifications": true,
     "cacheExpiryHours": 24,
     "cache": {
-      "enabled": false,
-      "ttlHours": 24,
-      "maxEntries": 200,
-      "path": ".workflow/state/research-cache.json"
-    },
-    "triggers": {
-      "feasibilityQuestions": "deep",
-      "capabilityQuestions": "standard",
-      "existenceQuestions": "standard",
-      "architectureQuestions": "deep",
-      "integrationQuestions": "standard"
+      "enabled": false
     },
     "budgetMode": "soft",
     "negativeEvidenceRule": true,
     "assumptionTracking": true,
     "planMode": {
       "explorePhase": {
-        "enabled": false,
-        "minTaskLevel": "L2"
+        "enabled": false
       },
       "researchAgents": {
         "codebaseAnalyzer": {
           "enabled": false
         },
         "bestPractices": {
-          "enabled": false,
-          "maxWebSearches": 3
+          "enabled": false
         },
         "versionVerifier": {
           "enabled": false
@@ -1745,24 +1078,11 @@
     }
   },
   "webmcp": {
-    "enabled": false,
-    "toolsPath": ".workflow/webmcp/tools.json",
-    "fallbackEnabled": true,
-    "maxToolCalls": 20,
-    "uiExtensions": [
-      ".tsx",
-      ".jsx",
-      ".vue",
-      ".svelte"
-    ]
+    "enabled": false
   },
   "decisions": {
     "amendmentTracking": {
-      "enabled": false,
-      "logFile": ".workflow/state/decision-amendments.json",
-      "requireRationale": true,
-      "requireImpactAssessment": false,
-      "trackSource": true
+      "enabled": false
     }
   },
   "community": {
@@ -1780,28 +1100,11 @@
     "cacheTtlHours": 24,
     "serverUrl": "https://api.wogiflow.com",
     "sync": {
-      "enabled": false,
-      "endpoint": "https://api.wogi.ai/v1/community",
-      "syncOnSessionStart": true,
-      "syncOnSessionEnd": true,
-      "maxQueuedSessions": 10
+      "enabled": false
     }
   },
   "consistency": {
-    "enabled": false,
-    "runOn": [
-      "afterTask",
-      "beforeCommit"
-    ],
-    "checks": {
-      "appMapVsCodebase": true,
-      "functionMapVsCodebase": true,
-      "apiMapVsCodebase": true,
-      "crossMapConsistency": true,
-      "orphanDetection": true
-    },
-    "mode": "warn",
-    "maxOrphans": 10
+    "enabled": false
   },
   "audit": {
     "agents": {
