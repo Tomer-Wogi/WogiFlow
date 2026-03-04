@@ -89,7 +89,7 @@ cat .claude/skills/*/knowledge/patterns.md
 | [Project Learning](./project-learning.md) | decisions.md updates, feedback patterns |
 | [Skill Learning](./skill-learning.md) | Framework patterns, skill creation |
 | [Model Learning](./model-learning.md) | Per-model optimization, adapters |
-| [Team Learning](./team-learning.md) | Knowledge routing, promotion |
+| [Skill Matching](./skill-matching.md) | Relevance scoring, auto-loading |
 | [Rules Management](./rules-management.md) | Sync decisions.md to .claude/rules/ |
 | [Long Input Extraction](./long-input-extraction.md) | Extract tasks from transcripts/PRDs |
 
@@ -116,10 +116,12 @@ cat .claude/skills/*/knowledge/patterns.md
       "autoLearn": true
     }
   },
-  "knowledgeRouting": {
-    "autoDetect": true,
-    "confirmWithUser": true,
-    "defaultScope": "local"
+  "learning": {
+    "knowledgeRouting": {
+      "autoDetect": true,
+      "confirmWithUser": true,
+      "defaultScope": "local"
+    }
   }
 }
 ```
@@ -160,7 +162,7 @@ Future work uses new knowledge
 | Agent behaviors | `agents/*.md` | AI + User |
 | Config settings | `config.json` | AI + User |
 | Framework patterns | `.claude/skills/*/patterns.md` | AI |
-| Model behaviors | `model-adapters/*.md` | System |
+| Model behaviors | `.workflow/state/model-adapters/` | System |
 | Feedback history | `feedback-patterns.md` | System |
 
 ---

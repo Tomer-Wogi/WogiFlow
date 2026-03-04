@@ -19,21 +19,17 @@ WogiFlow has multiple memory systems:
 ```json
 {
   "memory": {
-    "enabled": true,
+    "enabled": false,
     "localDb": ".workflow/memory/local.db",
     "embeddingModel": "Xenova/all-MiniLM-L6-v2",
     "maxLocalFacts": 1000,
-    "autoRemember": false
-  },
-  "memory": {
+    "autoRemember": false,
     "automatic": {
-      "enabled": true,
+      "enabled": false,
       "entropyThreshold": 0.7,
       "compactOnSessionEnd": true,
       "relevanceDecay": {
-        "enabled": true,
-        "decayRate": 0.033,
-        "neverAccessedPenalty": 0.1
+        "enabled": false
       },
       "demotion": {
         "relevanceThreshold": 0.3,

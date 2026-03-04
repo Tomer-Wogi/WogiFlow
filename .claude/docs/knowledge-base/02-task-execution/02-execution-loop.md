@@ -56,20 +56,19 @@ The execution loop is the core mechanism that ensures task completion. When enab
 ```json
 {
   "execution": {
+    "maxIterations": 20,
+    "maxRetries": 5,
+    "blockExitUntilComplete": true,
+    "autoInferVerification": true,
     "loops": {
       "enabled": true,
       "enforced": true,
-      "blockExitUntilComplete": true,
       "requireVerification": true,
       "blockOnSkip": true,
-      "maxRetries": 5,
-      "maxIterations": 20,
       "commitEvery": 3,
-      "pauseBetweenScenarios": false
-    },
-    "autoInferVerification": true,
-    "maxRetries": 5,
-    "maxIterations": 20
+      "pauseBetweenScenarios": false,
+      "fallbackToManual": true
+    }
   }
 }
 ```
@@ -109,7 +108,7 @@ Durable sessions persist:
 1. **Task Start**: Creates `durable-session.json` with all steps
 2. **Step Execution**: Updates step status after each action
 3. **Interruption**: Session persists on disk
-4. **Resume**: `/wogi-start TASK-XXX` detects existing session
+4. **Resume**: `/wogi-start wf-XXXXXXXX` detects existing session
 5. **Completion**: Session archived for learning
 
 ### Configuration
@@ -117,10 +116,7 @@ Durable sessions persist:
 ```json
 {
   "durableSteps": {
-    "enabled": true,              // Enable durable sessions
-    "autoResume": true,           // Auto-resume on restart
-    "checkSuspensionsOnStart": true,
-    "defaultMaxAttempts": 5
+    "enabled": true
   }
 }
 ```
@@ -188,10 +184,7 @@ For tasks that require waiting (external reviews, CI runs, etc.), suspend/resume
 ```json
 {
   "suspension": {
-    "enabled": true,
-    "pollIntervalSeconds": 60,    // How often to check poll conditions
-    "maxPollAttempts": 120,       // Max checks before timeout
-    "reminderAfterHours": 24      // Remind about suspended tasks
+    "enabled": true
   }
 }
 ```
@@ -338,15 +331,7 @@ Execute independent tasks simultaneously using git worktrees.
 {
   "parallelExecution": {
     "parallel": {
-      "enabled": true,
-    "maxConcurrent": 3,           // Max parallel tasks
-    "autoApprove": false,         // Require approval
-    "requireWorktree": true,      // Isolate in worktrees
-    "showProgress": true,
-    "autoDetect": true,           // Detect parallelizable tasks
-    "autoSuggest": true,          // Suggest when beneficial
-    "autoExecute": false,         // Require approval
-      "minTasksForParallel": 2
+      "enabled": true
     }
   }
 }
@@ -364,7 +349,7 @@ Execute independent tasks simultaneously using git worktrees.
 
 ```bash
 # Suggest parallel execution
-/wogi-bulk TASK-001 TASK-002 TASK-003
+/wogi-bulk wf-a1b2c3d4 wf-b2c3d4e5 wf-c3d4e5f6
 
 # Check parallel status
 flow parallel status

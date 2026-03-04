@@ -51,7 +51,7 @@ Component indexing is now configured via the `registries` array in `config.json`
 {
   "registries": [
     {
-      "type": "component",
+      "id": "components",
       "autoScan": true,                    // Enable auto-scanning
       "scanOn": [                          // When to scan
         "sessionStart",                    // On new Claude session
@@ -174,7 +174,7 @@ Based on `scanOn` configuration:
 {
   "registries": [
     {
-      "type": "component",
+      "id": "components",
       "scanOn": ["sessionStart", "afterTask", "preCommit"],
       "staleAfterMinutes": 60
     }
@@ -313,7 +313,7 @@ Update the component registry entry in the `registries` array:
 {
   "registries": [
     {
-      "type": "component",
+      "id": "components",
       "directories": ["components", "lib"]  // Adjust paths
     }
   ]
@@ -327,7 +327,7 @@ Add ignore patterns to the component registry entry:
 {
   "registries": [
     {
-      "type": "component",
+      "id": "components",
       "ignore": [
         "*.test.*",
         "*.stories.*",

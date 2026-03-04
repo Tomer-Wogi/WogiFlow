@@ -21,27 +21,34 @@ WogiFlow monitors context and helps you manage it.
 {
   "context": {
     "monitor": {
+      "enabled": true
+    },
+    "smart": {
       "enabled": true,
-      "warnAt": 0.7,              // Warn at 70%
-      "criticalAt": 0.85,         // Critical at 85%
-      "contextWindow": 200000,    // Token limit
-      "checkOnSessionStart": true,
-      "checkAfterTask": true,
-      "trackingMethod": "auto"    // auto, native, or estimated
+      "safeThreshold": 0.95,
+      "emergencyThreshold": 0.9
+    },
+    "proactive": {
+      "enabled": true,
+      "triggerThreshold": 0.75
     }
   }
 }
 ```
 
-### Tracking Methods (v1.0.3+)
+> **Note**: Context monitoring is disabled by default (`enabled: false`). The `context` section also includes `smart` (pre-task context estimation) and `proactive` (automatic compaction at phase boundaries) sub-keys. See [All Options](../configuration/all-options.md) for full details.
+```
 
-| Method | Description |
-|--------|-------------|
-| `auto` | Uses native if available, falls back to estimated (default) |
-| `native` | Uses Claude Code's native context tracking (v1.0.52+) |
-| `estimated` | Uses token estimation from state files |
+### Context Estimation
 
-Native tracking is more accurate but requires Claude Code v1.0.52+ and status line configuration via `/wogi-statusline-setup`.
+WogiFlow estimates context usage before starting tasks via `context.smart`:
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `safeThreshold` | 0.95 | Projected usage below this is safe |
+| `emergencyThreshold` | 0.9 | Current usage above this triggers emergency compact |
+| `perFile` | 0.02 | Estimated context cost per file |
+| `perCriterion` | 0.03 | Estimated context cost per acceptance criterion |
 
 ---
 
@@ -226,10 +233,7 @@ Old request log entries are archived automatically:
 ```json
 {
   "requestLog": {
-    "autoArchive": true,
-    "maxRecentEntries": 50,
-    "keepRecent": 30,
-    "createSummary": true
+    "enabled": true
   }
 }
 ```
@@ -299,9 +303,7 @@ Check configuration:
 {
   "context": {
     "monitor": {
-      "enabled": true,
-      "checkOnSessionStart": true,
-      "checkAfterTask": true
+      "enabled": true
     }
   }
 }

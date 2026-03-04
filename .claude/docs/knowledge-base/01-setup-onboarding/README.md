@@ -167,7 +167,7 @@ This analyzes your codebase and populates:
 1. **Review Generated Files**: Check `decisions.md` and `app-map.md` for accuracy
 2. **Run Health Check**: `/wogi-health` to verify setup
 3. **View Tasks**: `/wogi-ready` to see available tasks
-4. **Start Working**: `/wogi-start TASK-001`
+4. **Start Working**: `/wogi-start wf-a1b2c3d4`
 
 ---
 

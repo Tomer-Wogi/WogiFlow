@@ -1,6 +1,16 @@
 {
   "lastUpdated": "2026-03-04T17:09:19.236Z",
-  "inProgress": [],
+  "inProgress": [
+    {
+      "id": "wf-cr-7a3b9f",
+      "title": "Fix 25 review findings from documentation overhaul review",
+      "type": "fix",
+      "feature": "review",
+      "status": "in_progress",
+      "priority": "P0",
+      "startedAt": "2026-03-04T17:50:24.853Z"
+    }
+  ],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [

@@ -61,12 +61,12 @@ flow figma scan                         # Scan codebase for components
 flow figma extract <file>              # Extract Figma design data
 ```
 
-### Via Skill Commands
+### Via Skill Triggers
 
-The following skills are available when `figma-analyzer` is installed:
+The following skill triggers are available when `figma-analyzer` is installed. These are invoked internally by WogiFlow during task execution — not as user-facing slash commands:
 
-| Skill | Purpose |
-|-------|---------|
+| Skill Trigger | Purpose |
+|--------------|---------|
 | `figma:implement-design` | Translate Figma designs into production-ready code |
 | `figma:code-connect-components` | Connect Figma components to code via Code Connect |
 | `figma:create-design-system-rules` | Generate design system rules for your codebase |

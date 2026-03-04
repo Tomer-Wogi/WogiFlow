@@ -147,6 +147,16 @@ Understanding the trade-offs helps you configure WogiFlow for your needs:
 
 ## Additional Features
 
+### Plan Management
+Strategic initiatives that coordinate epics and features.
+
+[Read more: Plan Management](./plan-management.md)
+
+### Specification Mode
+How specs are generated and verified for medium/large tasks.
+
+[Read more: Specification Mode](./specification-mode.md)
+
 ### Quick Capture
 Capture ideas and bugs without interrupting current work.
 

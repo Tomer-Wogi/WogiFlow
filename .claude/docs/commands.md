@@ -39,6 +39,7 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-init` | Initialize workflow structure. Create all directories and state files. Use for new projects. |
 | `/wogi-review-fix` | Code review with automatic fixing. Runs full review process then auto-fixes all findings. |
 | `/wogi-peer-review` | Multi-model code review - different AI models review same code for diverse perspectives. |
+| `/wogi-eval` | Multi-judge scoring system — 1 Opus + 2 Sonnet judges score task output across 5 dimensions. |
 | `/wogi-triage` | Interactive walkthrough of review findings from last-review.json. Categorize, dismiss, or create tasks. |
 | `/wogi-onboard` | Analyze existing project with deep temporal analysis, pattern extraction, and state file generation. |
 | `/wogi-rescan` | Re-scan project after external changes. Smart diff: auto-adds new items, auto-removes deleted items, presents conflicts one-by-one. Options: `--dry-run`, `--auto-resolve`, `--category`, `--since`. |

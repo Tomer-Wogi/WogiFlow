@@ -125,7 +125,7 @@ When importing, external tasks are mapped to WogiFlow tasks:
 ## Sync Behavior
 
 - **Import**: Creates new tasks in `ready.json` with `source: "jira"` or `source: "linear"`
-- **Push**: Updates external issue status when task is completed via `/wogi-done`
+- **Push**: Updates external issue status when task completes (via the `/wogi-start` completion pipeline)
 - **Duplicates**: Checks `externalId` to avoid re-importing same issue
 
 ---

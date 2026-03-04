@@ -23,7 +23,18 @@ Plan (pl-XXXXXXXX) - Strategic initiative
 
 ---
 
-## Commands
+## Slash Command
+
+```bash
+/wogi-plan "Q1 Roadmap"              # Create a new plan
+/wogi-plan "Q1 Roadmap" --goal "Ship by Q2"  # With goal
+```
+
+The `/wogi-plan` command routes through `/wogi-start` and creates a plan with the given title.
+
+---
+
+## CLI Commands
 
 **Script**: `scripts/flow-plan.js`
 
