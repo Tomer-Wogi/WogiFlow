@@ -18,7 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const { getProjectRoot, getConfig, PATHS, colors, showHelp: showHelpGeneric } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const METRICS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'command-metrics.json');
@@ -280,21 +280,16 @@ function resetMetrics() {
 // ============================================================
 
 function showHelp() {
-  console.log(`
-Wogi Flow - Command Metrics
-
-Usage:
-  flow metrics              Show metrics summary
-  flow metrics --json       Output as JSON
-  flow metrics --reset      Clear all metrics
-  flow metrics --problems   Show only problematic commands
-
-Options:
-  --json       Output in JSON format
-  --reset      Clear all metrics data
-  --problems   Show commands with high failure rates
-  --help, -h   Show this help
-`);
+  showHelpGeneric('flow-metrics.js', 'Track command success/failure rates to surface problematic tools.', [
+    { name: '(default)', description: 'Show metrics summary' }
+  ], {
+    options: [
+      { name: '--json', description: 'Output in JSON format' },
+      { name: '--reset', description: 'Clear all metrics data' },
+      { name: '--problems', description: 'Show commands with high failure rates' },
+      { name: '--help, -h', description: 'Show this help' }
+    ]
+  });
 }
 
 function main() {

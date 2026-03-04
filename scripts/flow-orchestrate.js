@@ -56,7 +56,7 @@ const {
 } = require('./flow-export-scanner');
 
 // Import utilities for consistent project root, colors, and config
-const { getProjectRoot, colors, getConfig, writeJson } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, writeJson, estimateTokens } = require('./flow-utils');
 const { getPromptAdjustments, recordModelResult } = require('./flow-model-adapter');
 
 // Import provider infrastructure for cloud executors
@@ -1488,17 +1488,7 @@ function getTokenEstimationSettings() {
 // Context Management & Auto-Compaction
 // ============================================================
 
-/**
- * Estimates token count from text.
- * Uses ~4 characters per token as a rough estimate.
- * This is conservative - actual tokenization varies by model.
- */
-function estimateTokens(text) {
-  if (!text) return 0;
-  // Rough estimate: ~4 chars per token for English text/code
-  // Add extra for whitespace and special characters
-  return Math.ceil(text.length / 3.5);
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Calculates context usage percentage

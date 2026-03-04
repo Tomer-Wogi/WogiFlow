@@ -11,16 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-// Colors
-const colors = {
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  red: '\x1b[31m',
-  bold: '\x1b[1m',
-  reset: '\x1b[0m'
-};
+const { colors } = require('./flow-utils');
 
 const PROJECT_ROOT = process.cwd();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');

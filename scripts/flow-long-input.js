@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-// Note: writeJson available from flow-utils if needed
+const { estimateTokens } = require('./flow-utils');
 
 // Import extracted modules (renamed from transcript-* to long-input-*)
 const transcriptParsing = require('./flow-long-input-parsing');
@@ -3808,36 +3808,7 @@ function measureInputMetrics(text) {
   };
 }
 
-/**
- * Estimate LLM token count
- */
-function estimateTokens(text) {
-  const charCount = text.length;
-
-  // Detect code ratio for adjustment
-  const codePatterns = [/```[\s\S]*?```/g, /`[^`]+`/g];
-  let codeChars = 0;
-  for (const pattern of codePatterns) {
-    const matches = text.match(pattern);
-    if (matches) {
-      codeChars += matches.join('').length;
-    }
-  }
-  const codeRatio = charCount > 0 ? codeChars / charCount : 0;
-
-  // Detect timestamp ratio
-  const timestampPattern = /\d{2}:\d{2}(:\d{2})?(\.\d{3})?/g;
-  const timestamps = text.match(timestampPattern);
-  const timestampChars = timestamps ? timestamps.join('').length : 0;
-  const timestampRatio = charCount > 0 ? timestampChars / charCount : 0;
-
-  // Base: 4 chars/token
-  // Code: 3 chars/token (more tokens)
-  // Timestamps: 6 chars/token (fewer tokens)
-  const avgCharsPerToken = 4 - (codeRatio * 1) + (timestampRatio * 2);
-
-  return Math.ceil(charCount / Math.max(avgCharsPerToken, 2));
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Detect VTT subtitle format

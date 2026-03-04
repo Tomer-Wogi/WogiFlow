@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const { getProjectRoot, colors: c, estimateTokens } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -1065,19 +1065,7 @@ async function getModelContextLimit(providerType, endpoint, modelName) {
   }
 }
 
-/**
- * Estimate token count from text
- * Uses conservative 4 chars per token estimate for English/code
- *
- * @param {string} text - Text to estimate
- * @returns {number} Estimated token count
- */
-function estimateTokens(text) {
-  if (!text) return 0;
-  // 4 chars per token is conservative estimate
-  // Actual tokenizers vary but this is a reasonable approximation
-  return Math.ceil(text.length / 4);
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Create a token budgeting helper for a model

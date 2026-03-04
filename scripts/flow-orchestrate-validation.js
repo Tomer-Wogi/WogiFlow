@@ -15,7 +15,7 @@
  */
 
 const path = require('path');
-const { getConfig } = require('./flow-utils');
+const { getConfig, escapeRegex } = require('./flow-utils');
 const { loadCachedExportMap } = require('./flow-export-scanner');
 
 // ============================================================
@@ -383,12 +383,7 @@ function validateOutputMatchesTask(code, step) {
   };
 }
 
-/**
- * Escapes special regex characters in a string
- */
-function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// escapeRegex imported from flow-utils.js
 
 // ============================================================
 // Import Validation (Config-Driven)

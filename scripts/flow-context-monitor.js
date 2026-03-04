@@ -23,25 +23,15 @@ const {
   readFile,
   fileExists,
   printHeader,
-  safeJsonParse
+  safeJsonParse,
+  estimateTokens
 } = require('./flow-utils');
 
 // ============================================================
 // Token Estimation
 // ============================================================
 
-/**
- * Estimate tokens from text
- * Uses different ratios for prose vs code content:
- * - Prose: ~4 chars = 1 token
- * - Code: ~3 chars = 1 token (more token-dense)
- */
-function estimateTokens(text, isCode = false) {
-  if (!text) return 0;
-  // Code is more token-dense due to keywords, punctuation, short variable names
-  const charsPerToken = isCode ? 3 : 4;
-  return Math.ceil(text.length / charsPerToken);
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Detect if content is primarily code (for token estimation)
@@ -63,7 +53,7 @@ function estimateFileTokens(filePath) {
     const content = fs.readFileSync(filePath, 'utf-8');
     // Use code estimation for code files
     const isCode = /\.(js|ts|jsx|tsx|json|css|scss)$/.test(filePath) || isCodeContent(content);
-    return estimateTokens(content, isCode);
+    return estimateTokens(content, { isCode });
   } catch {
     return 0;
   }

@@ -27,7 +27,8 @@ const {
   outputJson,
   info,
   warn,
-  safeJsonParse
+  safeJsonParse,
+  estimateTokens
 } = require('./flow-utils');
 
 const {
@@ -48,19 +49,7 @@ const CHARS_PER_TOKEN = 4;
 const DEFAULT_MAX_TOKENS = 8000;
 const DEFAULT_SECTION_LIMIT = 10;
 
-// ============================================================
-// Token Estimation
-// ============================================================
-
-/**
- * Estimate token count for a string
- * @param {string} text - Text to estimate
- * @returns {number} - Estimated token count
- */
-function estimateTokens(text) {
-  if (!text) return 0;
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Truncate sections to fit within token limit

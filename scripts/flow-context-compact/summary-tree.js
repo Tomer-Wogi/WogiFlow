@@ -24,7 +24,7 @@
 
 const path = require('path');
 const crypto = require('crypto');
-const { getConfig, readJson, writeJson, ensureDir, PATHS } = require('../flow-utils');
+const { getConfig, readJson, writeJson, ensureDir, PATHS, estimateTokens } = require('../flow-utils');
 
 // ============================================================
 // Configuration
@@ -71,16 +71,7 @@ function generateNodeId() {
   return crypto.randomUUID();
 }
 
-/**
- * Estimate token count from text
- * Rough approximation: ~4 chars per token for English
- * @param {string} text - Text to estimate
- * @returns {number} Estimated tokens
- */
-function estimateTokens(text) {
-  if (!text) return 0;
-  return Math.ceil(text.length / CHARS_PER_TOKEN);
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Create a new tree node

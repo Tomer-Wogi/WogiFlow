@@ -1,28 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T12:31:16.601Z",
+  "lastUpdated": "2026-03-04T12:43:40.902Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-6af71e6d",
-      "title": "Function Deduplication",
-      "type": "refactor",
-      "feature": "core",
-      "status": "ready",
-      "priority": "P2",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "estimateTokens() consolidated from 9 copies to 1 in flow-utils.js",
-        "loadConfig/getConfig() consolidated from 10 copies to 1 canonical",
-        "escapeRegex() consolidated from 5 copies to 1 in flow-utils.js",
-        "color/chalk wrappers consolidated from 6 copies to 1 in flow-utils.js",
-        "showHelp() 24 copies use shared pattern from flow-utils.js",
-        "All consumers updated to import from canonical location",
-        "node --check passes on all modified scripts",
-        "parseArgs() consolidated from 7 copies into shared CLI pattern in flow-utils.js"
-      ],
-      "createdAt": "2026-03-04T11:37:21.925Z"
-    },
     {
       "id": "wf-1ad065ef",
       "title": "Hook Chain Performance",
@@ -1622,6 +1601,29 @@
       "createdAt": "2026-03-04T11:37:21.925Z",
       "startedAt": "2026-03-04T12:26:24.294Z",
       "completedAt": "2026-03-04T12:31:16.601Z"
+    },
+    {
+      "id": "wf-6af71e6d",
+      "title": "Function Deduplication",
+      "type": "refactor",
+      "feature": "core",
+      "status": "recentlyCompleted",
+      "priority": "P2",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "estimateTokens() consolidated from 9 copies to 1 in flow-utils.js",
+        "loadConfig/getConfig() consolidated from 10 copies to 1 canonical",
+        "escapeRegex() consolidated from 5 copies to 1 in flow-utils.js",
+        "color/chalk wrappers consolidated from 6 copies to 1 in flow-utils.js",
+        "showHelp() 24 copies use shared pattern from flow-utils.js",
+        "All consumers updated to import from canonical location",
+        "node --check passes on all modified scripts",
+        "parseArgs() consolidated from 7 copies into shared CLI pattern in flow-utils.js"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z",
+      "startedAt": "2026-03-04T12:31:37.309Z",
+      "completedAt": "2026-03-04T12:43:40.902Z"
     }
   ],
   "backlog": [

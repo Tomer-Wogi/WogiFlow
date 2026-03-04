@@ -33,7 +33,8 @@ const {
   dirExists,
   safeJsonParse,
   printHeader,
-  printSection
+  printSection,
+  showHelp: showHelpGeneric
 } = require('./flow-utils');
 
 // Phase 2: Import task analyzer and model router
@@ -1014,34 +1015,30 @@ function formatProviders(providers) {
 // ============================================================
 
 function showHelp() {
-  console.log(`
-Wogi Flow - Model Registry
-
-Manage multi-model configuration, routing, and statistics.
-
-Usage:
-  flow models                       Show current model and routing
-  flow models list [options]        List all registered models
-  flow models info <model>          Show detailed model information
-  flow models route <task-type>     Get routing recommendation
-  flow models stats                 Show model performance statistics
-  flow models cost                  Show cost analysis
-  flow models providers             List available providers
-
-Options:
-  --provider <name>    Filter by provider (anthropic, openai, google, ollama)
-  --capability <name>  Filter by capability (code-gen, reasoning, vision, etc.)
-  --json               Output as JSON
-  --help, -h           Show this help
-
-Examples:
-  flow models                              # Show current model
-  flow models list --provider anthropic    # List Anthropic models
-  flow models info claude-sonnet-4         # Show Sonnet details
-  flow models route feature                # Get model for feature work
-  flow models stats                        # View statistics
-  flow models cost                         # Analyze costs
-`);
+  showHelpGeneric('flow-models.js', 'Manage multi-model configuration, routing, and statistics.', [
+    { name: '(default)', description: 'Show current model and routing' },
+    { name: 'list [options]', description: 'List all registered models' },
+    { name: 'info <model>', description: 'Show detailed model information' },
+    { name: 'route <task-type>', description: 'Get routing recommendation' },
+    { name: 'stats', description: 'Show model performance statistics' },
+    { name: 'cost', description: 'Show cost analysis' },
+    { name: 'providers', description: 'List available providers' }
+  ], {
+    options: [
+      { name: '--provider <name>', description: 'Filter by provider (anthropic, openai, google, ollama)' },
+      { name: '--capability <name>', description: 'Filter by capability (code-gen, reasoning, vision, etc.)' },
+      { name: '--json', description: 'Output as JSON' },
+      { name: '--help, -h', description: 'Show this help' }
+    ],
+    examples: [
+      'flow models                              # Show current model',
+      'flow models list --provider anthropic    # List Anthropic models',
+      'flow models info claude-sonnet-4         # Show Sonnet details',
+      'flow models route feature                # Get model for feature work',
+      'flow models stats                        # View statistics',
+      'flow models cost                         # Analyze costs'
+    ]
+  });
 }
 
 function main() {

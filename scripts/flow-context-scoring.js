@@ -36,7 +36,7 @@ const {
   outputJson,
   printHeader,
   printSection,
-  estimateTokens: utilsEstimateTokens
+  estimateTokens
 } = require('./flow-utils');
 
 // ============================================================
@@ -144,7 +144,7 @@ function createContextItem({
     baseScore,
     relevance,
     finalScore: baseScore * (0.5 + relevance * 0.5), // Combine base and relevance
-    tokens: tokens || estimateTokens(content),
+    tokens: tokens || estimateTokens(content, { useLineEstimate: true }),
     category: categorizeScore(baseScore),
     metadata,
     included: false
@@ -168,15 +168,7 @@ function categorizeScore(score) {
 // Token Estimation
 // ============================================================
 
-/**
- * Estimate tokens for a piece of content.
- * Uses centralized estimateTokens with hybrid char+line estimation.
- * @param {string} content - Content to estimate
- * @returns {number} Estimated tokens
- */
-function estimateTokens(content) {
-  return utilsEstimateTokens(content, { useLineEstimate: true });
-}
+// estimateTokens imported from flow-utils.js
 
 /**
  * Estimate tokens for a file.
@@ -186,7 +178,7 @@ function estimateTokens(content) {
 function estimateFileTokens(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
-    return estimateTokens(content);
+    return estimateTokens(content, { useLineEstimate: true });
   } catch {
     return 0;
   }
@@ -531,7 +523,7 @@ function createSnippet(item, maxLines) {
     ...item,
     id: `${item.id}-snippet`,
     content: snippetLines.join('\n'),
-    tokens: estimateTokens(snippetLines.join('\n')),
+    tokens: estimateTokens(snippetLines.join('\n'), { useLineEstimate: true }),
     metadata: {
       ...item.metadata,
       isSnippet: true,
@@ -593,7 +585,7 @@ function analyzeFile(filePath) {
     return { error: 'Failed to read file' };
   }
   const lines = content.split('\n');
-  const tokens = estimateTokens(content);
+  const tokens = estimateTokens(content, { useLineEstimate: true });
 
   // Determine file type
   const ext = path.extname(filePath);

@@ -17,7 +17,7 @@ const crypto = require('crypto');
 const os = require('os');
 const { execFileSync } = require('child_process');
 
-const { PATHS, safeJsonParse, safeJsonParseString } = require('./flow-utils');
+const { PATHS, safeJsonParse, safeJsonParseString, escapeRegex } = require('./flow-utils');
 
 // ~/.wogiflow/ directory for user-level state (persists across projects)
 const WOGIFLOW_HOME = path.join(os.homedir(), '.wogiflow');
@@ -202,14 +202,7 @@ function stripPII(data, config) {
   return stripRecursive(data);
 }
 
-/**
- * Escape special regex characters in a string.
- * @param {string} str
- * @returns {string}
- */
-function escapeRegex(str) {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// escapeRegex imported from flow-utils.js
 
 // ──────────────────────────────────────────────
 // Data Collection

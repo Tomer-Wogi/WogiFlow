@@ -18,6 +18,7 @@
 const { execFileSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const { escapeRegex } = require('./flow-utils');
 
 // ============================================================
 // Constants
@@ -234,18 +235,7 @@ function safeGitCommand(args, options = {}) {
 // Safe Grep/Search
 // ============================================================
 
-/**
- * Escape special regex characters for use in patterns.
- *
- * @param {string} str - String to escape
- * @returns {string} Escaped string safe for regex
- */
-function escapeRegex(str) {
-  if (!str || typeof str !== 'string') {
-    return '';
-  }
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// escapeRegex imported from flow-utils.js
 
 /**
  * Validate and sanitize a search pattern.

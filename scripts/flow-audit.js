@@ -23,7 +23,8 @@ const {
   getConfig,
   color,
   safeJsonParse,
-  safeJsonParseString
+  safeJsonParseString,
+  escapeRegex
 } = require('./flow-utils');
 
 // Default exclusion patterns for project file scanning
@@ -52,8 +53,7 @@ function getProjectFiles(extraExcludes = []) {
     ], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
     const config = getConfig();
-    // Escape config-sourced strings before RegExp to prevent ReDoS/injection
-    const escapeRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // escapeRegex imported from flow-utils.js
     const configExcludes = (config.audit?.exclude || []).map(p => {
       try { return new RegExp(`^${escapeRegex(p)}/`); } catch (err) { return null; }
     }).filter(Boolean);

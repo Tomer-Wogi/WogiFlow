@@ -29,7 +29,8 @@ const {
   fileExists,
   writeJson,
   printHeader,
-  printSection
+  printSection,
+  showHelp: showHelpGeneric
 } = require('./flow-utils');
 
 // ============================================================
@@ -581,30 +582,26 @@ function printConfig() {
 // ============================================================
 
 function showHelp() {
-  console.log(`
-Wogi Flow - Cascade Fallback System
-
-Track model failures and auto-escalate to alternate models.
-
-Usage:
-  flow cascade status              Show current cascade state
-  flow cascade reset [model]       Reset failure counts
-  flow cascade config              Show cascade configuration
-  flow cascade simulate            Simulate failures for testing
-
-Options:
-  --model <id>       Target model for operation
-  --task-type <type> Target task type
-  --category <cat>   Failure category
-  --json             Output as JSON
-  --help, -h         Show this help
-
-Examples:
-  flow cascade status                          # Show status
-  flow cascade reset                           # Reset all
-  flow cascade reset --model claude-sonnet-4   # Reset specific model
-  flow cascade simulate --model claude-sonnet-4 --category context_overflow
-`);
+  showHelpGeneric('flow-cascade.js', 'Track model failures and auto-escalate to alternate models.', [
+    { name: 'status', description: 'Show current cascade state' },
+    { name: 'reset [model]', description: 'Reset failure counts' },
+    { name: 'config', description: 'Show cascade configuration' },
+    { name: 'simulate', description: 'Simulate failures for testing' }
+  ], {
+    options: [
+      { name: '--model <id>', description: 'Target model for operation' },
+      { name: '--task-type <type>', description: 'Target task type' },
+      { name: '--category <cat>', description: 'Failure category' },
+      { name: '--json', description: 'Output as JSON' },
+      { name: '--help, -h', description: 'Show this help' }
+    ],
+    examples: [
+      'flow cascade status                          # Show status',
+      'flow cascade reset                           # Reset all',
+      'flow cascade reset --model claude-sonnet-4   # Reset specific model',
+      'flow cascade simulate --model claude-sonnet-4 --category context_overflow'
+    ]
+  });
 }
 
 async function main() {

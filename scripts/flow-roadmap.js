@@ -24,7 +24,8 @@ const {
   safeJsonParse,
   parseFlags,
   getConfig,
-  isPathWithinProject
+  isPathWithinProject,
+  escapeRegex
 } = require('./flow-utils');
 
 // Phase headers constant (used by add and move)
@@ -51,12 +52,7 @@ const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'roadmap.md');
 // Utility Functions
 // ============================================================
 
-/**
- * Escape special regex characters
- */
-function escapeRegex(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+// escapeRegex imported from flow-utils.js
 
 /**
  * Validate phase name from CLI input
