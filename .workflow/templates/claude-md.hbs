@@ -254,53 +254,16 @@ After EVERY request that changes files:
 Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 
 {{/if}}
-## File Locations
-
-| What | Where |
-|------|-------|
-| Config | `.workflow/config.json` |
-| Tasks | `.workflow/state/ready.json` |
-| Logs | `.workflow/state/request-log.md` |
-| Components | `.workflow/state/app-map.md` |
-| Functions | `.workflow/state/function-map.md` |
-| APIs | `.workflow/state/api-map.md` |
-| Schemas | `.workflow/state/schema-map.md` (if ORM detected) |
-| Services | `.workflow/state/service-map.md` (if backend framework detected) |
-| Registry Manifest | `.workflow/state/registry-manifest.json` |
-| Rules | `.workflow/state/decisions.md` |
-| Progress | `.workflow/state/progress.md` |
-| Roadmap | `.workflow/roadmap.md` |
-
 ## Commit Behavior
 
-Check `config.json → commits` before committing:
-
-```json
-"commits": {
-  "requireApproval": {
-    "feature": {{config.commits.requireApproval.feature}},
-    "bugfix": {{config.commits.requireApproval.bugfix}},
-    "refactor": {{config.commits.requireApproval.refactor}},
-    "docs": {{config.commits.requireApproval.docs}}
-  },
-  "autoCommitSmallFixes": {{config.commits.autoCommitSmallFixes}},
-  "smallFixThreshold": {{config.commits.smallFixThreshold}}
-}
-```
-
-**Rules:**
-- If `requireApproval[taskType]` is `true` → ASK before committing
-- If task changes > `smallFixThreshold` files → ASK before committing
+- ASK before committing features, refactors, or any task changing more than {{config.commits.smallFixThreshold}} files
+- Bugfix and docs commits with ≤{{config.commits.smallFixThreshold}} changed files may auto-commit
 - Never commit without user awareness on features/refactors
+- Check `config.json → commits` for per-type approval settings
 
 ## Quality Gates
 
-Check `config.json → qualityGates` before closing any task:
-```json
-"qualityGates": {
-  "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
-}
-```
+Before closing any task, ensure all required gates pass (per `config.json → qualityGates`): loop completion, tests, app-map update, and request-log entry.
 
 ## Context Management
 
@@ -344,10 +307,6 @@ Check official docs at [URL], feature may have a different name.
 
 Use `/wogi-research "question"` for rigorous verification.
 {{/if}}
-
----
-
-{{> user-commands}}
 
 ---
 

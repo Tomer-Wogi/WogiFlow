@@ -235,53 +235,16 @@ After EVERY request that changes files:
 Check `.claude/skills/[name]/skill.md` for skill-specific guidance.
 
 
-## File Locations
-
-| What | Where |
-|------|-------|
-| Config | `.workflow/config.json` |
-| Tasks | `.workflow/state/ready.json` |
-| Logs | `.workflow/state/request-log.md` |
-| Components | `.workflow/state/app-map.md` |
-| Functions | `.workflow/state/function-map.md` |
-| APIs | `.workflow/state/api-map.md` |
-| Schemas | `.workflow/state/schema-map.md` (if ORM detected) |
-| Services | `.workflow/state/service-map.md` (if backend framework detected) |
-| Registry Manifest | `.workflow/state/registry-manifest.json` |
-| Rules | `.workflow/state/decisions.md` |
-| Progress | `.workflow/state/progress.md` |
-| Roadmap | `.workflow/roadmap.md` |
-
 ## Commit Behavior
 
-Check `config.json → commits` before committing:
-
-```json
-"commits": {
-  "requireApproval": {
-    "feature": true,
-    "bugfix": false,
-    "refactor": true,
-    "docs": false
-  },
-  "autoCommitSmallFixes": true,
-  "smallFixThreshold": 3
-}
-```
-
-**Rules:**
-- If `requireApproval[taskType]` is `true` → ASK before committing
-- If task changes > `smallFixThreshold` files → ASK before committing
+- ASK before committing features, refactors, or any task changing more than 3 files
+- Bugfix and docs commits with ≤3 changed files may auto-commit
 - Never commit without user awareness on features/refactors
+- Check `config.json → commits` for per-type approval settings
 
 ## Quality Gates
 
-Check `config.json → qualityGates` before closing any task:
-```json
-"qualityGates": {
-  "feature": { "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"] }
-}
-```
+Before closing any task, ensure all required gates pass (per `config.json → qualityGates`): loop completion, tests, app-map update, and request-log entry.
 
 ## Context Management
 
@@ -303,60 +266,13 @@ When user says to wrap up: finish current work, ensure request-log is current, u
 
 ---
 
-## User Commands
-
-| To Do This | Say This |
-|------------|----------|
-| Start a task | "start task wf-XXX" or describe what you want |
-| Code review | "code review" or "review what we did" |
-| Morning briefing | "morning briefing" or "what should I work on" |
-| End session | "wrap up" or "end session" |
-| Peer review | "peer review" |
-| Enable hybrid | "enable hybrid mode" |
-| Show tasks | "show tasks" or "what's ready" |
-| Project status | "project status" or "where are we" |
-| Create a rule | "from now on always..." or "let's make it a rule" |
-| Learn from patterns | "let's learn from this" or "promote pattern" |
-| Session retro | "retro" or "what went well" |
-| Rescan project | "rescan project" or "things changed" or "out of sync" |
-| Project audit | "audit project" or "full analysis" |
-| Register plugin | "register plugin" or "/wogi-register <name>" |
-
-`/wogi-start` is the universal fallback router — it classifies any request and routes to the right action. Detailed per-command docs live in each skill's `.md` file under `.claude/commands/`.
-
-
----
-
 ## Task Execution Flow (AUTO-INVOKED)
 
-These features run automatically during task execution via `/wogi-start`. You don't invoke them manually.
+These features run automatically during `/wogi-start`. Pipeline: Request Triage → Context Check → Explore → Spec → Approval → Implementation Loop → Criteria Check → Wiring Check → Standards Check → Post-Task → Complete.
 
-**Pipeline:** Request Triage → Context Check → Explore Phase → Spec Generation → Approval Gate → Implementation Loop → Criteria Check → Wiring Check → Standards Check → Post-Task Updates → Task Complete
+Auto-features include: component/function/API reuse check, scope validation, post-edit validation (lint/typecheck), criteria completion check, integration wiring check, consumer impact analysis, and standards compliance check.
 
-**Key auto-features:**
-- **Component/Function/API Reuse Check** — searches registry maps before creating new entities
-- **Scope Validation** — verifies file edits are within task scope
-- **Post-Edit Validation** — runs lint/typecheck after every edit
-- **Criteria Completion Check** — re-reads spec, verifies each criterion actually works
-- **Integration Wiring Check** — verifies new files are imported/used (no orphans)
-- **Consumer Impact Analysis** — maps all consumers before refactors (MANDATORY for L2+ refactors)
-- **Standards Compliance Check** — enforces naming, security, and project patterns
-
-Full pipeline details are in `.claude/commands/wogi-start.md`.
-
-**Configuration** in `.workflow/config.json`:
-```json
-{
-  "hooks": {
-    "rules": {
-      "taskGating": { "enabled": true },
-      "scopeGating": { "enabled": true, "mode": "warn" },
-      "validation": { "enabled": true },
-      "componentReuse": { "enabled": true, "threshold": 80 }
-    }
-  }
-}
-```
+Full pipeline details and configuration options are in `.claude/commands/wogi-start.md`. Hook toggles are in `config.json → hooks.rules` (taskGating, scopeGating, validation, componentReuse).
 
 
 ---
@@ -367,4 +283,4 @@ This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-03-03T13:45:42.553Z
+Last synced: 2026-03-04T13:14:22.551Z

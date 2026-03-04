@@ -1,30 +1,7 @@
 ## Task Execution Flow (AUTO-INVOKED)
 
-These features run automatically during task execution via `/wogi-start`. You don't invoke them manually.
+These features run automatically during `/wogi-start`. Pipeline: Request Triage → Context Check → Explore → Spec → Approval → Implementation Loop → Criteria Check → Wiring Check → Standards Check → Post-Task → Complete.
 
-**Pipeline:** Request Triage → Context Check → Explore Phase → Spec Generation → Approval Gate → Implementation Loop → Criteria Check → Wiring Check → Standards Check → Post-Task Updates → Task Complete
+Auto-features include: component/function/API reuse check, scope validation, post-edit validation (lint/typecheck), criteria completion check, integration wiring check, consumer impact analysis, and standards compliance check.
 
-**Key auto-features:**
-- **Component/Function/API Reuse Check** — searches registry maps before creating new entities
-- **Scope Validation** — verifies file edits are within task scope
-- **Post-Edit Validation** — runs lint/typecheck after every edit
-- **Criteria Completion Check** — re-reads spec, verifies each criterion actually works
-- **Integration Wiring Check** — verifies new files are imported/used (no orphans)
-- **Consumer Impact Analysis** — maps all consumers before refactors (MANDATORY for L2+ refactors)
-- **Standards Compliance Check** — enforces naming, security, and project patterns
-
-Full pipeline details are in `.claude/commands/wogi-start.md`.
-
-**Configuration** in `.workflow/config.json`:
-```json
-{
-  "hooks": {
-    "rules": {
-      "taskGating": { "enabled": true },
-      "scopeGating": { "enabled": true, "mode": "warn" },
-      "validation": { "enabled": true },
-      "componentReuse": { "enabled": true, "threshold": 80 }
-    }
-  }
-}
-```
+Full pipeline details and configuration options are in `.claude/commands/wogi-start.md`. Hook toggles are in `config.json → hooks.rules` (taskGating, scopeGating, validation, componentReuse).

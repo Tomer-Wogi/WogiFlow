@@ -1,24 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T13:12:39.049Z",
+  "lastUpdated": "2026-03-04T13:16:11.390Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-586ca91c",
-      "title": "Context & Token Reduction",
-      "type": "refactor",
-      "feature": "context",
-      "status": "ready",
-      "priority": "P2",
-      "level": "L2",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "CLAUDE.md trimmed: remove duplicate User Commands table, compress File Locations and Commit Behavior (~120 lines saved)",
-        "decisions.md loads on-demand by section/PIN instead of full file",
-        "SessionStart file reads batched with Promise.all() for non-dependent reads",
-        "Always-loaded context reduced from ~21K to ~10K tokens"
-      ],
-      "createdAt": "2026-03-04T11:43:35.415Z"
-    },
     {
       "id": "wf-ef0fba18",
       "title": "Large Module Refactoring",
@@ -1632,6 +1615,25 @@
       "createdAt": "2026-03-04T11:43:35.415Z",
       "startedAt": "2026-03-04T13:08:56.501Z",
       "completedAt": "2026-03-04T13:12:39.048Z"
+    },
+    {
+      "id": "wf-586ca91c",
+      "title": "Context & Token Reduction",
+      "type": "refactor",
+      "feature": "context",
+      "status": "recentlyCompleted",
+      "priority": "P2",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "CLAUDE.md trimmed: remove duplicate User Commands table, compress File Locations and Commit Behavior (~120 lines saved)",
+        "decisions.md loads on-demand by section/PIN instead of full file",
+        "SessionStart file reads batched with Promise.all() for non-dependent reads",
+        "Always-loaded context reduced from ~21K to ~10K tokens"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z",
+      "startedAt": "2026-03-04T13:13:02.171Z",
+      "completedAt": "2026-03-04T13:16:11.389Z"
     }
   ],
   "backlog": [

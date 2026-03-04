@@ -29,16 +29,19 @@ function getAutoSyncBridge() {
 
 async function main() {
   try {
-    // Auto-sync bridge if needed (non-blocking, silent)
-    try {
-      const syncFn = getAutoSyncBridge();
-      await syncFn('claude-code', { silent: true });
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Bridge auto-sync failed: ${err.message}`);
+    // Start bridge auto-sync in parallel with stdin reading (both are independent I/O)
+    const bridgeSyncPromise = (async () => {
+      try {
+        const syncFn = getAutoSyncBridge();
+        await syncFn('claude-code', { silent: true });
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[session-start] Bridge auto-sync failed: ${err.message}`);
+        }
       }
-    }
-    // Read input from stdin
+    })();
+
+    // Read input from stdin (runs concurrently with bridge sync)
     let inputData = '';
     for await (const chunk of process.stdin) {
       inputData += chunk;
@@ -47,31 +50,14 @@ async function main() {
     const input = inputData ? (safeJsonParseString(inputData, {}) || {}) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
-    // Store CLI session ID for tracking (CLI-agnostic via session-state)
-    // Uses async with locking to prevent race conditions
-    if (parsedInput.sessionId) {
-      try {
-        await setCliSessionId(parsedInput.sessionId);
-      } catch (err) {
-        // Non-blocking - session ID storage is best-effort
-        if (process.env.DEBUG) {
-          console.error(`[session-start] Failed to store session ID: ${err.message}`);
-        }
-      }
-    }
+    // Wait for bridge sync to complete before proceeding
+    await bridgeSyncPromise;
 
-    // Clear stale currentTask if it's already in recentlyCompleted
-    // Fixes bug where completed tasks show as "in progress" in morning briefing
-    // Uses async version with locking for concurrent safety
-    try {
-      await clearStaleCurrentTaskAsync();
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Failed to clear stale task: ${err.message}`);
-      }
-    }
+    // --- Batch 1: Independent pre-context operations (async + sync) ---
+    // These all operate on separate state files and have no data dependencies.
 
-    // Reset stale workflow phase (auto-expire after 2 hours)
+    // Sync operations (run immediately, no await needed)
+    let scriptWarnings = [];
     try {
       const wasReset = checkAndResetStalePhase();
       if (wasReset && process.env.DEBUG) {
@@ -83,25 +69,17 @@ async function main() {
       }
     }
 
-    // Defense-in-depth: Set routing-pending flag at session start.
-    // UserPromptSubmit also sets this, but a fresh/continued session should
-    // start with the gate active. This closes the loophole where session
-    // continuation ("Continue with the last task") bypasses routing because
-    // the AI treats it as implicit permission to skip /wogi-start.
     try {
       const routingResult = setRoutingPending();
       if (process.env.DEBUG) {
         console.error(`[session-start] Set routing-pending: ${routingResult.reason}`);
       }
     } catch (err) {
-      // Non-blocking — UserPromptSubmit will also set this flag
       if (process.env.DEBUG) {
         console.error(`[session-start] Failed to set routing-pending: ${err.message}`);
       }
     }
 
-    // Validate script alignment (drift detection)
-    let scriptWarnings = [];
     try {
       const { validateScripts } = require('../../../flow-script-resolver');
       scriptWarnings = validateScripts();
@@ -111,92 +89,118 @@ async function main() {
       }
     }
 
-    // Gather session context
-    const coreResult = await gatherSessionContext({
-      includeSuspended: true,
-      includeDecisions: true,
-      includeActivity: true
-    });
+    // Async operations — batch with Promise.all (both use file locking, independent targets)
+    const asyncPreOps = [];
 
-    // Plugin auto-scan (non-blocking)
-    // Checks for unregistered MCP servers and auto-registers them
-    try {
-      const config = getConfig();
-      if (config.plugins?.enabled && config.plugins?.autoScanOnSessionStart) {
-        const { scanUnregisteredMcpServers, registerPlugin, deactivateStaleMcpPlugins, listPlugins } = require('../../../flow-plugin-registry');
-
-        // Scan for new unregistered MCP servers
-        const unregistered = scanUnregisteredMcpServers();
-        for (const server of unregistered) {
-          // Auto-register with minimal info — AI will enrich via /wogi-register later
-          registerPlugin({
-            name: server.serverName,
-            description: `Auto-discovered MCP server: ${server.serverName}`,
-            source: 'auto-scan',
-            triggers: [`use ${server.serverName}`, `send to ${server.serverName}`, server.serverName],
-            capabilities: [],
-            metadata: { mcpServer: server.serverName }
-          });
+    if (parsedInput.sessionId) {
+      asyncPreOps.push(
+        setCliSessionId(parsedInput.sessionId).catch(err => {
           if (process.env.DEBUG) {
-            console.error(`[session-start] Auto-registered plugin: ${server.serverName}`);
+            console.error(`[session-start] Failed to store session ID: ${err.message}`);
           }
-        }
-
-        // Deactivate plugins whose MCP servers are no longer available
-        const deactivated = deactivateStaleMcpPlugins();
-        if (deactivated.length > 0 && process.env.DEBUG) {
-          console.error(`[session-start] Deactivated ${deactivated.length} stale plugin(s): ${deactivated.join(', ')}`);
-        }
-
-        // Inject plugin scan results into context
-        if (coreResult && coreResult.context) {
-          const activePlugins = listPlugins({ activeOnly: true });
-          if (unregistered.length > 0 || activePlugins.length > 0) {
-            coreResult.context.pluginScan = {
-              newlyRegistered: unregistered.map(s => s.serverName),
-              activePlugins: activePlugins.map(p => ({ name: p.name, capabilities: (p.capabilities || []).length }))
-            };
-          }
-        }
-      }
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Plugin auto-scan failed: ${err.message}`);
-      }
+        })
+      );
     }
 
+    asyncPreOps.push(
+      clearStaleCurrentTaskAsync().catch(err => {
+        if (process.env.DEBUG) {
+          console.error(`[session-start] Failed to clear stale task: ${err.message}`);
+        }
+      })
+    );
+
+    // Gather session context concurrently with the async pre-ops
+    const [, coreResult] = await Promise.all([
+      Promise.all(asyncPreOps),
+      gatherSessionContext({
+        includeSuspended: true,
+        includeDecisions: true,
+        includeActivity: true
+      })
+    ]);
+
+    // --- Batch 2: Post-context operations (plugin scan + community pull) ---
+    // Both modify coreResult.context but touch different keys, so they can run concurrently.
+
+    const postContextOps = [];
+
+    // Plugin auto-scan (non-blocking)
+    postContextOps.push((async () => {
+      try {
+        const config = getConfig();
+        if (config.plugins?.enabled && config.plugins?.autoScanOnSessionStart) {
+          const { scanUnregisteredMcpServers, registerPlugin, deactivateStaleMcpPlugins, listPlugins } = require('../../../flow-plugin-registry');
+
+          const unregistered = scanUnregisteredMcpServers();
+          for (const server of unregistered) {
+            registerPlugin({
+              name: server.serverName,
+              description: `Auto-discovered MCP server: ${server.serverName}`,
+              source: 'auto-scan',
+              triggers: [`use ${server.serverName}`, `send to ${server.serverName}`, server.serverName],
+              capabilities: [],
+              metadata: { mcpServer: server.serverName }
+            });
+            if (process.env.DEBUG) {
+              console.error(`[session-start] Auto-registered plugin: ${server.serverName}`);
+            }
+          }
+
+          const deactivated = deactivateStaleMcpPlugins();
+          if (deactivated.length > 0 && process.env.DEBUG) {
+            console.error(`[session-start] Deactivated ${deactivated.length} stale plugin(s): ${deactivated.join(', ')}`);
+          }
+
+          if (coreResult && coreResult.context) {
+            const activePlugins = listPlugins({ activeOnly: true });
+            if (unregistered.length > 0 || activePlugins.length > 0) {
+              coreResult.context.pluginScan = {
+                newlyRegistered: unregistered.map(s => s.serverName),
+                activePlugins: activePlugins.map(p => ({ name: p.name, capabilities: (p.capabilities || []).length }))
+              };
+            }
+          }
+        }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[session-start] Plugin auto-scan failed: ${err.message}`);
+        }
+      }
+    })());
+
     // Community knowledge pull + suggestion retry (non-blocking)
-    try {
-      const communityConfig = getConfig();
-      if (communityConfig.community?.enabled) {
-        const community = require('../../../flow-community');
+    postContextOps.push((async () => {
+      try {
+        const communityConfig = getConfig();
+        if (communityConfig.community?.enabled) {
+          const community = require('../../../flow-community');
 
-        // Retry pending suggestions (fire-and-forget)
-        community.retryPendingSuggestions(communityConfig).catch(() => {});
+          community.retryPendingSuggestions(communityConfig).catch(() => {});
 
-        // Pull community knowledge (respects pullOnSessionStart toggle)
-        if (communityConfig.community?.pullOnSessionStart !== false) {
-          // Non-blocking pull with 5s timeout — uses cache if unavailable
-          const knowledge = await community.pullFromServer(communityConfig);
-          if (knowledge && coreResult && coreResult.context) {
-            coreResult.context.communityKnowledge = knowledge;
+          if (communityConfig.community?.pullOnSessionStart !== false) {
+            const knowledge = await community.pullFromServer(communityConfig);
+            if (knowledge && coreResult && coreResult.context) {
+              coreResult.context.communityKnowledge = knowledge;
 
-            // Merge community knowledge into local state files (Phase C2)
-            try {
-              community.mergeCommunityKnowledge(knowledge, communityConfig);
-            } catch (err) {
-              if (process.env.DEBUG) {
-                console.error(`[session-start] Community merge failed: ${err.message}`);
+              try {
+                community.mergeCommunityKnowledge(knowledge, communityConfig);
+              } catch (err) {
+                if (process.env.DEBUG) {
+                  console.error(`[session-start] Community merge failed: ${err.message}`);
+                }
               }
             }
           }
         }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[session-start] Community pull failed: ${err.message}`);
+        }
       }
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Community pull failed: ${err.message}`);
-      }
-    }
+    })());
+
+    await Promise.all(postContextOps);
 
     // Inject script warnings into context (if any)
     if (scriptWarnings.length > 0 && coreResult && coreResult.context) {
