@@ -212,8 +212,8 @@ When creating tasks programmatically, always call `generateTaskId(title)` — ne
 
 After editing ANY TypeScript/JavaScript file:
 ```bash
-npx tsc --noEmit 2>&1 | head -20
-npx eslint [file] --fix
+{{config.scripts.typecheck}} 2>&1 | head -20
+{{config.scripts.lint}}
 ```
 
 **Do NOT edit another file until current file passes validation.**

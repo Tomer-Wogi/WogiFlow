@@ -67,6 +67,18 @@ class ClaudeBridge extends BaseBridge {
       this.log(`Warning: Could not read template ${templatePath}: ${err.message}`);
       return this.generateDefaultClaudeMd(config);
     }
+
+    // Inject default script values where config has null/undefined
+    if (!config.scripts) {
+      config.scripts = {};
+    }
+    if (!config.scripts.typecheck) {
+      config.scripts.typecheck = 'npx tsc --noEmit';
+    }
+    if (!config.scripts.lint) {
+      config.scripts.lint = 'npx eslint [file] --fix';
+    }
+
     let content = template;
 
     // Process {{> partial}} includes first (before other processing)
@@ -165,13 +177,15 @@ cat .workflow/state/decisions.md # Project rules
 ---`);
 
     // Auto-Validation
+    const typecheckCmd = config.scripts?.typecheck || 'npx tsc --noEmit';
+    const lintCmd = config.scripts?.lint || 'npx eslint [file] --fix';
     sections.push(`
 ## Auto-Validation (CRITICAL)
 
 After editing ANY TypeScript/JavaScript file:
 \`\`\`bash
-npx tsc --noEmit 2>&1 | head -20
-npx eslint [file] --fix
+${typecheckCmd} 2>&1 | head -20
+${lintCmd}
 \`\`\`
 
 **Do NOT edit another file until current file passes validation.**

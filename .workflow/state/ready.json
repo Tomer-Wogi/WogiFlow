@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-04T13:34:49.825Z",
+  "lastUpdated": "2026-03-04T13:55:29.178Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
@@ -1637,6 +1637,26 @@
       "createdAt": "2026-03-04T11:43:35.415Z",
       "startedAt": "2026-03-04T13:21:34.394Z",
       "completedAt": "2026-03-04T13:34:49.824Z"
+    },
+    {
+      "id": "wf-05c1c625",
+      "title": "Auto-Detect Project Scripts for Validation",
+      "type": "feature",
+      "feature": "onboarding",
+      "status": "recentlyCompleted",
+      "priority": "P1",
+      "level": "L2",
+      "acceptanceCriteria": [
+        "package.json scripts detected and populated in config.scripts during onboarding",
+        "Common script name variants matched to canonical keys (typecheck, lint, test, build, fix, coverage)",
+        "tsconfig.json analyzed for project references mode vs standard mode",
+        "CLAUDE.md template uses config.scripts.typecheck dynamically instead of hardcoded tsc --noEmit",
+        "flow health self-test warns if configured typecheck and tsc --noEmit disagree",
+        "Fallback to tsc --noEmit when no project script found"
+      ],
+      "createdAt": "2026-03-04T13:46:17.823Z",
+      "startedAt": "2026-03-04T13:48:20.386Z",
+      "completedAt": "2026-03-04T13:55:29.177Z"
     }
   ],
   "backlog": [

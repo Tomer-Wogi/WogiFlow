@@ -301,6 +301,53 @@ function main() {
     }
   }
 
+  // Check TypeScript project references vs typecheck command
+  console.log('');
+  printSection('Checking typecheck configuration...');
+
+  if (fileExists(PATHS.config)) {
+    try {
+      const config = safeJsonParse(PATHS.config, {});
+      const typecheckCmd = config.scripts?.typecheck || null;
+      const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+
+      if (fileExists(tsconfigPath)) {
+        try {
+          const tsconfigContent = fs.readFileSync(tsconfigPath, 'utf-8');
+          const tsconfig = JSON.parse(tsconfigContent);
+          const hasProjectRefs = Array.isArray(tsconfig.references) && tsconfig.references.length > 0;
+          const hasEmptyFiles = Array.isArray(tsconfig.files) && tsconfig.files.length === 0;
+          const isProjectRefsMode = hasProjectRefs && hasEmptyFiles;
+
+          if (isProjectRefsMode) {
+            const cmdIsNoEmit = !typecheckCmd || typecheckCmd.includes('tsc --noEmit') || typecheckCmd === 'npx tsc --noEmit';
+            if (cmdIsNoEmit) {
+              console.log(`  ${color('yellow', '⚠')} TypeScript project references detected but typecheck command may not support them`);
+              console.log(`    ${color('dim', '→ Consider: npm run type-check (or npx tsc --build --force)')}`);
+              warnings++;
+            } else {
+              console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
+              console.log(`    ${color('dim', '→ Project references mode detected — command appears compatible')}`);
+            }
+          } else if (typecheckCmd) {
+            console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
+          } else {
+            console.log(`  ${color('yellow', '○')} No typecheck command configured (using default: npx tsc --noEmit)`);
+          }
+        } catch (err) {
+          console.log(`  ${color('yellow', '○')} Could not parse tsconfig.json: ${err.message}`);
+        }
+      } else if (typecheckCmd) {
+        console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd} (no tsconfig.json found)`);
+      } else {
+        console.log(`  ${color('dim', '○')} No tsconfig.json found — typecheck not applicable`);
+      }
+    } catch (err) {
+      console.log(`  ${color('yellow', '⚠')} Could not check typecheck configuration: ${err.message}`);
+      warnings++;
+    }
+  }
+
   // Check enforcement settings
   console.log('');
   printSection('Checking enforcement...');
