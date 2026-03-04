@@ -35,7 +35,6 @@ const DOCS_OUTPUT_PATH = path.join(PROJECT_ROOT, '.claude', 'docs', 'knowledge-b
 
 // Known MCP server locations in this project
 const MCP_SERVER_PATHS = [
-  'mcp-memory-server/index.js',
   'scripts/flow-figma-mcp-server.js'
 ];
 

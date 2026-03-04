@@ -1,24 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T13:06:44.585Z",
+  "lastUpdated": "2026-03-04T13:08:22.273Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-ddedef19",
-      "title": "Codebase Cleanup & Dead Weight Removal",
-      "type": "refactor",
-      "feature": "core",
-      "status": "ready",
-      "priority": "P2",
-      "level": "L2",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "mcp-memory-server/ directory deleted (302MB, replaced by hook-based memory in wf-f7d4afeb)",
-        "Old change specs archived (135 files, 800KB) — keep only current month",
-        "Old archived specs cleaned (55 files, 432KB)",
-        "3 unregistered hook files resolved (config-change.js, worktree-create.js, worktree-remove.js) — either registered or deleted"
-      ],
-      "createdAt": "2026-03-04T11:43:35.415Z"
-    },
     {
       "id": "wf-4ecb1ade",
       "title": "Review Command Deduplication & Command Loading",
@@ -1628,6 +1611,25 @@
       "createdAt": "2026-03-04T11:43:35.415Z",
       "startedAt": "2026-03-04T12:51:33.574Z",
       "completedAt": "2026-03-04T13:06:44.584Z"
+    },
+    {
+      "id": "wf-ddedef19",
+      "title": "Codebase Cleanup & Dead Weight Removal",
+      "type": "refactor",
+      "feature": "core",
+      "status": "recentlyCompleted",
+      "priority": "P2",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "mcp-memory-server/ directory deleted (302MB, replaced by hook-based memory in wf-f7d4afeb)",
+        "Old change specs archived (135 files, 800KB) — keep only current month",
+        "Old archived specs cleaned (55 files, 432KB)",
+        "3 unregistered hook files resolved (config-change.js, worktree-create.js, worktree-remove.js) — either registered or deleted"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z",
+      "startedAt": "2026-03-04T13:07:12.614Z",
+      "completedAt": "2026-03-04T13:08:22.273Z"
     }
   ],
   "backlog": [
