@@ -1,10 +1,253 @@
 {
-  "lastUpdated": "2026-03-04T04:30:00.000Z",
+  "lastUpdated": "2026-03-04T12:02:44.521Z",
   "inProgress": [],
   "ready": [
+    {
+      "id": "wf-7db613f7",
+      "title": "Config Consolidation - Remove Static Data from Config",
+      "type": "refactor",
+      "feature": "config",
+      "status": "ready",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Framework detection patterns (40 lines) moved to code defaults",
+        "Official docs URLs (8 lines) moved to code defaults",
+        "Phase definitions (60 lines) moved to code defaults",
+        "Priority levels (20 lines) moved to code defaults",
+        "Classification keywords (25 lines) moved to code defaults",
+        "Cloud provider model lists (25 lines) moved to code defaults",
+        "Disabled features store only enabled:false, full sub-config loaded from code defaults when enabled"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z"
+    },
+    {
+      "id": "wf-f7d4afeb",
+      "title": "Build Optimized Memory System",
+      "type": "feature",
+      "feature": "memory",
+      "status": "ready",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Single config flag memory.level controls everything (off/minimal/standard/full)",
+        "Task start: recall relevant memories from SQLite",
+        "Failed attempt: remember what approach did not work",
+        "Task complete: remember key decisions and patterns",
+        "Session end: remember session learnings",
+        "User correction: remember the correction immediately",
+        "No MCP overhead — direct function calls from hooks",
+        "Levels control which pipeline moments are active",
+        "Existing flow-memory-db.js used as engine"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z"
+    },
+    {
+      "id": "wf-6af71e6d",
+      "title": "Function Deduplication",
+      "type": "refactor",
+      "feature": "core",
+      "status": "ready",
+      "priority": "P2",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "estimateTokens() consolidated from 9 copies to 1 in flow-utils.js",
+        "loadConfig/getConfig() consolidated from 10 copies to 1 canonical",
+        "escapeRegex() consolidated from 5 copies to 1 in flow-utils.js",
+        "color/chalk wrappers consolidated from 6 copies to 1 in flow-utils.js",
+        "showHelp() 24 copies use shared pattern from flow-utils.js",
+        "All consumers updated to import from canonical location",
+        "node --check passes on all modified scripts",
+        "parseArgs() consolidated from 7 copies into shared CLI pattern in flow-utils.js"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z"
+    },
+    {
+      "id": "wf-1ad065ef",
+      "title": "Hook Chain Performance",
+      "type": "refactor",
+      "feature": "hooks",
+      "status": "ready",
+      "priority": "P2",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Config passed as parameter through hook chain instead of 7-8 getConfig() calls per PreToolUse",
+        "PostToolUse timeout lowered from 60s to 15-20s",
+        "Config cached within single hook execution cycle",
+        "Before/after timing measurements documented",
+        "No behavioral changes — same gates fire in same order"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z"
+    },
+    {
+      "id": "wf-da0edc4b",
+      "title": "Split flow-utils.js God File",
+      "type": "refactor",
+      "feature": "core",
+      "status": "ready",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "flow-utils.js split into focused modules: flow-paths.js, flow-io.js, flow-config.js, flow-tokens.js, flow-colors.js",
+        "flow-utils.js becomes thin re-export wrapper for backward compatibility",
+        "182 importing scripts continue working via re-exports",
+        "No circular dependencies introduced",
+        "node --check passes on all modified scripts"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    },
+    {
+      "id": "wf-ddedef19",
+      "title": "Codebase Cleanup & Dead Weight Removal",
+      "type": "refactor",
+      "feature": "core",
+      "status": "ready",
+      "priority": "P2",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "mcp-memory-server/ directory deleted (302MB, replaced by hook-based memory in wf-f7d4afeb)",
+        "Old change specs archived (135 files, 800KB) — keep only current month",
+        "Old archived specs cleaned (55 files, 432KB)",
+        "3 unregistered hook files resolved (config-change.js, worktree-create.js, worktree-remove.js) — either registered or deleted"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    },
+    {
+      "id": "wf-4ecb1ade",
+      "title": "Review Command Deduplication & Command Loading",
+      "type": "refactor",
+      "feature": "commands",
+      "status": "ready",
+      "priority": "P3",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Shared review logic extracted from wogi-review.md (1749 lines), wogi-review-fix.md (683), wogi-peer-review.md (394)",
+        "review-fix and peer-review become thin wrappers calling review with flags",
+        "~1200 lines of duplication removed across review commands",
+        "Command files get frontmatter section-loading hints for minimal vs full mode"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    },
+    {
+      "id": "wf-586ca91c",
+      "title": "Context & Token Reduction",
+      "type": "refactor",
+      "feature": "context",
+      "status": "ready",
+      "priority": "P2",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "CLAUDE.md trimmed: remove duplicate User Commands table, compress File Locations and Commit Behavior (~120 lines saved)",
+        "decisions.md loads on-demand by section/PIN instead of full file",
+        "SessionStart file reads batched with Promise.all() for non-dependent reads",
+        "Always-loaded context reduced from ~21K to ~10K tokens"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    },
+    {
+      "id": "wf-ef0fba18",
+      "title": "Large Module Refactoring",
+      "type": "refactor",
+      "feature": "core",
+      "status": "ready",
+      "priority": "P3",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "flow-long-input.js (8443 lines) reduced to ~500-line orchestrator, utility functions moved to sub-modules",
+        "Learning pipeline gets flow-learning-orchestrator.js facade coordinating 6+ modules",
+        "Model system circular dependency (flow-models.js <-> flow-model-router.js) fixed via shared types module",
+        "Context family gets flow-context-manager.js facade coordinating 8 modules"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    },
+    {
+      "id": "wf-6935e70c",
+      "title": "Config Schema & Tooling Sync",
+      "type": "refactor",
+      "feature": "config",
+      "status": "ready",
+      "priority": "P3",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "48 undocumented config keys added to config.schema.json",
+        "Installer defaults (lib/installer.js) synced with current config structure",
+        "Project type detection added — registries only enabled for relevant project types"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z"
+    }
   ],
-  "blocked": [],
+  "blocked": [
+    {
+      "id": "wf-67eee59b",
+      "title": "Config Consolidation - Update All Consumers",
+      "type": "refactor",
+      "feature": "config",
+      "status": "blocked",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "blockedBy": [
+        "wf-1d612670",
+        "wf-7db613f7"
+      ],
+      "acceptanceCriteria": [
+        "All scripts reading old config keys updated to read new consolidated keys",
+        "Backwards-compat shim in getConfig() for one release cycle",
+        "config.schema.json updated to match new structure",
+        "All documentation references updated",
+        "strictMode naming collision fixed (3 separate uses renamed)"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z"
+    }
+  ],
   "recentlyCompleted": [
+    {
+      "id": "wf-1d612670",
+      "title": "Config Consolidation - Merge Duplicate Sections",
+      "type": "refactor",
+      "feature": "config",
+      "status": "completed",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "tasks + loops merged into single execution section",
+        "memory (5 flags) consolidated into memory.level (off/minimal/standard/full)",
+        "learning (6 sections) consolidated into learning.level",
+        "context (7 sections) consolidated into single context section",
+        "review (4 sections) consolidated into single review section",
+        "multi-model (4 sections) merged into models section",
+        "research + planMode merged into single research section",
+        "parallel + bulk + taskQueue merged into parallelExecution",
+        "old registry keys removed, registries[] kept",
+        "community + communitySync merged",
+        "workflowSteps compressed to enabled list",
+        "hooks.rules grouped by concern (enforcement/intelligence/lifecycle)"
+      ],
+      "createdAt": "2026-03-04T11:37:21.924Z",
+      "startedAt": "2026-03-04T11:47:20.398Z",
+      "completedAt": "2026-03-04T12:02:44.520Z"
+    },
+    {
+      "id": "wf-cr-5a3f01",
+      "title": "Fix 18 review findings from session review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-04T05:10:00.000Z",
+      "completedAt": "2026-03-04T05:35:00.000Z"
+    },
     {
       "id": "wf-6e9967fc",
       "title": "Fix routing gate chained skill blocking",

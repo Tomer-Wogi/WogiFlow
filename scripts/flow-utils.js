@@ -951,6 +951,125 @@ function validateConfig(config, warnOnUnknown = true) {
 }
 
 /**
+ * Backwards-compat shim for config consolidation (v2.1.0).
+ * Maps old top-level keys to their new consolidated paths.
+ * Remove after one major release cycle.
+ */
+function applyConfigCompatShim(config) {
+  if (!config || typeof config !== 'object') return config;
+
+  // execution ← tasks + loops
+  if (config.execution && !config.tasks) {
+    config.tasks = config.execution;
+  }
+  if (config.execution && config.execution.loops && !config.loops) {
+    config.loops = config.execution.loops;
+  }
+
+  // memory ← memory.automatic, memory.promotion
+  if (config.memory) {
+    if (config.memory.automatic && !config.automaticMemory) {
+      config.automaticMemory = config.memory.automatic;
+    }
+    if (config.memory.promotion && !config.automaticPromotion) {
+      config.automaticPromotion = config.memory.promotion;
+    }
+  }
+
+  // learning ← learning.session, learning.crossSession, learning.skills, etc.
+  if (config.learning) {
+    if (config.learning.session && !config.sessionLearning) {
+      config.sessionLearning = config.learning.session;
+    }
+    if (config.learning.crossSession && !config.crossSessionLearning) {
+      config.crossSessionLearning = config.learning.crossSession;
+    }
+    if (config.learning.skill && !config.skillLearning) {
+      config.skillLearning = config.learning.skill;
+    }
+    if (config.learning.knowledgeRouting && !config.knowledgeRouting) {
+      config.knowledgeRouting = config.learning.knowledgeRouting;
+    }
+    if (config.learning.modelAdapters && !config.modelAdapters) {
+      config.modelAdapters = config.learning.modelAdapters;
+    }
+  }
+
+  // context ← context.smart, context.proactive, context.scoring, etc.
+  if (config.context) {
+    if (config.context.smart && !config.smartCompaction) {
+      config.smartCompaction = config.context.smart;
+    }
+    if (config.context.proactive && !config.proactiveCompaction) {
+      config.proactiveCompaction = config.context.proactive;
+    }
+    if (config.context.scoring && !config.contextScoring) {
+      config.contextScoring = config.context.scoring;
+    }
+    if (config.context.monitor && !config.contextMonitor) {
+      config.contextMonitor = config.context.monitor;
+    }
+    if (config.context.auto && !config.autoContext) {
+      config.autoContext = config.context.auto;
+    }
+    if (config.context.session && !config.sessionState) {
+      config.sessionState = config.context.session;
+    }
+  }
+
+  // review ← review.fix, review.peer, review.triage
+  if (config.review) {
+    if (config.review.fix && !config.reviewFix) {
+      config.reviewFix = config.review.fix;
+    }
+    if (config.review.peer && !config.peerReview) {
+      config.peerReview = config.review.peer;
+    }
+    if (config.review.triage && !config.triage) {
+      config.triage = config.review.triage;
+    }
+  }
+
+  // models ← models.hybrid, models.multiModel, models.cascade
+  if (config.models) {
+    if (config.models.hybrid && !config.hybrid) {
+      config.hybrid = config.models.hybrid;
+    }
+    if (config.models.multiModel && !config.multiModel) {
+      config.multiModel = config.models.multiModel;
+    }
+    if (config.models.cascade && !config.cascade) {
+      config.cascade = config.models.cascade;
+    }
+  }
+
+  // research ← research.planMode
+  if (config.research && config.research.planMode && !config.planMode) {
+    config.planMode = config.research.planMode;
+  }
+
+  // parallelExecution ← parallel, bulkOrchestrator, taskQueue
+  if (config.parallelExecution) {
+    if (config.parallelExecution.parallel && !config.parallel) {
+      config.parallel = config.parallelExecution.parallel;
+    }
+    if (config.parallelExecution.bulkOrchestrator && !config.bulkOrchestrator) {
+      config.bulkOrchestrator = config.parallelExecution.bulkOrchestrator;
+    }
+    if (config.parallelExecution.taskQueue && !config.taskQueue) {
+      config.taskQueue = config.parallelExecution.taskQueue;
+    }
+  }
+
+  // community ← community.sync
+  if (config.community && config.community.sync && !config.communitySync) {
+    config.communitySync = config.community.sync;
+  }
+
+  return config;
+}
+
+/**
  * Read workflow config (cached, invalidates on file change)
  * Applies variable substitution ({env:VAR}, {file:path}) to config values
  */
@@ -997,7 +1116,7 @@ function getConfig() {
         logWarnings: true,
         printWarnings: process.env.DEBUG || process.env.VERBOSE_CONFIG
       });
-      _configCache = result.value;
+      _configCache = applyConfigCompatShim(result.value);
 
       // Log substitution warnings once per session (if DEBUG)
       if (process.env.DEBUG && result.warnings.length > 0) {
@@ -1006,7 +1125,7 @@ function getConfig() {
     } catch (err) {
       // Fallback to raw config if substitution fails
       console.warn(`Warning: Config substitution failed: ${err.message}`);
-      _configCache = rawConfig;
+      _configCache = applyConfigCompatShim(rawConfig);
     }
 
     return _configCache;
