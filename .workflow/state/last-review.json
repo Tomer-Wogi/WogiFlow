@@ -164,7 +164,7 @@
       "recommendation": "Add config parameter to isValidationEnabled() and getValidationCommands()",
       "autoFixable": false,
       "agent": "structure",
-      "status": "deferred"
+      "status": "fixed"
     },
     {
       "id": "finding-012",
@@ -200,7 +200,7 @@
       "recommendation": "Use explicit named exports or document the override order",
       "autoFixable": false,
       "agent": "logic",
-      "status": "deferred"
+      "status": "fixed"
     },
     {
       "id": "finding-015",
@@ -284,7 +284,7 @@
       "recommendation": "Add to PATHS in flow-paths.js",
       "autoFixable": false,
       "agent": "structure",
-      "status": "deferred"
+      "status": "fixed"
     },
     {
       "id": "finding-022",
@@ -314,8 +314,8 @@
   "triaged": true,
   "fixTask": "wf-cr-b4d5e6",
   "fixSummary": {
-    "fixed": 20,
-    "deferred": 3,
-    "deferredIds": ["finding-011", "finding-014", "finding-021"]
+    "fixed": 23,
+    "deferred": 0,
+    "deferredIds": []
   }
 }

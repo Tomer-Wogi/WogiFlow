@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { getProjectRoot, colors: c } = require('./flow-utils');
+const { detectPackageManager } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -85,13 +86,8 @@ function detectProjectType(projectRoot = PROJECT_ROOT) {
     return { language: 'python', packageManager: pm };
   }
 
-  // Default to Node.js - detect specific package manager
-  const pm = fs.existsSync(path.join(safeRoot, 'pnpm-lock.yaml')) ? 'pnpm'
-           : fs.existsSync(path.join(safeRoot, 'yarn.lock')) ? 'yarn'
-           : fs.existsSync(path.join(safeRoot, 'bun.lockb')) ? 'bun'
-           : 'npm';
-
-  return { language: 'node', packageManager: pm };
+  // Default to Node.js - use canonical PM detection from flow-script-resolver
+  return { language: 'node', packageManager: detectPackageManager(safeRoot) };
 }
 
 /**

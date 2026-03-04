@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getProjectRoot, colors: c } = require('./flow-utils');
+const { detectPackageManager } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -192,24 +193,23 @@ function detectStack() {
     }
   }
 
-  // Detect package manager
-  if (fs.existsSync(path.join(PROJECT_ROOT, 'pnpm-lock.yaml'))) {
-    stack.packageManager = 'pnpm';
-  } else if (fs.existsSync(path.join(PROJECT_ROOT, 'yarn.lock'))) {
-    stack.packageManager = 'yarn';
-  } else if (fs.existsSync(path.join(PROJECT_ROOT, 'bun.lockb')) || fs.existsSync(path.join(PROJECT_ROOT, 'bun.lock'))) {
-    stack.packageManager = 'bun';
+  // Detect package manager — uses canonical detectPackageManager() from flow-script-resolver
+  const detectedPm = detectPackageManager(PROJECT_ROOT);
+  stack.packageManager = detectedPm;
+  if (detectedPm === 'bun') {
     stack.runtime = 'Bun';
-  } else if (fs.existsSync(path.join(PROJECT_ROOT, 'package-lock.json'))) {
-    stack.packageManager = 'npm';
   }
 
   // Check for Python projects
+  // Note: When a non-JS primary language is detected, JS framework fields are cleared
+  // to prevent incoherent reports (e.g., "Python + React" from a polyglot repo)
   const requirementsPath = path.join(PROJECT_ROOT, 'requirements.txt');
   const pyprojectPath = path.join(PROJECT_ROOT, 'pyproject.toml');
   if (fs.existsSync(requirementsPath) || fs.existsSync(pyprojectPath)) {
     stack.language = 'Python';
     stack.runtime = 'Python';
+    stack.frameworks.frontend = '';
+    stack.frameworks.fullStack = '';
 
     if (fs.existsSync(path.join(PROJECT_ROOT, 'poetry.lock'))) {
       stack.packageManager = 'Poetry';
@@ -243,6 +243,8 @@ function detectStack() {
     stack.language = 'Rust';
     stack.runtime = 'Rust';
     stack.packageManager = 'Cargo';
+    stack.frameworks.frontend = '';
+    stack.frameworks.fullStack = '';
     // Try to detect Rust web frameworks
     try {
       const cargo = fs.readFileSync(cargoPath, 'utf-8');
@@ -258,6 +260,8 @@ function detectStack() {
     stack.language = 'Go';
     stack.runtime = 'Go';
     stack.packageManager = 'Go Modules';
+    stack.frameworks.frontend = '';
+    stack.frameworks.fullStack = '';
     // Try to detect Go web frameworks
     try {
       const goMod = fs.readFileSync(goModPath, 'utf-8');

@@ -11,28 +11,33 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');
 const { getCommand, getExec } = require('../../flow-script-resolver');
 
+// Shell metacharacters that indicate injection attempts in config-sourced commands
+const SHELL_METACHAR_RE = /[;&|`$(){}!<>]/;
+
 /**
  * Check if validation is enabled
+ * @param {Object} [config] - Optional pre-loaded config (avoids redundant getConfig() calls)
  * @returns {boolean}
  */
-function isValidationEnabled() {
-  const config = getConfig();
-  return config.hooks?.rules?.validation?.enabled !== false;
+function isValidationEnabled(config) {
+  const cfg = config || getConfig();
+  return cfg.hooks?.rules?.validation?.enabled !== false;
 }
 
 /**
  * Get validation commands for a file extension
  * @param {string} ext - File extension (e.g., '.ts', '.tsx')
+ * @param {Object} [config] - Optional pre-loaded config (avoids redundant getConfig() calls)
  * @returns {string[]} Array of commands to run
  */
-function getValidationCommands(ext) {
-  const config = getConfig();
+function getValidationCommands(ext, config) {
+  config = config || getConfig();
 
   // Check hooks config first
   const hooksCommands = config.hooks?.rules?.validation?.commands;
@@ -79,7 +84,34 @@ function getValidationCommands(ext) {
 }
 
 /**
- * Run a single validation command
+ * Parse a command string into [binary, ...args] for execFileSync.
+ * Handles simple space-separated commands and respects quoted strings.
+ * @param {string} command - Command string (e.g., "npx tsc --noEmit")
+ * @returns {string[]} Array of [binary, ...args]
+ */
+function parseCommandToArgs(command) {
+  const args = [];
+  let current = '';
+  let inSingle = false;
+  let inDouble = false;
+
+  for (let i = 0; i < command.length; i++) {
+    const ch = command[i];
+    if (ch === "'" && !inDouble) { inSingle = !inSingle; continue; }
+    if (ch === '"' && !inSingle) { inDouble = !inDouble; continue; }
+    if (ch === ' ' && !inSingle && !inDouble) {
+      if (current) { args.push(current); current = ''; }
+      continue;
+    }
+    current += ch;
+  }
+  if (current) args.push(current);
+  return args;
+}
+
+/**
+ * Run a single validation command safely using execFileSync (no shell interpretation).
+ * Config-sourced commands are validated for shell metacharacters before execution.
  * @param {string} command - Command to run (may contain {file} placeholder)
  * @param {string} filePath - Path to the file being validated
  * @param {number} timeout - Timeout in ms
@@ -87,11 +119,39 @@ function getValidationCommands(ext) {
  */
 async function runValidationCommand(command, filePath, timeout = 30000) {
   const startTime = Date.now();
-  const actualCommand = command.replace('{file}', `"${filePath}"`);
+
+  // Validate: reject commands with shell metacharacters (prevents injection via config)
+  if (SHELL_METACHAR_RE.test(command.replace(/\{file\}/g, ''))) {
+    return {
+      passed: false,
+      output: '',
+      error: `Validation command rejected: contains shell metacharacters. Command: ${command}`,
+      duration: Date.now() - startTime,
+      command
+    };
+  }
+
+  // Replace {file} placeholder with actual path, then parse into args array
+  const expandedCommand = command.replace(/\{file\}/g, filePath);
+  const parts = parseCommandToArgs(expandedCommand);
+
+  if (parts.length === 0) {
+    return {
+      passed: false,
+      output: '',
+      error: 'Empty validation command',
+      duration: Date.now() - startTime,
+      command
+    };
+  }
+
+  const binary = parts[0];
+  const args = parts.slice(1);
+  const displayCommand = `${binary} ${args.join(' ')}`;
 
   return new Promise((resolve) => {
     try {
-      const result = execSync(actualCommand, {
+      const result = execFileSync(binary, args, {
         cwd: PATHS.root,
         encoding: 'utf-8',
         timeout,
@@ -103,7 +163,7 @@ async function runValidationCommand(command, filePath, timeout = 30000) {
         output: result,
         error: null,
         duration: Date.now() - startTime,
-        command: actualCommand
+        command: displayCommand
       });
     } catch (err) {
       resolve({
@@ -111,7 +171,7 @@ async function runValidationCommand(command, filePath, timeout = 30000) {
         output: err.stdout || '',
         error: err.stderr || err.message,
         duration: Date.now() - startTime,
-        command: actualCommand
+        command: displayCommand
       });
     }
   });
@@ -125,9 +185,9 @@ async function runValidationCommand(command, filePath, timeout = 30000) {
  * @returns {Promise<Object>} Result: { passed, results, summary }
  */
 async function runValidation(options = {}) {
-  const { filePath, timeout = 30000 } = options;
+  const { filePath, timeout = 30000, config } = options;
 
-  if (!isValidationEnabled()) {
+  if (!isValidationEnabled(config)) {
     return {
       passed: true,
       skipped: true,
@@ -137,7 +197,7 @@ async function runValidation(options = {}) {
   }
 
   const ext = path.extname(filePath);
-  const commands = getValidationCommands(ext);
+  const commands = getValidationCommands(ext, config);
 
   if (commands.length === 0) {
     return {

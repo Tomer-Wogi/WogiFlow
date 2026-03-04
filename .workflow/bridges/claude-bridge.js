@@ -459,17 +459,24 @@ Last synced: ${new Date().toISOString()}
       'Skill(wogi-*)',
     ];
 
-    // Additional domains from config
+    // Additional domains from config — validate to prevent settings injection
+    const DOMAIN_RE = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
     const additionalDomains = config.permissions?.allowedDomains || [];
     for (const domain of additionalDomains) {
-      wildcardPermissions.push(`WebFetch(domain:${domain})`);
+      if (typeof domain === 'string' && domain.length <= 253 && DOMAIN_RE.test(domain)) {
+        wildcardPermissions.push(`WebFetch(domain:${domain})`);
+      }
     }
 
     // Additional custom permissions from config (for advanced users)
+    // Validate: must be strings, no shell metacharacters, reasonable format
+    const PERM_SAFE_RE = /^[A-Za-z]+\([A-Za-z0-9_:.*/ -]+\)$/;
     const customPermissions = config.permissions?.custom || [];
     for (const perm of customPermissions) {
-      if (!wildcardPermissions.includes(perm)) {
-        wildcardPermissions.push(perm);
+      if (typeof perm === 'string' && perm.length <= 200 && PERM_SAFE_RE.test(perm)) {
+        if (!wildcardPermissions.includes(perm)) {
+          wildcardPermissions.push(perm);
+        }
       }
     }
 

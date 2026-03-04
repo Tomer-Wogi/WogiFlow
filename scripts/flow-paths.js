@@ -120,6 +120,10 @@ const PATHS = {
   specsTesting: path.join(WORKFLOW_DIR, 'specs', 'testing.md'),
   // Research Protocol (v1.0.48)
   researchCache: path.join(STATE_DIR, 'research-cache.json'),
+  // Model Registry & Stats (v1.8.2)
+  modelsDir: path.join(WORKFLOW_DIR, 'models'),
+  modelRegistry: path.join(WORKFLOW_DIR, 'models', 'registry.json'),
+  modelStats: path.join(WORKFLOW_DIR, 'models', 'stats.json'),
 };
 
 // ============================================================

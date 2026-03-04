@@ -1911,20 +1911,74 @@ const SEARCH_DEFAULTS = {
 // ============================================================
 
 module.exports = {
-  // Re-export from flow-paths.js
-  ...flowPaths,
+  // Explicit re-exports from flow-paths.js
+  getProjectRoot: flowPaths.getProjectRoot,
+  PROJECT_ROOT: flowPaths.PROJECT_ROOT,
+  WORKFLOW_DIR: flowPaths.WORKFLOW_DIR,
+  STATE_DIR: flowPaths.STATE_DIR,
+  CLAUDE_DIR: flowPaths.CLAUDE_DIR,
+  PATHS: flowPaths.PATHS,
+  isPathWithinProject: flowPaths.isPathWithinProject,
+  SPEC_FILE_MAP: flowPaths.SPEC_FILE_MAP,
+  getSpecFilePath: flowPaths.getSpecFilePath,
+  checkSpecMigration: flowPaths.checkSpecMigration,
 
-  // Re-export from flow-io.js
-  ...flowIO,
+  // Explicit re-exports from flow-io.js
+  LOCK_STALE_THRESHOLD_MS: flowIO.LOCK_STALE_THRESHOLD_MS,
+  CLEANUP_LOCK_STALE_MS: flowIO.CLEANUP_LOCK_STALE_MS,
+  LOCK_RETRY_DELAY_MS: flowIO.LOCK_RETRY_DELAY_MS,
+  LOCK_MAX_RETRIES: flowIO.LOCK_MAX_RETRIES,
+  fileExists: flowIO.fileExists,
+  dirExists: flowIO.dirExists,
+  ensureDir: flowIO.ensureDir,
+  checkForDangerousKeys: flowIO.checkForDangerousKeys,
+  readJson: flowIO.readJson,
+  writeJson: flowIO.writeJson,
+  safeJsonParse: flowIO.safeJsonParse,
+  safeJsonParseString: flowIO.safeJsonParseString,
+  readFile: flowIO.readFile,
+  writeFile: flowIO.writeFile,
+  validateJson: flowIO.validateJson,
+  listDirs: flowIO.listDirs,
+  listFiles: flowIO.listFiles,
+  countFiles: flowIO.countFiles,
+  outputJson: flowIO.outputJson,
+  acquireLock: flowIO.acquireLock,
+  withLock: flowIO.withLock,
+  withLockSync: flowIO.withLockSync,
+  cleanupStaleLocks: flowIO.cleanupStaleLocks,
 
-  // Re-export from flow-config-loader.js
-  ...flowConfigLoader,
+  // Explicit re-exports from flow-config-loader.js
+  getConfig: flowConfigLoader.getConfig,
+  getRawConfig: flowConfigLoader.getRawConfig,
+  getConfigValue: flowConfigLoader.getConfigValue,
+  setConfigValue: flowConfigLoader.setConfigValue,
+  setConfigValueSync: flowConfigLoader.setConfigValueSync,
+  resolveConfigValue: flowConfigLoader.resolveConfigValue,
+  invalidateConfigCache: flowConfigLoader.invalidateConfigCache,
+  validateConfig: flowConfigLoader.validateConfig,
+  applyConfigCompatShim: flowConfigLoader.applyConfigCompatShim,
+  KNOWN_CONFIG_KEYS: flowConfigLoader.KNOWN_CONFIG_KEYS,
 
-  // Re-export from flow-tokens.js
-  ...flowTokens,
+  // Explicit re-exports from flow-tokens.js
+  TOKEN_ESTIMATION: flowTokens.TOKEN_ESTIMATION,
+  estimateTokens: flowTokens.estimateTokens,
+  detectCodeContentRatio: flowTokens.detectCodeContentRatio,
+  isCodeContent: flowTokens.isCodeContent,
+  estimateComplexity: flowTokens.estimateComplexity,
 
-  // Re-export from flow-output.js
-  ...flowOutput,
+  // Explicit re-exports from flow-output.js
+  colors: flowOutput.colors,
+  color: flowOutput.color,
+  print: flowOutput.print,
+  printHeader: flowOutput.printHeader,
+  printSection: flowOutput.printSection,
+  success: flowOutput.success,
+  warn: flowOutput.warn,
+  error: flowOutput.error,
+  info: flowOutput.info,
+  showHelp: flowOutput.showHelp,
+  escapeRegex: flowOutput.escapeRegex,
 
   // Constants (defined in this file)
   DEFAULT_COMMAND_TIMEOUT_MS,

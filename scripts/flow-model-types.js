@@ -16,9 +16,8 @@
  */
 
 const fs = require('fs');
-const path = require('path');
 const {
-  PROJECT_ROOT,
+  PATHS,
   fileExists,
   dirExists,
   safeJsonParse,
@@ -27,12 +26,12 @@ const {
 } = require('./flow-utils');
 
 // ============================================================
-// Paths
+// Paths (from canonical PATHS registry in flow-paths.js)
 // ============================================================
 
-const MODELS_DIR = path.join(PROJECT_ROOT, '.workflow', 'models');
-const REGISTRY_PATH = path.join(MODELS_DIR, 'registry.json');
-const STATS_PATH = path.join(MODELS_DIR, 'stats.json');
+const MODELS_DIR = PATHS.modelsDir;
+const REGISTRY_PATH = PATHS.modelRegistry;
+const STATS_PATH = PATHS.modelStats;
 
 // ============================================================
 // Registry Loading
