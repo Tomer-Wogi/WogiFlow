@@ -132,6 +132,24 @@ function substituteFileContents(value, options = {}) {
   const result = value.replace(PATTERNS.file, (match, filePath) => {
     const resolvedPath = resolvePath(filePath.trim(), basePath);
 
+    // Security: validate path is within project or user's home directory
+    const homeDir = os.homedir();
+    const absResolved = path.resolve(resolvedPath);
+    const isWithinBase = absResolved.startsWith(path.resolve(basePath) + path.sep) || absResolved === path.resolve(basePath);
+    const isWithinHome = homeDir && absResolved.startsWith(homeDir + path.sep);
+    if (!isWithinBase && !isWithinHome) {
+      if (logWarnings) {
+        warnings.push({
+          type: 'file',
+          pattern: match,
+          path: filePath,
+          resolvedPath,
+          message: `File path outside allowed locations blocked: ${resolvedPath}`
+        });
+      }
+      return match; // Keep original placeholder
+    }
+
     try {
       if (fs.existsSync(resolvedPath)) {
         const content = fs.readFileSync(resolvedPath, 'utf-8');

@@ -111,7 +111,7 @@ function isTodoWriteGateEnabled(config) {
   if (!config) config = getConfig();
 
   // Check hooks config first
-  if (config.hooks?.rules?.todoWriteGate?.enabled === false) {
+  if (config.hooks?.rules?.enforcement?.todoWriteGate?.enabled === false) {
     return false;
   }
 

@@ -51,7 +51,7 @@ const ROUTING_CLEARED_TTL_MS = 5 * 60 * 1000;
 function isRoutingGateEnabled(config) {
   try {
     if (!config) config = getConfig();
-    return config.hooks?.rules?.routingGate?.enabled !== false;
+    return config.hooks?.rules?.enforcement?.routingGate?.enabled !== false;
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Config read error: ${err.message}`);

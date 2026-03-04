@@ -22,6 +22,7 @@ const {
   fileExists,
   dirExists,
   safeJsonParse,
+  writeJson,
   warn
 } = require('./flow-utils');
 
@@ -118,7 +119,7 @@ function saveStats(stats) {
   }
 
   try {
-    fs.writeFileSync(STATS_PATH, JSON.stringify(stats, null, 2));
+    writeJson(STATS_PATH, stats);
   } catch (err) {
     console.error(`[flow-model-types] Failed to save stats: ${err.message}`);
   }

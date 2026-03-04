@@ -24,7 +24,7 @@ function isLoopEnforcementEnabled() {
   const config = getConfig();
 
   // Check hooks config first
-  if (config.hooks?.rules?.loopEnforcement?.enabled === false) {
+  if (config.hooks?.rules?.enforcement?.loopEnforcement?.enabled === false) {
     return false;
   }
 

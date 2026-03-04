@@ -19,21 +19,18 @@
 const fs = require('fs');
 const path = require('path');
 const memoryDb = require('./flow-memory-db');
+const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
 
 // ============================================================
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
-const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-
 function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-    }
-  } catch {}
-  return {};
+    return getConfig();
+  } catch {
+    return {};
+  }
 }
 
 // ============================================================
@@ -233,13 +230,6 @@ async function listColdStorage() {
   console.log('═'.repeat(70));
 
   await memoryDb.initDatabase();
-
-  // Direct query for cold storage
-  const SQL = require('sql.js');
-  const db = await memoryDb.initDatabase();
-
-  // This is a workaround since we don't expose direct query in the module
-  // We'll use getEntropyStats to show cold count
   const stats = await memoryDb.getEntropyStats();
 
   console.log(`\nTotal cold facts: ${stats.coldFacts}`);

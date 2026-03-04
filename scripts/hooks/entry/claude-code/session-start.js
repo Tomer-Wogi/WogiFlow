@@ -42,8 +42,13 @@ async function main() {
     })();
 
     // Read input from stdin (runs concurrently with bridge sync)
+    // Cap at 100KB to prevent unbounded memory growth (matches pre-tool-use.js pattern)
+    const MAX_STDIN_SIZE = 100 * 1024;
     let inputData = '';
+    let totalSize = 0;
     for await (const chunk of process.stdin) {
+      totalSize += chunk.length;
+      if (totalSize > MAX_STDIN_SIZE) break;
       inputData += chunk;
     }
 

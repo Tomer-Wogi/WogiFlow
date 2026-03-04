@@ -25,7 +25,7 @@ function isTaskGatingEnabled(config) {
   if (!config) config = getConfig();
 
   // Check hooks config first
-  if (config.hooks?.rules?.taskGating?.enabled === false) {
+  if (config.hooks?.rules?.enforcement?.taskGating?.enabled === false) {
     return false;
   }
 

@@ -6,15 +6,17 @@
  * Common functions used across all flow scripts.
  * Eliminates Python dependency and provides consistent path handling.
  *
- * This file is a thin re-export wrapper. Functions are organized in:
+ * Re-export facade for five focused modules, plus home for task management,
+ * ready.json operations, classification, request log, git utilities, and AST grep.
+ *
+ * Focused modules (prefer importing directly for new code):
  * - flow-paths.js: Path constants and utilities
  * - flow-io.js: File I/O, locking, JSON handling
  * - flow-config-loader.js: Config reading, caching, validation
  * - flow-tokens.js: Token estimation
  * - flow-output.js: Colors, terminal output, CLI help
  *
- * For new code, prefer importing from the dedicated module directly.
- * This file re-exports all functions for backwards compatibility.
+ * This file re-exports all functions from the above for backwards compatibility.
  */
 
 const fs = require('fs');

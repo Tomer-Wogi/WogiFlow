@@ -11,28 +11,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { colors } = require('./flow-utils');
+const { colors, getConfig, PROJECT_ROOT, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = process.cwd();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const BRIDGES_DIR = path.join(WORKFLOW_DIR, 'bridges');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
-
-/**
- * Read config file
- */
-function getConfig() {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    console.error(`${colors.red}Error:${colors.reset} Config not found. Run 'flow install' first.`);
-    process.exit(1);
-  }
-  try {
-    return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-  } catch (err) {
-    console.error(`${colors.red}Error:${colors.reset} Invalid JSON in config.json: ${err.message}`);
-    process.exit(1);
-  }
-}
 
 /**
  * Get CLI type from config

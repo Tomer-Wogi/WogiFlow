@@ -20,6 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const memoryDb = require('./flow-memory-db');
+const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
 
 // Lazy-load to avoid circular dependency
 let _syncDecisionsToRules = null;
@@ -34,26 +35,17 @@ function syncDecisionsToRules() {
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
-const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
 const DECISIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
 
 function loadConfig() {
   try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      const parsed = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-      // Basic prototype pollution check
-      if (parsed && (parsed.__proto__ || parsed.constructor || parsed.prototype)) {
-        return {};
-      }
-      return parsed;
-    }
+    return getConfig();
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[memory-sync] Failed to load config: ${err.message}`);
     }
+    return {};
   }
-  return {};
 }
 
 // ============================================================
@@ -333,6 +325,8 @@ async function autoPromote(config) {
   let skipped = 0;
   let currentContent = decisionsContent;
 
+  const promotedIds = [];
+
   for (const candidate of candidates) {
     if (candidate.promoted_to) {
       skipped++;
@@ -348,15 +342,20 @@ async function autoPromote(config) {
 
     const formatted = formatForDecisions(candidate);
     currentContent = appendToDecisions(formatted, currentContent);
-
-    await memoryDb.markFactPromoted(candidate.id, 'decisions.md');
+    promotedIds.push(candidate.id);
     promoted++;
 
     console.log(`${color('green', '✓')} Promoted: ${candidate.fact.substring(0, 50)}...`);
   }
 
   if (promoted > 0) {
+    // Write decisions.md FIRST, then mark as promoted in DB
+    // This prevents data loss if process crashes between the two operations
     fs.writeFileSync(DECISIONS_PATH, currentContent);
+    // Now safe to mark as promoted in DB
+    for (const id of promotedIds) {
+      await memoryDb.markFactPromoted(id, 'decisions.md');
+    }
     // Sync to .claude/rules/ for Claude Code integration
     syncDecisionsToRules();
     await memoryDb.recordMemoryMetric('auto_promote');

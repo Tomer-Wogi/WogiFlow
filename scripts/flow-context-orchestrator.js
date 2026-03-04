@@ -42,8 +42,9 @@ const {
 // Configuration
 // ============================================================
 
-// Approximate tokens per character (conservative estimate)
-const CHARS_PER_TOKEN = 4;
+// Use canonical token estimation constants
+const { TOKEN_ESTIMATION } = require('./flow-tokens');
+const CHARS_PER_TOKEN = TOKEN_ESTIMATION.CHARS_PER_TOKEN_TEXT;
 
 // Default limits
 const DEFAULT_MAX_TOKENS = 8000;

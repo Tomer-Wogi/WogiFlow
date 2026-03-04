@@ -24,6 +24,14 @@ function getConfigSubstitution() {
   return configSubstitution;
 }
 
+// Config defaults (loaded once at module level)
+let _configDefaults = null;
+try {
+  _configDefaults = require('./flow-config-defaults');
+} catch {
+  // Graceful degradation if defaults module not available
+}
+
 // ============================================================
 // Config Cache
 // ============================================================
@@ -64,8 +72,8 @@ const KNOWN_CONFIG_KEYS = [
   // Session management
   'metrics', 'requestLog', 'sessionState', 'smartCompaction',
   // Features (alphabetical)
-  'agents', 'bugFlow', 'bulkLoop', 'bulkOrchestrator', 'capture',
-  'cascade', 'checkpoint', 'clarifyingQuestions', 'commits', 'community',
+  'agents', 'bugFlow', 'bulkLoop', 'capture',
+  'cascade', 'checkpoint', 'commits', 'community',
   'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
   'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
   'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
@@ -73,8 +81,8 @@ const KNOWN_CONFIG_KEYS = [
   'project', 'projectType', 'regressionTesting', 'retrospective',
   'security', 'storyDecomposition', 'techDebt', 'traces',
   'webmcp', 'workflowSteps',
-  // v2.0.0+
-  'bulkOrchestrator', 'research'
+  // v2.0.0+ compat shim output keys
+  'proactiveCompaction', 'communitySync'
 ];
 
 // Known nested keys for common config sections
@@ -154,12 +162,18 @@ function validateConfig(config, warnOnUnknown = true) {
 function applyConfigCompatShim(config) {
   if (!config || typeof config !== 'object') return config;
 
-  // execution <- tasks + loops
+  // execution <-> tasks + loops (bidirectional)
   if (config.execution && !config.tasks) {
     config.tasks = config.execution;
   }
+  if (config.tasks && !config.execution) {
+    config.execution = config.tasks;
+  }
   if (config.execution && config.execution.loops && !config.loops) {
     config.loops = config.execution.loops;
+  }
+  if (config.loops && config.execution && !config.execution.loops) {
+    config.execution.loops = config.loops;
   }
 
   // memory <- memory.automatic, memory.promotion
@@ -301,9 +315,6 @@ function getConfig() {
       }
     }
 
-    _configMtime = stat.mtimeMs;
-    _configCacheTime = Date.now();
-
     // Validate on first load (DEBUG mode or explicit request)
     if (process.env.DEBUG || process.env.VALIDATE_CONFIG) {
       validateConfig(rawConfig);
@@ -318,29 +329,30 @@ function getConfig() {
       });
       // Apply defaults for stripped config sections, then compat shim
       let configWithDefaults = result.value;
-      try {
-        const { mergeWithDefaults } = require('./flow-config-defaults');
-        configWithDefaults = mergeWithDefaults(configWithDefaults);
-      } catch (err) {
-        // Graceful degradation if defaults module not available
+      if (_configDefaults) {
+        configWithDefaults = _configDefaults.mergeWithDefaults(configWithDefaults);
       }
       _configCache = applyConfigCompatShim(configWithDefaults);
+
+      // Only update cache timestamp after successful processing
+      _configMtime = stat.mtimeMs;
+      _configCacheTime = Date.now();
 
       // Log substitution warnings once per session (if DEBUG)
       if (process.env.DEBUG && result.warnings.length > 0) {
         console.warn(`[config] ${result.warnings.length} unresolved substitution(s)`);
       }
     } catch (err) {
-      // Fallback to raw config if substitution fails
+      // Fallback to raw config if substitution fails — do NOT cache mtime
+      // so next call retries substitution
       console.warn(`Warning: Config substitution failed: ${err.message}`);
       let configWithDefaults = rawConfig;
-      try {
-        const { mergeWithDefaults } = require('./flow-config-defaults');
-        configWithDefaults = mergeWithDefaults(configWithDefaults);
-      } catch (defaultsErr) {
-        // Graceful degradation
+      if (_configDefaults) {
+        configWithDefaults = _configDefaults.mergeWithDefaults(configWithDefaults);
       }
       _configCache = applyConfigCompatShim(configWithDefaults);
+      _configCacheTime = Date.now(); // Cache the fallback result briefly
+      // Don't set _configMtime — next call after 2s will retry substitution
     }
 
     return _configCache;

@@ -27,7 +27,7 @@ const { getSessionFileScope, getSessionBoundaries } = require('../../flow-durabl
  */
 function getScopeGatingSettings(config) {
   if (!config) config = getConfig();
-  const scopeConfig = config.hooks?.rules?.scopeGating || {};
+  const scopeConfig = config.hooks?.rules?.enforcement?.scopeGating || {};
   return {
     enabled: scopeConfig.enabled !== false,
     mode: scopeConfig.mode || 'warn',

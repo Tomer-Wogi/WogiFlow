@@ -20,7 +20,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ensureDir } = require('./flow-file-ops');
+const { ensureDir } = require('./flow-io');
 
 // ============================================================
 // Constants (extracted from magic numbers)
@@ -115,6 +115,23 @@ function safeParsePins(pinsJson) {
   }
 }
 
+/**
+ * Safely parse a JSON array from DB-sourced data
+ * Rejects prototype pollution attempts
+ * @param {string} json - JSON string
+ * @returns {Array} - Parsed array (empty on error)
+ */
+function safeParseArray(json) {
+  if (!json || json === '[]') return [];
+  try {
+    if (/__proto__|constructor|prototype/i.test(json)) return [];
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 // ============================================================
 // Database Singleton
 // ============================================================
@@ -134,6 +151,7 @@ async function initDatabase() {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
+    try {
     ensureDir(MEMORY_DIR);
 
     // Initialize sql.js
@@ -354,6 +372,12 @@ async function initDatabase() {
 
     saveDatabase();
     return db;
+    } catch (err) {
+      // Reset initPromise so next call can retry (don't permanently block on transient failure)
+      initPromise = null;
+      db = null;
+      throw err;
+    }
   })();
 
   return initPromise;
@@ -366,7 +390,16 @@ function saveDatabase() {
   if (!db) return;
   const data = db.export();
   const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
+  // Atomic write: temp file + rename to prevent corruption on crash
+  const tempPath = DB_PATH + '.tmp.' + process.pid;
+  try {
+    fs.writeFileSync(tempPath, buffer);
+    fs.renameSync(tempPath, DB_PATH);
+  } catch (err) {
+    // Clean up temp file on failure
+    try { fs.unlinkSync(tempPath); } catch {}
+    throw err;
+  }
 }
 
 /**
@@ -680,7 +713,7 @@ async function getProposals(status = 'pending') {
     rationale: p.rationale,
     sourceContext: p.source_context,
     status: p.status,
-    votes: JSON.parse(p.votes || '[]'),
+    votes: safeParseArray(p.votes || '[]'),
     synced: !!p.synced,
     remoteId: p.remote_id,
     createdAt: p.created_at
@@ -1326,8 +1359,8 @@ async function searchRequestLog(options = {}) {
   // Parse JSON fields
   return entries.map(e => ({
     ...e,
-    tags: e.tags ? JSON.parse(e.tags) : [],
-    files: e.files ? JSON.parse(e.files) : []
+    tags: safeParseArray(e.tags),
+    files: safeParseArray(e.files)
   }));
 }
 
@@ -1346,8 +1379,8 @@ async function getRequestLogEntry(entryId) {
   const entry = rows[0];
   return {
     ...entry,
-    tags: entry.tags ? JSON.parse(entry.tags) : [],
-    files: entry.files ? JSON.parse(entry.files) : []
+    tags: safeParseArray(entry.tags),
+    files: safeParseArray(entry.files)
   };
 }
 
