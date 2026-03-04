@@ -2531,6 +2531,282 @@
         "content": "1. yes Let's make sure that we have a template and everything is set up properly. \n2. Add them to gitignore plus you can I don't know maybe we can just add The entire folder to gitignore like the workflow folder if it's not necessary or state or I don't know think about it also Extend the session end or session start or whatever to clean up unnecessary files It doesn't like we need to always make sure that there's no files that Claude and itself decided to create that creep in and then stay there and ",
         "isInitial": false,
         "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T13:40:59.987Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T13:59:16.567Z",
+        "content": "from my developer During setup new version I noticed one issue.\n\nThe system detected a conflict in file naming — it says the project uses both kebab-case and PascalCase.\nBut in reality, kebab-case is used only in Wogi Flow system files, and PascalCase is used in the actual project files.\n \nI think Wogi Flow should scan only the user’s project files (for example, the src folder) and ignore its own internal files.\n",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T14:05:17.962Z",
+        "content": "We just encountered two issues. The last session with you got stuck. Too much context that we couldn't compact anymore. We added the Wogi compact that is supposed to compact even before Claude tries to compact, so we don't get... It has a lot of reasons, but we're not supposed to get to a situation like this. So, please investigate. \n\nAfter that, this is what I got from my developer. \nDuring setup new version I noticed one issue.\n\nThe system detected a conflict in file naming — it says the project uses both kebab-case and PascalCase.\nBut in reality, kebab-case is used only in Wogi Flow system files, and PascalCase is used in the actual project files.\n \nI think Wogi Flow should scan only the user’s project files (for example, the src folder) and ignore its own internal files.",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T14:17:02.899Z",
+        "content": "There are a few more things I want us to fix. My developer used onboarding on one project. And on the onboarding process it asked him if he wants to replace the rules or combine them. /Users/tomergilboa/Downloads/decisions\\(exported\\ from\\ BrandOS\\).md /Users/tomergilboa/Downloads/decisions\\(combined\\).md This is the original file that was exported and there is the combined file. As you can see this is not the correct way to handle it. That created conflicts and made the cloud or wogiflow ignore the actual rules. Combining them means we want to resolve all the conflicts, which means everything that is imported is the new rule and everything that is not addressed on the import can stay. And you know what, this could be another question. We can ask him. When he says comment. When he says combine we can ask him a follow up question. Do you want to resolve yourself all the conflicts or when we see a conflict the import file wins. And if he wants to resolve himself every conflict we will ask him to choose which approach he wants us to use. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T14:45:57.164Z",
+        "content": "There is a major issue that you need to fix. The last two tasks that I gave you got stuck Because of context like the compact automatic compact the woggy compact nothing worked Then we get to a point where we can't compact anymore. It's either we compact and we need to clear \n  ⎿  PostToolUse:Edit says: Validation passed\n  ⎿  API Error: The model has reached its context window limit.\n\n⏺ Let me check the current state — that edit got cut off. Let me read the file and fix it properly.\n\n⏺ Read 1 file (ctrl+o to expand)\n\n⏺ The edit got truncated. Let me first add an interactive mode to the Node.js merge helper, then clean up the bash script properly.\n\n⏺ Read 1 file (ctrl+o to expand)\n  ⎿  Context limit reached · /compact or /clear to continue\n\n⏺ Ran 2 stop hooks (ctrl+o to expand)\n  ⎿  Stop hook prevented continuation\n\n✻ Baked for 4m 17s\n\n  1 tasks (0 done, 1 in progress, 0 open)\n  ◼ Fix decisions.md combine logic during import (wf-a86db5c9)",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T15:05:51.899Z",
+        "content": "what is tdd protocol?",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T15:07:28.073Z",
+        "content": "I don't want it to be triggered by tags or us needing to write anything. It's supposed to be enabled in the config file. Once it's enabled, this is the default approach if it's enabled for all tasks. So, Woggy Start should always load it if that's the default. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T15:09:56.787Z",
+        "content": "Now this is the original prompt that I gave you before it got stuck in the middle. Please see if this task was done and if not finish it. \n❯ There are a few more things I want us to fix. My developer used onboarding on one project. And on the onboarding process it asked him if he wants \n   to replace the rules or combine them. /Users/tomergilboa/Downloads/decisions\\(exported\\ from\\ BrandOS\\).md                                       \n  /Users/tomergilboa/Downloads/decisions\\(combined\\).md This is the original file that was exported and there is the combined file. As you can see  \n  this is not the correct way to handle it. That created conflicts and made the cloud or wogiflow ignore the actual rules. Combining them means we  \n  want to resolve all the conflicts, which means everything that is imported is the new rule and everything that is not addressed on the import can \n   stay. And you know what, this could be another question. We can ask him. When he says comment. When he says combine we can ask him a follow up   \n  question. Do you want to resolve yourself all the conflicts or when we see a conflict the import file wins. And if he wants to resolve himself    \n  every conflict we will ask him to choose which approach he wants us to use. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T15:28:14.625Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T16:08:59.267Z",
+        "content": "from my developer:\nmy first question: \nI’m currently evaluating the Reports page implementation generated using Vogue Flow rules.\nVisually, the page looks correct.\n\nHowever, there is an architectural concern.\nIn this implementation:\nA dedicated useGetReports API hook was NOT created.\nMock data was not abstracted through a proper API hook.\nLoading state handling was not implemented through the standard API hook pattern.\nUseMockDataResolver was not added, even though this is required by the existing architecture and is consistently used in other API hooks in the project.\nI will provide the relevant code snippets below for context.\nYour task:\nAnalyze the current implementation (within this project only).\nExplain why useGetReports was not generated.\nIdentify what in the Vogue Flow rules, reasoning process, or assumptions may have caused deviation from the established API hook pattern.\nDetermine whether this behavior results from missing architectural constraints in the rules.\nPropose specific improvements to Vogue Flow rules to ensure all future data-fetching features strictly follow the established API hook architecture (including UseMockDataResolver, loading state handling, and proper mock abstraction).\nThe goal is to understand why the implementation does not follow the existing API hook architecture and how to prevent this inconsistency in future generations.\n \nhis first response:\n\n\n  1. What the established pattern looks like\n \n  Every data-fetching page in this project follows a consistent architecture:\n \n  src/queries/<Feature>/useGet<Feature>.ts\n\n    → useQuery + useMockDataResolver + useApi + mock data (500ms delay) + apiContract\n\n    → Returns { data, isLoading, isError, ... }\n \n  src/pages/<Feature>/<Feature>.tsx\n\n    → const { data, isLoading } = useGet<Feature>()\n\n    → Handles loading/empty states\n \n  There are 80+ hooks following this pattern. useMockDataResolver toggles between mock data and real API calls via feature flags (FEATURE_FLAGS.MOCK_DATA).\n \n  2. Why the pattern was missed — Three contributing factors\n \n  Factor A: User instruction was interpreted as \"skip the API layer\"\n \n  The original request (in Ukrainian) stated:\n \n  \"Так як ми не використовуємо реальні дані, для таблиці ти мусиш створити МОК дані і додати їх до таблиці\"\n\n  (\"Since we don't use real data, you must create MOCK data and add it to the table\")\n \n  This was interpreted literally — \"no real data, just mock data\" — which led to importing MOCK_REPORTS directly in the page component, bypassing the API hook abstraction entirely. The reasoning was:\n\n  \"if there's no API, there's no need for a query hook.\"\n \n  The correct interpretation should have been: \"create mock data, but abstract it through the same useGet* + useMockDataResolver pattern that all other features use.\" This is exactly what\n\n  useMockDataResolver exists for — it provides mock data through the standard hook interface.\n \n  Factor B: The pattern is NOT documented in any WogiFlow state file.\n \n  The Explore Phase agents read these files to understand project patterns. Since none of them mention the useGet* + useMockDataResolver pattern, the agents had zero signal that this architecture exists\n\n   or is mandatory.\n \n  Factor C: The Explore Phase found table/component patterns but not data-fetching patterns\n \n  The Codebase Analyzer agent focused on:\n\n  - How existing pages structure their layouts (Flex, Heading, etc.)\n\n  - How tables are built (Column definitions, useColumns() hook)\n\n  - How filters work (useUsersFilters pattern)\n\n  - How the Settings pages render\n \n  It found and correctly replicated the UI component patterns. But the data-fetching layer (src/queries/) was not surfaced as a pattern to follow because:\n\n  1. The story's acceptance criteria didn't mention API hooks or data fetching patterns\n\n  2. api-map.md didn't list existing useGet* hooks as reference\n\n  3. The codebase search focused on table/page structure, not on how data reaches those components\n \n  3. Root Cause: Missing Architectural Constraints in WogiFlow Rules\n \n  Yes, this is a rules gap. The behavior is a direct consequence of undocumented architecture:\n \n  1. decisions.md missing rule: There is no rule stating \"All data fetching must go through useGet* hooks in src/queries/\" or \"Mock data must be abstracted through useMockDataResolver, never imported\n\n  directly by pages.\"\n\n  2. api-map.md is unpopulated: If existing useGet* hooks were registered here, the Explore Phase would have found them and the Standards Preview agent would have flagged that a new data source needs a\n\n  corresponding hook.\n\n  3. React-query skill is empty: The conventions.md, patterns.md, and anti-patterns.md files for the react-query skill are unpopulated templates. If populated, they would have enforced the useQuery +\n\n  useMockDataResolver pattern.\n\n  4. No anti-pattern rule: There is no rule in decisions.md stating \"NEVER import mock data directly in page components\" — which would have been caught by the Standards Check (Step 3.7).\n \nmy second question: \n \nYes, but your answer does not explain why plain Claude (without Vogue Flow) did implement it correctly.\nClaude without Vogue Flow achieved the same visual result, followed the identical architectural pattern, and additionally:\nCreated a dedicated useGetReports API hook\nAdded UseMockDataResolver\nImplemented a proper loading state\nFollowed the existing API hook structure used across the project\nYou explained why it was not done in the Cloud + Vogue Flow implementation.\n\nHowever, that does not explain why standard Claude (without Vogue Flow rules) correctly inferred and implemented the expected architecture.\nIf Vogue Flow is meant to enforce structure and consistency, why did the version without those rules better follow the existing architectural pattern?\nPlease explain this discrepancy.\n \nHIS SECOND RESPONSE (informative):\nThis is the right question, and the answer reveals a fundamental insight about how WogiFlow changes Claude's reasoning behavior.\n \nThe Core Paradox:\n \nPlain Claude operates in discovery mode — it freely explores the codebase, pattern-matches from what it finds, and replicates established conventions. When it sees 80+ useGet* hooks all using useMockDataResolver, it infers: \"this is the standard pattern, I should follow it.\"\n \n  WogiFlow-Claude operates in compliance mode — it follows documented rules, specifications, and registries. It checks decisions.md, api-map.md, function-map.md, the react-query skill, and the story\n\n  spec. When none of these mention useGet* + useMockDataResolver, it concludes: \"no documented pattern exists for this, proceed with what the spec says.\"\n \n  The Constraint Inversion Problem\n \n  WogiFlow is designed to prevent Claude from making assumptions. But here, the assumption plain Claude made (\"follow the pattern used 80 times in this codebase\") was correct. WogiFlow's guardrails\n\n  prevented a correct inference because:\nPlain Claude skipped all these checks and went straight to reading src/queries/ — where the truth lives.\n \n  Why This Is Not a Bug in WogiFlow — It's an Onboarding Gap\n \n  WogiFlow is working as designed. The system's value proposition is: documented patterns are enforced consistently. The failure mode is: undocumented patterns are invisible.\n \n  The project was onboarded with /wogi-onboard, which extracted:\n\n  - Component conventions (arrow functions, PascalCase)\n\n  - State management (useState, Jotai, react-query — mentioned but not detailed)\n\n  - Naming, imports, exports, templates\n \n  But onboarding did not extract:\n\n  - The useGet* + useMockDataResolver data-fetching architecture\n\n  - The apiContract metadata pattern\n\n  - The src/queries/<domain>/ directory structure\n\n  - The 500ms mock delay convention\n\n  - The relationship between feature flags and mock data resolution\n \n  This is likely because the onboarding scan focused on file structure and naming patterns, not on architectural data-flow patterns that span multiple files.\n \n  The Deeper Issue: Explore Phase Was Not Active\n \n  The WogiFlow config (config.json) is missing the planMode and research keys entirely. This means:\n \n  - No Explore Phase ran before implementation (the multi-agent research described in /wogi-start Step 1.3)\n\n  - No Codebase Analyzer agent searched src/queries/ for existing patterns\n\n  - No Standards Preview agent checked registries for reuse candidates\n\n  - No Risk & History agent checked for past corrections\n \n  If the Explore Phase had been enabled and configured, Agent 1 (Codebase Analyzer) would have found the useGet* pattern, and Agent 5 (Standards Preview) would have flagged: \"new data source detected\n\n  but no useGet* hook planned — this deviates from the 80+ existing hooks.\"\n ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T16:19:45.823Z",
+        "content": "yes, create all the stories After the stories is created you can work on bulk work on them ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T16:42:02.640Z",
+        "content": "Answer my question and then conduct woggie review on everything we've done. So my question is: If now my developer updates woggie flow, should he do woggie onboard again, woggie audit? What can he do to update all the relevant files? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T16:42:52.048Z",
+        "content": "Why didn't you send the question to Wogistart? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T17:12:27.499Z",
+        "content": "why did you skip the 18 fixes?",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T17:13:59.524Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T17:24:57.908Z",
+        "content": "commit and create a release (small increment)",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T18:11:46.459Z",
+        "content": "Before we talked about an issue that there are a lot of files that are generated by cloud and not by wogiflow and should not be here. This is an example of the state folder in a project that I have. I just want to make sure that we added something that when I do wogisessionend it will clean out everything that shouldn't be there. Or we can add it to another command but we need something that makes sure that like we don't have any files that are not related that creep in and are not part to our wogiflow folders and do not belong there. \n/Users/tomergilboa/Developer/wogi-hub/.workflow/state ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T18:36:37.635Z",
+        "content": "This just happened in another project like It feels like wogistart used the wogiextract review and then it was blocked but if wogistart is the one that used this command then everything is supposed to run smoothly \n⏺ Skill(/wogi-start)\n  ⎿  PreToolUse:Skill hook error\n  ⎿  Successfully loaded skill\n  ⎿  PostToolUse:Skill hook error\n\n⏺ Long input detected with multiple requirements across several approval types. Routing to /wogi-extract-review for zero-loss extraction.\n\n⏺ Skill(/wogi-extract-review)\n  ⎿  PreToolUse:Skill hook error\n  ⎿  Successfully loaded skill\n  ⎿  PostToolUse:Skill hook error\n\n⏺ Phase 1: Zero-Loss Extraction\n\n  Let me extract every distinct statement from this input.\n\n⏺ Bash(node -e \"const { extractZeroLoss } = require('./scripts/flow-zero-loss-extraction'); const input = \\`I'm going to start now reviewing the admin portal I'm going…)\n  ⎿  PreToolUse:Bash hook error\n  ⎿  node:internal/modules/cjs/loader:1458\n       throw err;\n       ^\n     … +19 lines (ctrl+o to expand)\n  ⎿  PostToolUse:Bash hook error\n\n⏺ Bash(cd /Users/tomergilboa/Developer/wogi-hub && ls scripts/flow-zero-loss* scripts/flow-extraction* scripts/flow-long-input* 2>/dev/null)\n  ⎿  PreToolUse:Bash hook error\n  ⎿  scripts/flow-extraction-review.js\n     scripts/flow-long-input-chunking.js\n     scripts/flow-long-input-language.js\n     … +4 lines (ctrl+o to expand)\n\n⏺ Bash(node -e \"const { extractZeroLoss } = require('./scripts/flow-zero-loss-extraction'); console.log(typeof extractZeroLoss);\" 2>&1)\n  ⎿  PreToolUse:Bash hook returned blocking error\n  ⎿  BLOCKED: You must route through /wogi-start before using ANY tool (Bash, Read, Glob, Grep, Edit, Write, NotebookEdit, EnterPlanMode). ACTION REQUIRED: Invoke the Skill\n     tool with skill=\"wogi-start\" and pass the user's request as args. Example: Skill(skill=\"wogi-start\", args=\"<the user's original request>\") /wogi-start will classify the\n     request (operational, exploration, implementation) and unblock the appropriate tools. Do NOT read files, search code, edit files, or execute commands without routing\n     first. Do NOT edit ready.json or any state file to create tasks manually — that is a routing bypass. Do NOT treat session continuation as implicit permission to skip\n     routing. Do NOT try alternative approaches to bypass this gate.\n  ⎿  Error: BLOCKED: You must route through /wogi-start before using ANY tool (Bash, Read, Glob, Grep, Edit, Write, NotebookEdit, EnterPlanMode). ACTION REQUIRED: Invoke the\n     Skill tool with skill=\"wogi-start\" and pass the user's request as args. Example: Skill(skill=\"wogi-start\", args=\"<the user's original request>\") /wogi-start will classify\n     the request (operational, exploration, implementation) and unblock the appropriate tools. Do NOT read files, search code, edit files, or execute commands without routing\n     first. Do NOT edit ready.json or any state file to create tasks manually — that is a routing bypass. Do NOT treat session continuation as implicit permission to skip\n     routing. Do NOT try alternative approaches to bypass this gate. \n⏺ I'll perform the extraction manually since the pipeline scripts are having routing issues. Let me do the zero-loss extraction analytically.",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T19:35:31.362Z",
+        "content": "so now wogi-start can use other commands without getting stuck?",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T19:35:47.251Z",
+        "content": "/wogi-review ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-03T21:06:45.110Z",
+        "content": "commit and make a small release bump",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T09:55:57.463Z",
+        "content": "/wogi-session-end ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T10:13:41.555Z",
+        "content": "How much usage do I have left in this month? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T10:15:43.303Z",
+        "content": "I want you to do the deepest, sourest, like best ever research that you can perform on Wogi flow and everything that we have. I want you to do two things. First, I want you to find every place that we can optimize. If it's combining script, if it's splitting up script. If it's combining files, splitting up files. Find anything that is not connected or working. Make sure that it's not connected and working because of the config file or because it's not really not something is broken. Come up with optimization suggestions that will make us use less token, work faster, but with without compromising on the quality of code and the quality of research and the quality of execution that we provide the developers even by 1%. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T10:32:15.966Z",
+        "content": "Before we start can you please investigate what the MCP memory is supposed to do? Maybe it's just something that is still needed Not used by me. \n4. mcp-memory-server/ = 302MB dead weight",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T10:37:40.613Z",
+        "content": "If we enable it, the config memory enabled, if we enable it in the config file, what would be the contribution for user's workflow? If I just will add it to the settings local JSON, will register it and enable it, would it already benefit the users? Better, less tokens and finding information, better results?  ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T10:43:00.756Z",
+        "content": "Do you have any idea on how to take the idea that we had here and applying it in a different, more optimized way? Another question is: we can also add the MCP tool call in one of the scripts, like enforcing it as part of the task execution if the AI thinks like the AI needs to, we can add something that makes the AI ask himself: \"would it help?\" or when we finish a task if there's something too low, like the AI knows that it needs to trigger it. I mean in the end even if it adds a bit of a bit tokens and get us better results and helps us learn Over time like let's find a way to do it in terms of the config like if Turning on just one of them doesn't do anything and you need both of them to turn on to get in something Why don't we have one config that enables both of them? Unless there's value to only enabling one of them. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T11:31:34.538Z",
+        "content": "Yes, I want you to build it plus we also have all the other recommendations that you had before But before we implement Everything I also want you to review the config file again based on the findings that you just had with the Memory I'll just remind you I'm talking about this \n  1. Config Consolidation — You're Right, One Switch\n\n  Right now the memory system has scattered flags:\n\n  config.memory.enabled                          → master switch (currently false)\n  config.memory.observationCapture.enabled       → capture tool uses (currently false)\n  config.memory.observationExtraction.enabled    → extract patterns (currently false)\n  config.automaticMemory.enabled                 → auto-block generation (currently false)\n  config.automaticMemory.automaticPromotion      → promote to decisions (currently false)\n\n  Five switches to get one coherent feature. You're absolutely right — if turning on memory.enabled without observationCapture does nothing useful, they\n  should be one flag. And let's see where we can take what configs we can just take and simplify because the config file is very big and I'm sure that there are a lot of features there that we can just take ten different switches and put them into one or like features that don't make sense if nothing if not everything is turned on",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T11:40:24.585Z",
+        "content": "What about all the other recommendations that we came up before we started this conversation? Do you remember that? We had a lot of optimization opportunities that we discussed. See, find it and then also we might need to adjust it based on what we just did with the config files. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T11:41:41.784Z",
+        "content": "This was the original prompt : I want you to do the deepest, sourest, like best ever research that you can perform on Wogi flow and everything that we have. I want you to do two things. First, I want you to find every place that we can optimize. If it's combining script, if it's splitting up script. If it's combining files, splitting up files. Find anything that is not connected or working. Make sure that it's not connected and working because of the config file or because it's not really not something is broken. Come up with optimization suggestions that will make us use less token, work faster, but with without compromising on the quality of code and the quality of research and the quality of execution that we provide the developers even by 1%. and there's also the memory optimization that we talked about that we don't need to use the mcp tool anymore to use that memory semantic memory that is using the database So just making sure that you remember all of that and you're creating epics for everything that we need to. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T11:45:50.277Z",
+        "content": "/wogi-bulk according to recommended excution order",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T12:08:09.749Z",
+        "content": "I want you to We work on all remaining stories until completion.  ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T13:40:35.707Z",
+        "content": "A message I got from my developer who is using one or two versions back. Let me know if it's still relevant and if it is what you think and what's your suggestion. PART 1. PROBLEM DESCRIPTION\n \n-WHAT HAPPENED\n \nDuring the execution of a new page implementation task, the AI agent performed type checking using the npx tsc --noEmit command, as specified in the WogiFlow configuration. The command returned 0 errors. The task was marked as completed.\n \nAfter the task was closed, the developer manually ran npm run type-check from the project's package.json (which executes tsc --build --force) and discovered 4 type errors that remained in the code undetected during the WogiFlow validation stage.\n \n-WHY THIS HAPPENED\n \nThe project uses TypeScript Project References — a modern and correct architecture where the root tsconfig.json contains an empty \"files\": [] and references sub-projects through the \"references\" section (specifically tsconfig.app.json for the React application and tsconfig.node.json for build configurations).\nThe tsc --noEmit command does not support project references mode. It ignores the references section and only works with files specified directly in files or include. Since the root config has \"files\": [], this command literally checks nothing and silently returns exit code 0.\n \nIn contrast, tsc --build --force understands references, enters each sub-project, and performs a full check of all files, including typed registries, module augmentation, and cross-project dependencies.\n \n -WHY WOGIFLOW USED THE WRONG COMMAND\n \nThe WogiFlow configuration in .workflow/config.json hardcodes npx tsc --noEmit for the afterFileEdit stage. Additionally, the auto-generated CLAUDE.md template hardcodes the same command as an nstruction for the AI agent. The scripts section in the WogiFlow config remains with null values for all fields — typecheck, lint, test, build.\n \nMeanwhile, the project's package.json defines the correct command \"type-check\": \"tsc --build --force\", but WogiFlow does not read or use this information during onboarding.\n \nThe AI agent followed WogiFlow's instructions, which turned out to be too basic and did not account for the specific project's architecture.\n \n- CONSEQUENCE\nCode with type errors was marked as \"completed\" and \"verified.\" The errors were only discovered after manual verification by the developer. This undermines trust in WogiFlow's validation stage and in a CI/CD environment would have caused a build failure at the deployment stage.\n \nPART 2. RECOMMENDATIONS\n \n-PACKAGE.JSON COMMANDS PRIORITY (CRITICAL)\n \nDuring flow onboard or flow setup-stack, WogiFlow must read the scripts section from the project's package.json. Standard operations (typecheck, lint, test, build) should be mapped to the project's actual scripts — searching for name variations such as type-check, typecheck, tsc, check-types, etc. Discovered commands should be written to config.json → scripts instead of the current null values, and afterFileEdit should use npm run type-check instead of the generic npx tsc --noEmit.\n \nThe package.json commands are the project's contract. WogiFlow must adapt to the project, not substitute its own generic alternatives.\n \n-TYPESCRIPT CONFIGURATION ANALYSIS DURING ONBOARDING (HIGH)\n \nA separate onboarding stage dedicated to configuration analysis should be added. WogiFlow should read tsconfig.json and determine its type: if \"files\": [] is present together with \"references\", this is a solution-style configuration and tsc --build must be used. If \"include\" is used without references, this is a single-project configuration and tsc --noEmit works correctly.\n \nThe detected configuration type, list of sub-projects, the corresponding type-check command, and warnings about incompatible alternatives should also be recorded in decisions.md.\n \n-CONFIGURATION SELF-TEST VALIDATION (MEDIUM)\n \nAfter determining the type-check command, it should be run as a self-test. If tsc --noEmit returns 0 errors while npm run type-check finds errors, WogiFlow should automatically warn the user about the discrepancy and switch to the package.json command.\n \n-DYNAMIC CLAUDE.MD TEMPLATE (MEDIUM)\n \nThe hardcoded npx tsc --noEmit command in .workflow/templates/claude-md.hbs should be replaced with dynamic substitution from the config — so that CLAUDE.md automatically contains the command that the project actually uses.\n ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T13:45:27.930Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T13:48:08.408Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T13:56:30.312Z",
+        "content": "Based on the type of issue that we just had, do you maybe check if there are other potential issues of the same type that just we missed or the developer missed, but issues with logic like we just had? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T14:05:44.623Z",
+        "content": "Create a test to fix all like there's no reason for us to have that limit and CSS framework detection limited to Tailwind is very bad like we need to have it with no Python go roasts, project support like all of them, everything is critical like remove the playwright only like we We said we'll be using the WebMCP protocol So like everything here needs addressing like everything here like I can't have someone on board and with anything like something else and not tailwind and it not getting detected or like just fix everything that we have here. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T14:56:01.549Z",
+        "content": "Anything pending? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T14:57:00.410Z",
+        "content": "/wogi-review everything done this session",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:17:46.203Z",
+        "content": "This is all the fixes that all the findings that we had from like those huge epics of refactoring half of the wogiflow ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:20:05.847Z",
+        "content": "Did you also review all the refactoring we did before? We changed the memory from using the MCP to do it without it. We had a lot of refactoring done prior to this task. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:21:14.516Z",
+        "content": "yes",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:44:57.570Z",
+        "content": "Anything left to fix that you deferred? ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:46:38.983Z",
+        "content": "Tackle all of them. ",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T16:58:14.716Z",
+        "content": "update github, create release with small bump",
+        "isInitial": false,
+        "isRefinement": false
+      },
+      {
+        "timestamp": "2026-03-04T17:00:37.426Z",
+        "content": "/wogi-session-end ",
+        "isInitial": false,
+        "isRefinement": false
       }
     ],
     "refinementCount": 0
