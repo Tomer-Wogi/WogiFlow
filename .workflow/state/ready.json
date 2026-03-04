@@ -1,25 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T12:50:59.227Z",
+  "lastUpdated": "2026-03-04T13:06:44.585Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-da0edc4b",
-      "title": "Split flow-utils.js God File",
-      "type": "refactor",
-      "feature": "core",
-      "status": "ready",
-      "priority": "P1",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "flow-utils.js split into focused modules: flow-paths.js, flow-io.js, flow-config.js, flow-tokens.js, flow-colors.js",
-        "flow-utils.js becomes thin re-export wrapper for backward compatibility",
-        "182 importing scripts continue working via re-exports",
-        "No circular dependencies introduced",
-        "node --check passes on all modified scripts"
-      ],
-      "createdAt": "2026-03-04T11:43:35.415Z"
-    },
     {
       "id": "wf-ddedef19",
       "title": "Codebase Cleanup & Dead Weight Removal",
@@ -1626,6 +1608,26 @@
       "createdAt": "2026-03-04T11:37:21.925Z",
       "startedAt": "2026-03-04T12:44:10.132Z",
       "completedAt": "2026-03-04T12:50:59.227Z"
+    },
+    {
+      "id": "wf-da0edc4b",
+      "title": "Split flow-utils.js God File",
+      "type": "refactor",
+      "feature": "core",
+      "status": "recentlyCompleted",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "flow-utils.js split into focused modules: flow-paths.js, flow-io.js, flow-config.js, flow-tokens.js, flow-colors.js",
+        "flow-utils.js becomes thin re-export wrapper for backward compatibility",
+        "182 importing scripts continue working via re-exports",
+        "No circular dependencies introduced",
+        "node --check passes on all modified scripts"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z",
+      "startedAt": "2026-03-04T12:51:33.574Z",
+      "completedAt": "2026-03-04T13:06:44.584Z"
     }
   ],
   "backlog": [

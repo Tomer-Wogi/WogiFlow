@@ -110,6 +110,72 @@ function info(message) {
   console.log(`${color('cyan', 'ℹ')} ${message}`);
 }
 
+// ============================================================
+// Shared CLI Help Output
+// ============================================================
+
+/**
+ * Print a standardized help message for CLI scripts.
+ *
+ * @param {string} scriptName - Display name of the script (e.g., 'flow-models.js')
+ * @param {string} description - One-line description of what the script does
+ * @param {Array<{name: string, description: string}>} commands - List of commands
+ * @param {Object} [opts] - Additional options
+ * @param {Array<{name: string, description: string}>} [opts.options] - CLI flags/options
+ * @param {Array<string>} [opts.examples] - Example usage strings
+ */
+function showHelp(scriptName, description, commands, opts = {}) {
+  const { options, examples } = opts;
+
+  console.log('');
+  console.log(color('bold', scriptName));
+  if (description) {
+    console.log(`  ${description}`);
+  }
+  console.log('');
+  console.log(`${color('bold', 'Usage:')} node scripts/${scriptName} [command]`);
+  if (commands && commands.length) {
+    console.log('');
+    console.log(`${color('bold', 'Commands:')}`);
+    for (const cmd of commands) {
+      console.log(`  ${color('green', cmd.name.padEnd(24))} ${cmd.description}`);
+    }
+  }
+  if (options && options.length) {
+    console.log('');
+    console.log(`${color('bold', 'Options:')}`);
+    for (const opt of options) {
+      console.log(`  ${color('dim', opt.name.padEnd(24))} ${opt.description}`);
+    }
+  }
+  if (examples && examples.length) {
+    console.log('');
+    console.log(`${color('bold', 'Examples:')}`);
+    for (const ex of examples) {
+      console.log(`  ${ex}`);
+    }
+  }
+  console.log('');
+}
+
+// ============================================================
+// String Utilities
+// ============================================================
+
+/**
+ * Escape special regex characters in a string.
+ * Makes the string safe for use in `new RegExp(...)`.
+ *
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string safe for regex
+ */
+function escapeRegex(str) {
+  if (!str || typeof str !== 'string') {
+    return '';
+  }
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 module.exports = {
   colors,
   color,
@@ -120,4 +186,6 @@ module.exports = {
   warn,
   error,
   info,
+  showHelp,
+  escapeRegex,
 };

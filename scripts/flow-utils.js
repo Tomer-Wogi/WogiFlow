@@ -6,12 +6,14 @@
  * Common functions used across all flow scripts.
  * Eliminates Python dependency and provides consistent path handling.
  *
- * NOTE: For new code, prefer importing from dedicated modules:
- * - flow-output.js: colors, color, print, success, warn, error, info
- * - flow-file-ops.js: readJson, writeJson, fileExists, dirExists, ensureDir
- * - flow-constants.js: TIMEOUTS, LIMITS, THRESHOLDS, BACKOFF
- * - flow-http-client.js: HttpClient, fetchJson, postJson
+ * This file is a thin re-export wrapper. Functions are organized in:
+ * - flow-paths.js: Path constants and utilities
+ * - flow-io.js: File I/O, locking, JSON handling
+ * - flow-config-loader.js: Config reading, caching, validation
+ * - flow-tokens.js: Token estimation
+ * - flow-output.js: Colors, terminal output, CLI help
  *
+ * For new code, prefer importing from the dedicated module directly.
  * This file re-exports all functions for backwards compatibility.
  */
 
@@ -20,14 +22,22 @@ const path = require('path');
 const crypto = require('crypto');
 const { execSync } = require('child_process');
 
-// Late-loaded to avoid circular dependency
-let configSubstitution = null;
-function getConfigSubstitution() {
-  if (!configSubstitution) {
-    configSubstitution = require('../.workflow/lib/config-substitution');
-  }
-  return configSubstitution;
-}
+// ============================================================
+// Import from focused modules
+// ============================================================
+
+const flowPaths = require('./flow-paths');
+const flowIO = require('./flow-io');
+const flowConfigLoader = require('./flow-config-loader');
+const flowTokens = require('./flow-tokens');
+const flowOutput = require('./flow-output');
+
+// Destructure commonly used imports for internal use in this file
+const { PATHS, PROJECT_ROOT, STATE_DIR } = flowPaths;
+const { readJson, writeJson, readFile, writeFile, fileExists, dirExists, safeJsonParse, acquireLock } = flowIO;
+const { getConfig, invalidateConfigCache } = flowConfigLoader;
+const { success, warn, error, info, color } = flowOutput;
+const { estimateComplexity } = flowTokens;
 
 // ============================================================
 // Constants - Named values for magic numbers
@@ -38,18 +48,6 @@ const DEFAULT_COMMAND_TIMEOUT_MS = 120000;
 
 /** Quick command timeout (30 seconds) */
 const QUICK_COMMAND_TIMEOUT_MS = 30000;
-
-/** Default lock stale threshold (60 seconds) */
-const LOCK_STALE_THRESHOLD_MS = 60000;
-
-/** Cleanup lock stale threshold (30 seconds) */
-const CLEANUP_LOCK_STALE_MS = 30000;
-
-/** Default retry delay for lock acquisition (100ms) */
-const LOCK_RETRY_DELAY_MS = 100;
-
-/** Default max retries for lock acquisition */
-const LOCK_MAX_RETRIES = 5;
 
 /** Maximum history entries to keep in durable sessions */
 const MAX_SESSION_HISTORY = 50;
@@ -73,117 +71,45 @@ function getSessionId() {
       || null;
 }
 
-// ============================================================
-// Project Root Detection
-// ============================================================
+// Task list to status mapping (extracted to avoid DRY violation)
+const LIST_TO_STATUS_MAP = {
+  'ready': 'ready',
+  'inProgress': 'in_progress',
+  'blocked': 'blocked',
+  'recentlyCompleted': 'completed'
+};
+
+// Standard limits for task/context operations (extracted magic numbers)
+const TASK_LIMITS = {
+  MAX_READY_TASK_IDS: 10,           // Max task IDs to show in session context
+  MAX_READY_TASK_IDS_MEMORY: 20,    // Max task IDs to capture in memory blocks
+  MAX_RECENTLY_COMPLETED: 10,       // Max completed tasks before archiving
+  MAX_KEY_FACTS: 10,                // Max key facts in memory blocks
+  MAX_MODIFIED_FILES: 20,           // Max modified files to track
+  MAX_DECISIONS: 10,                // Max decisions to show
+  MAX_RECENT_ACTIVITY: 3            // Max recent activity entries
+};
 
 /**
- * Find the project root directory using multiple strategies:
- * 1. Git root (most reliable in monorepos and submodules)
- * 2. Walk up looking for .workflow directory
- * 3. Fall back to process.cwd()
- *
- * @returns {string} Absolute path to project root
+ * Sync task status and timestamps when moving between lists
+ * @param {object} task - The task object to update
+ * @param {string} toList - The target list name
  */
-function getProjectRoot() {
-  // Strategy 1: Try git root (works in submodules, worktrees, and nested repos)
-  try {
-    const gitRoot = execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'] // Suppress stderr
-    }).trim();
+function syncTaskStatusOnMove(task, toList) {
+  if (typeof task !== 'object' || !task) return;
 
-    if (gitRoot && fs.existsSync(gitRoot)) {
-      // Verify this git root has .workflow (could be parent repo in monorepo)
-      if (fs.existsSync(path.join(gitRoot, '.workflow'))) {
-        return gitRoot;
-      }
-    }
-  } catch {
-    // Not in a git repo or git not available
+  task.status = LIST_TO_STATUS_MAP[toList] || task.status;
+
+  // Add timestamps for tracking
+  if (toList === 'inProgress' && !task.startedAt) {
+    task.startedAt = new Date().toISOString();
+  } else if (toList === 'recentlyCompleted') {
+    task.completedAt = new Date().toISOString();
   }
-
-  // Strategy 2: Walk up from cwd looking for .workflow
-  let current = process.cwd();
-  const root = path.parse(current).root;
-
-  while (current !== root) {
-    const workflowPath = path.join(current, '.workflow');
-    if (fs.existsSync(workflowPath) && fs.statSync(workflowPath).isDirectory()) {
-      return current;
-    }
-    current = path.dirname(current);
-  }
-
-  // Strategy 3: Fall back to cwd (for new projects without .workflow yet)
-  return process.cwd();
 }
 
 // ============================================================
-// Paths
-// ============================================================
-
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-
-const CLAUDE_DIR = path.join(PROJECT_ROOT, '.claude');
-
-const PATHS = {
-  root: PROJECT_ROOT,
-  workflow: WORKFLOW_DIR,
-  state: STATE_DIR,
-  claude: CLAUDE_DIR,
-  config: path.join(WORKFLOW_DIR, 'config.json'),
-  ready: path.join(STATE_DIR, 'ready.json'),
-  requestLog: path.join(STATE_DIR, 'request-log.md'),
-  appMap: path.join(STATE_DIR, 'app-map.md'),
-  decisions: path.join(STATE_DIR, 'decisions.md'),
-  progress: path.join(STATE_DIR, 'progress.md'),
-  feedbackPatterns: path.join(STATE_DIR, 'feedback-patterns.md'),
-  components: path.join(STATE_DIR, 'components'),
-  changes: path.join(WORKFLOW_DIR, 'changes'),
-  bugs: path.join(WORKFLOW_DIR, 'bugs'),
-  archive: path.join(WORKFLOW_DIR, 'archive'),
-  specs: path.join(WORKFLOW_DIR, 'specs'),
-  // Hierarchical work item directories (v3.2)
-  epics: path.join(WORKFLOW_DIR, 'epics'),
-  features: path.join(WORKFLOW_DIR, 'features'),
-  plans: path.join(WORKFLOW_DIR, 'plans'),
-  // Additional workflow directories
-  runs: path.join(WORKFLOW_DIR, 'runs'),
-  checkpoints: path.join(WORKFLOW_DIR, 'checkpoints'),
-  corrections: path.join(WORKFLOW_DIR, 'corrections'),
-  traces: path.join(WORKFLOW_DIR, 'traces'),
-  // Advanced workflow features
-  commandMetrics: path.join(STATE_DIR, 'command-metrics.json'),
-  modelStats: path.join(STATE_DIR, 'model-stats.json'),
-  approaches: path.join(STATE_DIR, 'approaches'),
-  modelAdapters: path.join(WORKFLOW_DIR, 'model-adapters'),
-  codebaseInsights: path.join(STATE_DIR, 'codebase-insights.md'),
-  // Claude Code integration (v2.1.0)
-  skills: path.join(CLAUDE_DIR, 'skills'),
-  rules: path.join(CLAUDE_DIR, 'rules'),
-  commands: path.join(CLAUDE_DIR, 'commands'),
-  // Smart Context System (Phase 1)
-  sectionIndex: path.join(STATE_DIR, 'section-index.json'),
-  // Knowledge files (Phase 0.4 - synced documentation)
-  // NOTE: These are DEPRECATED - use specsStack, specsArchitecture, specsTesting instead
-  // Kept for backward compatibility, will be removed in v2.0
-  stackMd: path.join(STATE_DIR, 'stack.md'),
-  architectureMd: path.join(STATE_DIR, 'architecture.md'),
-  testingMd: path.join(STATE_DIR, 'testing.md'),
-  knowledgeSync: path.join(STATE_DIR, 'knowledge-sync.json'),
-  // Spec files (v1.0.4 - moved from state/ to specs/)
-  specsStack: path.join(WORKFLOW_DIR, 'specs', 'stack.md'),
-  specsArchitecture: path.join(WORKFLOW_DIR, 'specs', 'architecture.md'),
-  specsTesting: path.join(WORKFLOW_DIR, 'specs', 'testing.md'),
-  // Research Protocol (v1.0.48)
-  researchCache: path.join(STATE_DIR, 'research-cache.json'),
-};
-
-// ============================================================
-// Registry Discovery (v1.5.1 — wf-927db36d)
+// Registry Discovery (v1.5.1 -- wf-927db36d)
 // ============================================================
 
 const MANIFEST_PATH = path.join(STATE_DIR, 'registry-manifest.json');
@@ -196,7 +122,7 @@ const DEFAULT_REGISTRIES = [
 
 /**
  * Get all active registries from the manifest (with fallback to defaults).
- * Lightweight — reads the manifest file directly without requiring flow-registry-manager.
+ * Lightweight -- reads the manifest file directly without requiring flow-registry-manager.
  * @returns {Array<{id, name, mapFile, indexFile, category, type, active}>}
  */
 function getActiveRegistries() {
@@ -242,190 +168,6 @@ function getRegistryPaths() {
  */
 function getRegistryMapFiles() {
   return getActiveRegistries().map(r => r.mapFile);
-}
-
-// ============================================================
-// Colors (ANSI escape codes)
-// ============================================================
-
-const colors = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m',
-
-  bgRed: '\x1b[41m',
-  bgGreen: '\x1b[42m',
-  bgYellow: '\x1b[43m',
-  bgBlue: '\x1b[44m',
-};
-
-// Task list to status mapping (extracted to avoid DRY violation)
-const LIST_TO_STATUS_MAP = {
-  'ready': 'ready',
-  'inProgress': 'in_progress',
-  'blocked': 'blocked',
-  'recentlyCompleted': 'completed'
-};
-
-// Standard limits for task/context operations (extracted magic numbers)
-const TASK_LIMITS = {
-  MAX_READY_TASK_IDS: 10,           // Max task IDs to show in session context
-  MAX_READY_TASK_IDS_MEMORY: 20,    // Max task IDs to capture in memory blocks
-  MAX_RECENTLY_COMPLETED: 10,       // Max completed tasks before archiving
-  MAX_KEY_FACTS: 10,                // Max key facts in memory blocks
-  MAX_MODIFIED_FILES: 20,           // Max modified files to track
-  MAX_DECISIONS: 10,                // Max decisions to show
-  MAX_RECENT_ACTIVITY: 3            // Max recent activity entries
-};
-
-/**
- * Sync task status and timestamps when moving between lists
- * @param {object} task - The task object to update
- * @param {string} toList - The target list name
- */
-function syncTaskStatusOnMove(task, toList) {
-  if (typeof task !== 'object' || !task) return;
-
-  task.status = LIST_TO_STATUS_MAP[toList] || task.status;
-
-  // Add timestamps for tracking
-  if (toList === 'inProgress' && !task.startedAt) {
-    task.startedAt = new Date().toISOString();
-  } else if (toList === 'recentlyCompleted') {
-    task.completedAt = new Date().toISOString();
-  }
-}
-
-/**
- * Colorize text for terminal output
- */
-function color(colorName, text) {
-  if (process.env.DEBUG && !colors[colorName]) {
-    console.warn(`[DEBUG] Unknown color: "${colorName}"`);
-  }
-  return `${colors[colorName] || ''}${text}${colors.reset}`;
-}
-
-/**
- * Print colored output
- */
-function print(colorName, text) {
-  console.log(color(colorName, text));
-}
-
-/**
- * Print a styled header
- */
-function printHeader(title) {
-  console.log(color('cyan', '═'.repeat(50)));
-  console.log(color('cyan', `        ${title}`));
-  console.log(color('cyan', '═'.repeat(50)));
-  console.log('');
-}
-
-/**
- * Print a section title
- */
-function printSection(title) {
-  console.log(color('cyan', title));
-}
-
-// ============================================================
-// Standard Messaging Functions
-// ============================================================
-//
-// STANDARD: All scripts should use these functions for consistent output:
-//   success(msg) - Green checkmark ✓ for successful operations
-//   warn(msg)    - Yellow warning ⚠ for non-fatal issues
-//   error(msg)   - Red X ✗ for errors (use before process.exit(1))
-//   info(msg)    - Cyan info ℹ for informational messages
-//
-// Import with: const { success, warn, error, info } = require('./flow-utils');
-//
-// AVOID: Direct console.log with color() for status messages.
-// ============================================================
-
-/**
- * Print success message
- */
-function success(message) {
-  console.log(`${color('green', '✓')} ${message}`);
-}
-
-/**
- * Print warning message
- */
-function warn(message) {
-  console.log(`${color('yellow', '⚠')} ${message}`);
-}
-
-/**
- * Print error message
- */
-function error(message) {
-  console.log(`${color('red', '✗')} ${message}`);
-}
-
-/**
- * Print info message
- */
-function info(message) {
-  console.log(`${color('cyan', 'ℹ')} ${message}`);
-}
-
-// ============================================================
-// Shared CLI Help Output
-// ============================================================
-
-/**
- * Print a standardized help message for CLI scripts.
- *
- * @param {string} scriptName - Display name of the script (e.g., 'flow-models.js')
- * @param {string} description - One-line description of what the script does
- * @param {Array<{name: string, description: string}>} commands - List of commands
- * @param {Object} [opts] - Additional options
- * @param {Array<{name: string, description: string}>} [opts.options] - CLI flags/options
- * @param {Array<string>} [opts.examples] - Example usage strings
- */
-function showHelp(scriptName, description, commands, opts = {}) {
-  const { options, examples } = opts;
-  console.log('');
-  console.log(color('bold', scriptName));
-  if (description) {
-    console.log(`  ${description}`);
-  }
-  console.log('');
-  console.log(`${color('bold', 'Usage:')} node scripts/${scriptName} [command]`);
-  if (commands && commands.length) {
-    console.log('');
-    console.log(`${color('bold', 'Commands:')}`);
-    for (const cmd of commands) {
-      console.log(`  ${color('green', cmd.name.padEnd(24))} ${cmd.description}`);
-    }
-  }
-  if (options && options.length) {
-    console.log('');
-    console.log(`${color('bold', 'Options:')}`);
-    for (const opt of options) {
-      console.log(`  ${color('dim', opt.name.padEnd(24))} ${opt.description}`);
-    }
-  }
-  if (examples && examples.length) {
-    console.log('');
-    console.log(`${color('bold', 'Examples:')}`);
-    for (const ex of examples) {
-      console.log(`  ${ex}`);
-    }
-  }
-  console.log('');
 }
 
 // ============================================================
@@ -528,38 +270,8 @@ function isLegacyTaskId(id) {
 }
 
 // ============================================================
-// JSON Output Helpers (for --json flag support)
+// CLI Flag Parsing
 // ============================================================
-
-/**
- * Output data as JSON and exit
- * Use this in scripts that support --json flag
- *
- * @param {Object} data - Data to output
- * @param {Object} [options] - Options
- * @param {boolean} [options.exitOnOutput=true] - Exit after output
- * @param {number} [options.exitCode=0] - Exit code
- *
- * @example
- * if (flags.json) {
- *   outputJson({ success: true, tasks: [...] });
- * }
- */
-function outputJson(data, options = {}) {
-  const { exitOnOutput = true, exitCode = 0 } = options;
-
-  const output = {
-    success: data.success !== false,
-    timestamp: new Date().toISOString(),
-    ...data
-  };
-
-  console.log(JSON.stringify(output, null, 2));
-
-  if (exitOnOutput) {
-    process.exit(exitCode);
-  }
-}
 
 /**
  * Parse common CLI flags from arguments
@@ -632,771 +344,6 @@ function parseFlags(args) {
   }
 
   return { flags: { ...flags, ...namedFlags }, positional };
-}
-
-// ============================================================
-// File Operations
-// ============================================================
-
-/**
- * Check if a file exists
- */
-function fileExists(filePath) {
-  try {
-    return fs.existsSync(filePath);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if a directory exists
- */
-function dirExists(dirPath) {
-  try {
-    return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Read JSON file safely
- * @param {string} filePath - Path to JSON file
- * @param {*} [defaultValue=undefined] - Default value if file doesn't exist or is invalid
- * @returns {*} Parsed JSON or defaultValue
- * @throws {Error} If file cannot be read and no defaultValue provided
- */
-function readJson(filePath, defaultValue = undefined) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(content);
-
-    // Prototype pollution protection for object results
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const dangerousKeyError = checkForDangerousKeys(parsed);
-      if (dangerousKeyError) {
-        if (process.env.DEBUG) {
-          console.error(`[readJson] Prototype pollution attempt in ${filePath}: ${dangerousKeyError}`);
-        }
-        if (defaultValue !== undefined) return defaultValue;
-        throw new Error(`Dangerous keys in ${filePath}: ${dangerousKeyError}`);
-      }
-    }
-
-    return parsed;
-  } catch (err) {
-    // Check for undefined to allow falsy defaults like false, 0, ''
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    throw new Error(`Failed to read JSON from ${filePath}: ${err.message}`);
-  }
-}
-
-/**
- * Write JSON file with pretty formatting using atomic write pattern
- * (writes to temp file, then renames for crash safety)
- * @param {string} filePath - Path to JSON file
- * @param {*} data - Data to serialize as JSON
- * @returns {boolean} True on success
- * @throws {Error} If file cannot be written
- */
-function writeJson(filePath, data) {
-  const tempPath = filePath + '.tmp.' + process.pid;
-  try {
-    const content = JSON.stringify(data, null, 2) + '\n';
-    fs.writeFileSync(tempPath, content);
-    fs.renameSync(tempPath, filePath);  // Atomic rename
-    return true;
-  } catch (err) {
-    // Clean up temp file if it exists
-    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write JSON to ${filePath}: ${err.message}`);
-  }
-}
-
-/**
- * Safely parse JSON with prototype pollution protection
- * Use this for user-modifiable files (registry, stats, etc.)
- * @param {string} filePath - Path to JSON file
- * @param {*} [defaultValue=null] - Default value if parsing fails
- * @returns {object|null} Parsed JSON or defaultValue on error
- */
-/**
- * Recursively check for dangerous keys in nested objects
- * @param {Object} obj - Object to scan
- * @param {string} path - Current path for error reporting
- * @returns {string|null} - Error message if dangerous key found, null otherwise
- */
-function checkForDangerousKeys(obj, path = '') {
-  const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
-
-  for (const key of Object.getOwnPropertyNames(obj)) {
-    if (dangerousKeys.includes(key)) {
-      return `Dangerous key "${key}" at path: ${path}${key}`;
-    }
-    const value = obj[key];
-    if (value && typeof value === 'object') {
-      if (Array.isArray(value)) {
-        // Recurse into array elements
-        for (let i = 0; i < value.length; i++) {
-          if (value[i] && typeof value[i] === 'object') {
-            const nestedError = checkForDangerousKeys(value[i], `${path}${key}[${i}].`);
-            if (nestedError) return nestedError;
-          }
-        }
-      } else {
-        const nestedError = checkForDangerousKeys(value, `${path}${key}.`);
-        if (nestedError) return nestedError;
-      }
-    }
-  }
-  return null;
-}
-
-function safeJsonParse(filePath, defaultValue = null) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-
-    // NOTE: We no longer check raw content with regex because it causes false positives
-    // when "__proto__" appears in string values (e.g., {"desc": "__proto__ is dangerous"})
-    // The recursive checkForDangerousKeys() on the parsed object is the proper defense
-
-    const parsed = JSON.parse(content);
-
-    // Validate it's a plain object (not array, null, or primitive)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      const actualType = Array.isArray(parsed) ? 'array' : typeof parsed;
-      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
-      console.error(`[safeJsonParse] Invalid JSON structure in ${relPath} (expected object, got ${actualType})`);
-      return defaultValue;
-    }
-
-    // Recursive check for prototype pollution in nested objects and arrays
-    const dangerousKeyError = checkForDangerousKeys(parsed);
-    if (dangerousKeyError) {
-      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
-      console.error(`[safeJsonParse] Prototype pollution attempt in ${relPath}: ${dangerousKeyError}`);
-      return defaultValue;
-    }
-
-    return parsed;
-  } catch (err) {
-    // Only log errors for actual parse failures, not missing files
-    // ENOENT is expected for optional files - caller handles with defaultValue
-    if (err.code !== 'ENOENT') {
-      const relPath = path.relative(PROJECT_ROOT, filePath) || filePath;
-      console.error(`[safeJsonParse] Failed to parse ${relPath}: ${err.message}`);
-    }
-    return defaultValue;
-  }
-}
-
-/**
- * Safely parse a JSON string with prototype pollution protection.
- * Use this when you already have the JSON content as a string.
- * Note: Unlike safeJsonParse (file-based), this allows arrays through
- * since it validates typeof === 'object' which is true for arrays.
- * @param {string} jsonString - JSON string to parse
- * @param {*} [defaultValue=null] - Default value if parsing fails
- * @returns {object|Array|null} Parsed JSON (object or array) or defaultValue on error
- */
-function safeJsonParseString(jsonString, defaultValue = null) {
-  try {
-    const parsed = JSON.parse(jsonString);
-
-    // Validate it's an object or array (not primitive for config files)
-    if (typeof parsed !== 'object' || parsed === null) {
-      return defaultValue;
-    }
-
-    // Recursive check for prototype pollution in nested objects and arrays
-    const dangerousKeyError = checkForDangerousKeys(parsed);
-    if (dangerousKeyError) {
-      if (process.env.DEBUG) {
-        console.error(`[safeJsonParseString] Prototype pollution attempt: ${dangerousKeyError}`);
-      }
-      return defaultValue;
-    }
-
-    return parsed;
-  } catch {
-    return defaultValue;
-  }
-}
-
-/**
- * Read text file safely
- * @param {string} filePath - Path to text file
- * @param {*} [defaultValue=undefined] - Default value if file doesn't exist
- * @returns {string|*} File contents or defaultValue
- * @throws {Error} If file cannot be read and no defaultValue provided
- */
-function readFile(filePath, defaultValue = undefined) {
-  try {
-    return fs.readFileSync(filePath, 'utf-8');
-  } catch (err) {
-    // Check for undefined to allow falsy defaults like false, 0, ''
-    if (defaultValue !== undefined) {
-      return defaultValue;
-    }
-    throw new Error(`Failed to read file ${filePath}: ${err.message}`);
-  }
-}
-
-/**
- * Write text file using atomic write pattern
- * (writes to temp file, then renames for crash safety)
- */
-function writeFile(filePath, content) {
-  const tempPath = filePath + '.tmp.' + process.pid;
-  try {
-    fs.writeFileSync(tempPath, content);
-    fs.renameSync(tempPath, filePath);  // Atomic rename
-    return true;
-  } catch (err) {
-    // Clean up temp file if it exists
-    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write file ${filePath}: ${err.message}`);
-  }
-}
-
-/**
- * Check if a path is within the project directory (prevents path traversal)
- * @param {string} targetPath - Path to validate
- * @param {string} [baseDir=PROJECT_ROOT] - Base directory to check against
- * @returns {boolean} True if path is within base directory
- */
-function isPathWithinProject(targetPath, baseDir = PROJECT_ROOT) {
-  const resolved = path.resolve(targetPath);
-  const resolvedBase = path.resolve(baseDir);
-  return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
-}
-
-/**
- * Validate JSON file syntax
- */
-function validateJson(filePath) {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    JSON.parse(content);
-    return { valid: true };
-  } catch (err) {
-    return { valid: false, error: err.message };
-  }
-}
-
-// ============================================================
-// Config Operations
-// ============================================================
-
-// Config cache for performance (avoids repeated file reads)
-let _configCache = null;
-let _configMtime = null;
-let _configCacheTime = 0; // Timestamp of last cache population (ms)
-
-// Known config keys for validation (prevents typos causing silent failures)
-const KNOWN_CONFIG_KEYS = [
-  // Core
-  'version', 'projectName', 'cli', 'scripts', 'requireApproval',
-  // Feature toggles
-  'autoLog', 'autoUpdateAppMap', 'strictMode',
-  // Execution
-  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'workflow',
-  'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
-  // Quality & validation
-  'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
-  // Components & registries
-  'componentRules', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
-  // Learning & memory
-  'learning', 'corrections', 'automaticMemory', 'automaticPromotion',
-  'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
-  'codebaseInsights', 'knowledgeRouting',
-  // Skills & context
-  'skills', 'autoContext', 'context', 'contextMonitor', 'contextScoring',
-  // Review & analysis
-  'review', 'reviewFix', 'originTaskTracing', 'standardsCompliance',
-  'semanticMatching', 'peerReview', 'triage', 'consistency',
-  // Planning & research
-  'planMode', 'research', 'clarifyingQuestions', 'multiApproach',
-  // Session management
-  'metrics', 'requestLog', 'sessionState', 'smartCompaction',
-  // Features (alphabetical)
-  'agents', 'bugFlow', 'bulkLoop', 'bulkOrchestrator', 'capture',
-  'cascade', 'checkpoint', 'clarifyingQuestions', 'commits', 'community',
-  'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
-  'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
-  'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
-  'models', 'morningBriefing', 'multiModel', 'prd', 'priorities',
-  'project', 'projectType', 'regressionTesting', 'retrospective',
-  'security', 'storyDecomposition', 'techDebt', 'traces',
-  'webmcp', 'workflowSteps',
-  // v2.0.0+
-  'bulkOrchestrator', 'research'
-];
-
-// Known nested keys for common config sections
-const KNOWN_NESTED_KEYS = {
-  hybrid: ['enabled', 'provider', 'providerEndpoint', 'model', 'settings', 'maxContextTokens', 'apiKey'],
-  parallel: ['enabled', 'maxConcurrent', 'autoApprove', 'requireWorktree', 'showProgress'],
-  worktree: ['enabled', 'autoCleanupHours', 'keepOnFailure', 'squashOnMerge'],
-  testing: ['runAfterTask', 'runBeforeCommit', 'command'],
-  learning: ['autoPromote', 'enabled', 'threshold', 'mode'],
-  qualityGates: ['feature', 'bugfix'],
-  autoContext: ['enabled', 'maxFiles', 'searchDepth'],
-  // v1.7.0 context memory management
-  contextMonitor: ['enabled', 'warnAt', 'criticalAt', 'contextWindow', 'checkOnSessionStart', 'checkAfterTask'],
-  requestLog: ['enabled', 'autoArchive', 'maxRecentEntries', 'keepRecent', 'createSummary'],
-  sessionState: ['enabled', 'autoRestore', 'maxGapHours', 'trackFiles', 'trackDecisions', 'maxRecentFiles', 'maxRecentDecisions'],
-  // v1.9.0 features
-  priorities: ['defaultPriority', 'autoBoostDays', 'autoBoostAmount'],
-  morningBriefing: ['enabled', 'showLastSession', 'showChanges', 'showRecommendedTasks', 'generatePrompt'],
-  // v2.0.0 classification system
-  storyDecomposition: ['autoDetect', 'autoDecompose', 'complexityThreshold', 'minSubTasks', 'edgeCases', 'loadingStates', 'errorStates', 'classification', 'supportEpics', 'propagateProgress']
-};
-
-// Track if we've already warned about config issues this session
-let _configValidationDone = false;
-
-/**
- * Validate config object for unknown keys
- * Warns about typos that could cause silent failures
- */
-function validateConfig(config, warnOnUnknown = true) {
-  if (!warnOnUnknown || !config || typeof config !== 'object') return;
-
-  const warnings = [];
-
-  // Check top-level keys
-  for (const key of Object.keys(config)) {
-    if (!KNOWN_CONFIG_KEYS.includes(key)) {
-      warnings.push(`Unknown config key: "${key}"`);
-    }
-  }
-
-  // Check known nested sections
-  for (const [section, knownKeys] of Object.entries(KNOWN_NESTED_KEYS)) {
-    const sectionConfig = config[section];
-    if (sectionConfig && typeof sectionConfig === 'object') {
-      for (const key of Object.keys(sectionConfig)) {
-        if (!knownKeys.includes(key)) {
-          warnings.push(`Unknown key in ${section}: "${key}"`);
-        }
-      }
-    }
-  }
-
-  // Only warn once per session (avoid spam)
-  if (warnings.length > 0 && !_configValidationDone) {
-    _configValidationDone = true;
-    for (const warning of warnings) {
-      console.warn(`⚠️  ${warning}`);
-    }
-    console.warn('   Check for typos in .workflow/config.json');
-  }
-}
-
-/**
- * Backwards-compat shim for config consolidation (v2.1.0).
- * Maps old top-level keys to their new consolidated paths.
- * Remove after one major release cycle.
- */
-function applyConfigCompatShim(config) {
-  if (!config || typeof config !== 'object') return config;
-
-  // execution ← tasks + loops
-  if (config.execution && !config.tasks) {
-    config.tasks = config.execution;
-  }
-  if (config.execution && config.execution.loops && !config.loops) {
-    config.loops = config.execution.loops;
-  }
-
-  // memory ← memory.automatic, memory.promotion
-  if (config.memory) {
-    if (config.memory.automatic && !config.automaticMemory) {
-      config.automaticMemory = config.memory.automatic;
-    }
-    if (config.memory.promotion && !config.automaticPromotion) {
-      config.automaticPromotion = config.memory.promotion;
-    }
-  }
-
-  // learning ← learning.session, learning.crossSession, learning.skills, etc.
-  if (config.learning) {
-    if (config.learning.session && !config.sessionLearning) {
-      config.sessionLearning = config.learning.session;
-    }
-    if (config.learning.crossSession && !config.crossSessionLearning) {
-      config.crossSessionLearning = config.learning.crossSession;
-    }
-    if (config.learning.skill && !config.skillLearning) {
-      config.skillLearning = config.learning.skill;
-    }
-    if (config.learning.knowledgeRouting && !config.knowledgeRouting) {
-      config.knowledgeRouting = config.learning.knowledgeRouting;
-    }
-    if (config.learning.modelAdapters && !config.modelAdapters) {
-      config.modelAdapters = config.learning.modelAdapters;
-    }
-  }
-
-  // context ← context.smart, context.proactive, context.scoring, etc.
-  if (config.context) {
-    if (config.context.smart && !config.smartCompaction) {
-      config.smartCompaction = config.context.smart;
-    }
-    if (config.context.proactive && !config.proactiveCompaction) {
-      config.proactiveCompaction = config.context.proactive;
-    }
-    if (config.context.scoring && !config.contextScoring) {
-      config.contextScoring = config.context.scoring;
-    }
-    if (config.context.monitor && !config.contextMonitor) {
-      config.contextMonitor = config.context.monitor;
-    }
-    if (config.context.auto && !config.autoContext) {
-      config.autoContext = config.context.auto;
-    }
-    if (config.context.session && !config.sessionState) {
-      config.sessionState = config.context.session;
-    }
-  }
-
-  // review ← review.fix, review.peer, review.triage
-  if (config.review) {
-    if (config.review.fix && !config.reviewFix) {
-      config.reviewFix = config.review.fix;
-    }
-    if (config.review.peer && !config.peerReview) {
-      config.peerReview = config.review.peer;
-    }
-    if (config.review.triage && !config.triage) {
-      config.triage = config.review.triage;
-    }
-  }
-
-  // models ← models.hybrid, models.multiModel, models.cascade
-  if (config.models) {
-    if (config.models.hybrid && !config.hybrid) {
-      config.hybrid = config.models.hybrid;
-    }
-    if (config.models.multiModel && !config.multiModel) {
-      config.multiModel = config.models.multiModel;
-    }
-    if (config.models.cascade && !config.cascade) {
-      config.cascade = config.models.cascade;
-    }
-  }
-
-  // research ← research.planMode
-  if (config.research && config.research.planMode && !config.planMode) {
-    config.planMode = config.research.planMode;
-  }
-
-  // parallelExecution ← parallel, bulkOrchestrator, taskQueue
-  if (config.parallelExecution) {
-    if (config.parallelExecution.parallel && !config.parallel) {
-      config.parallel = config.parallelExecution.parallel;
-    }
-    if (config.parallelExecution.bulkOrchestrator && !config.bulkOrchestrator) {
-      config.bulkOrchestrator = config.parallelExecution.bulkOrchestrator;
-    }
-    if (config.parallelExecution.taskQueue && !config.taskQueue) {
-      config.taskQueue = config.parallelExecution.taskQueue;
-    }
-  }
-
-  // community ← community.sync
-  if (config.community && config.community.sync && !config.communitySync) {
-    config.communitySync = config.community.sync;
-  }
-
-  return config;
-}
-
-/**
- * Read workflow config (cached, invalidates on file change)
- * Applies variable substitution ({env:VAR}, {file:path}) to config values
- */
-function getConfig() {
-  const configPath = PATHS.config;
-
-  try {
-    // Fast path: skip statSync if cache was populated within last 2 seconds
-    // (config can't change during a hook's ~50ms lifetime)
-    if (_configCache && (Date.now() - _configCacheTime) < 2000) {
-      return _configCache;
-    }
-
-    const stat = fs.statSync(configPath);
-    if (_configCache && _configMtime === stat.mtimeMs) {
-      _configCacheTime = Date.now();
-      return _configCache;
-    }
-
-    const configContent = fs.readFileSync(configPath, 'utf-8');
-    const rawConfig = JSON.parse(configContent);
-
-    // Prototype pollution check on config
-    if (rawConfig && typeof rawConfig === 'object') {
-      const dangerousKeyError = checkForDangerousKeys(rawConfig);
-      if (dangerousKeyError) {
-        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
-        return {};
-      }
-    }
-
-    _configMtime = stat.mtimeMs;
-    _configCacheTime = Date.now();
-
-    // Validate on first load (DEBUG mode or explicit request)
-    if (process.env.DEBUG || process.env.VALIDATE_CONFIG) {
-      validateConfig(rawConfig);
-    }
-
-    // Apply variable substitution ({env:VAR}, {file:path})
-    try {
-      const { substituteConfig } = getConfigSubstitution();
-      const result = substituteConfig(rawConfig, {
-        logWarnings: true,
-        printWarnings: process.env.DEBUG || process.env.VERBOSE_CONFIG
-      });
-      // Apply defaults for stripped config sections, then compat shim
-      let configWithDefaults = result.value;
-      try {
-        const { mergeWithDefaults } = require('./flow-config-defaults');
-        configWithDefaults = mergeWithDefaults(configWithDefaults);
-      } catch (err) {
-        // Graceful degradation if defaults module not available
-      }
-      _configCache = applyConfigCompatShim(configWithDefaults);
-
-      // Log substitution warnings once per session (if DEBUG)
-      if (process.env.DEBUG && result.warnings.length > 0) {
-        console.warn(`[config] ${result.warnings.length} unresolved substitution(s)`);
-      }
-    } catch (err) {
-      // Fallback to raw config if substitution fails
-      console.warn(`Warning: Config substitution failed: ${err.message}`);
-      let configWithDefaults = rawConfig;
-      try {
-        const { mergeWithDefaults } = require('./flow-config-defaults');
-        configWithDefaults = mergeWithDefaults(configWithDefaults);
-      } catch (defaultsErr) {
-        // Graceful degradation
-      }
-      _configCache = applyConfigCompatShim(configWithDefaults);
-    }
-
-    return _configCache;
-  } catch (err) {
-    // Log warning instead of silently returning empty config
-    console.warn(`Warning: Could not parse config.json: ${err.message}`);
-    return {};
-  }
-}
-
-/**
- * Read raw workflow config WITHOUT substitution (for editing/writing)
- * Use this when you need to read/modify config without resolving variables
- */
-function getRawConfig() {
-  const configPath = PATHS.config;
-  if (!fs.existsSync(configPath)) return {};
-
-  try {
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(content);
-
-    // Prototype pollution check
-    if (parsed && typeof parsed === 'object') {
-      const dangerousKeyError = checkForDangerousKeys(parsed);
-      if (dangerousKeyError) {
-        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
-        return {};
-      }
-    }
-
-    return parsed;
-  } catch (err) {
-    console.warn(`Warning: Could not parse config.json: ${err.message}`);
-    return {};
-  }
-}
-
-/**
- * Invalidate config cache (call after writing config)
- */
-function invalidateConfigCache() {
-  _configCache = null;
-  _configMtime = null;
-}
-
-// Dangerous property names that could lead to prototype pollution
-const DANGEROUS_CONFIG_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
-
-/**
- * Validate config path doesn't contain dangerous property names
- * @param {string} configPath - Dot-notation path
- * @returns {boolean} True if path is safe
- */
-function isValidConfigPath(configPath) {
-  if (!configPath || typeof configPath !== 'string') return false;
-  const parts = configPath.split('.');
-  return parts.every(part => part && !DANGEROUS_CONFIG_PROPS.has(part));
-}
-
-/**
- * Get a config value by path (e.g., 'testing.runBeforeCommit')
- */
-function getConfigValue(configPath, defaultValue = null) {
-  // Validate path to prevent prototype pollution
-  if (!isValidConfigPath(configPath)) {
-    return defaultValue;
-  }
-
-  const config = getConfig();
-  const parts = configPath.split('.');
-  let value = config;
-
-  for (const part of parts) {
-    if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, part)) {
-      value = value[part];
-    } else {
-      return defaultValue;
-    }
-  }
-
-  return value;
-}
-
-/**
- * Update config value (uses locking to prevent race conditions)
- * SECURITY: Always acquires lock before writing to prevent data corruption
- * @param {string} configPath - Dot-notation path (e.g., 'parallel.enabled')
- * @param {*} newValue - New value to set
- * @returns {Promise<void>}
- * @throws {Error} If lock cannot be acquired after retries
- */
-async function setConfigValue(configPath, newValue) {
-  // Validate path to prevent prototype pollution
-  if (!isValidConfigPath(configPath)) {
-    throw new Error(`Invalid config path: ${configPath}`);
-  }
-
-  // Use file lock to prevent concurrent writes
-  const lockPath = PATHS.config;
-  let release;
-
-  try {
-    // More retries with exponential backoff for better reliability
-    release = await acquireLock(lockPath, { retries: 5, retryDelay: 100, exponentialBackoff: true });
-  } catch (err) {
-    // SECURITY: Don't fall back to non-locked write - throw instead
-    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`);
-  }
-
-  try {
-    // Re-read config after acquiring lock (may have changed)
-    invalidateConfigCache();
-    const config = getConfig();
-    const parts = configPath.split('.');
-    let obj = config;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i];
-      if (!Object.prototype.hasOwnProperty.call(obj, part)) {
-        obj[part] = {};
-      }
-      obj = obj[part];
-    }
-
-    obj[parts[parts.length - 1]] = newValue;
-    writeJson(PATHS.config, config);
-    invalidateConfigCache();
-  } finally {
-    if (release) release();
-  }
-}
-
-/**
- * Update config value (synchronous version - no locking)
- * Use setConfigValue for concurrent-safe writes
- */
-function setConfigValueSync(configPath, newValue) {
-  // Validate path to prevent prototype pollution
-  if (!isValidConfigPath(configPath)) {
-    throw new Error(`Invalid config path: ${configPath}`);
-  }
-
-  const config = getConfig();
-  const parts = configPath.split('.');
-  let obj = config;
-
-  for (let i = 0; i < parts.length - 1; i++) {
-    const part = parts[i];
-    if (!Object.prototype.hasOwnProperty.call(obj, part)) {
-      obj[part] = {};
-    }
-    obj = obj[part];
-  }
-
-  obj[parts[parts.length - 1]] = newValue;
-  writeJson(PATHS.config, config);
-  invalidateConfigCache();
-}
-
-/**
- * Resolve config value that may contain environment variable or file references
- * Supports: {env:VAR_NAME}, {file:path}, {file:~/path}
- * @param {string|null} value - Value to resolve
- * @returns {string|null} Resolved value or null if unresolvable
- */
-function resolveConfigValue(value) {
-  if (!value || typeof value !== 'string') return value;
-
-  // {env:VAR_NAME} - environment variable
-  if (value.startsWith('{env:') && value.endsWith('}')) {
-    const varName = value.slice(5, -1);
-    // Validate env var name format
-    if (!/^[A-Z_][A-Z0-9_]*$/i.test(varName)) {
-      warn(`Invalid environment variable name: ${varName}`);
-      return null;
-    }
-    return process.env[varName] || null;
-  }
-
-  // {file:path} - file contents
-  if (value.startsWith('{file:') && value.endsWith('}')) {
-    let filePath = value.slice(6, -1);
-    const homeDir = process.env.HOME || '';
-
-    // Expand tilde to home directory
-    if (filePath.startsWith('~')) {
-      filePath = filePath.replace(/^~/, homeDir);
-    }
-
-    // Security: validate path is within project OR user's home directory
-    // This allows reading credentials from ~/.config/ but blocks /etc/passwd etc.
-    const resolvedPath = path.resolve(filePath);
-    const isWithinProject = isPathWithinProject(resolvedPath, PROJECT_ROOT);
-    const isWithinHome = homeDir && resolvedPath.startsWith(homeDir + path.sep);
-
-    if (!isWithinProject && !isWithinHome) {
-      warn(`File path outside allowed locations blocked: ${resolvedPath}`);
-      return null;
-    }
-
-    try {
-      return fs.readFileSync(resolvedPath, 'utf-8').trim();
-    } catch {
-      return null;
-    }
-  }
-
-  return value;
 }
 
 // ============================================================
@@ -1531,7 +478,7 @@ function isValidWogiId(id) {
 /**
  * Validate all task IDs in a ready.json data object before writing.
  * Checks ALL arrays: ready, inProgress, blocked, backlog, recentlyCompleted.
- * Only validates NEW entries — historical descriptive IDs are grandfathered.
+ * Only validates NEW entries -- historical descriptive IDs are grandfathered.
  *
  * @param {Object} data - ready.json data to validate
  * @param {Object} [previousData] - Previous ready.json data to detect new entries
@@ -1574,7 +521,7 @@ function validateReadyDataIds(data, previousData) {
   }
 
   if (violations.length > 0) {
-    const msg = `Task ID validation failed — manually constructed IDs are not allowed.\n` +
+    const msg = `Task ID validation failed \u2014 manually constructed IDs are not allowed.\n` +
       `Use generateTaskId() from flow-utils.js to create IDs.\n` +
       `Valid formats: wf-[8 hex], wf-[8 hex]-NN, wf-cr-[6 hex], wf-rv-[8 hex]\n` +
       `Example: wf-a1b2c3d4 (NOT wf-health-001, wf-my-task, etc.)\n\n` +
@@ -1616,6 +563,7 @@ function saveReadyData(data) {
  * SECURITY: Prevents race conditions that could corrupt ready.json
  */
 async function saveReadyDataAsync(data) {
+  const { withLock } = flowIO;
   return withLock(PATHS.ready, () => {
     let previousData = null;
     try {
@@ -1760,6 +708,7 @@ function moveTask(taskId, fromList, toList) {
  * SECURITY: Prevents race conditions when multiple processes move tasks
  */
 async function moveTaskAsync(taskId, fromList, toList) {
+  const { withLock } = flowIO;
   return withLock(PATHS.ready, () => {
     const data = getReadyData();
     const from = data[fromList] || [];
@@ -1821,6 +770,7 @@ async function moveTaskAsync(taskId, fromList, toList) {
  * @returns {Promise<{success: boolean, task?: object, error?: string}>}
  */
 async function cancelTask(taskId, reason, workDone = false) {
+  const { withLock } = flowIO;
   return withLock(PATHS.ready, () => {
     const data = getReadyData();
     const lists = ['ready', 'inProgress', 'blocked', 'backlog'];
@@ -1849,7 +799,6 @@ async function cancelTask(taskId, reason, workDone = false) {
     }
 
     // Ensure task is an object (not just an ID string)
-    // This shouldn't happen in normal operation - tasks should always be objects
     if (typeof task === 'string') {
       warn(`Task ${taskId} was stored as string, not object. Converting with minimal data.`);
       task = { id: task, title: `Task ${task}`, _convertedFromString: true };
@@ -2111,8 +1060,6 @@ function isGitRepo() {
  * Get git status info (requires child_process)
  */
 function getGitStatus() {
-  const { execSync } = require('child_process');
-
   if (!isGitRepo()) {
     return { isRepo: false };
   }
@@ -2138,339 +1085,6 @@ function getGitStatus() {
     };
   } catch (err) {
     return { isRepo: true, error: err.message };
-  }
-}
-
-// ============================================================
-// Directory Operations
-// ============================================================
-
-/**
- * List directories in a path
- */
-function listDirs(dirPath) {
-  try {
-    if (!dirExists(dirPath)) return [];
-    return fs.readdirSync(dirPath)
-      .filter(name => {
-        const fullPath = path.join(dirPath, name);
-        return fs.statSync(fullPath).isDirectory();
-      });
-  } catch {
-    return [];
-  }
-}
-
-/**
- * List files matching a pattern in a directory
- */
-function listFiles(dirPath, extension = null) {
-  try {
-    if (!dirExists(dirPath)) return [];
-    return fs.readdirSync(dirPath)
-      .filter(name => {
-        const fullPath = path.join(dirPath, name);
-        if (!fs.statSync(fullPath).isFile()) return false;
-        if (extension && !name.endsWith(extension)) return false;
-        return true;
-      });
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Count files recursively with depth limit and symlink protection
- */
-function countFiles(dirPath, extensions = [], maxDepth = 10) {
-  let count = 0;
-  const visited = new Set(); // Prevent infinite loops from symlinks
-
-  function walk(dir, depth) {
-    if (depth <= 0) return; // Depth limit reached
-
-    try {
-      // Resolve real path to detect symlink cycles
-      const realPath = fs.realpathSync(dir);
-      if (visited.has(realPath)) return; // Already visited (symlink cycle)
-      visited.add(realPath);
-
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        // Skip node_modules and hidden directories for performance
-        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory() && !entry.isSymbolicLink()) {
-          walk(fullPath, depth - 1);
-        } else if (entry.isFile()) {
-          if (extensions.length === 0 || extensions.some(ext => entry.name.endsWith(ext))) {
-            count++;
-          }
-        }
-      }
-    } catch (err) {
-      // Ignore permission errors, log others in debug mode
-      if (process.env.DEBUG) console.error(`[DEBUG] countFiles: ${err.message}`);
-    }
-  }
-
-  if (dirExists(dirPath)) {
-    walk(dirPath, maxDepth);
-  }
-
-  return count;
-}
-
-// ============================================================
-// File Locking (for parallel execution safety)
-// ============================================================
-
-/**
- * Simple file locking without external dependencies.
- * Uses mkdir (atomic on most filesystems) for lock acquisition.
- *
- * @param {string} filePath - File to lock
- * @param {Object} options - Lock options
- * @param {number} [options.retries=5] - Number of retry attempts
- * @param {number} [options.retryDelay=100] - Delay between retries (ms)
- * @param {number} [options.staleMs=30000] - Consider lock stale after this many ms
- * @returns {Promise<Function>} Release function
- */
-async function acquireLock(filePath, options = {}) {
-  const {
-    retries = LOCK_MAX_RETRIES,
-    retryDelay = LOCK_RETRY_DELAY_MS,
-    staleMs = LOCK_STALE_THRESHOLD_MS,
-    exponentialBackoff = false
-  } = options;
-
-  const lockDir = `${filePath}.lock`;
-  const lockInfoFile = path.join(lockDir, 'info.json');
-  let staleCleanupAttempts = 0;
-  const maxStaleCleanupAttempts = 3;
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      // mkdir is atomic - will fail if directory already exists
-      fs.mkdirSync(lockDir, { recursive: false });
-
-      // Write lock info for stale detection
-      fs.writeFileSync(lockInfoFile, JSON.stringify({
-        pid: process.pid,
-        timestamp: Date.now(),
-        file: filePath
-      }));
-
-      // Return release function with robust cleanup
-      return () => {
-        // Try to remove info file first
-        try {
-          fs.unlinkSync(lockInfoFile);
-        } catch (err) {
-          // ENOENT is fine - file already gone
-          // Other errors we log but continue to try rmdir
-          if (err.code !== 'ENOENT' && process.env.DEBUG) {
-            console.warn(`[DEBUG] Lock info cleanup warning: ${err.message}`);
-          }
-        }
-
-        // Always try to remove lock directory
-        try {
-          fs.rmdirSync(lockDir);
-        } catch (err) {
-          // ENOENT is fine - directory already gone
-          if (err.code !== 'ENOENT') {
-            // Directory not empty or other error - force cleanup
-            try {
-              fs.rmSync(lockDir, { recursive: true, force: true });
-            } catch {
-              // Last resort failed - log if debug
-              if (process.env.DEBUG) {
-                console.warn(`[DEBUG] Lock dir cleanup failed: ${err.message}`);
-              }
-            }
-          }
-        }
-      };
-    } catch (err) {
-      if (err.code === 'EEXIST') {
-        // Lock exists - check if stale
-        let isStale = false;
-        let lockAge = 0;
-
-        try {
-          const info = readJson(lockInfoFile, null);
-          if (info && typeof info.timestamp === 'number') {
-            lockAge = Date.now() - info.timestamp;
-            isStale = lockAge > staleMs;
-          } else {
-            isStale = attempt >= 2;
-          }
-        } catch {
-          // Can't read lock info - assume stale if we've waited long enough
-          isStale = attempt >= 2;
-        }
-
-        if (isStale) {
-          staleCleanupAttempts++;
-          if (staleCleanupAttempts > maxStaleCleanupAttempts) {
-            throw new Error(`Failed to clean up stale lock for ${filePath} after ${maxStaleCleanupAttempts} attempts`);
-          }
-
-          if (process.env.DEBUG) {
-            console.warn(`[DEBUG] Removing stale lock (${lockAge}ms old) for ${filePath} (cleanup attempt ${staleCleanupAttempts})`);
-          }
-
-          try {
-            fs.unlinkSync(lockInfoFile);
-            fs.rmdirSync(lockDir);
-          } catch (err) {
-            // Cleanup failed - wait before retrying
-            if (process.env.DEBUG) {
-              console.warn(`[DEBUG] Stale lock cleanup failed: ${err.message}`);
-            }
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-          }
-          // Try again
-          continue;
-        }
-
-        if (attempt < retries) {
-          // Wait and retry
-          const delay = exponentialBackoff
-            ? retryDelay * Math.pow(2, attempt)
-            : retryDelay * (attempt + 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-
-      throw new Error(`Failed to acquire lock for ${filePath}: ${err.message}`);
-    }
-  }
-
-  throw new Error(`Failed to acquire lock for ${filePath} after ${retries} retries`);
-}
-
-/**
- * Execute a function while holding a lock on a file
- *
- * @param {string} filePath - File to lock
- * @param {Function} fn - Async function to execute
- * @param {Object} [options] - Lock options
- * @returns {Promise<*>} Result of fn
- *
- * @example
- * const data = await withLock(PATHS.ready, async () => {
- *   const current = readJson(PATHS.ready);
- *   current.tasks.push(newTask);
- *   writeJson(PATHS.ready, current);
- *   return current;
- * });
- */
-async function withLock(filePath, fn, options = {}) {
-  const release = await acquireLock(filePath, options);
-  try {
-    return await fn();
-  } finally {
-    release();
-  }
-}
-
-/**
- * Synchronous version of withLock for simpler use cases
- * Note: Still uses async for lock acquisition, but fn is sync
- */
-async function withLockSync(filePath, fn, options = {}) {
-  const release = await acquireLock(filePath, options);
-  try {
-    return fn();
-  } finally {
-    release();
-  }
-}
-
-/**
- * Clean up any stale locks in a directory
- * Useful for cleanup after crashes
- *
- * @param {string} dirPath - Directory to scan for .lock directories
- * @param {number} [staleMs=30000] - Consider locks older than this as stale
- * @returns {number} Number of locks cleaned up
- */
-function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
-  try {
-    if (!dirExists(dirPath)) return 0;
-
-    let cleaned = 0;
-    const entries = fs.readdirSync(dirPath);
-
-    for (const entry of entries) {
-      if (!entry.endsWith('.lock')) continue;
-
-      const lockDir = path.join(dirPath, entry);
-      const lockInfoFile = path.join(lockDir, 'info.json');
-
-      try {
-        const info = readJson(lockInfoFile, null);
-        const age = info && typeof info.timestamp === 'number' ? Date.now() - info.timestamp : Infinity;
-
-        if (age > staleMs) {
-          // Clean up stale lock
-          try {
-            fs.unlinkSync(lockInfoFile);
-          } catch (err) {
-            if (err.code !== 'ENOENT') {
-              if (process.env.DEBUG) {
-                console.warn(`[DEBUG] cleanupStaleLocks: Could not delete ${lockInfoFile}: ${err.message}`);
-              }
-            }
-          }
-
-          try {
-            fs.rmdirSync(lockDir);
-            cleaned++;
-          } catch (err) {
-            if (err.code !== 'ENOENT') {
-              // Directory not empty or other error - force cleanup
-              try {
-                fs.rmSync(lockDir, { recursive: true, force: true });
-                cleaned++;
-              } catch (err2) {
-                if (process.env.DEBUG) {
-                  console.warn(`[DEBUG] cleanupStaleLocks: Could not force delete ${lockDir}: ${err2.message}`);
-                }
-              }
-            }
-          }
-        }
-      } catch (err) {
-        // Can't read lock info - try to remove based on directory mtime
-        if (err.code === 'ENOENT') continue; // Lock already gone
-
-        try {
-          const stat = fs.statSync(lockDir);
-          const age = Date.now() - stat.mtimeMs;
-          if (age > staleMs) {
-            fs.rmSync(lockDir, { recursive: true, force: true });
-            cleaned++;
-          }
-        } catch (err2) {
-          // Directory gone or inaccessible - skip
-          if (err2.code !== 'ENOENT' && process.env.DEBUG) {
-            console.warn(`[DEBUG] cleanupStaleLocks: Could not stat ${lockDir}: ${err2.message}`);
-          }
-        }
-      }
-    }
-
-    return cleaned;
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.warn(`[DEBUG] cleanupStaleLocks: Could not scan ${dirPath}: ${err.message}`);
-    }
-    return 0;
   }
 }
 
@@ -2782,162 +1396,6 @@ function findTypeDefinitions(namePattern = null, options = {}) {
 }
 
 // ============================================================
-// String Utilities
-// ============================================================
-
-/**
- * Escape special regex characters in a string.
- * Makes the string safe for use in `new RegExp(...)`.
- *
- * @param {string} str - String to escape
- * @returns {string} Escaped string safe for regex
- */
-function escapeRegex(str) {
-  if (!str || typeof str !== 'string') {
-    return '';
-  }
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// ============================================================
-// Token Estimation
-// ============================================================
-
-/**
- * Token estimation constants.
- */
-const TOKEN_ESTIMATION = {
-  // Characters per token (varies by content type)
-  CHARS_PER_TOKEN_CODE: 3,      // Code is more token-dense
-  CHARS_PER_TOKEN_TEXT: 4,      // General text/prose
-  CHARS_PER_TOKEN_MIXED: 3.5,   // Mixed content
-
-  // Line-based estimation (for code files)
-  TOKENS_PER_LINE: 8,           // Average tokens per line of code
-
-  // Complexity multipliers for task estimation
-  COMPLEXITY_MULTIPLIERS: {
-    low: 100,
-    medium: 500,
-    high: 2000
-  }
-};
-
-/**
- * Estimate token count for text content.
- *
- * Unified token estimation supporting multiple use cases:
- * - Simple text estimation
- * - Code-aware estimation (different density)
- * - Hybrid char+line estimation
- * - Content type auto-detection
- *
- * @param {string} content - Text content to estimate
- * @param {Object} [options] - Estimation options
- * @param {boolean} [options.isCode] - Treat as code (3 chars/token vs 4)
- * @param {boolean} [options.detectCodeRatio] - Auto-detect code vs text ratio
- * @param {boolean} [options.useLineEstimate] - Include line-based estimation (for files)
- * @param {string} [options.complexity] - Add complexity multiplier (low/medium/high)
- * @returns {number} Estimated token count
- *
- * @example
- * // Simple estimation
- * estimateTokens('Hello world');  // ~3
- *
- * @example
- * // Code estimation
- * estimateTokens(codeContent, { isCode: true });
- *
- * @example
- * // File with auto-detection
- * estimateTokens(fileContent, { detectCodeRatio: true, useLineEstimate: true });
- */
-function estimateTokens(content, options = {}) {
-  if (!content || typeof content !== 'string') return 0;
-
-  const {
-    isCode = false,
-    detectCodeRatio = false,
-    useLineEstimate = false,
-    complexity = null
-  } = options;
-
-  let estimate;
-
-  if (detectCodeRatio) {
-    // Auto-detect code vs text ratio
-    const codeRatio = detectCodeContentRatio(content);
-    const effectiveCharsPerToken =
-      TOKEN_ESTIMATION.CHARS_PER_TOKEN_CODE * codeRatio +
-      TOKEN_ESTIMATION.CHARS_PER_TOKEN_TEXT * (1 - codeRatio);
-    estimate = Math.ceil(content.length / effectiveCharsPerToken);
-  } else if (isCode) {
-    estimate = Math.ceil(content.length / TOKEN_ESTIMATION.CHARS_PER_TOKEN_CODE);
-  } else {
-    estimate = Math.ceil(content.length / TOKEN_ESTIMATION.CHARS_PER_TOKEN_TEXT);
-  }
-
-  // Optionally blend with line-based estimate (better for structured code)
-  if (useLineEstimate) {
-    const lineCount = content.split('\n').length;
-    const lineEstimate = lineCount * TOKEN_ESTIMATION.TOKENS_PER_LINE;
-    estimate = Math.ceil((estimate + lineEstimate) / 2);
-  }
-
-  // Optionally add complexity multiplier (for task estimation)
-  if (complexity && TOKEN_ESTIMATION.COMPLEXITY_MULTIPLIERS[complexity]) {
-    estimate += TOKEN_ESTIMATION.COMPLEXITY_MULTIPLIERS[complexity];
-  }
-
-  return estimate;
-}
-
-/**
- * Detect the ratio of code content in text (0 to 1).
- * Uses heuristics like brackets, semicolons, and code block markers.
- *
- * @param {string} content - Content to analyze
- * @returns {number} Code ratio from 0 (all prose) to 1 (all code)
- */
-function detectCodeContentRatio(content) {
-  if (!content || content.length < 50) return 0;
-
-  // Check for code block markers (markdown)
-  const codeBlockPattern = /```[\s\S]*?```/g;
-  const inlineCodePattern = /`[^`]+`/g;
-
-  let codeChars = 0;
-  const codeBlockMatches = content.match(codeBlockPattern);
-  if (codeBlockMatches) {
-    codeChars += codeBlockMatches.join('').length;
-  }
-  const inlineMatches = content.match(inlineCodePattern);
-  if (inlineMatches) {
-    codeChars += inlineMatches.join('').length;
-  }
-
-  // Check for code indicators (brackets, semicolons, etc.)
-  const codeIndicators = (content.match(/[{}\[\]();=<>]/g) || []).length;
-  const indicatorRatio = codeIndicators / content.length;
-
-  // Combine code block ratio and indicator ratio
-  const blockRatio = codeChars / content.length;
-  const combinedRatio = Math.min(1, blockRatio + indicatorRatio * 2);
-
-  return combinedRatio;
-}
-
-/**
- * Check if content is primarily code (helper for isCode parameter).
- *
- * @param {string} content - Content to check
- * @returns {boolean} True if content appears to be code
- */
-function isCodeContent(content) {
-  return detectCodeContentRatio(content) > 0.3;
-}
-
-// ============================================================
 // Classification System (v2.0.0 - Recursive Enhancements)
 // ============================================================
 
@@ -3043,37 +1501,6 @@ function extractComponents(request) {
 
   // Dedupe
   return [...new Set(components)];
-}
-
-/**
- * Estimate complexity of the request
- * @param {string} request - User's request text
- * @returns {'low'|'medium'|'high'} Complexity estimate
- */
-function estimateComplexity(request) {
-  const lower = request.toLowerCase();
-  const wordCount = request.split(/\s+/).length;
-
-  // High complexity indicators
-  const highIndicators = [
-    'authentication', 'authorization', 'security', 'payment', 'database',
-    'migration', 'architecture', 'infrastructure', 'api', 'integration',
-    'system', 'platform', 'redesign', 'overhaul', 'refactor entire'
-  ];
-  if (highIndicators.some(ind => lower.includes(ind))) {
-    return 'high';
-  }
-
-  // Medium complexity indicators
-  const mediumIndicators = [
-    'feature', 'flow', 'workflow', 'multiple', 'several', 'across',
-    'form validation', 'state management', 'error handling', 'testing'
-  ];
-  if (mediumIndicators.some(ind => lower.includes(ind)) || wordCount > 30) {
-    return 'medium';
-  }
-
-  return 'low';
 }
 
 /**
@@ -3386,94 +1813,12 @@ function findTaskInAllLists(readyData, taskId) {
 }
 
 // ============================================================
-// Spec File Path Resolution (v1.0.4 Migration Support)
-// ============================================================
-
-/**
- * Spec file name to PATHS key mapping
- */
-const SPEC_FILE_MAP = {
-  stack: { new: 'specsStack', old: 'stackMd' },
-  architecture: { new: 'specsArchitecture', old: 'architectureMd' },
-  testing: { new: 'specsTesting', old: 'testingMd' }
-};
-
-/**
- * Get the path for a spec file with backward compatibility.
- * Checks new location (specs/) first, falls back to old (state/).
- *
- * @param {string} name - Spec file name ('stack', 'architecture', 'testing')
- * @param {Object} [options] - Options
- * @param {boolean} [options.warnOnOld=true] - Warn if found in old location
- * @param {boolean} [options.preferNew=false] - Return new path even if file doesn't exist yet
- * @returns {string|null} Path to spec file, or null if not found and preferNew is false
- */
-function getSpecFilePath(name, options = {}) {
-  const { warnOnOld = true, preferNew = false } = options;
-
-  const mapping = SPEC_FILE_MAP[name.toLowerCase()];
-  if (!mapping) {
-    warn(`Unknown spec file: ${name}. Valid options: stack, architecture, testing`);
-    return null;
-  }
-
-  const newPath = PATHS[mapping.new];
-  const oldPath = PATHS[mapping.old];
-
-  // Check new location first
-  if (fileExists(newPath)) {
-    return newPath;
-  }
-
-  // Check old location
-  if (fileExists(oldPath)) {
-    if (warnOnOld) {
-      warn(`${name}.md found in deprecated location (state/). Run 'flow migrate specs' to move to specs/`);
-    }
-    return oldPath;
-  }
-
-  // Neither exists
-  if (preferNew) {
-    return newPath; // Return new path for creating new files
-  }
-
-  return null;
-}
-
-/**
- * Check if spec files need migration (are in old location)
- * @returns {Object[]} Array of files needing migration
- */
-function checkSpecMigration() {
-  const needsMigration = [];
-
-  for (const [name, mapping] of Object.entries(SPEC_FILE_MAP)) {
-    const oldPath = PATHS[mapping.old];
-    const newPath = PATHS[mapping.new];
-
-    if (fileExists(oldPath) && !fileExists(newPath)) {
-      needsMigration.push({
-        name,
-        from: oldPath,
-        to: newPath
-      });
-    }
-  }
-
-  return needsMigration;
-}
-
-// ============================================================
 // Safe Search Utilities (Claude Code 2.1.23+ compatibility)
 // ============================================================
 
 /**
  * Perform a safe grep search with proper timeout and error handling.
  * Returns results and metadata about search status.
- *
- * Before Claude Code 2.1.23, ripgrep timeouts would silently return empty results.
- * This utility provides explicit handling for timeouts and errors.
  *
  * @param {string} pattern - Search pattern
  * @param {Object} options - Search options
@@ -3564,13 +1909,24 @@ const SEARCH_DEFAULTS = {
 // ============================================================
 
 module.exports = {
-  // Constants
+  // Re-export from flow-paths.js
+  ...flowPaths,
+
+  // Re-export from flow-io.js
+  ...flowIO,
+
+  // Re-export from flow-config-loader.js
+  ...flowConfigLoader,
+
+  // Re-export from flow-tokens.js
+  ...flowTokens,
+
+  // Re-export from flow-output.js
+  ...flowOutput,
+
+  // Constants (defined in this file)
   DEFAULT_COMMAND_TIMEOUT_MS,
   QUICK_COMMAND_TIMEOUT_MS,
-  LOCK_STALE_THRESHOLD_MS,
-  CLEANUP_LOCK_STALE_MS,
-  LOCK_RETRY_DELAY_MS,
-  LOCK_MAX_RETRIES,
   MAX_SESSION_HISTORY,
   MAX_WORKFLOW_ITERATIONS,
   TASK_LIMITS,
@@ -3579,30 +1935,10 @@ module.exports = {
   // CLI Session ID (CLI-Agnostic)
   getSessionId,
 
-  // Paths
-  PATHS,
-  PROJECT_ROOT,
-  WORKFLOW_DIR,
-  STATE_DIR,
-  CLAUDE_DIR,
-  getProjectRoot,
-
   // Registry Discovery (v1.5.1)
   getActiveRegistries,
   getRegistryPaths,
   getRegistryMapFiles,
-
-  // Colors & Output
-  colors,
-  color,
-  print,
-  printHeader,
-  printSection,
-  success,
-  warn,
-  error,
-  info,
-  showHelp,
 
   // Task ID Generation & Validation (v1.9.0)
   generateTaskId,
@@ -3616,43 +1952,8 @@ module.exports = {
   generateFeatureId,
   generatePlanId,
 
-  // JSON Output & CLI Flags (v1.9.0)
-  outputJson,
+  // CLI Flags
   parseFlags,
-
-  // File Operations
-  fileExists,
-  dirExists,
-  ensureDir: require('./flow-file-ops').ensureDir,
-  readJson,
-  writeJson,
-  safeJsonParse,
-  safeJsonParseString,
-  checkForDangerousKeys,
-  readFile,
-  writeFile,
-  validateJson,
-  isPathWithinProject,
-
-  // String Utilities
-  escapeRegex,
-
-  // Token Estimation
-  TOKEN_ESTIMATION,
-  estimateTokens,
-  detectCodeContentRatio,
-  isCodeContent,
-
-  // Config
-  getConfig,
-  getRawConfig,         // Raw config without substitution (for editing)
-  getConfigValue,
-  setConfigValue,       // Async with locking
-  setConfigValueSync,   // Sync without locking (use when already locked)
-  resolveConfigValue,   // Resolve {env:VAR} and {file:path} patterns
-  invalidateConfigCache,
-  validateConfig,
-  KNOWN_CONFIG_KEYS,
 
   // Ready.json
   getReadyData,
@@ -3660,11 +1961,11 @@ module.exports = {
   validateReadyJson,
   saveReadyData,
   archiveCompletedTasksToLog,
-  saveReadyDataAsync,   // Async with locking
+  saveReadyDataAsync,
   findTask,
   moveTask,
-  moveTaskAsync,        // Async with locking
-  cancelTask,           // Cancel with preservation (v6.0)
+  moveTaskAsync,
+  cancelTask,
   getTaskCounts,
 
   // Request Log
@@ -3682,17 +1983,6 @@ module.exports = {
   isGitRepo,
   getGitStatus,
 
-  // Directory
-  listDirs,
-  listFiles,
-  countFiles,
-
-  // File Locking
-  acquireLock,
-  withLock,
-  withLockSync,
-  cleanupStaleLocks,
-
   // Permission Validation
   analyzePermissions,
   validatePermissions,
@@ -3705,11 +1995,6 @@ module.exports = {
   findCustomHooks,
   findTypeDefinitions,
 
-  // Spec File Migration (v1.0.4)
-  SPEC_FILE_MAP,
-  getSpecFilePath,
-  checkSpecMigration,
-
   // Classification System (v2.0.0)
   CLASSIFICATION_LEVELS,
   DEFAULT_CLASSIFICATION_THRESHOLDS,
@@ -3719,7 +2004,6 @@ module.exports = {
   findAllWithParent,
   findTaskInAllLists,
   analyzeRequest,
-  estimateComplexity,
 
   // Safe Search (Claude Code 2.1.23+ compatibility)
   safeGrepSearch,
@@ -3736,6 +2020,7 @@ module.exports = {
   try {
     // Only clean up if STATE_DIR exists (workflow initialized)
     if (dirExists(STATE_DIR)) {
+      const { cleanupStaleLocks } = flowIO;
       const cleaned = cleanupStaleLocks(STATE_DIR, 60000); // 60s stale threshold
       if (cleaned > 0 && process.env.DEBUG) {
         console.log(`[DEBUG] Auto-cleaned ${cleaned} stale lock(s) from ${STATE_DIR}`);
