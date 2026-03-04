@@ -191,6 +191,14 @@ function detectTestRunner(testFiles) {
           if (pkg.devDependencies?.mocha || pkg.dependencies?.mocha) {
             return getExecParts('mocha', testFiles);
           }
+          // Tap
+          if (pkg.devDependencies?.tap || pkg.dependencies?.tap) {
+            return getExecParts('tap', testFiles);
+          }
+          // Ava
+          if (pkg.devDependencies?.ava || pkg.dependencies?.ava) {
+            return getExecParts('ava', testFiles);
+          }
         }
         // Fallback to resolved test command via package manager
         const testCmd = getCommand('test');
@@ -198,15 +206,19 @@ function detectTestRunner(testFiles) {
           const parts = testCmd.split(/\s+/);
           return { cmd: parts[0], args: [...parts.slice(1), '--', '--passWithNoTests'] };
         }
-        return { cmd: 'npm', args: ['test', '--', '--passWithNoTests'] };
+        // Try node:test as last resort if test files exist
+        if (testFiles.length > 0) {
+          return { cmd: 'node', args: ['--test', ...testFiles] };
+        }
+        return null; // No test runner detected — caller should handle gracefully
       }
     } catch {
       // package.json is malformed, fall through to default
     }
   }
 
-  // Default to jest via exec resolver
-  return getExecParts('jest', [...testFiles, '--passWithNoTests']);
+  // No test runner detected — return null instead of assuming jest
+  return null;
 }
 
 /**

@@ -403,8 +403,17 @@ function detectConfigFiles() {
     '.eslintrc',
     '.eslintrc.js',
     '.eslintrc.json',
+    '.eslintrc.cjs',
+    '.eslintrc.yaml',
+    '.eslintrc.yml',
+    'eslint.config.js',
+    'eslint.config.mjs',
+    'eslint.config.cjs',
+    'eslint.config.ts',
     'jest.config.js',
+    'jest.config.ts',
     'vitest.config.ts',
+    'vitest.config.js',
   ];
 
   for (const file of checkFiles) {

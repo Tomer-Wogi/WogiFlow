@@ -25,6 +25,7 @@
 // ============================================================
 
 const FRAMEWORK_DETECTION_PATTERNS = {
+  // JavaScript/TypeScript Frameworks
   nestjs: [
     '*.module.ts',
     '*.controller.ts',
@@ -38,16 +39,67 @@ const FRAMEWORK_DETECTION_PATTERNS = {
     'react',
     'react-dom'
   ],
+  nextjs: [
+    'next.config.*',
+    'app/layout.tsx',
+    'pages/_app.tsx',
+    'next'
+  ],
+  remix: [
+    'remix.config.*',
+    'app/root.tsx',
+    'app/routes/*',
+    '@remix-run/*'
+  ],
+  astro: [
+    'astro.config.*',
+    '*.astro',
+    'astro'
+  ],
   vue: [
     '*.vue',
     'vue',
     '@vue/*'
+  ],
+  nuxt: [
+    'nuxt.config.*',
+    'nuxt'
+  ],
+  svelte: [
+    '*.svelte',
+    'svelte',
+    'svelte.config.*'
+  ],
+  sveltekit: [
+    'svelte.config.*',
+    'src/routes/+page.svelte',
+    '@sveltejs/kit'
+  ],
+  solid: [
+    'solid-js',
+    '*.tsx',
+    'solid-start'
+  ],
+  qwik: [
+    '*.tsx',
+    '@builder.io/qwik',
+    'qwik'
   ],
   angular: [
     '*.component.ts',
     '*.module.ts',
     '@angular/*'
   ],
+  express: [
+    'app.js',
+    'express',
+    'router.js'
+  ],
+  hono: [
+    'hono',
+    '@hono/*'
+  ],
+  // Python Frameworks
   fastapi: [
     'main.py',
     'fastapi',
@@ -58,10 +110,28 @@ const FRAMEWORK_DETECTION_PATTERNS = {
     'django',
     'settings.py'
   ],
-  express: [
-    'app.js',
-    'express',
-    'router.js'
+  flask: [
+    'app.py',
+    'flask',
+    'wsgi.py'
+  ],
+  // Go Frameworks
+  gin: [
+    'go.mod',
+    'github.com/gin-gonic/gin'
+  ],
+  fiber: [
+    'go.mod',
+    'github.com/gofiber/fiber'
+  ],
+  // Rust Frameworks
+  actix: [
+    'Cargo.toml',
+    'actix-web'
+  ],
+  rocket: [
+    'Cargo.toml',
+    'rocket'
   ]
 };
 
@@ -73,11 +143,25 @@ const FRAMEWORK_DETECTION_PATTERNS = {
 const OFFICIAL_DOCS_URLS = {
   nestjs: 'https://docs.nestjs.com',
   react: 'https://react.dev',
+  nextjs: 'https://nextjs.org/docs',
+  remix: 'https://remix.run/docs',
+  astro: 'https://docs.astro.build',
   vue: 'https://vuejs.org/guide',
+  nuxt: 'https://nuxt.com/docs',
+  svelte: 'https://svelte.dev/docs',
+  sveltekit: 'https://kit.svelte.dev/docs',
+  solid: 'https://docs.solidjs.com',
+  qwik: 'https://qwik.dev/docs',
   angular: 'https://angular.io/docs',
+  express: 'https://expressjs.com/en/guide',
+  hono: 'https://hono.dev/docs',
   fastapi: 'https://fastapi.tiangolo.com',
   django: 'https://docs.djangoproject.com',
-  express: 'https://expressjs.com/en/guide'
+  flask: 'https://flask.palletsprojects.com',
+  gin: 'https://gin-gonic.com/docs',
+  fiber: 'https://docs.gofiber.io',
+  actix: 'https://actix.rs/docs',
+  rocket: 'https://rocket.rs/guide'
 };
 
 // ============================================================

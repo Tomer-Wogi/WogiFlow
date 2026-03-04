@@ -91,7 +91,7 @@ const HYPOTHESIS_PATTERNS = {
       hypothesis: 'Module not installed or missing from package.json',
       test: 'check_npm_package',
       likelihood: 0.6,
-      fixStrategy: 'Run npm install or add to dependencies'
+      fixStrategy: 'Run package manager install (npm/pnpm/yarn/bun) or add to dependencies'
     }
   ],
 

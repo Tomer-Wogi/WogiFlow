@@ -236,9 +236,11 @@ const TESTING_OPTIONS = [
   // E2E Testing
   { key: '4', value: 'playwright', label: 'Playwright', context7: '/microsoft/playwright', group: 'E2E', recommended: true },
   { key: '5', value: 'cypress', label: 'Cypress', context7: '/cypress-io/cypress', group: 'E2E' },
+  { key: '6', value: 'webdriverio', label: 'WebdriverIO', context7: '/webdriverio/webdriverio', group: 'E2E' },
+  { key: '7', value: 'puppeteer', label: 'Puppeteer', context7: '/puppeteer/puppeteer', group: 'E2E' },
 
   // Python
-  { key: '6', value: 'pytest', label: 'Pytest', context7: '/pytest-dev/pytest', group: 'Python' },
+  { key: '8', value: 'pytest', label: 'Pytest', context7: '/pytest-dev/pytest', group: 'Python' },
 
   { key: '0', value: 'none', label: 'None', context7: null, group: null }
 ];
@@ -368,7 +370,7 @@ const BEST_DEFAULTS = {
 
   // Testing defaults
   testing: 'vitest',
-  e2e: 'playwright',
+  e2e: null, // Auto-detect from deps or ask during onboarding
 
   // Mobile defaults
   mobile: 'expo',

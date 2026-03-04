@@ -75,6 +75,12 @@ function detectStack() {
         stack.frameworks.fullStack = `Nuxt ${deps.nuxt.replace(/[\^~]/g, '')}`;
       } else if (deps['@sveltejs/kit']) {
         stack.frameworks.fullStack = 'SvelteKit';
+      } else if (deps['@remix-run/node'] || deps['@remix-run/react']) {
+        stack.frameworks.fullStack = 'Remix';
+      } else if (deps.astro) {
+        stack.frameworks.fullStack = `Astro ${deps.astro.replace(/[\^~]/g, '')}`;
+      } else if (deps['@builder.io/qwik']) {
+        stack.frameworks.fullStack = 'Qwik';
       }
 
       if (deps.react) {
@@ -85,6 +91,8 @@ function detectStack() {
         stack.frameworks.frontend = `Svelte ${deps.svelte.replace(/[\^~]/g, '')}`;
       } else if (deps['@angular/core']) {
         stack.frameworks.frontend = `Angular ${deps['@angular/core'].replace(/[\^~]/g, '')}`;
+      } else if (deps['solid-js']) {
+        stack.frameworks.frontend = 'Solid';
       }
 
       if (deps.express) {
@@ -97,15 +105,30 @@ function detectStack() {
         stack.frameworks.backend = `Hono ${deps.hono.replace(/[\^~]/g, '')}`;
       }
 
-      // Detect testing
+      // Detect testing (unit/integration)
       if (deps.vitest) {
         stack.testing = 'Vitest';
       } else if (deps.jest) {
         stack.testing = 'Jest';
       } else if (deps.mocha) {
         stack.testing = 'Mocha';
-      } else if (deps['@playwright/test']) {
-        stack.testing = 'Playwright';
+      } else if (deps.tap) {
+        stack.testing = 'Tap';
+      } else if (deps.ava) {
+        stack.testing = 'Ava';
+      }
+
+      // Detect E2E testing (separate from unit testing)
+      if (deps['@playwright/test']) {
+        stack.e2eTesting = 'Playwright';
+      } else if (deps.cypress) {
+        stack.e2eTesting = 'Cypress';
+      } else if (deps.webdriverio) {
+        stack.e2eTesting = 'WebdriverIO';
+      } else if (deps.nightwatch) {
+        stack.e2eTesting = 'Nightwatch';
+      } else if (deps.puppeteer) {
+        stack.e2eTesting = 'Puppeteer';
       }
 
       // Detect linting
@@ -220,6 +243,13 @@ function detectStack() {
     stack.language = 'Rust';
     stack.runtime = 'Rust';
     stack.packageManager = 'Cargo';
+    // Try to detect Rust web frameworks
+    try {
+      const cargo = fs.readFileSync(cargoPath, 'utf-8');
+      if (cargo.includes('actix-web')) stack.frameworks.backend = 'Actix Web';
+      else if (cargo.includes('rocket')) stack.frameworks.backend = 'Rocket';
+      else if (cargo.includes('axum')) stack.frameworks.backend = 'Axum';
+    } catch { /* ignore */ }
   }
 
   // Check for Go projects
@@ -228,6 +258,14 @@ function detectStack() {
     stack.language = 'Go';
     stack.runtime = 'Go';
     stack.packageManager = 'Go Modules';
+    // Try to detect Go web frameworks
+    try {
+      const goMod = fs.readFileSync(goModPath, 'utf-8');
+      if (goMod.includes('gin-gonic/gin')) stack.frameworks.backend = 'Gin';
+      else if (goMod.includes('gofiber/fiber')) stack.frameworks.backend = 'Fiber';
+      else if (goMod.includes('labstack/echo')) stack.frameworks.backend = 'Echo';
+      else if (goMod.includes('go-chi/chi')) stack.frameworks.backend = 'Chi';
+    } catch { /* ignore */ }
   }
 
   return stack;

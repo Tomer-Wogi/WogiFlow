@@ -61,6 +61,7 @@ const ARCHITECTURE_INDICATORS = [
   'tsconfig.*.json',
   'jsconfig.json',
   '.eslintrc*',
+  'eslint.config.*',
   '.prettierrc*',
   'webpack.config.*',
   'vite.config.*',

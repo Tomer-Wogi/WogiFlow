@@ -461,9 +461,9 @@ const TS_ERROR_SUGGESTIONS = {
         return `Check file path: Does "${moduleName}" exist relative to ${file}? Common issues: wrong extension (.js vs .ts), missing index file, case sensitivity`;
       }
       if (moduleName.startsWith('@')) {
-        return `Install missing package: \`npm install ${moduleName}\` or \`npm install -D @types/${moduleName.replace('@', '').split('/')[0]}\``;
+        return `Install missing package: run your package manager's install/add command for ${moduleName} (e.g., \`npm install ${moduleName}\` or \`pnpm add ${moduleName}\`)`;
       }
-      return `Install missing package: \`npm install ${moduleName}\` or for types: \`npm install -D @types/${moduleName}\``;
+      return `Install missing package: run your package manager's install/add command for ${moduleName} (or for types: @types/${moduleName})`;
     }
   },
   TS2305: {

@@ -9,11 +9,13 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
+const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');
+const { getCommand, getExec } = require('../../flow-script-resolver');
 
 /**
  * Check if validation is enabled
@@ -44,13 +46,30 @@ function getValidationCommands(ext) {
     return legacyCommands[`*${ext}`];
   }
 
-  // Default commands by extension
-  const defaults = {
-    '.ts': ['npx tsc --noEmit'],
-    '.tsx': ['npx tsc --noEmit', 'npx eslint {file}'],
-    '.js': ['npx eslint {file}'],
-    '.jsx': ['npx eslint {file}']
-  };
+  // Build defaults dynamically from config.scripts and script-resolver
+  const typecheckCmd = getCommand('typecheck') || null;
+  const lintCmd = getCommand('lint') || null;
+
+  // Only add tsc if tsconfig.json exists (project actually uses TypeScript)
+  const hasTsConfig = (() => {
+    try { return fs.existsSync(path.join(PATHS.root, 'tsconfig.json')); } catch { return false; }
+  })();
+
+  const tscCmd = hasTsConfig ? (typecheckCmd || getExec('tsc', ['--noEmit'])) : null;
+  const eslintCmd = lintCmd || getExec('eslint', ['{file}']);
+
+  const defaults = {};
+  if (tscCmd) defaults['.ts'] = [tscCmd];
+  if (tscCmd && eslintCmd) defaults['.tsx'] = [tscCmd, eslintCmd];
+  else if (tscCmd) defaults['.tsx'] = [tscCmd];
+  else if (eslintCmd) defaults['.tsx'] = [eslintCmd];
+  if (eslintCmd) defaults['.js'] = [eslintCmd];
+  if (eslintCmd) defaults['.jsx'] = [eslintCmd];
+
+  // Also support Python, Go, Rust file extensions
+  defaults['.py'] = [];
+  defaults['.go'] = [];
+  defaults['.rs'] = [];
 
   return defaults[ext] || [];
 }

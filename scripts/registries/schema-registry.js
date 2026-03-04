@@ -323,7 +323,7 @@ class SchemaRegistry extends RegistryPlugin {
 
   _scanTypeORM() {
     // Look for TypeORM entities in common locations
-    const searchDirs = ['src', 'src/entities', 'src/entity', 'src/models', 'lib'];
+    const searchDirs = ['src', 'src/entities', 'src/entity', 'src/models', 'lib', 'app', 'app/models', 'app/entities', 'models', 'entities', 'prisma', 'drizzle'];
     const entityFiles = [];
 
     for (const dir of searchDirs) {

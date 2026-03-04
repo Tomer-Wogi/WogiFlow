@@ -427,7 +427,7 @@ class ServiceRegistry extends RegistryPlugin {
   // ============================================================
 
   _scanExpress() {
-    const searchDirs = ['src', 'routes', 'middleware', 'src/routes', 'src/middleware', 'lib'];
+    const searchDirs = ['src', 'routes', 'middleware', 'src/routes', 'src/middleware', 'lib', 'app', 'app/routes', 'app/api', 'server', 'api'];
 
     for (const dir of searchDirs) {
       const fullDir = path.join(PROJECT_ROOT, dir);

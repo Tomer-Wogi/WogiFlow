@@ -323,7 +323,7 @@ function main() {
             const cmdIsNoEmit = !typecheckCmd || typecheckCmd.includes('tsc --noEmit') || typecheckCmd === 'npx tsc --noEmit';
             if (cmdIsNoEmit) {
               console.log(`  ${color('yellow', '⚠')} TypeScript project references detected but typecheck command may not support them`);
-              console.log(`    ${color('dim', '→ Consider: npm run type-check (or npx tsc --build --force)')}`);
+              console.log(`    ${color('dim', '→ Consider: configure config.scripts.typecheck to use tsc --build --force')}`);
               warnings++;
             } else {
               console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
@@ -332,7 +332,7 @@ function main() {
           } else if (typecheckCmd) {
             console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
           } else {
-            console.log(`  ${color('yellow', '○')} No typecheck command configured (using default: npx tsc --noEmit)`);
+            console.log(`  ${color('yellow', '○')} No typecheck command configured — auto-detection will handle this`);
           }
         } catch (err) {
           console.log(`  ${color('yellow', '○')} Could not parse tsconfig.json: ${err.message}`);

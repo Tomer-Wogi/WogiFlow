@@ -23,6 +23,36 @@ const { safeGrep, safeFind, escapeRegex } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
 
+/**
+ * Resolve a path alias (e.g., '@/*') from tsconfig.json compilerOptions.paths.
+ * Returns the base directory (e.g., 'src') or null if not found.
+ */
+function resolvePathAlias(alias) {
+  try {
+    const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+    if (!fs.existsSync(tsconfigPath)) return null;
+    const content = fs.readFileSync(tsconfigPath, 'utf-8');
+    // Strip comments for JSON.parse
+    const stripped = content.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const tsconfig = JSON.parse(stripped);
+    const paths = tsconfig.compilerOptions?.paths;
+    if (!paths || !paths[alias]) return null;
+    const mapped = paths[alias][0]; // e.g., './src/*'
+    return mapped.replace(/^\.\//, '').replace(/\/\*$/, '');
+  } catch { return null; }
+}
+
+/**
+ * Detect the source root directory by checking common patterns.
+ * Returns 'src', 'app', 'lib', or '.' as fallback.
+ */
+function detectSourceRoot() {
+  for (const dir of ['src', 'app', 'lib']) {
+    if (fs.existsSync(path.join(PROJECT_ROOT, dir))) return dir;
+  }
+  return 'src'; // fallback
+}
+
 // ============================================================
 // Relationship Analysis
 // ============================================================
@@ -325,7 +355,9 @@ function resolveImportPath(importSource, fromDir) {
   if (!importSource.startsWith('.')) {
     // Handle alias imports like @/
     if (importSource.startsWith('@/')) {
-      importSource = importSource.replace('@/', 'src/');
+      // Try to resolve @/ alias from tsconfig.json paths, fall back to common dirs
+      const aliasRoot = resolvePathAlias('@/*') || detectSourceRoot();
+      importSource = importSource.replace('@/', aliasRoot + '/');
     } else {
       return null; // External package
     }

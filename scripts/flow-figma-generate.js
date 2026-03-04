@@ -78,7 +78,7 @@ export default {{name}};`,
 
 **Requirements:**
 1. Use TypeScript with proper interfaces
-2. Use Tailwind CSS classes (or project's styling approach)
+2. Use the project's styling approach (detected or configured)
 3. Make it responsive
 4. Add proper accessibility attributes
 5. Export both named and default exports`
@@ -127,7 +127,7 @@ defineProps<Props>();
 **Requirements:**
 1. Use Composition API with <script setup>
 2. Use TypeScript
-3. Use Tailwind CSS or scoped styles
+3. Use the project's styling approach (scoped styles, CSS modules, or utility classes)
 4. Make it responsive
 5. Add proper accessibility`
   },
@@ -168,7 +168,7 @@ defineProps<Props>();
 
 **Requirements:**
 1. Use TypeScript
-2. Use Tailwind CSS or component styles
+2. Use the project's detected styling approach
 3. Make it responsive
 4. Export props properly`
   },
@@ -211,7 +211,7 @@ export class {{name}}Component {
 **Requirements:**
 1. Use standalone component (Angular 15+)
 2. Use TypeScript
-3. Use Tailwind CSS or component styles
+3. Use the project's detected styling approach
 4. Make it responsive
 5. Add proper accessibility`
   }
@@ -474,17 +474,31 @@ ${this.formatCSSPropertiesForPrompt(figma.css)}
 
   suggestPath(name, type) {
     const kebabName = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+    // Detect source root from config or filesystem
+    const config = getConfig ? getConfig() : {};
+    const compDirs = config.registries?.components?.directories;
+    const srcRoot = (compDirs && compDirs[0]) ? compDirs[0].split('/')[0] : this._detectSourceRoot();
 
     switch (this.framework) {
       case 'vue':
-        return `src/components/${type}s/${name}.vue`;
+        return `${srcRoot}/components/${type}s/${name}.vue`;
       case 'svelte':
-        return `src/lib/components/${type}s/${name}.svelte`;
+        return `${srcRoot}/lib/components/${type}s/${name}.svelte`;
       case 'angular':
-        return `src/app/components/${type}s/${kebabName}/${kebabName}.component.ts`;
+        return `${srcRoot}/app/components/${type}s/${kebabName}/${kebabName}.component.ts`;
       default:
-        return `src/components/${type}s/${name}.tsx`;
+        return `${srcRoot}/components/${type}s/${name}.tsx`;
     }
+  }
+
+  _detectSourceRoot() {
+    const fs = require('fs');
+    const path = require('path');
+    const root = process.cwd();
+    for (const dir of ['src', 'app', 'lib']) {
+      if (fs.existsSync(path.join(root, dir))) return dir;
+    }
+    return 'src';
   }
 
   suggestName(figmaName) {

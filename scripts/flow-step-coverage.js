@@ -152,9 +152,14 @@ async function runCoverageTests() {
 
     if (!coverageCmd && scripts.test) {
       // No coverage script — try to add --coverage flag to test command
-      if (scripts.test.includes('jest') || scripts.test.includes('vitest')) {
-        const testCmd = getCommand('test') || 'npm test';
-        coverageCmd = `${testCmd} -- --coverage --json --outputFile=coverage/coverage-summary.json`;
+      const testCmd = getCommand('test');
+      if (testCmd) {
+        if (scripts.test.includes('jest') || scripts.test.includes('vitest')) {
+          coverageCmd = `${testCmd} -- --coverage --json --outputFile=coverage/coverage-summary.json`;
+        } else if (scripts.test.includes('mocha') || scripts.test.includes('tap')) {
+          // Mocha/tap projects typically use c8 or nyc for coverage
+          coverageCmd = `npx c8 ${testCmd}`;
+        }
       }
     }
 

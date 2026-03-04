@@ -69,14 +69,22 @@ class ClaudeBridge extends BaseBridge {
     }
 
     // Inject default script values where config has null/undefined
+    // Use flow-script-resolver for PM-aware defaults
     if (!config.scripts) {
       config.scripts = {};
     }
     if (!config.scripts.typecheck) {
-      config.scripts.typecheck = 'npx tsc --noEmit';
+      try {
+        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
+        const hasTsConfig = fs.existsSync(path.join(this.projectRoot, 'tsconfig.json'));
+        config.scripts.typecheck = hasTsConfig ? (getCommand('typecheck') || getExec('tsc', ['--noEmit'])) : '';
+      } catch { config.scripts.typecheck = ''; }
     }
     if (!config.scripts.lint) {
-      config.scripts.lint = 'npx eslint [file] --fix';
+      try {
+        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
+        config.scripts.lint = getCommand('lint') || getExec('eslint', ['[file]', '--fix']);
+      } catch { config.scripts.lint = 'npx eslint [file] --fix'; }
     }
 
     let content = template;
@@ -177,8 +185,22 @@ cat .workflow/state/decisions.md # Project rules
 ---`);
 
     // Auto-Validation
-    const typecheckCmd = config.scripts?.typecheck || 'npx tsc --noEmit';
-    const lintCmd = config.scripts?.lint || 'npx eslint [file] --fix';
+    let typecheckCmd = config.scripts?.typecheck || '';
+    let lintCmd = config.scripts?.lint || '';
+    // PM-aware fallbacks
+    if (!typecheckCmd) {
+      try {
+        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
+        const hasTsConfig = fs.existsSync(path.join(this.projectRoot, 'tsconfig.json'));
+        typecheckCmd = hasTsConfig ? (getCommand('typecheck') || getExec('tsc', ['--noEmit'])) : '';
+      } catch { typecheckCmd = ''; }
+    }
+    if (!lintCmd) {
+      try {
+        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
+        lintCmd = getCommand('lint') || getExec('eslint', ['[file]', '--fix']);
+      } catch { lintCmd = 'npx eslint [file] --fix'; }
+    }
     sections.push(`
 ## Auto-Validation (CRITICAL)
 

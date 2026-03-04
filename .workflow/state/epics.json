@@ -42,12 +42,36 @@
         "wf-6935e70c"
       ],
       "features": [],
-      "status": "ready",
-      "progress": 0,
+      "status": "inProgress",
+      "progress": 0.08333333333333333,
       "createdAt": "2026-03-04T11:37:26.749Z",
-      "updatedAt": "2026-03-04T11:43:41.708Z"
+      "updatedAt": "2026-03-04T12:03:32.967Z"
+    },
+    "wf-12cc534a": {
+      "id": "wf-12cc534a",
+      "title": "Fix All Hardcoded Architecture Assumptions",
+      "description": "Fix 30 instances of hardcoded assumptions across 10 stories: validation hook, package manager, source root, ESLint flat config, test runners, CSS frameworks, TypeScript conditional, git guards, browser tests, and framework detection expansion",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-e4154a99",
+        "wf-4fb6bfdd",
+        "wf-c04dd205",
+        "wf-a80bab41",
+        "wf-f4e07b21",
+        "wf-3cbfad41",
+        "wf-2895e99f",
+        "wf-b6bfa58b",
+        "wf-5f12f3d5",
+        "wf-f19b3ccb"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-03-04T14:13:04.732Z",
+      "updatedAt": "2026-03-04T14:25:05.699Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-04T11:43:41.708Z"
+  "lastUpdated": "2026-03-04T14:25:05.700Z"
 }

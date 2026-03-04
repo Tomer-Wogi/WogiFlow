@@ -291,9 +291,8 @@ class EnhancedStackWizard {
     if (!this.selections.testing) {
       this.selections.testing = 'vitest';
     }
-    if (!this.selections.e2e) {
-      this.selections.e2e = 'playwright';
-    }
+    // Don't pre-select E2E framework — let user choose or auto-detect from deps
+    // this.selections.e2e stays null/undefined if not explicitly set
   }
 
   applyAIDefaults() {

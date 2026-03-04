@@ -36,7 +36,13 @@ const DEFAULT_DIRECTORIES = [
   'src/views',
   'src/ui',
   'components',
-  'app'
+  'app',
+  'app/components',
+  'app/hooks',
+  'lib/components',
+  'lib/hooks',
+  'pages',
+  'packages'
 ];
 
 class ComponentScanner extends BaseScanner {
