@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-04T12:17:55.393Z",
+  "lastUpdated": "2026-03-04T12:25:56.147Z",
   "inProgress": [],
   "ready": [
     {
@@ -164,28 +164,6 @@
         "Project type detection added — registries only enabled for relevant project types"
       ],
       "createdAt": "2026-03-04T11:43:35.415Z"
-    },
-    {
-      "id": "wf-67eee59b",
-      "title": "Config Consolidation - Update All Consumers",
-      "type": "refactor",
-      "feature": "config",
-      "status": "ready",
-      "priority": "P1",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "blockedBy": [
-        "wf-1d612670",
-        "wf-7db613f7"
-      ],
-      "acceptanceCriteria": [
-        "All scripts reading old config keys updated to read new consolidated keys",
-        "Backwards-compat shim in getConfig() for one release cycle",
-        "config.schema.json updated to match new structure",
-        "All documentation references updated",
-        "strictMode naming collision fixed (3 separate uses renamed)"
-      ],
-      "createdAt": "2026-03-04T11:37:21.925Z"
     }
   ],
   "blocked": [],
@@ -1618,6 +1596,30 @@
       "createdAt": "2026-03-04T11:37:21.925Z",
       "startedAt": "2026-03-04T12:08:33.249Z",
       "completedAt": "2026-03-04T12:17:55.392Z"
+    },
+    {
+      "id": "wf-67eee59b",
+      "title": "Config Consolidation - Update All Consumers",
+      "type": "refactor",
+      "feature": "config",
+      "status": "recentlyCompleted",
+      "priority": "P1",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "blockedBy": [
+        "wf-1d612670",
+        "wf-7db613f7"
+      ],
+      "acceptanceCriteria": [
+        "All scripts reading old config keys updated to read new consolidated keys",
+        "Backwards-compat shim in getConfig() for one release cycle",
+        "config.schema.json updated to match new structure",
+        "All documentation references updated",
+        "strictMode naming collision fixed (3 separate uses renamed)"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z",
+      "startedAt": "2026-03-04T12:19:46.770Z",
+      "completedAt": "2026-03-04T12:25:56.146Z"
     }
   ],
   "backlog": [

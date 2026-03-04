@@ -80,15 +80,15 @@ async function fullCompaction(config) {
   // 1. Apply relevance decay
   console.log(`\n${color('blue', '1. Applying relevance decay...')}`);
   results.decay = await memoryDb.applyRelevanceDecay({
-    decayRate: config.automaticMemory?.relevanceDecay?.decayRate || 0.033,
-    neverAccessedPenalty: config.automaticMemory?.relevanceDecay?.neverAccessedPenalty || 0.1
+    decayRate: config.memory?.automatic?.relevanceDecay?.decayRate || 0.033,
+    neverAccessedPenalty: config.memory?.automatic?.relevanceDecay?.neverAccessedPenalty || 0.1
   });
   console.log(`   ${color('green', '✓')} Updated ${results.decay.decayed} facts`);
 
   // 2. Demote low-relevance facts
   console.log(`\n${color('blue', '2. Demoting low-relevance facts...')}`);
   results.demotion = await memoryDb.demoteToColdStorage({
-    relevanceThreshold: config.automaticMemory?.demotion?.relevanceThreshold || 0.3
+    relevanceThreshold: config.memory?.automatic?.demotion?.relevanceThreshold || 0.3
   });
   console.log(`   ${color('green', '✓')} Demoted ${results.demotion.demoted} facts to cold storage`);
 
@@ -102,16 +102,16 @@ async function fullCompaction(config) {
   // 4. Purge old cold facts
   console.log(`\n${color('blue', '4. Purging old cold storage...')}`);
   results.purge = await memoryDb.purgeColdFacts({
-    coldRetentionDays: config.automaticMemory?.demotion?.coldRetentionDays || 90
+    coldRetentionDays: config.memory?.automatic?.demotion?.coldRetentionDays || 90
   });
   console.log(`   ${color('green', '✓')} Purged ${results.purge.purged} old facts`);
 
   // 5. Extract high-value observations before purge
-  const obsExtractConfig = config.automaticMemory?.observationExtraction || {};
+  const obsExtractConfig = config.memory?.automatic?.observationExtraction || {};
   if (obsExtractConfig.enabled !== false) {
     console.log(`\n${color('blue', '5. Extracting solution knowledge from expiring observations...')}`);
     results.obsExtract = await memoryDb.purgeOldObservations(
-      config.automaticMemory?.observationCapture?.retentionDays || 30,
+      config.memory?.automatic?.observationCapture?.retentionDays || 30,
       {
         minDurationMs: obsExtractConfig.minDurationMs || 100,
         excludeTools: obsExtractConfig.excludeTools || ['Read', 'Glob', 'Grep']
@@ -156,7 +156,7 @@ async function demoteOnly(config) {
   console.log(color('cyan', '\nDemoting Low-Relevance Facts'));
   console.log('═'.repeat(50));
 
-  const threshold = config.automaticMemory?.demotion?.relevanceThreshold || 0.3;
+  const threshold = config.memory?.automatic?.demotion?.relevanceThreshold || 0.3;
   console.log(`Threshold: ${Math.round(threshold * 100)}% relevance\n`);
 
   const result = await memoryDb.demoteToColdStorage({ relevanceThreshold: threshold });
@@ -209,7 +209,7 @@ async function purgeOnly(config) {
   console.log(color('cyan', '\nPurging Old Cold Storage'));
   console.log('═'.repeat(50));
 
-  const retentionDays = config.automaticMemory?.demotion?.coldRetentionDays || 90;
+  const retentionDays = config.memory?.automatic?.demotion?.coldRetentionDays || 90;
   console.log(`Retention: ${retentionDays} days\n`);
 
   const result = await memoryDb.purgeColdFacts({ coldRetentionDays: retentionDays });
@@ -298,7 +298,7 @@ async function showPreview(config) {
 
   console.log(`\n${color('blue', 'Would Affect:')}`);
 
-  const threshold = config.automaticMemory?.demotion?.relevanceThreshold || 0.3;
+  const threshold = config.memory?.automatic?.demotion?.relevanceThreshold || 0.3;
   console.log(`  Low Relevance (<${Math.round(threshold * 100)}%): ${stats.lowRelevanceCount} facts → would be demoted`);
   console.log(`  Never Accessed:  ${stats.neverAccessed} facts → accelerated decay`);
 

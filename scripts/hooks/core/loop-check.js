@@ -29,11 +29,11 @@ function isLoopEnforcementEnabled() {
   }
 
   // Fall back to loops config
-  if (config.loops?.enforced === false) {
+  if (config.execution?.loops?.enforced === false) {
     return false;
   }
 
-  if (config.loops?.enabled === false) {
+  if (config.execution?.loops?.enabled === false) {
     return false;
   }
 
@@ -182,8 +182,8 @@ async function checkLoopExit() {
 
   // Check if max retries/iterations exceeded
   const config = getConfig();
-  const maxRetries = config.loops?.maxRetries || 5;
-  const maxIterations = config.loops?.maxIterations || 20;
+  const maxRetries = config.execution?.loops?.maxRetries || 5;
+  const maxIterations = config.execution?.loops?.maxIterations || 20;
 
   if (session.retries >= maxRetries) {
     return {

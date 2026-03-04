@@ -109,8 +109,8 @@ function checkResearchRequirement(options = {}) {
   // Generate the research protocol instructions to inject
   const protocolSteps = generateResearchProtocolSteps(prompt, gateResult.type, gateResult.depth);
 
-  if (config.strictMode) {
-    // Strict mode: Allow but inject mandatory research protocol
+  if (config.requireCitations) {
+    // requireCitations mode: Allow but inject mandatory research protocol
     return {
       allowed: true,
       blocked: false,

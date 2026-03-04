@@ -439,7 +439,7 @@ function archiveDurableSession(status = 'completed') {
 
   // Trigger loop retry learning analysis for completed sessions
   const config = getConfig();
-  if (config.skillLearning?.learnFromLoopRetries !== false && status === 'completed') {
+  if (config.learning?.skill?.learnFromLoopRetries !== false && status === 'completed') {
     try {
       const { analyzeCompletedSession } = require('./flow-loop-retry-learning');
       analyzeCompletedSession(session);
@@ -764,7 +764,7 @@ function checkCompletion() {
   }
 
   // Max retries?
-  const maxRetries = config.durableSteps?.maxRetries || config.loops?.maxRetries || 5;
+  const maxRetries = config.durableSteps?.maxRetries || config.execution?.loops?.maxRetries || 5;
   if (session.execution.totalRetries >= maxRetries) {
     return {
       complete: true,
@@ -775,7 +775,7 @@ function checkCompletion() {
   }
 
   // Max iterations?
-  const maxIterations = config.durableSteps?.maxIterations || config.loops?.maxIterations || 20;
+  const maxIterations = config.durableSteps?.maxIterations || config.execution?.loops?.maxIterations || 20;
   if (session.execution.iteration >= maxIterations) {
     return {
       complete: true,
@@ -1444,7 +1444,7 @@ function clearTaskQueue() {
  */
 function checkQueueContinuation() {
   const config = getConfig();
-  const queueConfig = config.taskQueue || {};
+  const queueConfig = config.parallelExecution?.taskQueue || {};
 
   // Check if queue feature is enabled
   if (queueConfig.enabled === false) {

@@ -125,8 +125,8 @@ async function showEntropy(config) {
  */
 async function applyDecay(config) {
   const decayConfig = {
-    decayRate: config.automaticMemory?.relevanceDecay?.decayRate || 0.033,
-    neverAccessedPenalty: config.automaticMemory?.relevanceDecay?.neverAccessedPenalty || 0.1
+    decayRate: config.memory?.automatic?.relevanceDecay?.decayRate || 0.033,
+    neverAccessedPenalty: config.memory?.automatic?.relevanceDecay?.neverAccessedPenalty || 0.1
   };
 
   console.log(color('cyan', '\nApplying Relevance Decay'));
@@ -151,7 +151,7 @@ async function applyDecay(config) {
  * Auto-compact memory if entropy exceeds threshold
  */
 async function autoCompact(config) {
-  const threshold = config.automaticMemory?.entropyThreshold || 0.7;
+  const threshold = config.memory?.automatic?.entropyThreshold || 0.7;
   const memoryConfig = {
     maxLocalFacts: config.memory?.maxLocalFacts || 1000
   };
@@ -180,15 +180,15 @@ async function autoCompact(config) {
   // 1. Apply relevance decay
   console.log('\n1. Applying relevance decay...');
   results.decay = await memoryDb.applyRelevanceDecay({
-    decayRate: config.automaticMemory?.relevanceDecay?.decayRate || 0.033,
-    neverAccessedPenalty: config.automaticMemory?.relevanceDecay?.neverAccessedPenalty || 0.1
+    decayRate: config.memory?.automatic?.relevanceDecay?.decayRate || 0.033,
+    neverAccessedPenalty: config.memory?.automatic?.relevanceDecay?.neverAccessedPenalty || 0.1
   });
   console.log(`   Decayed: ${results.decay.decayed} facts`);
 
   // 2. Demote low-relevance facts
   console.log('\n2. Demoting low-relevance facts...');
   results.demotion = await memoryDb.demoteToColdStorage({
-    relevanceThreshold: config.automaticMemory?.demotion?.relevanceThreshold || 0.3
+    relevanceThreshold: config.memory?.automatic?.demotion?.relevanceThreshold || 0.3
   });
   console.log(`   Demoted: ${results.demotion.demoted} facts`);
 
@@ -202,7 +202,7 @@ async function autoCompact(config) {
   // 4. Purge old cold facts
   console.log('\n4. Purging old cold storage...');
   results.purge = await memoryDb.purgeColdFacts({
-    coldRetentionDays: config.automaticMemory?.demotion?.coldRetentionDays || 90
+    coldRetentionDays: config.memory?.automatic?.demotion?.coldRetentionDays || 90
   });
   console.log(`   Purged: ${results.purge.purged} facts`);
 
@@ -267,8 +267,8 @@ async function showPromotionCandidates(config) {
   console.log('═'.repeat(70));
 
   const candidates = await memoryDb.getPromotionCandidates({
-    minRelevance: config.automaticPromotion?.minRelevance || 0.8,
-    minAccessCount: config.automaticPromotion?.threshold || 3
+    minRelevance: config.memory?.promotion?.minRelevance || 0.8,
+    minAccessCount: config.memory?.promotion?.threshold || 3
   });
 
   if (candidates.length === 0) {

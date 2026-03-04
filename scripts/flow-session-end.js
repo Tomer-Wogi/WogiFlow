@@ -217,7 +217,7 @@ function updateProgress() {
 function extractSkillLearnings() {
   if (!fileExists(PATHS.config)) return;
 
-  const skillLearning = getConfigValue('skillLearning', {});
+  const skillLearning = getConfigValue('learning.skill', {});
 
   if (skillLearning.enabled && skillLearning.autoExtract) {
     console.log('');
@@ -244,7 +244,7 @@ function analyzeSessionForLearnings() {
   if (!sessionLearning) return;
 
   const config = getConfig();
-  const sessionLearningConfig = config.sessionLearning || {};
+  const sessionLearningConfig = config.learning?.session || {};
 
   // Check if enabled (default: true)
   if (sessionLearningConfig.enabled === false) return;
@@ -391,7 +391,7 @@ function analyzeCrossSessionPatterns() {
   if (!sessionLearning || !patternEnforcer) return null;
 
   const config = getConfig();
-  const crossSessionConfig = config.crossSessionLearning || {};
+  const crossSessionConfig = config.learning?.crossSession || {};
 
   // Check if enabled (default: true)
   if (crossSessionConfig.enabled === false) return null;
@@ -608,7 +608,7 @@ async function automaticMemoryManagement() {
   if (!memoryDb) return;
 
   const config = getConfig();
-  const memConfig = config.automaticMemory || {};
+  const memConfig = config.memory?.automatic || {};
 
   if (!memConfig.enabled) return;
 
@@ -665,7 +665,7 @@ async function automaticMemoryManagement() {
     }
 
     // 3. Check for promotion candidates and auto-promote if enabled
-    const promoConfig = config.automaticPromotion || {};
+    const promoConfig = config.memory?.promotion || {};
     if (promoConfig.enabled) {
       const candidates = await memoryDb.getPromotionCandidates({
         minRelevance: promoConfig.minRelevance || 0.8,

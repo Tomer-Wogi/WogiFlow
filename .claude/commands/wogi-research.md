@@ -198,7 +198,6 @@ In `.workflow/config.json`:
   "research": {
     "enabled": true,
     "defaultDepth": "standard",
-    "strictMode": true,
     "autoTrigger": true,
     "maxTokensPerDepth": {
       "quick": 5000,
@@ -265,7 +264,7 @@ This will:
 
 ## Integration with Hooks
 
-When `research.strictMode` is enabled and `research.autoTrigger` is true:
+When `research.requireCitations` is enabled and `research.autoTrigger` is true:
 - Capability/feasibility questions automatically trigger research
 - Claims without citations are flagged
 - Negative claims require exhaustive search evidence

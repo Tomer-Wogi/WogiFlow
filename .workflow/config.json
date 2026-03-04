@@ -1032,7 +1032,6 @@
   "research": {
     "enabled": false,
     "defaultDepth": "standard",
-    "strictMode": true,
     "autoTrigger": true,
     "requireVerificationFormat": true,
     "mandatoryInExplorePhase": true,

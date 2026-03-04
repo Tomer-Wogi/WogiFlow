@@ -209,8 +209,8 @@ async function listCandidates(config) {
   console.log('═'.repeat(70));
 
   const candidates = await memoryDb.getPromotionCandidates({
-    minRelevance: config.automaticPromotion?.minRelevance || 0.8,
-    minAccessCount: config.automaticPromotion?.threshold || 3
+    minRelevance: config.memory?.promotion?.minRelevance || 0.8,
+    minAccessCount: config.memory?.promotion?.threshold || 3
   });
 
   const decisionsContent = loadDecisions();
@@ -324,8 +324,8 @@ async function autoPromote(config) {
   console.log('═'.repeat(70));
 
   const candidates = await memoryDb.getPromotionCandidates({
-    minRelevance: config.automaticPromotion?.minRelevance || 0.8,
-    minAccessCount: config.automaticPromotion?.threshold || 3
+    minRelevance: config.memory?.promotion?.minRelevance || 0.8,
+    minAccessCount: config.memory?.promotion?.threshold || 3
   });
 
   const decisionsContent = loadDecisions();
@@ -378,18 +378,18 @@ async function showStatus(config) {
 
   const stats = await memoryDb.getStats();
   const candidates = await memoryDb.getPromotionCandidates({
-    minRelevance: config.automaticPromotion?.minRelevance || 0.8,
-    minAccessCount: config.automaticPromotion?.threshold || 3
+    minRelevance: config.memory?.promotion?.minRelevance || 0.8,
+    minAccessCount: config.memory?.promotion?.threshold || 3
   });
 
-  const autoEnabled = config.automaticPromotion?.enabled || false;
-  const requireApproval = config.automaticPromotion?.requireApproval !== false;
+  const autoEnabled = config.memory?.promotion?.enabled || false;
+  const requireApproval = config.memory?.promotion?.requireApproval !== false;
 
   console.log(`\n${color('blue', 'Configuration')}`);
   console.log(`  Auto-promotion:   ${autoEnabled ? color('green', 'Enabled') : color('gray', 'Disabled')}`);
   console.log(`  Require approval: ${requireApproval ? 'Yes' : 'No'}`);
-  console.log(`  Min relevance:    ${(config.automaticPromotion?.minRelevance || 0.8) * 100}%`);
-  console.log(`  Min accesses:     ${config.automaticPromotion?.threshold || 3}`);
+  console.log(`  Min relevance:    ${(config.memory?.promotion?.minRelevance || 0.8) * 100}%`);
+  console.log(`  Min accesses:     ${config.memory?.promotion?.threshold || 3}`);
 
   console.log(`\n${color('blue', 'Memory Status')}`);
   console.log(`  Total facts:      ${stats.facts.total}`);
@@ -453,11 +453,13 @@ Promotion Criteria:
   - Not already marked as promoted
 
 Configure in config.json:
-  "automaticPromotion": {
-    "enabled": true,      // Enable auto-promotion
-    "threshold": 3,       // Min access count
-    "minRelevance": 0.8,  // Min relevance score
-    "requireApproval": true
+  "memory": {
+    "promotion": {
+      "enabled": true,      // Enable auto-promotion
+      "threshold": 3,       // Min access count
+      "minRelevance": 0.8,  // Min relevance score
+      "requireApproval": true
+    }
   }
 
 Examples:

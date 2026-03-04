@@ -141,7 +141,7 @@ function getResearchConfig() {
   return {
     enabled: research.enabled !== false,
     defaultDepth: research.defaultDepth || DEPTHS.STANDARD,
-    strictMode: research.strictMode !== false,
+    requireCitations: research.requireCitations !== false,
     autoTrigger: research.autoTrigger !== false,
     maxTokensPerDepth: research.maxTokensPerDepth || {
       [DEPTHS.QUICK]: 5000,
@@ -997,7 +997,7 @@ function checkResearchGate(question) {
     };
   }
 
-  if (!config.strictMode) {
+  if (!config.requireCitations) {
     return {
       required: false,
       type: trigger.type,
