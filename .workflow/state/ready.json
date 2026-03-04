@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cr-a3b1c2",
+      "title": "Fix 21 review findings from hardcoded-assumptions epic review",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-04T16:30:00.000Z",
+      "completedAt": "2026-03-04T17:00:00.000Z"
+    },
+    {
       "id": "wf-f19b3ccb",
       "title": "Framework Detection: Add Missing Frameworks and Multi-Language",
       "type": "feature",

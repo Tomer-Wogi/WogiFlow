@@ -20,7 +20,7 @@
 const fs = require('fs');
 const path = require('path');
 const { detectFramework } = require('./flow-figma-index');
-const { getProjectRoot, addRequestLogEntry, addAppMapComponent } = require('./flow-utils');
+const { getProjectRoot, getConfig, addRequestLogEntry, addAppMapComponent } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -492,13 +492,10 @@ ${this.formatCSSPropertiesForPrompt(figma.css)}
   }
 
   _detectSourceRoot() {
-    const fs = require('fs');
-    const path = require('path');
-    const root = process.cwd();
     for (const dir of ['src', 'app', 'lib']) {
-      if (fs.existsSync(path.join(root, dir))) return dir;
+      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) return dir;
     }
-    return 'src';
+    return '.';
   }
 
   suggestName(figmaName) {
@@ -589,7 +586,12 @@ async function main() {
     process.exit(1);
   }
 
-  const decisions = JSON.parse(fs.readFileSync(decisionsPath, 'utf-8'));
+  const { safeJsonParse } = require('./flow-utils');
+  const decisions = safeJsonParse(decisionsPath, null);
+  if (!decisions) {
+    console.error('Error: Could not parse figma decisions file.');
+    process.exit(1);
+  }
   const generator = new CodeGenerator(decisions);
   const output = generator.generate();
 

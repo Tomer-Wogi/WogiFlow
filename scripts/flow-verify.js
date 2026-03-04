@@ -660,8 +660,9 @@ function generateFixSuggestions(gateName, errors) {
     const hasInjection = errors.some(e => e.code === 'INJECTION_RISK');
 
     if (hasCritical || hasHigh) {
-      suggestions.push('Run `npm audit fix` to auto-fix vulnerabilities');
-      suggestions.push('Run `npm audit fix --force` for breaking changes (review carefully)');
+      const auditExec = getExecCommand(detectPackageManager());
+      suggestions.push(`Run \`${auditExec} audit fix\` to auto-fix vulnerabilities`);
+      suggestions.push(`Run \`${auditExec} audit fix --force\` for breaking changes (review carefully)`);
     }
     if (hasSecrets) {
       suggestions.push('Remove hardcoded secrets and use environment variables');

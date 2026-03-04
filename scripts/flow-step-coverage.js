@@ -10,8 +10,8 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
-const { getCommand, detectPackageManager } = require('./flow-script-resolver');
+const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
+const { getCommand, getExec } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -144,7 +144,7 @@ async function runCoverageTests() {
   if (!fs.existsSync(packagePath)) return null;
 
   try {
-    const pkg = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    const pkg = safeJsonParse(packagePath, {});
     const scripts = pkg.scripts || {};
 
     // Try to find coverage command via resolver
@@ -158,7 +158,7 @@ async function runCoverageTests() {
           coverageCmd = `${testCmd} -- --coverage --json --outputFile=coverage/coverage-summary.json`;
         } else if (scripts.test.includes('mocha') || scripts.test.includes('tap')) {
           // Mocha/tap projects typically use c8 or nyc for coverage
-          coverageCmd = `npx c8 ${testCmd}`;
+          coverageCmd = `${getExec('c8', [])} ${testCmd}`;
         }
       }
     }

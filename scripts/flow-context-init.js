@@ -197,7 +197,7 @@ function detectStack() {
     stack.packageManager = 'pnpm';
   } else if (fs.existsSync(path.join(PROJECT_ROOT, 'yarn.lock'))) {
     stack.packageManager = 'yarn';
-  } else if (fs.existsSync(path.join(PROJECT_ROOT, 'bun.lockb'))) {
+  } else if (fs.existsSync(path.join(PROJECT_ROOT, 'bun.lockb')) || fs.existsSync(path.join(PROJECT_ROOT, 'bun.lock'))) {
     stack.packageManager = 'bun';
     stack.runtime = 'Bun';
   } else if (fs.existsSync(path.join(PROJECT_ROOT, 'package-lock.json'))) {

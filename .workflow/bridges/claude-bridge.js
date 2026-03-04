@@ -13,6 +13,10 @@ const fs = require('fs');
 const path = require('path');
 const BaseBridge = require('./base-bridge');
 
+// PM-aware script resolution (optional — graceful fallback if not available)
+let _scriptResolver = null;
+try { _scriptResolver = require('../../scripts/flow-script-resolver'); } catch { /* not available during install */ }
+
 class ClaudeBridge extends BaseBridge {
   constructor(options = {}) {
     super('claude-code', options);
@@ -68,23 +72,20 @@ class ClaudeBridge extends BaseBridge {
       return this.generateDefaultClaudeMd(config);
     }
 
+    // Clone config to avoid mutating caller's object
+    config = { ...config, scripts: { ...(config.scripts || {}) } };
     // Inject default script values where config has null/undefined
     // Use flow-script-resolver for PM-aware defaults
-    if (!config.scripts) {
-      config.scripts = {};
-    }
-    if (!config.scripts.typecheck) {
+    if (!config.scripts.typecheck && _scriptResolver) {
       try {
-        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
         const hasTsConfig = fs.existsSync(path.join(this.projectRoot, 'tsconfig.json'));
-        config.scripts.typecheck = hasTsConfig ? (getCommand('typecheck') || getExec('tsc', ['--noEmit'])) : '';
+        config.scripts.typecheck = hasTsConfig ? (_scriptResolver.getCommand('typecheck') || _scriptResolver.getExec('tsc', ['--noEmit'])) : '';
       } catch { config.scripts.typecheck = ''; }
     }
-    if (!config.scripts.lint) {
+    if (!config.scripts.lint && _scriptResolver) {
       try {
-        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
-        config.scripts.lint = getCommand('lint') || getExec('eslint', ['[file]', '--fix']);
-      } catch { config.scripts.lint = 'npx eslint [file] --fix'; }
+        config.scripts.lint = _scriptResolver.getCommand('lint') || _scriptResolver.getExec('eslint', ['{file}', '--fix']);
+      } catch { config.scripts.lint = 'npx eslint {file} --fix'; }
     }
 
     let content = template;
@@ -188,18 +189,16 @@ cat .workflow/state/decisions.md # Project rules
     let typecheckCmd = config.scripts?.typecheck || '';
     let lintCmd = config.scripts?.lint || '';
     // PM-aware fallbacks
-    if (!typecheckCmd) {
+    if (!typecheckCmd && _scriptResolver) {
       try {
-        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
         const hasTsConfig = fs.existsSync(path.join(this.projectRoot, 'tsconfig.json'));
-        typecheckCmd = hasTsConfig ? (getCommand('typecheck') || getExec('tsc', ['--noEmit'])) : '';
+        typecheckCmd = hasTsConfig ? (_scriptResolver.getCommand('typecheck') || _scriptResolver.getExec('tsc', ['--noEmit'])) : '';
       } catch { typecheckCmd = ''; }
     }
-    if (!lintCmd) {
+    if (!lintCmd && _scriptResolver) {
       try {
-        const { getCommand, getExec } = require('../../scripts/flow-script-resolver');
-        lintCmd = getCommand('lint') || getExec('eslint', ['[file]', '--fix']);
-      } catch { lintCmd = 'npx eslint [file] --fix'; }
+        lintCmd = _scriptResolver.getCommand('lint') || _scriptResolver.getExec('eslint', ['{file}', '--fix']);
+      } catch { lintCmd = 'npx eslint {file} --fix'; }
     }
     sections.push(`
 ## Auto-Validation (CRITICAL)

@@ -32,9 +32,11 @@ function resolvePathAlias(alias) {
     const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
     if (!fs.existsSync(tsconfigPath)) return null;
     const content = fs.readFileSync(tsconfigPath, 'utf-8');
-    // Strip comments for JSON.parse
+    // Strip comments then use safeJsonParseString for prototype-pollution protection
     const stripped = content.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const tsconfig = JSON.parse(stripped);
+    const { safeJsonParseString } = require('./flow-io');
+    const tsconfig = safeJsonParseString(stripped, null);
+    if (!tsconfig) return null;
     const paths = tsconfig.compilerOptions?.paths;
     if (!paths || !paths[alias]) return null;
     const mapped = paths[alias][0]; // e.g., './src/*'
@@ -50,7 +52,7 @@ function detectSourceRoot() {
   for (const dir of ['src', 'app', 'lib']) {
     if (fs.existsSync(path.join(PROJECT_ROOT, dir))) return dir;
   }
-  return 'src'; // fallback
+  return '.'; // fallback to project root
 }
 
 // ============================================================
@@ -366,7 +368,9 @@ function resolveImportPath(importSource, fromDir) {
   const extensions = ['.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js'];
 
   for (const ext of extensions) {
-    const candidate = path.join(fromDir, importSource + ext);
+    const candidate = path.resolve(fromDir, importSource + ext);
+    // Path containment check — reject paths that escape project root
+    if (!candidate.startsWith(PROJECT_ROOT + path.sep) && candidate !== PROJECT_ROOT) continue;
     const relPath = path.relative(PROJECT_ROOT, candidate);
 
     if (fs.existsSync(path.join(PROJECT_ROOT, relPath))) {
@@ -525,7 +529,9 @@ async function getSmartContext(taskDescription, options = {}) {
     return { files: [], reason: 'No component index' };
   }
 
-  const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+  const { safeJsonParse } = require('./flow-utils');
+  const index = safeJsonParse(indexPath, null);
+  if (!index) return { files: [], reason: 'Failed to parse component index' };
   const desc = taskDescription.toLowerCase();
 
   const relevantFiles = [];

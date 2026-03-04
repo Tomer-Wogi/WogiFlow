@@ -56,7 +56,11 @@ function getValidationCommands(ext) {
   })();
 
   const tscCmd = hasTsConfig ? (typecheckCmd || getExec('tsc', ['--noEmit'])) : null;
-  const eslintCmd = lintCmd || getExec('eslint', ['{file}']);
+  // Only use eslint fallback if ESLint is detectable in the project
+  const hasEslint = (() => {
+    try { return fs.existsSync(path.join(PATHS.root, 'node_modules', '.bin', 'eslint')); } catch { return false; }
+  })();
+  const eslintCmd = lintCmd || (hasEslint ? getExec('eslint', ['{file}']) : null);
 
   const defaults = {};
   if (tscCmd) defaults['.ts'] = [tscCmd];

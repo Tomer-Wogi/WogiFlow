@@ -23,6 +23,7 @@ const { getExecParts, getCommand } = require('./flow-script-resolver');
 const PROJECT_ROOT = getProjectRoot();
 const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
 const READY_PATH = path.join(STATE_DIR, 'ready.json');
+const SAFE_PATH = /^[a-zA-Z0-9_.\-/]+$/;
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -53,7 +54,6 @@ function findTestFiles(taskId, taskData) {
 
   // Check if task has explicit test files (validate paths to prevent injection)
   if (taskData?.testFiles) {
-    const SAFE_PATH = /^[a-zA-Z0-9_.\-/]+$/;
     for (const tf of taskData.testFiles) {
       if (typeof tf === 'string' && SAFE_PATH.test(tf) && !tf.includes('..')) {
         const resolved = path.resolve(PROJECT_ROOT, tf);
@@ -141,7 +141,11 @@ function runTaskTests(taskId, taskData) {
 
   try {
     // Try to run tests with common test runners (using execFileSync for injection safety)
-    const { cmd, args } = detectTestRunner(testFiles);
+    const runner = detectTestRunner(testFiles);
+    if (!runner) {
+      return { taskId, passed: true, skipped: true, reason: 'No test runner detected', testFiles };
+    }
+    const { cmd, args } = runner;
     execFileSync(cmd, args, {
       cwd: PROJECT_ROOT,
       stdio: 'pipe',
@@ -204,7 +208,10 @@ function detectTestRunner(testFiles) {
         const testCmd = getCommand('test');
         if (testCmd) {
           const parts = testCmd.split(/\s+/);
-          return { cmd: parts[0], args: [...parts.slice(1), '--', '--passWithNoTests'] };
+          // --passWithNoTests is Jest/Vitest-specific — only add if runner appears to be one of them
+          const isJestLike = parts.some(p => /jest|vitest/.test(p));
+          const extraArgs = isJestLike ? ['--', '--passWithNoTests'] : [];
+          return { cmd: parts[0], args: [...parts.slice(1), ...extraArgs] };
         }
         // Try node:test as last resort if test files exist
         if (testFiles.length > 0) {
