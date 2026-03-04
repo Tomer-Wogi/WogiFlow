@@ -33,7 +33,8 @@ const {
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
-const { loadRegistry, loadStats } = require('./flow-models');
+// Import from shared types module (breaks circular dep with flow-models.js)
+const { loadRegistry, loadStats } = require('./flow-model-types');
 
 // Smart Context System integration
 let contextGatherer = null;

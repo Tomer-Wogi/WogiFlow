@@ -1,24 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T13:16:11.390Z",
+  "lastUpdated": "2026-03-04T13:21:18.060Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-ef0fba18",
-      "title": "Large Module Refactoring",
-      "type": "refactor",
-      "feature": "core",
-      "status": "ready",
-      "priority": "P3",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "flow-long-input.js (8443 lines) reduced to ~500-line orchestrator, utility functions moved to sub-modules",
-        "Learning pipeline gets flow-learning-orchestrator.js facade coordinating 6+ modules",
-        "Model system circular dependency (flow-models.js <-> flow-model-router.js) fixed via shared types module",
-        "Context family gets flow-context-manager.js facade coordinating 8 modules"
-      ],
-      "createdAt": "2026-03-04T11:43:35.415Z"
-    },
     {
       "id": "wf-6935e70c",
       "title": "Config Schema & Tooling Sync",
@@ -1634,6 +1617,25 @@
       "createdAt": "2026-03-04T11:43:35.415Z",
       "startedAt": "2026-03-04T13:13:02.171Z",
       "completedAt": "2026-03-04T13:16:11.389Z"
+    },
+    {
+      "id": "wf-ef0fba18",
+      "title": "Large Module Refactoring",
+      "type": "refactor",
+      "feature": "core",
+      "status": "recentlyCompleted",
+      "priority": "P3",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "flow-long-input.js (8443 lines) reduced to ~500-line orchestrator, utility functions moved to sub-modules",
+        "Learning pipeline gets flow-learning-orchestrator.js facade coordinating 6+ modules",
+        "Model system circular dependency (flow-models.js <-> flow-model-router.js) fixed via shared types module",
+        "Context family gets flow-context-manager.js facade coordinating 8 modules"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z",
+      "startedAt": "2026-03-04T13:16:33.072Z",
+      "completedAt": "2026-03-04T13:21:18.060Z"
     }
   ],
   "backlog": [

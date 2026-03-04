@@ -37,15 +37,20 @@ const {
   showHelp: showHelpGeneric
 } = require('./flow-utils');
 
+// Shared model registry/stats (extracted to break circular dep)
+const {
+  MODELS_DIR,
+  REGISTRY_PATH,
+  STATS_PATH,
+  loadRegistry,
+  loadStats,
+  saveStats
+} = require('./flow-model-types');
+
 // Phase 2: Import task analyzer and model router
 const { analyzeTask } = require('./flow-task-analyzer');
 const { routeTask, ROUTING_STRATEGIES } = require('./flow-model-router');
 const { composePrompt } = require('./flow-prompt-composer');
-
-// Paths
-const MODELS_DIR = path.join(PROJECT_ROOT, '.workflow', 'models');
-const REGISTRY_PATH = path.join(MODELS_DIR, 'registry.json');
-const STATS_PATH = path.join(MODELS_DIR, 'stats.json');
 
 // ============================================================
 // Constants (extracted magic numbers)
@@ -154,81 +159,7 @@ function calculateTaskCost(model, taskData) {
   return inputCost + outputCost;
 }
 
-// ============================================================
-// Registry Loading
-// ============================================================
-
-/**
- * Load the model registry with safety checks and validation
- * @returns {Object|null} Validated registry data or null if invalid
- */
-function loadRegistry() {
-  if (!fileExists(REGISTRY_PATH)) {
-    return null;
-  }
-
-  const registry = safeJsonParse(REGISTRY_PATH);
-
-  // Validate registry structure
-  if (!registry || typeof registry !== 'object') {
-    return null;
-  }
-
-  // Ensure required top-level fields exist
-  if (!registry.version || !registry.models || typeof registry.models !== 'object') {
-    warn('Invalid registry structure: missing version or models');
-    return null;
-  }
-
-  return registry;
-}
-
-/**
- * Load model statistics with safety checks
- */
-function loadStats() {
-  const defaultStats = {
-    version: '1.0.0',
-    lastUpdated: new Date().toISOString(),
-    trackingSince: new Date().toISOString(),
-    summary: {
-      totalTasks: 0,
-      totalTokensUsed: 0,
-      totalCost: 0
-    },
-    byModel: {},
-    byTaskType: {},
-    failureStats: {
-      totalFailures: 0,
-      byCategory: {}
-    },
-    routingStats: {
-      escalations: 0,
-      fallbacks: 0
-    },
-    recentTasks: []
-  };
-
-  if (!fileExists(STATS_PATH)) {
-    return defaultStats;
-  }
-
-  const parsed = safeJsonParse(STATS_PATH);
-  return parsed || defaultStats;
-}
-
-/**
- * Save model statistics
- */
-function saveStats(stats) {
-  stats.lastUpdated = new Date().toISOString();
-
-  if (!dirExists(MODELS_DIR)) {
-    fs.mkdirSync(MODELS_DIR, { recursive: true });
-  }
-
-  fs.writeFileSync(STATS_PATH, JSON.stringify(stats, null, 2));
-}
+// NOTE: loadRegistry, loadStats, saveStats are imported from flow-model-types.js
 
 // ============================================================
 // Model Information
