@@ -9,7 +9,7 @@
 
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
-const { setRoutingPending } = require('../../core/routing-gate');
+const { setRoutingPending, clearRoutingPending } = require('../../core/routing-gate');
 const { getPhaseContextPrompt } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
@@ -136,8 +136,20 @@ async function main() {
           console.error(`[Hook] Routing gate set failed: ${err.message}`);
         }
       }
-    } else if (process.env.DEBUG) {
-      console.error(`[Hook] Skipping routing flag — prompt is a /wogi-* command`);
+    } else {
+      // v6.2: Actively CLEAR any existing routing flag when user explicitly types a /wogi-* command.
+      // Previously we only skipped setting it, but a flag from a prior prompt would persist and
+      // block tool calls inside the /wogi-* command when Claude Code expands it inline (not via Skill tool).
+      try {
+        clearRoutingPending();
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Cleared routing flag — prompt is a /wogi-* command`);
+        }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Routing gate clear failed: ${err.message}`);
+        }
+      }
     }
 
     // Phase context injection (just-in-time phase-specific instructions)

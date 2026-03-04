@@ -1946,3 +1946,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Full documentation overhaul — update KB and README to match current codebase"
 **Result**: Complete overhaul of 40+ documentation files. README.md updated (version, features, commands, file structure). 3 major KB rewrites (all-options.md config paths, completion.md removed /wogi-done, figma-analyzer.md rewritten for MCP). ~20 KB files fixed (config paths, task ID format, removed nonexistent commands). 10 new KB articles written (project-audit, eval-system, quick-capture, debug-hypothesis, peer-review, branch-finalization, plan-management, rules-management, browser-debugging, long-input-extraction). Category READMEs updated with new articles and correct config paths.
 **Files**: `README.md`, `.claude/docs/knowledge-base/**/*.md` (40+ files)
+
+### R-149 | 2026-03-04 19:30
+**Type**: fix
+**Tags**: #component:routing-gate #hook:user-prompt-submit
+**Task**: wf-ecb9b9e7
+**Request**: "Fix routing gate blocking explicit /wogi-* commands"
+**Result**: Fixed bug where PreToolUse hook blocked tool calls inside explicitly invoked /wogi-* commands. Root cause: UserPromptSubmit only skipped SETTING the routing flag for /wogi-* prompts but didn't CLEAR an existing flag from a previous prompt. Fix: actively call clearRoutingPending() when the prompt IS a /wogi-* command.
+**Files**: `scripts/hooks/entry/claude-code/user-prompt-submit.js`
