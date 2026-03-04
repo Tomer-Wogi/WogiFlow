@@ -92,6 +92,19 @@ function handleSessionEnd(input) {
     } catch (err) {
       // Non-critical — community sync module may not be available
     }
+
+    // Memory pipeline: remember session learnings (fire-and-forget)
+    try {
+      const memoryDb = require('../../flow-memory-db');
+      const summary = input.sessionSummary || input.summary || '';
+      if (summary) {
+        memoryDb.rememberSessionLearnings(summary).catch(() => {
+          // Non-critical - memory pipeline may not be available
+        });
+      }
+    } catch (err) {
+      // Non-critical — memory DB may not be available
+    }
   } catch (err) {
     result.warning = `Session end handler error: ${err.message}`;
   }

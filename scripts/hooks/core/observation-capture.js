@@ -345,6 +345,19 @@ async function captureObservation(options) {
       rejectionReason: rejectionReason || (!success ? (outputSummary || '').slice(0, 500) : null)
     });
 
+    // Memory pipeline: remember failures for current task (fire-and-forget)
+    if (!success && contextTaskId) {
+      try {
+        db.rememberFailure(
+          contextTaskId,
+          inputSummary || `${toolName} call`,
+          outputSummary || 'unknown error'
+        ).catch(() => { /* non-blocking */ });
+      } catch (err) {
+        // Non-critical - memory pipeline may not be available
+      }
+    }
+
     return { stored: true, id: result.id };
 
   } catch (err) {

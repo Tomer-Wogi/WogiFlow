@@ -209,6 +209,21 @@ async function handleTaskCompleted(input) {
       // Non-critical - memory DB may not be available
     }
 
+    // Memory pipeline: remember task completion decisions (fire-and-forget)
+    try {
+      const memoryDb = require('../../flow-memory-db');
+      const decisions = input.decisions || input.summary || completedTask.title || '';
+      memoryDb.rememberCompletion(
+        completedTask.id,
+        completedTask.title || '',
+        typeof decisions === 'string' ? decisions : JSON.stringify(decisions)
+      ).catch(() => {
+        // Non-critical - memory pipeline may not be available
+      });
+    } catch {
+      // Non-critical - memory DB may not be available
+    }
+
     // Generate completion summary (fire-and-forget)
     if (result.completed) {
       try {

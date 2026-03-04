@@ -667,6 +667,26 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // Memory pipeline recall (surface relevant memories for current task)
+  try {
+    const currentTask = context.currentTask;
+    if (currentTask) {
+      const memoryDb = require('../../flow-memory-db');
+      const memories = await memoryDb.recallForTask(
+        currentTask.title || '',
+        currentTask.type || ''
+      );
+      if (memories) {
+        context.relevantMemories = memories;
+      }
+    }
+  } catch (err) {
+    // Non-critical - memory pipeline may not be initialized
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Memory recall failed: ${err.message}`);
+    }
+  }
+
   // Completed skill invocations (prevents re-execution after context compaction)
   // Claude Code re-injects "The following skills were invoked in this session" with
   // original ARGUMENTS, which can cause the AI to re-execute completed one-time actions
@@ -878,6 +898,12 @@ function formatContextForInjection(context) {
       }
     }
     output += '\n';
+  }
+
+  // Relevant memories from pipeline (recalled for current task)
+  if (ctx.relevantMemories) {
+    output += `### Relevant Memories\n`;
+    output += ctx.relevantMemories + '\n\n';
   }
 
   // Completed skills warning (prevents re-execution from stale system-reminders)

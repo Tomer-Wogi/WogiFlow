@@ -63,14 +63,17 @@ const DB_PATH = path.join(MEMORY_DIR, 'local.db');
 // Safe JSON Helpers (using shared flow-utils where available)
 // ============================================================
 
-// Import safeJsonParseString from flow-utils if available
+// Import safeJsonParseString and getConfig from flow-utils if available
 let safeJsonParseString;
+let getConfig;
 try {
   const flowUtils = require('./flow-utils');
   safeJsonParseString = flowUtils.safeJsonParseString;
+  getConfig = flowUtils.getConfig;
 } catch (err) {
   // Fallback if flow-utils not available (e.g., in MCP server context)
   safeJsonParseString = null;
+  getConfig = null;
 }
 
 /**
@@ -2250,6 +2253,179 @@ async function generateSectionEmbeddings() {
 }
 
 // ============================================================
+// Pipeline Memory Functions (memory.level gated)
+// ============================================================
+
+/**
+ * Get the current memory pipeline level from config.
+ * Returns 'off' if config is unavailable or level is not set.
+ * @returns {string} - 'off' | 'minimal' | 'standard' | 'full'
+ */
+function getMemoryLevel() {
+  try {
+    if (!getConfig) return 'off';
+    const config = getConfig();
+    return config.memory?.level || 'off';
+  } catch (err) {
+    return 'off';
+  }
+}
+
+/**
+ * Recall relevant memories for a task. Returns formatted string or null.
+ * Used at task start to inject relevant context.
+ * Active at any level except 'off'.
+ *
+ * @param {string} taskTitle - Title of the task
+ * @param {string} taskType - Type of the task (feature, bugfix, etc.)
+ * @param {Object} [options] - Optional overrides
+ * @param {number} [options.limit] - Max results (default 5)
+ * @param {number} [options.minRelevance] - Min relevance 0-100 (default 30)
+ * @returns {Promise<string|null>} - Formatted memory string or null
+ */
+async function recallForTask(taskTitle, taskType, options = {}) {
+  try {
+    const level = getMemoryLevel();
+    if (level === 'off') return null;
+
+    const query = `${taskTitle || ''} ${taskType || ''}`.trim();
+    if (!query) return null;
+
+    const limit = options.limit || 5;
+    const minRelevance = options.minRelevance || 30;
+
+    const results = await searchFacts({ query, limit, trackAccess: true });
+    if (!results || results.length === 0) return null;
+
+    // Filter by minimum relevance score (searchFacts returns relevance as 0-100)
+    const relevant = results.filter(r => r.relevance >= minRelevance);
+    if (relevant.length === 0) return null;
+
+    return relevant.map(r => `- [${r.category || 'general'}] ${r.fact}`).join('\n');
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[recallForTask] Error: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+/**
+ * Remember a failed approach so it's not retried.
+ * Fires on loop retry detection.
+ * Active at 'standard' or 'full' level.
+ *
+ * @param {string} taskId - Task ID
+ * @param {string} approach - Description of the failed approach
+ * @param {string} error - Error message
+ * @returns {Promise<void>}
+ */
+async function rememberFailure(taskId, approach, error) {
+  try {
+    const level = getMemoryLevel();
+    if (level === 'off' || level === 'minimal') return;
+
+    const fact = `Failed approach for ${taskId}: ${approach}. Error: ${error}`;
+    await storeFact({
+      fact,
+      category: 'failure',
+      scope: 'local',
+      sourceContext: JSON.stringify({ taskId, source: 'pipeline', type: 'failure' })
+    });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[rememberFailure] Error: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Remember key decisions from a completed task.
+ * Fires on taskCompleted hook.
+ * Active at 'standard' or 'full' level.
+ *
+ * @param {string} taskId - Task ID
+ * @param {string} title - Task title
+ * @param {string} decisions - Key decisions made during the task
+ * @returns {Promise<void>}
+ */
+async function rememberCompletion(taskId, title, decisions) {
+  try {
+    const level = getMemoryLevel();
+    if (level === 'off' || level === 'minimal') return;
+
+    const fact = `Completed ${taskId} (${title || 'untitled'}). Decisions: ${decisions || 'none recorded'}`;
+    await storeFact({
+      fact,
+      category: 'decision',
+      scope: 'local',
+      sourceContext: JSON.stringify({ taskId, source: 'pipeline', type: 'completion' })
+    });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[rememberCompletion] Error: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Remember a user correction immediately.
+ * Fires when correction is detected.
+ * Active at any level except 'off' (minimal+).
+ *
+ * @param {string} correction - The correction text
+ * @param {string} context - Context of the correction
+ * @returns {Promise<void>}
+ */
+async function rememberCorrection(correction, context) {
+  try {
+    const level = getMemoryLevel();
+    if (level === 'off') return;
+
+    const fact = `Correction: ${correction}. Context: ${context || 'none'}`;
+    await storeFact({
+      fact,
+      category: 'correction',
+      scope: 'local',
+      sourceContext: JSON.stringify({ source: 'pipeline', type: 'correction', priority: 'high' })
+    });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[rememberCorrection] Error: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Remember session learnings at session end.
+ * Fires on SessionEnd hook.
+ * Active at 'standard' or 'full' level.
+ *
+ * @param {string} summary - Summary of session learnings
+ * @returns {Promise<void>}
+ */
+async function rememberSessionLearnings(summary) {
+  try {
+    const level = getMemoryLevel();
+    if (level === 'off' || level === 'minimal') return;
+
+    if (!summary || typeof summary !== 'string' || summary.trim().length === 0) return;
+
+    const fact = `Session learnings: ${summary}`;
+    await storeFact({
+      fact,
+      category: 'session-learning',
+      scope: 'local',
+      sourceContext: JSON.stringify({ source: 'pipeline', type: 'session-learning' })
+    });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[rememberSessionLearnings] Error: ${err.message}`);
+    }
+  }
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -2329,6 +2505,13 @@ module.exports = {
   updateObservationStatus,
   markTaskObservationsCommitted,
   searchRejectedObservations,
+
+  // Pipeline Memory (memory.level gated)
+  recallForTask,
+  rememberFailure,
+  rememberCompletion,
+  rememberCorrection,
+  rememberSessionLearnings,
 
   // Paths
   DB_PATH,
