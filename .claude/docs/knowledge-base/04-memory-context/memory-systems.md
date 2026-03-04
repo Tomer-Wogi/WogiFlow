@@ -25,18 +25,20 @@ WogiFlow has multiple memory systems:
     "maxLocalFacts": 1000,
     "autoRemember": false
   },
-  "automaticMemory": {
-    "enabled": true,
-    "entropyThreshold": 0.7,
-    "compactOnSessionEnd": true,
-    "relevanceDecay": {
+  "memory": {
+    "automatic": {
       "enabled": true,
-      "decayRate": 0.033,
-      "neverAccessedPenalty": 0.1
-    },
-    "demotion": {
-      "relevanceThreshold": 0.3,
-      "coldRetentionDays": 90
+      "entropyThreshold": 0.7,
+      "compactOnSessionEnd": true,
+      "relevanceDecay": {
+        "enabled": true,
+        "decayRate": 0.033,
+        "neverAccessedPenalty": 0.1
+      },
+      "demotion": {
+        "relevanceThreshold": 0.3,
+        "coldRetentionDays": 90
+      }
     }
   }
 }
@@ -85,7 +87,7 @@ Active session context:
 ```javascript
 const memoryBlocks = {
   currentTask: {
-    id: "TASK-015",
+    id: "wf-a1b2c3d4",
     title: "Add authentication",
     acceptanceCriteria: [...]
   },
@@ -111,7 +113,7 @@ const memoryBlocks = {
 addKeyFact("API uses v2 endpoints");
 
 // Set current task
-setCurrentTask("TASK-015", "Add authentication");
+setCurrentTask("wf-a1b2c3d4", "Add authentication");
 
 // Clear on completion
 clearCurrentTask();
@@ -144,11 +146,13 @@ Relevance Score
 
 ```json
 {
-  "automaticMemory": {
-    "relevanceDecay": {
-      "enabled": true,
-      "decayRate": 0.033,            // ~3% per day
-      "neverAccessedPenalty": 0.1    // Extra penalty if never used
+  "memory": {
+    "automatic": {
+      "relevanceDecay": {
+        "enabled": true,
+        "decayRate": 0.033,            // ~3% per day
+        "neverAccessedPenalty": 0.1    // Extra penalty if never used
+      }
     }
   }
 }
@@ -198,10 +202,12 @@ Facts move through tiers based on relevance:
 
 ```json
 {
-  "automaticMemory": {
-    "demotion": {
-      "relevanceThreshold": 0.3,     // Below this → cold
-      "coldRetentionDays": 90        // Days before deletion
+  "memory": {
+    "automatic": {
+      "demotion": {
+        "relevanceThreshold": 0.3,     // Below this → cold
+        "coldRetentionDays": 90        // Days before deletion
+      }
     }
   }
 }
@@ -215,10 +221,12 @@ Self-managing memory system:
 
 ```json
 {
-  "automaticMemory": {
-    "enabled": true,
-    "entropyThreshold": 0.7,         // How "interesting" to remember
-    "compactOnSessionEnd": true
+  "memory": {
+    "automatic": {
+      "enabled": true,
+      "entropyThreshold": 0.7,         // How "interesting" to remember
+      "compactOnSessionEnd": true
+    }
   }
 }
 ```
@@ -243,11 +251,13 @@ Automatic parameter adjustment:
 
 ```json
 {
-  "automaticMemory": {
-    "selfTuning": {
-      "enabled": false,
-      "adjustOnOverflow": true,      // Adjust when memory full
-      "adjustOnFailures": true       // Adjust when facts missed
+  "memory": {
+    "automatic": {
+      "selfTuning": {
+        "enabled": false,
+        "adjustOnOverflow": true,      // Adjust when memory full
+        "adjustOnFailures": true       // Adjust when facts missed
+      }
     }
   }
 }

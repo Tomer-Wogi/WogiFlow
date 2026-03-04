@@ -27,14 +27,16 @@ Session persistence through:
 
 ```json
 {
-  "sessionState": {
-    "enabled": true,
-    "autoRestore": true,
-    "maxGapHours": 24,          // Max hours before "cold start"
-    "trackFiles": true,
-    "trackDecisions": true,
-    "maxRecentFiles": 20,
-    "maxRecentDecisions": 10
+  "context": {
+    "session": {
+      "enabled": true,
+      "autoRestore": true,
+      "maxGapHours": 24,          // Max hours before "cold start"
+      "trackFiles": true,
+      "trackDecisions": true,
+      "maxRecentFiles": 20,
+      "maxRecentDecisions": 10
+    }
   },
   "durableSteps": {
     "enabled": true,
@@ -58,7 +60,7 @@ Tracked in `.workflow/state/session-state.json`:
 ```json
 {
   "lastActivity": "2024-01-15T14:30:00Z",
-  "currentTask": "TASK-015",
+  "currentTask": "wf-a1b2c3d4",
   "recentFiles": [
     "src/services/AuthService.ts",
     "src/components/LoginForm.tsx"
@@ -67,8 +69,8 @@ Tracked in `.workflow/state/session-state.json`:
     "Use JWT for auth tokens",
     "Store tokens in localStorage"
   ],
-  "tasksCompleted": ["TASK-014", "TASK-013"],
-  "tasksInProgress": ["TASK-015"]
+  "tasksCompleted": ["wf-b2c3d4e5", "wf-c3d4e5f6"],
+  "tasksInProgress": ["wf-a1b2c3d4"]
 }
 ```
 
@@ -108,7 +110,7 @@ For sessions within `maxGapHours`:
 🔄 Resuming Session
 
 Last active: 2 hours ago
-Current task: TASK-015 (Add authentication)
+Current task: wf-a1b2c3d4 (Add authentication)
 
 Recent files:
   - src/services/AuthService.ts
@@ -118,7 +120,7 @@ Recent decisions:
   - Use JWT for auth tokens
   - Store tokens in localStorage
 
-Continue with TASK-015?
+Continue with wf-a1b2c3d4?
 ```
 
 ---
@@ -149,7 +151,7 @@ For crash recovery and long-running tasks:
 ```
 🔄 Resuming from durable session
 
-Task: TASK-015
+Task: wf-a1b2c3d4
 Progress: 3/7 steps completed
 Resuming from: "Add form validation"
 
@@ -179,8 +181,8 @@ Start each day with context:
 ═══════════════════════════════════════
 
 📅 Last Session (2024-01-15)
-  • Completed: TASK-014 (Fix login bug)
-  • In Progress: TASK-015 (Add authentication)
+  • Completed: wf-b2c3d4e5 (Fix login bug)
+  • In Progress: wf-a1b2c3d4 (Add authentication)
   • Hours worked: 3.5
 
 📝 Changes Since Last Session
@@ -188,16 +190,16 @@ Start each day with context:
   • 3 files modified by others
 
 📋 Recommended Tasks
-  1. TASK-015 (In Progress) - Add authentication
-  2. TASK-016 (Ready) - Add password reset
-  3. TASK-017 (Ready) - Dashboard metrics
+  1. wf-a1b2c3d4 (In Progress) - Add authentication
+  2. wf-d4e5f6a7 (Ready) - Add password reset
+  3. wf-e5f6a7b8 (Ready) - Dashboard metrics
 
 ⚠️ Blockers
   None detected
 
 ═══════════════════════════════════════
 
-Ready to continue with TASK-015?
+Ready to continue with wf-a1b2c3d4?
 ```
 
 ---
@@ -210,7 +212,7 @@ Handoff notes for session transitions:
 # Progress Notes
 
 ## Current Focus
-Working on TASK-015: Add user authentication
+Working on wf-a1b2c3d4: Add user authentication
 
 ## Where I Left Off
 - Created AuthService with login/logout
@@ -273,7 +275,7 @@ flow resume --status
 # Output:
 # 📊 Task Session Status
 # ─────────────────────────────────
-# Task: TASK-015
+# Task: wf-a1b2c3d4
 # Status: SUSPENDED
 # Type: manual
 # Reason: Waiting for design approval

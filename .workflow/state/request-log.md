@@ -1938,3 +1938,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Unify /wogi-extract-review into single end-to-end flow — combine zero-loss extraction, 4-pass pipeline, clarification questions, and story generation into one automated flow"
 **Result**: Added autoReview(), batchConfirm(), autoComplete() to flow-extraction-review.js for automated batch review. Added runFullPipeline() to flow-long-input.js to chain passes 2-4 in one call. Added generateAndExportStories() to flow-long-input-stories.js for one-call story generation and ready.json export. Rewrote wogi-extract-review.md with 6-phase AI orchestration protocol. Old manual CLI preserved as advanced mode. User's only touchpoint: answering clarifying questions when AI can't auto-resolve contradictions.
 **Files**: `scripts/flow-extraction-review.js`, `scripts/flow-long-input.js`, `scripts/flow-long-input-stories.js`, `.claude/commands/wogi-extract-review.md`
+
+### R-148 | 2026-03-04 18:30
+**Type**: docs
+**Tags**: #docs:knowledge-base #docs:readme
+**Task**: wf-6da73daf
+**Request**: "Full documentation overhaul — update KB and README to match current codebase"
+**Result**: Complete overhaul of 40+ documentation files. README.md updated (version, features, commands, file structure). 3 major KB rewrites (all-options.md config paths, completion.md removed /wogi-done, figma-analyzer.md rewritten for MCP). ~20 KB files fixed (config paths, task ID format, removed nonexistent commands). 10 new KB articles written (project-audit, eval-system, quick-capture, debug-hypothesis, peer-review, branch-finalization, plan-management, rules-management, browser-debugging, long-input-extraction). Category READMEs updated with new articles and correct config paths.
+**Files**: `README.md`, `.claude/docs/knowledge-base/**/*.md` (40+ files)

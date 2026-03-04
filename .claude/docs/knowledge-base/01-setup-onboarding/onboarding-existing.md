@@ -169,12 +169,12 @@ From known issues:
 {
   "tasks": [
     {
-      "id": "TASK-001",
+      "id": "wf-a1b2c3d4",
       "title": "Login sometimes fails on slow connections",
       "type": "bugfix"
     },
     {
-      "id": "TASK-002",
+      "id": "wf-b2c3d4e5",
       "title": "Dashboard needs performance optimization",
       "type": "refactor"
     }
@@ -242,7 +242,7 @@ Edit files to add:
 ### 5. Start Working
 
 ```bash
-/wogi-start TASK-001
+/wogi-start wf-a1b2c3d4
 ```
 
 ---
@@ -288,12 +288,15 @@ This helps local LLMs understand your project structure.
 
 ### Components Not Detected
 
-Check directory patterns in config:
+Check directory patterns in the `registries` array in config:
 ```json
 {
-  "componentIndex": {
-    "directories": ["src/components", "src/hooks", "src/services"]
-  }
+  "registries": [
+    {
+      "type": "component",
+      "directories": ["src/components", "src/hooks", "src/services"]
+    }
+  ]
 }
 ```
 

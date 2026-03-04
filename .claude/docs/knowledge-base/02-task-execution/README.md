@@ -40,13 +40,10 @@ The `/wogi-start` command initiates a structured execution pipeline that ensures
 /wogi-ready
 
 # Start a task (enters execution pipeline)
-/wogi-start TASK-012
+/wogi-start wf-a1b2c3d4
 
 # Create a story with acceptance criteria first
 /wogi-story "Add user authentication"
-
-# Complete the task (runs quality gates)
-/wogi-done TASK-012
 ```
 
 ---
@@ -70,7 +67,7 @@ The core loop that ensures thorough completion.
 - **Self-Completing Loops**: Cannot exit until all criteria pass
 - **Durable Sessions**: Crash recovery and progress tracking
 - **Suspend/Resume**: Handle long-running or blocked tasks
-- **Hybrid Mode**: Use local LLM for execution (85-95% token savings)
+- **Hybrid Mode**: Use local LLM for execution (configurable token savings)
 
 [Read more: Execution Loop](./02-execution-loop.md)
 
@@ -116,10 +113,12 @@ Comprehensive code review before finalizing changes.
     "requireTaskForImplementation": true,   // Block ad-hoc coding
     "requireStoryForMediumTasks": true      // Medium+ tasks need stories
   },
-  "loops": {
-    "enforced": true,                      // Cannot exit until complete
-    "maxRetries": 5,                       // Failed verification retries
-    "maxIterations": 20                    // Total loop cycles
+  "execution": {
+    "loops": {
+      "enforced": true,                    // Cannot exit until complete
+      "maxRetries": 5,                     // Failed verification retries
+      "maxIterations": 20                  // Total loop cycles
+    }
   },
   "qualityGates": {
     "feature": {
@@ -137,10 +136,10 @@ Understanding the trade-offs helps you configure WogiFlow for your needs:
 
 | Setting | Higher Value | Lower Value |
 |---------|-------------|-------------|
-| `loops.maxRetries` | More thorough, more tokens | Faster, might miss issues |
-| `loops.enforced` | Guaranteed completion | Manual control |
+| `execution.loops.maxRetries` | More thorough, more tokens | Faster, might miss issues |
+| `execution.loops.enforced` | Guaranteed completion | Manual control |
 | `qualityGates` | Fewer bugs in production | Faster development |
-| `hybrid.enabled` | 85-95% token savings | Full Claude quality |
+| `models.hybrid.enabled` | Token savings (varies by model) | Full Claude quality |
 
 [Read more: Trade-offs](./trade-offs.md)
 
@@ -148,15 +147,35 @@ Understanding the trade-offs helps you configure WogiFlow for your needs:
 
 ## Additional Features
 
-### External Integrations
-Import tasks from Jira and Linear for seamless project management integration.
+### Quick Capture
+Capture ideas and bugs without interrupting current work.
+
+[Read more: Quick Capture](./quick-capture.md)
+
+### Debug Hypothesis
+Parallel agents investigate competing theories for bug investigation.
+
+[Read more: Debug Hypothesis](./debug-hypothesis.md)
+
+### Peer Review
+Multi-model code review for diverse perspectives.
+
+[Read more: Peer Review](./peer-review.md)
+
+### Eval System
+Multi-judge scoring for task output quality assessment.
+
+[Read more: Eval System](./eval-system.md)
+
+### Branch Finalization
+Merge, PR, or discard decision workflow for branches.
+
+[Read more: Branch Finalization](./branch-finalization.md)
+
+### External Integrations (Archived)
+Task import from Jira and Linear — currently archived, may return via WogiFlow Teams.
 
 [Read more: External Integrations](./external-integrations.md)
-
-### Background Sync
-Keep workflow state synchronized across multiple sessions.
-
-[Read more: Sync Daemon](./sync-daemon.md)
 
 ### Model Management
 Registry, routing, and statistics for multiple LLM providers.

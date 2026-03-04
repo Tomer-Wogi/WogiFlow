@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-03-04T14:24:48.990Z",
+  "lastUpdated": "2026-03-04T17:09:19.236Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6da73daf",
+      "title": "Full documentation overhaul — update KB and README to match current codebase",
+      "type": "docs",
+      "priority": "P0",
+      "level": "L1",
+      "status": "completed",
+      "startedAt": "2026-03-04T17:09:19.234Z",
+      "completedAt": "2026-03-04T17:22:26.513Z"
+    },
     {
       "id": "wf-cr-d7e8f9",
       "title": "Fix 8 deferred review findings — security, consolidation, structure",

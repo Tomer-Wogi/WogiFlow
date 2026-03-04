@@ -55,18 +55,21 @@ The execution loop is the core mechanism that ensures task completion. When enab
 
 ```json
 {
-  "loops": {
-    "enabled": true,              // Enable execution loops
-    "enforced": true,             // Cannot exit until complete
-    "blockExitUntilComplete": true,
-    "requireVerification": true,  // Must verify each criterion
-    "blockOnSkip": true,          // Cannot skip without approval
-    "maxRetries": 5,              // Failed verification retries
-    "maxIterations": 20,          // Total loop cycles
-    "commitEvery": 3,             // Checkpoint commits
-    "pauseBetweenScenarios": false,
+  "execution": {
+    "loops": {
+      "enabled": true,
+      "enforced": true,
+      "blockExitUntilComplete": true,
+      "requireVerification": true,
+      "blockOnSkip": true,
+      "maxRetries": 5,
+      "maxIterations": 20,
+      "commitEvery": 3,
+      "pauseBetweenScenarios": false
+    },
     "autoInferVerification": true,
-    "fallbackToManual": true
+    "maxRetries": 5,
+    "maxIterations": 20
   }
 }
 ```
@@ -126,7 +129,7 @@ Durable sessions persist:
 
 ```json
 {
-  "taskId": "TASK-015",
+  "taskId": "wf-a1b2c3d4",
   "taskType": "task",
   "startedAt": "2024-01-15T10:30:00Z",
   "steps": [
@@ -155,7 +158,7 @@ Durable sessions persist:
 
 ```bash
 # Normal start detects existing session
-/wogi-start TASK-015
+/wogi-start wf-a1b2c3d4
 # Output: "🔄 Resuming from durable session (3/7 steps completed)"
 
 # Force resume after suspension
@@ -233,13 +236,13 @@ flow suspend --poll \
 
 ## Hybrid Mode
 
-Hybrid mode uses a local LLM for execution while Claude plans, saving 85-95% of tokens.
+Hybrid mode uses a local LLM for execution while Claude plans, with configurable token savings depending on model and task complexity.
 
 ### The Trade-off
 
 | Aspect | Claude Only | Hybrid Mode |
 |--------|-------------|-------------|
-| Token Cost | 100% | 5-15% |
+| Token Cost | 100% | Reduced (varies by model) |
 | Code Quality | Highest | Good (varies by model) |
 | Speed | Fast | Depends on hardware |
 | Context | Full | Limited to prompt |
@@ -256,9 +259,10 @@ Hybrid mode uses a local LLM for execution while Claude plans, saving 85-95% of 
 
 ```json
 {
-  "hybrid": {
-    "enabled": true,
-    "executor": {
+  "models": {
+    "hybrid": {
+      "enabled": true,
+      "executor": {
       "type": "local",              // "local" | "cloud"
       "provider": "ollama",         // "ollama" | "lmstudio" | "openai" | etc.
       "providerEndpoint": "http://localhost:11434",
@@ -268,12 +272,13 @@ Hybrid mode uses a local LLM for execution while Claude plans, saving 85-95% of 
       "adaptToExecutor": true,      // Adjust plan for model capabilities
       "useAdapterKnowledge": true   // Use learned model behaviors
     },
-    "settings": {
-      "temperature": 0.7,
-      "maxTokens": 4096,
-      "maxRetries": 20,
-      "timeout": 120000,
-      "autoExecute": false          // Require approval before execution
+      "settings": {
+        "temperature": 0.7,
+        "maxTokens": 4096,
+        "maxRetries": 20,
+        "timeout": 120000,
+        "autoExecute": false
+      }
     }
   }
 }
@@ -318,7 +323,7 @@ flow session stats
 # Output:
 # Total sessions: 15
 # Completed: 14
-# Avg tokens saved: 85.3%
+# Avg tokens saved: varies by model
 ```
 
 ---
@@ -331,8 +336,9 @@ Execute independent tasks simultaneously using git worktrees.
 
 ```json
 {
-  "parallel": {
-    "enabled": true,
+  "parallelExecution": {
+    "parallel": {
+      "enabled": true,
     "maxConcurrent": 3,           // Max parallel tasks
     "autoApprove": false,         // Require approval
     "requireWorktree": true,      // Isolate in worktrees
@@ -340,7 +346,8 @@ Execute independent tasks simultaneously using git worktrees.
     "autoDetect": true,           // Detect parallelizable tasks
     "autoSuggest": true,          // Suggest when beneficial
     "autoExecute": false,         // Require approval
-    "minTasksForParallel": 2
+      "minTasksForParallel": 2
+    }
   }
 }
 ```
@@ -378,7 +385,7 @@ node scripts/flow-task-enforcer.js status
 
 # Output:
 # 📊 Active Loop Session
-# Task: TASK-015
+# Task: wf-a1b2c3d4
 # Iteration: 3
 # Retries: 1
 #

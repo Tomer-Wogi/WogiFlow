@@ -45,34 +45,39 @@ Component indexing solves:
 
 ## Configuration
 
+Component indexing is now configured via the `registries` array in `config.json`. Each registry object defines a type, directories, and ignore patterns:
+
 ```json
 {
-  "componentIndex": {
-    "autoScan": true,                    // Enable auto-scanning
-    "scanOn": [                          // When to scan
-      "sessionStart",                    // On new Claude session
-      "afterTask",                       // After task completion
-      "preCommit"                        // Before git commits (requires hooks)
-    ],
-    "staleAfterMinutes": 60,             // Refresh if older than this
-    "directories": [                     // Where to look
-      "src/components",
-      "src/hooks",
-      "src/services",
-      "src/pages",
-      "src/modules",
-      "app"
-    ],
-    "ignore": [                          // What to skip
-      "*.test.*",
-      "*.spec.*",
-      "*.stories.*",
-      "index.ts",
-      "index.js",
-      "__tests__",
-      "__mocks__"
-    ]
-  }
+  "registries": [
+    {
+      "type": "component",
+      "autoScan": true,                    // Enable auto-scanning
+      "scanOn": [                          // When to scan
+        "sessionStart",                    // On new Claude session
+        "afterTask",                       // After task completion
+        "preCommit"                        // Before git commits (requires hooks)
+      ],
+      "staleAfterMinutes": 60,             // Refresh if older than this
+      "directories": [                     // Where to look
+        "src/components",
+        "src/hooks",
+        "src/services",
+        "src/pages",
+        "src/modules",
+        "app"
+      ],
+      "ignore": [                          // What to skip
+        "*.test.*",
+        "*.spec.*",
+        "*.stories.*",
+        "index.ts",
+        "index.js",
+        "__tests__",
+        "__mocks__"
+      ]
+    }
+  ]
 }
 ```
 
@@ -167,10 +172,13 @@ Based on `scanOn` configuration:
 
 ```json
 {
-  "componentIndex": {
-    "scanOn": ["sessionStart", "afterTask", "preCommit"],
-    "staleAfterMinutes": 60
-  }
+  "registries": [
+    {
+      "type": "component",
+      "scanOn": ["sessionStart", "afterTask", "preCommit"],
+      "staleAfterMinutes": 60
+    }
+  ]
 }
 ```
 
@@ -300,28 +308,34 @@ Check directories are correct:
 ls -la src/components/
 ```
 
-Update config if needed:
+Update the component registry entry in the `registries` array:
 ```json
 {
-  "componentIndex": {
-    "directories": ["components", "lib"]  // Adjust paths
-  }
+  "registries": [
+    {
+      "type": "component",
+      "directories": ["components", "lib"]  // Adjust paths
+    }
+  ]
 }
 ```
 
 ### Too Many Results
 
-Add ignore patterns:
+Add ignore patterns to the component registry entry:
 ```json
 {
-  "componentIndex": {
-    "ignore": [
-      "*.test.*",
-      "*.stories.*",
-      "*.d.ts",
-      "internal/*"
-    ]
-  }
+  "registries": [
+    {
+      "type": "component",
+      "ignore": [
+        "*.test.*",
+        "*.stories.*",
+        "*.d.ts",
+        "internal/*"
+      ]
+    }
+  ]
 }
 ```
 

@@ -19,10 +19,11 @@ Model adapters learn these behaviors and optimize prompts accordingly.
 
 ```json
 {
-  "modelAdapters": {
-    "enabled": true,
-    "autoLearn": true,
-    "directory": ".workflow/model-adapters"
+  "learning": {
+    "modelAdapters": {
+      "enabled": true,
+      "directory": ".workflow/model-adapters"
+    }
   }
 }
 ```
@@ -84,7 +85,7 @@ Model adapters learn these behaviors and optimize prompts accordingly.
 
 ## Auto-Learning
 
-When `autoLearn` is enabled:
+When model adapter learning is enabled:
 
 ```
 Request to LLM
@@ -319,7 +320,7 @@ cat .workflow/model-adapters/qwen3-coder.json | jq '.stats'
 
 ## Best Practices
 
-1. **Let Auto-Learn Work**: Don't manually edit adapters frequently
+1. **Let Adapter Learning Work**: Don't manually edit adapters frequently
 2. **Review Error Patterns**: Check what's failing most
 3. **Test Different Models**: Some models work better for certain tasks
 4. **Lower Temperature**: For code generation, 0.3-0.5 is often better

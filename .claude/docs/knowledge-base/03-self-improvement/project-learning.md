@@ -106,14 +106,16 @@ When `autoExtract` is enabled:
 
 ```json
 {
-  "skillLearning": {
-    "autoExtract": true,
-    "triggers": {
-      "onCommit": true,
-      "onTaskComplete": true,
-      "onCompact": true
-    },
-    "minCorrectionsToLearn": 1
+  "learning": {
+    "skill": {
+      "autoExtract": true,
+      "triggers": {
+        "onCommit": true,
+        "onTaskComplete": true,
+        "onCompact": true
+      },
+      "minCorrectionsToLearn": 1
+    }
   }
 }
 ```
@@ -199,9 +201,11 @@ AI: Updates decisions.md with pattern
     "mode": "inline",              // Where to show corrections
     "detailPath": ".workflow/corrections"  // Detailed reports
   },
-  "skillLearning": {
-    "enabled": true,
-    "minCorrectionsToLearn": 1    // Min corrections before extraction
+  "learning": {
+    "skill": {
+      "enabled": true,
+      "minCorrectionsToLearn": 1    // Min corrections before extraction
+    }
   }
 }
 ```

@@ -24,9 +24,8 @@ Auto-inference automatically verifies certain types of criteria without manual c
 
 ```json
 {
-  "loops": {
-    "autoInferVerification": true,    // Enable auto-inference
-    "fallbackToManual": true          // Ask user if can't infer
+  "execution": {
+    "autoInferVerification": true
   }
 }
 ```
@@ -126,7 +125,7 @@ The `smokeTest` gate ensures basic functionality still works after refactoring.
 
 ### Gate Execution
 
-When running `/wogi-done TASK-XXX`:
+When task completion runs (automatically via `/wogi-start`):
 
 ```
 Running quality gates...
@@ -146,7 +145,7 @@ If a gate fails:
 1. Error output is captured
 2. Failure details saved to `.workflow/state/last-failure.json`
 3. Task completion is blocked
-4. Fix issues and retry `/wogi-done`
+4. Fix issues and retry
 
 ```
 Running quality gates...

@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-04T16:46:44.710Z",
+  "markedAt": "2026-03-04T17:03:23.706Z",
   "context": {
-    "args": "Fix all 8 deferred review findings: (1) Command injection in validation.js execSync with interpolated filePath, (2) Config-sourced validation commands to execSync without metacharacter validation, (3) Settings injection via unvalidated allowedDomains/permissions in claude-bridge.js, (4) Polyglot project detection incoherent stack reports, (5) Three parallel PM detection implementations consolidation, (6) Validation.js hook config pass-through optimization, (7) flow-utils.js spread re-exports risk, (8) flow-model-types.js path constants not in PATHS registry"
+    "args": "The knowledge base is stale, old and doesn't match what we currently have. Review everything we have in wogiflow and update the knowledge base and the README.md file accordingly."
   },
   "status": "pending"
 }

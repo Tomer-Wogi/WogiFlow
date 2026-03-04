@@ -37,18 +37,20 @@ Skills encapsulate framework-specific knowledge:
 
 ```json
 {
-  "skillLearning": {
-    "enabled": true,
-    "autoExtract": true,
-    "triggers": {
-      "onCommit": true,
-      "onTaskComplete": true,
-      "onCompact": true
-    },
-    "minCorrectionsToLearn": 1,
-    "autoCreateSkills": "ask",        // "ask" | "auto" | "off"
-    "autoDetectFrameworks": true,
-    "fetchOfficialDocs": true
+  "learning": {
+    "skill": {
+      "enabled": true,
+      "autoExtract": true,
+      "triggers": {
+        "onCommit": true,
+        "onTaskComplete": true,
+        "onCompact": true
+      },
+      "minCorrectionsToLearn": 1,
+      "autoCreateSkills": "ask",        // "ask" | "auto" | "off"
+      "autoDetectFrameworks": true,
+      "fetchOfficialDocs": true
+    }
   },
   "skills": {
     "installed": ["react", "nestjs"]
@@ -64,8 +66,10 @@ When a framework is detected but no skill exists:
 
 ```json
 {
-  "skillLearning": {
-    "autoCreateSkills": "ask"    // Prompt before creating
+  "learning": {
+    "skill": {
+      "autoCreateSkills": "ask"    // Prompt before creating
+    }
   }
 }
 ```
@@ -248,11 +252,13 @@ When `fetchOfficialDocs` is enabled:
 
 ```json
 {
-  "skillLearning": {
-    "fetchOfficialDocs": true,
-    "officialDocsUrls": {
-      "nestjs": "https://docs.nestjs.com",
-      "react": "https://react.dev"
+  "learning": {
+    "skill": {
+      "fetchOfficialDocs": true,
+      "officialDocsUrls": {
+        "nestjs": "https://docs.nestjs.com",
+        "react": "https://react.dev"
+      }
     }
   }
 }

@@ -52,10 +52,12 @@ WogiFlow learns at four levels:
 
 ```json
 {
-  "skillLearning": {
-    "enabled": true,
-    "autoExtract": true,
-    "autoCreateSkills": "ask"
+  "learning": {
+    "skill": {
+      "enabled": true,
+      "autoExtract": true,
+      "autoCreateSkills": "ask"
+    }
   }
 }
 ```
@@ -88,6 +90,8 @@ cat .claude/skills/*/knowledge/patterns.md
 | [Skill Learning](./skill-learning.md) | Framework patterns, skill creation |
 | [Model Learning](./model-learning.md) | Per-model optimization, adapters |
 | [Team Learning](./team-learning.md) | Knowledge routing, promotion |
+| [Rules Management](./rules-management.md) | Sync decisions.md to .claude/rules/ |
+| [Long Input Extraction](./long-input-extraction.md) | Extract tasks from transcripts/PRDs |
 
 ---
 
@@ -95,20 +99,22 @@ cat .claude/skills/*/knowledge/patterns.md
 
 ```json
 {
-  "skillLearning": {
-    "enabled": true,
-    "autoExtract": true,
-    "triggers": {
-      "onCommit": true,
-      "onTaskComplete": true,
-      "onCompact": true
+  "learning": {
+    "skill": {
+      "enabled": true,
+      "autoExtract": true,
+      "triggers": {
+        "onCommit": true,
+        "onTaskComplete": true,
+        "onCompact": true
+      },
+      "minCorrectionsToLearn": 1,
+      "autoCreateSkills": "ask"
     },
-    "minCorrectionsToLearn": 1,
-    "autoCreateSkills": "ask"
-  },
-  "modelAdapters": {
-    "enabled": true,
-    "autoLearn": true
+    "modelAdapters": {
+      "enabled": true,
+      "autoLearn": true
+    }
   },
   "knowledgeRouting": {
     "autoDetect": true,

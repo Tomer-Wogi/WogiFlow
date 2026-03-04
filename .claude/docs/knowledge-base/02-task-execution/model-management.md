@@ -36,8 +36,8 @@ flow models cost
 ```
 Registered Models
 ════════════════════════════════════════
-  claude-sonnet-4      Anthropic    200K context   $$
-  claude-opus-4        Anthropic    200K context   $$$
+  claude-sonnet-4-6      Anthropic    200K context   $$
+  claude-opus-4-6        Anthropic    200K context   $$$
   gpt-4o              OpenAI        128K context   $$
   gemini-2.0-flash    Google        1M context     $
   ollama-qwen         Local         32K context    Free
@@ -97,11 +97,13 @@ flow cascade config
 
 ```json
 {
-  "cascade": {
-    "enabled": true,
-    "fallbackModel": "claude-sonnet-4",
-    "maxFailuresBeforeEscalate": 3,
-    "escalateOnCategories": ["capability_mismatch", "context_overflow"]
+  "models": {
+    "cascade": {
+      "enabled": true,
+      "fallbackModel": "claude-sonnet-4-6",
+      "maxFailuresBeforeEscalate": 3,
+      "escalateOnCategories": ["capability_mismatch", "context_overflow"]
+    }
   }
 }
 ```
@@ -135,7 +137,7 @@ Located in `.workflow/model-adapters/`:
 
 ```
 ├── claude-default.md      # Claude family defaults
-├── claude-sonnet-4.md     # Sonnet-specific
+├── claude-sonnet-4-6.md     # Sonnet-specific
 ├── ollama-qwen.md         # Local model adapter
 └── _template.md           # New adapter template
 ```
@@ -162,8 +164,8 @@ Model Performance Statistics
 ════════════════════════════════════════
 Model               Success   Avg Time   Tasks
 ────────────────────────────────────────
-claude-sonnet-4     94%       12.3s      234
-claude-opus-4       98%       45.2s      45
+claude-sonnet-4-6     94%       12.3s      234
+claude-opus-4-6       98%       45.2s      45
 ollama-qwen         78%       8.5s       156
 gpt-4o              91%       15.1s      89
 ```

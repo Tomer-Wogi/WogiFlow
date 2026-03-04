@@ -4,7 +4,7 @@ Comprehensive code review using 3 parallel agents to analyze session changes.
 
 ## Overview
 
-The `/wogi-session-review` command performs a thorough review of all code changes made during a session. It uses 3 parallel agents, each focused on different aspects:
+The `/wogi-review` command performs a thorough review of all code changes made during a session. It uses 3 parallel agents, each focused on different aspects:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -30,7 +30,7 @@ The review can be triggered by:
 
 | Trigger | Example |
 |---------|---------|
-| Slash command | `/wogi-session-review` |
+| Slash command | `/wogi-review` |
 | Natural language | "please review" |
 | Natural language | "review what we did" |
 | Natural language | "review the changes" |
@@ -125,11 +125,11 @@ Checks against project standards:
 ## Command Options
 
 ```bash
-/wogi-session-review              # Review all session changes
-/wogi-session-review --commits 3  # Include last 3 commits
-/wogi-session-review --staged     # Only staged changes
-/wogi-session-review --security-only  # Only run security agent
-/wogi-session-review --quick      # Faster, less thorough
+/wogi-review                      # Review all session changes
+/wogi-review --commits 3          # Include last 3 commits
+/wogi-review --staged             # Only staged changes
+/wogi-review --security-only      # Only run security agent
+/wogi-review --quick              # Faster, less thorough
 ```
 
 ## Output Format

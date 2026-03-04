@@ -208,9 +208,16 @@ git add -A && git commit -m "emergency fix" --no-verify
 
 ### Temporary Override
 
-```bash
-# For this task only
-/wogi-done TASK-XXX --skip-approval
+Task completion handles commits automatically via the `/wogi-start` pipeline. To skip approval for a specific task type, configure it in `config.json`:
+
+```json
+{
+  "commits": {
+    "requireApproval": {
+      "bugfix": false
+    }
+  }
+}
 ```
 
 ---
@@ -243,9 +250,9 @@ feat(scope): brief description
 
 Detailed description of changes...
 
-TASK-XXX
+wf-a1b2c3d4
 
-🤖 Generated with Claude Code
+Generated with Claude Code
 
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
@@ -287,10 +294,7 @@ Check:
 
 ### Wrong Commit Type
 
-Specify explicitly:
-```bash
-/wogi-done TASK-XXX --type bugfix
-```
+The task type is determined during task creation. To change it, update the task's `type` field in `ready.json` before completion.
 
 ### Squash Failed
 

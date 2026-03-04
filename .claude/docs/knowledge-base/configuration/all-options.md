@@ -33,10 +33,10 @@ Configuration lives in `.workflow/config.json`
 |---------|---------|
 | [enforcement](#enforcement) | Task gating and strict mode |
 | [workflow](#workflow) | Planning and agent structure |
-| [loops](#loops) | Self-completing execution loops |
+| [execution.loops](#executionloops) | Self-completing execution loops |
 | [durableSteps](#durablesteps) | Crash recovery |
 | [suspension](#suspension) | Long-running task handling |
-| [parallel](#parallel) | Concurrent execution |
+| [parallelExecution](#parallelexecution) | Concurrent execution |
 | [phases](#phases) | Project phase tracking |
 | [mandatorySteps](#mandatorysteps) | Required workflow steps |
 | [priorities](#priorities) | Task priority levels |
@@ -47,70 +47,64 @@ Configuration lives in `.workflow/config.json`
 |---------|---------|
 | [qualityGates](#qualitygates) | Per-task-type requirements |
 | [validation](#validation) | Auto-validation commands |
-| [testing](#testing) | Test execution |
 | [tdd](#tdd) | Test-first development mode |
 | [regressionTesting](#regressiontesting) | Regression checks |
-| [componentRules](#componentrules) | Component reuse rules |
-| [strictMode](#strictmode) | Additional strict options |
-| [review](#review) | Code review settings |
-| [needsClarification](#needsclarification) | Spec uncertainty markers |
-| [consistency](#consistency) | Cross-artifact validation |
+| [standardsCompliance](#standardscompliance) | Pattern compliance enforcement |
 
-### Category 3: Learning & Memory
+### Category 3: Specifications & Planning
 | Section | Purpose |
 |---------|---------|
-| [skills](#skills) | Installed skills |
-| [skillLearning](#skilllearning) | Skill auto-creation |
-| [memory](#memory) | Fact storage |
-| [automaticMemory](#automaticmemory) | Memory management |
-| [automaticPromotion](#automaticpromotion) | Pattern promotion |
-| [knowledgeRouting](#knowledgerouting) | Knowledge routing |
-| [modelAdapters](#modeladapters) | Per-model learning |
-| [prd](#prd) | PRD chunking |
-| [decisions](#decisions) | Decision amendment tracking |
+| [specificationMode](#specificationmode) | Spec-first development |
+| [clarifyingQuestions](#clarifyingquestions) | Requirement clarification |
+| [epics](#epics) | Epic-level planning |
+| [prd](#prd) | PRD integration |
 
-### Category 4: Context & Session
+### Category 4: Learning & Intelligence
 | Section | Purpose |
 |---------|---------|
-| [autoContext](#autocontext) | Auto-loading related files |
-| [sessionState](#sessionstate) | Session persistence |
-| [contextMonitor](#contextmonitor) | Context window management |
-| [morningBriefing](#morningbriefing) | Session start context |
-| [requestLog](#requestlog) | Change history |
+| [learning.skill](#learningskill) | Per-skill learning |
+| [learning.knowledgeRouting](#learningknowledgerouting) | Knowledge routing |
+| [learning.modelAdapters](#learningmodeladapters) | Model adaptation learning |
+| [memory](#memory) | Semantic memory system |
+| [skills](#skills) | Skill system configuration |
 
-### Category 5: Development Tools
+### Category 5: Context & Models
 | Section | Purpose |
 |---------|---------|
-| [componentIndex](#componentindex) | Component scanning |
-| [figmaAnalyzer](#figmaanalyzer) | Design-to-code |
-| [guidedEdit](#guidededit) | Multi-file editing |
-| [traces](#traces) | Code flow traces |
-| [worktree](#worktree) | Git worktree isolation |
-| [hybrid](#hybrid) | Local LLM execution |
-| [lsp](#lsp) | Language server integration |
-| [codebaseInsights](#codebaseinsights) | Project analysis |
+| [context.auto](#contextauto) | Auto-context loading |
+| [context.smart](#contextsmart) | Smart context estimation |
+| [context.monitor](#contextmonitor) | Context usage monitoring |
+| [context.session](#contextsession) | Session state context |
+| [models.hybrid](#modelshybrid) | Hybrid model execution |
+| [models.multiModel](#modelsmultimodel) | Multi-model routing |
 
-### Category 6: Safety & Commits
+### Category 6: DevOps & Security
 | Section | Purpose |
 |---------|---------|
-| [commits](#commits) | Commit approval workflow |
-| [security](#security) | Pre-commit security scans |
-| [damageControl](#damagecontrol) | Destructive command protection |
+| [commits](#commits) | Commit behavior |
+| [security](#security) | Security scanning |
+| [damageControl](#damagecontrol) | Destructive action prevention |
+| [hooks](#hooks) | Hook system configuration |
 
-### Category 7: Integrations
+### Category 7: Advanced Features
 | Section | Purpose |
 |---------|---------|
-| [agents](#agents) | Agent personas |
-| [multiApproach](#multiapproach) | Multiple solution analysis |
-| [hooks](#hooks) | CLI hooks (Claude Code, etc.) |
-| [metrics](#metrics) | Usage tracking |
-| [corrections](#corrections) | Correction file handling |
+| [review](#review) | Code review system |
+| [bugFlow](#bugflow) | Bug investigation flow |
+| [research](#research) | Research verification |
+| [longInputGate](#longinputgate) | Long input processing |
+| [techDebt](#techdebt) | Tech debt tracking |
+| [finalization](#finalization) | Branch finalization |
+| [audit](#audit) | Project audit system |
+| [plugins](#plugins) | Plugin system |
 
 ---
 
 ## enforcement
 
-Controls task gating and strict mode behavior.
+Controls task gating — whether WogiFlow enforces that all work goes through tasks.
+
+**Config path**: `enforcement`
 
 ```json
 {
@@ -120,6 +114,8 @@ Controls task gating and strict mode behavior.
     "requireStoryForMediumTasks": true,
     "requirePatternCitation": false,
     "citationFormat": "// Pattern: {pattern}",
+    "blockAutoTask": true,
+    "warnOnBypass": true,
     "taskSizeThresholds": {
       "small": { "maxFiles": 3, "maxHours": 1 },
       "medium": { "maxFiles": 10, "maxHours": 4 },
@@ -131,23 +127,716 @@ Controls task gating and strict mode behavior.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `strictMode` | boolean | `true` | Enable strict task gating |
-| `requireTaskForImplementation` | boolean | `true` | Require task before coding |
-| `requireStoryForMediumTasks` | boolean | `true` | Require story for medium+ tasks |
-| `requirePatternCitation` | boolean | `false` | Require citing patterns in code |
-| `citationFormat` | string | `"// Pattern: {pattern}"` | Format for pattern citations |
-| `taskSizeThresholds.small.maxFiles` | number | `3` | Max files for small task |
-| `taskSizeThresholds.small.maxHours` | number | `1` | Max hours for small task |
-| `taskSizeThresholds.medium.maxFiles` | number | `10` | Max files for medium task |
-| `taskSizeThresholds.medium.maxHours` | number | `4` | Max hours for medium task |
-| `taskSizeThresholds.large.minFiles` | number | `10` | Min files for large task |
-| `taskSizeThresholds.large.minHours` | number | `4` | Min hours for large task |
+| `enforcement.strictMode` | boolean | `true` | Block all file edits without an active task |
+| `enforcement.requireTaskForImplementation` | boolean | `true` | Require task ID before coding |
+| `enforcement.requireStoryForMediumTasks` | boolean | `true` | Require story decomposition for medium+ tasks |
+| `enforcement.requirePatternCitation` | boolean | `false` | Require citing decisions.md patterns in code |
+| `enforcement.citationFormat` | string | `"// Pattern: {pattern}"` | Format for pattern citations |
+| `enforcement.blockAutoTask` | boolean | `true` | Prevent AI from auto-creating tasks to bypass gating |
+| `enforcement.warnOnBypass` | boolean | `true` | Warn when routing is bypassed |
+| `enforcement.taskSizeThresholds` | object | See above | File/hour thresholds for small/medium/large classification |
+
+---
+
+## execution
+
+Controls task execution behavior including iteration limits and the self-completing loop system.
+
+**Config path**: `execution`
+
+```json
+{
+  "execution": {
+    "maxIterations": 20,
+    "stuckThreshold": 3,
+    "progressCommitInterval": 3,
+    "recheckAfterFix": true,
+    "blockExitUntilComplete": true,
+    "autoInferVerification": true,
+    "maxRetries": 5,
+    "requireSpecVerification": true,
+    "specVerification": {
+      "validateSyntax": true,
+      "allowSkipWithFlag": true,
+      "parsePatterns": ["tables", "code-blocks", "lists"]
+    },
+    "loops": {
+      "enabled": false,
+      "enforced": true,
+      "requireVerification": true,
+      "blockOnSkip": true,
+      "commitEvery": 3,
+      "pauseBetweenScenarios": false,
+      "fallbackToManual": true,
+      "simpleMode": { "enabled": false },
+      "recheckAllAfterFix": true,
+      "regressionOnRecheck": "warn"
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `execution.maxIterations` | number | `20` | Max fix-verify iterations before giving up |
+| `execution.stuckThreshold` | number | `3` | Iterations without progress before escalating |
+| `execution.progressCommitInterval` | number | `3` | Commit progress every N iterations |
+| `execution.recheckAfterFix` | boolean | `true` | Re-run verification after applying a fix |
+| `execution.blockExitUntilComplete` | boolean | `true` | Prevent task completion until all criteria pass |
+| `execution.autoInferVerification` | boolean | `true` | Auto-detect verification commands from task context |
+| `execution.maxRetries` | number | `5` | Max retries for failed operations |
+| `execution.requireSpecVerification` | boolean | `true` | Validate spec structure before proceeding |
+
+### execution.loops
+
+The self-completing loop system that iterates fix-verify until all acceptance criteria pass.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `execution.loops.enabled` | boolean | `false` | Enable self-completing loops |
+| `execution.loops.enforced` | boolean | `true` | Block task completion if loop not run |
+| `execution.loops.requireVerification` | boolean | `true` | Must verify each criterion |
+| `execution.loops.blockOnSkip` | boolean | `true` | Block completion if any criterion skipped |
+| `execution.loops.commitEvery` | number | `3` | Auto-commit progress every N iterations |
+| `execution.loops.recheckAllAfterFix` | boolean | `true` | Re-check all criteria after any fix |
+| `execution.loops.regressionOnRecheck` | string | `"warn"` | Action on regression: `"warn"`, `"block"`, `"ignore"` |
+
+---
+
+## errorRecovery
+
+Hierarchical error analysis and fix suggestion system.
+
+**Config path**: `errorRecovery`
+
+```json
+{
+  "errorRecovery": {
+    "enabled": false,
+    "hierarchicalAnalysis": true,
+    "autoSuggestFixes": true,
+    "trackSuccessfulStrategies": true,
+    "maxAttemptsPerLevel": 3,
+    "architecturalReassessment": { "enabled": false },
+    "recursive": { "enabled": false },
+    "hypothesisGeneration": {
+      "usePatterns": true,
+      "useAI": false,
+      "aiModel": "haiku"
+    },
+    "learning": {
+      "recordSuccessfulFixes": true,
+      "recordFailedHypotheses": true
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `errorRecovery.enabled` | boolean | `false` | Enable error recovery system |
+| `errorRecovery.hierarchicalAnalysis` | boolean | `true` | Analyze errors at multiple levels |
+| `errorRecovery.autoSuggestFixes` | boolean | `true` | Auto-suggest fixes for known error patterns |
+| `errorRecovery.maxAttemptsPerLevel` | number | `3` | Max fix attempts per analysis level |
+| `errorRecovery.hypothesisGeneration.useAI` | boolean | `false` | Use AI model for hypothesis generation |
+| `errorRecovery.learning.recordSuccessfulFixes` | boolean | `true` | Record successful fix strategies |
+
+---
+
+## workflow
+
+High-level workflow configuration.
+
+**Config path**: `workflow`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `workflow.planningStyle` | string | `"feature-based"` | Planning style: `"feature-based"`, `"sprint-based"` |
+| `workflow.agentStructure` | string | `"unified"` | Agent structure: `"unified"`, `"multi-agent"` |
+
+---
+
+## parallelExecution
+
+Concurrent task execution and bulk orchestration.
+
+**Config path**: `parallelExecution`
+
+```json
+{
+  "parallelExecution": {
+    "taskQueue": { "enabled": false },
+    "parallel": { "enabled": false },
+    "bulkOrchestrator": {
+      "enabled": false,
+      "parallelLimit": 3,
+      "useWorktrees": true,
+      "onFailure": "stop-dependent",
+      "summaryDepth": "standard",
+      "continuous": { "enabled": false }
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `parallelExecution.taskQueue.enabled` | boolean | `false` | Enable task queue |
+| `parallelExecution.parallel.enabled` | boolean | `false` | Enable parallel execution |
+| `parallelExecution.bulkOrchestrator.enabled` | boolean | `false` | Enable bulk orchestrator |
+| `parallelExecution.bulkOrchestrator.parallelLimit` | number | `3` | Max concurrent tasks |
+| `parallelExecution.bulkOrchestrator.useWorktrees` | boolean | `true` | Use git worktrees for isolation |
+| `parallelExecution.bulkOrchestrator.onFailure` | string | `"stop-dependent"` | Failure mode: `"stop-dependent"`, `"stop-all"`, `"continue"` |
+
+---
+
+## durableSteps
+
+Crash recovery — resume interrupted tasks from last checkpoint.
+
+**Config path**: `durableSteps`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `durableSteps.enabled` | boolean | `false` | Enable durable step tracking |
+
+---
+
+## suspension
+
+Handle long-running tasks that exceed context windows.
+
+**Config path**: `suspension`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `suspension.enabled` | boolean | `false` | Enable task suspension |
+
+---
+
+## capture
+
+Request capture and grouping system.
+
+**Config path**: `capture`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `capture.autoGroup` | boolean | `true` | Auto-group related requests |
+| `capture.groupingThreshold` | number | `0.5` | Similarity threshold for grouping |
+| `capture.maxGroupSize` | number | `5` | Max requests per group |
+| `capture.routing.enabled` | boolean | `false` | Enable request routing |
+
+---
+
+## phases
+
+Project phase tracking (e.g., MVP, Beta, Production).
+
+**Config path**: `phases`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `phases.enabled` | boolean | `false` | Enable phase tracking |
+
+---
+
+## mandatorySteps
+
+Steps that MUST run at specific lifecycle points.
+
+**Config path**: `mandatorySteps`
+
+```json
+{
+  "mandatorySteps": {
+    "afterTask": [],
+    "beforeCommit": [],
+    "onSessionEnd": ["updateRequestLog", "updateAppMap"]
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `mandatorySteps.afterTask` | string[] | `[]` | Steps to run after each task |
+| `mandatorySteps.beforeCommit` | string[] | `[]` | Steps to run before commits |
+| `mandatorySteps.onSessionEnd` | string[] | `["updateRequestLog", "updateAppMap"]` | Steps to run on session end |
+
+---
+
+## priorities
+
+Task priority management.
+
+**Config path**: `priorities`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `priorities.defaultPriority` | string | `"P2"` | Default priority for new tasks |
+| `priorities.autoBoostDays` | number | `2` | Days before auto-boosting priority |
+| `priorities.autoBoostAmount` | number | `1` | Priority levels to boost |
+
+---
+
+## storyDecomposition
+
+Automatic story breakdown into sub-tasks.
+
+**Config path**: `storyDecomposition`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `storyDecomposition.autoDetect` | boolean | `true` | Auto-detect when stories need decomposition |
+| `storyDecomposition.autoDecompose` | boolean | `false` | Auto-decompose without asking |
+| `storyDecomposition.complexityThreshold` | string | `"medium"` | Threshold for auto-decomposition |
+| `storyDecomposition.minSubTasks` | number | `5` | Minimum sub-tasks when decomposing |
+| `storyDecomposition.edgeCases` | boolean | `true` | Include edge case sub-tasks |
+| `storyDecomposition.loadingStates` | boolean | `true` | Include loading state sub-tasks |
+| `storyDecomposition.errorStates` | boolean | `true` | Include error state sub-tasks |
+| `storyDecomposition.supportEpics` | boolean | `true` | Support epic-level decomposition |
+| `storyDecomposition.propagateProgress` | boolean | `true` | Propagate sub-task progress to parent |
+
+---
+
+## qualityGates
+
+Per-task-type quality requirements that must pass before task completion.
+
+**Config path**: `qualityGates`
+
+```json
+{
+  "qualityGates": {
+    "preTaskBaseline": { "enabled": false },
+    "feature": {
+      "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"],
+      "optional": ["review", "docs", "webmcpVerification"]
+    },
+    "bugfix": {
+      "require": ["loopComplete", "tests", "requestLogEntry", "standardsCompliance", "learningEnforcement", "resolutionPopulated"],
+      "optional": ["review", "webmcpVerification"]
+    },
+    "refactor": {
+      "require": ["loopComplete", "tests", "noNewFeatures", "smokeTest", "standardsCompliance"],
+      "optional": ["review", "webmcpVerification"]
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `qualityGates.preTaskBaseline.enabled` | boolean | `false` | Capture baseline metrics before task starts |
+| `qualityGates.feature.require` | string[] | See above | Required gates for feature tasks |
+| `qualityGates.feature.optional` | string[] | See above | Optional gates for feature tasks |
+| `qualityGates.bugfix.require` | string[] | See above | Required gates for bugfix tasks |
+| `qualityGates.refactor.require` | string[] | See above | Required gates for refactor tasks |
+
+Available gate values: `loopComplete`, `tests`, `appMapUpdate`, `requestLogEntry`, `integrationWiring`, `standardsCompliance`, `learningEnforcement`, `resolutionPopulated`, `noNewFeatures`, `smokeTest`, `review`, `docs`, `webmcpVerification`.
+
+---
+
+## standardsCompliance
+
+Enforce coding standards from decisions.md during task execution.
+
+**Config path**: `standardsCompliance`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `standardsCompliance.enabled` | boolean | `false` | Enable standards compliance checking |
+| `standardsCompliance.mode` | string | `"block"` | Mode: `"block"`, `"warn"`, `"log"` |
+| `standardsCompliance.scopeByTaskType` | boolean | `true` | Only check relevant standards per task type |
+| `standardsCompliance.alwaysCheck` | string[] | `["naming", "security"]` | Standards to always check |
+| `standardsCompliance.similarityThreshold` | number | `0.8` | Threshold for pattern matching |
+| `standardsCompliance.learning.enabled` | boolean | `false` | Learn from compliance results |
+
+---
+
+## validation
+
+Auto-validation after file edits and task completion.
+
+**Config path**: `validation`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `validation.afterFileEdit.enabled` | boolean | `false` | Run lint/typecheck after every file edit |
+| `validation.afterTaskComplete.enabled` | boolean | `false` | Run full validation after task completion |
+| `validation.beforeCommit.enabled` | boolean | `false` | Run validation before commits |
+
+---
+
+## tdd
+
+Test-driven development enforcement.
+
+**Config path**: `tdd`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `tdd.enforced` | boolean | `true` | Enforce TDD workflow |
+| `tdd.defaultForTypes` | string[] | `["bugfix"]` | Task types that default to TDD |
+| `tdd.requireFailingTestFirst` | boolean | `true` | Require a failing test before implementation |
+| `tdd.testFrameworkDetection` | boolean | `true` | Auto-detect test framework |
+
+---
+
+## specificationMode
+
+Spec-first development — require specifications before implementation.
+
+**Config path**: `specificationMode`
+
+```json
+{
+  "specificationMode": {
+    "enabled": false,
+    "mandatory": true,
+    "mandatoryFor": ["medium", "large"],
+    "skipFor": ["small", "bugfix"],
+    "requireApproval": true,
+    "specDirectory": ".workflow/specs",
+    "template": "default",
+    "sections": {
+      "acceptanceCriteria": true,
+      "implementationSteps": true,
+      "filesToChange": true,
+      "testStrategy": true,
+      "verificationCommands": true,
+      "rollbackPlan": false
+    },
+    "autoDetectFiles": true,
+    "autoSuggestTests": true,
+    "needsClarification": { "enabled": false }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `specificationMode.enabled` | boolean | `false` | Enable spec-first mode |
+| `specificationMode.mandatory` | boolean | `true` | Make specs mandatory (when enabled) |
+| `specificationMode.mandatoryFor` | string[] | `["medium", "large"]` | Task sizes requiring specs |
+| `specificationMode.skipFor` | string[] | `["small", "bugfix"]` | Task types that skip specs |
+| `specificationMode.requireApproval` | boolean | `true` | Require user approval of specs |
+| `specificationMode.specDirectory` | string | `".workflow/specs"` | Directory for spec files |
+| `specificationMode.sections.*` | boolean | varies | Toggle individual spec sections |
+
+---
+
+## skills
+
+Skill system configuration — installed skills, auto-invocation, content loading.
+
+**Config path**: `skills`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `skills.installed` | string[] | `[]` | List of installed skill names |
+| `skills.autoInvoke` | boolean | `true` | Auto-invoke matching skills |
+| `skills.autoDiscoverNested` | boolean | `true` | Discover skills in subdirectories |
+| `skills.minRelevanceScore` | number | `2` | Minimum score to invoke a skill |
+| `skills.autoFetchDocs` | boolean | `true` | Auto-fetch library docs for skills |
+| `skills.contentPriority` | string[] | See config | Order of content file loading |
+| `skills.loadPatterns` | boolean | `true` | Load patterns.md from skill |
+| `skills.loadAntiPatterns` | boolean | `true` | Load anti-patterns.md from skill |
+| `skills.loadLearnings` | boolean | `true` | Load learnings.md from skill |
+| `skills.loadLibraryReference` | boolean | `true` | Load library-reference.md from skill |
+| `skills.loadConventions` | boolean | `true` | Load conventions.md from skill |
+
+---
+
+## learning
+
+Learning system — session learning, cross-session persistence, knowledge routing.
+
+**Config path**: `learning`
+
+```json
+{
+  "learning": {
+    "autoPromoteEnabled": false,
+    "requireUserConfirmation": true,
+    "session": { "enabled": false },
+    "crossSession": { "enabled": false },
+    "knowledgeRouting": {
+      "autoDetect": true,
+      "confirmWithUser": true,
+      "defaultScope": "local",
+      "modelSpecificLearning": true
+    },
+    "modelAdapters": { "enabled": false },
+    "skill": { "enabled": false }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `learning.autoPromoteEnabled` | boolean | `false` | Auto-promote patterns to decisions.md |
+| `learning.requireUserConfirmation` | boolean | `true` | Require user confirmation for promotions |
+| `learning.session.enabled` | boolean | `false` | Enable session-scoped learning |
+| `learning.crossSession.enabled` | boolean | `false` | Enable cross-session learning persistence |
+| `learning.knowledgeRouting.autoDetect` | boolean | `true` | Auto-detect knowledge category |
+| `learning.knowledgeRouting.defaultScope` | string | `"local"` | Default scope: `"local"`, `"global"`, `"skill"` |
+| `learning.knowledgeRouting.modelSpecificLearning` | boolean | `true` | Learn model-specific preferences |
+| `learning.modelAdapters.enabled` | boolean | `false` | Enable model adapter learning |
+| `learning.skill.enabled` | boolean | `false` | Enable per-skill learning |
+
+---
+
+## memory
+
+Semantic memory system — local vector DB for fact storage and retrieval.
+
+**Config path**: `memory`
+
+```json
+{
+  "memory": {
+    "level": "off",
+    "enabled": false,
+    "localDb": ".workflow/memory/local.db",
+    "embeddingModel": "Xenova/all-MiniLM-L6-v2",
+    "maxLocalFacts": 1000,
+    "autoRemember": false,
+    "automatic": {
+      "enabled": false,
+      "entropyThreshold": 0.7,
+      "compactOnSessionEnd": true,
+      "relevanceDecay": { "enabled": false },
+      "demotion": { "relevanceThreshold": 0.3, "coldRetentionDays": 90 },
+      "selfTuning": { "enabled": false },
+      "observationCapture": { "enabled": false },
+      "observationExtraction": { "enabled": false }
+    },
+    "promotion": { "enabled": false }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `memory.level` | string | `"off"` | Memory level: `"off"`, `"session"`, `"persistent"` |
+| `memory.enabled` | boolean | `false` | Enable semantic memory |
+| `memory.localDb` | string | `".workflow/memory/local.db"` | Path to local vector database |
+| `memory.embeddingModel` | string | `"Xenova/all-MiniLM-L6-v2"` | Embedding model for vectors |
+| `memory.maxLocalFacts` | number | `1000` | Max facts in local DB |
+| `memory.autoRemember` | boolean | `false` | Auto-remember important facts |
+| `memory.automatic.enabled` | boolean | `false` | Enable automatic memory management |
+| `memory.automatic.entropyThreshold` | number | `0.7` | Information entropy threshold |
+| `memory.promotion.enabled` | boolean | `false` | Enable fact promotion across scopes |
+
+---
+
+## context.auto
+
+Auto-context loading — automatically load relevant files before task execution.
+
+**Config path**: `context.auto`
+
+```json
+{
+  "context": {
+    "auto": {
+      "enabled": false,
+      "strategy": "dynamic",
+      "showLoadedFiles": true,
+      "includeContent": true,
+      "useSectionReferences": true,
+      "maxFilesToLoad": 10,
+      "maxGrepResults": 10,
+      "maxComponentMatches": 15,
+      "maxContentLines": 50,
+      "useAstGrep": false,
+      "maxSemanticFacts": 5,
+      "semanticMinRelevance": 40,
+      "fallbackLimits": {
+        "maxFilesHard": 50,
+        "maxTokensHard": 150000
+      },
+      "lspEnrichment": { "enabled": false }
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.auto.enabled` | boolean | `false` | Enable auto-context loading |
+| `context.auto.strategy` | string | `"dynamic"` | Strategy: `"dynamic"`, `"static"`, `"hybrid"` |
+| `context.auto.showLoadedFiles` | boolean | `true` | Show which files were auto-loaded |
+| `context.auto.includeContent` | boolean | `true` | Include file content (not just paths) |
+| `context.auto.useSectionReferences` | boolean | `true` | Use PIN section references |
+| `context.auto.maxFilesToLoad` | number | `10` | Max files to auto-load |
+| `context.auto.maxContentLines` | number | `50` | Max lines per loaded file |
+| `context.auto.useAstGrep` | boolean | `false` | Use AST-based grep for context |
+| `context.auto.maxSemanticFacts` | number | `5` | Max semantic memory facts to inject |
+
+---
+
+## context.smart
+
+Smart context estimation — predict context usage before task execution.
+
+**Config path**: `context.smart`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.smart.enabled` | boolean | `true` | Enable smart context estimation |
+| `context.smart.safeThreshold` | number | `0.95` | Context usage threshold for safe tasks |
+| `context.smart.emergencyThreshold` | number | `0.9` | Emergency context threshold |
+| `context.smart.estimation.perFile` | number | `0.02` | Estimated context per file (fraction) |
+| `context.smart.estimation.perCriterion` | number | `0.03` | Estimated context per criterion |
+| `context.smart.estimation.refactorBuffer` | number | `0.1` | Extra buffer for refactoring tasks |
+
+---
+
+## context.compaction
+
+Context compaction — compress context when approaching limits.
+
+**Config path**: `context.compaction`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.compaction.enabled` | boolean | `false` | Enable context compaction |
+| `context.compaction.thresholds.warnAt` | number | `50000` | Warn at this token count |
+| `context.compaction.thresholds.compactAt` | number | `80000` | Auto-compact at this token count |
+| `context.compaction.autoCleanup` | boolean | `true` | Auto-clean expired context |
+
+---
+
+## context.monitor
+
+Context usage monitoring.
+
+**Config path**: `context.monitor`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.monitor.enabled` | boolean | `false` | Enable context monitoring |
+
+---
+
+## context.session
+
+Session-scoped context state.
+
+**Config path**: `context.session`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.session.enabled` | boolean | `false` | Enable session context tracking |
+
+---
+
+## context.proactive
+
+Proactive context loading during specific task phases.
+
+**Config path**: `context.proactive`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `context.proactive.enabled` | boolean | `true` | Enable proactive context loading |
+| `context.proactive.triggerThreshold` | number | `0.75` | Context threshold to trigger proactive loading |
+| `context.proactive.useHaiku` | boolean | `true` | Use Haiku model for proactive context |
+| `context.proactive.phases` | string[] | See config | Phases where proactive loading is active |
+
+---
+
+## models.hybrid
+
+Hybrid model execution — delegate tasks to cheaper/faster models.
+
+**Config path**: `models.hybrid`
+
+```json
+{
+  "models": {
+    "hybrid": {
+      "enabled": true,
+      "executor": {
+        "type": "local",
+        "provider": null,
+        "model": null,
+        "useFullContext": true
+      },
+      "planner": {
+        "adaptToExecutor": true,
+        "useAdapterKnowledge": true
+      },
+      "settings": {
+        "temperature": 0.7,
+        "maxRetries": 20,
+        "timeout": 120000,
+        "autoExecute": false,
+        "outputReserveRatio": 0.3
+      },
+      "routing": {
+        "enabled": true,
+        "rules": [
+          { "taskType": "simple-edit", "model": "cheapest" },
+          { "taskType": "code-generation", "model": "mid-tier" },
+          { "taskType": "refactoring", "model": "planner" },
+          { "taskType": "documentation", "model": "cheapest" }
+        ]
+      }
+    }
+  }
+}
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `models.hybrid.enabled` | boolean | `true` | Enable hybrid model execution |
+| `models.hybrid.executor.type` | string | `"local"` | Executor type: `"local"`, `"api"` |
+| `models.hybrid.executor.provider` | string | `null` | API provider name |
+| `models.hybrid.executor.model` | string | `null` | Specific model to use |
+| `models.hybrid.executor.useFullContext` | boolean | `true` | Pass full context to executor |
+| `models.hybrid.planner.adaptToExecutor` | boolean | `true` | Adapt prompts for executor model |
+| `models.hybrid.settings.temperature` | number | `0.7` | Temperature for executor model |
+| `models.hybrid.settings.maxRetries` | number | `20` | Max retries on failure |
+| `models.hybrid.settings.autoExecute` | boolean | `false` | Auto-execute without approval |
+| `models.hybrid.routing.enabled` | boolean | `true` | Enable task-based model routing |
+
+---
+
+## models.multiModel
+
+Multi-model routing with fallback and escalation.
+
+**Config path**: `models.multiModel`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `models.multiModel.enabled` | boolean | `false` | Enable multi-model routing |
+| `models.multiModel.routingStrategy` | string | `"quality-first"` | Strategy: `"quality-first"`, `"cost-optimized"`, `"learned"` |
+| `models.multiModel.fallbackEnabled` | boolean | `true` | Enable fallback to higher-capability model |
+| `models.multiModel.maxEscalations` | number | `2` | Max model escalations per task |
+
+---
+
+## models.cascade
+
+Model cascade configuration.
+
+**Config path**: `models.cascade`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `models.cascade.enabled` | boolean | `false` | Enable model cascade |
 
 ---
 
 ## commits
 
-Controls commit approval workflow.
+Commit behavior and approval settings.
+
+**Config path**: `commits`
 
 ```json
 {
@@ -168,342 +857,86 @@ Controls commit approval workflow.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `requireApproval.feature` | boolean | `true` | Require approval for features |
-| `requireApproval.bugfix` | boolean | `false` | Require approval for bugfixes |
-| `requireApproval.refactor` | boolean | `true` | Require approval for refactors |
-| `requireApproval.docs` | boolean | `false` | Require approval for docs |
-| `autoCommitSmallFixes` | boolean | `true` | Auto-commit small changes |
-| `smallFixThreshold` | number | `3` | Max files for "small fix" |
-| `squashTaskCommits` | boolean | `true` | Squash commits on task complete |
-| `commitMessageFormat` | string | `"conventional"` | `"conventional"` or `"simple"` |
+| `commits.requireApproval.feature` | boolean | `true` | Ask before committing features |
+| `commits.requireApproval.bugfix` | boolean | `false` | Ask before committing bugfixes |
+| `commits.requireApproval.refactor` | boolean | `true` | Ask before committing refactors |
+| `commits.requireApproval.docs` | boolean | `false` | Ask before committing docs |
+| `commits.autoCommitSmallFixes` | boolean | `true` | Auto-commit small fixes |
+| `commits.smallFixThreshold` | number | `3` | Max files for "small fix" |
+| `commits.squashTaskCommits` | boolean | `true` | Squash commits per task |
+| `commits.commitMessageFormat` | string | `"conventional"` | Format: `"conventional"`, `"descriptive"` |
 
 ---
 
-## workflow
+## security
 
-High-level workflow configuration.
+Security scanning configuration.
 
-```json
-{
-  "workflow": {
-    "planningStyle": "feature-based",
-    "agentStructure": "unified"
-  }
-}
-```
+**Config path**: `security`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `planningStyle` | string | `"feature-based"` | Planning approach |
-| `agentStructure` | string | `"unified"` | Agent organization |
+| `security.scanBeforeCommit` | boolean | `true` | Run security scan before commits |
+| `security.blockOnHigh` | boolean | `true` | Block commit on high-severity findings |
+| `security.checkPatterns.secrets` | boolean | `true` | Check for leaked secrets |
+| `security.checkPatterns.injection` | boolean | `true` | Check for injection vulnerabilities |
+| `security.checkPatterns.npmAudit` | boolean | `true` | Run npm audit |
+| `security.ignoreFiles` | string[] | `["*.test.ts", "*.spec.ts"]` | Files to skip in scans |
 
 ---
 
-## loops
+## damageControl
 
-Controls self-completing execution loops.
+Prevent destructive operations (dangerous shell commands, mass file deletion).
 
-```json
-{
-  "loops": {
-    "enabled": true,
-    "enforced": true,
-    "blockExitUntilComplete": true,
-    "requireVerification": true,
-    "blockOnSkip": true,
-    "maxRetries": 5,
-    "maxIterations": 20,
-    "commitEvery": 3,
-    "pauseBetweenScenarios": false,
-    "autoInferVerification": true,
-    "fallbackToManual": true
-  }
-}
-```
+**Config path**: `damageControl`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable execution loops |
-| `enforced` | boolean | `true` | Enforce loop completion |
-| `blockExitUntilComplete` | boolean | `true` | Prevent early exit |
-| `requireVerification` | boolean | `true` | Require verification pass |
-| `blockOnSkip` | boolean | `true` | Block if scenario skipped |
-| `maxRetries` | number | `5` | Max retries per scenario |
-| `maxIterations` | number | `20` | Max total loop iterations |
-| `commitEvery` | number | `3` | Commit every N scenarios |
-| `pauseBetweenScenarios` | boolean | `false` | Pause between scenarios |
-| `autoInferVerification` | boolean | `true` | Auto-generate verification steps |
-| `fallbackToManual` | boolean | `true` | Fall back to manual on failure |
-
-**Trade-off**: Higher `maxRetries`/`maxIterations` = higher completion rate but more token usage.
-
----
-
-## durableSteps
-
-Controls crash recovery and session persistence.
-
-```json
-{
-  "durableSteps": {
-    "enabled": true,
-    "autoResume": true,
-    "checkSuspensionsOnStart": true,
-    "defaultMaxAttempts": 5
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable durable sessions |
-| `autoResume` | boolean | `true` | Auto-resume interrupted tasks |
-| `checkSuspensionsOnStart` | boolean | `true` | Check for suspended tasks |
-| `defaultMaxAttempts` | number | `5` | Default retry attempts |
-
----
-
-## suspension
-
-Controls long-running task handling.
-
-```json
-{
-  "suspension": {
-    "enabled": true,
-    "pollIntervalSeconds": 60,
-    "maxPollAttempts": 120,
-    "reminderAfterHours": 24
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable suspend/resume |
-| `pollIntervalSeconds` | number | `60` | Polling interval for conditions |
-| `maxPollAttempts` | number | `120` | Max poll attempts before timeout |
-| `reminderAfterHours` | number | `24` | Hours before reminder |
-
----
-
-## parallel
-
-Controls concurrent task execution.
-
-```json
-{
-  "parallel": {
-    "enabled": true,
-    "maxConcurrent": 3,
-    "autoApprove": false,
-    "requireWorktree": true,
-    "showProgress": true,
-    "autoDetect": true,
-    "autoSuggest": true,
-    "autoExecute": false,
-    "minTasksForParallel": 2
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable parallel execution |
-| `maxConcurrent` | number | `3` | Max concurrent tasks |
-| `autoApprove` | boolean | `false` | Auto-approve parallel work |
-| `requireWorktree` | boolean | `true` | Require git worktree isolation |
-| `showProgress` | boolean | `true` | Show progress indicators |
-| `autoDetect` | boolean | `true` | Auto-detect parallelizable tasks |
-| `autoSuggest` | boolean | `true` | Suggest parallel execution |
-| `autoExecute` | boolean | `false` | Auto-execute in parallel |
-| `minTasksForParallel` | number | `2` | Min tasks for parallel mode |
-
----
-
-## corrections
-
-Controls correction file handling.
-
-```json
-{
-  "corrections": {
-    "mode": "inline",
-    "detailPath": ".workflow/corrections"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `mode` | string | `"inline"` | `"inline"` or `"detailed"` |
-| `detailPath` | string | `".workflow/corrections"` | Path for detailed corrections |
-
----
-
-## phases
-
-Controls project phases (disabled by default).
-
-```json
-{
-  "phases": {
-    "enabled": false,
-    "definitions": []
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable phase tracking |
-| `definitions` | array | `[]` | Phase definitions |
-
----
-
-## mandatorySteps
-
-Required steps at various points.
-
-```json
-{
-  "mandatorySteps": {
-    "afterTask": [],
-    "beforeCommit": [],
-    "onSessionEnd": ["updateRequestLog", "updateAppMap"]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `afterTask` | array | `[]` | Steps after each task |
-| `beforeCommit` | array | `[]` | Steps before commit |
-| `onSessionEnd` | array | `["updateRequestLog", "updateAppMap"]` | Steps on session end |
-
----
-
-## qualityGates
-
-Per-task-type quality requirements.
-
-```json
-{
-  "qualityGates": {
-    "feature": {
-      "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"],
-      "optional": ["review", "docs"]
-    },
-    "bugfix": {
-      "require": ["loopComplete", "tests", "requestLogEntry"],
-      "optional": ["review"]
-    },
-    "refactor": {
-      "require": ["loopComplete", "tests", "noNewFeatures"],
-      "optional": ["review"]
-    }
-  }
-}
-```
-
-| Gate | Description |
-|------|-------------|
-| `loopComplete` | Self-completing loop must finish all acceptance criteria |
-| `tests` | Tests must pass |
-| `appMapUpdate` | App-map must be updated |
-| `requestLogEntry` | Request log must be updated |
-| `review` | Code review required |
-| `docs` | Documentation required |
-| `noNewFeatures` | No new features (refactor only) |
-
----
-
-## strictMode
-
-Additional strict mode options.
-
-```json
-{
-  "strictMode": {
-    "verificationChecklist": false,
-    "correctionReportsOnFail": false,
-    "featureReportsOnComplete": false
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `verificationChecklist` | boolean | `false` | Require verification checklist |
-| `correctionReportsOnFail` | boolean | `false` | Generate correction reports |
-| `featureReportsOnComplete` | boolean | `false` | Generate feature reports |
-
----
-
-## componentRules
-
-Component reuse and creation rules.
-
-```json
-{
-  "componentRules": {
-    "preferVariants": true,
-    "requireAppMapEntry": true,
-    "requireDetailDoc": false,
-    "autoGenerateStorybook": false,
-    "storybookPath": "src/stories"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `preferVariants` | boolean | `true` | Prefer variants over new components |
-| `requireAppMapEntry` | boolean | `true` | Require app-map entry for new components |
-| `requireDetailDoc` | boolean | `false` | Require detailed documentation |
-| `autoGenerateStorybook` | boolean | `false` | Auto-generate Storybook stories |
-| `storybookPath` | string | `"src/stories"` | Path for Storybook stories |
-
----
-
-## testing
-
-Test execution configuration.
-
-```json
-{
-  "testing": {
-    "runAfterTask": false,
-    "runBeforeCommit": false
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `runAfterTask` | boolean | `false` | Run tests after task |
-| `runBeforeCommit` | boolean | `false` | Run tests before commit |
+| `damageControl.enabled` | boolean | `false` | Enable damage control |
+| `damageControl.patternsFile` | string | `".workflow/damage-control.yaml"` | Path to patterns file |
+| `damageControl.events.bash` | boolean | `true` | Monitor bash commands |
+| `damageControl.events.file` | boolean | `true` | Monitor file operations |
+| `damageControl.events.stop` | boolean | `true` | Block dangerous operations |
+| `damageControl.onBlock` | string | `"error"` | Action on block: `"error"`, `"warn"` |
+| `damageControl.logging` | boolean | `true` | Log damage control events |
 
 ---
 
 ## hooks
 
-CLI hooks configuration for Claude Code.
+Hook system — PreToolUse, PostToolUse, and lifecycle hooks.
+
+**Config path**: `hooks`
 
 ```json
 {
   "hooks": {
-    "enabled": true,
+    "enabled": false,
     "targets": ["claude-code"],
     "gracefulDegradation": true,
-    "timeout": 5000,
+    "timeout": 600000,
     "rules": {
-      "taskGating": { "enabled": true, "blockWithoutTask": true },
-      "validation": { "enabled": true, "runAfterEdit": true },
-      "loopEnforcement": { "enabled": true },
-      "componentReuse": { "enabled": true, "threshold": 80, "blockOnSimilar": false },
-      "sessionContext": { "enabled": true, "loadSuspendedTasks": true },
-      "autoLogging": { "enabled": true }
+      "enforcement": {
+        "taskGating": { "enabled": false, "blockWithoutTask": true },
+        "scopeGating": { "enabled": false, "mode": "warn" },
+        "implementationGate": { "enabled": false },
+        "routingGate": { "enabled": false },
+        "loopEnforcement": { "enabled": false }
+      },
+      "intelligence": {
+        "componentReuse": { "enabled": false, "threshold": 30, "blockOnSimilar": false },
+        "sessionContext": { "enabled": false },
+        "validation": { "enabled": false, "runAfterEdit": true }
+      },
+      "lifecycle": {
+        "taskCompleted": { "enabled": false },
+        "completionSummaries": { "enabled": true },
+        "autoLogging": { "enabled": false },
+        "setup": { "enabled": false },
+        "sessionCleanup": { "enabled": true },
+        "phaseGate": { "enabled": true }
+      }
     },
     "claudeCode": {
       "installPath": ".claude/settings.local.json"
@@ -514,1190 +947,360 @@ CLI hooks configuration for Claude Code.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable CLI hooks |
-| `targets` | array | `["claude-code"]` | Target CLIs for hooks |
-| `gracefulDegradation` | boolean | `true` | Continue on hook failure |
-| `timeout` | number | `5000` | Hook timeout in ms |
-| `rules.taskGating.enabled` | boolean | `true` | Enable task gating hook |
-| `rules.taskGating.blockWithoutTask` | boolean | `true` | Block edits without active task |
-| `rules.validation.enabled` | boolean | `true` | Enable validation hook |
-| `rules.validation.runAfterEdit` | boolean | `true` | Run validation after file edits |
-| `rules.loopEnforcement.enabled` | boolean | `true` | Block stop until criteria met |
-| `rules.componentReuse.enabled` | boolean | `true` | Check for similar components |
-| `rules.componentReuse.threshold` | number | `80` | Similarity threshold (0-100) |
-| `rules.sessionContext.enabled` | boolean | `true` | Load context on session start |
-| `rules.autoLogging.enabled` | boolean | `true` | Auto-log session activity |
-
-**Setup/Management:**
-```bash
-./scripts/flow hooks setup    # Install hooks
-./scripts/flow hooks status   # Check hook status
-./scripts/flow hooks remove   # Remove hooks
-./scripts/flow hooks test X   # Test a specific hook
-```
-
----
-
-## skills
-
-Installed skills.
-
-```json
-{
-  "skills": {
-    "installed": []
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `installed` | array | `[]` | List of installed skill names |
-
----
-
-## skillLearning
-
-Skill auto-creation and learning.
-
-```json
-{
-  "skillLearning": {
-    "enabled": true,
-    "autoExtract": true,
-    "triggers": {
-      "onCommit": true,
-      "onTaskComplete": true,
-      "onCompact": true
-    },
-    "minCorrectionsToLearn": 1,
-    "autoCreateSkills": "ask",
-    "autoDetectFrameworks": true,
-    "fetchOfficialDocs": true,
-    "frameworkDetectionPatterns": {
-      "nestjs": ["*.module.ts", "*.controller.ts", "*.service.ts", "@nestjs/*"],
-      "react": ["*.tsx", "*.jsx", "use*.ts", "react", "react-dom"],
-      "vue": ["*.vue", "vue", "@vue/*"],
-      "angular": ["*.component.ts", "*.module.ts", "@angular/*"],
-      "fastapi": ["main.py", "fastapi", "pydantic"],
-      "django": ["manage.py", "django", "settings.py"],
-      "express": ["app.js", "express", "router.js"]
-    },
-    "officialDocsUrls": {
-      "nestjs": "https://docs.nestjs.com",
-      "react": "https://react.dev",
-      "vue": "https://vuejs.org/guide",
-      "angular": "https://angular.io/docs",
-      "fastapi": "https://fastapi.tiangolo.com",
-      "django": "https://docs.djangoproject.com",
-      "express": "https://expressjs.com/en/guide"
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable skill learning |
-| `autoExtract` | boolean | `true` | Auto-extract patterns |
-| `triggers.onCommit` | boolean | `true` | Learn on commit |
-| `triggers.onTaskComplete` | boolean | `true` | Learn on task complete |
-| `triggers.onCompact` | boolean | `true` | Learn on compact |
-| `minCorrectionsToLearn` | number | `1` | Min corrections to create pattern |
-| `autoCreateSkills` | string | `"ask"` | `"ask"`, `"auto"`, or `"never"` |
-| `autoDetectFrameworks` | boolean | `true` | Auto-detect frameworks |
-| `fetchOfficialDocs` | boolean | `true` | Fetch official documentation |
-| `frameworkDetectionPatterns` | object | (see above) | Patterns to detect frameworks |
-| `officialDocsUrls` | object | (see above) | URLs for official docs |
-
----
-
-## componentIndex
-
-Component auto-scanning configuration.
-
-```json
-{
-  "componentIndex": {
-    "autoScan": true,
-    "scanOn": ["sessionStart", "afterTask", "preCommit"],
-    "staleAfterMinutes": 60,
-    "directories": [
-      "src/components",
-      "src/hooks",
-      "src/services",
-      "src/pages",
-      "src/modules",
-      "app"
-    ],
-    "ignore": [
-      "*.test.*",
-      "*.spec.*",
-      "*.stories.*",
-      "index.ts",
-      "index.js",
-      "__tests__",
-      "__mocks__"
-    ]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `autoScan` | boolean | `true` | Auto-scan on triggers |
-| `scanOn` | array | `["sessionStart"]` | When to scan: `sessionStart`, `afterTask`, `preCommit` |
-| `staleAfterMinutes` | number | `60` | Refresh if older than this (with sessionStart) |
-| `directories` | array | (see above) | Directories to scan |
-| `ignore` | array | (see above) | Patterns to ignore |
-
----
-
-## guidedEdit
-
-Step-by-step multi-file editing configuration.
-
-```json
-{
-  "guidedEdit": {
-    "enabled": true,
-    "sessionFile": ".workflow/state/guided-edit-session.json",
-    "extensions": ["ts", "tsx", "js", "jsx", "vue", "svelte"],
-    "srcDir": null
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable guided edit |
-| `sessionFile` | string | (see above) | Session persistence file |
-| `extensions` | array | `["ts", "tsx", "js", "jsx", "vue", "svelte"]` | File extensions to search |
-| `srcDir` | string\|null | `null` | Source directory (null = auto-detect) |
-
----
-
-## figmaAnalyzer
-
-Design-to-code matching configuration.
-
-```json
-{
-  "figmaAnalyzer": {
-    "enabled": true,
-    "thresholds": {
-      "exactMatch": 95,
-      "strongMatch": 80,
-      "variantCandidate": 60
-    },
-    "componentDirs": ["src/components", "components", "src/ui", "ui"],
-    "mcpServer": {
-      "port": 3847,
-      "autoStart": false
-    },
-    "autoScanOnAnalyze": true,
-    "generatePrompts": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable Figma analyzer |
-| `thresholds.exactMatch` | number | `95` | Score for exact match |
-| `thresholds.strongMatch` | number | `80` | Score for strong match |
-| `thresholds.variantCandidate` | number | `60` | Score for variant candidate |
-| `componentDirs` | array | (see above) | Directories to search |
-| `mcpServer.port` | number | `3847` | MCP server port |
-| `mcpServer.autoStart` | boolean | `false` | Auto-start MCP server |
-| `autoScanOnAnalyze` | boolean | `true` | Scan components on analyze |
-| `generatePrompts` | boolean | `true` | Generate implementation prompts |
-
----
-
-## traces
-
-Code flow trace configuration.
-
-```json
-{
-  "traces": {
-    "saveTo": ".workflow/traces",
-    "generateDiagrams": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `saveTo` | string | `".workflow/traces"` | Where to save traces |
-| `generateDiagrams` | boolean | `true` | Generate Mermaid diagrams |
-
----
-
-## worktree
-
-Git worktree isolation configuration.
-
-```json
-{
-  "worktree": {
-    "enabled": false,
-    "autoCleanupHours": 24,
-    "keepOnFailure": false,
-    "squashOnMerge": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable worktree isolation |
-| `autoCleanupHours` | number | `24` | Hours before cleanup |
-| `keepOnFailure` | boolean | `false` | Keep worktree on failure |
-| `squashOnMerge` | boolean | `true` | Squash commits on merge |
-
----
-
-## hybrid
-
-Local LLM execution configuration (85-95% token savings).
-
-```json
-{
-  "hybrid": {
-    "enabled": false,
-    "executor": {
-      "type": "local",
-      "provider": null,
-      "providerEndpoint": null,
-      "model": null,
-      "apiKey": null
-    },
-    "planner": {
-      "adaptToExecutor": true,
-      "useAdapterKnowledge": true
-    },
-    "settings": {
-      "temperature": 0.7,
-      "maxTokens": 4096,
-      "maxRetries": 20,
-      "timeout": 120000,
-      "autoExecute": false,
-      "createBranch": false,
-      "tokenEstimation": {
-        "enabled": true,
-        "minTokens": 1000,
-        "maxTokens": 8000,
-        "defaultLevel": "medium",
-        "logMetrics": true
-      }
-    },
-    "cloudProviders": {
-      "openai": {
-        "models": ["gpt-4o-mini", "gpt-4o"],
-        "defaultModel": "gpt-4o-mini",
-        "envKey": "OPENAI_API_KEY"
-      },
-      "anthropic": {
-        "models": ["claude-3-5-haiku-latest", "claude-3-haiku-20240307"],
-        "defaultModel": "claude-3-5-haiku-latest",
-        "envKey": "ANTHROPIC_API_KEY"
-      },
-      "google": {
-        "models": ["gemini-2.0-flash-exp", "gemini-1.5-flash"],
-        "defaultModel": "gemini-2.0-flash-exp",
-        "envKey": "GOOGLE_API_KEY"
-      }
-    },
-    "templates": {
-      "directory": "templates/hybrid"
-    },
-    "projectContext": {
-      "uiFramework": null,
-      "stylingApproach": null,
-      "componentDirs": [],
-      "typeDirs": ["src/types/*.ts"],
-      "doNotImport": ["React"],
-      "excludeDirectories": ["__tests__", "__mocks__", "node_modules", ".git", "dist", "build"]
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable hybrid mode |
-| `executor.type` | string | `"local"` | `"local"` or `"cloud"` |
-| `executor.provider` | string | `null` | Cloud provider name |
-| `executor.providerEndpoint` | string | `null` | Custom endpoint URL |
-| `executor.model` | string | `null` | Model to use |
-| `executor.apiKey` | string | `null` | API key (or use env var) |
-| `planner.adaptToExecutor` | boolean | `true` | Adapt prompts to executor |
-| `planner.useAdapterKnowledge` | boolean | `true` | Use model adapter knowledge |
-| `settings.temperature` | number | `0.7` | LLM temperature |
-| `settings.maxTokens` | number | `4096` | Max tokens per request |
-| `settings.maxRetries` | number | `20` | Max retry attempts |
-| `settings.timeout` | number | `120000` | Timeout in ms |
-| `settings.autoExecute` | boolean | `false` | Auto-execute plans |
-| `settings.createBranch` | boolean | `false` | Create branch for changes |
-| `tokenEstimation.enabled` | boolean | `true` | Estimate tokens |
-| `tokenEstimation.minTokens` | number | `1000` | Min estimated tokens |
-| `tokenEstimation.maxTokens` | number | `8000` | Max estimated tokens |
-
----
-
-## validation
-
-Auto-validation command configuration.
-
-```json
-{
-  "validation": {
-    "afterFileEdit": {
-      "enabled": false,
-      "commands": {
-        "*.ts": ["npx tsc --noEmit"],
-        "*.tsx": ["npx tsc --noEmit", "npx eslint {file} --fix"],
-        "*.js": ["npx eslint {file} --fix"],
-        "*.jsx": ["npx eslint {file} --fix"]
-      },
-      "fixErrorsBeforeContinuing": true
-    },
-    "afterTaskComplete": {
-      "enabled": true,
-      "commands": ["npm run lint", "npm run typecheck"]
-    },
-    "beforeCommit": {
-      "enabled": true,
-      "commands": ["npm run lint", "npm run typecheck", "npm run test"]
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `afterFileEdit.enabled` | boolean | `false` | Validate after each edit |
-| `afterFileEdit.commands` | object | (see above) | Commands per file type |
-| `afterFileEdit.fixErrorsBeforeContinuing` | boolean | `true` | Block on errors |
-| `afterTaskComplete.enabled` | boolean | `true` | Validate after task |
-| `afterTaskComplete.commands` | array | (see above) | Commands to run |
-| `beforeCommit.enabled` | boolean | `true` | Validate before commit |
-| `beforeCommit.commands` | array | (see above) | Commands to run |
-
----
-
-## agents
-
-Agent persona configuration.
-
-```json
-{
-  "agents": {
-    "enabled": ["orchestrator", "story-writer", "developer", "reviewer", "tester"],
-    "optional": ["accessibility", "security", "performance", "docs", "design-system", "onboarding"]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | array | (see above) | Enabled agent personas |
-| `optional` | array | (see above) | Optional agent personas |
-
----
-
-## multiApproach
-
-Multiple solution analysis configuration.
-
-```json
-{
-  "multiApproach": {
-    "enabled": true,
-    "mode": "suggest",
-    "triggerOn": ["large", "xl"],
-    "maxApproaches": 3,
-    "selectionStrategy": "first-passing"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable multi-approach |
-| `mode` | string | `"suggest"` | `"suggest"` or `"auto"` |
-| `triggerOn` | array | `["large", "xl"]` | Task sizes to trigger |
-| `maxApproaches` | number | `3` | Max approaches to generate |
-| `selectionStrategy` | string | `"first-passing"` | How to select approach |
-
----
-
-## autoContext
-
-Auto-loading related files configuration. Automatically discovers relevant files, semantic memory facts, and LSP type information when starting a task.
-
-```json
-{
-  "autoContext": {
-    "enabled": true,
-    "showLoadedFiles": true,
-    "maxFilesToLoad": 10,
-    "maxGrepResults": 10,
-    "maxComponentMatches": 15,
-    "maxContentLines": 50,
-    "includeContent": false,
-    "useAstGrep": false,
-    "maxSemanticFacts": 5,
-    "semanticMinRelevance": 40,
-    "lspEnrichment": {
-      "enabled": true,
-      "maxFiles": 5,
-      "timeoutMs": 2000,
-      "showExports": true,
-      "showDiagnostics": true,
-      "prioritizeHealthyFiles": true
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable auto-context |
-| `showLoadedFiles` | boolean | `true` | Show loaded files |
-| `maxFilesToLoad` | number | `10` | Max files to load |
-| `maxGrepResults` | number | `10` | Max grep results |
-| `maxComponentMatches` | number | `15` | Max component matches |
-| `maxContentLines` | number | `50` | Max lines per file |
-| `includeContent` | boolean | `false` | Include file content |
-| `useAstGrep` | boolean | `false` | Use AST-based grep |
-| `maxSemanticFacts` | number | `5` | Max semantic memory facts to include |
-| `semanticMinRelevance` | number | `40` | Min relevance % for semantic facts |
-
-### LSP Enrichment (v2.2+)
-
-LSP enrichment adds type information and diagnostics to discovered files.
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `lspEnrichment.enabled` | boolean | `true` | Enable LSP enrichment |
-| `lspEnrichment.maxFiles` | number | `5` | Max files to enrich |
-| `lspEnrichment.timeoutMs` | number | `2000` | LSP timeout in ms |
-| `lspEnrichment.showExports` | boolean | `true` | Show exported symbols |
-| `lspEnrichment.showDiagnostics` | boolean | `true` | Show error/warning counts |
-| `lspEnrichment.prioritizeHealthyFiles` | boolean | `true` | Sort error-free files first |
-
-**Output Example:**
-```
-📂 Auto-loaded context:
-   ✓ src/services/AuthService.ts
-   ⚠️ src/hooks/useAuth.ts (2 warnings)
-   ❌ src/utils/broken.ts (1 error)
-
-📦 Key exports:
-   AuthService.ts: login, logout, refreshToken
-   useAuth.ts: useAuth, AuthProvider
-
-🧠 Learned facts:
-   ● Always use AuthContext for user state
-```
-
----
-
-## metrics
-
-Usage tracking configuration.
-
-```json
-{
-  "metrics": {
-    "enabled": true,
-    "trackCommands": true,
-    "retentionDays": 30,
-    "alertOnFailureRate": 0.3
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable metrics |
-| `trackCommands` | boolean | `true` | Track command usage |
-| `retentionDays` | number | `30` | Days to retain metrics |
-| `alertOnFailureRate` | number | `0.3` | Alert threshold (0-1) |
-
----
-
-## security
-
-Pre-commit security scanning configuration.
-
-```json
-{
-  "security": {
-    "scanBeforeCommit": true,
-    "blockOnHigh": true,
-    "checkPatterns": {
-      "secrets": true,
-      "injection": true,
-      "npmAudit": true
-    },
-    "ignoreFiles": ["*.test.ts", "*.spec.ts"]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `scanBeforeCommit` | boolean | `true` | Scan before commit |
-| `blockOnHigh` | boolean | `true` | Block on high severity |
-| `checkPatterns.secrets` | boolean | `true` | Check for secrets |
-| `checkPatterns.injection` | boolean | `true` | Check for injection |
-| `checkPatterns.npmAudit` | boolean | `true` | Run npm audit |
-| `ignoreFiles` | array | (see above) | Files to ignore |
-
----
-
-## modelAdapters
-
-Per-model learning configuration.
-
-```json
-{
-  "modelAdapters": {
-    "enabled": true,
-    "autoLearn": true,
-    "directory": ".workflow/model-adapters"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable model adapters |
-| `autoLearn` | boolean | `true` | Auto-learn from errors |
-| `directory` | string | `".workflow/model-adapters"` | Adapter storage path |
-
----
-
-## codebaseInsights
-
-Project analysis configuration.
-
-```json
-{
-  "codebaseInsights": {
-    "enabled": true,
-    "generateOn": ["onboarding", "manual"]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable insights |
-| `generateOn` | array | `["onboarding", "manual"]` | When to generate |
-
----
-
-## lsp
-
-Language server integration configuration. LSP provides type information, diagnostics, and symbol navigation.
-
-```json
-{
-  "lsp": {
-    "enabled": true,
-    "server": "typescript-language-server",
-    "timeout": 5000,
-    "cacheTypes": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable LSP integration |
-| `server` | string | `"typescript-language-server"` | LSP server to use |
-| `timeout` | number | `5000` | Request timeout in ms |
-| `cacheTypes` | boolean | `true` | Cache type information |
-
-### Installation
-
-LSP dependencies can be installed manually:
-
-```bash
-npm i -D typescript-language-server typescript
-```
-
-### Auto-Context Integration
-
-When `autoContext.lspEnrichment.enabled` is `true`, the LSP server enriches auto-context results with:
-- **Exported symbols**: Function, class, interface, and variable names
-- **Diagnostics**: Error and warning counts per file
-- **Health prioritization**: Files with errors are sorted to the bottom
-
-See [autoContext.lspEnrichment](#lsp-enrichment-v22) for configuration options.
-
----
-
-## contextMonitor
-
-Context window management configuration.
-
-```json
-{
-  "contextMonitor": {
-    "enabled": true,
-    "warnAt": 0.7,
-    "criticalAt": 0.85,
-    "contextWindow": 200000,
-    "checkOnSessionStart": true,
-    "checkAfterTask": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable monitoring |
-| `warnAt` | number | `0.7` | Warning threshold (0-1) |
-| `criticalAt` | number | `0.85` | Critical threshold (0-1) |
-| `contextWindow` | number | `200000` | Estimated context window |
-| `checkOnSessionStart` | boolean | `true` | Check on start |
-| `checkAfterTask` | boolean | `true` | Check after task |
-| `trackingMethod` | string | `"auto"` | Tracking method: "auto", "native", or "estimated" |
-
----
-
-## requestLog
-
-Change history configuration.
-
-```json
-{
-  "requestLog": {
-    "enabled": true,
-    "autoArchive": true,
-    "maxRecentEntries": 50,
-    "keepRecent": 30,
-    "createSummary": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable request log |
-| `autoArchive` | boolean | `true` | Auto-archive old entries |
-| `maxRecentEntries` | number | `50` | Max entries before archive |
-| `keepRecent` | number | `30` | Days to keep recent |
-| `createSummary` | boolean | `true` | Create summary on archive |
-
----
-
-## sessionState
-
-Session persistence configuration.
-
-```json
-{
-  "sessionState": {
-    "enabled": true,
-    "autoRestore": true,
-    "maxGapHours": 24,
-    "trackFiles": true,
-    "trackDecisions": true,
-    "maxRecentFiles": 20,
-    "maxRecentDecisions": 10
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable session state |
-| `autoRestore` | boolean | `true` | Auto-restore session |
-| `maxGapHours` | number | `24` | Max hours between sessions |
-| `trackFiles` | boolean | `true` | Track file access |
-| `trackDecisions` | boolean | `true` | Track decisions |
-| `maxRecentFiles` | number | `20` | Max recent files |
-| `maxRecentDecisions` | number | `10` | Max recent decisions |
-
----
-
-## memory
-
-Fact storage configuration.
-
-```json
-{
-  "memory": {
-    "enabled": true,
-    "localDb": ".workflow/memory/local.db",
-    "embeddingModel": "Xenova/all-MiniLM-L6-v2",
-    "maxLocalFacts": 1000,
-    "autoRemember": false
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable memory system |
-| `localDb` | string | `".workflow/memory/local.db"` | Local database path |
-| `embeddingModel` | string | `"Xenova/all-MiniLM-L6-v2"` | Embedding model |
-| `maxLocalFacts` | number | `1000` | Max stored facts |
-| `autoRemember` | boolean | `false` | Auto-remember facts |
-
----
-
-## knowledgeRouting
-
-Knowledge routing configuration.
-
-```json
-{
-  "knowledgeRouting": {
-    "autoDetect": true,
-    "confirmWithUser": true,
-    "defaultScope": "local",
-    "modelSpecificLearning": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `autoDetect` | boolean | `true` | Auto-detect knowledge type |
-| `confirmWithUser` | boolean | `true` | Confirm before routing |
-| `defaultScope` | string | `"local"` | Default scope |
-| `modelSpecificLearning` | boolean | `true` | Per-model learning |
-
----
-
-## prd
-
-PRD chunking configuration.
-
-```json
-{
-  "prd": {
-    "enabled": true,
-    "maxContextTokens": 2000,
-    "chunkSize": 500,
-    "autoRetrieve": false
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable PRD support |
-| `maxContextTokens` | number | `2000` | Max tokens per chunk |
-| `chunkSize` | number | `500` | Chunk size in tokens |
-| `autoRetrieve` | boolean | `false` | Auto-retrieve relevant chunks |
-
----
-
-## automaticMemory
-
-Memory management configuration.
-
-```json
-{
-  "automaticMemory": {
-    "enabled": true,
-    "entropyThreshold": 0.7,
-    "compactOnSessionEnd": true,
-    "relevanceDecay": {
-      "enabled": true,
-      "decayRate": 0.033,
-      "neverAccessedPenalty": 0.1
-    },
-    "demotion": {
-      "relevanceThreshold": 0.3,
-      "coldRetentionDays": 90
-    },
-    "selfTuning": {
-      "enabled": false,
-      "adjustOnOverflow": true,
-      "adjustOnFailures": true
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable auto memory |
-| `entropyThreshold` | number | `0.7` | Entropy threshold |
-| `compactOnSessionEnd` | boolean | `true` | Compact on session end |
-| `relevanceDecay.enabled` | boolean | `true` | Enable decay |
-| `relevanceDecay.decayRate` | number | `0.033` | Decay rate per day |
-| `relevanceDecay.neverAccessedPenalty` | number | `0.1` | Penalty for unused |
-| `demotion.relevanceThreshold` | number | `0.3` | Threshold for demotion |
-| `demotion.coldRetentionDays` | number | `90` | Days to keep cold |
-| `selfTuning.enabled` | boolean | `false` | Enable self-tuning |
-
----
-
-## automaticPromotion
-
-Pattern promotion configuration.
-
-```json
-{
-  "automaticPromotion": {
-    "enabled": false,
-    "threshold": 3,
-    "minRelevance": 0.8,
-    "destinations": ["decisions.md"],
-    "requireApproval": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable promotion |
-| `threshold` | number | `3` | Uses before promotion |
-| `minRelevance` | number | `0.8` | Min relevance score |
-| `destinations` | array | `["decisions.md"]` | Where to promote |
-| `requireApproval` | boolean | `true` | Require user approval |
-
----
-
-## regressionTesting
-
-Regression test configuration.
-
-```json
-{
-  "regressionTesting": {
-    "enabled": true,
-    "sampleSize": 3,
-    "runOnTaskComplete": true,
-    "onFailure": "warn"
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable regression tests |
-| `sampleSize` | number | `3` | Tasks to test |
-| `runOnTaskComplete` | boolean | `true` | Run after task |
-| `onFailure` | string | `"warn"` | `"warn"`, `"block"`, or `"fix"` |
-
----
-
-## storyDecomposition
-
-Story breakdown configuration.
-
-```json
-{
-  "storyDecomposition": {
-    "autoDetect": true,
-    "autoDecompose": false,
-    "complexityThreshold": "medium",
-    "minSubTasks": 5,
-    "edgeCases": true,
-    "loadingStates": true,
-    "errorStates": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `autoDetect` | boolean | `true` | Auto-detect complex stories |
-| `autoDecompose` | boolean | `false` | Auto-decompose stories |
-| `complexityThreshold` | string | `"medium"` | Threshold for decomposition |
-| `minSubTasks` | number | `5` | Min sub-tasks to suggest |
-| `edgeCases` | boolean | `true` | Include edge cases |
-| `loadingStates` | boolean | `true` | Include loading states |
-| `errorStates` | boolean | `true` | Include error states |
-
----
-
-## damageControl
-
-Destructive command protection configuration.
-
-```json
-{
-  "damageControl": {
-    "enabled": false,
-    "patternsFile": ".workflow/damage-control.yaml",
-    "promptHook": {
-      "enabled": false,
-      "model": "haiku",
-      "timeout": 5000,
-      "skipSafeCommands": true
-    },
-    "onBlock": "error",
-    "onAsk": "prompt",
-    "logging": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `false` | Enable damage control |
-| `patternsFile` | string | `".workflow/damage-control.yaml"` | Patterns file path |
-| `promptHook.enabled` | boolean | `false` | Enable AI review |
-| `promptHook.model` | string | `"haiku"` | Model for review |
-| `promptHook.timeout` | number | `5000` | Review timeout |
-| `promptHook.skipSafeCommands` | boolean | `true` | Skip safe commands |
-| `onBlock` | string | `"error"` | `"error"`, `"warn"`, or `"log"` |
-| `onAsk` | string | `"prompt"` | `"prompt"`, `"block"`, or `"allow"` |
-| `logging` | boolean | `true` | Log blocked commands |
-
----
-
-## priorities
-
-Task priority configuration.
-
-```json
-{
-  "priorities": {
-    "defaultPriority": "P2",
-    "autoBoostDays": 2,
-    "autoBoostAmount": 1,
-    "levels": {
-      "P0": { "label": "Critical", "description": "Drop everything" },
-      "P1": { "label": "High", "description": "Do today" },
-      "P2": { "label": "Medium", "description": "Do this week" },
-      "P3": { "label": "Low", "description": "Do when possible" },
-      "P4": { "label": "Backlog", "description": "Someday" }
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `defaultPriority` | string | `"P2"` | Default task priority |
-| `autoBoostDays` | number | `2` | Days before auto-boost |
-| `autoBoostAmount` | number | `1` | Priority levels to boost |
-| `levels` | object | (see above) | Priority level definitions |
-
----
-
-## morningBriefing
-
-Session start context configuration.
-
-```json
-{
-  "morningBriefing": {
-    "enabled": true,
-    "showLastSession": true,
-    "showChanges": true,
-    "showRecommendedTasks": 3,
-    "generatePrompt": true,
-    "showBlockers": true,
-    "showKeyContext": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable briefing |
-| `showLastSession` | boolean | `true` | Show last session info |
-| `showChanges` | boolean | `true` | Show recent changes |
-| `showRecommendedTasks` | number | `3` | Tasks to recommend |
-| `generatePrompt` | boolean | `true` | Generate startup prompt |
-| `showBlockers` | boolean | `true` | Show blockers |
-| `showKeyContext` | boolean | `true` | Show key context |
-
----
-
-## Other Top-Level Options
-
-```json
-{
-  "version": "2.0.0",
-  "projectName": "",
-  "autoLog": true,
-  "autoUpdateAppMap": true,
-  "requireApproval": []
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `version` | string | `"2.0.0"` | Config version |
-| `projectName` | string | `""` | Project name |
-| `autoLog` | boolean | `true` | Auto-update request log |
-| `autoUpdateAppMap` | boolean | `true` | Auto-update app-map |
-| `requireApproval` | array | `[]` | Operations requiring approval |
+| `hooks.enabled` | boolean | `false` | Enable the hook system |
+| `hooks.targets` | string[] | `["claude-code"]` | CLI targets to install hooks for |
+| `hooks.gracefulDegradation` | boolean | `true` | Continue on hook errors |
+| `hooks.timeout` | number | `600000` | Hook timeout in ms |
+| `hooks.rules.enforcement.taskGating.enabled` | boolean | `false` | Block file edits without active task |
+| `hooks.rules.enforcement.scopeGating.enabled` | boolean | `false` | Block edits outside task scope |
+| `hooks.rules.intelligence.componentReuse.enabled` | boolean | `false` | Check for reusable components |
+| `hooks.rules.intelligence.componentReuse.threshold` | number | `30` | Similarity threshold (0-100) |
+| `hooks.rules.intelligence.validation.enabled` | boolean | `false` | Auto-validate after edits |
+| `hooks.rules.lifecycle.taskCompleted.enabled` | boolean | `false` | Hook on task completion |
+| `hooks.rules.lifecycle.completionSummaries.enabled` | boolean | `true` | Show completion summaries |
+| `hooks.claudeCode.installPath` | string | `".claude/settings.local.json"` | Path for hook installation |
 
 ---
 
 ## review
 
-Code review configuration.
+Code review system configuration.
+
+**Config path**: `review`
 
 ```json
 {
   "review": {
+    "specFirstGating": true,
     "minFindings": 3,
     "requireJustificationIfClean": true,
-    "gitVerifiedClaims": {
-      "enabled": true,
-      "verifyFileCreation": true,
-      "verifyContentMatch": true,
-      "blockOnMismatch": true
+    "gitVerifiedClaims": { "enabled": false },
+    "multiPass": { "enabled": false },
+    "fix": {
+      "persistUnfixed": true,
+      "severityRouting": {
+        "criticalHighRoute": "full",
+        "mediumLowRoute": "light"
+      },
+      "contextBudget": {
+        "enabled": true,
+        "useSubAgents": true
+      }
     },
-    "agents": {
-      "core": ["code-logic", "security", "architecture"],
-      "optional": ["performance"],
-      "projectRules": true,
-      "maxParallelAgents": 6
-    }
+    "peer": { "enabled": false },
+    "triage": { "enabled": false }
   }
 }
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `minFindings` | number | `3` | Minimum findings per review agent (adversarial mode) |
-| `requireJustificationIfClean` | boolean | `true` | Require justification when fewer than minFindings |
-| `gitVerifiedClaims.enabled` | boolean | `true` | Cross-reference spec vs git diff |
-| `gitVerifiedClaims.verifyFileCreation` | boolean | `true` | Verify spec-promised files exist in git |
-| `gitVerifiedClaims.verifyContentMatch` | boolean | `true` | Verify content matches spec intent |
-| `gitVerifiedClaims.blockOnMismatch` | boolean | `true` | Block review on missing files |
-| `agents.core` | array | (see above) | Core review agents (always run) |
-| `agents.optional` | array | `["performance"]` | Optional review agents |
-| `agents.projectRules` | boolean | `true` | Auto-generate agents from decisions.md |
-| `agents.maxParallelAgents` | number | `6` | Max total review agents |
+| `review.specFirstGating` | boolean | `true` | Require spec review before code review |
+| `review.minFindings` | number | `3` | Minimum findings expected per review |
+| `review.requireJustificationIfClean` | boolean | `true` | Require explanation if no findings |
+| `review.multiPass.enabled` | boolean | `false` | Enable multi-pass review |
+| `review.fix.persistUnfixed` | boolean | `true` | Save unfixed findings for later |
+| `review.fix.contextBudget.enabled` | boolean | `true` | Enable context budget for fix operations |
+| `review.fix.contextBudget.useSubAgents` | boolean | `true` | Use sub-agents for parallel fixes |
+| `review.peer.enabled` | boolean | `false` | Enable peer review workflow |
+| `review.triage.enabled` | boolean | `false` | Enable review triage workflow |
 
 ---
 
-## needsClarification
+## bugFlow
 
-Controls [NEEDS CLARIFICATION] markers in spec generation.
+Bug investigation flow — structured debugging with investigation agents.
+
+**Config path**: `bugFlow`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `bugFlow.investigationAgents.errorSourceFinder.enabled` | boolean | `false` | Enable error source finder agent |
+| `bugFlow.investigationAgents.patternChecker.enabled` | boolean | `false` | Enable pattern checker agent |
+| `bugFlow.investigationAgents.dependencyAnalyzer.enabled` | boolean | `false` | Enable dependency analyzer agent |
+| `bugFlow.autoRoute` | boolean | `true` | Auto-route bugs to investigation agents |
+| `bugFlow.learningEnforcement.enabled` | boolean | `false` | Enforce learning from bug resolutions |
+| `bugFlow.inlineDiscovery.maxSearchOperations` | number | `3` | Max search operations for inline discovery |
+
+---
+
+## longInputGate
+
+Long input processing — handle transcripts, specs, and large text inputs.
+
+**Config path**: `longInputGate`
 
 ```json
 {
-  "needsClarification": {
+  "longInputGate": {
     "enabled": true,
-    "markerFormat": "[NEEDS CLARIFICATION: {reason}]",
-    "blockImplementation": true,
-    "minMarkersForReview": 0,
-    "categories": ["assumption", "ambiguity", "missing-context", "dependency-unknown", "edge-case"]
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable clarification markers |
-| `markerFormat` | string | `"[NEEDS CLARIFICATION: {reason}]"` | Marker format in specs |
-| `blockImplementation` | boolean | `true` | Block coding until all markers resolved |
-| `minMarkersForReview` | number | `0` | Min markers before requiring review |
-| `categories` | array | (see above) | Allowed marker categories |
-
----
-
-## tdd
-
-Test-first development (TDD) mode.
-
-```json
-{
-  "tdd": {
-    "enforced": false,
-    "defaultForTypes": [],
-    "requireFailingTestFirst": true,
-    "testFrameworkDetection": true
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enforced` | boolean | `false` | Globally enforce TDD |
-| `defaultForTypes` | array | `[]` | Task types that auto-enable TDD (e.g., `["feature", "bugfix"]`) |
-| `requireFailingTestFirst` | boolean | `true` | Require failing test before implementation |
-| `testFrameworkDetection` | boolean | `true` | Auto-detect test framework from package.json |
-
----
-
-## decisions
-
-Decision amendment tracking configuration.
-
-```json
-{
-  "decisions": {
-    "amendmentTracking": {
-      "enabled": true,
-      "logFile": ".workflow/state/decision-amendments.json",
-      "requireRationale": true,
-      "requireImpactAssessment": false,
-      "trackSource": true
-    }
-  }
-}
-```
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `amendmentTracking.enabled` | boolean | `true` | Enable amendment tracking |
-| `amendmentTracking.logFile` | string | `".workflow/state/decision-amendments.json"` | Log file path |
-| `amendmentTracking.requireRationale` | boolean | `true` | Require rationale for changes |
-| `amendmentTracking.requireImpactAssessment` | boolean | `false` | Require impact assessment |
-| `amendmentTracking.trackSource` | boolean | `true` | Track amendment source |
-
----
-
-## consistency
-
-Cross-artifact consistency analysis.
-
-```json
-{
-  "consistency": {
-    "enabled": true,
-    "runOn": ["afterTask", "beforeCommit"],
-    "mode": "warn",
-    "checks": {
-      "phantomEntries": true,
-      "orphanFiles": true,
-      "crossMapConsistency": true,
-      "nameCollisions": true,
-      "deadImports": true
+    "charThreshold": 3000,
+    "lineThreshold": 60,
+    "smartDefault": true,
+    "contentRules": {
+      "transcript": "full",
+      "spec": "full",
+      "requirements": "full",
+      "code": "skip",
+      "default": "quick"
     },
-    "orphanMode": "warn",
-    "maxOrphans": 10
+    "autoTriggerTypes": ["transcript", "specs", "requirements", "feature-request"],
+    "chunkingThreshold": 10000,
+    "chunkSize": 5000,
+    "chunkOverlap": 500
   }
 }
 ```
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enabled` | boolean | `true` | Enable consistency checks |
-| `runOn` | array | `["afterTask", "beforeCommit"]` | When to run checks |
-| `mode` | string | `"warn"` | `"warn"` or `"block"` |
-| `checks.phantomEntries` | boolean | `true` | Check for documented but missing items |
-| `checks.orphanFiles` | boolean | `true` | Check for undocumented files |
-| `checks.crossMapConsistency` | boolean | `true` | Cross-reference between maps |
-| `orphanMode` | string | `"warn"` | `"warn"` or `"block"` for orphan files |
-| `maxOrphans` | number | `10` | Max orphans before warning |
+| `longInputGate.enabled` | boolean | `true` | Enable long input gate |
+| `longInputGate.charThreshold` | number | `3000` | Character count to trigger gate |
+| `longInputGate.lineThreshold` | number | `60` | Line count to trigger gate |
+| `longInputGate.smartDefault` | boolean | `true` | Smart default processing mode |
+| `longInputGate.contentRules.*` | string | varies | Per-content-type rule: `"full"`, `"quick"`, `"skip"` |
+| `longInputGate.autoTriggerTypes` | string[] | See above | Content types that auto-trigger |
+| `longInputGate.chunkingThreshold` | number | `10000` | Chars before chunking kicks in |
+| `longInputGate.chunkSize` | number | `5000` | Size of each chunk |
+| `longInputGate.outputLanguage` | string | `"en"` | Output language for processing |
 
 ---
 
-## Related
+## techDebt
 
-- [Task Execution](../02-task-execution/) - Where most config applies
-- [Setup & Onboarding](../01-setup-onboarding/) - Initial configuration
-- [Safety & Guardrails](../06-safety-guardrails/) - Security configuration
+Tech debt tracking and management.
+
+**Config path**: `techDebt`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `techDebt.enabled` | boolean | `false` | Enable tech debt tracking |
+| `techDebt.promptOnSessionEnd` | boolean | `true` | Prompt to log tech debt at session end |
+| `techDebt.showInMorningBriefing` | boolean | `true` | Show tech debt in morning briefing |
+| `techDebt.agingThreshold` | number | `3` | Days before debt is considered aged |
+| `techDebt.autoFix.enabled` | boolean | `false` | Auto-fix simple tech debt |
+| `techDebt.debtBudget.enabled` | boolean | `false` | Enable debt budget per sprint |
+
+---
+
+## finalization
+
+Branch finalization — merge, PR creation, or discard.
+
+**Config path**: `finalization`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `finalization.enabled` | boolean | `true` | Enable branch finalization |
+| `finalization.defaultAction` | string | `"ask"` | Default: `"ask"`, `"merge"`, `"pr"`, `"discard"` |
+| `finalization.autoMergeForTypes` | string[] | `["bugfix", "quick-fix"]` | Task types that auto-merge |
+| `finalization.requirePRForTypes` | string[] | `[]` | Task types requiring PRs |
+| `finalization.squashOnMerge` | boolean | `true` | Squash commits on merge |
+| `finalization.prTemplate.includeTaskSpec` | boolean | `true` | Include task spec in PR |
+| `finalization.prTemplate.includeCommitList` | boolean | `true` | Include commit list in PR |
+
+---
+
+## research
+
+Research verification system — verify claims with citations.
+
+**Config path**: `research`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `research.enabled` | boolean | `false` | Enable research system |
+| `research.defaultDepth` | string | `"standard"` | Depth: `"quick"`, `"standard"`, `"deep"`, `"exhaustive"` |
+| `research.autoTrigger` | boolean | `true` | Auto-trigger research for relevant tasks |
+| `research.requireVerificationFormat` | boolean | `true` | Require structured verification format |
+| `research.requireCitations` | boolean | `true` | Require citations for claims |
+| `research.cacheVerifications` | boolean | `true` | Cache verification results |
+| `research.budgetMode` | string | `"soft"` | Budget mode: `"soft"`, `"hard"` |
+
+---
+
+## audit
+
+Project-wide audit system with multi-agent analysis.
+
+**Config path**: `audit`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `audit.agents.architecture` | boolean | `true` | Enable architecture analysis |
+| `audit.agents.dependencies` | boolean | `true` | Enable dependency analysis |
+| `audit.agents.duplication` | boolean | `true` | Enable duplication detection |
+| `audit.agents.performance` | boolean | `true` | Enable performance analysis |
+| `audit.agents.consistency` | boolean | `true` | Enable consistency analysis |
+| `audit.agents.modernization` | boolean | `true` | Enable modernization analysis |
+| `audit.agents.techDebt` | boolean | `true` | Enable tech debt analysis |
+| `audit.scoring.enabled` | boolean | `true` | Enable audit scoring |
+| `audit.maxFilesPerAgent` | number | `100` | Max files per audit agent |
+
+---
+
+## plugins
+
+Plugin system for MCP tools and extensions.
+
+**Config path**: `plugins`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `plugins.enabled` | boolean | `true` | Enable plugin system |
+| `plugins.registryPath` | string | `".workflow/state/plugin-registry.json"` | Plugin registry file |
+| `plugins.autoDiscoverMcp` | boolean | `true` | Auto-discover MCP tools |
+| `plugins.autoScanOnSessionStart` | boolean | `true` | Scan for plugins at session start |
+| `plugins.webSearchFallback` | boolean | `true` | Fall back to web search for unknown tools |
+| `plugins.trackPluginActions` | boolean | `true` | Track plugin usage |
+
+---
+
+## Other Top-Level Options
+
+Simple top-level settings that don't need their own section.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `$schema` | string | `"./config.schema.json"` | JSON schema reference |
+| `version` | string | `"2.0.0"` | Config schema version |
+| `projectName` | string | `""` | Project name |
+| `cli.type` | string | `"claude-code"` | CLI type |
+| `cli.autoSync.enabled` | boolean | `false` | Auto-sync CLAUDE.md on config change |
+| `autoLog` | boolean | `true` | Auto-update request log after changes |
+| `autoUpdateAppMap` | boolean | `true` | Auto-update app-map after changes |
+| `scripts.lint` | string | `null` | Lint command |
+| `scripts.typecheck` | string | `null` | Type check command |
+| `scripts.test` | string | `null` | Test command |
+| `scripts.build` | string | `null` | Build command |
+| `scripts.fix` | string | `null` | Auto-fix command |
+| `scripts.coverage` | string | `null` | Coverage command |
+| `requireApproval` | string[] | `[]` | Operations requiring approval |
+| `regressionTesting.enabled` | boolean | `false` | Enable regression testing |
+| `checkpoint.enabled` | boolean | `false` | Enable checkpointing |
+| `epics.enabled` | boolean | `false` | Enable epic support |
+| `clarifyingQuestions.enabled` | boolean | `false` | Enable clarifying questions |
+| `prd.enabled` | boolean | `false` | Enable PRD integration |
+| `morningBriefing.enabled` | boolean | `false` | Enable morning briefing |
+| `bulkLoop.enabled` | boolean | `false` | Enable bulk loop processing |
+| `requestLog.enabled` | boolean | `false` | Enable request log |
+| `semanticMatching.enabled` | boolean | `false` | Enable semantic matching |
+| `guidedEdit.enabled` | boolean | `false` | Enable guided edit mode |
+| `worktree.enabled` | boolean | `false` | Enable git worktree support |
+| `lsp.enabled` | boolean | `false` | Enable LSP integration |
+| `codebaseInsights.enabled` | boolean | `false` | Enable codebase insights |
+| `webmcp.enabled` | boolean | `false` | Enable web MCP verification |
+| `consistency.enabled` | boolean | `false` | Enable consistency checking |
+| `metrics.enabled` | boolean | `false` | Enable metrics collection |
+| `multiApproach.enabled` | boolean | `false` | Enable multi-approach problem solving |
+| `gateConfidence.enabled` | boolean | `false` | Enable gate confidence scoring |
+
+---
+
+## Additional Nested Sections
+
+These sections have configuration but are less commonly modified.
+
+### decide
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `decide.requireRationale` | boolean | `true` | Require rationale for decisions |
+| `decide.scanForViolations` | boolean | `true` | Scan codebase for violations after decision |
+| `decide.maxClarifyingQuestions` | number | `4` | Max questions before deciding |
+
+### retrospective
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `retrospective.maxQuestions` | number | `3` | Max retro questions |
+| `retrospective.autoSuggestRules` | boolean | `true` | Auto-suggest new rules from retro |
+| `retrospective.quickModeDefault` | boolean | `false` | Default to quick retro mode |
+
+### eval
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `eval.judges.opus` | number | `1` | Number of Opus judges |
+| `eval.judges.sonnet` | number | `2` | Number of Sonnet judges |
+| `eval.passingThreshold` | number | `6` | Minimum passing score |
+
+### bestOfN
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `bestOfN.enabled` | boolean | `true` | Enable best-of-N generation |
+| `bestOfN.defaultN` | number | `3` | Default candidates to generate |
+| `bestOfN.autoSuggestThreshold` | string | `"high"` | When to auto-suggest best-of-N |
+
+### promptTemplates
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `promptTemplates.enabled` | boolean | `true` | Enable prompt templates |
+| `promptTemplates.directory` | string | `".workflow/templates/prompts"` | Templates directory |
+
+### corrections
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `corrections.mode` | string | `"inline"` | Mode: `"inline"`, `"file"` |
+| `corrections.detailPath` | string | `".workflow/corrections"` | Path for correction details |
+
+### originTaskTracing
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `originTaskTracing.enabled` | boolean | `false` | Enable origin task tracing |
+| `originTaskTracing.sameSessionWindow` | string | `"2h"` | Window for same-session detection |
+
+### community
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `community.enabled` | boolean | `false` | Enable community learning |
+| `community.serverUrl` | string | `"https://api.wogiflow.com"` | Community server URL |
+| `community.pushOnSessionEnd` | boolean | `true` | Push learnings at session end |
+| `community.pullOnSessionStart` | boolean | `true` | Pull learnings at session start |
+
+### traces
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `traces.saveTo` | string | `".workflow/traces"` | Trace output directory |
+| `traces.generateDiagrams` | boolean | `true` | Generate Mermaid diagrams |
+
+### agents
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `agents.enabled` | string[] | See config | Enabled agent personas |
+| `agents.optional` | string[] | See config | Optional agent personas |
+
+### componentRules
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `componentRules.preferVariants` | boolean | `true` | Prefer variants over new components |
+| `componentRules.requireAppMapEntry` | boolean | `true` | Require app-map entry for new components |
+| `componentRules.requireDetailDoc` | boolean | `false` | Require detail docs for components |
+
+### strictMode
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `strictMode.verificationChecklist` | boolean | `false` | Show verification checklist |
+| `strictMode.correctionReportsOnFail` | boolean | `false` | Generate correction reports on failure |
+| `strictMode.featureReportsOnComplete` | boolean | `false` | Generate feature reports on completion |
+
+### decisions
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `decisions.amendmentTracking.enabled` | boolean | `false` | Track decision amendments |
+
+### registries
+Array of registry configurations. Each registry has:
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `registries[].id` | string | Registry identifier (e.g., `"components"`, `"functions"`, `"apis"`) |
+| `registries[].enabled` | boolean/string | `true`, `false`, or `"auto"` |
+| `registries[].activateWhen` | string | Condition: `"frontend"`, `"backend"`, `"always"`, `"orm"` |
+| `registries[].directories` | string[] | Directories to scan |
+| `registries[].scanOn` | string[] | When to scan: `"sessionStart"`, `"afterTask"`, `"preCommit"` |
+
+---
+
+## Config Statistics
+
+- **74 top-level keys** with **511 total leaf values**
+- Config schema: `config.schema.json` (when available)
+- Generated by `npx flow onboard` during project setup

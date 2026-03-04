@@ -1,6 +1,6 @@
-# Figma Analyzer
+# Figma Integration
 
-Match Figma designs to existing components for faster design-to-code.
+Match Figma designs to existing components for faster design-to-code workflows.
 
 ---
 
@@ -9,106 +9,67 @@ Match Figma designs to existing components for faster design-to-code.
 When implementing designs:
 1. **Find Existing Components**: Don't recreate what exists
 2. **Identify Variants**: Suggest variants over new components
-3. **Generate Prompts**: Create implementation prompts
-
----
-
-## Configuration
-
-```json
-{
-  "figmaAnalyzer": {
-    "enabled": true,
-    "thresholds": {
-      "exactMatch": 95,          // Score for "use as-is"
-      "strongMatch": 80,         // Score for "good match"
-      "variantCandidate": 60     // Score for "add variant"
-    },
-    "componentDirs": [
-      "src/components",
-      "components",
-      "src/ui",
-      "ui"
-    ],
-    "mcpServer": {
-      "port": 3847,
-      "autoStart": false
-    },
-    "autoScanOnAnalyze": true,
-    "generatePrompts": true
-  }
-}
-```
+3. **Generate Implementation Code**: Create production-ready code from designs
 
 ---
 
 ## How It Works
 
+WogiFlow integrates with Figma through two mechanisms:
+
+### 1. Figma MCP Server (Claude Code Integration)
+
+When the Figma MCP server is connected to Claude Code, you can work with Figma designs directly through Claude Code's built-in Figma tools:
+
+- `get_design_context` — Extract design data including code, screenshots, and hints
+- `get_screenshot` — Capture visual screenshots of Figma frames
+- `get_metadata` — Get design metadata and structure
+- `get_figjam` — Read FigJam boards
+
+### 2. WogiFlow Figma Skill
+
+The `figma-analyzer` skill (installed by default) provides component matching:
+
 ```
 Figma Design
-      ↓
-┌─────────────────────────────────────────┐
-│ 1. Extract design metadata              │
-│    - Component names                    │
-│    - Props/variants                     │
-│    - Styles                            │
-├─────────────────────────────────────────┤
-│ 2. Match against codebase              │
-│    - Name similarity                   │
-│    - Prop compatibility                │
-│    - Style matching                    │
-├─────────────────────────────────────────┤
-│ 3. Score matches                       │
-│    - Exact: 95+                        │
-│    - Strong: 80-95                     │
-│    - Variant: 60-80                    │
-│    - New: <60                          │
-├─────────────────────────────────────────┤
-│ 4. Generate recommendations            │
-│    - Use existing                      │
-│    - Add variant                       │
-│    - Create new                        │
-└─────────────────────────────────────────┘
+      |
+1. Extract design metadata (component names, props, styles)
+2. Match against codebase (name similarity, prop compatibility)
+3. Score matches (exact: 95+, strong: 80-95, variant: 60-80, new: <60)
+4. Generate recommendations (use existing, add variant, create new)
 ```
 
 ---
 
 ## Usage
 
-### Analyze a Frame
+### Via Figma MCP (Recommended)
+
+Share a Figma URL in Claude Code. The Figma MCP tools handle extraction automatically:
+
+```
+figma.com/design/<fileKey>/<fileName>?node-id=<nodeId>
+```
+
+WogiFlow's skill system enhances the MCP output by matching extracted components against your existing codebase registries.
+
+### Via CLI
 
 ```bash
-/wogi-figma analyze "Login Screen"
+flow figma analyze <figma-data.json>   # Full pipeline: extract + match
+flow figma scan                         # Scan codebase for components
+flow figma extract <file>              # Extract Figma design data
 ```
 
-### Output
+### Via Skill Commands
 
-```
-📐 Figma Analysis: Login Screen
+The following skills are available when `figma-analyzer` is installed:
 
-Found 8 components in design:
-
-1. Button "Submit"
-   ✅ EXACT MATCH (97%)
-   → Use: src/components/Button.tsx
-   → Props: variant="primary", size="lg"
-
-2. Input "Email"
-   🔶 STRONG MATCH (85%)
-   → Use: src/components/Input.tsx
-   → Note: Add "email" variant for icon
-
-3. Card "Login Container"
-   🔶 VARIANT CANDIDATE (72%)
-   → Base: src/components/Card.tsx
-   → Suggestion: Add "auth" variant
-
-4. Logo "AppLogo"
-   ❌ NO MATCH
-   → Create: src/components/AppLogo.tsx
-
-Implementation prompt generated.
-```
+| Skill | Purpose |
+|-------|---------|
+| `figma:implement-design` | Translate Figma designs into production-ready code |
+| `figma:code-connect-components` | Connect Figma components to code via Code Connect |
+| `figma:create-design-system-rules` | Generate design system rules for your codebase |
 
 ---
 
@@ -123,75 +84,12 @@ Implementation prompt generated.
 
 ---
 
-## Prompt Generation
-
-When `generatePrompts` is enabled:
-
-```markdown
-# Implementation Prompt: Login Screen
-
-## Components to Use
-
-### Button
-Path: src/components/Button.tsx
-Props: variant="primary", size="lg", onClick={handleSubmit}
-
-### Input
-Path: src/components/Input.tsx
-Props: type="email", placeholder="Email"
-Note: Consider adding email icon variant
-
-## Components to Create
-
-### AppLogo
-Create at: src/components/AppLogo.tsx
-From Figma: AppLogo frame
-Specs:
-  - Width: 120px
-  - Height: 40px
-  - SVG export available
-
-## Layout
-- Use flex column with gap-4
-- Card wrapper with padding-6
-- Center aligned, max-width 400px
-```
-
----
-
-## MCP Server Mode
-
-For real-time Figma integration:
-
-```json
-{
-  "figmaAnalyzer": {
-    "mcpServer": {
-      "port": 3847,
-      "autoStart": true
-    }
-  }
-}
-```
-
-### Start Server
-
-```bash
-./scripts/flow figma-server start
-```
-
-### Connect from Figma
-
-Use the Figma MCP plugin to connect to the running server.
-
----
-
 ## Component Indexing
 
-Figma analyzer uses component index:
+The figma analyzer uses the component registry for matching:
 
 ```bash
-# Ensure index is current
+# Ensure index is current before analysis
 /wogi-map-index scan
 ```
 
@@ -204,50 +102,18 @@ Figma analyzer uses component index:
 
 ---
 
-## Commands
-
-| Command | Purpose |
-|---------|---------|
-| `/wogi-figma analyze <frame>` | Analyze Figma frame |
-| `/wogi-figma compare` | Compare design to code |
-| `/wogi-figma prompt <frame>` | Generate impl prompt |
-
----
-
 ## Best Practices
 
 1. **Index First**: Run `/wogi-map-index scan` before analysis
 2. **Name Consistency**: Use same names in Figma and code
 3. **Use Variants**: Add variants instead of new components
 4. **Review Matches**: Don't blindly trust scores
-5. **Update App-Map**: Register new components
-
----
-
-## Troubleshooting
-
-### Low Match Scores
-
-- Check naming consistency
-- Verify component index is current
-- Review threshold settings
-
-### Components Not Found
-
-- Verify `componentDirs` includes your paths
-- Run component index scan
-- Check file extensions match
-
-### MCP Server Issues
-
-- Check port availability
-- Verify Figma plugin installed
-- Check firewall settings
+5. **Update App-Map**: Register new components after creation
 
 ---
 
 ## Related
 
 - [Component Indexing](../01-setup-onboarding/component-indexing.md)
-- [Task Execution](../02-task-execution/) - Using prompts
+- [Task Execution](../02-task-execution/) - Using generated prompts
 - [Configuration](../configuration/all-options.md) - All settings

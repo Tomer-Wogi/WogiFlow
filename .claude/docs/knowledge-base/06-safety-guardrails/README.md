@@ -22,6 +22,7 @@ Safety features prevent:
 | [Security Scanning](./security-scanning.md) | Pre-commit security checks |
 | [Checkpoint/Rollback](./checkpoint-rollback.md) | Recovery system |
 | [Commit Gates](./commit-gates.md) | Approval workflow |
+| [Project Audit](./project-audit.md) | 7-dimension deep project analysis |
 
 ---
 

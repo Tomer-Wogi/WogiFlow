@@ -12,7 +12,7 @@ Welcome to the comprehensive knowledge base for WogiFlow, an AI workflow framewo
 | [Memory & Context](./04-memory-context/) | Preventing hallucinations, managing context, session persistence | [Context Management](./04-memory-context/context-management.md) |
 | [Development Tools](./05-development-tools/) | Figma analyzer, code traces, MCP integrations | [Tools Overview](./05-development-tools/README.md) |
 | [Safety & Guardrails](./06-safety-guardrails/) | Damage control, security scanning, checkpoint/rollback | [Safety Overview](./06-safety-guardrails/README.md) |
-| [Configuration](./configuration/) | Complete reference for all 200+ config options | [All Options](./configuration/all-options.md) |
+| [Configuration](./configuration/) | Complete reference for all 500+ config options | [All Options](./configuration/all-options.md) |
 | [Future Features](./future-features.md) | Roadmap and planned features | [Roadmap](./future-features.md) |
 
 ---
@@ -34,7 +34,7 @@ npx flow onboard
 ### Start Working
 ```bash
 /wogi-ready          # See available tasks
-/wogi-start TASK-XXX # Start a task
+/wogi-start wf-XXXXXXXX  # Start a task
 ```
 
 ---
@@ -80,7 +80,10 @@ The [02-task-execution](./02-task-execution/) category is the heart of WogiFlow.
 | Use Figma-to-code | [Figma Analyzer](./05-development-tools/figma-analyzer.md) |
 | Set up safety guardrails | [Damage Control](./06-safety-guardrails/damage-control.md) |
 | Find a specific config option | [All Options](./configuration/all-options.md) |
-| Import tasks from Jira/Linear | [External Integrations](./02-task-execution/external-integrations.md) |
+| Run a project audit | [Project Audit](./06-safety-guardrails/project-audit.md) |
+| Debug with competing theories | [Debug Hypothesis](./02-task-execution/debug-hypothesis.md) |
+| Multi-model code review | [Peer Review](./02-task-execution/peer-review.md) |
+| Quick-capture an idea | [Quick Capture](./02-task-execution/quick-capture.md) |
 | Load PRD/specs for context | [PRD Management](./04-memory-context/prd-management.md) |
 | Manage memory & entropy | [Memory Commands](./04-memory-context/memory-commands.md) |
 | Configure multiple models | [Model Management](./02-task-execution/model-management.md) |

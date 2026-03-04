@@ -45,7 +45,7 @@ User: "Add a login button"
 ┌─────────────────────────────────────────┐
 │ Does task exist in ready.json?          │
 ├─────────────────────────────────────────┤
-│ YES → /wogi-start TASK-XXX              │
+│ YES → /wogi-start wf-XXXXXXXX           │
 │ NO  → Assess size first                 │
 └─────────────────────────────────────────┘
 ```
@@ -102,7 +102,7 @@ Stories define acceptance criteria that drive the execution loop.
 This generates a structured story:
 
 ```markdown
-# [TASK-015] Add user authentication
+# [wf-a1b2c3d4] Add user authentication
 
 ## User Story
 **As a** user
@@ -136,7 +136,7 @@ This generates a structured story:
 1. Story is created with proposed acceptance criteria
 2. User reviews and approves (or modifies)
 3. Task is added to `ready.json` with criteria attached
-4. `/wogi-start TASK-XXX` uses criteria to drive loop
+4. `/wogi-start wf-XXXXXXXX` uses criteria to drive loop
 
 ---
 
@@ -170,13 +170,13 @@ Original story: "Add user authentication"
 
 Decomposed tasks:
 ```
-TASK-015-A: Create AuthService with login/logout methods
-TASK-015-B: Create LoginForm component
-TASK-015-C: Add form validation with error states
-TASK-015-D: Handle loading state during auth
-TASK-015-E: Add error handling for failed auth
-TASK-015-F: Integrate with existing routing
-TASK-015-G: Add session persistence
+wf-a1b2c3d4-01: Create AuthService with login/logout methods
+wf-a1b2c3d4-02: Create LoginForm component
+wf-a1b2c3d4-03: Add form validation with error states
+wf-a1b2c3d4-04: Handle loading state during auth
+wf-a1b2c3d4-05: Add error handling for failed auth
+wf-a1b2c3d4-06: Integrate with existing routing
+wf-a1b2c3d4-07: Add session persistence
 ```
 
 ### Configuration Options
@@ -238,8 +238,8 @@ For complex tasks, analyze multiple implementation approaches before committing.
 | `/wogi-story "title"` | Create story with acceptance criteria |
 | `/wogi-story "title" --deep` | Create story with forced decomposition |
 | `/wogi-ready` | Show available tasks |
-| `/wogi-start TASK-XXX` | Start executing a task |
-| `/wogi-deps TASK-XXX` | Show task dependencies |
+| `/wogi-start wf-XXXXXXXX` | Start executing a task |
+| `/wogi-deps wf-XXXXXXXX` | Show task dependencies |
 
 ---
 

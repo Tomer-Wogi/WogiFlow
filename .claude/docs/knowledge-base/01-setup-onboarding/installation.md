@@ -37,7 +37,7 @@ trustedDependencies = ["wogiflow"]
 
 ```
 .workflow/
-├── config.json              # Configuration (200+ options)
+├── config.json              # Configuration (500+ options)
 ├── state/
 │   ├── ready.json          # Task queues
 │   ├── app-map.md          # Component registry
@@ -81,9 +81,11 @@ Check `.workflow/config.json` and adjust settings:
     "strictMode": true,
     "requireStoryForMediumTasks": true
   },
-  "loops": {
-    "enforced": true,
-    "maxRetries": 5
+  "execution": {
+    "loops": {
+      "enforced": true,
+      "maxRetries": 5
+    }
   }
 }
 ```
@@ -125,8 +127,8 @@ The installer creates a balanced config:
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `enforcement.strictMode` | `true` | Require tasks for implementation |
-| `loops.enforced` | `true` | Enable self-completing loops |
-| `loops.maxRetries` | `5` | Retry failed verifications |
+| `execution.loops.enforced` | `true` | Enable self-completing loops |
+| `execution.loops.maxRetries` | `5` | Retry failed verifications |
 | `durableSteps.enabled` | `true` | Enable crash recovery |
 | `autoLog` | `true` | Auto-log changes |
 | `autoUpdateAppMap` | `true` | Auto-update component registry |

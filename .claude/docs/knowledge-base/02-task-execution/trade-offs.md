@@ -27,7 +27,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 ## Loop Configuration Trade-offs
 
-### `loops.enforced`
+### `execution.loops.enforced`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -36,7 +36,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 **Recommendation**: Keep `true` for production work. Set `false` only for exploration.
 
-### `loops.maxRetries`
+### `execution.loops.maxRetries`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -45,7 +45,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 **Recommendation**: 5 is a good balance. Increase for complex verification.
 
-### `loops.maxIterations`
+### `execution.loops.maxIterations`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -113,7 +113,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 - Debugging
 - Novel implementations
 
-### `hybrid.settings.autoExecute`
+### `models.hybrid.settings.autoExecute`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -163,7 +163,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 ## Verification Trade-offs
 
-### `loops.autoInferVerification`
+### `execution.autoInferVerification`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -172,7 +172,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 **Recommendation**: Keep `true`. Falls back to manual for complex criteria.
 
-### `loops.fallbackToManual`
+### `execution.loops.fallbackToManual`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -228,7 +228,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 ## Parallel Execution Trade-offs
 
-### `parallel.autoExecute`
+### `parallelExecution.parallel.autoExecute`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -237,7 +237,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 
 **Recommendation**: Keep `false` until comfortable with worktree workflow.
 
-### `parallel.maxConcurrent`
+### `parallelExecution.parallel.maxConcurrent`
 
 | Value | Pros | Cons |
 |-------|------|------|
@@ -255,12 +255,12 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 ```json
 {
   "enforcement": { "strictMode": true, "requirePatternCitation": true },
-  "loops": { "enforced": true, "maxRetries": 10, "maxIterations": 30 },
+  "execution": { "loops": { "enforced": true, "maxRetries": 10, "maxIterations": 30 } },
   "qualityGates": {
     "feature": { "require": ["tests", "lint", "typecheck", "review"] }
   },
   "regressionTesting": { "sampleSize": 10, "onFailure": "block" },
-  "hybrid": { "enabled": false }
+  "models": { "hybrid": { "enabled": false } }
 }
 ```
 
@@ -269,12 +269,12 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 ```json
 {
   "enforcement": { "strictMode": false },
-  "loops": { "enforced": false, "maxRetries": 3 },
+  "execution": { "loops": { "enforced": false, "maxRetries": 3 } },
   "qualityGates": {
     "feature": { "require": ["lint"] }
   },
   "regressionTesting": { "enabled": false },
-  "hybrid": { "enabled": true, "settings": { "autoExecute": true } }
+  "models": { "hybrid": { "enabled": true, "settings": { "autoExecute": true } } }
 }
 ```
 
@@ -283,12 +283,12 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 ```json
 {
   "enforcement": { "strictMode": true },
-  "loops": { "enforced": true, "maxRetries": 5, "maxIterations": 20 },
+  "execution": { "loops": { "enforced": true, "maxRetries": 5, "maxIterations": 20 } },
   "qualityGates": {
     "feature": { "require": ["tests", "lint", "typecheck"] }
   },
   "regressionTesting": { "sampleSize": 3, "onFailure": "warn" },
-  "hybrid": { "enabled": true, "settings": { "autoExecute": false } }
+  "models": { "hybrid": { "enabled": true, "settings": { "autoExecute": false } } }
 }
 ```
 

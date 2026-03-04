@@ -19,14 +19,16 @@ WogiFlow monitors context and helps you manage it.
 
 ```json
 {
-  "contextMonitor": {
-    "enabled": true,
-    "warnAt": 0.7,              // Warn at 70%
-    "criticalAt": 0.85,         // Critical at 85%
-    "contextWindow": 200000,    // Token limit
-    "checkOnSessionStart": true,
-    "checkAfterTask": true,
-    "trackingMethod": "auto"    // auto, native, or estimated
+  "context": {
+    "monitor": {
+      "enabled": true,
+      "warnAt": 0.7,              // Warn at 70%
+      "criticalAt": 0.85,         // Critical at 85%
+      "contextWindow": 200000,    // Token limit
+      "checkOnSessionStart": true,
+      "checkAfterTask": true,
+      "trackingMethod": "auto"    // auto, native, or estimated
+    }
   }
 }
 ```
@@ -111,7 +113,7 @@ Key facts are stored in memory blocks:
 
 const memoryBlocks = {
   currentTask: {
-    id: "TASK-015",
+    id: "wf-a1b2c3d4",
     title: "Add authentication"
   },
   keyFacts: [
@@ -172,8 +174,10 @@ Before running `/compact`:
 
 ```json
 {
-  "automaticMemory": {
-    "compactOnSessionEnd": true
+  "memory": {
+    "automatic": {
+      "compactOnSessionEnd": true
+    }
   }
 }
 ```
@@ -206,7 +210,7 @@ flow context status
 
 After completing a task:
 ```
-✓ Completed: TASK-015
+✓ Completed: wf-a1b2c3d4
 
 Context Health:
   Usage: 72.5%
@@ -252,8 +256,10 @@ Old request log entries are archived automatically:
 Configure for your model:
 ```json
 {
-  "contextMonitor": {
-    "contextWindow": 128000
+  "context": {
+    "monitor": {
+      "contextWindow": 128000
+    }
   }
 }
 ```
@@ -291,10 +297,12 @@ Consider:
 Check configuration:
 ```json
 {
-  "contextMonitor": {
-    "enabled": true,
-    "checkOnSessionStart": true,
-    "checkAfterTask": true
+  "context": {
+    "monitor": {
+      "enabled": true,
+      "checkOnSessionStart": true,
+      "checkAfterTask": true
+    }
   }
 }
 ```

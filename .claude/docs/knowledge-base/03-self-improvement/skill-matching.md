@@ -131,7 +131,7 @@ Score display: `●●●●○` = 4/5 score
     "installed": ["nestjs", "react", "figma-analyzer", "python"],
     "autoInvoke": true,           // Auto-load matched skills
     "autoDiscoverNested": true,   // Auto-discover nested skills
-    "minScore": 2                 // Minimum score to invoke
+    "minRelevanceScore": 2        // Minimum score to invoke
   }
 }
 ```

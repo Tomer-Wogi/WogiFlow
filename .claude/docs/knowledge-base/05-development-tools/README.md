@@ -18,9 +18,10 @@ These tools speed up common tasks:
 
 | Feature | Purpose |
 |---------|---------|
-| [Figma Analyzer](./figma-analyzer.md) | Design-to-code component matching |
+| [Figma Analyzer](./figma-analyzer.md) | Design-to-code via Figma MCP + skill |
 | [Code Traces](./code-traces.md) | Understand code flow for features |
 | [Guided Edit](./guided-edit.md) | Step-by-step multi-file changes |
+| [Browser Debugging](./browser-debugging.md) | Debug & test UI via WebMCP |
 | [MCP Integrations](./mcp-integrations.md) | External tool connections |
 
 ---
@@ -29,9 +30,7 @@ These tools speed up common tasks:
 
 ### Figma Analysis
 
-```bash
-/wogi-figma analyze LoginScreen
-```
+Share a Figma URL in chat, and WogiFlow uses the Figma MCP server + `figma-analyzer` skill to generate matched components.
 
 ### Code Trace
 
@@ -51,16 +50,13 @@ These tools speed up common tasks:
 
 ```json
 {
-  "figmaAnalyzer": {
-    "enabled": true,
-    "thresholds": {
-      "exactMatch": 95,
-      "strongMatch": 80
-    }
-  },
   "traces": {
     "saveTo": ".workflow/traces",
     "generateDiagrams": true
+  },
+  "webmcp": {
+    "enabled": false,
+    "baseUrl": "http://localhost:3000"
   }
 }
 ```

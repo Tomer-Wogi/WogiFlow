@@ -1,9 +1,9 @@
 [
   {
-    "id": "CORR-mlw09ynp",
-    "timestamp": "2026-02-21T07:37:01.621Z",
-    "taskId": "wf-fd8d2444",
-    "userMessage": "I don't want to hear your right, I apologize anymore. I want to ship Wogi Flow for people to use. When I ship it, I promise them that every task is blocked and routed to Wogi Start. What made you skip it? I don't want you to ever be able to skip it on your own. ",
+    "id": "CORR-mmaqrr2m",
+    "timestamp": "2026-03-03T15:07:28.078Z",
+    "taskId": "wf-a01e3149",
+    "userMessage": "I don't want it to be triggered by tags or us needing to write anything. It's supposed to be enabled in the config file. Once it's enabled, this is the default approach if it's enabled for all tasks. So, Woggy Start should always load it if that's the default. ",
     "correctionType": "understanding",
     "whatWasWrong": null,
     "whatUserWants": null,

@@ -1,6 +1,6 @@
 # Completion
 
-After verification passes, the completion phase handles logging, commits, archival, and cleanup.
+After verification passes, the completion phase handles logging, commits, archival, and cleanup. Task completion is managed automatically by `/wogi-start`'s execution pipeline.
 
 ---
 
@@ -11,7 +11,7 @@ Every completed task is logged in `.workflow/state/request-log.md` for future co
 ### Log Entry Format
 
 ```markdown
-### R-047 | 2024-01-15 14:30
+### R-047 | 2026-01-15 14:30
 **Type**: new
 **Tags**: #screen:login #component:AuthService #feature:authentication
 **Request**: "Add user authentication with login form"
@@ -33,13 +33,9 @@ Every completed task is logged in `.workflow/state/request-log.md` for future co
 
 ```json
 {
-  "autoLog": true,                    // Auto-add log entries
+  "autoLog": true,
   "requestLog": {
-    "enabled": true,
-    "autoArchive": true,              // Archive old entries
-    "maxRecentEntries": 50,           // Keep last 50 active
-    "keepRecent": 30,                 // Days before archival
-    "createSummary": true             // Generate summary on archive
+    "enabled": true
   }
 }
 ```
@@ -81,9 +77,9 @@ New components are registered in `.workflow/state/app-map.md`.
 {
   "autoUpdateAppMap": true,
   "componentRules": {
-    "preferVariants": true,           // Suggest variants over new components
-    "requireAppMapEntry": true,       // Block completion without entry
-    "requireDetailDoc": false         // Require detailed documentation
+    "preferVariants": true,
+    "requireAppMapEntry": true,
+    "requireDetailDoc": false
   }
 }
 ```
@@ -107,14 +103,14 @@ Commits are managed based on task type and configuration.
 {
   "commits": {
     "requireApproval": {
-      "feature": true,          // Features need approval
-      "bugfix": false,          // Bugfixes auto-commit
-      "refactor": true,         // Refactors need approval
-      "docs": false             // Docs auto-commit
+      "feature": true,
+      "bugfix": false,
+      "refactor": true,
+      "docs": false
     },
     "autoCommitSmallFixes": true,
-    "smallFixThreshold": 3,     // Files count for "small"
-    "squashTaskCommits": true,  // Squash on completion
+    "smallFixThreshold": 3,
+    "squashTaskCommits": true,
     "commitMessageFormat": "conventional"
   }
 }
@@ -145,16 +141,14 @@ feat(auth): add user authentication
 - Add LoginForm component with validation
 - Integrate with existing routing
 
-TASK-015
-
-🤖 Generated with Claude Code
+wf-a1b2c3d4
 ```
 
 ### Small Fix Auto-Commit
 
 If `autoCommitSmallFixes` is enabled and changes are < `smallFixThreshold` files:
 ```
-✓ Auto-committed small fix (2 files)
+Auto-committed small fix (2 files)
   Commit: abc1234 "fix(auth): correct password validation"
 ```
 
@@ -168,52 +162,27 @@ Durable sessions are archived for learning and metrics.
 
 ```json
 {
-  "taskId": "TASK-015",
+  "taskId": "wf-a1b2c3d4",
   "taskType": "task",
-  "startedAt": "2024-01-15T10:30:00Z",
-  "completedAt": "2024-01-15T11:45:00Z",
+  "startedAt": "2026-01-15T10:30:00Z",
+  "completedAt": "2026-01-15T11:45:00Z",
   "status": "completed",
-  "steps": [...],
+  "steps": [],
   "execution": {
     "totalIterations": 3,
     "totalRetries": 1
-  },
-  "metrics": {
-    "stepsCompleted": 5,
-    "tokensSaved": 12500,
-    "duration": 4500000
   }
 }
 ```
-
-### Archive Location
-
-`.workflow/state/session-history/`
 
 ### Configuration
 
 ```json
 {
   "durableSteps": {
-    "enabled": true,
-    "autoResume": true
+    "enabled": true
   }
 }
-```
-
-### Session History Commands
-
-```bash
-# View session statistics
-flow session stats
-
-# Output:
-# Total sessions: 47
-# Completed: 45
-# Failed: 2
-# Cancelled: 0
-# Avg steps: 4.2
-# Avg tokens saved: 85.3%
 ```
 
 ---
@@ -227,12 +196,7 @@ Checkpoints provide rollback capability during task execution.
 ```json
 {
   "checkpoint": {
-    "enabled": true,
-    "interval": 5,                // Create every N steps
-    "maxCheckpoints": 20,         // Keep last 20
-    "autoCommit": true,           // Git commit at checkpoint
-    "commitPrefix": "[checkpoint]",
-    "includeStateFiles": true     // Snapshot workflow state
+    "enabled": true
   }
 }
 ```
@@ -246,16 +210,9 @@ Checkpoints provide rollback capability during task execution.
 ### Commands
 
 ```bash
-# Create manual checkpoint
 flow checkpoint create "Before risky refactor"
-
-# List checkpoints
 flow checkpoint list
-
-# Rollback to checkpoint
-flow checkpoint rollback cp-2024-01-15T10-30-00
-
-# Status
+flow checkpoint rollback <checkpoint-id>
 flow checkpoint status
 ```
 
@@ -265,17 +222,6 @@ When rolling back:
 1. State files restored from snapshot
 2. Git soft reset to checkpoint commit
 3. Changes preserved as unstaged
-
-```bash
-flow checkpoint rollback cp-2024-01-15T10-30-00
-
-# Output:
-# ✅ State files restored
-# ✅ Git rolled back to abc1234
-#
-# Changes since checkpoint are now unstaged.
-# Review with: git status
-```
 
 ---
 
@@ -287,12 +233,14 @@ After task completion, check context window usage.
 
 ```json
 {
-  "contextMonitor": {
-    "enabled": true,
-    "warnAt": 0.7,              // Warn at 70% usage
-    "criticalAt": 0.85,         // Critical at 85%
-    "contextWindow": 200000,    // Token limit
-    "checkAfterTask": true
+  "context": {
+    "monitor": {
+      "enabled": true,
+      "warnAt": 0.7,
+      "criticalAt": 0.85,
+      "contextWindow": 200000,
+      "checkAfterTask": true
+    }
   }
 }
 ```
@@ -300,16 +248,16 @@ After task completion, check context window usage.
 ### Post-Task Check
 
 ```
-✓ Completed: TASK-015
+Completed: wf-a1b2c3d4
 
 Context Health:
   Usage: 45,000 / 200,000 tokens (22.5%)
-  Status: ✓ Healthy
+  Status: Healthy
 
 # Or if high:
 Context Health:
   Usage: 165,000 / 200,000 tokens (82.5%)
-  Status: ⚠️ Consider running /compact
+  Status: Consider running /wogi-compact
 ```
 
 ---
@@ -318,26 +266,17 @@ Context Health:
 
 ```
 Task Verification Passed
-         ↓
-┌────────────────────────────────────────────┐
-│ 1. Move task to recentlyCompleted          │
-├────────────────────────────────────────────┤
-│ 2. Archive durable session                 │
-├────────────────────────────────────────────┤
-│ 3. Update session state                    │
-├────────────────────────────────────────────┤
-│ 4. Add key fact to memory                  │
-├────────────────────────────────────────────┤
-│ 5. Auto-archive request log (if threshold) │
-├────────────────────────────────────────────┤
-│ 6. Commit changes (with approval if needed)│
-├────────────────────────────────────────────┤
-│ 7. Run regression tests (if enabled)       │
-├────────────────────────────────────────────┤
-│ 8. Check context health                    │
-└────────────────────────────────────────────┘
-         ↓
-    ✓ Task Complete
+         |
+1. Move task to recentlyCompleted in ready.json
+2. Archive durable session
+3. Update session state
+4. Add key fact to memory
+5. Auto-archive request log (if threshold)
+6. Commit changes (with approval if needed)
+7. Run regression tests (if enabled)
+8. Check context health
+         |
+    Task Complete
 ```
 
 ---
@@ -346,12 +285,10 @@ Task Verification Passed
 
 | Command | Purpose |
 |---------|---------|
-| `/wogi-done TASK-XXX` | Complete task (runs gates) |
 | `/wogi-log` | Add request log entry |
 | `/wogi-map-add` | Add component to app-map |
 | `flow checkpoint create` | Manual checkpoint |
 | `flow checkpoint rollback` | Rollback to checkpoint |
-| `flow session stats` | View session metrics |
 
 ---
 
