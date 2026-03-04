@@ -307,7 +307,8 @@ function resetPhase() {
 }
 
 /**
- * Get phase-specific context prompt for UserPromptSubmit injection
+ * Get phase-specific context prompt for UserPromptSubmit injection.
+ * When phaseInjection is enabled, appends available flow-integrated plugins for the current phase.
  * @returns {{ inject: boolean, prompt: string|null }}
  */
 function getPhaseContextPrompt() {
@@ -328,9 +329,32 @@ function getPhaseContextPrompt() {
     completing: `Completing ${taskInfo}. Update request-log, maps, and commit.`
   };
 
-  const prompt = prompts[current.phase];
-  if (!prompt) {
+  let prompt = prompts[current.phase];
+  if (prompt == null) {
     return { inject: false, prompt: null };
+  }
+
+  // Append flow-integrated plugin hints if phaseInjection is enabled
+  // Deferred require: avoids circular dependency (flow-plugin-registry → phase-gate)
+  try {
+    const config = getConfig();
+    if (config.plugins?.phaseInjection) {
+      const { getFlowIntegratedPlugins } = require('../../flow-plugin-registry');
+      const plugins = getFlowIntegratedPlugins(current.phase);
+      if (plugins.length > 0) {
+        // Sanitize plugin fields to prevent prompt injection from registry data
+        const sanitize = (s) => String(s || '').replace(/[\r\n]/g, ' ').slice(0, 80);
+        const pluginLines = plugins.map(p =>
+          `- ${sanitize(p.pluginName)}: ${sanitize(p.action)}${p.mcpTool ? ` (tool: ${sanitize(p.mcpTool)})` : ''}`
+        ).join('\n');
+        prompt += `\n\nAvailable plugins for this phase:\n${pluginLines}`;
+      }
+    }
+  } catch (err) {
+    // Non-blocking — plugin injection failure should not break phase gate
+    if (process.env.DEBUG) {
+      console.error(`[phase-gate] Plugin injection failed: ${err.message}`);
+    }
   }
 
   return { inject: true, prompt };

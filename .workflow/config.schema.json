@@ -1875,7 +1875,9 @@
         "autoDiscoverMcp": { "type": "boolean", "default": true },
         "autoScanOnSessionStart": { "type": "boolean", "default": true },
         "webSearchFallback": { "type": "boolean", "default": true },
-        "trackPluginActions": { "type": "boolean", "default": true }
+        "trackPluginActions": { "type": "boolean", "default": true },
+        "phaseInjection": { "type": "boolean", "default": true, "description": "Inject available flow-integrated plugin hints into phase context prompts" },
+        "standaloneBypassTask": { "type": "boolean", "default": true, "description": "Allow standalone-mode plugins to execute without creating a WogiFlow task" }
       }
     },
     "workflowSteps": {

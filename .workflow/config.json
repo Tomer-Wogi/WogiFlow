@@ -1141,6 +1141,10 @@
     "autoDiscoverMcp": true,
     "autoScanOnSessionStart": true,
     "webSearchFallback": true,
-    "trackPluginActions": true
+    "trackPluginActions": true,
+    "_comment_phaseInjection": "When true, the UserPromptSubmit hook appends available flow-integrated plugin hints to the phase context prompt",
+    "phaseInjection": true,
+    "_comment_standaloneBypassTask": "When true, standalone-mode plugin matches in /wogi-start skip task creation and invoke the plugin directly",
+    "standaloneBypassTask": true
   }
 }

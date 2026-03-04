@@ -31,6 +31,11 @@ const {
 // Dangerous keys that must never be used as plugin names or metadata keys
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
+// Allowlists for capability fields
+const VALID_MODES = new Set(['standalone', 'flow-integrated', 'trigger']);
+const VALID_OUTPUT_FORMATS = new Set(['text', 'json', 'artifact']);
+const VALID_FLOW_PHASES = new Set(['exploring', 'coding', 'validating', 'completing']);
+
 // ============================================================
 // Configuration
 // ============================================================
@@ -50,7 +55,9 @@ function getPluginConfig() {
     autoDiscoverMcp: true,
     autoScanOnSessionStart: true,
     webSearchFallback: true,
-    trackPluginActions: true
+    trackPluginActions: true,
+    phaseInjection: true,
+    standaloneBypassTask: true
   };
 }
 
@@ -334,17 +341,27 @@ function registerPlugin(pluginData) {
     name,
     description: pluginData.description || existing.description || '',
     registeredAt: existing.registeredAt || now,
-    updatedAt: isUpdate ? now : undefined,
+    ...(isUpdate ? { updatedAt: now } : {}),
     source: pluginData.source || existing.source || 'manual',
     status: 'active',
     triggers: pluginData.triggers || existing.triggers || [],
-    capabilities: (pluginData.capabilities || []).map(cap => ({
-      action: cap.action || '',
-      description: cap.description || '',
-      triggerPhrases: cap.triggerPhrases || [],
-      mcpTool: cap.mcpTool || null,
-      requiresTask: cap.requiresTask !== undefined ? cap.requiresTask : false
-    })),
+    capabilities: (pluginData.capabilities || []).map(cap => {
+      const mode = VALID_MODES.has(cap.mode) ? cap.mode : 'standalone';
+      const outputFormat = VALID_OUTPUT_FORMATS.has(cap.outputFormat) ? cap.outputFormat : 'text';
+      const flowPhases = Array.isArray(cap.flowPhases)
+        ? cap.flowPhases.filter(p => VALID_FLOW_PHASES.has(p))
+        : [];
+      return {
+        action: String(cap.action || '').replace(/[\r\n]/g, ' ').slice(0, 80),
+        description: cap.description || '',
+        triggerPhrases: cap.triggerPhrases || [],
+        mcpTool: cap.mcpTool ? String(cap.mcpTool).replace(/[\r\n]/g, ' ').slice(0, 120) : null,
+        requiresTask: cap.requiresTask !== undefined ? cap.requiresTask : false,
+        mode,
+        flowPhases,
+        outputFormat
+      };
+    }),
     metadata: {
       ...(existing.metadata || {}),
       ...safeMeta
@@ -496,6 +513,89 @@ function calculateTriggerScore(request, trigger) {
 }
 
 // ============================================================
+// Flow Integration Helpers
+// ============================================================
+
+/**
+ * Get flow-integrated plugins available for a specific phase.
+ * @param {string} phase - Current execution phase (e.g., 'validating', 'exploring')
+ * @returns {Object[]} Array of { pluginName, action, description, mcpTool }
+ */
+function getFlowIntegratedPlugins(phase) {
+  if (!phase || typeof phase !== 'string') return [];
+
+  try {
+    const registry = readRegistry();
+    const results = [];
+
+    for (const plugin of Object.values(registry.plugins)) {
+      if (plugin.status !== 'active') continue;
+
+      for (const cap of (plugin.capabilities || [])) {
+        if (cap.mode === 'flow-integrated' && Array.isArray(cap.flowPhases) && cap.flowPhases.includes(phase)) {
+          results.push({
+            pluginName: plugin.name,
+            action: cap.action,
+            description: cap.description,
+            mcpTool: cap.mcpTool
+          });
+        }
+      }
+    }
+
+    return results;
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[plugin-registry] getFlowIntegratedPlugins failed: ${err.message}`);
+    }
+    return [];
+  }
+}
+
+/**
+ * Log a plugin action to request-log.md.
+ * @param {Object} opts
+ * @param {string} opts.pluginName - Name of the plugin
+ * @param {string} opts.action - Action performed
+ * @param {string} [opts.taskId] - Related task ID (if any)
+ * @param {string} [opts.mode] - Plugin mode ('standalone', 'flow-integrated', 'trigger')
+ */
+function logPluginAction({ pluginName, action, taskId, mode }) {
+  if (!pluginName || !action) return;
+
+  try {
+    const config = getPluginConfig();
+    if (!config.trackPluginActions) return;
+
+    const projectRoot = getProjectRoot();
+    const logPath = path.join(projectRoot, '.workflow', 'state', 'request-log.md');
+
+    if (!isPathWithinProject(logPath)) return;
+
+    // Sanitize inputs to prevent markdown/log injection
+    const safeName = String(pluginName).replace(/[\r\n]/g, ' ').slice(0, 80);
+    const safeAction = String(action).replace(/[\r\n]/g, ' ').slice(0, 80);
+    const safeTaskId = taskId ? String(taskId).replace(/[\r\n]/g, ' ').slice(0, 20) : '';
+    const safeMode = mode ? String(mode).replace(/[\r\n]/g, ' ').slice(0, 20) : '';
+
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 16);
+    const taskTag = safeTaskId ? ` | **Task**: ${safeTaskId}` : '';
+    const modeTag = safeMode ? ` | **Mode**: ${safeMode}` : '';
+
+    const entry = `\n### Plugin Action | ${now}\n` +
+      `**Plugin**: ${safeName} | **Action**: ${safeAction}${modeTag}${taskTag}\n` +
+      `**Tags**: #plugin:${safeName}\n`;
+
+    fs.appendFileSync(logPath, entry, 'utf-8');
+  } catch (err) {
+    // Non-blocking — don't fail if logging fails
+    if (process.env.DEBUG) {
+      console.error(`[plugin-registry] Failed to log action: ${err.message}`);
+    }
+  }
+}
+
+// ============================================================
 // CLI Interface
 // ============================================================
 
@@ -622,7 +722,9 @@ module.exports = {
   matchPluginTriggers,
   calculateTriggerScore,
   getPluginConfig,
-  getRegistryPath
+  getRegistryPath,
+  getFlowIntegratedPlugins,
+  logPluginAction
 };
 
 // Run CLI if executed directly

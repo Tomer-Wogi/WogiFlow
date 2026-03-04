@@ -20,7 +20,12 @@ When invoked with a **quoted request** instead of a task ID, assess intent and r
 
 **Plugin Registry Routing**: After command catalog finds no match and `config.plugins.enabled`, check `.workflow/state/plugin-registry.json` for trigger phrase matches (score >= 0.5). Plugin routing has LOWER priority than built-in commands.
 
-**Routing order**: Task ID → Long input gate → Command Catalog → Plugin Registry → Default (`/wogi-story`)
+**Plugin Mode-Aware Routing** (when a plugin match is found):
+- **Standalone** (`mode: 'standalone'`): If `config.plugins.standaloneBypassTask` is true, skip task creation. Clear routing flag, let the AI use the plugin directly. Log the action with `#plugin:<name>` tag by running `node -e "require('./scripts/flow-plugin-registry').logPluginAction({pluginName:'<name>',action:'<action>',mode:'standalone'})"`.
+- **Flow-integrated** (`mode: 'flow-integrated'`): Requires an active task. If no task is in progress, route to `/wogi-story` first. The plugin becomes available during its declared `flowPhases` (injected via phase context prompt).
+- **Trigger** (`mode: 'trigger'`): Route to the appropriate `/wogi-*` command based on the trigger type (error triggers → `/wogi-bug`, deployment triggers → `/wogi-story`, PR triggers → `/wogi-review`). The plugin action feeds INTO WogiFlow routing.
+
+**Routing order**: Task ID → Long input gate → Command Catalog → Plugin Registry (mode-aware) → Default (`/wogi-story`)
 
 ### Command Catalog
 

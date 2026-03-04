@@ -52,7 +52,18 @@ If MCP inspection yields few or no results:
 
 ### Step 3: Build Plugin Entry
 
-From the discovered information, construct:
+From the discovered information, construct each capability entry. For each capability, classify its **mode** and **flowPhases**:
+
+**Mode Classification Guide:**
+| Mode | When to use | Examples |
+|------|-------------|----------|
+| `standalone` | Action works independently, no task context needed | Screenshots, status checks, lookups, notifications, sending messages |
+| `flow-integrated` | Action is part of a development workflow phase | Running tests (validating), design checks (exploring), deploys (completing), linting (validating) |
+| `trigger` | Action feeds events INTO WogiFlow routing | Error alerts → `/wogi-bug`, deployment failures → `/wogi-story`, PR comments → `/wogi-review` |
+
+**flowPhases** (only for `flow-integrated` mode): `exploring`, `coding`, `validating`, `completing`
+
+**outputFormat**: `text` (default), `json` (structured data), `artifact` (file/image output)
 
 ```json
 {
@@ -66,7 +77,10 @@ From the discovered information, construct:
       "description": "What this action does",
       "triggerPhrases": ["send to X", "push to X"],
       "mcpTool": "mcp__server__tool_name or null",
-      "requiresTask": false
+      "requiresTask": false,
+      "mode": "standalone|flow-integrated|trigger",
+      "flowPhases": ["validating"],
+      "outputFormat": "text"
     }
   ],
   "metadata": {
@@ -91,10 +105,11 @@ Source: MCP tools | Web search | Manual
 
 Capabilities discovered (N):
   1. <action>: <description>
-     Triggers: "phrase 1", "phrase 2"
+     Mode: standalone | Triggers: "phrase 1", "phrase 2"
      MCP Tool: mcp__server__tool
 
   2. <action>: <description>
+     Mode: flow-integrated | Phases: validating, completing
      Triggers: "phrase 3"
 
 Trigger phrases (top-level):
