@@ -1,24 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T13:21:18.060Z",
+  "lastUpdated": "2026-03-04T13:34:49.825Z",
   "inProgress": [],
-  "ready": [
-    {
-      "id": "wf-6935e70c",
-      "title": "Config Schema & Tooling Sync",
-      "type": "refactor",
-      "feature": "config",
-      "status": "ready",
-      "priority": "P3",
-      "level": "L2",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "48 undocumented config keys added to config.schema.json",
-        "Installer defaults (lib/installer.js) synced with current config structure",
-        "Project type detection added — registries only enabled for relevant project types"
-      ],
-      "createdAt": "2026-03-04T11:43:35.415Z"
-    }
-  ],
+  "ready": [],
   "blocked": [],
   "recentlyCompleted": [
     {
@@ -1636,6 +1619,24 @@
       "createdAt": "2026-03-04T11:43:35.415Z",
       "startedAt": "2026-03-04T13:16:33.072Z",
       "completedAt": "2026-03-04T13:21:18.060Z"
+    },
+    {
+      "id": "wf-6935e70c",
+      "title": "Config Schema & Tooling Sync",
+      "type": "refactor",
+      "feature": "config",
+      "status": "recentlyCompleted",
+      "priority": "P3",
+      "level": "L2",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "48 undocumented config keys added to config.schema.json",
+        "Installer defaults (lib/installer.js) synced with current config structure",
+        "Project type detection added — registries only enabled for relevant project types"
+      ],
+      "createdAt": "2026-03-04T11:43:35.415Z",
+      "startedAt": "2026-03-04T13:21:34.394Z",
+      "completedAt": "2026-03-04T13:34:49.824Z"
     }
   ],
   "backlog": [
