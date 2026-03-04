@@ -22,10 +22,11 @@ const { getSessionFileScope, getSessionBoundaries } = require('../../flow-durabl
 
 /**
  * Get all scope gating settings from config (single read)
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {{ enabled: boolean, mode: string, exemptPatterns: string[] }}
  */
-function getScopeGatingSettings() {
-  const config = getConfig();
+function getScopeGatingSettings(config) {
+  if (!config) config = getConfig();
   const scopeConfig = config.hooks?.rules?.scopeGating || {};
   return {
     enabled: scopeConfig.enabled !== false,
@@ -43,26 +44,29 @@ function getScopeGatingSettings() {
 
 /**
  * Check if scope gating is enabled
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isScopeGatingEnabled() {
-  return getScopeGatingSettings().enabled;
+function isScopeGatingEnabled(config) {
+  return getScopeGatingSettings(config).enabled;
 }
 
 /**
  * Get the scope gating mode
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {string} 'warn' | 'block'
  */
-function getScopeGatingMode() {
-  return getScopeGatingSettings().mode;
+function getScopeGatingMode(config) {
+  return getScopeGatingSettings(config).mode;
 }
 
 /**
  * Get exempt patterns from config
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {string[]}
  */
-function getExemptPatterns() {
-  return getScopeGatingSettings().exemptPatterns;
+function getExemptPatterns(config) {
+  return getScopeGatingSettings(config).exemptPatterns;
 }
 
 /**
@@ -146,14 +150,15 @@ function matchesPattern(filePath, pattern) {
 /**
  * Check if a file is in the exempt list
  * @param {string} filePath - The file being edited
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isFileExempt(filePath) {
+function isFileExempt(filePath, config) {
   if (!filePath) {
     return false;
   }
 
-  const exemptPatterns = getExemptPatterns();
+  const exemptPatterns = getExemptPatterns(config);
 
   for (const pattern of exemptPatterns) {
     if (matchesPattern(filePath, pattern)) {
@@ -339,13 +344,14 @@ To proceed:
  * @param {Object} options
  * @param {string} options.filePath - Path being edited/written
  * @param {string} options.operation - 'edit' or 'write'
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {Object} Result: { allowed, blocked, message, warning, task, scopeChecked, inScope }
  */
-function checkScopeGate(options = {}) {
+function checkScopeGate(options = {}, config) {
   const { filePath } = options;
 
-  // First, run the normal task gate
-  const taskResult = checkTaskGate(options);
+  // First, run the normal task gate (pass config to avoid redundant getConfig())
+  const taskResult = checkTaskGate(options, config);
 
   // If task gate blocked, return that result (no task active)
   if (taskResult.blocked) {
@@ -353,12 +359,12 @@ function checkScopeGate(options = {}) {
   }
 
   // Check if scope gating is enabled
-  if (!isScopeGatingEnabled()) {
+  if (!isScopeGatingEnabled(config)) {
     return { ...taskResult, scopeChecked: false, reason: 'scope_gating_disabled' };
   }
 
   // Check if file is exempt
-  if (filePath && isFileExempt(filePath)) {
+  if (filePath && isFileExempt(filePath, config)) {
     return { ...taskResult, scopeChecked: true, inScope: true, reason: 'file_exempt' };
   }
 
@@ -373,7 +379,7 @@ function checkScopeGate(options = {}) {
   if (boundaries && filePath) {
     const matchedBoundary = isFileBoundaryViolation(filePath, boundaries);
     if (matchedBoundary) {
-      const mode = getScopeGatingMode();
+      const mode = getScopeGatingMode(config);
       if (mode === 'warn') {
         return {
           ...taskResult,
@@ -426,7 +432,7 @@ function checkScopeGate(options = {}) {
   }
 
   // File is NOT in scope - warn or block based on config
-  const mode = getScopeGatingMode();
+  const mode = getScopeGatingMode(config);
 
   if (mode === 'warn') {
     return {

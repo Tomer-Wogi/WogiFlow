@@ -1,25 +1,7 @@
 {
-  "lastUpdated": "2026-03-04T12:43:40.902Z",
+  "lastUpdated": "2026-03-04T12:50:59.227Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-1ad065ef",
-      "title": "Hook Chain Performance",
-      "type": "refactor",
-      "feature": "hooks",
-      "status": "ready",
-      "priority": "P2",
-      "level": "L1",
-      "epicId": "wf-ea2c59c1",
-      "acceptanceCriteria": [
-        "Config passed as parameter through hook chain instead of 7-8 getConfig() calls per PreToolUse",
-        "PostToolUse timeout lowered from 60s to 15-20s",
-        "Config cached within single hook execution cycle",
-        "Before/after timing measurements documented",
-        "No behavioral changes — same gates fire in same order"
-      ],
-      "createdAt": "2026-03-04T11:37:21.925Z"
-    },
     {
       "id": "wf-da0edc4b",
       "title": "Split flow-utils.js God File",
@@ -1624,6 +1606,26 @@
       "createdAt": "2026-03-04T11:37:21.925Z",
       "startedAt": "2026-03-04T12:31:37.309Z",
       "completedAt": "2026-03-04T12:43:40.902Z"
+    },
+    {
+      "id": "wf-1ad065ef",
+      "title": "Hook Chain Performance",
+      "type": "refactor",
+      "feature": "hooks",
+      "status": "recentlyCompleted",
+      "priority": "P2",
+      "level": "L1",
+      "epicId": "wf-ea2c59c1",
+      "acceptanceCriteria": [
+        "Config passed as parameter through hook chain instead of 7-8 getConfig() calls per PreToolUse",
+        "PostToolUse timeout lowered from 60s to 15-20s",
+        "Config cached within single hook execution cycle",
+        "Before/after timing measurements documented",
+        "No behavioral changes — same gates fire in same order"
+      ],
+      "createdAt": "2026-03-04T11:37:21.925Z",
+      "startedAt": "2026-03-04T12:44:10.132Z",
+      "completedAt": "2026-03-04T12:50:59.227Z"
     }
   ],
   "backlog": [

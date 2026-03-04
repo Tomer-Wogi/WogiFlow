@@ -27,19 +27,21 @@ const {
 
 /**
  * Check if component reuse checking is enabled
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isComponentCheckEnabled() {
-  const config = getConfig();
+function isComponentCheckEnabled(config) {
+  if (!config) config = getConfig();
   return config.hooks?.rules?.componentReuse?.enabled !== false;
 }
 
 /**
  * Get component patterns to check
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {string[]} Glob patterns for component directories
  */
-function getComponentPatterns() {
-  const config = getConfig();
+function getComponentPatterns(config) {
+  if (!config) config = getConfig();
   return config.hooks?.rules?.componentReuse?.patterns ||
          config.componentRules?.directories ||
          ['**/components/**', '**/ui/**', '**/src/components/**'];
@@ -47,10 +49,11 @@ function getComponentPatterns() {
 
 /**
  * Get similarity threshold (legacy - now uses semantic matching thresholds)
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {number} Threshold (0-100)
  */
-function getSimilarityThreshold() {
-  const config = getConfig();
+function getSimilarityThreshold(config) {
+  if (!config) config = getConfig();
   // Use new semantic matching threshold if available
   const semanticConfig = config.semanticMatching?.thresholds;
   if (semanticConfig) {
@@ -63,10 +66,11 @@ function getSimilarityThreshold() {
 /**
  * Check if a file path matches component patterns
  * @param {string} filePath - Path to check
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isComponentPath(filePath) {
-  const patterns = getComponentPatterns();
+function isComponentPath(filePath, config) {
+  const patterns = getComponentPatterns(config);
   const normalizedPath = filePath.replace(/\\/g, '/');
 
   for (const pattern of patterns) {
@@ -221,12 +225,14 @@ function findSimilarComponents(componentName, options = {}) {
  * @param {string} options.filePath - Path of new file
  * @param {string} options.content - Content of new file (optional)
  * @param {string} options.purpose - Purpose/description of new component (optional)
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {Object} Result: { allowed, warning, message, similar, aiPrompt }
  */
-function checkComponentReuse(options = {}) {
+function checkComponentReuse(options = {}, config) {
+  if (!config) config = getConfig();
   const { filePath, purpose } = options;
 
-  if (!isComponentCheckEnabled()) {
+  if (!isComponentCheckEnabled(config)) {
     return {
       allowed: true,
       warning: false,
@@ -236,7 +242,7 @@ function checkComponentReuse(options = {}) {
   }
 
   // Only check component paths
-  if (!isComponentPath(filePath)) {
+  if (!isComponentPath(filePath, config)) {
     return {
       allowed: true,
       warning: false,
@@ -258,7 +264,6 @@ function checkComponentReuse(options = {}) {
   }
 
   // Found similar components - determine action based on match level
-  const config = getConfig();
   const matchConfig = getMatchConfig();
   const shouldBlock = config.hooks?.rules?.componentReuse?.blockOnSimilar === true;
   const shouldInjectContext = config.hooks?.rules?.componentReuse?.injectContext !== false;

@@ -18,10 +18,11 @@ const { setCurrentTask } = require('../../flow-memory-blocks');
 
 /**
  * Check if task gating should be enforced
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isTaskGatingEnabled() {
-  const config = getConfig();
+function isTaskGatingEnabled(config) {
+  if (!config) config = getConfig();
 
   // Check hooks config first
   if (config.hooks?.rules?.taskGating?.enabled === false) {
@@ -128,9 +129,11 @@ function createQuickTask(filePath, operation) {
  * @param {Object} options
  * @param {string} options.filePath - Path being edited/written
  * @param {string} options.operation - 'edit' or 'write'
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {Object} Result: { allowed, blocked, message, task }
  */
-function checkTaskGate(options = {}) {
+function checkTaskGate(options = {}, config) {
+  if (!config) config = getConfig();
   const { filePath, operation = 'edit' } = options;
   // Exempt workflow state files from task gating
   if (filePath && filePath.includes('.workflow/state/')) {
@@ -156,7 +159,6 @@ function checkTaskGate(options = {}) {
   // Also exempt plan files (configurable directory + hardcoded fallback for backward compat)
   // Use path.resolve + startsWith for path traversal safety
   if (filePath) {
-    const config = getConfig();
     const plansDir = config.planning?.plansDirectory || '.workflow/plans';
     const resolvedPath = path.resolve(filePath);
     const resolvedPlansDir = path.resolve(plansDir);
@@ -189,7 +191,7 @@ function checkTaskGate(options = {}) {
 
 
   // Check if gating is enabled
-  if (!isTaskGatingEnabled()) {
+  if (!isTaskGatingEnabled(config)) {
     return {
       allowed: true,
       blocked: false,
@@ -212,7 +214,6 @@ function checkTaskGate(options = {}) {
   }
 
   // No active task - should we block?
-  const config = getConfig();
   const shouldBlock = config.hooks?.rules?.taskGating?.blockWithoutTask !== false;
 
   if (!shouldBlock) {

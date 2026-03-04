@@ -76,10 +76,11 @@ const SHELL_OPERATOR_PATTERN = /[;|&`$()]/;
 
 /**
  * Check if phase gating is enabled
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  */
-function isPhaseGateEnabled() {
+function isPhaseGateEnabled(config) {
   try {
-    const config = getConfig();
+    if (!config) config = getConfig();
     return config.hooks?.rules?.phaseGate?.enabled === true;
   } catch (err) {
     return false; // Fail-open
@@ -228,11 +229,12 @@ function isPhaseExemptPath(filePath) {
  * Main phase gate check - called from PreToolUse
  * @param {string} toolName - Tool being used
  * @param {Object} [toolInput] - Tool input (for bash command extraction)
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
-function checkPhaseGate(toolName, toolInput) {
+function checkPhaseGate(toolName, toolInput, config) {
   // Fail-open if disabled
-  if (!isPhaseGateEnabled()) {
+  if (!isPhaseGateEnabled(config)) {
     return { allowed: true, blocked: false, reason: 'phase_gating_disabled', message: null };
   }
 

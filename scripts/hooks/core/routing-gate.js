@@ -45,11 +45,12 @@ const ROUTING_CLEARED_TTL_MS = 5 * 60 * 1000;
 
 /**
  * Check if routing gate is enabled in config
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isRoutingGateEnabled() {
+function isRoutingGateEnabled(config) {
   try {
-    const config = getConfig();
+    if (!config) config = getConfig();
     return config.hooks?.rules?.routingGate?.enabled !== false;
   } catch (err) {
     if (process.env.DEBUG) {
@@ -261,9 +262,10 @@ function isRoutingPending() {
  * Check the routing gate for a tool call (called by PreToolUse)
  *
  * @param {string} toolName - The tool being called (e.g., 'Bash')
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
-function checkRoutingGate(toolName) {
+function checkRoutingGate(toolName, config) {
   // Gate ALL tools that allow the AI to act without routing through /wogi-start.
   // Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
   // from task gate) to create a fake active task, then edit anything freely.
@@ -277,7 +279,7 @@ function checkRoutingGate(toolName) {
   }
 
   // Check if routing gate is enabled
-  if (!isRoutingGateEnabled()) {
+  if (!isRoutingGateEnabled(config)) {
     return { allowed: true, blocked: false, reason: 'routing_gate_disabled', message: null };
   }
 

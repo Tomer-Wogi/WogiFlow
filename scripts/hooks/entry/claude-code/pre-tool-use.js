@@ -19,7 +19,7 @@ const { checkRoutingGate, clearRoutingPending } = require('../../core/routing-ga
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { safeJsonParseString, getConfig } = require('../../../flow-utils');
 
 // Lazy-load strict adherence to avoid circular deps and startup cost
 let _strictAdherence = null;
@@ -91,12 +91,21 @@ async function main() {
     const toolInput = parsedInput.toolInput || {};
     const filePath = toolInput.file_path;
 
+    // Load config ONCE and pass to all gate functions (avoids 7-8 redundant reads per tool call)
+    let config;
+    try {
+      config = getConfig();
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Config load error: ${err.message}`);
+      config = null; // Gates will fall back to their own getConfig() calls
+    }
+
     let coreResult = { allowed: true, blocked: false };
 
     // Phase gate check — blocks tools not allowed in current workflow phase
     // Runs before all other gates. Fail-open: errors skip the check.
     try {
-      const phaseResult = checkPhaseGate(toolName, toolInput);
+      const phaseResult = checkPhaseGate(toolName, toolInput, config);
       if (phaseResult.blocked) {
         coreResult = { allowed: false, blocked: true, reason: phaseResult.reason, message: phaseResult.message };
         const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
@@ -114,7 +123,7 @@ async function main() {
       coreResult = checkScopeGate({
         filePath,
         operation: toolName.toLowerCase()
-      });
+      }, config);
 
       // If blocked by task or scope gating, return early
       if (coreResult.blocked) {
@@ -128,7 +137,7 @@ async function main() {
     // TodoWrite gating check (for TodoWrite)
     if (toolName === 'TodoWrite') {
       const todos = toolInput.todos || [];
-      coreResult = checkTodoWriteGate({ todos });
+      coreResult = checkTodoWriteGate({ todos }, config);
 
       // If blocked by TodoWrite gating, return early
       if (coreResult.blocked) {
@@ -173,7 +182,7 @@ async function main() {
     // (exempt from task gate) to create a fake active task, then edit freely.
     if (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
       try {
-        const routingResult = checkRoutingGate(toolName);
+        const routingResult = checkRoutingGate(toolName, config);
         if (routingResult.blocked) {
           coreResult = {
             allowed: false,
@@ -238,7 +247,7 @@ async function main() {
       const componentResult = checkComponentReuse({
         filePath,
         content: toolInput.content
-      });
+      }, config);
 
       // Merge results - component check can add warning or block
       if (componentResult.blocked || componentResult.warning) {

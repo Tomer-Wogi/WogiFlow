@@ -104,10 +104,11 @@ const ALWAYS_ALLOWED_TODOS = [
 
 /**
  * Check if TodoWrite gate should be enforced
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {boolean}
  */
-function isTodoWriteGateEnabled() {
-  const config = getConfig();
+function isTodoWriteGateEnabled(config) {
+  if (!config) config = getConfig();
 
   // Check hooks config first
   if (config.hooks?.rules?.todoWriteGate?.enabled === false) {
@@ -196,9 +197,10 @@ function classifyTodo(todo) {
  *
  * @param {Object} options
  * @param {Array} options.todos - Array of todo items [{content, status, activeForm}]
+ * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
  * @returns {Object} Result: { allowed, blocked, message, reason, implementationTodos, trackingTodos }
  */
-function checkTodoWriteGate(options = {}) {
+function checkTodoWriteGate(options = {}, config) {
   const { todos } = options;
 
   // No todos - allow
@@ -212,7 +214,7 @@ function checkTodoWriteGate(options = {}) {
   }
 
   // Check if gate is enabled
-  if (!isTodoWriteGateEnabled()) {
+  if (!isTodoWriteGateEnabled(config)) {
     return {
       allowed: true,
       blocked: false,
@@ -265,7 +267,7 @@ function checkTodoWriteGate(options = {}) {
   }
 
   // No active task and has implementation todos - check if blocking is enabled
-  const config = getConfig();
+  if (!config) config = getConfig();
   // Default to blocking (true), only disable if explicitly set to false
   const blockingEnabled = config.hooks?.rules?.todoWriteGate?.blockImplementationWithoutTask !== false;
 
