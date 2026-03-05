@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -546,14 +546,30 @@ class SimilarityMatcher {
 async function main() {
   const [,, input, ...args] = process.argv;
 
-  // Load registry
-  if (!fs.existsSync(REGISTRY_PATH)) {
-    console.error('❌ Component registry not found.');
-    console.error('   Run "flow figma scan" first to build the registry.');
-    process.exit(1);
+  // Load registry — support both codebase registry and Figma multi-page registry
+  const figmaRegistryIndex = args.indexOf('--figma-registry');
+  let registry;
+
+  if (figmaRegistryIndex !== -1) {
+    // Use the Figma-sourced multi-page registry
+    const figmaRegistryPath = path.join(WORKFLOW_DIR, 'state', 'figma-component-registry.json');
+    if (!fs.existsSync(figmaRegistryPath)) {
+      console.error('❌ Figma component registry not found.');
+      console.error('   Run the multi-page scan first.');
+      process.exit(1);
+    }
+    const figmaRegistry = safeJsonParse(figmaRegistryPath, { components: [] });
+    registry = { components: figmaRegistry.components.map(c => c.representative || c) };
+  } else {
+    // Default: use codebase component registry
+    if (!fs.existsSync(REGISTRY_PATH)) {
+      console.error('❌ Component registry not found.');
+      console.error('   Run "flow figma scan" first to build the registry.');
+      process.exit(1);
+    }
+    registry = safeJsonParse(REGISTRY_PATH, { components: [] });
   }
 
-  const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
   const matcher = new SimilarityMatcher(registry);
 
   // Parse threshold argument
@@ -572,7 +588,7 @@ async function main() {
       data += chunk;
     }
 
-    const figmaData = JSON.parse(data);
+    const figmaData = safeJsonParseString(data, { components: [] });
     const components = figmaData.components || [figmaData];
 
     const results = matcher.matchAll(components);
@@ -580,7 +596,7 @@ async function main() {
 
   } else if (input && fs.existsSync(input)) {
     // Match from file
-    const figmaData = JSON.parse(fs.readFileSync(input, 'utf-8'));
+    const figmaData = safeJsonParse(input, { components: [] });
     const components = figmaData.components || [figmaData];
 
     const results = matcher.matchAll(components);

@@ -1,9 +1,76 @@
 {
-  "lastUpdated": "2026-03-04T17:09:19.236Z",
+  "lastUpdated": "2026-03-05T13:42:05.405Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-e2d8lo",
+      "title": "Fix low-priority review findings from wf-e2d8e3bf",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-03-05T13:41:37.573Z",
+      "completedAt": "2026-03-05T13:42:05.404Z"
+    },
+    {
+      "id": "wf-cr-cc2605",
+      "title": "Fix 9 review findings from Claude Code release adaptations",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-05T13:17:28.305Z",
+      "completedAt": "2026-03-05T13:20:17.794Z"
+    },
+    {
+      "id": "wf-e2d8e3bf",
+      "title": "Multi-Page Figma Analysis Pipeline with State Inference",
+      "type": "feature",
+      "priority": "P1",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-05T11:56:18.406Z",
+      "acceptance": [
+        "Figma-sourced component registry accumulates components with frequency/variants/frame refs",
+        "Cross-page structural matching recognizes same components (85%+ match)",
+        "State inference collapses similar frames into single component with state dimensions",
+        "Confidence gating asks user when unsure (<95%)",
+        "Orchestrator processes pages one-by-one with progress reporting",
+        "Architecture summary output after all pages processed"
+      ],
+      "completedAt": "2026-03-05T12:02:53.822Z"
+    },
+    {
+      "id": "wf-cr-8cdf01",
+      "title": "Fix 15 review findings from wf-8cdfeea0 plugin integration",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-04T20:19:32.828Z",
+      "completedAt": "2026-03-04T20:21:32.268Z"
+    },
+    {
+      "id": "wf-8cdfeea0",
+      "title": "Context-aware plugin integration — modes, phase injection, action logging",
+      "type": "feature",
+      "priority": "P1",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-04T19:55:45.651Z",
+      "acceptance": [
+        "Capability schema extended with mode, flowPhases, outputFormat fields",
+        "Mode-aware routing in wogi-start.md for standalone/flow-integrated/trigger",
+        "Phase context injection includes available plugins per phase",
+        "logPluginAction() logs plugin usage to request-log",
+        "wogi-register guides mode/phase classification during registration",
+        "Config extended with phaseInjection and standaloneBypassTask keys",
+        "All modified scripts pass node --check"
+      ],
+      "completedAt": "2026-03-04T19:58:14.616Z"
+    },
     {
       "id": "wf-ecb9b9e7",
       "title": "Fix routing gate blocking explicit /wogi-* commands",

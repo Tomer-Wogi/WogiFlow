@@ -35,6 +35,8 @@ Use this skill when:
 - Converting Figma designs to code
 - Adding new screens/features from Figma designs
 - Working with Figma MCP to generate code
+- Analyzing a full Figma file with multiple pages to build a frontend from scratch
+- Identifying shared components and state variations across pages
 
 ## Triggers
 
@@ -173,6 +175,7 @@ Output includes:
 ## CLI Commands
 
 ```bash
+# Single-page workflow
 ./scripts/flow figma scan              # Scan codebase for components
 ./scripts/flow figma show [name]       # Show component details
 ./scripts/flow figma extract <file>    # Extract from Figma data
@@ -180,7 +183,66 @@ Output includes:
 ./scripts/flow figma confirm <file>    # Interactive confirmation
 ./scripts/flow figma generate          # Generate code from decisions
 ./scripts/flow figma server            # Start MCP server
+
+# Multi-page workflow (NEW)
+./scripts/flow-figma-orchestrator.js instructions <fileKey>   # Get AI workflow steps
+./scripts/flow-figma-orchestrator.js progress                 # Check scan progress
+./scripts/flow-figma-orchestrator.js summary                  # Architecture summary
+./scripts/flow-figma-orchestrator.js reset [fileKey]          # Reset and start fresh
+./scripts/flow-figma-registry.js stats                        # Registry statistics
+./scripts/flow-figma-registry.js show                         # Full registry as JSON
 ```
+
+## Multi-Page Workflow (Full Figma File Analysis)
+
+When a developer wants to build an entire frontend from a Figma file with many pages:
+
+### Overview
+
+Instead of processing one page at a time, the multi-page workflow:
+1. Scans ALL pages incrementally, building a shared component registry
+2. Detects cross-page component reuse (sidebar on 55/60 pages = 1 component)
+3. Infers state variations (tab changes, form toggles, loading states)
+4. Outputs an architecture summary ready for code generation
+
+### How to Use
+
+```javascript
+const { FigmaOrchestrator } = require('./scripts/flow-figma-orchestrator');
+const orchestrator = new FigmaOrchestrator(fileKey);
+
+// For each page from Figma MCP:
+const result = orchestrator.processPage({ pageId, pageName }, figmaMCPData);
+
+// Handle uncertain classifications:
+const questions = orchestrator.getPendingQuestions();
+// Present to user, then: orchestrator.applyUserDecision(index, 'state')
+
+// After all pages:
+const summary = orchestrator.getArchitectureSummary();
+```
+
+### State Detection
+
+When two frames are 85%+ structurally identical:
+- **Tab change**: Only colors differ (highlight moved) → `activeTab` state
+- **Section toggle**: Section appeared/disappeared → `sectionVisible` state
+- **Content swap**: Text changed, structure same → `contentState` (loading/error/empty)
+- **Visual variant**: Only CSS styling differs → variant, not state
+- **Shared layout**: Same shell, different content → layout template
+
+### Confidence Tiers
+
+| Tier | Threshold | Action |
+|------|-----------|--------|
+| High | 95%+ | Auto-classify, no user interaction |
+| Medium | 70-95% | Apply + inform user (override available) |
+| Low | <70% | Ask user to decide |
+
+### Files Created
+
+- `.workflow/state/figma-component-registry.json` — Accumulated component registry
+- `.workflow/state/figma-orchestrator-state.json` — Scan progress/state
 
 ## MCP Server
 
