@@ -39,6 +39,9 @@ EXTENSIONS="ts,tsx,js,jsx"
 RUN_LINT=true
 RUN_TYPES=true
 
+# Read typecheck command from config (fallback to npx tsc --noEmit)
+TYPECHECK_CMD=$(node -e "try { const c = require('$PROJECT_ROOT/.workflow/config.json'); console.log(c.scripts && c.scripts.typecheck || 'npx tsc --noEmit'); } catch(e) { console.log('npx tsc --noEmit'); }" 2>/dev/null)
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -100,7 +103,7 @@ run_validation() {
     # TypeScript check
     if [ "$RUN_TYPES" = true ]; then
         echo -e "${CYAN}Running typecheck...${NC}"
-        if ! npx tsc --noEmit 2>&1 | head -30; then
+        if ! $TYPECHECK_CMD 2>&1 | head -30; then
             has_errors=true
         else
             echo -e "${GREEN}✓ Types OK${NC}"
@@ -145,7 +148,7 @@ start_watching() {
             npx nodemon \
                 --watch "$WATCH_DIR" \
                 --ext "$EXTENSIONS" \
-                --exec "bash -c 'echo \"Change detected\" && npx tsc --noEmit 2>&1 | head -20 && echo \"\" '"
+                --exec "bash -c 'echo \"Change detected\" && $TYPECHECK_CMD 2>&1 | head -20 && echo \"\" '"
             ;;
         fswatch)
             fswatch -r "$WATCH_DIR" | while read file; do

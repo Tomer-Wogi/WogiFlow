@@ -1473,7 +1473,7 @@ For each issue, follow this cycle:
 │  Run targeted verification:          │
 │    node --check <file>  (syntax)     │
 │    npx eslint <file>    (lint)       │
-│    npx tsc --noEmit     (types)      │
+│    config.scripts.typecheck (types)   │
 │              ↓                       │
 │  If PASS → Mark todo: completed      │
 │  If FAIL → Fix and retry             │

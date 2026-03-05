@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-03-05T13:42:05.405Z",
+  "lastUpdated": "2026-03-05T15:15:10.019Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-9405d4da",
+      "title": "Fix hardcoded tsc --noEmit — use config.scripts.typecheck dynamically",
+      "type": "fix",
+      "priority": "P1",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-05T15:11:51.931Z",
+      "completedAt": "2026-03-05T15:15:10.018Z"
+    },
     {
       "id": "wf-cr-e2d8lo",
       "title": "Fix low-priority review findings from wf-e2d8e3bf",

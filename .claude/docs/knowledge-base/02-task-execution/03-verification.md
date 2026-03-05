@@ -180,8 +180,8 @@ Run validation commands after file edits or before commits.
     "afterFileEdit": {
       "enabled": true,
       "commands": {
-        "*.ts": ["npx tsc --noEmit"],
-        "*.tsx": ["npx tsc --noEmit", "npx eslint {file} --fix"],
+        "*.ts": ["npm run type-check"],
+        "*.tsx": ["npm run type-check", "npx eslint {file} --fix"],
         "*.js": ["npx eslint {file} --fix"],
         "*.jsx": ["npx eslint {file} --fix"]
       },

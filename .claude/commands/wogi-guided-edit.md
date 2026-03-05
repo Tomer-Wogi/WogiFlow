@@ -47,7 +47,7 @@ This command modifies files. It MUST operate within one of these contexts:
 4. **Apply**: Make approved changes
    - **After each file edit**, validate by file type:
      - `.js` files: `node --check <file>` + ESLint
-     - `.ts`/`.tsx` files: `npx tsc --noEmit` + ESLint
+     - `.ts`/`.tsx` files: Run typecheck from `config.scripts.typecheck` (read from `.workflow/config.json`) + ESLint
      - `.json` files: JSON parse check
      - Other types: skip validation
    - Do NOT proceed to next file until current file passes validation
