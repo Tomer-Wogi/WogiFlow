@@ -198,3 +198,13 @@ When `config.plugins.autoScanOnSessionStart` is true:
 - Display: `New plugin detected: <name>. Auto-registered with N capabilities.`
 
 Mid-session plugin installs require manual `/wogi-register <name>`.
+
+## Post-Registration: Activate Plugin
+
+After saving the plugin to the registry (Step 5), automatically run `/reload-plugins` to activate the newly registered plugin without requiring a session restart. This ensures the plugin's MCP tools are immediately available.
+
+```
+After registration completes, tell the user:
+"Plugin registered. Running /reload-plugins to activate it immediately."
+Then invoke /reload-plugins.
+```

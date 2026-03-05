@@ -15,7 +15,7 @@ const path = require('path');
 const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
-const { checkRoutingGate, clearRoutingPending } = require('../../core/routing-gate');
+const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../core/routing-gate');
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
@@ -91,6 +91,27 @@ async function main() {
     const toolInput = parsedInput.toolInput || {};
     const filePath = toolInput.file_path;
 
+    // Agent-aware gating: detect subagent context from hook event fields
+    // Claude Code now provides agent_id and agent_type for subagent tool calls.
+    // Subagents in read-only phases (explore, review) should be allowed to read freely.
+    const rawAgentId = input.agent_id || null;
+    const rawAgentType = input.agent_type || null;
+
+    // Validate agent_id format (alphanumeric + hyphens, reasonable length)
+    // and agent_type against known values to prevent spoofing
+    const VALID_AGENT_TYPES = new Set([
+      'general-purpose', 'Explore', 'Plan', 'code-reviewer', 'bug-analyzer',
+      'statusline-setup', 'claude-code-guide', 'ui-sketcher'
+    ]);
+    const agentId = (typeof rawAgentId === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(rawAgentId)) ? rawAgentId : null;
+    const agentType = (typeof rawAgentType === 'string' && VALID_AGENT_TYPES.has(rawAgentType)) ? rawAgentType : null;
+    const isSubagent = !!agentId;
+
+    // Determine subagent intent from agent_type and apply dynamic permissions
+    // agent_type values from Claude Code: 'general-purpose', 'Explore', 'Plan', 'code-reviewer', etc.
+    const readOnlyAgentTypes = new Set(['Explore', 'Plan', 'code-reviewer', 'bug-analyzer']);
+    const subagentReadOnly = isSubagent && agentType ? readOnlyAgentTypes.has(agentType) : false;
+
     // Load config ONCE and pass to all gate functions (avoids 7-8 redundant reads per tool call)
     let config;
     try {
@@ -104,17 +125,24 @@ async function main() {
 
     // Phase gate check — blocks tools not allowed in current workflow phase
     // Runs before all other gates. Fail-open: errors skip the check.
-    try {
-      const phaseResult = checkPhaseGate(toolName, toolInput, config);
-      if (phaseResult.blocked) {
-        coreResult = { allowed: false, blocked: true, reason: phaseResult.reason, message: phaseResult.message };
-        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
-        console.log(JSON.stringify(output));
-        process.exit(0);
-        return;
+    // Subagents with read-only intent (Explore, Plan, code-reviewer) are allowed
+    // to use read tools (Read, Glob, Grep, WebSearch, WebFetch) regardless of phase.
+    const isReadTool = ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'].includes(toolName);
+    const skipPhaseGateForSubagent = isSubagent && subagentReadOnly && isReadTool;
+
+    if (!skipPhaseGateForSubagent) {
+      try {
+        const phaseResult = checkPhaseGate(toolName, toolInput, config);
+        if (phaseResult.blocked) {
+          coreResult = { allowed: false, blocked: true, reason: phaseResult.reason, message: phaseResult.message };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+      } catch (err) {
+        if (process.env.DEBUG) console.error(`[Hook] Phase gate error (fail-open): ${err.message}`);
       }
-    } catch (err) {
-      if (process.env.DEBUG) console.error(`[Hook] Phase gate error (fail-open): ${err.message}`);
     }
 
     // Task + scope gating check (for Edit and Write)
@@ -180,7 +208,13 @@ async function main() {
     // Blocks ALL tool calls when no /wogi-* command has been invoked first.
     // Edit/Write MUST be gated here — without this, AI can edit ready.json
     // (exempt from task gate) to create a fake active task, then edit freely.
-    if (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit') {
+    // v7.0: Subagents are exempt from routing gate — they were spawned by the main
+    // agent which already went through routing. Blocking subagent reads would break
+    // explore phase, review, and other multi-agent workflows.
+    // v7.1: Defense-in-depth — only bypass when an active task exists, proving the
+    // parent agent already went through routing and created a task context.
+    const skipRoutingGateForSubagent = isSubagent && hasActiveTask();
+    if (!skipRoutingGateForSubagent && (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit')) {
       try {
         const routingResult = checkRoutingGate(toolName, config);
         if (routingResult.blocked) {

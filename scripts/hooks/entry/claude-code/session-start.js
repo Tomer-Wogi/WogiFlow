@@ -58,6 +58,30 @@ async function main() {
     // Wait for bridge sync to complete before proceeding
     await bridgeSyncPromise;
 
+    // CLAUDE.md drift detection — check if manually edited since last sync
+    let driftDetected = false;
+    let driftMarkerMissing = false;
+    try {
+      const { checkClaudeMdDrift } = require('../../../flow-bridge-state');
+      const drift = checkClaudeMdDrift();
+      if (drift.drifted && drift.reason === 'content-changed') {
+        if (process.env.DEBUG) {
+          console.error('[session-start] CLAUDE.md drift detected — content changed since last sync');
+        }
+        driftDetected = true;
+      } else if (drift.drifted && drift.reason === 'marker-missing') {
+        if (process.env.DEBUG) {
+          console.error('[session-start] CLAUDE.md appears manually maintained (no generation marker)');
+        }
+        driftDetected = true;
+        driftMarkerMissing = true;
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Drift detection failed: ${err.message}`);
+      }
+    }
+
     // --- Batch 1: Independent pre-context operations (async + sync) ---
     // These all operate on separate state files and have no data dependencies.
 
@@ -210,6 +234,15 @@ async function main() {
     // Inject script warnings into context (if any)
     if (scriptWarnings.length > 0 && coreResult && coreResult.context) {
       coreResult.context.scriptWarnings = scriptWarnings.map(w => w.message);
+    }
+
+    // Inject drift detection results (if any)
+    if (driftDetected && coreResult && coreResult.context) {
+      if (driftMarkerMissing) {
+        coreResult.context.driftWarning = 'CLAUDE.md appears to have been manually edited (generation marker missing). Was this intentional? If yes, WogiFlow will respect your custom CLAUDE.md. If not, run `flow bridge sync` to regenerate from template.';
+      } else {
+        coreResult.context.driftWarning = 'CLAUDE.md content has changed since the last bridge sync. Was this intentional? If yes, WogiFlow will preserve your changes. If not, run `flow bridge sync` to regenerate from template.';
+      }
     }
 
     // Transform to Claude Code format

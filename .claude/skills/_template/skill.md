@@ -81,10 +81,10 @@ Load these files when relevant:
 
 | File | When to Load |
 |------|--------------|
-| `knowledge/learnings.md` | Starting a task with this skill |
-| `knowledge/patterns.md` | Looking for examples |
-| `knowledge/anti-patterns.md` | Reviewing code or fixing issues |
-| `rules/conventions.md` | Writing new code |
+| `${CLAUDE_SKILL_DIR}/knowledge/learnings.md` | Starting a task with this skill |
+| `${CLAUDE_SKILL_DIR}/knowledge/patterns.md` | Looking for examples |
+| `${CLAUDE_SKILL_DIR}/knowledge/anti-patterns.md` | Reviewing code or fixing issues |
+| `${CLAUDE_SKILL_DIR}/rules/conventions.md` | Writing new code |
 
 ## File Patterns
 

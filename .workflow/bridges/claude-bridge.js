@@ -485,6 +485,10 @@ Last synced: ${new Date().toISOString()}
         allow: wildcardPermissions,
       },
       respectGitignore: true,
+      // Disable built-in git instructions — WogiFlow provides its own via
+      // .claude/rules/operations/git-workflows.md and CLAUDE.md commit behavior section.
+      // This saves ~500-800 tokens and prevents conflicts with WogiFlow's commit rules.
+      includeGitInstructions: false,
       _wogiFlowManaged: true,
       _wogiFlowVersion: this._getInstalledVersion(),
       _generatedAt: new Date().toISOString(),
@@ -527,6 +531,7 @@ Last synced: ${new Date().toISOString()}
     const mergedSettings = {
       permissions: newSettings.permissions,
       respectGitignore: newSettings.respectGitignore,
+      includeGitInstructions: newSettings.includeGitInstructions,
       hooks: existingSettings.hooks || {},
       _wogiFlowManaged: newSettings._wogiFlowManaged,
       _wogiFlowVersion: newSettings._wogiFlowVersion,

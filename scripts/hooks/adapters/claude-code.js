@@ -32,7 +32,8 @@ const HOOK_TIMEOUTS = {
   SESSION_END: 10,        // Session cleanup/logging
   TASK_COMPLETED: 10,     // Post-task cleanup (Claude Code 2.1.33+)
   TEAMMATE_IDLE: 5,       // Task dispatch for idle agents (Claude Code 2.1.33+)
-  CONFIG_CHANGE: 5        // Mid-session config change detection (Claude Code latest)
+  CONFIG_CHANGE: 5,       // Mid-session config change detection (Claude Code latest)
+  INSTRUCTIONS_LOADED: 5  // Instructions loaded event (Claude Code latest)
 };
 
 /**
@@ -48,9 +49,10 @@ const CLAUDE_CODE_EVENTS = [
   'SessionEnd',
   'UserPromptSubmit',
   'TaskCompleted',
-  'WorktreeCreate',   // Claude Code 2.1.50+ — copy state to new worktree
-  'WorktreeRemove',   // Claude Code 2.1.50+ — clean up worktree state
-  'ConfigChange',     // Claude Code 2.1.63+ — mid-session config change detection
+  'WorktreeCreate',       // Claude Code 2.1.50+ — copy state to new worktree
+  'WorktreeRemove',       // Claude Code 2.1.50+ — clean up worktree state
+  'ConfigChange',         // Claude Code 2.1.63+ — mid-session config change detection
+  'InstructionsLoaded',   // Claude Code latest — fires when CLAUDE.md/.claude/rules loaded
 ];
 
 /**
@@ -192,6 +194,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformWorktreeCreate(coreResult);
       case 'WorktreeRemove':
         return this.transformWorktreeRemove(coreResult);
+      case 'InstructionsLoaded':
+        return this.transformInstructionsLoaded(coreResult);
       default:
         return { continue: true };
     }
@@ -495,6 +499,35 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform InstructionsLoaded result
+   * Fires when CLAUDE.md or .claude/rules/*.md files are loaded into context.
+   * Used for: package-check suggestions, rule conflict detection, auto-onboard detection.
+   */
+  transformInstructionsLoaded(coreResult) {
+    if (!coreResult.enabled) {
+      return { continue: true };
+    }
+
+    const parts = [];
+    if (coreResult.message) parts.push(coreResult.message);
+    if (coreResult.warnings && coreResult.warnings.length > 0) {
+      parts.push(coreResult.warnings.join('\n'));
+    }
+
+    if (parts.length === 0) {
+      return { continue: true };
+    }
+
+    return {
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'InstructionsLoaded',
+        additionalContext: parts.join('\n\n')
+      }
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot, transportConfig) {
@@ -596,6 +629,13 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.configChange?.enabled !== false) {
       hooks.ConfigChange = [{
         hooks: [hookEntry('ConfigChange', 'config-change.js', HOOK_TIMEOUTS.CONFIG_CHANGE)]
+      }];
+    }
+
+    // InstructionsLoaded hook — package check, rule conflicts, auto-onboard
+    if (rules.instructionsLoaded?.enabled !== false) {
+      hooks.InstructionsLoaded = [{
+        hooks: [hookEntry('InstructionsLoaded', 'instructions-loaded.js', HOOK_TIMEOUTS.INSTRUCTIONS_LOADED)]
       }];
     }
 

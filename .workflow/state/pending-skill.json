@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-04T17:03:23.706Z",
+  "markedAt": "2026-03-05T11:55:25.495Z",
   "context": {
-    "args": "The knowledge base is stale, old and doesn't match what we currently have. Review everything we have in wogiflow and update the knowledge base and the README.md file accordingly."
+    "args": "Build multi-page Figma analysis pipeline: incremental page-by-page scanning with state inference. The system processes Figma pages one at a time, builds a growing component registry from Figma data (not codebase), detects cross-page component reuse, and uses structural diffing + AI reasoning to collapse multiple Figma frames into single components with states (tabs, form toggles, loading states, etc.). Confidence gating asks user when unsure. Extends existing figma-extract, figma-match, figma-generate pipeline."
   },
   "status": "pending"
 }

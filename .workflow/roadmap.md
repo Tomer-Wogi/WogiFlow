@@ -567,6 +567,20 @@ Record screen + audio → Extract tasks with visual context → Generate WogiFlo
 
 ---
 
+### Cloud Rule Sync via InstructionsLoaded Hook
+
+**Priority**: Low
+**Status**: Idea
+**Created**: 2026-03-05
+**Source**: Claude Code release adaptations — InstructionsLoaded hook brainstorm
+
+When a team is connected (`flow login`), use the InstructionsLoaded hook to detect stale team rules. On instructions load, check if locally-cached team rules are older than a configurable TTL (e.g., 1 hour). If stale, pull fresh rules from the team server and merge into local `.claude/rules/`. This would complement the session-start pull by catching rule changes mid-session (e.g., when CLAUDE.md is reloaded after a bridge sync).
+
+**Depends On**: Teams Phase T3 (Team Knowledge) — requires team rules sync infrastructure
+**Scope**: Add team rule staleness check to `scripts/hooks/core/instructions-loaded.js`, integrate with `flow-team-adapter.js` API client.
+
+---
+
 ### Claude Code Plugin Marketplace Manifest
 
 **Priority**: Low

@@ -60,6 +60,10 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 | `{{task.id}}` | Current WogiFlow task ID (if any) |
 | `{{task.title}}` | Current task title |
 | `{{skill}}` | Currently active skill |
+| `{{worktree.name}}` | Worktree name (if running in --worktree session) |
+| `{{worktree.branch}}` | Worktree branch name |
+| `{{worktree.path}}` | Worktree directory path |
+| `{{worktree.original}}` | Original repo directory |
 
 ### Recommended Formats
 
@@ -76,6 +80,11 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 **Full Context** (detailed):
 ```json
 "format": "[{{task.id}}] {{model}} | {{context_window.used_percentage}}% used | {{#if skill}}{{skill}}{{/if}}"
+```
+
+**With Worktree** (for parallel task execution):
+```json
+"format": "{{#if worktree}}[WT:{{worktree.branch}}] {{/if}}{{#if task}}[{{task.id}}] {{/if}}{{model}} | Ctx: {{context_window.used_percentage}}%"
 ```
 
 ## WogiFlow Integration
