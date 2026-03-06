@@ -259,7 +259,7 @@ function mergeIntoTree(existingTree, newData) {
 
   // Apply relevance decay to existing nodes
   const config = getConfig();
-  const compactionConfig = config.context?.compaction || DEFAULT_COMPACTION_CONFIG;
+  const compactionConfig = config.contextManagement?.compaction || config.context?.compaction || DEFAULT_COMPACTION_CONFIG;
 
   if (compactionConfig.relevanceDecay?.enabled) {
     const decayRate = compactionConfig.relevanceDecay.decayPerTurn || 0.05;

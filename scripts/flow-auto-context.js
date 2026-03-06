@@ -356,7 +356,8 @@ function searchComponentIndex(keywords, config = null) {
 
   // Use config values if available
   const cfg = config || getConfig();
-  const maxComponentMatches = cfg.context?.auto?.maxComponentMatches || 15;
+  const autoCfg = cfg.taskContext?.auto || cfg.context?.auto;
+  const maxComponentMatches = autoCfg?.maxComponentMatches || 15;
 
   try {
     // Use safeJsonParse for prototype pollution protection
@@ -419,8 +420,9 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
 
   // Use config values if available
   const cfg = config || getConfig();
-  const effectiveMaxResults = cfg.context?.auto?.maxGrepResults || maxResults;
-  const maxContentLines = cfg.context?.auto?.maxContentLines || 50;
+  const grepAutoCfg = cfg.taskContext?.auto || cfg.context?.auto;
+  const effectiveMaxResults = grepAutoCfg?.maxGrepResults || maxResults;
+  const maxContentLines = grepAutoCfg?.maxContentLines || 50;
 
   // Only grep for high-value keywords to avoid noise
   const searchKeywords = keywords.high.slice(0, 5);
@@ -454,7 +456,7 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
         if (!results.some(r => r.path === relPath)) {
           // Optionally read file content with truncation
           let content = null;
-          if (cfg.context?.auto?.includeContent && isPathWithinProject(file)) {
+          if (grepAutoCfg?.includeContent && isPathWithinProject(file)) {
             try {
               const fullContent = fs.readFileSync(file, 'utf-8');
               const lines = fullContent.split('\n');
@@ -558,7 +560,8 @@ async function searchSemanticMemory(keywords, config = null) {
   if (!cfg.memory?.enabled) return [];
 
   const results = [];
-  const maxFacts = cfg.context?.auto?.maxSemanticFacts || 5;
+  const semAutoCfg = cfg.taskContext?.auto || cfg.context?.auto;
+  const maxFacts = semAutoCfg?.maxSemanticFacts || 5;
 
   try {
     // Build query from high-value keywords
@@ -604,7 +607,8 @@ async function searchSemanticMemory(keywords, config = null) {
  */
 async function enrichWithLSP(fileResults, config) {
   // Skip if disabled
-  if (!config.context?.auto?.lspEnrichment?.enabled) return fileResults;
+  const autoConfig = config.taskContext?.auto || config.context?.auto;
+  if (!autoConfig?.lspEnrichment?.enabled) return fileResults;
 
   // Lazy load LSP module to avoid circular dependencies
   let getLSP, isLSPEnabled;
@@ -621,8 +625,8 @@ async function enrichWithLSP(fileResults, config) {
   const lsp = await getLSP();
   if (!lsp) return fileResults;
 
-  const timeout = config.context?.auto?.lspEnrichment?.timeoutMs || 2000;
-  const maxFiles = config.context?.auto?.lspEnrichment?.maxFiles || 5;
+  const timeout = autoConfig?.lspEnrichment?.timeoutMs || 2000;
+  const maxFiles = autoConfig?.lspEnrichment?.maxFiles || 5;
 
   // Only enrich top N JS/TS files to limit latency
   const filesToEnrich = fileResults
@@ -688,12 +692,13 @@ function searchWithAstGrep(keywords, taskType = null, config = null) {
   const cfg = config || getConfig();
 
   // Skip if disabled or ast-grep not available
-  if (!cfg.context?.auto?.useAstGrep || !isAstGrepAvailable()) {
+  const astAutoCfg = cfg.taskContext?.auto || cfg.context?.auto;
+  if (!astAutoCfg?.useAstGrep || !isAstGrepAvailable()) {
     return [];
   }
 
   const results = [];
-  const maxResults = cfg.context?.auto?.maxAstGrepResults || 5;
+  const maxResults = astAutoCfg?.maxAstGrepResults || 5;
 
   try {
     // Determine search strategy based on task type
@@ -855,12 +860,13 @@ async function getAutoContext(description, options = {}) {
   const config = getConfig();
 
   // Check if auto-context is enabled
-  if (config.context?.auto?.enabled === false) {
+  const autoCtx = config.taskContext?.auto || config.context?.auto;
+  if (autoCtx?.enabled === false) {
     return { enabled: false, files: [], context: [] };
   }
 
   // v3.0: Use Smart Context System if strategy is 'dynamic'
-  const strategy = config.context?.auto?.strategy || 'fixed';
+  const strategy = autoCtx?.strategy || 'fixed';
   if (strategy === 'dynamic' && smartContextGatherer) {
     const smartResult = await getSmartContext(description, options);
     if (smartResult) {
@@ -897,8 +903,9 @@ async function getLegacyContext(description, options = {}, config = null) {
     checkAndRefreshIndex(config);
   }
 
-  const maxFiles = options.maxFiles || config.context?.auto?.maxFilesToLoad || 10;
-  const showFiles = options.showFiles ?? config.context?.auto?.showLoadedFiles ?? true;
+  const autoConf = config.taskContext?.auto || config.context?.auto;
+  const maxFiles = options.maxFiles || autoConf?.maxFilesToLoad || 10;
+  const showFiles = options.showFiles ?? autoConf?.showLoadedFiles ?? true;
 
   // Extract keywords
   const keywords = extractKeywords(description);
@@ -955,7 +962,8 @@ async function getLegacyContext(description, options = {}, config = null) {
   const enrichedUnique = await enrichWithLSP(unique, config);
 
   // Re-sort: prioritize files without errors (if LSP enrichment added data)
-  if (config.context?.auto?.lspEnrichment?.prioritizeHealthyFiles !== false) {
+  const autoLsp = config.taskContext?.auto || config.context?.auto;
+  if (autoLsp?.lspEnrichment?.prioritizeHealthyFiles !== false) {
     enrichedUnique.sort((a, b) => {
       // Files with LSP errors go to bottom
       const aErrors = a.lsp?.errorCount || 0;

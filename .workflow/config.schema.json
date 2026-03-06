@@ -140,6 +140,49 @@
               }
             }
           }
+        },
+        "taskGating": {
+          "type": "object",
+          "description": "Task gating hook enforcement (moved from hooks.rules.enforcement)",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "blockWithoutTask": { "type": "boolean", "default": true },
+            "autoCreateTask": { "type": "boolean", "default": false }
+          }
+        },
+        "scopeGating": {
+          "type": "object",
+          "description": "Scope gating hook enforcement (moved from hooks.rules.enforcement)",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "mode": { "type": "string", "default": "warn" },
+            "exemptPatterns": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "implementationGate": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false }
+          }
+        },
+        "todoWriteGate": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "blockImplementationWithoutTask": { "type": "boolean", "default": true }
+          }
+        },
+        "routingGate": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false }
+          }
+        },
+        "loopEnforcement": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false }
+          }
         }
       }
     },
@@ -616,10 +659,16 @@
         "testFrameworkDetection": { "type": "boolean", "default": true }
       }
     },
-    "componentRules": {
+    "componentReuse": {
       "type": "object",
-      "description": "Component reuse and creation rules",
+      "description": "Component reuse detection and creation rules (merged from componentRules + hooks.rules.intelligence.componentReuse)",
       "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "threshold": { "type": "number", "default": 30 },
+        "allRegistries": { "type": "boolean", "default": true },
+        "aiAsJudge": { "type": "boolean", "default": true },
+        "blockOnSimilar": { "type": "boolean", "default": false },
+        "injectContext": { "type": "boolean", "default": true },
         "preferVariants": { "type": "boolean", "default": true },
         "requireAppMapEntry": { "type": "boolean", "default": true },
         "requireDetailDoc": { "type": "boolean", "default": false },
@@ -627,9 +676,9 @@
         "storybookPath": { "type": "string", "default": "src/stories" }
       }
     },
-    "strictMode": {
+    "reporting": {
       "type": "object",
-      "description": "Additional strict mode options (verification reports)",
+      "description": "Verification and reporting options (renamed from strictMode object)",
       "properties": {
         "verificationChecklist": { "type": "boolean", "default": false },
         "correctionReportsOnFail": { "type": "boolean", "default": false },
@@ -848,9 +897,9 @@
         "enabled": { "type": "boolean", "default": false }
       }
     },
-    "context": {
+    "contextManagement": {
       "type": "object",
-      "description": "Consolidated context management (formerly autoContext, sessionState, contextMonitor, smartCompaction)",
+      "description": "Context management: compaction, smart estimation, proactive compaction, monitoring",
       "properties": {
         "compaction": {
           "type": "object",
@@ -917,21 +966,21 @@
             }
           }
         },
-        "scoring": {
-          "type": "object",
-          "properties": {
-            "enabled": { "type": "boolean", "default": false }
-          }
-        },
         "monitor": {
           "type": "object",
           "properties": {
             "enabled": { "type": "boolean", "default": false }
           }
-        },
+        }
+      }
+    },
+    "taskContext": {
+      "type": "object",
+      "description": "Task-specific context: auto-loading, scoring, session state",
+      "properties": {
         "auto": {
           "type": "object",
-          "description": "Auto-loading related files",
+          "description": "Auto-loading related files for task context",
           "properties": {
             "enabled": { "type": "boolean", "default": false },
             "strategy": { "type": "string", "default": "dynamic" },
@@ -958,6 +1007,12 @@
                 "enabled": { "type": "boolean", "default": false }
               }
             }
+          }
+        },
+        "scoring": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false }
           }
         },
         "session": {

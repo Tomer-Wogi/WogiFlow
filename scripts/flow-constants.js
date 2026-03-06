@@ -114,7 +114,7 @@ const KNOWN_CONFIG_KEYS = [
   'worktree',
   'qualityGates',
   'testing',
-  'componentRules',
+  'componentReuse',
   'mandatorySteps',
   'phases',
   'corrections',
@@ -136,6 +136,9 @@ const KNOWN_CONFIG_KEYS = [
   'damageControl',
   'storyDecomposition',
   'specificationMode',
+  'contextManagement',
+  'taskContext',
+  'reporting',
 ];
 
 module.exports = {

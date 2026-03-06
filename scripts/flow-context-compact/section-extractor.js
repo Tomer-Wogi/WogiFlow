@@ -125,7 +125,7 @@ function selectNodes(tree, options = {}) {
   } = options;
 
   const config = getConfig();
-  const compactionConfig = config.context?.compaction || {};
+  const compactionConfig = config.contextManagement?.compaction || config.context?.compaction || {};
 
   const queryKeywords = extractKeywords(query);
   const selected = [];

@@ -1,9 +1,39 @@
 {
-  "lastUpdated": "2026-03-06T10:36:03.921Z",
+  "lastUpdated": "2026-03-06T14:13:29.290Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-a1b2c3",
+      "title": "Fix 7 review findings from wf-e84bff5c",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-06T17:00:00.000Z",
+      "completedAt": "2026-03-06T18:44:12.479Z"
+    },
+    {
+      "id": "wf-e84bff5c",
+      "title": "Config restructuring: merge overlapping keys, eliminate duplicates",
+      "type": "refactor",
+      "priority": "P1",
+      "level": "L1",
+      "status": "completed",
+      "startedAt": "2026-03-06T15:30:00.000Z",
+      "completedAt": "2026-03-06T16:45:00.000Z"
+    },
+    {
+      "id": "wf-9d709284",
+      "title": "Enable hooks by default, add promptCapture granular flag",
+      "type": "fix",
+      "priority": "P1",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-06T14:12:13.417Z",
+      "completedAt": "2026-03-06T14:13:29.289Z"
+    },
     {
       "id": "wf-cr-95e1cd",
       "title": "Fix 3 review findings from wf-b581af28",

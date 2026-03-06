@@ -32,7 +32,7 @@ const {
  */
 function isComponentCheckEnabled(config) {
   if (!config) config = getConfig();
-  return config.hooks?.rules?.componentReuse?.enabled !== false;
+  return config.componentReuse?.enabled !== false;
 }
 
 /**
@@ -42,8 +42,7 @@ function isComponentCheckEnabled(config) {
  */
 function getComponentPatterns(config) {
   if (!config) config = getConfig();
-  return config.hooks?.rules?.componentReuse?.patterns ||
-         config.componentRules?.directories ||
+  return config.componentReuse?.patterns ||
          ['**/components/**', '**/ui/**', '**/src/components/**'];
 }
 
@@ -60,7 +59,7 @@ function getSimilarityThreshold(config) {
     return semanticConfig.possibleMatch || 50;
   }
   // Fall back to legacy threshold
-  return config.hooks?.rules?.componentReuse?.threshold || 70;
+  return config.componentReuse?.threshold || 70;
 }
 
 /**
@@ -265,8 +264,8 @@ function checkComponentReuse(options = {}, config) {
 
   // Found similar components - determine action based on match level
   const matchConfig = getMatchConfig();
-  const shouldBlock = config.hooks?.rules?.componentReuse?.blockOnSimilar === true;
-  const shouldInjectContext = config.hooks?.rules?.componentReuse?.injectContext !== false;
+  const shouldBlock = config.componentReuse?.blockOnSimilar === true;
+  const shouldInjectContext = config.componentReuse?.injectContext !== false;
   const bestMatch = similar[0];
 
   // Generate appropriate response based on match level

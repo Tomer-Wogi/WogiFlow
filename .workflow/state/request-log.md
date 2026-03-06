@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-209 | 2026-03-06 13:00
+**Type**: fix
+**Tags**: #fix:config #fix:hooks #script:installer #hook:user-prompt-submit
+**Task**: wf-9d709284
+**Request**: "Enable hooks by default, add granular promptCapture and correctionDetection flags"
+**Result**: Changed hooks.enabled default to true. Intelligence features (sessionContext, componentReuse, promptCapture, correctionDetection, validation) and key lifecycle features (taskCompleted, setup) now enabled by default. Enforcement features (taskGating, routingGate, implementationGate, etc.) remain disabled by default — users opt in. Added promptCapture and correctionDetection as explicit granular flags under hooks.rules.intelligence. Hook checks these flags before capturing prompts or spawning detection.
+**Files**: lib/installer.js, scripts/hooks/entry/claude-code/user-prompt-submit.js
+
 ### R-208 | 2026-03-06 12:00
 **Type**: fix
 **Tags**: #fix:learning #script:correction-detector #script:session-end #script:session-context #hook:user-prompt-submit

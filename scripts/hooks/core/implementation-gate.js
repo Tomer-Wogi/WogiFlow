@@ -169,8 +169,7 @@ function calculateConfidence(matchCount) {
 function isImplementationGateEnabled() {
   const config = getConfig();
 
-  // Check hooks config first
-  if (config.hooks?.rules?.implementationGate?.enabled === false) {
+  if (config.enforcement?.implementationGate?.enabled === false) {
     return false;
   }
 

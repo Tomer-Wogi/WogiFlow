@@ -276,7 +276,7 @@ function collapseAll() {
  */
 function checkContextPressure() {
   const config = getConfig();
-  const compactionConfig = config.context?.compaction || {};
+  const compactionConfig = config.contextManagement?.compaction || config.context?.compaction || {};
   const thresholds = compactionConfig.thresholds || {
     warnAt: 50000,
     compactAt: 80000,

@@ -24,12 +24,10 @@ const { setCurrentTask } = require('../../flow-memory-blocks');
 function isTaskGatingEnabled(config) {
   if (!config) config = getConfig();
 
-  // Check hooks config first
-  if (config.hooks?.rules?.enforcement?.taskGating?.enabled === false) {
+  if (config.enforcement?.taskGating?.enabled === false) {
     return false;
   }
 
-  // Fall back to enforcement config
   if (config.enforcement?.strictMode === false) {
     return false;
   }
@@ -214,7 +212,7 @@ function checkTaskGate(options = {}, config) {
   }
 
   // No active task - should we block?
-  const shouldBlock = config.hooks?.rules?.taskGating?.blockWithoutTask !== false;
+  const shouldBlock = config.enforcement?.taskGating?.blockWithoutTask !== false;
 
   if (!shouldBlock) {
     return {
@@ -227,7 +225,7 @@ function checkTaskGate(options = {}, config) {
 
   // Check if auto-task creation is enabled
   // Default to false (blocking) when strictMode is enabled
-  const autoCreateEnabled = config.hooks?.rules?.taskGating?.autoCreateTask === true;
+  const autoCreateEnabled = config.enforcement?.taskGating?.autoCreateTask === true;
 
   if (!autoCreateEnabled) {
     // Track the bypass attempt

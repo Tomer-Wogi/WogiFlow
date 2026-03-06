@@ -289,7 +289,7 @@ function checkDirectoryStructure(files) {
 async function run(context) {
   const { files = [], previousResults = {} } = context;
   const config = getConfig();
-  const namingConvention = config.componentRules?.namingConvention || 'kebab-case';
+  const namingConvention = config.componentReuse?.namingConvention || 'kebab-case';
 
   const issues = [];
   const suggestions = [];

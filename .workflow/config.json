@@ -40,6 +40,36 @@
         "minFiles": 10,
         "minHours": 4
       }
+    },
+    "taskGating": {
+      "enabled": false,
+      "blockWithoutTask": true,
+      "autoCreateTask": false
+    },
+    "scopeGating": {
+      "enabled": false,
+      "mode": "warn",
+      "exemptPatterns": [
+        ".workflow/state/**",
+        ".workflow/specs/**",
+        ".workflow/plans/**",
+        "package.json",
+        "package-lock.json",
+        "tsconfig.json"
+      ]
+    },
+    "implementationGate": {
+      "enabled": false
+    },
+    "todoWriteGate": {
+      "enabled": false,
+      "blockImplementationWithoutTask": true
+    },
+    "routingGate": {
+      "enabled": false
+    },
+    "loopEnforcement": {
+      "enabled": false
     }
   },
   "execution": {
@@ -59,6 +89,14 @@
         "code-blocks",
         "lists"
       ]
+    },
+    "tdd": {
+      "enforced": true,
+      "defaultForTypes": [
+        "bugfix"
+      ],
+      "requireFailingTestFirst": true,
+      "testFrameworkDetection": true
     },
     "loops": {
       "enabled": false,
@@ -91,10 +129,6 @@
       "usePatterns": true,
       "useAI": false,
       "aiModel": "haiku"
-    },
-    "learning": {
-      "recordSuccessfulFixes": true,
-      "recordFailedHypotheses": true
     }
   },
   "workflow": {
@@ -253,21 +287,7 @@
       "security"
     ],
     "similarityThreshold": 0.8,
-    "similarityWarningThreshold": 0.6,
-    "learning": {
-      "enabled": false
-    }
-  },
-  "validation": {
-    "afterFileEdit": {
-      "enabled": false
-    },
-    "afterTaskComplete": {
-      "enabled": false
-    },
-    "beforeCommit": {
-      "enabled": false
-    }
+    "similarityWarningThreshold": 0.6
   },
   "checkpoint": {
     "enabled": false
@@ -275,22 +295,20 @@
   "regressionTesting": {
     "enabled": false
   },
-  "tdd": {
-    "enforced": true,
-    "defaultForTypes": [
-      "bugfix"
-    ],
-    "requireFailingTestFirst": true,
-    "testFrameworkDetection": true
-  },
-  "componentRules": {
+  "componentReuse": {
+    "enabled": false,
+    "threshold": 30,
+    "allRegistries": true,
+    "aiAsJudge": true,
+    "blockOnSimilar": false,
+    "injectContext": true,
     "preferVariants": true,
     "requireAppMapEntry": true,
     "requireDetailDoc": false,
     "autoGenerateStorybook": false,
     "storybookPath": "src/stories"
   },
-  "strictMode": {
+  "reporting": {
     "verificationChecklist": false,
     "correctionReportsOnFail": false,
     "featureReportsOnComplete": false
@@ -337,6 +355,16 @@
     },
     "skill": {
       "enabled": false
+    },
+    "standardsLearning": {
+      "enabled": false
+    },
+    "errorRecoveryLearning": {
+      "recordSuccessfulFixes": true,
+      "recordFailedHypotheses": true
+    },
+    "bugFlowLearning": {
+      "enabled": false
     }
   },
   "bugFlow": {
@@ -352,9 +380,6 @@
       }
     },
     "autoRoute": true,
-    "learningEnforcement": {
-      "enabled": false
-    },
     "inlineDiscovery": {
       "maxSearchOperations": 3,
       "maxFileReads": 2,
@@ -416,7 +441,7 @@
   "prd": {
     "enabled": false
   },
-  "context": {
+  "contextManagement": {
     "compaction": {
       "enabled": false,
       "thresholds": {
@@ -461,12 +486,11 @@
         "validating"
       ]
     },
-    "scoring": {
-      "enabled": false
-    },
     "monitor": {
       "enabled": false
-    },
+    }
+  },
+  "taskContext": {
     "auto": {
       "enabled": false,
       "strategy": "dynamic",
@@ -487,6 +511,9 @@
       "lspEnrichment": {
         "enabled": false
       }
+    },
+    "scoring": {
+      "enabled": false
     },
     "session": {
       "enabled": false
@@ -880,47 +907,7 @@
     "gracefulDegradation": true,
     "timeout": 600000,
     "rules": {
-      "enforcement": {
-        "taskGating": {
-          "enabled": false,
-          "blockWithoutTask": true,
-          "autoCreateTask": false
-        },
-        "scopeGating": {
-          "enabled": false,
-          "mode": "warn",
-          "exemptPatterns": [
-            ".workflow/state/**",
-            ".workflow/specs/**",
-            ".workflow/plans/**",
-            "package.json",
-            "package-lock.json",
-            "tsconfig.json"
-          ]
-        },
-        "implementationGate": {
-          "enabled": false
-        },
-        "todoWriteGate": {
-          "enabled": false,
-          "blockImplementationWithoutTask": true
-        },
-        "routingGate": {
-          "enabled": false
-        },
-        "loopEnforcement": {
-          "enabled": false
-        }
-      },
       "intelligence": {
-        "componentReuse": {
-          "enabled": false,
-          "threshold": 30,
-          "allRegistries": true,
-          "aiAsJudge": true,
-          "blockOnSimilar": false,
-          "injectContext": true
-        },
         "sessionContext": {
           "enabled": false,
           "loadSuspendedTasks": true,
@@ -929,7 +916,13 @@
         },
         "validation": {
           "enabled": false,
-          "runAfterEdit": true
+          "runAfterEdit": true,
+          "afterTaskComplete": {
+            "enabled": false
+          },
+          "beforeCommit": {
+            "enabled": false
+          }
         }
       },
       "lifecycle": {

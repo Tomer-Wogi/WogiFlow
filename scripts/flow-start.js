@@ -659,7 +659,7 @@ async function main() {
   }
 
   // v3.1: Hierarchical context from summary tree (recursive enhancements)
-  if (contextCompact && config.context?.compaction?.enabled !== false) {
+  if (contextCompact && (config.contextManagement?.compaction?.enabled ?? config.context?.compaction?.enabled) !== false) {
     try {
       const treeStats = contextCompact.getStats();
       if (treeStats.exists) {

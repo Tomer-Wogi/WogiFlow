@@ -211,7 +211,7 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
   // Collect reuse candidates (AI-as-judge, separate from violations)
   let reuseCandidates = [];
   const semanticConfig = config.semanticMatching || {};
-  const reuseConfig = config.hooks?.rules?.componentReuse || {};
+  const reuseConfig = config.componentReuse || {};
   const aiAsJudge = semanticConfig.aiAsJudge !== false && reuseConfig.aiAsJudge !== false;
   const allRegistries = reuseConfig.allRegistries !== false;
 

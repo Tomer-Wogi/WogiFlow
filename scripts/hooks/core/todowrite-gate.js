@@ -110,12 +110,10 @@ const ALWAYS_ALLOWED_TODOS = [
 function isTodoWriteGateEnabled(config) {
   if (!config) config = getConfig();
 
-  // Check hooks config first
-  if (config.hooks?.rules?.enforcement?.todoWriteGate?.enabled === false) {
+  if (config.enforcement?.todoWriteGate?.enabled === false) {
     return false;
   }
 
-  // Fall back to enforcement config
   if (config.enforcement?.strictMode === false) {
     return false;
   }
@@ -269,7 +267,7 @@ function checkTodoWriteGate(options = {}, config) {
   // No active task and has implementation todos - check if blocking is enabled
   if (!config) config = getConfig();
   // Default to blocking (true), only disable if explicitly set to false
-  const blockingEnabled = config.hooks?.rules?.todoWriteGate?.blockImplementationWithoutTask !== false;
+  const blockingEnabled = config.enforcement?.todoWriteGate?.blockImplementationWithoutTask !== false;
 
   if (blockingEnabled) {
     // Hard block mode

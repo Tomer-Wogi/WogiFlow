@@ -50,20 +50,20 @@ const KNOWN_CONFIG_KEYS = [
   // Core
   'version', 'projectName', 'cli', 'scripts', 'requireApproval',
   // Feature toggles
-  'autoLog', 'autoUpdateAppMap', 'strictMode',
+  'autoLog', 'autoUpdateAppMap', 'strictMode', 'reporting',
   // Execution
   'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'workflow',
   'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
   // Quality & validation
   'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
   // Components & registries
-  'componentRules', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
+  'componentRules', 'componentReuse', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
   // Learning & memory
   'learning', 'corrections', 'automaticMemory', 'automaticPromotion',
   'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
   'codebaseInsights', 'knowledgeRouting',
   // Skills & context
-  'skills', 'autoContext', 'context', 'contextMonitor', 'contextScoring',
+  'skills', 'autoContext', 'context', 'contextManagement', 'taskContext', 'contextMonitor', 'contextScoring',
   // Review & analysis
   'review', 'reviewFix', 'originTaskTracing', 'standardsCompliance',
   'semanticMatching', 'peerReview', 'triage', 'consistency',
@@ -162,18 +162,18 @@ function validateConfig(config, warnOnUnknown = true) {
 function applyConfigCompatShim(config) {
   if (!config || typeof config !== 'object') return config;
 
-  // execution <-> tasks + loops (bidirectional)
+  // execution <-> tasks + loops (bidirectional, shallow copy to avoid shared references)
   if (config.execution && !config.tasks) {
-    config.tasks = config.execution;
+    config.tasks = { ...config.execution };
   }
   if (config.tasks && !config.execution) {
-    config.execution = config.tasks;
+    config.execution = { ...config.tasks };
   }
   if (config.execution && config.execution.loops && !config.loops) {
-    config.loops = config.execution.loops;
+    config.loops = { ...config.execution.loops };
   }
   if (config.loops && config.execution && !config.execution.loops) {
-    config.execution.loops = config.loops;
+    config.execution.loops = { ...config.loops };
   }
 
   // memory <- memory.automatic, memory.promotion
@@ -274,6 +274,87 @@ function applyConfigCompatShim(config) {
   // community <- community.sync
   if (config.community && config.community.sync && !config.communitySync) {
     config.communitySync = config.community.sync;
+  }
+
+  // v1.8.6: Config restructuring compat shims
+  // AC1: hooks.rules.enforcement -> enforcement (moved to top-level enforcement)
+  if (config.hooks?.rules?.enforcement) {
+    const hooksEnforcement = config.hooks.rules.enforcement;
+    if (!config.enforcement) config.enforcement = {};
+    if (hooksEnforcement.taskGating && !config.enforcement.taskGating) config.enforcement.taskGating = hooksEnforcement.taskGating;
+    if (hooksEnforcement.scopeGating && !config.enforcement.scopeGating) config.enforcement.scopeGating = hooksEnforcement.scopeGating;
+    if (hooksEnforcement.implementationGate && !config.enforcement.implementationGate) config.enforcement.implementationGate = hooksEnforcement.implementationGate;
+    if (hooksEnforcement.todoWriteGate && !config.enforcement.todoWriteGate) config.enforcement.todoWriteGate = hooksEnforcement.todoWriteGate;
+    if (hooksEnforcement.routingGate && !config.enforcement.routingGate) config.enforcement.routingGate = hooksEnforcement.routingGate;
+    if (hooksEnforcement.loopEnforcement && !config.enforcement.loopEnforcement) config.enforcement.loopEnforcement = hooksEnforcement.loopEnforcement;
+  }
+
+  // AC3: strictMode object -> reporting
+  if (config.strictMode && typeof config.strictMode === 'object' && !config.reporting) {
+    config.reporting = config.strictMode;
+  }
+
+  // AC4: componentRules + hooks.rules.intelligence.componentReuse -> componentReuse
+  if (config.componentRules && !config.componentReuse) {
+    config.componentReuse = config.componentRules;
+  }
+  if (config.hooks?.rules?.intelligence?.componentReuse) {
+    if (!config.componentReuse) config.componentReuse = {};
+    const hooksComponentReuse = config.hooks.rules.intelligence.componentReuse;
+    for (const key of Object.keys(hooksComponentReuse)) {
+      if (config.componentReuse[key] === undefined) {
+        config.componentReuse[key] = hooksComponentReuse[key];
+      }
+    }
+  }
+  // Also expose back as hooks.rules.componentReuse for code that reads that path
+  if (config.componentReuse && config.hooks?.rules) {
+    if (!config.hooks.rules.componentReuse) config.hooks.rules.componentReuse = { ...config.componentReuse };
+  }
+
+  // AC5: scattered learning sub-keys -> learning.*
+  if (config.standardsCompliance?.learning && config.learning && !config.learning.standardsLearning) {
+    config.learning.standardsLearning = config.standardsCompliance.learning;
+  }
+  if (config.errorRecovery?.learning && config.learning && !config.learning.errorRecoveryLearning) {
+    config.learning.errorRecoveryLearning = config.errorRecovery.learning;
+  }
+  if (config.bugFlow?.learningEnforcement && config.learning && !config.learning.bugFlowLearning) {
+    config.learning.bugFlowLearning = config.bugFlow.learningEnforcement;
+  }
+
+  // AC6: context -> contextManagement + taskContext
+  // Note: mergeWithDefaults may have already created these keys, so check sub-keys not top-level
+  if (config.context) {
+    if (!config.contextManagement) config.contextManagement = {};
+    if (config.context.compaction && !config.contextManagement.compaction) config.contextManagement.compaction = config.context.compaction;
+    if (config.context.smart && !config.contextManagement.smart) config.contextManagement.smart = config.context.smart;
+    if (config.context.proactive && !config.contextManagement.proactive) config.contextManagement.proactive = config.context.proactive;
+    if (config.context.monitor && !config.contextManagement.monitor) config.contextManagement.monitor = config.context.monitor;
+
+    if (!config.taskContext) config.taskContext = {};
+    if (config.context.auto && !config.taskContext.auto) config.taskContext.auto = config.context.auto;
+    if (config.context.scoring && !config.taskContext.scoring) config.taskContext.scoring = config.context.scoring;
+    if (config.context.session && !config.taskContext.session) config.taskContext.session = config.context.session;
+  }
+
+  // AC7: tdd -> execution.tdd
+  if (config.tdd && config.execution && !config.execution.tdd) {
+    config.execution.tdd = config.tdd;
+  }
+  if (config.execution?.tdd && !config.tdd) {
+    config.tdd = config.execution.tdd;
+  }
+
+  // AC2: top-level validation -> hooks.rules.intelligence.validation
+  if (config.validation && config.hooks?.rules?.intelligence?.validation) {
+    const v = config.hooks.rules.intelligence.validation;
+    if (config.validation.afterTaskComplete !== undefined && v.afterTaskComplete === undefined) {
+      v.afterTaskComplete = config.validation.afterTaskComplete;
+    }
+    if (config.validation.beforeCommit !== undefined && v.beforeCommit === undefined) {
+      v.beforeCommit = config.validation.beforeCommit;
+    }
   }
 
   return config;
