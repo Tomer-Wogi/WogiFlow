@@ -11,6 +11,22 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-211 | 2026-03-06 18:00
+**Type**: fix
+**Tags**: #fix:installer #fix:version #script:postinstall #script:flow-hooks #bridge:claude-bridge #script:flow-health
+**Task**: wf-995ceac9
+**Request**: "Fix _wogiFlowVersion staleness in settings.json"
+**Result**: _wogiFlowVersion in settings.json was hardcoded at 1.5.9 since initial install, never updated on upgrades. Fixed all 3 version-reading paths (postinstall.js, claude-bridge.js, flow-hooks.js) to read from package.json as canonical source with settings.json fallback. Updated stale value. Added WogiFlow version to health check output.
+**Files**: scripts/postinstall.js, .workflow/bridges/claude-bridge.js, scripts/flow-hooks.js, .claude/settings.json, scripts/flow-health.js
+
+### R-210 | 2026-03-06 17:00
+**Type**: refactor
+**Tags**: #refactor:config #script:installer #script:config-loader #script:hooks #script:auto-context
+**Task**: wf-e84bff5c
+**Request**: "Config restructuring: merge enforcement overlap, merge validation overlap, consolidate strictMode x3, merge componentRules overlap, consolidate scattered learning, split context grab-bag, move tdd under execution"
+**Result**: Restructured .workflow/config.json eliminating 7 categories of duplication. Updated 12 hook/script consumers with new canonical paths and fallbacks. Added backward compat shim with shallow copies. Review found 7 issues (3 high, 1 medium, 3 low), fixed 5. Key fixes: 7 stale config path refs in flow-auto-context.js, compat shim guards moved to sub-key level, shared references fixed with shallow copies.
+**Files**: .workflow/config.json, .workflow/config.schema.json, lib/installer.js, scripts/flow-config-loader.js, scripts/flow-auto-context.js, scripts/flow-constants.js, scripts/flow-context-compact/expander.js, scripts/flow-context-compact/summary-tree.js, scripts/flow-context-compact/section-extractor.js, scripts/flow-start.js, scripts/flow-standards-gate.js, scripts/flow-review-passes/structure.js, scripts/hooks/core/task-gate.js, scripts/hooks/core/scope-gate.js, scripts/hooks/core/todowrite-gate.js, scripts/hooks/core/routing-gate.js, scripts/hooks/core/loop-check.js, scripts/hooks/core/implementation-gate.js, scripts/hooks/core/component-check.js
+
 ### R-209 | 2026-03-06 13:00
 **Type**: fix
 **Tags**: #fix:config #fix:hooks #script:installer #hook:user-prompt-submit
