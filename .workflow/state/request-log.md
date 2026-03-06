@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-208 | 2026-03-06 12:00
+**Type**: fix
+**Tags**: #fix:learning #script:correction-detector #script:session-end #script:session-context #hook:user-prompt-submit
+**Task**: wf-b581af28
+**Request**: "Fix correction detector: remove regex, make AI-only (language-agnostic). Add learning loop closure at session-end. Add real-time surfacing of repeated corrections."
+**Result**: Rewrote flow-correction-detector.js — removed all regex patterns, detection is now AI-only via Haiku (works in any language). Hook spawns background detection process (non-blocking). Session-end now pipes corrections to feedback-patterns.md via flow-auto-learn instead of just displaying and clearing. Session-context surfaces repeated correction types (2+ same type) in real-time.
+**Files**: scripts/flow-correction-detector.js, scripts/hooks/entry/claude-code/user-prompt-submit.js, scripts/flow-session-end.js, scripts/hooks/core/session-context.js
+
 ### R-207 | 2026-03-06 00:00
 **Type**: fix
 **Tags**: #fix:config #script:flow-watch #docs:commands #docs:knowledge-base

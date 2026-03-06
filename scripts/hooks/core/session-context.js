@@ -729,6 +729,22 @@ async function gatherSessionContext(options = {}) {
     }
   }
 
+  // v7.0: Real-time correction surfacing
+  // When 2+ corrections of the same type are detected in the same session,
+  // surface a hint telling Claude to consider recording the pattern.
+  try {
+    const { getRepeatedCorrectionTypes } = require('../../flow-correction-detector');
+    const repeatedTypes = getRepeatedCorrectionTypes();
+    if (repeatedTypes.length > 0) {
+      context.correctionSurfacing = repeatedTypes;
+    }
+  } catch (_err) {
+    // Non-critical
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Correction surfacing failed: ${_err.message}`);
+    }
+  }
+
   // CLAUDE_CODE_SIMPLE mode detection (Claude Code 2.1.50+)
   // When SIMPLE mode is active, hooks/MCP/CLAUDE.md are disabled.
   // This warning only fires if the hook somehow still runs (e.g., during transition).
@@ -935,6 +951,24 @@ function formatContextForInjection(context) {
 
     output += `\n**Remember:** Always use \`/wogi-start\` before making changes.\n`;
     output += `The user installed WogiFlow to track all work - bypassing breaks their trust.\n\n`;
+  }
+
+  // v7.0: Correction surfacing — repeated correction types detected in this session
+  if (ctx.correctionSurfacing && ctx.correctionSurfacing.length > 0) {
+    output += `### Repeated Corrections Detected\n`;
+    output += `The following correction types have been detected **2+ times** this session. `;
+    output += `Consider recording them as learning patterns via \`/wogi-learn\` or \`/wogi-decide\`:\n\n`;
+    for (const item of ctx.correctionSurfacing) {
+      output += `- **${item.type}** (${item.count}x)`;
+      if (item.examples && item.examples.length > 0) {
+        const example = item.examples[item.examples.length - 1];
+        if (example.whatWasWrong) {
+          output += ` — ${example.whatWasWrong}`;
+        }
+      }
+      output += `\n`;
+    }
+    output += `\n`;
   }
 
   // Community knowledge (pulled from server)

@@ -321,8 +321,10 @@ function checkForPromotionCandidates() {
 }
 
 /**
- * Review pending corrections detected during session (v5.1)
- * Shows corrections that were automatically detected and queued for review
+ * Review pending corrections detected during session (v5.1 → v7.0)
+ * Pipes qualifying corrections to feedback-patterns.md for the learning system,
+ * then offers promotion for patterns that reached threshold.
+ * No longer just displays and clears — corrections persist as learnings.
  */
 function reviewPendingCorrections() {
   if (!correctionDetector) return;
@@ -334,11 +336,11 @@ function reviewPendingCorrections() {
 
     console.log('');
     console.log(color('cyan', '╔══════════════════════════════════════════════════════════╗'));
-    console.log(color('cyan', '║  Detected Corrections This Session                        ║'));
+    console.log(color('cyan', '║  Detected Corrections This Session                      ║'));
     console.log(color('cyan', '╚══════════════════════════════════════════════════════════╝'));
     console.log('');
 
-    console.log(color('dim', `${pending.length} potential correction(s) were detected during this session:`));
+    console.log(color('dim', `${pending.length} correction(s) detected via AI analysis:`));
     console.log('');
 
     for (let i = 0; i < Math.min(pending.length, 5); i++) {
@@ -367,14 +369,28 @@ function reviewPendingCorrections() {
       console.log('');
     }
 
-    console.log(color('yellow', 'To save these as permanent corrections, run:'));
-    console.log(color('dim', '  flow correction-detector pending    # View all'));
-    console.log(color('dim', '  /wogi-correct "pattern"             # Save specific pattern'));
+    // v7.0: Pipe corrections to feedback-patterns.md for the learning system
+    const feedbackResult = correctionDetector.pipeCorrectionsToFeedback(pending);
+
+    if (feedbackResult.written > 0) {
+      console.log(color('green', `Saved ${feedbackResult.written} correction pattern(s) to feedback-patterns.md`));
+    }
+
+    if (feedbackResult.promotionCandidates && feedbackResult.promotionCandidates.length > 0) {
+      console.log('');
+      console.log(color('yellow', 'Patterns ready for promotion to decisions.md:'));
+      for (const candidate of feedbackResult.promotionCandidates) {
+        console.log(color('yellow', `  - ${candidate}`));
+      }
+      console.log('');
+      console.log(color('dim', 'Run /wogi-learn to promote these patterns to permanent rules.'));
+    }
+
     console.log('');
 
-    // Clear pending corrections after showing them
+    // Clear pending corrections after persisting to feedback-patterns
     correctionDetector.clearPendingCorrections();
-    console.log(color('dim', '(Pending corrections cleared after review)'));
+    console.log(color('dim', '(Corrections persisted to learning system and cleared from queue)'));
 
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Correction review: ${err.message}`);

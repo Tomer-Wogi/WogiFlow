@@ -607,6 +607,7 @@ module.exports = {
   normalizeIssueToPattern,
   getAutoLearnConfig,
   loadAutoPatterns,
+  saveAutoPatterns,
   showStatus
 };
 

@@ -1,9 +1,29 @@
 {
-  "lastUpdated": "2026-03-05T15:15:10.019Z",
+  "lastUpdated": "2026-03-06T10:36:03.921Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cr-95e1cd",
+      "title": "Fix 3 review findings from wf-b581af28",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-06T10:34:52.745Z",
+      "completedAt": "2026-03-06T10:36:03.920Z"
+    },
+    {
+      "id": "wf-b581af28",
+      "title": "Fix correction detector: AI-only, learning loop closure, real-time surfacing",
+      "type": "fix",
+      "priority": "P1",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-06T10:16:54.262Z",
+      "completedAt": "2026-03-06T10:22:39.540Z"
+    },
     {
       "id": "wf-9405d4da",
       "title": "Fix hardcoded tsc --noEmit — use config.scripts.typecheck dynamically",
