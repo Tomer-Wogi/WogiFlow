@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-05T11:55:25.495Z",
+  "markedAt": "2026-03-05T15:11:17.057Z",
   "context": {
-    "args": "Build multi-page Figma analysis pipeline: incremental page-by-page scanning with state inference. The system processes Figma pages one at a time, builds a growing component registry from Figma data (not codebase), detects cross-page component reuse, and uses structural diffing + AI reasoning to collapse multiple Figma frames into single components with states (tabs, form toggles, loading states, etc.). Confidence gating asks user when unsure. Extends existing figma-extract, figma-match, figma-generate pipeline."
+    "args": "Fix all hardcoded tsc --noEmit references across WogiFlow. Replace with dynamic config.scripts.typecheck references. The 4 known locations: wogi-guided-edit.md, wogi-review.md, knowledge-base/03-verification.md, flow-watch.js. Also do a full codebase scan for any other hardcoded tsc --noEmit we missed."
   },
   "status": "pending"
 }

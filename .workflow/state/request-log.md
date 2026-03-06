@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-207 | 2026-03-06 00:00
+**Type**: fix
+**Tags**: #fix:config #script:flow-watch #docs:commands #docs:knowledge-base
+**Task**: wf-9405d4da
+**Request**: "Fix all hardcoded tsc --noEmit references across WogiFlow"
+**Result**: Replaced hardcoded `tsc --noEmit` with dynamic `config.scripts.typecheck` in 4 locations: wogi-guided-edit.md, wogi-review.md, knowledge-base/03-verification.md, and scripts/flow-watch. The bash script now reads the typecheck command from `.workflow/config.json` at runtime with fallback. Prevents wrong typecheck on projects using TS Project References. Released as v1.8.5.
+**Files**: .claude/commands/wogi-guided-edit.md, .claude/commands/wogi-review.md, .claude/docs/knowledge-base/02-task-execution/03-verification.md, scripts/flow-watch
+
 ### R-206 | 2026-03-04 04:30
 **Type**: fix
 **Tags**: #fix:core #hook:routing-gate #hook:pre-tool-use #bug:chained-skills
