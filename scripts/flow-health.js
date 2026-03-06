@@ -137,6 +137,17 @@ function main() {
     issues++;
   }
 
+  // Check WogiFlow version
+  try {
+    const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
+    if (fileExists(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      console.log(`  ${color('green', '✓')} WogiFlow version: ${pkg.version}`);
+    }
+  } catch (err) {
+    // Non-critical — skip silently
+  }
+
   // Check Claude Code version (if applicable)
   if (cliType === 'claude-code') {
     const versionCheck = checkClaudeCodeVersion();

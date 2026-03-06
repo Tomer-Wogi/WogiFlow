@@ -327,16 +327,23 @@ Last synced: ${new Date().toISOString()}
   // Do not override - see security-patterns.md rule #2
 
   /**
-   * Get installed WogiFlow version from settings.json (set by postinstall)
+   * Get installed WogiFlow version from package.json (canonical source)
    * @returns {string} Version string or 'unknown'
    */
   _getInstalledVersion() {
     try {
-      const settingsPath = path.join(this.projectDir, this.cliFolder, 'settings.json');
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return settings._wogiFlowVersion || 'unknown';
+      const pkgPath = path.join(this.projectDir, 'node_modules', 'wogiflow', 'package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      return pkg.version || 'unknown';
     } catch (err) {
-      return 'unknown';
+      // Fallback: try settings.json (legacy)
+      try {
+        const settingsPath = path.join(this.projectDir, this.cliFolder, 'settings.json');
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        return settings._wogiFlowVersion || 'unknown';
+      } catch (err) {
+        return 'unknown';
+      }
     }
   }
 

@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-995ceac9",
+      "title": "Fix _wogiFlowVersion staleness in settings.json",
+      "type": "fix",
+      "feature": "installer",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-03-06T18:50:06.539Z",
+      "completedAt": "2026-03-06T18:51:09.377Z"
+    },
+    {
       "id": "wf-cr-a1b2c3",
       "title": "Fix 7 review findings from wf-e84bff5c",
       "type": "fix",

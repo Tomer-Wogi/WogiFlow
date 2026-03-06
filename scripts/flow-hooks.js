@@ -30,16 +30,23 @@ const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/ad
 const PROJECT_ROOT = getProjectRoot();
 
 /**
- * Get installed WogiFlow version from settings.json (set by postinstall)
+ * Get installed WogiFlow version from package.json (canonical source)
  * @returns {string} Version string or 'unknown'
  */
 function getInstalledVersion() {
   try {
-    const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    return settings._wogiFlowVersion || 'unknown';
+    const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    return pkg.version || 'unknown';
   } catch (err) {
-    return 'unknown';
+    // Fallback: try settings.json (legacy)
+    try {
+      const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
+      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      return settings._wogiFlowVersion || 'unknown';
+    } catch (err) {
+      return 'unknown';
+    }
   }
 }
 const HOOK_MARKER = '// WOGI_FLOW_MANAGED_HOOKS';

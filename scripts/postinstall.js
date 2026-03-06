@@ -293,7 +293,7 @@ function copyClaudeResources() {
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;
-        existing._wogiFlowVersion = ours._wogiFlowVersion || '1.0.0';
+        existing._wogiFlowVersion = getPackageVersion();
         fs.writeFileSync(projectSettings, JSON.stringify(existing, null, 2), { mode: FILE_MODE });
       } catch (err) {
         // Parse error on existing file - overwrite with ours
