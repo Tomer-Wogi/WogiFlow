@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-05T15:11:17.057Z",
+  "markedAt": "2026-03-07T08:23:07.773Z",
   "context": {
-    "args": "Fix all hardcoded tsc --noEmit references across WogiFlow. Replace with dynamic config.scripts.typecheck references. The 4 known locations: wogi-guided-edit.md, wogi-review.md, knowledge-base/03-verification.md, flow-watch.js. Also do a full codebase scan for any other hardcoded tsc --noEmit we missed."
+    "args": "Fix security issue: remove \"Bash(git clean *)\" from settings.local.json (line 45) — it auto-allows destructive git clean commands, violating our own security rules. Also remove redundant \"Bash(test *)\" since it's now auto-approved by Claude Code natively."
   },
   "status": "pending"
 }

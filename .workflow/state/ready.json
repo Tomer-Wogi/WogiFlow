@@ -5,6 +5,12 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-879b16f1",
+      "title": "Fix git clean permission security violation",
+      "type": "fix",
+      "completedAt": "2026-03-07T08:24:04.907Z"
+    },
+    {
       "id": "wf-995ceac9",
       "title": "Fix _wogiFlowVersion staleness in settings.json",
       "type": "fix",
