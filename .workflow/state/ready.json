@@ -5,6 +5,12 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-a98644b7",
+      "title": "Fix routing gate active-task bypass",
+      "type": "fix",
+      "completedAt": "2026-03-08T14:58:20.997Z"
+    },
+    {
       "id": "wf-879b16f1",
       "title": "Fix git clean permission security violation",
       "type": "fix",

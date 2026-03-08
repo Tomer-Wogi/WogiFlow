@@ -15,7 +15,7 @@ const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
 const { spawnBackgroundDetection } = require('../../../flow-correction-detector');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { safeJsonParseString, getConfig } = require('../../../flow-utils');
 
 // Maximum stdin size to prevent DoS (100KB should be more than enough for prompts)
 const MAX_STDIN_SIZE = 100 * 1024;
@@ -77,37 +77,48 @@ async function main() {
       }
     }
 
+    // Load config once for feature flag checks
+    let hookConfig;
+    try {
+      hookConfig = getConfig();
+    } catch (_err) {
+      hookConfig = {};
+    }
+
     // v5.0: Capture prompt for learning system (non-blocking)
-    // Captures all user prompts during task execution for refinement detection
-    if (typeof prompt === 'string' && prompt.trim().length > 0) {
-      try {
-        captureCurrentPrompt(prompt);
-      } catch (err) {
-        // Non-blocking - don't fail the hook if capture fails
-        if (process.env.DEBUG) {
-          console.error(`[Hook] Prompt capture failed: ${err.message}`);
+    // Controlled by hooks.rules.intelligence.promptCapture.enabled
+    if (hookConfig.hooks?.rules?.intelligence?.promptCapture?.enabled !== false) {
+      if (typeof prompt === 'string' && prompt.trim().length > 0) {
+        try {
+          captureCurrentPrompt(prompt);
+        } catch (err) {
+          // Non-blocking - don't fail the hook if capture fails
+          if (process.env.DEBUG) {
+            console.error(`[Hook] Prompt capture failed: ${err.message}`);
+          }
         }
       }
     }
 
     // v5.1→v7.0: Detect corrections for learning system (AI-only, non-blocking)
-    // Spawns a detached background process that calls Haiku for language-agnostic detection.
-    // Results are written to pending-corrections.json asynchronously.
-    if (typeof prompt === 'string' && prompt.trim().length > 0) {
-      try {
-        const session = loadDurableSession();
-        spawnBackgroundDetection(prompt, session?.taskId || '');
-      } catch (err) {
-        // Non-blocking - don't fail the hook if detection spawn fails
-        if (process.env.DEBUG) {
-          console.error(`[Hook] Correction detection spawn failed: ${err.message}`);
+    // Controlled by hooks.rules.intelligence.correctionDetection.enabled
+    if (hookConfig.hooks?.rules?.intelligence?.correctionDetection?.enabled !== false) {
+      if (typeof prompt === 'string' && prompt.trim().length > 0) {
+        try {
+          const session = loadDurableSession();
+          spawnBackgroundDetection(prompt, session?.taskId || '');
+        } catch (err) {
+          // Non-blocking - don't fail the hook if detection spawn fails
+          if (process.env.DEBUG) {
+            console.error(`[Hook] Correction detection spawn failed: ${err.message}`);
+          }
         }
       }
     }
 
     // v6.0: Set routing-pending flag for routing gate enforcement
-    // This blocks Bash calls until a /wogi-* skill is invoked
-    // Skipped when an active task exists (follow-ups during tracked work are allowed)
+    // This blocks ALL gated tool calls until a /wogi-* skill is invoked
+    // v8.0: Always set, even with active tasks — every turn must route through /wogi-start
     // v6.1: Also skip when the prompt IS a /wogi-* command — the user is already routing.
     // When users type "/wogi-start ..." directly, Claude Code expands the skill inline
     // (not through the Skill tool), so clearRoutingPending() in PreToolUse never fires.

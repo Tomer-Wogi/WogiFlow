@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-213 | 2026-03-08 10:00
+**Type**: fix
+**Tags**: #security #routing #hooks #bypass
+**Task**: wf-a98644b7
+**Request**: "Investigate and fix routing gate bypass when active task exists"
+**Result**: Found two bypass points in routing-gate.js that made the routing gate completely inert when any in-progress task existed: (1) setRoutingPending() skipped setting the flag when hasActiveTask() returned true, (2) checkRoutingGate() auto-cleared the flag when hasActiveTask() returned true. Both removed. Now every new user message sets the routing-pending flag regardless of active tasks, and only a /wogi-* skill invocation clears it. Updated stale comment in user-prompt-submit.js.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/user-prompt-submit.js
+
 ### R-212 | 2026-03-07 12:00
 **Type**: fix
 **Tags**: #security #permissions #settings

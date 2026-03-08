@@ -117,9 +117,11 @@ function setRoutingPending() {
     return { set: false, reason: 'routing_gate_disabled' };
   }
 
-  if (hasActiveTask()) {
-    return { set: false, reason: 'active_task_exists' };
-  }
+  // REMOVED: hasActiveTask() skip (was bypass vector).
+  // Previously, if an in-progress task existed from a prior turn, the routing flag
+  // was never set — allowing the AI to use all tools without invoking /wogi-start.
+  // CLAUDE.md explicitly states: "Continue where we left off still requires /wogi-start."
+  // Every new user message MUST route through a /wogi-* command, regardless of active tasks.
 
   // Check if a /wogi-* skill recently cleared routing — don't re-set during skill chains.
   // When /wogi-start chains to /wogi-extract-review, the skill expansion text triggers
@@ -288,14 +290,12 @@ function checkRoutingGate(toolName, config) {
     return { allowed: true, blocked: false, reason: 'no_routing_pending', message: null };
   }
 
-  // Double-check: if an active task appeared since the flag was set, allow
-  if (hasActiveTask()) {
-    // Clear the stale flag and allow
-    clearRoutingPending();
-    return { allowed: true, blocked: false, reason: 'active_task_appeared', message: null };
-  }
+  // REMOVED: hasActiveTask() double-check bypass (was bypass vector).
+  // Previously, if an active task existed, the gate would auto-clear and allow.
+  // This meant any in-progress task from a prior turn bypassed routing entirely.
+  // The only way to clear routing-pending is to invoke a /wogi-* skill.
 
-  // Block: routing is pending and no active task
+  // Block: routing is pending and no /wogi-* command has been invoked this turn
   // NOTE: This message is shown to the AI as permissionDecisionReason.
   // It must be prescriptive enough that the AI invokes /wogi-start instead of
   // trying workarounds or suggesting the user run commands manually.
