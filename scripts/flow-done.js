@@ -77,6 +77,21 @@ try {
 // v3.1 spec verification gate
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
 
+// v1.9.1 quality gate wiring — verifiers that were built but never called
+let wiringVerifier;
+try {
+  wiringVerifier = require('./flow-wiring-verifier');
+} catch (err) {
+  wiringVerifier = null;
+}
+
+let standardsGate;
+try {
+  standardsGate = require('./flow-standards-gate');
+} catch (err) {
+  standardsGate = null;
+}
+
 // v3.1 recursive error recovery (with hypothesis generation)
 let errorRecovery;
 try {
@@ -141,9 +156,32 @@ function truncateOutput(text, maxLines = 30, maxChars = 2000) {
 }
 
 /**
+ * Check for outstanding MUST_FIX findings from last review
+ * @returns {{ hasOutstanding: boolean, findings: Array, count: number }}
+ */
+function checkOutstandingFindings() {
+  const reviewPath = path.join(PATHS.state, 'last-review.json');
+  const review = safeJsonParse(reviewPath, null);
+  if (!review || !Array.isArray(review.findings)) {
+    return { hasOutstanding: false, findings: [], count: 0 };
+  }
+
+  const outstanding = review.findings.filter(f =>
+    (f.severity === 'critical' || f.severity === 'high' || f.type === 'project-rule-violation') &&
+    f.status !== 'fixed' && f.status !== 'dismissed' && f.status !== 'waived'
+  );
+
+  return {
+    hasOutstanding: outstanding.length > 0,
+    findings: outstanding,
+    count: outstanding.length
+  };
+}
+
+/**
  * Run quality gates from config
  */
-function runQualityGates(taskId) {
+function runQualityGates(taskId, taskType) {
   if (!fileExists(PATHS.config)) {
     return { passed: true, failed: [], errors: {} };
   }
@@ -152,7 +190,11 @@ function runQualityGates(taskId) {
   console.log('');
 
   const config = getConfig();
-  const gates = config.qualityGates?.feature?.require || [];
+  // Use task-type-specific gates, fall back to feature gates, then empty
+  const normalizedType = (taskType || 'feature').toLowerCase();
+  const gates = config.qualityGates?.[normalizedType]?.require
+    || config.qualityGates?.feature?.require
+    || [];
   const testing = config.testing || {};
   const failed = [];
   const errors = {}; // Store error output for correction artifact
@@ -278,6 +320,109 @@ function runQualityGates(taskId) {
     } else if (gate === 'noNewFeatures') {
       // Refactor-specific gate - manual check
       console.log(`  ${color('yellow', '○')} noNewFeatures (verify no behavior changes)`);
+    } else if (gate === 'integrationWiring') {
+      // v1.9.1: Actually call the wiring verifier instead of falling through
+      if (wiringVerifier && typeof wiringVerifier.verifyWiring === 'function') {
+        try {
+          console.log('  Running integration wiring check...');
+          const result = wiringVerifier.verifyWiring(taskId);
+          if (result.passed) {
+            console.log(`  ${color('green', '✓')} integrationWiring (${result.verified || 0} files verified)`);
+          } else {
+            const unwiredCount = result.unwired?.length || 0;
+            console.log(`  ${color('red', '✗')} integrationWiring (${unwiredCount} unwired file${unwiredCount !== 1 ? 's' : ''})`);
+            if (result.unwired) {
+              for (const item of result.unwired.slice(0, 5)) {
+                console.log(color('dim', `    - ${item.file || item}`));
+              }
+            }
+            errors.integrationWiring = `${unwiredCount} files created but not imported/used anywhere`;
+            failed.push('integrationWiring');
+          }
+        } catch (err) {
+          console.log(`  ${color('yellow', '○')} integrationWiring (verifier error: ${err.message})`);
+        }
+      } else {
+        console.log(`  ${color('yellow', '○')} integrationWiring (verifier not available)`);
+      }
+    } else if (gate === 'standardsCompliance') {
+      // v1.9.1: Actually call the standards gate instead of falling through
+      if (standardsGate && typeof standardsGate.runTaskStandardsCheck === 'function') {
+        try {
+          console.log('  Running standards compliance check...');
+          const modifiedFiles = getModifiedFiles();
+          const taskContext = { id: taskId, type: normalizedType };
+          const result = standardsGate.runTaskStandardsCheck(taskContext, modifiedFiles);
+          const mustFixCount = result.violations?.filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').length || 0;
+          if (mustFixCount === 0) {
+            console.log(`  ${color('green', '✓')} standardsCompliance (${result.violations?.length || 0} suggestions, 0 must-fix)`);
+          } else {
+            console.log(`  ${color('red', '✗')} standardsCompliance (${mustFixCount} must-fix violation${mustFixCount !== 1 ? 's' : ''})`);
+            for (const v of (result.violations || []).filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').slice(0, 5)) {
+              console.log(color('dim', `    - ${v.file || ''}:${v.line || ''} ${v.issue || v.message || ''}`));
+            }
+            errors.standardsCompliance = `${mustFixCount} standards violations require fixing`;
+            failed.push('standardsCompliance');
+          }
+        } catch (err) {
+          console.log(`  ${color('yellow', '○')} standardsCompliance (checker error: ${err.message})`);
+        }
+      } else {
+        console.log(`  ${color('yellow', '○')} standardsCompliance (checker not available)`);
+      }
+    } else if (gate === 'outstandingFindings') {
+      // v1.9.1: Check for unresolved MUST_FIX findings from last review
+      const outstanding = checkOutstandingFindings();
+      if (!outstanding.hasOutstanding) {
+        console.log(`  ${color('green', '✓')} outstandingFindings (no unresolved critical/high findings)`);
+      } else {
+        console.log(`  ${color('red', '✗')} outstandingFindings (${outstanding.count} unresolved finding${outstanding.count !== 1 ? 's' : ''} from last review)`);
+        for (const f of outstanding.findings.slice(0, 5)) {
+          console.log(color('dim', `    - [${f.severity}] ${f.file || ''}:${f.line || ''} ${f.issue || ''}`));
+        }
+        errors.outstandingFindings = `${outstanding.count} unresolved critical/high findings from last review. Fix them or waive with /wogi-triage.`;
+        failed.push('outstandingFindings');
+      }
+    } else if (gate === 'preRelease') {
+      // v1.9.1: Pre-release gate — verify codebase is in releasable state
+      console.log('  Running pre-release checks...');
+      let preReleaseFailed = false;
+
+      // Check outstanding findings
+      const outstanding = checkOutstandingFindings();
+      if (outstanding.hasOutstanding) {
+        console.log(`  ${color('red', '✗')} preRelease: ${outstanding.count} unresolved findings from last review`);
+        preReleaseFailed = true;
+      }
+
+      // Check lint if configured
+      if (config.scripts?.lint) {
+        const lintResult = spawnSync('npm', ['run', 'lint'], {
+          encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
+        });
+        if (lintResult.status !== 0) {
+          console.log(`  ${color('red', '✗')} preRelease: lint failed`);
+          preReleaseFailed = true;
+        }
+      }
+
+      // Check typecheck if configured
+      if (config.scripts?.typecheck) {
+        const tcResult = spawnSync('npm', ['run', 'typecheck'], {
+          encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
+        });
+        if (tcResult.status !== 0) {
+          console.log(`  ${color('red', '✗')} preRelease: typecheck failed`);
+          preReleaseFailed = true;
+        }
+      }
+
+      if (!preReleaseFailed) {
+        console.log(`  ${color('green', '✓')} preRelease (codebase is releasable)`);
+      } else {
+        errors.preRelease = 'Codebase is not in a releasable state';
+        failed.push('preRelease');
+      }
     } else {
       console.log(`  ${color('yellow', '○')} ${gate} (manual check)`);
     }
@@ -1016,8 +1161,12 @@ async function main() {
     console.log('');
   }
 
-  // Run quality gates
-  const gateResult = runQualityGates(taskId);
+  // Look up task type for type-specific quality gates
+  const preGateTask = findTask(taskId);
+  const taskTypeForGates = preGateTask?.task?.type || 'feature';
+
+  // Run quality gates (type-aware since v1.9.1)
+  const gateResult = runQualityGates(taskId, taskTypeForGates);
 
   if (!gateResult.passed) {
     // Create correction artifact for AI self-repair

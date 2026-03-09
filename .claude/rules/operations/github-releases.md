@@ -13,9 +13,23 @@ globs: package.json
 
 Running `git push` followed immediately by `gh release create` causes a race condition. The release tag gets created on the remote's HEAD before the push fully propagates, pointing to an old commit.
 
+## Pre-Release Quality Gate (MANDATORY)
+
+Before ANY release, verify the codebase is in a releasable state:
+
+1. **Check outstanding findings**: Read `.workflow/state/last-review.json` — if unresolved critical/high findings exist, STOP and fix them first
+2. **Run lint** (if configured): `npm run lint`
+3. **Run typecheck** (if configured): `npm run typecheck`
+4. **Verify no uncommitted changes**: `git status` should be clean
+
+The `preRelease` and `outstandingFindings` quality gates in `flow-done.js` enforce this automatically for `release` type tasks. For manual releases, check these yourself.
+
 ## Correct Procedure
 
 ```bash
+# 0. Verify codebase is releasable (pre-release gate)
+# (automated by flow-done.js for release-type tasks)
+
 # 1. Push commits first
 git push origin master
 

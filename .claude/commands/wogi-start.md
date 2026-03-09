@@ -262,7 +262,20 @@ If violations found: fix, re-run, only proceed when all pass. Violations auto-re
 
 **First**: Run `node scripts/flow-spec-verifier.js verify wf-XXXXXXXX` — verify all spec deliverables exist. If missing → STOP, create them.
 
-**Then**: Check `config.qualityGates` for task type: tests, requestLogEntry, appMapUpdate, noNewFeatures (refactors).
+**Then**: Check `config.qualityGates` for task type. Gates are type-specific:
+- **feature**: loopComplete, tests, appMapUpdate, requestLogEntry, integrationWiring, standardsCompliance
+- **bugfix**: loopComplete, tests, requestLogEntry, standardsCompliance, learningEnforcement
+- **refactor**: loopComplete, tests, noNewFeatures, smokeTest, standardsCompliance
+- **chore**: requestLogEntry, outstandingFindings
+- **release**: requestLogEntry, outstandingFindings, preRelease
+
+**Key automated gates** (v1.9.1):
+- `integrationWiring` → calls `verifyWiring()` — checks created files are imported/used
+- `standardsCompliance` → calls `runTaskStandardsCheck()` — checks naming, security, decisions.md rules
+- `outstandingFindings` → reads `last-review.json` — blocks if unresolved critical/high findings exist
+- `preRelease` → verifies codebase is releasable (no outstanding findings + lint + typecheck)
+
+**CRITICAL**: No task type defaults to zero gates. Every task type MUST have at least `requestLogEntry` + `outstandingFindings`.
 
 **WebMCP** (optional): If `config.webmcp.enabled` and UI files changed, check tool coverage. Non-blocking.
 

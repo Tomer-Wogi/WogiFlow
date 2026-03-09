@@ -11,6 +11,46 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-219 | 2026-03-09 12:15
+**Type**: fix
+**Tags**: #fix:quality-gates #component:flow-done #component:config
+**Request**: "Harden quality gates — wire verifiers, add pre-release and outstanding-findings checks"
+**Result**: Wired integrationWiring and standardsCompliance gates to actual verifier modules in flow-done.js (were falling through to "manual check"). Added outstandingFindings gate (reads last-review.json for unresolved critical/high). Added preRelease gate (checks findings + lint + typecheck). Added chore/release gate definitions to config. Updated decisions.md, wogi-start.md, github-releases.md.
+**Files**: scripts/flow-done.js, .workflow/config.json, .workflow/state/decisions.md, .claude/commands/wogi-start.md, .claude/rules/operations/github-releases.md
+**Task**: wf-cc94c959
+
+### R-218 | 2026-03-09 10:40
+**Type**: fix
+**Tags**: #fix:reuse-enforcement #component:component-check #component:explore-agents #component:wogi-start
+**Task**: wf-94cfba5a
+**Request**: "Fix reuse enforcement gaps — project-type-aware, domain-keyword search, pre-implementation reuse gate"
+**Result**: Four fixes: (1) component-check.js now has project-type-aware default patterns covering frontend (components, UI, modals, layouts, pages/shared), backend (services, middleware, models, schemas, validators, routes, controllers, repositories), and universal (utils, helpers, lib, shared, hooks, API clients, types, constants) — instead of hardcoded `**/components/**` and `**/ui/**`. (2) Agent 1 in explore-agents.md now has mandatory domain-keyword search as first step — extracts keywords from task title, Globs and Greps for matching files before checking registries. (3) Added REUSE GATE after explore phase in wogi-start.md — if reuse candidates found with purpose overlap, blocks implementation until user decides (use/extend/create new). (4) loadComponentIndex() now falls back to building a minimal index from all *-map.md files when component-index.json doesn't exist, instead of returning null.
+**Files**: scripts/hooks/core/component-check.js, .claude/docs/explore-agents.md, .claude/commands/wogi-start.md, .workflow/state/decisions.md
+
+### R-217 | 2026-03-09 10:22
+**Type**: fix
+**Tags**: #fix:community #component:flow-community
+**Task**: wf-edbc0a4b
+**Request**: "Fix getWogiFlowVersion() reading host project's package.json instead of WogiFlow's"
+**Result**: Replaced `path.join(__dirname, '..', 'package.json')` with `require.resolve('wogiflow/package.json')` which correctly resolves to the installed WogiFlow package. Added fallback for source repo development that validates `pkg.name === 'wogiflow'` before using the relative path. Affects wogiflowVersion in suggestions, community data, and HTTP User-Agent header.
+**Files**: scripts/flow-community.js
+
+### R-216 | 2026-03-09 10:12
+**Type**: fix
+**Tags**: #fix:process #component:decisions
+**Task**: wf-57eed008
+**Request**: "Add decisions.md rule: scan filesystem before writing app-map.md"
+**Result**: Added "App-Map Completeness: Scan Before Write" rule to decisions.md under Component Architecture. Rule mandates Glob scan of all source directories before any app-map.md write — prevents relying on incomplete conversation context. Based on developer report of 19+3 missed components.
+**Files**: .workflow/state/decisions.md
+
+### R-215 | 2026-03-09 10:05
+**Type**: fix
+**Tags**: #fix:review-findings #fix:routing-gate #fix:security #fix:postinstall #fix:installer
+**Task**: wf-985f7342
+**Request**: "Fix all 7 review findings from /wogi-review session"
+**Result**: (1) hasActiveTask() changed from fail-open to fail-closed in routing-gate.js — prevents corrupted ready.json from bypassing routing. (2) Fixed comment-code mismatch in user-prompt-submit.js — clarified that routing flag is skipped for /wogi-* commands. (3) Renamed _parseErr to err in user-prompt-submit.js (naming convention). (4) Wrapped raw JSON.parse in postinstall.js:137 with try-catch. (5) Replaced existsSync+writeFileSync with atomic {flag:'wx'}+EEXIST in both postinstall.js and installer.js for .workflow/package.json creation. (6) Added user-facing warning on failure in postinstall.js instead of silent DEBUG-only log. (7) Added decisions.md entry documenting hasActiveTask() removal rationale.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/user-prompt-submit.js, scripts/postinstall.js, lib/installer.js, .workflow/state/decisions.md
+
 ### R-214 | 2026-03-09 10:00
 **Type**: fix
 **Tags**: #fix:esm #fix:hooks #fix:onboarding #p0

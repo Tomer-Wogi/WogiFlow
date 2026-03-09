@@ -276,6 +276,21 @@
         "review",
         "webmcpVerification"
       ]
+    },
+    "chore": {
+      "require": [
+        "requestLogEntry",
+        "outstandingFindings"
+      ],
+      "optional": []
+    },
+    "release": {
+      "require": [
+        "requestLogEntry",
+        "outstandingFindings",
+        "preRelease"
+      ],
+      "optional": []
     }
   },
   "standardsCompliance": {

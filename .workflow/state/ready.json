@@ -5,6 +5,47 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-cc94c959",
+      "title": "Harden quality gates — wire verifiers into flow-done, add pre-release and outstanding-findings checks",
+      "type": "fix",
+      "feature": "quality-gates",
+      "completedAt": "2026-03-09T12:20:00.000Z"
+    },
+    {
+      "id": "wf-ced88b11",
+      "title": "Release v1.8.9",
+      "type": "chore",
+      "completedAt": "2026-03-09T11:15:00.000Z"
+    },
+    {
+      "id": "wf-94cfba5a",
+      "title": "Fix reuse enforcement gaps — project-type-aware paths, domain-keyword search, pre-implementation check",
+      "type": "fix",
+      "feature": "reuse-enforcement",
+      "completedAt": "2026-03-09T10:40:00.000Z"
+    },
+    {
+      "id": "wf-edbc0a4b",
+      "title": "Fix getWogiFlowVersion() reading host project's package.json instead of WogiFlow's",
+      "type": "fix",
+      "feature": "community",
+      "completedAt": "2026-03-09T10:22:00.000Z"
+    },
+    {
+      "id": "wf-57eed008",
+      "title": "Add app-map scan-before-write rule to decisions.md",
+      "type": "fix",
+      "feature": "workflow",
+      "completedAt": "2026-03-09T10:12:00.000Z"
+    },
+    {
+      "id": "wf-985f7342",
+      "title": "Fix 7 review findings (hasActiveTask fail-closed, comment fixes, atomic writes, decisions.md)",
+      "type": "fix",
+      "feature": "review",
+      "completedAt": "2026-03-09T10:05:00.000Z"
+    },
+    {
       "id": "wf-a4a2e279",
       "title": "Fix ESM/CJS interop failure in .workflow/bridges/",
       "type": "fix",
