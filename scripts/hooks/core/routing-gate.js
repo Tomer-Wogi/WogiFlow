@@ -75,8 +75,10 @@ function hasActiveTask() {
     if (process.env.DEBUG) {
       console.error(`[routing-gate] Ready data read error: ${err.message}`);
     }
-    // Fail-open: if can't read ready.json, assume active task exists
-    return true;
+    // Fail-closed: if can't read ready.json, assume no active task.
+    // Fail-open here was a bypass vector — corrupted ready.json would make
+    // subagent routing think a task exists and skip the routing gate.
+    return false;
   }
 }
 

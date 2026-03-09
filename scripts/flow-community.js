@@ -257,18 +257,30 @@ function collectShareableData(config) {
 
 /**
  * Get WogiFlow version from package.json.
+ * Uses require.resolve to find the actual wogiflow package, not the host project.
  * @returns {string}
  */
 let _cachedVersion = null;
 function getWogiFlowVersion() {
   if (_cachedVersion) return _cachedVersion;
   try {
-    const pkgPath = path.join(__dirname, '..', 'package.json');
+    const pkgPath = require.resolve('wogiflow/package.json');
     const pkg = safeJsonParse(pkgPath, {});
     _cachedVersion = pkg.version || 'unknown';
     return _cachedVersion;
   } catch {
-    _cachedVersion = 'unknown';
+    // Fallback: resolve relative to this file (works when running from source repo)
+    try {
+      const fallbackPath = path.join(__dirname, '..', 'package.json');
+      const pkg = safeJsonParse(fallbackPath, {});
+      if (pkg.name === 'wogiflow') {
+        _cachedVersion = pkg.version || 'unknown';
+      } else {
+        _cachedVersion = 'unknown';
+      }
+    } catch {
+      _cachedVersion = 'unknown';
+    }
     return _cachedVersion;
   }
 }

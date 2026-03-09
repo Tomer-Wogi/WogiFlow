@@ -9,23 +9,43 @@ Launch as `Agent(subagent_type=Explore)`:
 ```
 Analyze the codebase for task: "[TASK_TITLE]"
 
-1. Use Glob to find files related to: [TASK_KEYWORDS]
-2. Use Grep to search for patterns, function names, component references
-3. Read app-map.md for existing components that could be reused
-4. Read function-map.md for existing utility functions that could be reused
-5. Read api-map.md for existing API endpoints that could be reused
-6. Read decisions.md for patterns that must be followed
-7. Map dependencies:
-   - Files that REFERENCE the target code
-   - Files REFERENCED BY the target code
-8. Surface assumptions that need verification
+STEP 1 — Domain-keyword search (MANDATORY, do this FIRST):
+  a. Extract 3-5 domain keywords from the task title
+     Example: "AI Policies tab" → ["policy", "policies", "automation", "AI"]
+     Example: "Payment service refactor" → ["payment", "checkout", "billing", "transaction"]
+  b. For EACH keyword, run:
+     - Glob **/*[keyword]* to find files with that keyword in the name
+     - Grep for the keyword in src/ (or project root) to find references in code
+  c. Read EVERY file that matches — these are potential reuse candidates
+  d. Pay special attention to files in shared/, utils/, lib/, common/ directories
+
+STEP 2 — Registry check (read ALL registry maps):
+  a. Read app-map.md for existing components that could be reused
+  b. Read function-map.md for existing utility functions
+  c. Read api-map.md for existing API endpoints
+  d. Read any other *-map.md files in .workflow/state/
+  e. For each planned NEW item, check if something similar already exists
+
+STEP 3 — Pattern & dependency analysis:
+  a. Read decisions.md for patterns that must be followed
+  b. Map dependencies:
+     - Files that REFERENCE the target code
+     - Files REFERENCED BY the target code
+  c. Surface assumptions that need verification
 
 Return a structured summary:
+- **REUSE CANDIDATES** (MUST be first section):
+  List every existing file/component/function/service that overlaps
+  with what this task plans to create. For each: path, purpose, and
+  whether the task should USE it, EXTEND it, or CREATE new.
 - Related files (path + why it's relevant)
-- Existing components to reuse
-- Patterns to follow
+- Patterns to follow (from decisions.md)
 - Dependency map
 - Assumptions to verify
+
+CRITICAL: If domain-keyword search finds existing implementations that
+overlap with the task's goals, this MUST be prominently flagged.
+Do NOT skip Step 1 even if you think you already know the codebase.
 ```
 
 ## Agent 2: Best Practices Researcher

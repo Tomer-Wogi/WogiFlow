@@ -134,7 +134,12 @@ function createMinimalStructure() {
         ? fs.readFileSync(templatePath, 'utf-8')
         : JSON.stringify({ prompts: [], version: 1 }, null, 2);
       // Validate template is valid JSON before writing (with proto check)
-      const parsed = JSON.parse(rawContent);
+      let parsed;
+      try {
+        parsed = JSON.parse(rawContent);
+      } catch (err) {
+        parsed = { prompts: [], version: 1 };
+      }
       if (parsed && typeof parsed === 'object') {
         for (const k of Object.keys(parsed)) {
           if (k === '__proto__' || k === 'constructor' || k === 'prototype') delete parsed[k];
@@ -389,13 +394,12 @@ function copyWorkflowManagedDirs() {
   // Required when the project root has "type": "module" — without it,
   // Node.js inherits ESM and .workflow/bridges/*.js (CJS) crash.
   const workflowPkg = path.join(WORKFLOW_DIR, 'package.json');
-  if (!fs.existsSync(workflowPkg)) {
-    try {
-      fs.writeFileSync(workflowPkg, JSON.stringify({ type: 'commonjs' }, null, 2) + '\n');
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[postinstall] Failed to create .workflow/package.json: ${err.message}`);
-      }
+  try {
+    fs.writeFileSync(workflowPkg, JSON.stringify({ type: 'commonjs' }, null, 2) + '\n', { flag: 'wx' });
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.warn(`[postinstall] Warning: Failed to create .workflow/package.json: ${err.message}`);
+      console.warn('[postinstall] ESM projects may have issues with WogiFlow hooks. Create this file manually with: {"type":"commonjs"}');
     }
   }
 }

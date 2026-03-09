@@ -52,7 +52,7 @@ async function main() {
         process.exit(0);
         return;
       }
-    } catch (_parseErr) {
+    } catch (err) {
       // Parse error - allow through (graceful degradation)
       console.log(JSON.stringify({ continue: true, hookSpecificOutput: { hookEventName: 'UserPromptSubmit' } }));
       process.exit(0);
@@ -118,7 +118,8 @@ async function main() {
 
     // v6.0: Set routing-pending flag for routing gate enforcement
     // This blocks ALL gated tool calls until a /wogi-* skill is invoked
-    // v8.0: Always set, even with active tasks — every turn must route through /wogi-start
+    // v8.0: Always set, even with active tasks — every turn must route through /wogi-start.
+    // Exception: skipped when the prompt IS a /wogi-* command (see isWogiCommand below).
     // v6.1: Also skip when the prompt IS a /wogi-* command — the user is already routing.
     // When users type "/wogi-start ..." directly, Claude Code expands the skill inline
     // (not through the Skill tool), so clearRoutingPending() in PreToolUse never fires.

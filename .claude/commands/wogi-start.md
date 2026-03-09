@@ -162,6 +162,15 @@ Launch all in parallel. When `config.hybrid.enabled`, route via `model` paramete
 
 **After agents complete**: Display consolidated research summary covering codebase analysis, best practices, version info, risks, standards, and consumer impact.
 
+**REUSE GATE (MANDATORY)**: After consolidating agent results, check for reuse candidates:
+1. Collect all reuse candidates reported by Agent 1 (domain-keyword search) and Agent 5 (registry scan)
+2. If ANY reuse candidate has purpose overlap with planned new code → **STOP and present to user**:
+   - Show each candidate: name, path, purpose, similarity
+   - Ask: "Use existing / Extend existing / Create new (explain why)"
+   - Implementation BLOCKED until user decides on each candidate
+3. If no reuse candidates found → proceed normally
+4. This gate runs BEFORE spec generation — catching reuse early prevents wasted implementation
+
 **For L1/L0 tasks**: Offer to deepen research (exhaustive search, load all skills, full dependency tree).
 
 **Fallback**: If agents fail, log warning and proceed with remaining. Consumer Impact failure on refactor tasks = HARD BLOCK (require user confirmation). See `.claude/docs/explore-agents.md` for details.

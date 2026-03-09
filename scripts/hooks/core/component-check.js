@@ -36,14 +36,66 @@ function isComponentCheckEnabled(config) {
 }
 
 /**
- * Get component patterns to check
+ * Default reusable-code path patterns by project type.
+ * These cover ALL areas where reusable code lives — not just UI components.
+ * Projects can override via config.componentReuse.patterns.
+ */
+const DEFAULT_REUSABLE_PATTERNS = {
+  // Frontend-specific
+  frontend: [
+    '**/components/**', '**/ui/**', '**/src/components/**',
+    '**/pages/**/shared/**', '**/features/**/shared/**',
+    '**/layouts/**', '**/modals/**', '**/widgets/**'
+  ],
+  // Backend-specific
+  backend: [
+    '**/services/**', '**/middleware/**',
+    '**/models/**', '**/schemas/**', '**/validators/**',
+    '**/routes/**', '**/controllers/**',
+    '**/repositories/**', '**/providers/**'
+  ],
+  // Universal (applies to ALL project types)
+  universal: [
+    '**/utils/**', '**/helpers/**', '**/lib/**', '**/shared/**',
+    '**/hooks/**', '**/composables/**',
+    '**/api/**', '**/clients/**',
+    '**/types/**', '**/interfaces/**',
+    '**/constants/**', '**/config/**'
+  ]
+};
+
+/**
+ * Get reusable-code patterns to check.
+ * Combines universal patterns with project-type-specific patterns.
+ * Projects can override entirely via config.componentReuse.patterns.
  * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
- * @returns {string[]} Glob patterns for component directories
+ * @returns {string[]} Glob patterns for reusable code directories
  */
 function getComponentPatterns(config) {
   if (!config) config = getConfig();
-  return config.componentReuse?.patterns ||
-         ['**/components/**', '**/ui/**', '**/src/components/**'];
+
+  // If user explicitly configured patterns, use those
+  if (config.componentReuse?.patterns && Array.isArray(config.componentReuse.patterns)) {
+    return config.componentReuse.patterns;
+  }
+
+  // Build patterns from project type
+  const projectType = config.projectType || 'unknown';
+  const patterns = [...DEFAULT_REUSABLE_PATTERNS.universal];
+
+  if (projectType === 'frontend' || projectType === 'fullstack' || projectType === 'unknown') {
+    patterns.push(...DEFAULT_REUSABLE_PATTERNS.frontend);
+  }
+  if (projectType === 'backend' || projectType === 'fullstack' || projectType === 'unknown') {
+    patterns.push(...DEFAULT_REUSABLE_PATTERNS.backend);
+  }
+
+  // Add any extra patterns from config (additive)
+  if (config.componentReuse?.extraPatterns && Array.isArray(config.componentReuse.extraPatterns)) {
+    patterns.push(...config.componentReuse.extraPatterns);
+  }
+
+  return patterns;
 }
 
 /**
@@ -87,17 +139,53 @@ function isComponentPath(filePath, config) {
 }
 
 /**
- * Load the component index
+ * Load the component index.
+ * Falls back to building a minimal index from all registry maps when
+ * component-index.json doesn't exist.
  * @returns {Object|null} Component index or null
  */
 function loadComponentIndex() {
   try {
     const indexPath = path.join(PATHS.state, 'component-index.json');
-    if (!fs.existsSync(indexPath)) {
-      return null;
+    if (fs.existsSync(indexPath)) {
+      return JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
     }
-    return JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-  } catch (_err) {
+
+    // Fallback: build a minimal index from all *-map.md files in state/
+    const stateDir = PATHS.state;
+    if (!stateDir || !fs.existsSync(stateDir)) return null;
+
+    const components = [];
+    const entries = fs.readdirSync(stateDir);
+    for (const entry of entries) {
+      if (entry.endsWith('-map.md') && /^[a-z0-9-]+\.md$/.test(entry)) {
+        try {
+          const content = fs.readFileSync(path.join(stateDir, entry), 'utf-8');
+          const lines = content.split('\n');
+          for (const line of lines) {
+            // Parse table rows: | Name | description | path |
+            const tableMatch = line.match(/^\|\s*([^|]+)\s*\|\s*([^|]*)\s*\|\s*([^|]*)\s*\|/);
+            if (tableMatch && !tableMatch[1].includes('---')) {
+              const name = tableMatch[1].trim();
+              if (name && name !== 'Component' && name !== 'Name' && name !== 'Function' && name !== 'Endpoint') {
+                components.push({
+                  name,
+                  description: (tableMatch[2] || '').trim(),
+                  path: (tableMatch[3] || '').trim(),
+                  source: entry.replace('.md', '')
+                });
+              }
+            }
+          }
+        } catch (err) {
+          // Skip unreadable map files
+        }
+      }
+    }
+
+    if (components.length === 0) return null;
+    return { components, source: 'fallback-from-maps' };
+  } catch (err) {
     return null;
   }
 }
@@ -136,7 +224,7 @@ function parseAppMap() {
     }
 
     return components;
-  } catch (_err) {
+  } catch (err) {
     return [];
   }
 }
