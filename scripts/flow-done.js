@@ -22,7 +22,8 @@ const {
   color,
   success,
   warn,
-  error
+  error,
+  validateTaskId
 } = require('./flow-utils');
 
 // v1.7.0 context memory management
@@ -41,7 +42,7 @@ const { runSteps, getAllSteps } = require('./flow-workflow-steps');
 const { loadDurableSession, archiveDurableSession } = require('./flow-durable-session');
 
 // v5.1 prompt capture and clarification learning
-const { processTaskCompletion, getRefinementCount } = require('./flow-prompt-capture');
+const { processTaskCompletion } = require('./flow-prompt-capture');
 
 // v2.1 task enforcement as explicit quality gate
 const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
@@ -182,6 +183,12 @@ function checkOutstandingFindings() {
  * Run quality gates from config
  */
 function runQualityGates(taskId, taskType) {
+  // Validate taskId before using in any path construction
+  if (taskId && !validateTaskId(taskId)) {
+    console.log(color('red', `Invalid task ID format: ${String(taskId).slice(0, 30)}`));
+    return { passed: false, failed: ['invalidTaskId'], errors: { invalidTaskId: 'Task ID failed validation' } };
+  }
+
   if (!fileExists(PATHS.config)) {
     return { passed: true, failed: [], errors: {} };
   }
@@ -348,7 +355,8 @@ function runQualityGates(taskId, taskType) {
             failed.push('integrationWiring');
           }
         } catch (err) {
-          console.log(`  ${color('yellow', '○')} integrationWiring (verifier error: ${truncateOutput(err.message, 3, 200)})`);
+          // Graceful degradation: verifier error is not a hard failure — gate passes with warning
+          console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
         console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier module not available — install flow-wiring-verifier.js)`);
@@ -374,7 +382,8 @@ function runQualityGates(taskId, taskType) {
             failed.push('standardsCompliance');
           }
         } catch (err) {
-          console.log(`  ${color('yellow', '○')} standardsCompliance (checker error: ${truncateOutput(err.message, 3, 200)})`);
+          // Graceful degradation: checker error is not a hard failure — gate passes with warning
+          console.log(`  ${color('yellow', '⚠')} standardsCompliance (checker error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
         console.log(`  ${color('yellow', '⚠')} standardsCompliance (checker module not available — install flow-standards-gate.js)`);
@@ -449,10 +458,10 @@ function runQualityGates(taskId, taskType) {
     } else if (gate === 'resolutionPopulated') {
       // v1.9.2: Check that the task's change spec has a resolution/fix section
       try {
-        const changesDir = path.join(process.cwd(), '.workflow', 'changes');
+        const changesDir = path.join(PATHS.workflow, 'changes');
         const specPath = path.join(changesDir, `${taskId}.md`);
-        if (fileExists(specPath)) {
-          const content = readFile(specPath, '');
+        const content = readFile(specPath, '');
+        if (content) {
           if (content.toLowerCase().includes('resolution') || content.toLowerCase().includes('root cause') || content.toLowerCase().includes('fix')) {
             console.log(`  ${color('green', '✓')} resolutionPopulated (resolution documented in spec)`);
           } else {
@@ -469,6 +478,9 @@ function runQualityGates(taskId, taskType) {
       try {
         const modifiedFiles = getModifiedFiles();
         const jsFiles = modifiedFiles.filter(f => f.endsWith('.js'));
+        if (jsFiles.length === 0) {
+          console.log(`  ${color('yellow', '○')} smokeTest (no JS files modified — nothing to check)`);
+        } else {
         let allPassed = true;
         for (const file of jsFiles) {
           const result = spawnSync('node', ['--check', file], {
@@ -486,6 +498,7 @@ function runQualityGates(taskId, taskType) {
           errors.smokeTest = 'Syntax errors in modified files';
           failed.push('smokeTest');
         }
+        } // end jsFiles.length > 0
       } catch (err) {
         console.log(`  ${color('yellow', '○')} smokeTest (could not run: ${truncateOutput(err.message, 3, 200)})`);
       }

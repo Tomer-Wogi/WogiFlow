@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-221 | 2026-03-09 15:30
+**Type**: fix
+**Tags**: #fix:review-findings #component:flow-done #component:wogi-review #component:config
+**Request**: "Fix 9 post-review findings: non-blocking gates, Phase 5.3c bypass, path/security issues"
+**Result**: Fixed 8 of 9 findings, waived 1 (truncateOutput redaction — low risk for local CLI). Removed unused getRefinementCount import. Moved learningEnforcement/resolutionPopulated from required to optional in bugfix gates. Fixed process.cwd()→PATHS.workflow. Added validateTaskId() at top of runQualityGates. Rewrote Phase 5.3c to route through /wogi-start. Added smokeTest 0-file differentiation. Added explicit degradation messaging to gate catch blocks. Removed TOCTOU fileExists() pattern.
+**Files**: scripts/flow-done.js, .workflow/config.json, .claude/commands/wogi-review.md, .workflow/state/last-review.json
+**Task**: wf-c7cf3b50
+
 ### R-220 | 2026-03-09 14:30
 **Type**: fix
 **Tags**: #fix:review-findings #fix:routing-bypass #component:wogi-review #component:flow-done #component:config

@@ -255,11 +255,11 @@
         "loopComplete",
         "tests",
         "requestLogEntry",
-        "standardsCompliance",
-        "learningEnforcement",
-        "resolutionPopulated"
+        "standardsCompliance"
       ],
       "optional": [
+        "learningEnforcement",
+        "resolutionPopulated",
         "review",
         "webmcpVerification"
       ]

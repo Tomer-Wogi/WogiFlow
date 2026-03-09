@@ -847,114 +847,31 @@ All fix work MUST be routed through `/wogi-start`, which creates properly tracke
 - Running quality gates
 - Committing changes
 
-**5.3c. Same-session detection + persistent task creation for unfixed findings (ALL options)**:
+**5.3c. Handling unfixed findings (ALL options)**:
 
-After the fix loop completes (Options 1/2), or immediately (Option 4), handle unfixed findings with **origin-aware persistence**. This ensures nothing gets silently lost AND creates traceability.
+After the fix loop completes (Options 1/2), or immediately (Option 4), handle unfixed findings.
 
-**Step 1: Same-session detection** (read `config.originTaskTracing`):
+**CRITICAL: Do NOT manually edit `ready.json` to create tasks for unfixed findings.** All task creation MUST go through `/wogi-start`.
 
-When `config.originTaskTracing.annotateCompletedTasks` is true:
+**For unfixed findings that need separate tasks:**
 
-1. Read `ready.json` → `recentlyCompleted` array
-2. For each completed task, check if `completedAt` is within the `sameSessionWindow` (default: 2 hours from now)
-3. For each unfixed finding, check if `finding.file` was changed by a recent completed task:
-   - Run `git log --format="%H" -1 -- [finding.file]` to get the last commit that touched the file
-   - Check if that commit message contains a task ID from `recentlyCompleted` (e.g., `wf-XXXXXXXX` in the commit message)
-   - Alternatively, check if the finding's file path appears in the completed task's known changed files
-4. If a match is found → this is a **same-session finding** for that origin task
+1. Compose a summary of remaining unfixed findings grouped by severity
+2. Invoke `/wogi-start "Fix N remaining review findings: [summary]"` for each batch
+3. `/wogi-start` handles task creation, routing, and execution through the standard pipeline
 
-**Step 2: Annotate completed tasks with same-session findings**:
+**For findings the user chose to defer (Option 4):**
 
-For findings that match a same-session completed task:
+1. Update `last-review.json` — set `"status": "deferred"` on each finding
+2. Display: `N findings deferred. Run /wogi-review-fix --pending to process later.`
+3. Do NOT create tasks in ready.json directly — when the user runs `/wogi-review-fix --pending`, it reads `last-review.json` and routes each finding through `/wogi-start`
 
-1. Add a `reviewFindings` array to the completed task in `recentlyCompleted`:
-   ```json
-   {
-     "id": "wf-existing-task",
-     "title": "...",
-     "status": "completed",
-     "reviewFindings": [
-       {
-         "id": "[finding.id]",
-         "severity": "[finding.severity]",
-         "category": "[finding.category]",
-         "file": "[finding.file]",
-         "line": "[finding.line]",
-         "issue": "[finding.issue]",
-         "recommendation": "[finding.recommendation]",
-         "reviewDate": "[ISO]",
-         "status": "unfixed"
-       }
-     ]
-   }
-   ```
-2. Do NOT create a separate `wf-rv-` task for these findings — they live on the completed task
-3. Display: `Annotated task [id] with N review findings (same-session)`
+**Learning signal detection:**
 
-**Step 3: Create persistent tasks for remaining (non-same-session) findings**:
+After completing fixes, check for recurring patterns:
+1. If 3+ findings share the same `category` or `file` → log to `feedback-patterns.md`
+2. Display warning suggesting `/wogi-decide` to create a preventive rule
 
-For findings that do NOT match a same-session task, create `wf-rv-` tasks with origin tracing:
-
-1. **Duplicate check**: Search `ready.json` for existing task with matching `finding.id` in the `finding` field. If a task already exists for this finding, skip creation.
-2. **Generate ID**: `wf-rv-XXXXXXXX` (8-char hash of `finding.id` + reviewDate)
-3. **Resolve origin task** (when `config.originTaskTracing.traceOrigin` is true):
-   - Run `git log --format="%H %s" -1 -- [finding.file]` to find the last commit
-   - Extract task ID from commit message (pattern: `wf-XXXXXXXX`)
-   - Look up the task in `recentlyCompleted` to get `{ id, title, type, feature }`
-   - If no task ID found in commit → set `originTask: null`
-4. **Map severity → priority**: critical→P0, high→P1, medium→P2, low→P3
-5. **Create task** in `ready.json` `ready` array:
-   ```json
-   {
-     "id": "wf-rv-XXXXXXXX",
-     "title": "Review fix: [issue truncated to 80 chars]",
-     "type": "fix",
-     "feature": "review",
-     "source": "review",
-     "reviewDate": "[ISO]",
-     "originTask": {
-       "id": "[origin task ID or null]",
-       "title": "[origin task title]",
-       "type": "[origin task type]",
-       "feature": "[origin task feature]"
-     },
-     "finding": {
-       "id": "[finding.id]",
-       "severity": "[finding.severity]",
-       "category": "[finding.category]",
-       "file": "[finding.file]",
-       "line": "[finding.line]",
-       "issue": "[finding.issue]",
-       "recommendation": "[finding.recommendation]",
-       "autoFixable": "[finding.autoFixable]"
-     },
-     "status": "ready",
-     "priority": "P0-P3",
-     "batchable": true,
-     "batchKey": "[file]|[category]",
-     "createdAt": "[ISO]"
-   }
-   ```
-
-**Step 4: Learning signal detection** (when `config.originTaskTracing.learningSignal.enabled` is true):
-
-After all tasks are created, check for patterns:
-
-1. Collect all `originTask` references from newly created `wf-rv-` tasks AND existing `wf-rv-` tasks in `ready.json`
-2. Group by `originTask.type` and `originTask.feature`
-3. If any group has >= `config.originTaskTracing.learningSignal.threshold` (default: 3) fix tasks:
-   - Add entry to `feedback-patterns.md`:
-     ```
-     | [date] | review-origin-pattern-[type/feature] | Tasks of type "[type]"/feature "[feature]" consistently generate review fixes (N instances) | N | Investigate |
-     ```
-   - Display warning:
-     ```
-     ⚠️ LEARNING SIGNAL: Tasks of type "[type]"/feature "[feature]" have generated N review fixes.
-        This suggests a systematic issue with how these tasks are implemented.
-        Consider: /wogi-decide "review checklist for [type] tasks"
-     ```
-
-**Step 5: Update `last-review.json`**: For each finding that got a task, add `"taskCreated": "wf-rv-XXXXXXXX"`. For same-session annotations, add `"annotatedOn": "[origin task ID]"`. Set `"triaged": true` on the review.
+**Update `last-review.json`**: Set `"triaged": true` on the review after all findings are addressed (fixed, deferred, or dismissed).
 
 **Config toggles** (all in `config.originTaskTracing`):
 - `annotateCompletedTasks: false` → Skip same-session detection, all findings create standalone tasks
