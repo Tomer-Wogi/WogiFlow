@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-214 | 2026-03-09 10:00
+**Type**: fix
+**Tags**: #fix:esm #fix:hooks #fix:onboarding #p0
+**Task**: wf-a4a2e279
+**Request**: "Fix ESM/CJS interop failure — SessionStart crashes on projects with type: module"
+**Result**: Added .workflow/package.json with {"type": "commonjs"} to prevent Node.js from inheriting ESM from project root. Updated three entry points: (1) .workflow/package.json created in repo, (2) lib/installer.js creates it during onboarding, (3) scripts/postinstall.js creates it during npm install. Also added .workflow/package.json to npm files array in package.json.
+**Files**: .workflow/package.json, lib/installer.js, scripts/postinstall.js, package.json
+
 ### R-213 | 2026-03-08 10:00
 **Type**: fix
 **Tags**: #security #routing #hooks #bypass

@@ -384,6 +384,20 @@ function copyWorkflowManagedDirs() {
       copyDir(src, dest, false);
     }
   }
+
+  // Ensure .workflow/package.json exists with "type": "commonjs".
+  // Required when the project root has "type": "module" — without it,
+  // Node.js inherits ESM and .workflow/bridges/*.js (CJS) crash.
+  const workflowPkg = path.join(WORKFLOW_DIR, 'package.json');
+  if (!fs.existsSync(workflowPkg)) {
+    try {
+      fs.writeFileSync(workflowPkg, JSON.stringify({ type: 'commonjs' }, null, 2) + '\n');
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[postinstall] Failed to create .workflow/package.json: ${err.message}`);
+      }
+    }
+  }
 }
 
 /**

@@ -5,6 +5,12 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-a4a2e279",
+      "title": "Fix ESM/CJS interop failure in .workflow/bridges/",
+      "type": "fix",
+      "completedAt": "2026-03-09T09:21:19.507Z"
+    },
+    {
       "id": "wf-a98644b7",
       "title": "Fix routing gate active-task bypass",
       "type": "fix",

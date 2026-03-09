@@ -19,6 +19,7 @@
     "lib/",
     "scripts/",
     "templates/",
+    ".workflow/package.json",
     ".workflow/templates/",
     ".workflow/agents/",
     ".workflow/bridges/",
