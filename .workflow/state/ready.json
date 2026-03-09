@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-638612a5",
+      "title": "Add removal-impact detection to wiring verifier",
+      "type": "feature",
+      "feature": "verification",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-09T16:00:00.000Z",
+      "completedAt": "2026-03-09T16:20:00.000Z"
+    },
+    {
       "id": "wf-c7cf3b50",
       "title": "Fix 9 post-review findings: non-blocking gates, Phase 5.3c bypass, path/security issues",
       "type": "fix",

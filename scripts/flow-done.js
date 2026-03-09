@@ -354,6 +354,31 @@ function runQualityGates(taskId, taskType) {
             errors.integrationWiring = `${unwiredCount} files created but not imported/used anywhere`;
             failed.push('integrationWiring');
           }
+
+          // v1.9.3: Removal impact check — verify removed exports aren't still referenced
+          if (typeof wiringVerifier.verifyRemovalImpact === 'function') {
+            const modifiedFiles = getModifiedFiles();
+            if (modifiedFiles.length > 0) {
+              console.log('  Running removal impact check...');
+              const removalResult = wiringVerifier.verifyRemovalImpact(modifiedFiles);
+              if (removalResult.identifiersChecked > 0) {
+                if (removalResult.passed) {
+                  console.log(`  ${color('green', '✓')} removalImpact (${removalResult.identifiersChecked} removed identifiers verified)`);
+                } else {
+                  const orphanCount = removalResult.orphanedRefs.length;
+                  console.log(`  ${color('red', '✗')} removalImpact (${orphanCount} orphaned reference${orphanCount !== 1 ? 's' : ''} to removed exports)`);
+                  for (const ref of removalResult.orphanedRefs.slice(0, 5)) {
+                    console.log(color('dim', `    - "${ref.identifier}" removed from ${ref.removedFrom}, still used in ${ref.totalRefs} file${ref.totalRefs !== 1 ? 's' : ''}`));
+                    for (const consumer of ref.referencedBy.slice(0, 2)) {
+                      console.log(color('dim', `      → ${consumer.file}`));
+                    }
+                  }
+                  errors.removalImpact = `${orphanCount} removed export${orphanCount !== 1 ? 's' : ''} still referenced by consumers`;
+                  failed.push('removalImpact');
+                }
+              }
+            }
+          }
         } catch (err) {
           // Graceful degradation: verifier error is not a hard failure — gate passes with warning
           console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);

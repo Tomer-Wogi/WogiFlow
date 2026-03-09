@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-222 | 2026-03-09 16:15
+**Type**: new
+**Tags**: #feature:verification #component:flow-wiring-verifier #component:flow-done
+**Request**: "Add removal-impact detection to wiring verifier — detect orphaned consumer references when exports/types/identifiers are removed"
+**Result**: Added `verifyRemovalImpact()` to flow-wiring-verifier.js. Detects removed exports, type union members, string literal IDs (tab/route/section keys), and component references from git diff. Searches codebase for consumers still referencing removed items. Wired into integrationWiring quality gate in flow-done.js — runs automatically for all WogiFlow users. Added CLI `removal-check` subcommand. Updated wogi-start.md Step 3.6 documentation.
+**Files**: scripts/flow-wiring-verifier.js, scripts/flow-done.js, .claude/commands/wogi-start.md
+**Task**: wf-638612a5
+
 ### R-221 | 2026-03-09 15:30
 **Type**: fix
 **Tags**: #fix:review-findings #component:flow-done #component:wogi-review #component:config

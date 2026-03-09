@@ -241,10 +241,16 @@ After implementing all scenarios, BEFORE quality gates:
 
 Run `node scripts/flow-wiring-verifier.js wf-XXXXXXXX`
 
-For each created file, verify it's imported/used somewhere:
+**Forward wiring** — For each created file, verify it's imported/used somewhere:
 - Entry points (index.ts, App.tsx, *.config.ts, tests) don't need imports
 - Components MUST be imported in a parent. Hooks MUST be called. Utilities MUST be imported.
 - If NOT wired: identify where to import, wire it up, re-verify.
+
+**Removal impact** (v1.9.3) — For each removed export, type member, or identifier, verify no consumers still reference it:
+- Runs automatically as part of the `integrationWiring` quality gate
+- Detects orphaned references: removed type union members, exported names, component references, string literal IDs (e.g., tab IDs, route keys)
+- If orphaned references found: update consumers to remove stale references, re-verify.
+- CLI: `node scripts/flow-wiring-verifier.js removal-check [files...]`
 
 ### Step 3.7: Standards Compliance Check (MANDATORY)
 
