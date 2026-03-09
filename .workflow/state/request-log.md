@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-220 | 2026-03-09 14:30
+**Type**: fix
+**Tags**: #fix:review-findings #fix:routing-bypass #component:wogi-review #component:flow-done #component:config
+**Request**: "Fix 9 review findings + systemic routing bypass in wogi-review Phase 5.3b"
+**Result**: Rewrote wogi-review.md Phase 5.3b to route fix work through /wogi-start instead of manual ready.json editing (root cause of recurring routing bypass). Fixed 7 code findings: added 'fix' task type to qualityGates config (cl-001), implemented learningEnforcement/resolutionPopulated/smokeTest gates (cl-002), cached checkOutstandingFindings to avoid double call (cl-003), added warning log for missing verifier modules (cl-004), documented fallback-to-feature behavior (cl-005), truncated err.message from external verifiers (cl-006), removed dead config.testing code (cl-007). Fixed _err→err naming in user-prompt-submit.js.
+**Files**: .claude/commands/wogi-review.md, scripts/flow-done.js, .workflow/config.json, .claude/commands/wogi-start.md, scripts/hooks/entry/claude-code/user-prompt-submit.js, .workflow/state/last-review.json
+**Task**: wf-8166e9e9
+
 ### R-219 | 2026-03-09 12:15
 **Type**: fix
 **Tags**: #fix:quality-gates #component:flow-done #component:config

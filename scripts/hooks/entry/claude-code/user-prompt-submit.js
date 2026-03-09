@@ -81,7 +81,7 @@ async function main() {
     let hookConfig;
     try {
       hookConfig = getConfig();
-    } catch (_err) {
+    } catch (err) {
       hookConfig = {};
     }
 

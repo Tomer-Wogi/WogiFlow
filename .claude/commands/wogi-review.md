@@ -813,68 +813,39 @@ Then present 4 options:
 - Triage will handle fix/task/skip/dismiss decisions per finding
 - Proceed to step 5.4 after triage completes
 
-**5.3b. If user chooses fix (Option 1 or 2) — SEVERITY-ROUTED FIX LOOP**:
+**5.3b. If user chooses fix (Option 1 or 2) — ROUTED FIX VIA /wogi-start**:
 
-**BEFORE applying any fixes, create a tracked fix task in `ready.json` inProgress:**
+**CRITICAL: Do NOT manually edit `ready.json` to create fix tasks. This is a routing bypass.**
 
-1. Generate a fix task ID: `wf-cr-XXXXXX` (first 6 chars of a hash based on review date + finding count)
-2. Count findings to fix (all for Option 1, critical/high only for Option 2)
-3. Read `ready.json`, add fix task to `inProgress` array:
-   ```json
-   {
-     "id": "wf-cr-XXXXXX",
-     "title": "Fix N review findings from [review-id or task-id]",
-     "type": "fix",
-     "feature": "review",
-     "status": "in_progress",
-     "priority": "P0",
-     "startedAt": "[ISO timestamp]"
-   }
-   ```
-4. Write updated `ready.json` — the task-gate (PreToolUse) will now allow Edit/Write operations
-5. Display: `Created fix task: wf-cr-XXXXXX — Fix N review findings`
+All fix work MUST be routed through `/wogi-start`, which creates properly tracked tasks through the routing system. This ensures fixes go through the full pipeline: explore → spec → implementation → verification → quality gates → map updates → request log.
 
-**ONLY AFTER the task exists in inProgress**, proceed with the severity-routed fix loop.
+**Procedure:**
 
-**Severity Routing Table** (read `config.reviewFix.severityRouting`):
+1. Compose a fix request summarizing findings to fix (all for Option 1, critical/high only for Option 2)
+2. Invoke `/wogi-start "Fix N review findings: [brief summary of top issues]"`
+3. `/wogi-start` will:
+   - Create a properly tracked task via `generateTaskId()`
+   - Route it through the standard pipeline (L2 or L3 based on scope)
+   - Each finding becomes an acceptance criterion
+   - All quality gates, maps, and logs are updated through the normal flow
+4. The fix task proceeds through the standard WogiFlow execution loop
 
-| Severity | autoFixable | Security? | Route |
-|----------|------------|-----------|-------|
-| critical | any | any | Full `/wogi-start` loop |
-| high | false | any | Full `/wogi-start` loop |
-| high | true | yes | Full loop (security always gets full review) |
-| high | true | no | Light fix loop |
-| medium/low | any | yes | Light fix + security flag (display to user even when auto-fixable) |
-| medium/low | any | no | Light fix loop |
+**Finding-to-criteria mapping:**
 
-**Full loop** (for critical/high findings): Convert to TodoWrite items as individual todos. For each:
-- Mark in_progress
-- Apply fix
-- Run targeted verification (node --check, lint, typecheck)
-- Mark completed
+| Finding severity | Acceptance criterion format |
+|-----------------|---------------------------|
+| critical/high | Individual criterion per finding with Given/When/Then |
+| medium | Grouped by file: "Fix N medium issues in [file]" |
+| low | Grouped by category: "Fix N [category] issues" |
 
-**Light fix loop** (for medium/low auto-fixable findings):
-1. Apply fix (Edit tool)
-2. Verify: `node --check <file>` + lint + typecheck
-3. If PASS → mark fixed
-4. If FAIL → retry once, then escalate to manual/task
+**Why this matters:** Manual ready.json editing bypasses explore, spec, standards checks, wiring verification, map updates, and request logging. This is the #1 cause of incomplete fixes and state file drift.
 
-Light fix loop does NOT include: spec generation, explore phase, approval gate, or criteria check.
-
-- After all fixes: Re-run verification gates (lint, typecheck, tests)
-- **Fix loop iteration cap**: Maximum 3 re-verify cycles. If new issues keep appearing after 3 iterations, stop and present remaining issues to the user rather than continuing automatically.
-
-**AFTER the fix loop completes**, move the fix task to recentlyCompleted:
-1. Read `ready.json`
-2. Remove the fix task from `inProgress`
-3. Add it to `recentlyCompleted` with `completedAt` timestamp
-4. Write updated `ready.json`
-5. Display: `Fix task wf-cr-XXXXXX completed and moved to recentlyCompleted`
-
-This ensures:
-- The PreToolUse task-gate allows edits during the fix loop (active task exists)
-- After completion, no active task exists → task-gate blocks subsequent untracked edits
-- All fix work is tracked and visible in the workflow
+**After `/wogi-start` completes the fix task**, the standard completion flow handles:
+- Moving task to recentlyCompleted
+- Updating request-log.md
+- Updating maps if needed
+- Running quality gates
+- Committing changes
 
 **5.3c. Same-session detection + persistent task creation for unfixed findings (ALL options)**:
 
@@ -1398,45 +1369,29 @@ After ALL review phases complete (1 through 4), execute the fix-and-verify loop:
 ┌─────────────────────────────────────────────────────────────┐
 │  POST-REVIEW WORKFLOW                                        │
 ├─────────────────────────────────────────────────────────────┤
-│  0. CREATE FIX TASK: Add wf-cr-XXXXXX to ready.json         │
-│     → MUST exist before any edits (task-gate enforces)       │
-│  1. TRACK: Convert issues to TodoWrite items                 │
-│     → Critical/High: Individual todos                        │
-│     → Medium/Low: Grouped by category                        │
-│  2. FIX LOOP: For each issue:                                │
-│     → Mark todo in_progress                                  │
-│     → Apply fix                                              │
-│     → Run targeted verification (lint/typecheck on file)     │
-│     → Mark todo completed                                    │
-│  3. RE-VERIFY: Run full verification gates again             │
-│     → All gates must pass                                    │
-│     → If new issues found, add to todo list                  │
-│  4. COMPLETE TASK: Move wf-cr-XXXXXX to recentlyCompleted    │
-│  5. ARCHIVE: Save review report to .workflow/reviews/        │
-│  6. SIGN-OFF: User approves review complete                  │
+│  0. ROUTE FIX: Invoke /wogi-start with fix request           │
+│     → Do NOT manually edit ready.json                        │
+│     → /wogi-start creates task through routing system        │
+│  1. /wogi-start PIPELINE handles:                            │
+│     → Explore, spec, implementation, verification            │
+│     → Each finding = acceptance criterion                    │
+│     → Quality gates, maps, logs all updated                  │
+│  2. ARCHIVE: Save review report to .workflow/reviews/        │
+│  3. SIGN-OFF: User approves review complete                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Step 0: Create Fix Task (MANDATORY before any edits)
+### Step 0: Route Fix Work Through /wogi-start (MANDATORY)
 
-**Before converting findings to todos or applying any fixes**, create a tracked task:
+**Do NOT manually edit `ready.json` to create fix tasks.** This bypasses the routing system and results in incomplete fixes (no explore, no spec, no standards check, no map updates).
 
-1. Generate task ID: `wf-cr-XXXXXX` (6-char hash of review date + finding count)
-2. Read `ready.json`, add to `inProgress`:
-   ```json
-   {
-     "id": "wf-cr-XXXXXX",
-     "title": "Fix N review findings from [review-id or task-id]",
-     "type": "fix",
-     "feature": "review",
-     "status": "in_progress",
-     "priority": "P0",
-     "startedAt": "[ISO timestamp]"
-   }
-   ```
-3. Write `ready.json` — the PreToolUse task-gate will now allow Edit/Write operations
+Instead, invoke `/wogi-start "Fix N review findings: [summary]"` which:
+1. Creates a properly tracked task via `generateTaskId()`
+2. Routes through the standard pipeline (explore → spec → implementation → verification → quality gates)
+3. Each finding becomes an acceptance criterion in the spec
+4. All state files, maps, and logs are updated through the normal flow
 
-**Why this is required**: The PreToolUse task-gate hard-blocks Edit/Write when no active task exists in `ready.json` inProgress. Without this step, the fix loop's edits would be blocked.
+**Why routing matters**: The PreToolUse task-gate requires an active task for Edit/Write operations. `/wogi-start` creates this task through the proper routing system, ensuring all pipeline stages execute. Manual ready.json editing creates a "fake" task that bypasses the pipeline.
 
 ### Step 1: Issue Tracking
 
@@ -1501,16 +1456,15 @@ If new issues are discovered during re-verification:
 2. Continue the fix loop
 3. Re-verify again
 
-### Step 4: Complete Fix Task
+### Step 4: Task Completion (Handled by /wogi-start)
 
-**After all fixes pass verification**, move the fix task to recentlyCompleted:
+Fix task completion is handled automatically by the `/wogi-start` execution loop (Step 5: Finalize). This includes:
+- Moving the task to recentlyCompleted in ready.json
+- Updating request-log.md
+- Running quality gates
+- Committing changes
 
-1. Read `ready.json`
-2. Remove `wf-cr-XXXXXX` from `inProgress`
-3. Add it to `recentlyCompleted` with `completedAt` timestamp
-4. Write `ready.json`
-
-**After this step, no active task exists** — the PreToolUse task-gate will block any subsequent Edit/Write operations until the user starts a new task via `/wogi-start`.
+**Do NOT manually edit ready.json** to move tasks between arrays. The `/wogi-start` pipeline handles this through its standard completion flow.
 
 ### Step 5: Archive Review Report
 

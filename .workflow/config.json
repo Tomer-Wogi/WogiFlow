@@ -291,6 +291,16 @@
         "preRelease"
       ],
       "optional": []
+    },
+    "fix": {
+      "require": [
+        "loopComplete",
+        "requestLogEntry",
+        "standardsCompliance"
+      ],
+      "optional": [
+        "tests"
+      ]
     }
   },
   "standardsCompliance": {

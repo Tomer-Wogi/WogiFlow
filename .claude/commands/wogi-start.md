@@ -268,8 +268,11 @@ If violations found: fix, re-run, only proceed when all pass. Violations auto-re
 - **refactor**: loopComplete, tests, noNewFeatures, smokeTest, standardsCompliance
 - **chore**: requestLogEntry, outstandingFindings
 - **release**: requestLogEntry, outstandingFindings, preRelease
+- **fix**: loopComplete, requestLogEntry, standardsCompliance
 
-**Key automated gates** (v1.9.1):
+**Fallback behavior**: Task types not listed above (docs, style, test, perf, etc.) inherit the **feature** gates. This is intentional — feature gates are the most comprehensive and serve as a safe default.
+
+**Key automated gates** (v1.9.2):
 - `integrationWiring` → calls `verifyWiring()` — checks created files are imported/used
 - `standardsCompliance` → calls `runTaskStandardsCheck()` — checks naming, security, decisions.md rules
 - `outstandingFindings` → reads `last-review.json` — blocks if unresolved critical/high findings exist

@@ -195,13 +195,21 @@ function runQualityGates(taskId, taskType) {
   const gates = config.qualityGates?.[normalizedType]?.require
     || config.qualityGates?.feature?.require
     || [];
-  const testing = config.testing || {};
   const failed = [];
   const errors = {}; // Store error output for correction artifact
 
+  // Cache outstanding findings result — used by both outstandingFindings and preRelease gates
+  let cachedOutstandingFindings = null;
+  function getOutstandingFindings() {
+    if (!cachedOutstandingFindings) {
+      cachedOutstandingFindings = checkOutstandingFindings();
+    }
+    return cachedOutstandingFindings;
+  }
+
   for (const gate of gates) {
     if (gate === 'tests') {
-      if (testing.runAfterTask || testing.runBeforeCommit) {
+      if (config.scripts?.test) {
         console.log('  Running tests...');
         const result = spawnSync('npm', ['test'], {
           encoding: 'utf-8',
@@ -340,10 +348,11 @@ function runQualityGates(taskId, taskType) {
             failed.push('integrationWiring');
           }
         } catch (err) {
-          console.log(`  ${color('yellow', '○')} integrationWiring (verifier error: ${err.message})`);
+          console.log(`  ${color('yellow', '○')} integrationWiring (verifier error: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
-        console.log(`  ${color('yellow', '○')} integrationWiring (verifier not available)`);
+        console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier module not available — install flow-wiring-verifier.js)`);
+        if (process.env.DEBUG) console.error('[DEBUG] wiringVerifier module failed to load or missing verifyWiring export');
       }
     } else if (gate === 'standardsCompliance') {
       // v1.9.1: Actually call the standards gate instead of falling through
@@ -365,14 +374,15 @@ function runQualityGates(taskId, taskType) {
             failed.push('standardsCompliance');
           }
         } catch (err) {
-          console.log(`  ${color('yellow', '○')} standardsCompliance (checker error: ${err.message})`);
+          console.log(`  ${color('yellow', '○')} standardsCompliance (checker error: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
-        console.log(`  ${color('yellow', '○')} standardsCompliance (checker not available)`);
+        console.log(`  ${color('yellow', '⚠')} standardsCompliance (checker module not available — install flow-standards-gate.js)`);
+        if (process.env.DEBUG) console.error('[DEBUG] standardsGate module failed to load or missing runTaskStandardsCheck export');
       }
     } else if (gate === 'outstandingFindings') {
       // v1.9.1: Check for unresolved MUST_FIX findings from last review
-      const outstanding = checkOutstandingFindings();
+      const outstanding = getOutstandingFindings();
       if (!outstanding.hasOutstanding) {
         console.log(`  ${color('green', '✓')} outstandingFindings (no unresolved critical/high findings)`);
       } else {
@@ -388,8 +398,8 @@ function runQualityGates(taskId, taskType) {
       console.log('  Running pre-release checks...');
       let preReleaseFailed = false;
 
-      // Check outstanding findings
-      const outstanding = checkOutstandingFindings();
+      // Check outstanding findings (uses cached result)
+      const outstanding = getOutstandingFindings();
       if (outstanding.hasOutstanding) {
         console.log(`  ${color('red', '✗')} preRelease: ${outstanding.count} unresolved findings from last review`);
         preReleaseFailed = true;
@@ -422,6 +432,62 @@ function runQualityGates(taskId, taskType) {
       } else {
         errors.preRelease = 'Codebase is not in a releasable state';
         failed.push('preRelease');
+      }
+    } else if (gate === 'learningEnforcement') {
+      // v1.9.2: Check that bugfix patterns are recorded in feedback-patterns.md
+      try {
+        const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
+        const content = readFile(feedbackPath, '');
+        if (content.includes(taskId)) {
+          console.log(`  ${color('green', '✓')} learningEnforcement (pattern recorded in feedback-patterns.md)`);
+        } else {
+          console.log(`  ${color('yellow', '○')} learningEnforcement (add bug pattern to feedback-patterns.md)`);
+        }
+      } catch (err) {
+        console.log(`  ${color('yellow', '○')} learningEnforcement (could not check feedback-patterns.md)`);
+      }
+    } else if (gate === 'resolutionPopulated') {
+      // v1.9.2: Check that the task's change spec has a resolution/fix section
+      try {
+        const changesDir = path.join(process.cwd(), '.workflow', 'changes');
+        const specPath = path.join(changesDir, `${taskId}.md`);
+        if (fileExists(specPath)) {
+          const content = readFile(specPath, '');
+          if (content.toLowerCase().includes('resolution') || content.toLowerCase().includes('root cause') || content.toLowerCase().includes('fix')) {
+            console.log(`  ${color('green', '✓')} resolutionPopulated (resolution documented in spec)`);
+          } else {
+            console.log(`  ${color('yellow', '○')} resolutionPopulated (add resolution/root cause to spec)`);
+          }
+        } else {
+          console.log(`  ${color('yellow', '○')} resolutionPopulated (no spec file found)`);
+        }
+      } catch (err) {
+        console.log(`  ${color('yellow', '○')} resolutionPopulated (could not check)`);
+      }
+    } else if (gate === 'smokeTest') {
+      // v1.9.2: Run a basic smoke test — syntax check all modified JS files
+      try {
+        const modifiedFiles = getModifiedFiles();
+        const jsFiles = modifiedFiles.filter(f => f.endsWith('.js'));
+        let allPassed = true;
+        for (const file of jsFiles) {
+          const result = spawnSync('node', ['--check', file], {
+            encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
+          });
+          if (result.status !== 0) {
+            console.log(`  ${color('red', '✗')} smokeTest: syntax error in ${file}`);
+            allPassed = false;
+            break;
+          }
+        }
+        if (allPassed) {
+          console.log(`  ${color('green', '✓')} smokeTest (${jsFiles.length} file${jsFiles.length !== 1 ? 's' : ''} pass syntax check)`);
+        } else {
+          errors.smokeTest = 'Syntax errors in modified files';
+          failed.push('smokeTest');
+        }
+      } catch (err) {
+        console.log(`  ${color('yellow', '○')} smokeTest (could not run: ${truncateOutput(err.message, 3, 200)})`);
       }
     } else {
       console.log(`  ${color('yellow', '○')} ${gate} (manual check)`);

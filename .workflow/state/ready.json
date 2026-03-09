@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-8166e9e9",
+      "title": "Fix 9 review findings from quality gate review + systemic routing bypass",
+      "type": "fix",
+      "feature": "review",
+      "status": "completed",
+      "priority": "P0",
+      "startedAt": "2026-03-09T12:45:00.000Z",
+      "completedAt": "2026-03-09T14:30:00.000Z"
+    },
+    {
       "id": "wf-cc94c959",
       "title": "Harden quality gates — wire verifiers into flow-done, add pre-release and outstanding-findings checks",
       "type": "fix",
