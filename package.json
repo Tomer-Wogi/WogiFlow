@@ -1,6 +1,6 @@
 {
   "name": "wogiflow",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
