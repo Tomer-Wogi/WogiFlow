@@ -713,7 +713,11 @@ async function pullFromServer(config) {
  * @param {string} text - Suggestion text
  * @param {string} type - idea|bug|improvement (default: idea)
  * @param {Object} config - WogiFlow config
- * @returns {Promise<boolean>} true if submitted (or queued)
+ * @returns {Promise<{delivered: boolean, queued: boolean}|false>}
+ *   - `{ delivered: true, queued: false }` if server accepted it
+ *   - `{ delivered: false, queued: true }` if queued for retry
+ *   - `false` if input was empty
+ *   Object return is truthy for backward compatibility with `if (success)` checks.
  */
 async function submitSuggestion(text, type, config) {
   if (!text || !text.trim()) return false;
@@ -738,15 +742,16 @@ async function submitSuggestion(text, type, config) {
     const result = await httpRequest('POST', `${serverUrl}/api/community/suggest`, suggestion);
 
     if (result && result.statusCode >= 200 && result.statusCode < 300) {
-      return true;
+      return { delivered: true, queued: false };
     }
 
+    // Server returned non-2xx — queue for retry
+    queuePendingSuggestion(suggestion);
+    return { delivered: false, queued: true };
+  } catch {
     // Server unreachable — queue for retry
     queuePendingSuggestion(suggestion);
-    return true; // Queued counts as success from user perspective
-  } catch {
-    queuePendingSuggestion(suggestion);
-    return true;
+    return { delivered: false, queued: true };
   }
 }
 

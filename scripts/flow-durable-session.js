@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse, PATHS } = require('./flow-utils');
+const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse, PATHS, validateTaskId } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
 const { validatePathWithinProject } = require('./flow-security');
 
@@ -1766,12 +1766,36 @@ if (require.main === module) {
       break;
     }
 
+    case 'create': {
+      // v6.0: CLI entry point for creating a durable session
+      // Used by prompt-path bridge and manual invocation
+      const taskId = args[1];
+      if (!taskId) {
+        console.error('Usage: node flow-durable-session.js create <taskId> [title]');
+        process.exit(1);
+      }
+      if (!validateTaskId(taskId).valid) {
+        console.error(`Error: Invalid taskId format: ${taskId} (expected wf-XXXXXXXX)`);
+        process.exit(1);
+      }
+      const title = args.slice(2).join(' ') || taskId;
+      const existing = loadDurableSession();
+      if (existing && existing.taskId === taskId) {
+        console.log(`Session already exists for ${taskId}`);
+      } else {
+        createDurableSession(taskId, 'task', [title]);
+        console.log(`✅ Durable session created for ${taskId}`);
+      }
+      break;
+    }
+
     default:
       console.log('Usage: node flow-durable-session.js <command>');
       console.log('');
       console.log('Commands:');
-      console.log('  status  - Show current session status');
-      console.log('  stats   - Show session statistics');
-      console.log('  clear   - Clear active session');
+      console.log('  status          - Show current session status');
+      console.log('  stats           - Show session statistics');
+      console.log('  clear           - Clear active session');
+      console.log('  create <taskId> - Create a durable session for a task');
   }
 }

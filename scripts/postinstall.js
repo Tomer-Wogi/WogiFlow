@@ -223,6 +223,9 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
     const destPath = path.join(dest, entry.name);
 
     if (entry.isDirectory()) {
+      // Skip _internal directories — these contain project-specific rules
+      // that should not be distributed to user projects
+      if (entry.name.startsWith('_')) continue;
       copyDir(srcPath, destPath, mergeMode, depth + 1);
     } else {
       // In merge mode, skip files that already exist

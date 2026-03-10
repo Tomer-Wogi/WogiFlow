@@ -11,6 +11,22 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-225 | 2026-03-10 19:15
+**Type**: refactor
+**Tags**: #learning-system #decisions #product-feedback #rules
+**Request**: "Product vs project learning separation: create product-feedback.md, clean decisions.md, fix rules distribution, update learning system"
+**Result**: (1) Created `.workflow/state/product-feedback.md` for WogiFlow product-level learnings. (2) Cleaned `decisions.md` from 577→70 lines — removed 8 duplicates and 15 product-level rules. (3) Moved 7 project-specific rules files to `.claude/rules/_internal/`, updated `copyDir()` to skip `_` prefixed dirs. (4) Added Step 0.5 "Product vs Project Classification" to `wogi-decide.md`, `wogi-learn.md`, `wogi-bug.md`, `wogi-correction.md`, and `wogi-start.md` — all learning entry points now classify before writing. (5) Prevention verified: all learning commands route through classification gate before writing to any state file.
+**Files**: `.workflow/state/product-feedback.md`, `.workflow/state/decisions.md`, `.workflow/state/feedback-patterns.md`, `.claude/commands/wogi-decide.md`, `.claude/commands/wogi-learn.md`, `.claude/commands/wogi-bug.md`, `.claude/commands/wogi-correction.md`, `.claude/commands/wogi-start.md`, `.claude/rules/_internal/*` (7 files moved), `lib/utils.js`
+**Task**: wf-9f983be6
+
+### R-224 | 2026-03-10 14:00
+**Type**: fix
+**Tags**: #bugfix:silent-fallback #component:flow-community #component:wogi-suggest
+**Request**: "Fix submitSuggestion() always returning true regardless of delivery status"
+**Result**: Changed `submitSuggestion()` return type from `boolean` to `{ delivered: boolean, queued: boolean }` object. Server 2xx → `{ delivered: true, queued: false }`, server error/unreachable → `{ delivered: false, queued: true }`, empty input → `false`. Object return is truthy for backward compatibility. Updated `wogi-suggest.md` caller to use richer result for accurate user feedback (delivered vs queued). No `submitBug()` function exists — pattern is unique to `submitSuggestion()`.
+**Files**: scripts/flow-community.js, .claude/commands/wogi-suggest.md
+**Task**: wf-a951ef22
+
 ### R-223 | 2026-03-10 12:00
 **Type**: new
 **Tags**: #feature:compatibility #component:flow-health #component:flow-wiring-verifier #component:flow-parallel #docs:compatibility

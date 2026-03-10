@@ -6,6 +6,8 @@
  * Called after tool execution.
  * - Captures observations for ALL tools (automatic memory)
  * - Runs validation (lint, typecheck) for Edit/Write only
+ * - Detects task entering inProgress via ready.json edit and initializes
+ *   durable session, session state tracking, and memory blocks (v6.0)
  */
 
 const { runValidation } = require('../../core/validation');
@@ -64,6 +66,60 @@ async function main() {
       // Non-blocking - observation capture should never fail the hook
       if (process.env.DEBUG) {
         console.error(`[observation-capture] ${err.message}`);
+      }
+    }
+
+    // v6.0: Detect task entering inProgress via ready.json edit
+    // The /wogi-start skill (prompt-level) edits ready.json manually but never
+    // calls flow-start.js, so durable session, session state, and memory blocks
+    // are never initialized. This bridge detects the edit and initializes them.
+    if ((toolName === 'Edit' || toolName === 'Write') && filePath && filePath.endsWith('ready.json') && !toolFailed) {
+      try {
+        const fs = require('fs');
+        const { safeJsonParse } = require('../../../flow-utils');
+        const readyData = safeJsonParse(filePath, null);
+        if (readyData && Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {
+          const task = readyData.inProgress[0];
+          const taskId = task && task.id;
+          if (!taskId) throw new Error('inProgress entry missing id');
+          const taskTitle = task.title || taskId;
+
+          // Check if durable session already exists for this task
+          const { loadDurableSession, createDurableSession } = require('../../../flow-durable-session');
+          const existing = loadDurableSession();
+          if (!existing || existing.taskId !== taskId) {
+            // Initialize durable session
+            const criteria = task.acceptanceCriteria || task.scenarios || [];
+            const steps = Array.isArray(criteria) ? criteria : [];
+            const sessionSteps = steps.length > 0 ? steps : [taskTitle];
+            createDurableSession(taskId, 'task', sessionSteps);
+
+            // Initialize session state tracking
+            try {
+              const { trackTaskStart } = require('../../../flow-session-state');
+              trackTaskStart(taskId, taskTitle);
+            } catch (err) {
+              if (process.env.DEBUG) console.error(`[post-tool-use] trackTaskStart: ${err.message}`);
+            }
+
+            // Initialize memory blocks
+            try {
+              const { setCurrentTask } = require('../../../flow-memory-blocks');
+              setCurrentTask(taskId, taskTitle);
+            } catch (err) {
+              if (process.env.DEBUG) console.error(`[post-tool-use] setCurrentTask: ${err.message}`);
+            }
+
+            if (process.env.DEBUG) {
+              console.error(`[post-tool-use] Initialized durable session for ${taskId} (prompt-path bridge)`);
+            }
+          }
+        }
+      } catch (err) {
+        // Non-blocking — durable session init should never fail the hook
+        if (process.env.DEBUG) {
+          console.error(`[post-tool-use] Durable session bridge: ${err.message}`);
+        }
       }
     }
 

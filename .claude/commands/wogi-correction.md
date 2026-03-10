@@ -36,7 +36,9 @@ This helps avoid similar mistakes.
 **If user selects Yes:**
 1. Create correction file with pre-filled context
 2. Update feedback-patterns.md with pattern count
-3. If pattern count >= 3, prompt for promotion to decisions.md
+3. If pattern count >= 3, classify as product or project (see `/wogi-decide` Step 0.5):
+   - **Product-level** (WogiFlow behavior bug): Fix the command/script/template directly, or add to `.workflow/state/product-feedback.md`
+   - **Project-level** (project-specific pattern): Prompt for promotion to `decisions.md`
 
 **API for scripts:**
 ```javascript

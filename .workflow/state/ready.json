@@ -1,9 +1,39 @@
 {
-  "lastUpdated": "2026-03-10T16:45:09.141Z",
+  "lastUpdated": "2026-03-10T18:30:00.000Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-9f983be6",
+      "title": "Product vs project learning separation: create product-feedback.md, clean decisions.md, fix rules distribution, update learning system",
+      "type": "refactor",
+      "feature": "learning-system",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-10T18:30:00.000Z",
+      "completedAt": "2026-03-10T19:15:00.000Z"
+    },
+    {
+      "id": "wf-0d5681a4",
+      "title": "Fix product-level rules misplaced in project decisions + audit all rules for correct placement",
+      "type": "fix",
+      "feature": "workflow-rules",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-10T18:00:00.000Z",
+      "completedAt": "2026-03-10T18:15:00.000Z"
+    },
+    {
+      "id": "wf-4346026b",
+      "title": "Add correction rules: failed command handling + subtask execution ordering",
+      "type": "chore",
+      "feature": "workflow-rules",
+      "status": "completed",
+      "priority": "P2",
+      "startedAt": "2026-03-10T17:30:00.000Z",
+      "completedAt": "2026-03-10T17:35:00.000Z"
+    },
     {
       "id": "wf-cf977256",
       "title": "Config-as-override refactor: defaults in code, user overrides only",

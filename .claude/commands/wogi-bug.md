@@ -290,16 +290,20 @@ Check if this bug type has a pattern:
 ```
 
 - If pattern exists: increment count
-- If count >= 3: promote to `decisions.md` rule
+- If count >= 3: promote (see Step 3 for product vs project routing)
 - If new pattern: add with count = 1
 
-#### Step 3: Evaluate Prevention Rules
+#### Step 3: Evaluate Prevention Rules (with Product/Project Classification)
+
+**MANDATORY**: Before writing any rule, classify it:
+- **PRODUCT-LEVEL** (bug in WogiFlow itself — commands, hooks, scripts, templates): Fix the WogiFlow base code directly. Add to `.workflow/state/product-feedback.md` if it needs investigation. Do NOT write to `decisions.md`.
+- **PROJECT-LEVEL** (bug specific to this project's code/conventions): Write to `decisions.md`.
 
 Ask yourself:
-1. "Could a coding standard have prevented this?" → Add to `decisions.md`
+1. "Could a coding standard have prevented this?" → Add to `decisions.md` (project) or fix the command/script (product)
 2. "Could a pre-task check have caught this?" → Add to `feedback-patterns.md`
 3. "Could better test coverage have caught this?" → Note in test strategy
-4. "Is this a recurring pattern?" → Create or strengthen a rule
+4. "Is this a recurring pattern?" → Create or strengthen a rule (in the correct location per classification)
 
 #### Step 4: Cross-Reference
 

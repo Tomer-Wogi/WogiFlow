@@ -23,6 +23,34 @@ Auto-routed from `/wogi-start` when user says:
 
 ## How It Works
 
+### Step 0.5: Product vs Project Classification (MANDATORY)
+
+Before promoting ANY pattern, determine where it belongs:
+
+**PRODUCT-LEVEL** (improves WogiFlow for ALL users):
+- Fixes how a `/wogi-*` command behaves → fix the command `.md` file
+- Changes how hooks/scripts work → fix the script code
+- Improves task execution, routing, quality gates → fix wogi-start.md or the relevant command
+- Applies to every project using WogiFlow, not just this one
+
+**PROJECT-LEVEL** (specific to THIS project):
+- Team coding conventions (naming, formatting, architecture preferences)
+- Project-specific procedures (release process, deployment, review checklists)
+- Technology choices unique to this project
+
+**How to decide**: Ask "Would a completely different project using WogiFlow also need this rule?" If YES → product-level. If NO → project-level.
+
+**Product-level actions:**
+- If it's a command behavior fix → edit the `.claude/commands/wogi-*.md` file directly
+- If it's a coding pattern all projects should follow → add to `.claude/rules/` (shipped to users)
+- If it needs investigation → add to `.workflow/state/product-feedback.md`
+- Do NOT write product-level learnings to `decisions.md` — that file is per-project and doesn't propagate
+
+**Project-level actions:**
+- Promote to `.workflow/state/decisions.md` (the normal flow below)
+
+This classification applies to ALL modes (A, B, C) and to Step 3 (Promote a Pattern).
+
 ### Step 1: Load Pattern Data
 
 Read these files:
@@ -85,16 +113,19 @@ Incident: [description from request-log/corrections]
 Root Cause: [analysis]
 Proposed Rule: "[rule statement]"
 
-Should I create this as a project rule?
-1. Yes, create the rule (routes to /wogi-decide flow)
-2. Add to feedback-patterns for monitoring first
-3. Skip — not a recurring issue
+What should we do with this learning?
+1. Create a project rule (routes to /wogi-decide flow)
+2. Fix WogiFlow product behavior (edit command/script/template)
+3. Add to feedback-patterns for monitoring first
+4. Skip — not a recurring issue
 ```
 
 Use `AskUserQuestion` to present options.
 
-If option 1: Invoke `/wogi-decide --from-pattern` with the proposed rule (uses streamlined path). If user cancels within the /wogi-decide sub-flow, return to wogi-learn and display "Rule creation cancelled. Pattern not promoted."
-If option 2: Add to `feedback-patterns.md` Pending Patterns section with count 1.
+If option 1: Invoke `/wogi-decide --from-pattern` with the proposed rule (uses streamlined path, writes to project `decisions.md`). If user cancels within the /wogi-decide sub-flow, return to wogi-learn and display "Rule creation cancelled. Pattern not promoted."
+If option 2: Apply the product-level fix directly — edit the relevant command `.md` file, script, or template. If the fix needs investigation, add to `.workflow/state/product-feedback.md`. Do NOT write to `decisions.md` (product fixes don't belong in per-project state).
+If option 3: Add to `feedback-patterns.md` Pending Patterns section with count 1.
+If option 4: No action taken.
 
 ### Mode C: Bulk Promotion
 
@@ -125,14 +156,18 @@ For each approved pattern, run **Step 3: Promote Pattern**.
 
 Given a pattern to promote:
 
-1. **Extract rule from pattern:**
+1. **Classify as product or project** (per Step 0.5):
+   - If PRODUCT-LEVEL: Do NOT write to `decisions.md`. Instead, fix the relevant command/script/template directly, or add to `.workflow/state/product-feedback.md` if it needs investigation. Skip steps 2-5 below.
+   - If PROJECT-LEVEL: Continue with the normal promotion flow below.
+
+2. **Extract rule from pattern:**
    - Pattern description → Rule statement
    - Pattern count → Evidence for rationale
    - Correction examples → Verification criteria
 
-2. **Delegate duplicate checking to `/wogi-decide --from-pattern`** which handles duplicate detection and the full rule-writing flow. This ensures a single source of truth for all rule-creation logic.
+3. **Delegate duplicate checking to `/wogi-decide --from-pattern`** which handles duplicate detection and the full rule-writing flow. This ensures a single source of truth for all rule-creation logic.
 
-3. **Ask user for any additions:**
+4. **Ask user for any additions:**
 
 ```
 Promoting pattern: [pattern-name]
@@ -150,7 +185,7 @@ Anything to add or change?
 (Press enter to accept as-is, or type modifications)
 ```
 
-4. **Write to decisions.md:**
+5. **Write to decisions.md** (PROJECT-LEVEL only):
    Use the same format as `/wogi-decide`:
 
 ```markdown
@@ -164,7 +199,7 @@ Anything to add or change?
 **Verification**: [how to check]
 ```
 
-5. **Mark as promoted in feedback-patterns.md:**
+6. **Mark as promoted in feedback-patterns.md:**
    Update the pattern's row:
    - Set "Promoted To" column to `decisions.md`
    - Set "Status" column to `PROMOTED`

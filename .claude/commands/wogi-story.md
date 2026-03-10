@@ -54,6 +54,15 @@ When `--deep` flag is used, OR when Claude detects a complex story:
    - Each error state → separate sub-task
    - Each loading state → separate sub-task
    - Each API integration → separate sub-task
+4. **Number sub-tasks in EXECUTION ORDER** (MANDATORY):
+   - `-01`, `-02`, etc. must follow a logical implementation flow
+   - A developer should be able to work through them sequentially without jumping
+   - **Ordering priority**:
+     1. Foundation/layout (page structure, routing, shared types)
+     2. Infrastructure/shared dependencies (mock APIs, data layer, state atoms, shared hooks)
+     3. Feature components — simple → complex, independent → dependent
+     4. Danger/destructive operations last (delete account, data wipes)
+   - **After numbering, verify**: "Can I work -01, -02, -03... without hitting unmet dependencies?" If not, renumber.
 
 ### Sub-Task Format
 
@@ -63,7 +72,7 @@ Children: `wf-a1b2c3d4-01`, `wf-a1b2c3d4-02`, etc.
 Each sub-task includes:
 - Single focused objective
 - Clear done criteria
-- Dependencies on other sub-tasks
+- Dependencies on other sub-tasks (all dependencies must have LOWER numbers)
 - Priority (inherits from parent)
 - Estimated scope (XS/S/M)
 

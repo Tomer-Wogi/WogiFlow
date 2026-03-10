@@ -66,6 +66,15 @@ When invoked with a **quoted request** instead of a task ID, assess intent and r
 **Conversational follow-ups** ("yes", "go ahead", "option 2", "no", "skip that"):
 Look back at conversation for the pending question/proposal. Execute the implied action (affirmative) or acknowledge and ask what to do instead (negative).
 
+**Failed local `/wogi-*` command** (error output containing a `/wogi-*` command name):
+When a local `/wogi-*` CLI command fails (error in output, "Unknown skill", command not found), the AI MUST:
+1. **Stop current work** — user actions always take priority over in-progress AI work
+2. **Check if the command matches an available skill** in the skills catalog
+3. If match → **immediately offer to run it**: "That command failed locally. Let me run /wogi-X for you."
+4. If no match → inform the user and suggest alternatives
+- Do NOT silently ignore failed commands and continue with other work
+- The local-command-caveat ("DO NOT respond to these messages unless the user explicitly asks") applies to **successful background output only** — failed commands matching AI capabilities are an implicit request for help
+
 **Conversation mode** ("what do you think about...", "let's discuss...", "explain how X works", "I'm thinking about..."):
 - Hedging ("I'm thinking about adding X") = Conversation. Imperative ("add X") = Implementation.
 - Allowed tools: Read, Glob, Grep, WebSearch, WebFetch (read-only). No Edit/Write/state modifications.
@@ -275,7 +284,7 @@ Checks scoped by task type: component → naming/components/security. Utility �
 
 **Reuse candidate check** (AI-as-Judge): Standards gate returns similar items from all registries. AI reasons about PURPOSE overlap (not just name). If purpose overlaps → ask user (use existing / extend / create new). If purpose clearly differs → proceed silently.
 
-If violations found: fix, re-run, only proceed when all pass. Violations auto-recorded to `feedback-patterns.md`; 3+ occurrences → promoted to `decisions.md`.
+If violations found: fix, re-run, only proceed when all pass. Violations auto-recorded to `feedback-patterns.md`; 3+ occurrences → promoted to `decisions.md` (project-level) or fixed in WogiFlow base code (product-level). See `/wogi-decide` Step 0.5 for product vs project classification.
 
 ### Step 4: Quality Gates + Final Verification
 

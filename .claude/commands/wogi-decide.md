@@ -24,6 +24,32 @@ Auto-routed from `/wogi-start` when user says:
 
 ## How It Works
 
+### Step 0.5: Product vs Project Classification (MANDATORY)
+
+Before writing ANY rule, determine where it belongs:
+
+**PRODUCT-LEVEL** (improves WogiFlow for ALL users):
+- Fixes how a `/wogi-*` command behaves → fix the command `.md` file
+- Changes how hooks/scripts work → fix the script code
+- Improves task execution, routing, quality gates → fix wogi-start.md or the relevant command
+- Applies to every project using WogiFlow, not just this one
+
+**PROJECT-LEVEL** (specific to THIS project):
+- Team coding conventions (naming, formatting, architecture preferences)
+- Project-specific procedures (release process, deployment, review checklists)
+- Technology choices unique to this project
+
+**How to decide**: Ask "Would a completely different project using WogiFlow also need this rule?" If YES → product-level. If NO → project-level.
+
+**Product-level actions:**
+- If it's a command behavior fix → edit the `.claude/commands/wogi-*.md` file directly
+- If it's a coding pattern all projects should follow → add to `.claude/rules/` (shipped to users)
+- If it needs investigation → add to `.workflow/state/product-feedback.md`
+- Do NOT write product-level learnings to `decisions.md` — that file is per-project and doesn't propagate
+
+**Project-level actions:**
+- Write to `.workflow/state/decisions.md` (the normal flow below)
+
 ### Step 1: Parse the Rule Intent
 
 Extract from the user's input:
