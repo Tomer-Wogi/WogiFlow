@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-09T15:24:52.808Z",
+  "markedAt": "2026-03-10T19:10:16.390Z",
   "context": {
-    "args": "Add removal-impact detection to WogiFlow's verification pipeline. When a type member, export, or union value is removed during a task, the wiring verifier should detect all consumers still referencing the removed item (including string literals, not just import names). This closes the gap where forward wiring checks exist (new file → is it imported?) but reverse checks don't (removed export → are all consumers updated?). This should be part of flow-wiring-verifier.js and run automatically for all WogiFlow users."
+    "args": "Clean up WogiFlow model registry: registry.json has per-model data (languages, bestFor, contextPreferences) that duplicates the more granular capabilities/*.md files. Slim registry.json to infrastructure-only (providers, routing, costTiers, capability taxonomy) and remove per-model knowledge that belongs in capabilities/. This affects all WogiFlow users."
   },
   "status": "pending"
 }

@@ -16,6 +16,29 @@ Future work and deferred phases. Items here are ideas/plans, not yet refined int
 
 <!-- Items to tackle after current work. Ready to be promoted to stories. -->
 
+### WogiFlow Auto-Testing Suite (Epic: wf-eda35519)
+
+**Status:** Planned — Epic created with 6 stories in backlog
+**Created:** 2026-03-10
+**Depends On:** None (extends existing quality gates, WebMCP, project analyzer)
+
+**What It Does:**
+Adds comprehensive auto-testing to WogiFlow: auto-generates tests from spec acceptance criteria during `/wogi-start`, runs them as quality gates on task completion, and provides `/wogi-test` command for on-demand verification. Covers UI testing (Playwright MCP accessibility tree), API testing (direct HTTP, zero dependencies), and data integrity chain (API response ↔ UI rendering).
+
+**Key Principles:**
+- **Conditional/opt-in** — Auto-detected during onboarding, zero overhead when disabled
+- **Zero external accounts** — Playwright is MIT/npm, API tests use native fetch()
+- **Auto-detection** — Project scan determines frontend/backend/fullstack → enables correct test modes
+- **Self-configuring** — `/wogi-test` installs missing dependencies on first use
+
+**Stories (in dependency order):**
+1. `wf-a89f4901` — Testing Infrastructure & Auto-Detection
+2. `wf-63d980fc` — Test Generation Subagent (Step 1.7 in pipeline)
+3. `wf-9024aad9` — UI Testing via Playwright MCP (parallel with 4)
+4. `wf-8df22d40` — API Testing Suite (parallel with 3)
+5. `wf-f640ff98` — Data Integrity Chain (API↔UI)
+6. `wf-eb696bab` — /wogi-test Command & Quality Gate Integration
+
 ### Community Knowledge System — Free User Knowledge Sharing
 
 **Status:** Planned
@@ -564,6 +587,34 @@ Record screen + audio → Extract tasks with visual context → Generate WogiFlo
 ### Move npm to @wogi Organization
 
 **Why deferred**: Current `wogiflow` package works fine. Migration adds complexity (scoped package, update all docs). Consider when team grows or branding matters.
+
+---
+
+### Consolidate Executable Code: Merge .workflow/lib/ and .workflow/bridges/ into scripts/
+
+**Priority**: Medium
+**Status**: Idea — bundle with next major version (2.0)
+**Created**: 2026-03-10
+**Source**: Developer proposal, reviewed and approved for deferral
+
+**Problem:** `.workflow/` mixes executable code (`lib/`, `bridges/`) with project data (`state/`, `config.json`, `templates/`). This violates clean separation of concerns.
+
+**Proposal:** Move all executable code to `scripts/` so `.workflow/` contains ONLY data, state, config, and templates:
+- `.workflow/lib/assumption-detector.js` → `scripts/lib/assumption-detector.js`
+- `.workflow/lib/config-substitution.js` → `scripts/lib/config-substitution.js`
+- `.workflow/lib/failure-categories.js` → `scripts/lib/failure-categories.js`
+- `.workflow/bridges/base-bridge.js` → `scripts/bridges/base-bridge.js`
+- `.workflow/bridges/claude-bridge.js` → `scripts/bridges/claude-bridge.js`
+- `.workflow/bridges/index.js` → `scripts/bridges/index.js`
+
+**Impact:** 6 files to move, 7 import paths to update. Breaking change for installed users.
+
+**Migration strategy:**
+1. Add re-export shims at old paths with deprecation warnings (non-breaking interim step)
+2. In next major version (2.0), remove shims and old paths
+3. Migration script in `postinstall.js` for upgrade path
+
+**Why deferred:** Low ROI for standalone change. No bugs, no confusion, no capability unlocked. Dual-repo coordination needed (wogiflow-cloud imports from free package). Bundle with other 2.0 breaking changes.
 
 ---
 

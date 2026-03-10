@@ -644,6 +644,77 @@
         "enabled": { "type": "boolean", "default": false }
       }
     },
+    "testing": {
+      "type": "object",
+      "description": "Auto-testing suite configuration. Controls UI verification, API testing, and test generation. Disabled by default (zero overhead).",
+      "properties": {
+        "enabled": { "type": "boolean", "description": "Master switch for auto-testing", "default": false },
+        "mode": {
+          "type": "string",
+          "description": "Testing mode: auto (project detection), ui, api, full, unit, off",
+          "enum": ["auto", "ui", "api", "full", "unit", "off"],
+          "default": "auto"
+        },
+        "detected": {
+          "type": "object",
+          "description": "Auto-detected project characteristics (populated during onboard)",
+          "properties": {
+            "projectType": { "type": ["string", "null"], "enum": ["frontend", "backend", "fullstack", "library", null], "default": null },
+            "hasUI": { "type": "boolean", "default": false },
+            "hasAPI": { "type": "boolean", "default": false },
+            "uiFramework": { "type": ["string", "null"], "default": null },
+            "apiFramework": { "type": ["string", "null"], "default": null },
+            "testFramework": { "type": ["string", "null"], "default": null }
+          }
+        },
+        "ui": {
+          "type": "object",
+          "description": "UI testing settings",
+          "properties": {
+            "provider": { "type": "string", "default": "playwright-mcp" },
+            "headless": { "type": "boolean", "default": true },
+            "baseUrl": { "type": "string", "default": "http://localhost:3000" },
+            "startCommand": { "type": ["string", "null"], "default": null },
+            "checkAccessibility": { "type": "boolean", "default": true },
+            "stateChecks": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["empty", "loading", "error", "success"]
+            }
+          }
+        },
+        "api": {
+          "type": "object",
+          "description": "API testing settings",
+          "properties": {
+            "provider": { "type": "string", "default": "direct-http" },
+            "baseUrl": { "type": "string", "default": "http://localhost:3001" },
+            "startCommand": { "type": ["string", "null"], "default": null },
+            "specFile": { "type": ["string", "null"], "default": null }
+          }
+        },
+        "generation": {
+          "type": "object",
+          "description": "Test generation settings",
+          "properties": {
+            "autoGenerate": { "type": "boolean", "default": true },
+            "fromSpec": { "type": "boolean", "default": true },
+            "includeEdgeCases": { "type": "boolean", "default": true },
+            "outputDir": { "type": "string", "default": ".workflow/tests/generated" }
+          }
+        },
+        "qualityGates": {
+          "type": "object",
+          "description": "Testing quality gates",
+          "properties": {
+            "generatedTestsPass": { "type": "boolean", "default": true },
+            "uiVerification": { "type": "boolean", "default": true },
+            "apiVerification": { "type": "boolean", "default": true },
+            "dataIntegrity": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
     "tdd": {
       "type": "object",
       "description": "Test-driven development settings",

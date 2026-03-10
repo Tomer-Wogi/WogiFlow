@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-226 | 2026-03-10 21:30
+**Type**: fix
+**Tags**: #testing #security #quality-gates #review-fix
+**Request**: "Fix 8 review findings from Auto-Testing Suite"
+**Result**: (1) Fixed shell injection in flow-done.js — taskId validated via `validateTaskId()` before interpolation, paths use `JSON.stringify()`. (2) Fixed import paths — `path.join(__dirname, ...)` instead of relative `./scripts/...`. (3) Replaced 7 raw `JSON.parse()` with `safeJsonParse`/`safeJsonParseString` across 3 files. (4) Replaced manual `existsSync`+`readFileSync`+`JSON.parse` with `safeJsonParse(filePath, null)` (handles read+parse safely). (5) Added `timeout: 120000` to all spawnSync calls. (6) Deduplicated uiVerification/apiVerification gates (~80 lines → ~50 lines unified). (7) All 4 files pass `node --check`.
+**Files**: `scripts/flow-done.js`, `scripts/flow-test-api.js`, `scripts/flow-test-generate.js`, `scripts/flow-test-integrity.js`
+**Task**: wf-1a11b65c
+
 ### R-225 | 2026-03-10 19:15
 **Type**: refactor
 **Tags**: #learning-system #decisions #product-feedback #rules

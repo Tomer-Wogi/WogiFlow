@@ -302,11 +302,11 @@ const CONFIG_DEFAULTS = {
   qualityGates: {
     preTaskBaseline: { enabled: false },
     feature: {
-      require: ['loopComplete', 'tests', 'appMapUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
+      require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'appMapUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
       optional: ['review', 'docs', 'webmcpVerification']
     },
     bugfix: {
-      require: ['loopComplete', 'tests', 'requestLogEntry', 'standardsCompliance'],
+      require: ['loopComplete', 'tests', 'generatedTestsPass', 'requestLogEntry', 'standardsCompliance'],
       optional: ['learningEnforcement', 'resolutionPopulated', 'review', 'webmcpVerification']
     },
     refactor: {
@@ -338,6 +338,47 @@ const CONFIG_DEFAULTS = {
   },
   checkpoint: { enabled: false },
   regressionTesting: { enabled: false },
+
+  // --- Testing (Auto-Testing Suite) ---
+  testing: {
+    enabled: false,
+    mode: 'auto',
+    _comment_mode: "auto|ui|api|full|unit|off — 'auto' uses project detection",
+    detected: {
+      projectType: null,
+      hasUI: false,
+      hasAPI: false,
+      uiFramework: null,
+      apiFramework: null,
+      testFramework: null
+    },
+    ui: {
+      provider: 'playwright-mcp',
+      headless: true,
+      baseUrl: 'http://localhost:3000',
+      startCommand: null,
+      checkAccessibility: true,
+      stateChecks: ['empty', 'loading', 'error', 'success']
+    },
+    api: {
+      provider: 'direct-http',
+      baseUrl: 'http://localhost:3001',
+      startCommand: null,
+      specFile: null
+    },
+    generation: {
+      autoGenerate: true,
+      fromSpec: true,
+      includeEdgeCases: true,
+      outputDir: '.workflow/tests/generated'
+    },
+    qualityGates: {
+      generatedTestsPass: true,
+      uiVerification: true,
+      apiVerification: true,
+      dataIntegrity: true
+    }
+  },
 
   // --- Component Reuse ---
   componentReuse: {

@@ -85,6 +85,9 @@ class EnhancedStackWizard {
       // Phase 4.5: Workflow Steps (v2.2)
       await this.askWorkflowSteps();
 
+      // Phase 4.6: Auto-Testing Configuration (v2.3)
+      await this.askAutoTestingConfig();
+
       // Phase 5: Final Summary & Generation
       await this.finalizeAndGenerate();
 
@@ -646,6 +649,115 @@ class EnhancedStackWizard {
   }
 
   // ============================================
+  // PHASE 4.6: Auto-Testing Configuration (v2.3)
+  // ============================================
+
+  async askAutoTestingConfig() {
+    console.log(c('bold', '\n━━━ Auto-Testing Configuration ━━━'));
+    console.log(c('dim', 'WogiFlow can auto-detect and run tests during task execution.\n'));
+
+    // Auto-detect project type if possible
+    let detected = null;
+    try {
+      const { detectProjectType } = require('./flow-project-analyzer');
+      detected = detectProjectType();
+    } catch (err) {
+      // detectProjectType not available — skip auto-detection
+    }
+
+    if (detected) {
+      console.log(c('cyan', 'Detected project type:'));
+      console.log(`  Type: ${c('green', detected.projectType)}`);
+      if (detected.uiFramework) console.log(`  UI Framework: ${c('green', detected.uiFramework)}`);
+      if (detected.apiFramework) console.log(`  API Framework: ${c('green', detected.apiFramework)}`);
+      if (detected.testFramework) console.log(`  Test Framework: ${c('green', detected.testFramework)}`);
+      console.log();
+    }
+
+    console.log('Auto-testing options:');
+    console.log(`  (1) ${c('green', 'Accept')} — Enable auto-testing with detected settings`);
+    console.log(`  (2) Customize — Choose testing mode and settings`);
+    console.log(`  (3) Skip — Disable auto-testing (zero overhead)`);
+    console.log();
+
+    const answer = await this.askQuestion('Your choice [3]: ') || '3';
+
+    if (answer === '3') {
+      // Skip — testing disabled (default)
+      this.selections.autoTesting = {
+        enabled: false,
+        mode: 'off'
+      };
+      console.log(c('dim', '\nAuto-testing disabled. You can enable it later in config.json → testing.'));
+      return;
+    }
+
+    if (answer === '1') {
+      // Accept detected settings
+      const mode = detected
+        ? (detected.hasUI && detected.hasAPI ? 'full' : detected.hasUI ? 'ui' : detected.hasAPI ? 'api' : 'auto')
+        : 'auto';
+
+      this.selections.autoTesting = {
+        enabled: true,
+        mode,
+        detected: detected || null
+      };
+      console.log(c('green', `\nAuto-testing enabled (mode: ${mode}).`));
+      return;
+    }
+
+    if (answer === '2') {
+      // Customize
+      console.log(c('bold', '\n  Testing Mode\n'));
+      const modeOptions = [
+        { key: '1', value: 'auto', label: 'Auto (detect from project)', recommended: true },
+        { key: '2', value: 'ui', label: 'UI only (Playwright MCP)' },
+        { key: '3', value: 'api', label: 'API only (direct HTTP)' },
+        { key: '4', value: 'full', label: 'Full (UI + API + unit)' },
+        { key: '5', value: 'unit', label: 'Unit only (project test runner)' }
+      ];
+
+      const selectedMode = await this.askSingleChoice(
+        'Select testing mode:',
+        modeOptions,
+        'auto'
+      );
+
+      // Ask about UI settings if applicable
+      let uiBaseUrl = 'http://localhost:3000';
+      let apiBaseUrl = 'http://localhost:3001';
+
+      if (['auto', 'ui', 'full'].includes(selectedMode)) {
+        const customUrl = await this.askQuestion(`\n  UI base URL [${uiBaseUrl}]: `);
+        if (customUrl) uiBaseUrl = customUrl;
+      }
+
+      if (['auto', 'api', 'full'].includes(selectedMode)) {
+        const customUrl = await this.askQuestion(`  API base URL [${apiBaseUrl}]: `);
+        if (customUrl) apiBaseUrl = customUrl;
+      }
+
+      this.selections.autoTesting = {
+        enabled: true,
+        mode: selectedMode,
+        detected: detected || null,
+        uiBaseUrl,
+        apiBaseUrl
+      };
+
+      console.log(c('green', `\nAuto-testing enabled (mode: ${selectedMode}).`));
+      return;
+    }
+
+    // Default fallback — disable
+    this.selections.autoTesting = {
+      enabled: false,
+      mode: 'off'
+    };
+  }
+
+  // ============================================
   // PHASE 5: Final Summary & Generation
   // ============================================
 
@@ -693,6 +805,16 @@ class EnhancedStackWizard {
 
     if (this.selections.aiConfigured) {
       console.log(c('dim', '\n  Auto-configured with AI recommendations'));
+    }
+
+    // Show auto-testing config
+    if (this.selections.autoTesting) {
+      const at = this.selections.autoTesting;
+      if (at.enabled) {
+        console.log(`\nAuto-Testing: ${c('green', 'Enabled')} (mode: ${at.mode})`);
+      } else {
+        console.log(`\nAuto-Testing: ${c('dim', 'Disabled')}`);
+      }
     }
 
     // Show workflow steps

@@ -1,9 +1,182 @@
 {
-  "lastUpdated": "2026-03-10T18:30:00.000Z",
+  "lastUpdated": "2026-03-10T19:08:07.563Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-1a11b65c",
+      "title": "Fix 8 review findings from Auto-Testing Suite",
+      "type": "fix",
+      "level": "L2",
+      "description": "Fix shell injection, raw JSON.parse, missing timeouts, dead variables, and deduplicate gate pattern in auto-testing suite code.",
+      "acceptanceCriteria": [
+        "AC1: Shell injection fixed in flow-done.js — taskId validated before interpolation",
+        "AC2: Import paths corrected in flow-done.js spawned node processes",
+        "AC3: All 7 raw JSON.parse replaced with safeJsonParse from flow-utils",
+        "AC4: Missing try-catch added to fs.readFileSync in flow-test-api.js",
+        "AC5: spawnSync calls in flow-done.js have timeout: 120000",
+        "AC6: Dead counter variables removed from flow-test-integrity.js",
+        "AC7: All modified files pass node --check syntax verification"
+      ],
+      "files": [
+        "scripts/flow-done.js",
+        "scripts/flow-test-api.js",
+        "scripts/flow-test-generate.js",
+        "scripts/flow-test-integrity.js"
+      ],
+      "completedAt": "2026-03-10T19:08:07.563Z"
+    },
+    {
+      "id": "wf-eb696bab",
+      "title": "/wogi-test Command & Quality Gate Integration",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Create /wogi-test command (wogi-test.md) with flags: --all, --ui, --api, --integrity, --setup, --generate. Self-configures on first use if testing not enabled. Add 3 new quality gates to flow-done.js: generatedTestsPass, uiVerification, apiVerification. Gates are no-op when testing disabled.",
+      "acceptanceCriteria": [
+        "AC1: /wogi-test works as standalone command with all flags",
+        "AC2: Self-configures on first use if testing not yet enabled",
+        "AC3: Three new quality gates added to flow-done.js, no-op when disabled",
+        "AC4: Gates produce structured JSON reports in .workflow/verifications/",
+        "AC5: /wogi-test --setup re-runs detection and reconfigures",
+        "AC6: Integration with /wogi-review — test coverage section added to review output"
+      ],
+      "dependencies": [
+        "wf-9024aad9",
+        "wf-8df22d40",
+        "wf-f640ff98"
+      ],
+      "files": [
+        ".claude/commands/wogi-test.md",
+        "scripts/flow-done.js"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:41:01.348Z"
+    },
+    {
+      "id": "wf-f640ff98",
+      "title": "Data Integrity Chain (API↔UI)",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Cross-reference API response data against rendered UI accessibility tree. For each API endpoint that maps to a UI page, verify every response field appears in rendered output. Catches missing-data-on-screen bugs. Only for testing.mode:full (fullstack projects).",
+      "acceptanceCriteria": [
+        "AC1: For each API endpoint mapping to a UI page, data integrity test auto-generated",
+        "AC2: Every field from API response checked against rendered accessibility tree",
+        "AC3: Missing fields reported with exact path (which API field, which page)",
+        "AC4: Handles async rendering (waits for loading state to resolve before asserting)",
+        "AC5: Only runs for fullstack projects (testing.mode:full)"
+      ],
+      "dependencies": [
+        "wf-9024aad9",
+        "wf-8df22d40"
+      ],
+      "files": [
+        "scripts/flow-test-integrity.js"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:37:30.411Z"
+    },
+    {
+      "id": "wf-8df22d40",
+      "title": "API Testing Suite",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Create flow-test-api.js for direct HTTP API testing. Zero external dependencies (uses native fetch). Driven by api-map.md endpoints and spec criteria. Optional OpenAPI schema validation. Tests happy path, error codes, edge cases.",
+      "acceptanceCriteria": [
+        "AC1: API tests execute via native fetch() — zero external dependencies",
+        "AC2: Endpoints from api-map.md automatically included in test coverage",
+        "AC3: OpenAPI spec (when available) used for response schema validation",
+        "AC4: Error codes tested: 400, 401, 403, 404, 422, 500 based on endpoint type",
+        "AC5: Test data setup/teardown handled",
+        "AC6: API server started/stopped automatically"
+      ],
+      "dependencies": [
+        "wf-a89f4901"
+      ],
+      "files": [
+        "scripts/flow-test-api.js"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:33:42.995Z"
+    },
+    {
+      "id": "wf-9024aad9",
+      "title": "UI Testing via Playwright MCP",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Integrate Microsoft Playwright MCP server for accessibility-tree-based UI verification. Create flow-test-ui.js that starts dev server, connects Playwright MCP, executes test flows, reads accessibility tree snapshots, runs Axe a11y scan, produces JSON reports.",
+      "acceptanceCriteria": [
+        "AC1: Playwright MCP server auto-configured in settings when testing enabled",
+        "AC2: UI tests navigate pages, read accessibility tree, assert data presence",
+        "AC3: State coverage verified (empty/loading/error/success) for each component",
+        "AC4: Axe accessibility scan runs and reports violations (non-blocking default)",
+        "AC5: Dev server started/stopped automatically via configurable command",
+        "AC6: Test report includes pass/fail per assertion with structured evidence"
+      ],
+      "dependencies": [
+        "wf-a89f4901"
+      ],
+      "files": [
+        "scripts/flow-test-ui.js",
+        ".claude/commands/wogi-test-browser.md"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:33:42.991Z"
+    },
+    {
+      "id": "wf-63d980fc",
+      "title": "Test Generation Subagent",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Create subagent prompt (.claude/commands/wogi-test-generate.md) that translates spec Given/When/Then criteria into test files. Add Step 1.7 to wogi-start pipeline between spec approval and TodoWrite. Generates unit/api/ui tests matching project conventions.",
+      "acceptanceCriteria": [
+        "AC1: Subagent generates test files from spec criteria with correct test framework syntax",
+        "AC2: Generated tests match project existing test patterns (import style, describe/it, assertion lib)",
+        "AC3: Edge cases auto-generated (empty, error, loading states) beyond explicit spec",
+        "AC4: For fullstack criteria, generates data integrity tests (call API + verify UI)",
+        "AC5: Generated tests fail before implementation, pass after (TDD validation)",
+        "AC6: When testing.generation.autoGenerate:false, step is skipped entirely"
+      ],
+      "dependencies": [
+        "wf-a89f4901"
+      ],
+      "files": [
+        ".claude/commands/wogi-test-generate.md",
+        ".claude/commands/wogi-start.md",
+        "scripts/flow-test-generate.js"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:29:02.297Z"
+    },
+    {
+      "id": "wf-a89f4901",
+      "title": "Testing Infrastructure & Auto-Detection",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-eda35519",
+      "description": "Extend flow-project-analyzer.js with detectProjectType(), extend flow-stack-wizard.js with testing config step, create flow-testing-deps.js (lazy dependency installer), extend config.schema.json with testing section, extend onboard/init to set testing.enabled and testing.mode based on project scan. Zero overhead when disabled.",
+      "acceptanceCriteria": [
+        "AC1: detectProjectType() correctly identifies frontend-only, backend-only, fullstack, and library projects",
+        "AC2: Stack wizard shows testing config step with accept/customize/skip options",
+        "AC3: flow-testing-deps.js installs missing packages on demand only",
+        "AC4: config.testing section populated during onboard, defaults to enabled:false",
+        "AC5: Zero overhead — when testing.enabled:false, no testing code executes"
+      ],
+      "dependencies": [],
+      "files": [
+        "scripts/flow-project-analyzer.js",
+        "scripts/flow-stack-wizard.js",
+        "scripts/flow-testing-deps.js",
+        "config.schema.json"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-10T18:24:39.932Z"
+    },
     {
       "id": "wf-9f983be6",
       "title": "Product vs project learning separation: create product-feedback.md, clean decisions.md, fix rules distribution, update learning system",

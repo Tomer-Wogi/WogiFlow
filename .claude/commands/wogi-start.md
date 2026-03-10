@@ -217,6 +217,15 @@ For medium/large tasks (check `config.specificationMode`):
 Approval phrases: approved, proceed, looks good, lgtm, go ahead, yes, continue, start.
 L2/L3 skip this gate.
 
+### Step 1.7: Test Generation (when `config.testing.enabled` and `config.testing.generation.autoGenerate`)
+
+When testing is enabled and auto-generation is on:
+1. Run `node node_modules/wogiflow/scripts/flow-test-generate.js wf-XXXXXXXX` to parse spec and generate test scaffolds
+2. Review output: number of test files created, criteria coverage, edge cases
+3. If tests were generated, add "Make generated tests pass" to TodoWrite items in Step 2
+4. During implementation (Step 3), verify generated tests fail before implementation and pass after
+5. If `testing.generation.autoGenerate: false` or `testing.enabled: false`, skip this step entirely
+
 ### Step 2: Decompose into TodoWrite
 
 Each acceptance criterion → TodoWrite item. Also add: update request-log, update maps, run quality gates, commit.

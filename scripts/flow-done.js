@@ -18,6 +18,7 @@ const {
   readFile,
   readJson,
   safeJsonParse,
+  safeJsonParseString,
   writeJson,
   color,
   success,
@@ -526,6 +527,103 @@ function runQualityGates(taskId, taskType) {
         } // end jsFiles.length > 0
       } catch (err) {
         console.log(`  ${color('yellow', '○')} smokeTest (could not run: ${truncateOutput(err.message, 3, 200)})`);
+      }
+    } else if (gate === 'generatedTestsPass') {
+      if (config.testing?.enabled && config.testing?.generation?.autoGenerate) {
+        if (!validateTaskId(taskId)) {
+          console.log(`  ${color('yellow', '⚠')} generatedTestsPass (invalid task ID)`);
+        } else {
+          const testDir = path.join(PATHS.workflow, 'tests', 'generated', taskId);
+          if (fs.existsSync(testDir)) {
+            console.log('  Running generated tests...');
+            if (config.scripts?.test) {
+              const result = spawnSync('npm', ['test', '--', testDir], {
+                encoding: 'utf-8',
+                stdio: ['pipe', 'pipe', 'pipe'],
+                timeout: 120000
+              });
+              if (result.status === 0) {
+                console.log(`  ${color('green', '✓')} generatedTestsPass`);
+              } else {
+                console.log(`  ${color('red', '✗')} generatedTestsPass`);
+                const errorOutput = result.stderr || result.stdout || '';
+                if (errorOutput) {
+                  console.log(color('dim', '  Error output:'));
+                  const truncated = truncateOutput(errorOutput, 15, 800);
+                  truncated.split('\n').forEach(line => {
+                    console.log(color('dim', `    ${line}`));
+                  });
+                }
+                errors.generatedTestsPass = errorOutput;
+                failed.push('generatedTestsPass');
+              }
+            } else {
+              console.log(`  ${color('yellow', '○')} generatedTestsPass (no test command configured)`);
+            }
+          } else {
+            console.log(`  ${color('yellow', '○')} generatedTestsPass (no generated tests found)`);
+          }
+        }
+      } else {
+        console.log(`  ${color('dim', '·')} generatedTestsPass (testing disabled)`);
+      }
+    } else if (gate === 'uiVerification' || gate === 'apiVerification') {
+      const isUI = gate === 'uiVerification';
+      const gateModes = isUI ? ['ui', 'full', 'auto'] : ['api', 'full', 'auto'];
+      const testingMode = config.testing?.mode || 'off';
+      if (config.testing?.enabled && gateModes.includes(testingMode)) {
+        if (!validateTaskId(taskId)) {
+          console.log(`  ${color('yellow', '⚠')} ${gate} (invalid task ID)`);
+        } else {
+          try {
+            const label = isUI ? 'UI' : 'API';
+            console.log(`  Running ${label} verification...`);
+            const scriptPath = isUI
+              ? path.join(__dirname, 'flow-test-ui.js')
+              : path.join(__dirname, 'flow-test-api.js');
+            const fnName = isUI ? 'runUITests' : 'runAPITests';
+            const testResult = spawnSync('node', ['-e', [
+              `const { ${fnName} } = require(${JSON.stringify(scriptPath)});`,
+              `${fnName}(${JSON.stringify(taskId)}).then(r => {`,
+              '  process.stdout.write(JSON.stringify(r));',
+              '  process.exit(r.summary && r.summary.failed > 0 ? 1 : 0);',
+              '}).catch(err => {',
+              '  process.stdout.write(JSON.stringify({ error: err.message, summary: { passed: 0, failed: 0, total: 0 } }));',
+              '  process.exit(2);',
+              '});'
+            ].join('\n')], {
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe'],
+              cwd: process.cwd(),
+              timeout: 120000
+            });
+            if (testResult.status === 2) {
+              const parsed = safeJsonParseString(testResult.stdout, {});
+              const errMsg = parsed.error || 'Unknown error';
+              console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${errMsg})`);
+            } else {
+              const report = safeJsonParseString(testResult.stdout || '{}', {});
+              const summary = report.summary || { passed: 0, failed: 0, total: 0 };
+              if (summary.failed === 0) {
+                console.log(`  ${color('green', '✓')} ${gate} (${summary.passed}/${summary.total} passed)`);
+              } else {
+                console.log(`  ${color('red', '✗')} ${gate} (${summary.failed} failed)`);
+                const failedItems = isUI
+                  ? (report.assertions || []).filter(a => a.status === 'failed')
+                  : (report.endpoints || []).flatMap(e => (e.tests || []).filter(t => t.status === 'failed'));
+                for (const item of failedItems.slice(0, 5)) {
+                  console.log(color('dim', `    - ${item.description || item.name || 'test failed'}`));
+                }
+                errors[gate] = JSON.stringify(failedItems);
+                failed.push(gate);
+              }
+            }
+          } catch (err) {
+            console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${err.message})`);
+          }
+        }
+      } else {
+        console.log(`  ${color('dim', '·')} ${gate} (testing disabled or mode excludes ${isUI ? 'UI' : 'API'})`);
       }
     } else {
       console.log(`  ${color('yellow', '○')} ${gate} (manual check)`);

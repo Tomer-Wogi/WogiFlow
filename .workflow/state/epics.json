@@ -70,8 +70,28 @@
       "progress": 1,
       "createdAt": "2026-03-04T14:13:04.732Z",
       "updatedAt": "2026-03-04T14:25:05.699Z"
+    },
+    "wf-eda35519": {
+      "id": "wf-eda35519",
+      "title": "WogiFlow Auto-Testing Suite",
+      "description": "Comprehensive auto-testing system: auto-generates tests from specs, UI testing via Playwright MCP, API testing via direct HTTP, data integrity chain (API↔UI), /wogi-test command, and quality gate integration. Conditional/opt-in — auto-detected during onboarding, zero overhead when disabled.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-a89f4901",
+        "wf-63d980fc",
+        "wf-9024aad9",
+        "wf-8df22d40",
+        "wf-f640ff98",
+        "wf-eb696bab"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-03-10T18:14:05.255Z",
+      "updatedAt": "2026-03-10T18:41:01.415Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-04T14:25:05.700Z"
+  "lastUpdated": "2026-03-10T18:41:01.416Z"
 }

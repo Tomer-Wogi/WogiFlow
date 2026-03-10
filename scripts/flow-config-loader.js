@@ -89,7 +89,7 @@ const KNOWN_NESTED_KEYS = {
   hybrid: ['enabled', 'provider', 'providerEndpoint', 'model', 'settings', 'maxContextTokens', 'apiKey'],
   parallel: ['enabled', 'maxConcurrent', 'autoApprove', 'requireWorktree', 'showProgress'],
   worktree: ['enabled', 'autoCleanupHours', 'keepOnFailure', 'squashOnMerge'],
-  testing: ['runAfterTask', 'runBeforeCommit', 'command'],
+  testing: ['enabled', 'mode', '_comment_mode', 'detected', 'ui', 'api', 'generation', 'qualityGates'],
   learning: ['autoPromote', 'enabled', 'threshold', 'mode'],
   qualityGates: ['feature', 'bugfix'],
   autoContext: ['enabled', 'maxFiles', 'searchDepth'],

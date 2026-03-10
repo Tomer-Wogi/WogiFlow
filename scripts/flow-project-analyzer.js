@@ -510,6 +510,184 @@ function detectExcludeTypePatterns() {
 }
 
 // ============================================================
+// Project Type Detection (for Auto-Testing Suite)
+// ============================================================
+
+/** UI framework indicators in package.json dependencies */
+const UI_FRAMEWORK_DEPS = {
+  react: 'react',
+  vue: 'vue',
+  svelte: 'svelte',
+  angular: '@angular/core',
+  next: 'next',
+  nuxt: 'nuxt',
+  gatsby: 'gatsby',
+  remix: '@remix-run/react',
+  'react-native': 'react-native',
+  expo: 'expo',
+  solid: 'solid-js',
+  qwik: '@builder.io/qwik'
+};
+
+/** API/backend framework indicators in package.json dependencies */
+const API_FRAMEWORK_DEPS = {
+  express: 'express',
+  fastify: 'fastify',
+  koa: 'koa',
+  hono: 'hono',
+  nestjs: '@nestjs/core',
+  hapi: '@hapi/hapi'
+};
+
+/** Test framework indicators in package.json devDependencies */
+const TEST_FRAMEWORK_DEPS = {
+  jest: 'jest',
+  vitest: 'vitest',
+  mocha: 'mocha',
+  playwright: '@playwright/test',
+  cypress: 'cypress',
+  'testing-library': '@testing-library/react'
+};
+
+/** Directory indicators for UI presence */
+const UI_DIRECTORIES = [
+  'src/components', 'src/pages', 'app', 'pages', 'src/views',
+  'src/screens', 'src/ui'
+];
+
+/** Directory indicators for API/backend presence */
+const API_DIRECTORIES = [
+  'routes', 'api', 'controllers', 'server', 'src/routes',
+  'src/controllers', 'src/api'
+];
+
+/** File indicators for API presence */
+const API_FILES = ['openapi.yaml', 'openapi.json', 'swagger.json', 'swagger.yaml'];
+
+/**
+ * Detect project type from package.json dependencies and directory structure.
+ *
+ * Returns an object describing the project:
+ *   { hasUI, hasAPI, projectType, uiFramework, apiFramework, testFramework }
+ *
+ * projectType is one of: "frontend", "backend", "fullstack", "library"
+ *
+ * @param {string} [projectRoot] - Project root (defaults to module-level PROJECT_ROOT)
+ * @returns {{ hasUI: boolean, hasAPI: boolean, projectType: string, uiFramework: string|null, apiFramework: string|null, testFramework: string|null }}
+ */
+function detectProjectType(projectRoot) {
+  const root = projectRoot || PROJECT_ROOT;
+  const result = {
+    hasUI: false,
+    hasAPI: false,
+    projectType: 'library',
+    uiFramework: null,
+    apiFramework: null,
+    testFramework: null
+  };
+
+  // --- Read package.json ---
+  const packageJsonPath = path.join(root, 'package.json');
+  let deps = {};
+  let devDeps = {};
+
+  try {
+    if (fs.existsSync(packageJsonPath)) {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      deps = pkg.dependencies || {};
+      devDeps = pkg.devDependencies || {};
+    }
+  } catch (err) {
+    // package.json read/parse failure — continue with empty deps
+  }
+
+  const allDeps = { ...deps, ...devDeps };
+
+  // --- Detect UI framework ---
+  for (const [name, depKey] of Object.entries(UI_FRAMEWORK_DEPS)) {
+    if (deps[depKey] || devDeps[depKey]) {
+      result.hasUI = true;
+      // Use the existing detectUIFramework() for the canonical name when possible,
+      // but only if we haven't set one yet (first match wins by priority order)
+      if (!result.uiFramework) {
+        result.uiFramework = name;
+      }
+    }
+  }
+
+  // --- Detect API framework ---
+  for (const [name, depKey] of Object.entries(API_FRAMEWORK_DEPS)) {
+    if (deps[depKey] || devDeps[depKey]) {
+      result.hasAPI = true;
+      if (!result.apiFramework) {
+        result.apiFramework = name;
+      }
+    }
+  }
+
+  // --- Directory-based detection (supplement dependency detection) ---
+  if (!result.hasUI) {
+    for (const dir of UI_DIRECTORIES) {
+      const fullPath = path.join(root, dir);
+      try {
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+          result.hasUI = true;
+          break;
+        }
+      } catch (err) {
+        // stat failure — skip
+      }
+    }
+  }
+
+  if (!result.hasAPI) {
+    for (const dir of API_DIRECTORIES) {
+      const fullPath = path.join(root, dir);
+      try {
+        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+          result.hasAPI = true;
+          break;
+        }
+      } catch (err) {
+        // stat failure — skip
+      }
+    }
+  }
+
+  // --- API file indicators ---
+  if (!result.hasAPI) {
+    for (const file of API_FILES) {
+      if (fs.existsSync(path.join(root, file))) {
+        result.hasAPI = true;
+        break;
+      }
+    }
+  }
+
+  // --- Detect test framework ---
+  for (const [name, depKey] of Object.entries(TEST_FRAMEWORK_DEPS)) {
+    if (allDeps[depKey]) {
+      if (!result.testFramework) {
+        result.testFramework = name;
+      }
+    }
+  }
+
+  // --- Determine project type ---
+  if (result.hasUI && result.hasAPI) {
+    result.projectType = 'fullstack';
+  } else if (result.hasUI && !result.hasAPI) {
+    result.projectType = 'frontend';
+  } else if (!result.hasUI && result.hasAPI) {
+    result.projectType = 'backend';
+  } else {
+    result.projectType = 'library';
+  }
+
+  return result;
+}
+
+// ============================================================
 // Constants (avoids magic numbers scattered through analysis)
 // ============================================================
 const FILE_SAMPLE_LIMIT = 20;       // Max files to sample for convention detection
@@ -1024,6 +1202,7 @@ module.exports = {
   detectUIFramework,
   detectDataFetchingLibrary,
   detectStylingApproach,
+  detectProjectType,
   scanComponentExports,
   generateComponentGlobPatterns,
   generateFrameworkConfig,
