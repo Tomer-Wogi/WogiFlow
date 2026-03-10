@@ -121,6 +121,8 @@ git branch -d <branch>
 
 **If worktree mode**: Use `flow-worktree.js` `commitAndMerge()` which handles all of this.
 
+**If Claude Code worktree** (EnterWorktree session): Use the `ExitWorktree` tool (Claude Code 2.1.72+) to cleanly leave the worktree session after merging. This is preferred over manual git worktree cleanup when operating inside a Claude Code-managed worktree.
+
 **Config**: `config.worktree.squashOnMerge` controls squash behavior (default: true).
 
 After merge, ask:
@@ -202,8 +204,8 @@ git checkout master
 # Delete branch
 git branch -D <branch>
 
-# If worktree, also remove worktree
-# Uses flow-worktree.js discardWorktree()
+# If WogiFlow worktree: uses flow-worktree.js discardWorktree()
+# If Claude Code worktree (EnterWorktree): use ExitWorktree tool to cleanly exit
 ```
 
 ## Integration with Task Completion

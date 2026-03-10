@@ -105,6 +105,19 @@ When epic creation adds 2+ stories to ready.json and `config.bulkOrchestrator.en
 
 Non-blocking if transition fails.
 
+### Effort Level Optimization (Claude Code 2.1.72+)
+
+After task level classification (L0-L3), set the reasoning effort level to optimize token usage:
+
+| Task Level | Effort | Rationale |
+|------------|--------|-----------|
+| L0 (Epic) | high | Complex planning, multi-file architecture |
+| L1 (Story) | high | Multi-criteria implementation |
+| L2 (Task) | medium | Standard 1-5 file changes |
+| L3 (Subtask) | low | Single file, trivial change |
+
+This is advisory — Claude Code 2.1.72 simplified effort to low/medium/high (removed "max"). The AI should adjust its reasoning depth accordingly during implementation phases.
+
 ### Task Checkpoints (when `config.proactiveCompaction.enabled`)
 
 At each phase boundary: save checkpoint to `.workflow/state/task-checkpoint.json` (task ID, phase, completed scenarios, changed files, verification results). If context >= `triggerThreshold` (75%), run `/wogi-compact` before proceeding.

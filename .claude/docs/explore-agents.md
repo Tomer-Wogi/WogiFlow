@@ -195,7 +195,14 @@ Return:
 
 ## Launching
 
-All agents launch in parallel as `Agent(subagent_type=Explore)` calls in a single message. When `config.hybrid.enabled`, use `model` parameter to route (explore → sonnet, search → haiku, judging → opus).
+All agents launch in parallel as `Agent(subagent_type=Explore)` calls in a single message. When `config.hybrid.enabled`, use the `model` parameter on each Agent call to route by task type:
+
+```
+Agent(subagent_type=Explore, model="sonnet")   # Agents 1-6: Codebase analysis, research
+Agent(subagent_type=Explore, model="haiku")     # Lightweight search/grep-only agents
+```
+
+The `model` parameter was restored in Claude Code 2.1.72 for per-invocation overrides. This enables true hybrid explore where routine agents run on cheaper models while complex reasoning stays on Opus.
 
 ## Graceful Fallback
 

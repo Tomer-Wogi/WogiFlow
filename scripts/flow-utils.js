@@ -1046,6 +1046,56 @@ function addAppMapComponent(component) {
 }
 
 // ============================================================
+// CLI Tool Detection (Claude Code 2.1.72+ compatibility)
+// ============================================================
+
+const { execFileSync } = require('child_process');
+
+/**
+ * Compare a parsed semver against a required minimum.
+ * Eliminates repeated inline version comparison logic.
+ *
+ * @param {number} major - Parsed major version
+ * @param {number} minor - Parsed minor version
+ * @param {number} patch - Parsed patch version
+ * @param {number} rMajor - Required major
+ * @param {number} rMinor - Required minor
+ * @param {number} rPatch - Required patch
+ * @returns {boolean}
+ */
+function meetsVersion(major, minor, patch, rMajor, rMinor, rPatch) {
+  return major > rMajor ||
+    (major === rMajor && minor > rMinor) ||
+    (major === rMajor && minor === rMinor && patch >= rPatch);
+}
+
+/**
+ * Detect if fd or fdfind is available on the system.
+ * fd/fdfind is auto-approved in Claude Code 2.1.72+ bash allowlist,
+ * making it a better choice than find for reduced permission prompts.
+ *
+ * Uses execFileSync (not execSync) per security rule 8.
+ * Result is memoized for the process lifetime.
+ *
+ * @returns {string|false} The fd command name ('fd' or 'fdfind'), or false if unavailable
+ */
+let _fdCommand = null;
+function getFdCommand() {
+  if (_fdCommand !== null) return _fdCommand;
+  for (const cmd of ['fd', 'fdfind']) {
+    try {
+      execFileSync(cmd, ['--version'], { stdio: 'pipe', timeout: 3000 });
+      _fdCommand = cmd;
+      return cmd;
+    } catch {
+      // Not available
+    }
+  }
+  _fdCommand = false;
+  return false;
+}
+
+// ============================================================
 // Git Operations
 // ============================================================
 
@@ -2064,6 +2114,10 @@ module.exports = {
   // Safe Search (Claude Code 2.1.23+ compatibility)
   safeGrepSearch,
   SEARCH_DEFAULTS,
+
+  // CLI Tool Detection (Claude Code 2.1.72+ compatibility)
+  meetsVersion,
+  getFdCommand,
 };
 
 // ============================================================

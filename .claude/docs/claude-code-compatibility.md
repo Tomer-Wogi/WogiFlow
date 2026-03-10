@@ -64,7 +64,8 @@ flow parallel check  # See available parallel tasks
 | 1.0.46+ | 2.1.20+ | Task deletion, improved compaction |
 | 1.2.0+ | 2.1.33+ | TaskCompleted hook, agent frontmatter |
 | 1.3.0+ | 2.1.33+ | WebMCP integration, model registry (Opus 4.6/Sonnet 4.6) |
-| 1.5.0+ | latest | ConfigChange hook, native worktree awareness, settings.json plugin, Sonnet 4.6 1M context |
+| 1.5.0+ | 2.1.50+ | ConfigChange hook, native worktree awareness, settings.json plugin, Sonnet 4.6 1M context |
+| 1.9.1+ | 2.1.72+ | ExitWorktree, Agent model param, effort levels, /plan description, fd auto-approval, prompt cache fix |
 
 ### Environment Variables (2.1.19+)
 
@@ -168,6 +169,21 @@ await cancelTask('wf-123', 'superseded', false);
 - **Managed settings hierarchy**: `disableAllHooks` now respects managed settings hierarchy - non-managed settings cannot disable managed hooks set by policy. WogiFlow hooks in `settings.json` (shared) are protected from user disabling via this mechanism.
 - **Background agent improvements**: Ctrl+F kills background agents (two-press confirmation). Ctrl+C/ESC no longer silently ignored when background agents are running.
 - **MCP startup performance**: Auth failure caching and batched tool token counting improve startup when WogiFlow's MCP servers are configured.
+
+### Features in 2.1.72+
+
+- **ExitWorktree tool**: New tool to cleanly leave an EnterWorktree session. WogiFlow's `/wogi-finalize` now references ExitWorktree for Claude Code-managed worktree cleanup. Use ExitWorktree instead of manual git worktree commands when inside a Claude Code worktree session.
+- **Agent model parameter restored**: The `model` parameter on the Agent tool now supports per-invocation overrides (`"sonnet"`, `"opus"`, `"haiku"`). WogiFlow's explore agents can now route to cheaper models for routine analysis while keeping complex reasoning on Opus. See `.claude/docs/explore-agents.md` for model routing guidance.
+- **Simplified effort levels**: Effort levels simplified to low/medium/high (removed "max"). New symbols: `○ ◐ ●`. Use `/effort auto` to reset. WogiFlow maps task levels to effort: L3→low, L2→medium, L1/L0→high.
+- **/plan description argument**: `/plan` now accepts an optional description that immediately starts plan mode on the topic. WogiFlow's `/wogi-plan` can pass descriptions through to enter plan mode contextually.
+- **New auto-approved Bash commands**: `lsof`, `pgrep`, `tput`, `ss`, `fd`, `fdfind` added to bash auto-approval allowlist. WogiFlow now uses `fd`/`fdfind` (with `find` fallback) for faster file search in the wiring verifier, and `lsof` in health diagnostics — all without permission prompts.
+- **Prompt cache fix**: Fixed prompt cache invalidation in SDK query() calls, reducing input token costs up to 12x. WogiFlow's heavy context loading (CLAUDE.md + state files + specs) benefits significantly.
+- **Parallel tool resilience**: Failed Read/WebFetch/Glob no longer cascades to cancel sibling tool calls — only Bash errors cascade. WogiFlow's parallel explore agents are now more resilient.
+- **Worktree isolation fixes**: Task resume correctly restores cwd in worktrees; background task notifications now include worktreePath and worktreeBranch. WogiFlow's parallel execution with worktree isolation is now production-ready.
+- **Skill hooks firing twice**: Fixed skill hooks firing twice per event. WogiFlow hooks (which are hooks-enabled) no longer double-fire.
+- **CLAUDE.md HTML comments hidden**: HTML comments (`<!-- ... -->`) in CLAUDE.md are now hidden from Claude when auto-injected (still visible via Read tool). WogiFlow's templates and state files verified as unaffected — no HTML comments are used in generated CLAUDE.md or injected context.
+- **/clear safety**: `/clear` no longer kills background agent/bash tasks. WogiFlow's background research agents survive user `/clear`.
+- **CLAUDE_CODE_DISABLE_CRON**: New env var to immediately stop scheduled cron jobs mid-session.
 
 ### Simple Mode Naming Distinction
 
@@ -302,4 +318,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-03-10*

@@ -31,7 +31,8 @@ const {
   warn,
   error,
   info,
-  color
+  color,
+  getFdCommand
 } = require('./flow-utils');
 
 // ============================================================
@@ -324,34 +325,52 @@ function verifyWiring(taskId) {
 }
 
 /**
- * Find a file by partial name in common directories
+ * Find a file by partial name in common directories.
+ * Prefers fd/fdfind (faster, auto-approved in Claude Code 2.1.72+) with find fallback.
+ * Uses shared getFdCommand() from flow-utils.js.
  */
 function findFileByName(filename) {
   const basename = path.basename(filename);
+  const fdCmd = getFdCommand();
 
   for (const dir of SEARCH_DIRS) {
     const searchDir = path.join(PROJECT_ROOT, dir);
     if (!fs.existsSync(searchDir)) continue;
 
     try {
-      // Use execFileSync with array arguments to prevent command injection
-      const result = execFileSync('find', [
-        searchDir,
-        '-name',
-        basename,
-        '-type',
-        'f'
-      ], {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      let result;
+      if (fdCmd) {
+        // fd is faster and auto-approved in Claude Code 2.1.72+
+        result = execFileSync(fdCmd, [
+          '--type', 'f',
+          '--glob', basename,
+          '--max-results', '1',
+          '--sort-path',
+          searchDir
+        ], {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      } else {
+        // Fallback to find
+        result = execFileSync('find', [
+          searchDir,
+          '-name',
+          basename,
+          '-type',
+          'f'
+        ], {
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+      }
 
       const files = result.trim().split('\n').filter(Boolean);
       if (files.length > 0) {
         return files[0]; // Return first match
       }
     } catch (err) {
-      // Ignore errors (find returns non-zero if no matches on some systems)
+      // Ignore errors (find/fd returns non-zero if no matches on some systems)
     }
   }
 

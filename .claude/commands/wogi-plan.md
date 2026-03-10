@@ -167,6 +167,20 @@ node scripts/flow-plan.js progress pl-a1b2c3d4
 | → | In Progress (1-99%) |
 | ✓ | Completed (100%) |
 
+## Integration with Claude Code /plan
+
+When entering plan mode for strategic thinking, you can pass a description directly to Claude Code's `/plan` command (2.1.72+):
+
+```
+/plan <description>
+```
+
+This enters plan mode AND immediately starts working on the described plan, rather than entering an empty plan mode. WogiFlow gates `EnterPlanMode` behind routing — so `/wogi-plan` should be used instead of bare `/plan` to ensure task tracking.
+
+When `/wogi-plan` is invoked with a description argument, it should:
+1. Create the plan structure in `.workflow/plans/`
+2. Enter Claude Code plan mode with the description: `EnterPlanMode` with the plan context
+
 ## Tips
 
 - **Plans are for strategic visibility** - Track high-level progress

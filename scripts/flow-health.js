@@ -36,10 +36,12 @@ const {
   parseFlags,
   outputJson,
   checkSpecMigration,
-  safeJsonParse
+  safeJsonParse,
+  meetsVersion,
+  getFdCommand
 } = require('./flow-utils');
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 /**
  * Check Claude Code version and compare against minimum recommended (2.1.23)
@@ -62,18 +64,18 @@ function checkClaudeCodeVersion() {
     const [major, minor, patch] = version.split('.').map(Number);
 
     // Minimum recommended: 2.1.23
-    const meetsMinimum = major > 2 ||
-      (major === 2 && minor > 1) ||
-      (major === 2 && minor === 1 && patch >= 23);
+    const meetsMin = meetsVersion(major, minor, patch, 2, 1, 23);
 
     // 2.1.50+ features: worktree hooks, agent isolation, agent listing
-    const meets2150 = major > 2 ||
-      (major === 2 && minor > 1) ||
-      (major === 2 && minor === 1 && patch >= 50);
+    const meets2150 = meetsVersion(major, minor, patch, 2, 1, 50);
 
-    return { version, meetsMinimum, meets2150 };
+    // 2.1.72+ features: ExitWorktree, model param on Agent, fd/lsof auto-approval,
+    // effort levels simplified, /plan description, prompt cache fix
+    const meets2172 = meetsVersion(major, minor, patch, 2, 1, 72);
+
+    return { version, meetsMinimum: meetsMin, meets2150, meets2172 };
   } catch {
-    return { version: null, meetsMinimum: true, meets2150: false };
+    return { version: null, meetsMinimum: true, meets2150: false, meets2172: false };
   }
 }
 
@@ -182,6 +184,32 @@ function main() {
           }
         } catch {
           console.log(`  ${color('dim', '○')} claude agents: command unavailable`);
+        }
+      }
+
+      // Report 2.1.72+ features
+      if (versionCheck.meets2172) {
+        console.log(`  ${color('green', '✓')} Claude Code 2.1.72+ features available:`);
+        console.log(`    ${color('dim', '→ ExitWorktree tool for clean worktree exit')}`);
+        console.log(`    ${color('dim', '→ Agent model parameter for hybrid routing')}`);
+        console.log(`    ${color('dim', '→ /plan description argument')}`);
+        console.log(`    ${color('dim', '→ Simplified effort levels (low/medium/high)')}`);
+        console.log(`    ${color('dim', '→ Prompt cache optimization (up to 12x savings)')}`);
+
+        // Check for fd/fdfind availability (auto-approved in 2.1.72+)
+        const fdCmd = getFdCommand();
+        if (fdCmd) {
+          console.log(`  ${color('green', '✓')} ${fdCmd}: available (auto-approved for fast file search)`);
+        } else {
+          console.log(`  ${color('dim', '○')} fd/fdfind: not installed (install for faster file search)`);
+        }
+
+        // Check for lsof availability (auto-approved in 2.1.72+)
+        try {
+          execFileSync('lsof', ['-v'], { stdio: 'pipe', timeout: 3000 });
+          console.log(`  ${color('green', '✓')} lsof: available (auto-approved for diagnostics)`);
+        } catch {
+          console.log(`  ${color('dim', '○')} lsof: not available`);
         }
       }
     }

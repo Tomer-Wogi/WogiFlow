@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-223 | 2026-03-10 12:00
+**Type**: new
+**Tags**: #feature:compatibility #component:flow-health #component:flow-wiring-verifier #component:flow-parallel #docs:compatibility
+**Request**: "Adapt WogiFlow for Claude Code 2.1.72 — leverage ExitWorktree, Agent model param, fd auto-approval, effort levels, /plan description, worktree fixes"
+**Result**: 1) Updated flow-health.js with 2.1.72 detection (ExitWorktree, model param, fd, lsof diagnostics). 2) Updated flow-wiring-verifier.js to use fd/fdfind with find fallback for faster file search. 3) Updated explore-agents.md with model parameter routing guidance for hybrid mode. 4) Updated wogi-finalize.md with ExitWorktree integration for clean worktree exit. 5) Updated wogi-plan.md with /plan description pass-through. 6) Added effort level optimization table to wogi-start.md (L3→low, L2→medium, L1/L0→high). 7) Updated flow-parallel.js docs noting worktree isolation is production-ready. 8) Added comprehensive 2.1.72 section to claude-code-compatibility.md. Verified HTML comments/PIN markers are safe (not used in CLAUDE.md or injected context). Verified settings.json has no agent prompts to wipe.
+**Files**: scripts/flow-health.js, scripts/flow-wiring-verifier.js, scripts/flow-parallel.js, .claude/commands/wogi-finalize.md, .claude/commands/wogi-plan.md, .claude/commands/wogi-start.md, .claude/docs/explore-agents.md, .claude/docs/claude-code-compatibility.md
+**Task**: wf-e861ee97
+
 ### R-222 | 2026-03-09 16:15
 **Type**: new
 **Tags**: #feature:verification #component:flow-wiring-verifier #component:flow-done
