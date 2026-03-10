@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-03-10T08:21:55.664Z",
+  "lastUpdated": "2026-03-10T16:45:09.141Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-cf977256",
+      "title": "Config-as-override refactor: defaults in code, user overrides only",
+      "type": "refactor",
+      "feature": "config",
+      "status": "completed",
+      "priority": "P1",
+      "startedAt": "2026-03-10T16:34:48.333Z",
+      "completedAt": "2026-03-10T16:45:09.140Z"
+    },
     {
       "id": "wf-e861ee97",
       "title": "Adapt WogiFlow for Claude Code 2.1.72",

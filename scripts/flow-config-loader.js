@@ -46,20 +46,19 @@ let _configCacheTime = 0; // Timestamp of last cache population (ms)
 // ============================================================
 
 // Known config keys for validation (prevents typos causing silent failures)
+// Updated v1.10.0: dead keys removed per audit wf-cf977256
 const KNOWN_CONFIG_KEYS = [
   // Core
-  'version', 'projectName', 'cli', 'scripts', 'requireApproval',
-  // Feature toggles
-  'autoLog', 'autoUpdateAppMap', 'strictMode', 'reporting',
+  'version', 'projectName', 'cli', 'scripts',
   // Execution
-  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'workflow',
+  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'execution',
   'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
   // Quality & validation
   'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
   // Components & registries
   'componentRules', 'componentReuse', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
   // Learning & memory
-  'learning', 'corrections', 'automaticMemory', 'automaticPromotion',
+  'learning', 'automaticMemory', 'automaticPromotion',
   'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
   'codebaseInsights', 'knowledgeRouting',
   // Skills & context
@@ -72,13 +71,13 @@ const KNOWN_CONFIG_KEYS = [
   // Session management
   'metrics', 'requestLog', 'sessionState', 'smartCompaction',
   // Features (alphabetical)
-  'agents', 'bugFlow', 'bulkLoop', 'capture',
+  'audit', 'bestOfN', 'bugFlow', 'capture',
   'cascade', 'checkpoint', 'commits', 'community',
   'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
-  'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
+  'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
   'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
-  'models', 'morningBriefing', 'multiModel', 'prd', 'priorities',
-  'project', 'projectType', 'regressionTesting', 'retrospective',
+  'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities',
+  'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
   'security', 'storyDecomposition', 'techDebt', 'traces',
   'webmcp', 'workflowSteps',
   // v2.0.0+ compat shim output keys
@@ -155,14 +154,16 @@ function validateConfig(config, warnOnUnknown = true) {
 // ============================================================
 
 /**
- * Backwards-compat shim for config consolidation (v2.1.0).
+ * Backwards-compat shim for config consolidation.
  * Maps old top-level keys to their new consolidated paths.
- * Remove after one major release cycle.
+ *
+ * v1.10.0: Removed shims for dead targets (reporting, strictMode object).
+ * Remaining shims kept for backward compatibility with existing user configs.
  */
 function applyConfigCompatShim(config) {
   if (!config || typeof config !== 'object') return config;
 
-  // execution <-> tasks + loops (bidirectional, shallow copy to avoid shared references)
+  // execution <-> tasks + loops (bidirectional)
   if (config.execution && !config.tasks) {
     config.tasks = { ...config.execution };
   }
@@ -186,71 +187,27 @@ function applyConfigCompatShim(config) {
     }
   }
 
-  // learning <- learning.session, learning.crossSession, learning.skills, etc.
+  // learning <- learning.session, learning.crossSession, etc.
   if (config.learning) {
-    if (config.learning.session && !config.sessionLearning) {
-      config.sessionLearning = config.learning.session;
-    }
-    if (config.learning.crossSession && !config.crossSessionLearning) {
-      config.crossSessionLearning = config.learning.crossSession;
-    }
-    if (config.learning.skill && !config.skillLearning) {
-      config.skillLearning = config.learning.skill;
-    }
-    if (config.learning.knowledgeRouting && !config.knowledgeRouting) {
-      config.knowledgeRouting = config.learning.knowledgeRouting;
-    }
-    if (config.learning.modelAdapters && !config.modelAdapters) {
-      config.modelAdapters = config.learning.modelAdapters;
-    }
-  }
-
-  // context <- context.smart, context.proactive, context.scoring, etc.
-  if (config.context) {
-    if (config.context.smart && !config.smartCompaction) {
-      config.smartCompaction = config.context.smart;
-    }
-    if (config.context.proactive && !config.proactiveCompaction) {
-      config.proactiveCompaction = config.context.proactive;
-    }
-    if (config.context.scoring && !config.contextScoring) {
-      config.contextScoring = config.context.scoring;
-    }
-    if (config.context.monitor && !config.contextMonitor) {
-      config.contextMonitor = config.context.monitor;
-    }
-    if (config.context.auto && !config.autoContext) {
-      config.autoContext = config.context.auto;
-    }
-    if (config.context.session && !config.sessionState) {
-      config.sessionState = config.context.session;
-    }
+    if (config.learning.session && !config.sessionLearning) config.sessionLearning = config.learning.session;
+    if (config.learning.crossSession && !config.crossSessionLearning) config.crossSessionLearning = config.learning.crossSession;
+    if (config.learning.skill && !config.skillLearning) config.skillLearning = config.learning.skill;
+    if (config.learning.knowledgeRouting && !config.knowledgeRouting) config.knowledgeRouting = config.learning.knowledgeRouting;
+    if (config.learning.modelAdapters && !config.modelAdapters) config.modelAdapters = config.learning.modelAdapters;
   }
 
   // review <- review.fix, review.peer, review.triage
   if (config.review) {
-    if (config.review.fix && !config.reviewFix) {
-      config.reviewFix = config.review.fix;
-    }
-    if (config.review.peer && !config.peerReview) {
-      config.peerReview = config.review.peer;
-    }
-    if (config.review.triage && !config.triage) {
-      config.triage = config.review.triage;
-    }
+    if (config.review.fix && !config.reviewFix) config.reviewFix = config.review.fix;
+    if (config.review.peer && !config.peerReview) config.peerReview = config.review.peer;
+    if (config.review.triage && !config.triage) config.triage = config.review.triage;
   }
 
   // models <- models.hybrid, models.multiModel, models.cascade
   if (config.models) {
-    if (config.models.hybrid && !config.hybrid) {
-      config.hybrid = config.models.hybrid;
-    }
-    if (config.models.multiModel && !config.multiModel) {
-      config.multiModel = config.models.multiModel;
-    }
-    if (config.models.cascade && !config.cascade) {
-      config.cascade = config.models.cascade;
-    }
+    if (config.models.hybrid && !config.hybrid) config.hybrid = config.models.hybrid;
+    if (config.models.multiModel && !config.multiModel) config.multiModel = config.models.multiModel;
+    if (config.models.cascade && !config.cascade) config.cascade = config.models.cascade;
   }
 
   // research <- research.planMode
@@ -260,15 +217,9 @@ function applyConfigCompatShim(config) {
 
   // parallelExecution <- parallel, bulkOrchestrator, taskQueue
   if (config.parallelExecution) {
-    if (config.parallelExecution.parallel && !config.parallel) {
-      config.parallel = config.parallelExecution.parallel;
-    }
-    if (config.parallelExecution.bulkOrchestrator && !config.bulkOrchestrator) {
-      config.bulkOrchestrator = config.parallelExecution.bulkOrchestrator;
-    }
-    if (config.parallelExecution.taskQueue && !config.taskQueue) {
-      config.taskQueue = config.parallelExecution.taskQueue;
-    }
+    if (config.parallelExecution.parallel && !config.parallel) config.parallel = config.parallelExecution.parallel;
+    if (config.parallelExecution.bulkOrchestrator && !config.bulkOrchestrator) config.bulkOrchestrator = config.parallelExecution.bulkOrchestrator;
+    if (config.parallelExecution.taskQueue && !config.taskQueue) config.taskQueue = config.parallelExecution.taskQueue;
   }
 
   // community <- community.sync
@@ -276,43 +227,32 @@ function applyConfigCompatShim(config) {
     config.communitySync = config.community.sync;
   }
 
-  // v1.8.6: Config restructuring compat shims
-  // AC1: hooks.rules.enforcement -> enforcement (moved to top-level enforcement)
+  // hooks.rules.enforcement -> enforcement
   if (config.hooks?.rules?.enforcement) {
-    const hooksEnforcement = config.hooks.rules.enforcement;
+    const he = config.hooks.rules.enforcement;
     if (!config.enforcement) config.enforcement = {};
-    if (hooksEnforcement.taskGating && !config.enforcement.taskGating) config.enforcement.taskGating = hooksEnforcement.taskGating;
-    if (hooksEnforcement.scopeGating && !config.enforcement.scopeGating) config.enforcement.scopeGating = hooksEnforcement.scopeGating;
-    if (hooksEnforcement.implementationGate && !config.enforcement.implementationGate) config.enforcement.implementationGate = hooksEnforcement.implementationGate;
-    if (hooksEnforcement.todoWriteGate && !config.enforcement.todoWriteGate) config.enforcement.todoWriteGate = hooksEnforcement.todoWriteGate;
-    if (hooksEnforcement.routingGate && !config.enforcement.routingGate) config.enforcement.routingGate = hooksEnforcement.routingGate;
-    if (hooksEnforcement.loopEnforcement && !config.enforcement.loopEnforcement) config.enforcement.loopEnforcement = hooksEnforcement.loopEnforcement;
+    if (he.taskGating && !config.enforcement.taskGating) config.enforcement.taskGating = he.taskGating;
+    if (he.scopeGating && !config.enforcement.scopeGating) config.enforcement.scopeGating = he.scopeGating;
+    if (he.implementationGate && !config.enforcement.implementationGate) config.enforcement.implementationGate = he.implementationGate;
+    if (he.todoWriteGate && !config.enforcement.todoWriteGate) config.enforcement.todoWriteGate = he.todoWriteGate;
+    if (he.routingGate && !config.enforcement.routingGate) config.enforcement.routingGate = he.routingGate;
+    if (he.loopEnforcement && !config.enforcement.loopEnforcement) config.enforcement.loopEnforcement = he.loopEnforcement;
   }
 
-  // AC3: strictMode object -> reporting
-  if (config.strictMode && typeof config.strictMode === 'object' && !config.reporting) {
-    config.reporting = config.strictMode;
-  }
-
-  // AC4: componentRules + hooks.rules.intelligence.componentReuse -> componentReuse
-  if (config.componentRules && !config.componentReuse) {
-    config.componentReuse = config.componentRules;
-  }
+  // componentRules + hooks.rules.intelligence.componentReuse -> componentReuse
+  if (config.componentRules && !config.componentReuse) config.componentReuse = config.componentRules;
   if (config.hooks?.rules?.intelligence?.componentReuse) {
     if (!config.componentReuse) config.componentReuse = {};
-    const hooksComponentReuse = config.hooks.rules.intelligence.componentReuse;
-    for (const key of Object.keys(hooksComponentReuse)) {
-      if (config.componentReuse[key] === undefined) {
-        config.componentReuse[key] = hooksComponentReuse[key];
-      }
+    const hcr = config.hooks.rules.intelligence.componentReuse;
+    for (const key of Object.keys(hcr)) {
+      if (config.componentReuse[key] === undefined) config.componentReuse[key] = hcr[key];
     }
   }
-  // Also expose back as hooks.rules.componentReuse for code that reads that path
   if (config.componentReuse && config.hooks?.rules) {
     if (!config.hooks.rules.componentReuse) config.hooks.rules.componentReuse = { ...config.componentReuse };
   }
 
-  // AC5: scattered learning sub-keys -> learning.*
+  // scattered learning sub-keys -> learning.*
   if (config.standardsCompliance?.learning && config.learning && !config.learning.standardsLearning) {
     config.learning.standardsLearning = config.standardsCompliance.learning;
   }
@@ -323,8 +263,7 @@ function applyConfigCompatShim(config) {
     config.learning.bugFlowLearning = config.bugFlow.learningEnforcement;
   }
 
-  // AC6: context -> contextManagement + taskContext
-  // Note: mergeWithDefaults may have already created these keys, so check sub-keys not top-level
+  // context -> contextManagement + taskContext
   if (config.context) {
     if (!config.contextManagement) config.contextManagement = {};
     if (config.context.compaction && !config.contextManagement.compaction) config.contextManagement.compaction = config.context.compaction;
@@ -338,23 +277,15 @@ function applyConfigCompatShim(config) {
     if (config.context.session && !config.taskContext.session) config.taskContext.session = config.context.session;
   }
 
-  // AC7: tdd -> execution.tdd
-  if (config.tdd && config.execution && !config.execution.tdd) {
-    config.execution.tdd = config.tdd;
-  }
-  if (config.execution?.tdd && !config.tdd) {
-    config.tdd = config.execution.tdd;
-  }
+  // tdd <-> execution.tdd
+  if (config.tdd && config.execution && !config.execution.tdd) config.execution.tdd = config.tdd;
+  if (config.execution?.tdd && !config.tdd) config.tdd = config.execution.tdd;
 
-  // AC2: top-level validation -> hooks.rules.intelligence.validation
+  // top-level validation -> hooks.rules.intelligence.validation
   if (config.validation && config.hooks?.rules?.intelligence?.validation) {
     const v = config.hooks.rules.intelligence.validation;
-    if (config.validation.afterTaskComplete !== undefined && v.afterTaskComplete === undefined) {
-      v.afterTaskComplete = config.validation.afterTaskComplete;
-    }
-    if (config.validation.beforeCommit !== undefined && v.beforeCommit === undefined) {
-      v.beforeCommit = config.validation.beforeCommit;
-    }
+    if (config.validation.afterTaskComplete !== undefined && v.afterTaskComplete === undefined) v.afterTaskComplete = config.validation.afterTaskComplete;
+    if (config.validation.beforeCommit !== undefined && v.beforeCommit === undefined) v.beforeCommit = config.validation.beforeCommit;
   }
 
   return config;
