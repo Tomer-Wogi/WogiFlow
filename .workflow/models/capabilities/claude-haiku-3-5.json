@@ -1,0 +1,49 @@
+{
+  "model": "claude-haiku-3-5",
+  "provider": "anthropic",
+  "costTier": "economy",
+  "taskScores": {
+    "simple-edit": 7,
+    "multi-file-refactor": 3,
+    "architecture": 2,
+    "code-generation": 6,
+    "documentation": 7,
+    "debugging": 4,
+    "test-generation": 5,
+    "bugfix": 5
+  },
+  "languages": {
+    "typescript": 7,
+    "javascript": 7,
+    "python": 7,
+    "go": 4,
+    "rust": 3,
+    "java": 5,
+    "sql": 6,
+    "shell": 6
+  },
+  "bestFor": ["quick-tasks", "simple-edits", "formatting", "comments"],
+  "contextPreferences": {
+    "density": "comprehensive",
+    "explicitExamples": true,
+    "patternHints": false,
+    "minContextForQuality": 0.7
+  },
+  "capabilities": ["code-gen", "structured-output"],
+  "strengths": [
+    "Very fast output",
+    "Lowest cost ($0.80/$4 per 1M tokens)",
+    "Good for simple lookups and summaries",
+    "Efficient for compaction summaries"
+  ],
+  "limitations": [
+    "Limited reasoning depth",
+    "Unreliable on multi-file tasks",
+    "Cannot handle complex refactoring",
+    "Needs very explicit instructions"
+  ],
+  "costQualityRatio": 0.15,
+  "dataSource": "registry",
+  "lastUpdated": "2026-03-10",
+  "sampleSize": 0
+}

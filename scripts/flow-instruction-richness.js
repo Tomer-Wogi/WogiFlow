@@ -20,6 +20,12 @@
 const fs = require('fs');
 const path = require('path');
 
+function warn(msg) {
+  if (process.env.DEBUG || process.env.WOGIFLOW_VERBOSE) {
+    console.warn(`[flow-instruction-richness] ${msg}`);
+  }
+}
+
 // LSP integration for accurate type information
 let lspModule = null;
 try {
@@ -29,34 +35,36 @@ try {
 }
 
 // ============================================================
-// Model Context Preferences (from registry.json)
+// Model Context Preferences (from registry + capabilities)
 // ============================================================
 
 /**
- * Cache for model registry
+ * Cache for model registry.
+ * Uses a sentinel (_NOT_LOADED) to distinguish "not yet loaded" from "loaded but null/failed".
  */
-let registryCache = null;
+const _NOT_LOADED = Symbol('NOT_LOADED');
+let registryCache = _NOT_LOADED;
 
 /**
- * Load model registry from .workflow/models/registry.json
+ * Load model registry using the shared loader from flow-model-types.js.
+ * This merges registry.json infrastructure with capabilities/*.json knowledge.
  * @returns {Object|null} Registry data or null if not found
  */
 function loadModelRegistry() {
-  if (registryCache) return registryCache;
-
-  const { PATHS } = require('./flow-utils');
-  const registryPath = path.join(path.dirname(PATHS.config), 'models', 'registry.json');
+  if (registryCache !== _NOT_LOADED) return registryCache;
 
   try {
-    if (fs.existsSync(registryPath)) {
-      const content = fs.readFileSync(registryPath, 'utf-8');
-      registryCache = JSON.parse(content);
-      return registryCache;
+    const { loadRegistry } = require('./flow-model-types');
+    registryCache = loadRegistry();
+    if (!registryCache) {
+      warn('[instruction-richness] Registry unavailable — using fallback defaults');
     }
+    return registryCache;
   } catch (err) {
-    // Ignore errors, use defaults
+    warn('[instruction-richness] Could not load model registry — using fallback defaults');
+    registryCache = null;
+    return null;
   }
-  return null;
 }
 
 /**
@@ -87,6 +95,7 @@ function getModelContextPreferences(modelName) {
 
   // Try partial matching (e.g., "opus" matches "claude-opus-4-5")
   for (const [key, model] of Object.entries(registry.models)) {
+    if (!model) continue;
     if (normalized.includes(key) || key.includes(normalized)) {
       if (model.contextPreferences) {
         return { ...defaults, ...model.contextPreferences };
@@ -194,9 +203,10 @@ function getInstructionRichness(complexityLevel, config = {}, model = null) {
   let richnessLevel = COMPLEXITY_TO_RICHNESS[complexityLevel] || 'standard';
   const levels = ['minimal', 'standard', 'rich', 'maximum'];
 
-  // Model-aware adjustment
+  // Model-aware adjustment (cache prefs for reuse below)
+  let modelPrefs = null;
   if (model) {
-    const modelPrefs = getModelContextPreferences(model);
+    modelPrefs = getModelContextPreferences(model);
 
     if (modelPrefs.density === 'concise') {
       // Opus: Can use less context - downgrade one level (but not below minimal)
@@ -236,8 +246,7 @@ function getInstructionRichness(complexityLevel, config = {}, model = null) {
 
   // Add level name and model info for reference
   richness.level = richnessLevel;
-  if (model) {
-    const modelPrefs = getModelContextPreferences(model);
+  if (model && modelPrefs) {
     richness.modelDensity = modelPrefs.density;
     richness.patternHintsOnly = modelPrefs.patternHints && !modelPrefs.explicitExamples;
   }

@@ -24,6 +24,8 @@
     ".workflow/agents/",
     ".workflow/bridges/",
     ".workflow/lib/",
+    ".workflow/models/registry.json",
+    ".workflow/models/capabilities/",
     ".workflow/state/*.template",
     ".workflow/specs/*.template",
     ".claude/commands/",

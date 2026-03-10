@@ -1,0 +1,48 @@
+{
+  "model": "claude-sonnet-4",
+  "provider": "anthropic",
+  "costTier": "standard",
+  "taskScores": {
+    "simple-edit": 8,
+    "multi-file-refactor": 6,
+    "architecture": 5,
+    "code-generation": 8,
+    "documentation": 8,
+    "debugging": 6,
+    "test-generation": 7,
+    "bugfix": 7
+  },
+  "languages": {
+    "typescript": 10,
+    "javascript": 10,
+    "python": 10,
+    "go": 9,
+    "rust": 8,
+    "java": 9,
+    "csharp": 8,
+    "ruby": 8,
+    "php": 8
+  },
+  "bestFor": ["general-coding", "refactoring", "documentation", "testing"],
+  "contextPreferences": {
+    "density": "standard",
+    "explicitExamples": true,
+    "patternHints": true,
+    "minContextForQuality": 0.5
+  },
+  "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision"],
+  "strengths": [
+    "Reliable code generation",
+    "Good documentation skills",
+    "Balanced cost and performance"
+  ],
+  "limitations": [
+    "No extended/adaptive thinking",
+    "Smaller output window (16K)",
+    "Less reliable on complex multi-file work"
+  ],
+  "costQualityRatio": 0.45,
+  "dataSource": "registry",
+  "lastUpdated": "2026-03-10",
+  "sampleSize": 0
+}

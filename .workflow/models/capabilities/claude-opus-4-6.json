@@ -1,0 +1,49 @@
+{
+  "model": "claude-opus-4-6",
+  "provider": "anthropic",
+  "costTier": "premium",
+  "taskScores": {
+    "simple-edit": 10,
+    "multi-file-refactor": 10,
+    "architecture": 10,
+    "code-generation": 10,
+    "documentation": 9,
+    "debugging": 10,
+    "test-generation": 9,
+    "bugfix": 10
+  },
+  "languages": {
+    "typescript": 10,
+    "javascript": 10,
+    "python": 9,
+    "go": 7,
+    "rust": 6,
+    "java": 7,
+    "sql": 8,
+    "shell": 8
+  },
+  "bestFor": ["complex-reasoning", "architecture", "code-review", "difficult-bugs", "sustained-agentic", "large-codebases"],
+  "contextPreferences": {
+    "density": "concise",
+    "explicitExamples": false,
+    "patternHints": true,
+    "minContextForQuality": 0.2
+  },
+  "capabilities": ["code-gen", "reasoning", "analysis", "structured-output", "vision", "adaptive-thinking"],
+  "strengths": [
+    "Deep multi-file reasoning",
+    "Complex architectural decisions",
+    "Long-context retrieval (76% accuracy)",
+    "Expert-level reasoning (GPQA 91.3%)",
+    "Ambiguous requirement interpretation"
+  ],
+  "limitations": [
+    "High cost ($15/$75 per 1M tokens)",
+    "Slower output speed",
+    "Overkill for simple edits"
+  ],
+  "costQualityRatio": 0.85,
+  "dataSource": "registry",
+  "lastUpdated": "2026-03-10",
+  "sampleSize": 0
+}
