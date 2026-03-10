@@ -310,14 +310,13 @@ function checkRoutingGate(toolName, config) {
     blocked: true,
     reason: 'routing_pending',
     message: [
-      'BLOCKED: You must route through /wogi-start before using ANY tool (Bash, Read, Glob, Grep, Edit, Write, NotebookEdit, EnterPlanMode).',
-      'ACTION REQUIRED: Invoke the Skill tool with skill="wogi-start" and pass the user\'s request as args.',
-      'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
-      '/wogi-start will classify the request (operational, exploration, implementation) and unblock the appropriate tools.',
-      'Do NOT read files, search code, edit files, or execute commands without routing first.',
-      'Do NOT edit ready.json or any state file to create tasks manually — that is a routing bypass.',
-      'Do NOT treat session continuation as implicit permission to skip routing.',
-      'Do NOT try alternative approaches to bypass this gate.'
+      'BLOCKED: You must route through /wogi-start before using ANY tool.',
+      'Invoke Skill(skill="wogi-start", args="<the user\'s request>") NOW.',
+      'Do NOT output text first. Do NOT explain. Do NOT rationalize.',
+      '"I already know the answer" is not a valid reason to skip routing.',
+      '"This is just a conversation" is not a valid reason — conversation mode is a routing OUTCOME inside /wogi-start, not an exemption from it.',
+      'After context compaction, having prior context does NOT grant bypass permission.',
+      'The ONLY way to unblock tools is to invoke /wogi-start.'
     ].join(' ')
   };
 }

@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse } = require('./flow-utils');
 
 const PROJECT_ROOT = process.argv[2] || getProjectRoot();
 
@@ -35,24 +35,21 @@ function detectUIFramework() {
   const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
   if (!fs.existsSync(packageJsonPath)) return null;
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const pkg = safeJsonParse(packageJsonPath, null);
+  if (!pkg) return null;
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-    if (deps['next']) return 'next';
-    if (deps['@angular/core']) return 'angular';
-    if (deps['vue']) return 'vue';
-    if (deps['svelte']) return 'svelte';
-    if (deps['react-native']) return 'react-native';
-    if (deps['react']) return 'react';
-    if (deps['@nestjs/core']) return 'nestjs';
-    if (deps['express']) return 'express';
-    if (deps['fastify']) return 'fastify';
+  if (deps['next']) return 'next';
+  if (deps['@angular/core']) return 'angular';
+  if (deps['vue']) return 'vue';
+  if (deps['svelte']) return 'svelte';
+  if (deps['react-native']) return 'react-native';
+  if (deps['react']) return 'react';
+  if (deps['@nestjs/core']) return 'nestjs';
+  if (deps['express']) return 'express';
+  if (deps['fastify']) return 'fastify';
 
-    return null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 /**
@@ -64,21 +61,18 @@ function detectDataFetchingLibrary(projectRoot) {
   const packageJsonPath = path.join(projectRoot || PROJECT_ROOT, 'package.json');
   if (!fs.existsSync(packageJsonPath)) return null;
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const pkg = safeJsonParse(packageJsonPath, null);
+  if (!pkg) return null;
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-    // Priority order: higher-level abstractions first, transport libs last
-    if (deps['@tanstack/react-query'] || deps['react-query']) return 'react-query';
-    if (deps['swr']) return 'swr';
-    if (deps['@apollo/client'] || deps['apollo-client']) return 'apollo';
-    if (deps['@trpc/react-query'] || deps['@trpc/client']) return 'trpc';
-    if (deps['axios']) return 'axios'; // Transport library — lowest priority
+  // Priority order: higher-level abstractions first, transport libs last
+  if (deps['@tanstack/react-query'] || deps['react-query']) return 'react-query';
+  if (deps['swr']) return 'swr';
+  if (deps['@apollo/client'] || deps['apollo-client']) return 'apollo';
+  if (deps['@trpc/react-query'] || deps['@trpc/client']) return 'trpc';
+  if (deps['axios']) return 'axios'; // Transport library — lowest priority
 
-    return null;
-  } catch (err) { // eslint-disable-line no-unused-vars
-    return null;
-  }
+  return null;
 }
 
 /**
@@ -88,34 +82,31 @@ function detectStylingApproach() {
   const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
   if (!fs.existsSync(packageJsonPath)) return null;
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const pkg = safeJsonParse(packageJsonPath, null);
+  if (!pkg) return null;
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-    // Check dependencies
-    if (deps['styled-components']) return 'styled-components';
-    if (deps['@emotion/react'] || deps['@emotion/styled']) return 'emotion';
-    if (deps['tailwindcss']) return 'tailwind';
-    if (deps['sass'] || deps['node-sass']) return 'sass';
+  // Check dependencies
+  if (deps['styled-components']) return 'styled-components';
+  if (deps['@emotion/react'] || deps['@emotion/styled']) return 'emotion';
+  if (deps['tailwindcss']) return 'tailwind';
+  if (deps['sass'] || deps['node-sass']) return 'sass';
     if (deps['less']) return 'less';
 
-    // Check for tailwind config
-    if (fs.existsSync(path.join(PROJECT_ROOT, 'tailwind.config.js')) ||
-        fs.existsSync(path.join(PROJECT_ROOT, 'tailwind.config.ts'))) {
-      return 'tailwind';
-    }
-
-    // Check for CSS modules usage
-    const srcDir = path.join(PROJECT_ROOT, 'src');
-    if (fs.existsSync(srcDir)) {
-      const hasCSSModules = findFiles(srcDir, /\.module\.css$/).length > 0;
-      if (hasCSSModules) return 'css-modules';
-    }
-
-    return null;
-  } catch {
-    return null;
+  // Check for tailwind config
+  if (fs.existsSync(path.join(PROJECT_ROOT, 'tailwind.config.js')) ||
+      fs.existsSync(path.join(PROJECT_ROOT, 'tailwind.config.ts'))) {
+    return 'tailwind';
   }
+
+  // Check for CSS modules usage
+  const srcDir = path.join(PROJECT_ROOT, 'src');
+  if (fs.existsSync(srcDir)) {
+    const hasCSSModules = findFiles(srcDir, /\.module\.css$/).length > 0;
+    if (hasCSSModules) return 'css-modules';
+  }
+
+  return null;
 }
 
 /**
@@ -457,13 +448,13 @@ function generateWarnings(uiFramework, stylingApproach) {
     // Check React version for JSX transform
     const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
     if (fs.existsSync(packageJsonPath)) {
-      try {
-        const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const pkg = safeJsonParse(packageJsonPath, null);
+      if (pkg) {
         const reactVersion = pkg.dependencies?.react || pkg.devDependencies?.react || '';
         if (reactVersion && !reactVersion.includes('16.')) {
           warnings.push("Don't import React directly - use named imports (useState, useCallback)");
         }
-      } catch { /* package.json parse failure — skip React version check */ }
+      }
     }
   }
 
@@ -591,14 +582,12 @@ function detectProjectType(projectRoot) {
   let deps = {};
   let devDeps = {};
 
-  try {
-    if (fs.existsSync(packageJsonPath)) {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  if (fs.existsSync(packageJsonPath)) {
+    const pkg = safeJsonParse(packageJsonPath, null);
+    if (pkg) {
       deps = pkg.dependencies || {};
       devDeps = pkg.devDependencies || {};
     }
-  } catch (err) {
-    // package.json read/parse failure — continue with empty deps
   }
 
   const allDeps = { ...deps, ...devDeps };
@@ -753,7 +742,8 @@ function updateConfig(analysis) {
   }
 
   try {
-    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    const config = safeJsonParse(CONFIG_PATH, null);
+    if (!config) return false;
 
     // Ensure hybrid section exists
     if (!config.hybrid) config.hybrid = {};
@@ -1177,12 +1167,7 @@ if (require.main === module) {
   clearContextCache();
 
   // Also generate codebase insights during full analysis
-  let config = {};
-  try {
-    config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-  } catch (err) {
-    // Config read failure — skip insights
-  }
+  const config = safeJsonParse(CONFIG_PATH, {});
   if (config.codebaseInsights?.enabled !== false) {
     saveCodebaseInsights();
   }

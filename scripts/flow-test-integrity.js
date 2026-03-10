@@ -765,11 +765,7 @@ async function runIntegrityTests(taskId, options = {}) {
     let spec = null;
     const specPath = path.join(PROJECT_ROOT, '.workflow', 'specs', `${taskId}.json`);
     if (fs.existsSync(specPath)) {
-      try {
-        spec = JSON.parse(fs.readFileSync(specPath, 'utf-8'));
-      } catch (err) {
-        // Skip malformed spec
-      }
+      spec = safeJsonParse(specPath, null);
     }
 
     const mappings = buildEndpointPageMapping(endpoints, spec);
@@ -827,8 +823,6 @@ async function runIntegrityTests(taskId, options = {}) {
       //
       // For automated execution, we create pending results that the
       // orchestrating AI agent will complete.
-      const fieldValues = fields.map(f => String(f.value));
-
       // Use assertDataInTree from flow-test-ui for initial structure
       // The actual tree would come from Playwright MCP in real execution
       const pendingResults = fields.map(field => ({

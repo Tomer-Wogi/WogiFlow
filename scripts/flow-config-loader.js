@@ -316,7 +316,13 @@ function getConfig() {
     }
 
     const configContent = fs.readFileSync(configPath, 'utf-8');
-    const rawConfig = JSON.parse(configContent);
+    let rawConfig;
+    try {
+      rawConfig = JSON.parse(configContent);
+    } catch (err) {
+      console.warn(`Warning: Invalid JSON in config.json: ${err.message}`);
+      return {};
+    }
 
     // Prototype pollution check on config
     if (rawConfig && typeof rawConfig === 'object') {

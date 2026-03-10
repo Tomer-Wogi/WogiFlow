@@ -113,7 +113,7 @@ const PATHS = {
   traces: path.join(WORKFLOW_DIR, 'traces'),
   // Advanced workflow features
   commandMetrics: path.join(STATE_DIR, 'command-metrics.json'),
-  modelStats: path.join(STATE_DIR, 'model-stats.json'),
+  modelStatsLegacy: path.join(STATE_DIR, 'model-stats.json'),
   approaches: path.join(STATE_DIR, 'approaches'),
   modelAdapters: path.join(WORKFLOW_DIR, 'model-adapters'),
   codebaseInsights: path.join(STATE_DIR, 'codebase-insights.md'),

@@ -13,6 +13,7 @@
 const { runValidation } = require('../../core/validation');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { captureObservation } = require('../../core/observation-capture');
+const { safeJsonParseString } = require('../../../flow-utils');
 
 function extractErrorMessage(toolResponse) {
   if (!toolResponse) return 'unknown error';
@@ -35,7 +36,7 @@ async function main() {
       inputData += chunk;
     }
 
-    const input = inputData ? JSON.parse(inputData) : {};
+    const input = inputData ? safeJsonParseString(inputData, {}) : {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     const toolName = parsedInput.toolName;

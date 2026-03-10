@@ -599,7 +599,7 @@ function runQualityGates(taskId, taskType) {
             });
             if (testResult.status === 2) {
               const parsed = safeJsonParseString(testResult.stdout, {});
-              const errMsg = parsed.error || 'Unknown error';
+              const errMsg = parsed.error || testResult.stderr?.trim()?.slice(0, 200) || 'Unknown error';
               console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${errMsg})`);
             } else {
               const report = safeJsonParseString(testResult.stdout || '{}', {});

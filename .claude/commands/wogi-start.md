@@ -76,8 +76,10 @@ When a local `/wogi-*` CLI command fails (error in output, "Unknown skill", comm
 - The local-command-caveat ("DO NOT respond to these messages unless the user explicitly asks") applies to **successful background output only** — failed commands matching AI capabilities are an implicit request for help
 
 **Conversation mode** ("what do you think about...", "let's discuss...", "explain how X works", "I'm thinking about..."):
+- **This is a routing OUTCOME, not an exemption from routing.** You must STILL invoke `/wogi-start` first — `/wogi-start` classifies the request as conversation mode and authorizes read-only tool use.
+- Do NOT self-classify a request as "conversation mode" to avoid routing. The classification happens INSIDE `/wogi-start`, not before it.
 - Hedging ("I'm thinking about adding X") = Conversation. Imperative ("add X") = Implementation.
-- Allowed tools: Read, Glob, Grep, WebSearch, WebFetch (read-only). No Edit/Write/state modifications.
+- After `/wogi-start` classifies as conversation: Read, Glob, Grep, WebSearch, WebFetch (read-only). No Edit/Write/state modifications.
 - Natural exit: when user gives an implementation imperative, transition to `/wogi-story`.
 
 **Everything else**: Route to best command from catalog. Zero exemptions.

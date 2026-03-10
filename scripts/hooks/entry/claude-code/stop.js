@@ -57,14 +57,15 @@ async function main() {
         } else {
           // Block the stop — force the AI to route through /wogi-start
           const routingMessage = [
-            `ROUTING VIOLATION DETECTED (attempt ${attempts}/3): You responded to the user without invoking a /wogi-* command first.`,
-            'This is a mandatory WogiFlow workflow requirement that applies to ALL user messages — including after context compaction.',
+            `ROUTING VIOLATION (${attempts}/3): You skipped /wogi-start routing.`,
             '',
-            'ACTION REQUIRED: You must invoke the Skill tool with skill="wogi-start" and pass the user\'s original request as args.',
-            'Example: Skill(skill="wogi-start", args="<the user\'s original request>")',
+            'You just rationalized answering directly. This is the exact bypass pattern WogiFlow exists to prevent.',
+            'Having context or "knowing the answer" is NEVER a reason to skip routing.',
             '',
-            'Do NOT apologize and stop. Do NOT explain why you skipped routing.',
-            'Instead: invoke /wogi-start NOW with the user\'s most recent message.'
+            'YOUR ONLY OPTION: Invoke Skill(skill="wogi-start", args="<user\'s message>") RIGHT NOW.',
+            '',
+            'Do NOT output any text first. Do NOT apologize. Do NOT explain.',
+            'The NEXT thing you do must be a Skill tool call to wogi-start. Nothing else.'
           ].join('\n');
 
           console.log(JSON.stringify({

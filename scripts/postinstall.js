@@ -134,17 +134,7 @@ function createMinimalStructure() {
         ? fs.readFileSync(templatePath, 'utf-8')
         : JSON.stringify({ prompts: [], version: 1 }, null, 2);
       // Validate template is valid JSON before writing (with proto check)
-      let parsed;
-      try {
-        parsed = JSON.parse(rawContent);
-      } catch (err) {
-        parsed = { prompts: [], version: 1 };
-      }
-      if (parsed && typeof parsed === 'object') {
-        for (const k of Object.keys(parsed)) {
-          if (k === '__proto__' || k === 'constructor' || k === 'prototype') delete parsed[k];
-        }
-      }
+      const parsed = safeJsonParseString(rawContent, { prompts: [], version: 1 });
       fs.writeFileSync(promptHistoryPath, JSON.stringify(parsed, null, 2), { mode: FILE_MODE });
     } catch (err) {
       // Template was corrupted or unreadable — log for debugging, use fallback
@@ -368,86 +358,14 @@ function copyClaudeResources() {
 }
 
 /**
- * Copy scripts from package to project (for npm update scenario)
- * This ensures scripts are updated on npm install/update
- *
- * ALWAYS overwrites WogiFlow-owned scripts to ensure npm update applies changes.
- * Hook scripts, core modules, and adapters must stay in sync with the package version.
- */
-function copyScriptsFromPackage() {
-  const packageScripts = path.join(PACKAGE_ROOT, 'scripts');
-  const projectScripts = path.join(PROJECT_ROOT, 'scripts');
-
-  if (!fs.existsSync(packageScripts)) {
-    if (process.env.DEBUG) {
-      console.error('[postinstall] Package scripts not found');
-    }
-    return;
-  }
-
-  // Always overwrite scripts to ensure npm update propagates hook/core changes
-  copyDir(packageScripts, projectScripts, false);
-
-  // Make flow script executable
-  const flowScript = path.join(projectScripts, 'flow');
-  if (fs.existsSync(flowScript)) {
-    try {
-      fs.chmodSync(flowScript, 0o755);
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[postinstall] chmod flow script failed: ${err.message}`);
-      }
-    }
-  }
-}
-
-/**
- * Copy WogiFlow-managed .workflow/ subdirectories from package to project.
- * These directories are package-owned and always overwritten on npm update.
- *
- * Managed directories:
- * - bridges/   — CLI bridge modules (base-bridge, claude-bridge)
- * - templates/ — CLAUDE.md Handlebars templates and partials
- * - agents/    — Review agent checklists (security, performance)
- * - lib/       — Shared libraries (config-substitution) used by bridges
- *
- * Without this step, `npx flow bridge sync` would fail because
- * .workflow/bridges/ wouldn't exist in the project directory.
- */
-function copyWorkflowManagedDirs() {
-  const managedDirs = ['bridges', 'templates', 'agents', 'lib'];
-
-  for (const subdir of managedDirs) {
-    const src = path.join(PACKAGE_ROOT, '.workflow', subdir);
-    const dest = path.join(WORKFLOW_DIR, subdir);
-
-    if (fs.existsSync(src)) {
-      copyDir(src, dest, false);
-    }
-  }
-
-  // Ensure .workflow/package.json exists with "type": "commonjs".
-  // Required when the project root has "type": "module" — without it,
-  // Node.js inherits ESM and .workflow/bridges/*.js (CJS) crash.
-  const workflowPkg = path.join(WORKFLOW_DIR, 'package.json');
-  try {
-    fs.writeFileSync(workflowPkg, JSON.stringify({ type: 'commonjs' }, null, 2) + '\n', { flag: 'wx' });
-  } catch (err) {
-    if (err.code !== 'EEXIST') {
-      console.warn(`[postinstall] Warning: Failed to create .workflow/package.json: ${err.message}`);
-      console.warn('[postinstall] ESM projects may have issues with WogiFlow hooks. Create this file manually with: {"type":"commonjs"}');
-    }
-  }
-}
-
-/**
  * Get the WogiFlow package version from package.json
  * @returns {string} Version string or 'unknown'
  */
 function getPackageVersion() {
   try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8'));
-    return pkg.version || 'unknown';
+    const content = fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8');
+    const pkg = safeJsonParseString(content, null);
+    return (pkg && pkg.version) || 'unknown';
   } catch (err) {
     return 'unknown';
   }
@@ -655,6 +573,71 @@ function isAlreadyInitialized() {
 }
 
 /**
+ * Migrate stale hooks from settings.local.json.
+ *
+ * Problem: Early WogiFlow versions (<=1.0.0) wrote hooks to settings.local.json.
+ * When npm update installs a newer version, postinstall correctly updates
+ * settings.json — but settings.local.json overrides it (Claude Code merges
+ * .local on top). The stale hooks have:
+ * - Narrow PreToolUse matcher (missing Skill|Bash|Read|Glob|Grep|EnterPlanMode)
+ * - Absolute local paths instead of node_modules paths
+ * - Missing ConfigChange hook
+ *
+ * Fix: Detect hooks in settings.local.json with an outdated _wogiFlowVersion
+ * and remove them, so the correct settings.json hooks take effect.
+ * Permissions are preserved — only the hooks block is removed.
+ */
+function migrateStaleLocalHooks() {
+  const localSettingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.local.json');
+
+  try {
+    if (!fs.existsSync(localSettingsPath)) {
+      return; // No local settings — nothing to migrate
+    }
+
+    const content = fs.readFileSync(localSettingsPath, 'utf-8');
+    const local = safeJsonParseString(content, null);
+
+    if (!local || !local.hooks) {
+      return; // No hooks in local settings — nothing to migrate
+    }
+
+    // Check if local hooks are from an older WogiFlow version
+    const localVersion = local._wogiFlowVersion || '0.0.0';
+    const currentVersion = getPackageVersion();
+
+    if (localVersion === currentVersion) {
+      return; // Versions match — hooks are current, no migration needed
+    }
+
+    // Stale hooks detected — remove them so settings.json hooks take effect
+    // Preserve everything else (permissions, user overrides)
+    delete local.hooks;
+
+    // Update version marker to current
+    local._wogiFlowVersion = currentVersion;
+    local._wogiFlowHooksMigratedAt = new Date().toISOString();
+
+    fs.writeFileSync(localSettingsPath, JSON.stringify(local, null, 2), { mode: FILE_MODE });
+
+    if (!shouldBeSilent()) {
+      process.stderr.write(
+        `\x1b[36mWogiFlow:\x1b[0m Migrated stale hooks from settings.local.json (v${localVersion} → v${currentVersion}). Hooks now served from settings.json.\n`
+      );
+    }
+
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] Removed stale hooks from settings.local.json (was v${localVersion}, now v${currentVersion})`);
+    }
+  } catch (err) {
+    // Non-fatal — stale hooks are a UX problem, not a crash-worthy issue
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] Local hooks migration failed: ${err.message}`);
+    }
+  }
+}
+
+/**
  * Known WogiFlow extension packages.
  * Each must export registerHooks({ settingsPath, projectRoot })
  */
@@ -711,6 +694,11 @@ function main() {
   // Copy essential .claude/ resources (commands, docs, rules)
   // This ensures slash commands are available immediately
   copyClaudeResources();
+
+  // Migrate stale hooks from settings.local.json (if present).
+  // Must run AFTER copyClaudeResources() updates settings.json,
+  // so the correct hooks are already in place when stale ones are removed.
+  migrateStaleLocalHooks();
 
   // NOTE: Scripts and .workflow/ managed dirs (bridges, templates, agents, lib) are
   // NO LONGER copied to the project. They live exclusively in the wogiflow package

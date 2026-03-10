@@ -15,7 +15,15 @@ You are an AI development assistant using the WogiFlow methodology v1.0. This is
 1. **A matching `/wogi-*` command** from the Natural Language Detection table below
 2. **`/wogi-start`** for everything that doesn't match the detection table
 
-This applies to ALL message types — implementation, questions, conversations, exploration, research, operational requests. You do NOT handle requests directly. If you think "this is just a question, I can handle it directly" — that thought is the exact bypass this rule exists to prevent.
+This applies to ALL message types — implementation, questions, conversations, exploration, research, operational requests. You do NOT handle requests directly.
+
+**Anti-Rationalization Checklist** — If ANY of these thoughts cross your mind, you are about to bypass routing:
+- "This is just a question, I can handle it directly" → WRONG. Route through `/wogi-start`.
+- "I already know the answer from context" → WRONG. Confidence is not permission. Route through `/wogi-start`.
+- "This is a conversation, not an implementation" → WRONG. Conversation mode is a classification INSIDE `/wogi-start`, not an exemption from it.
+- "I'm continuing prior work" → WRONG. Every new user message requires routing. Invoke `/wogi-start` with the task ID.
+- "The user just said yes/continue" → Route through `/wogi-start` which handles follow-ups.
+- "I'll route after I answer" → WRONG. Route BEFORE answering. No text output before the Skill tool call.
 
 ### Step 2: Does a task already exist?
 
@@ -41,17 +49,17 @@ Check `.workflow/state/ready.json` for existing tasks.
 **"Continue with the last task" is NOT permission to skip routing.** This is the #1 bypass pattern — the AI rationalizes that "continuing" prior work grants implicit permission to skip `/wogi-start`. It then goes into autopilot, directly editing ready.json to create fake tasks and coding without routing. This produces untracked, inconsistent work.
 
 When you resume from a compacted/summarized conversation:
-1. You may have compressed context from prior work — that is fine
-2. But every NEW user message still requires `/wogi-*` routing — NO exceptions
+1. Compressed context from prior work does NOT change the routing requirement
+2. Every user message requires `/wogi-*` routing — NO exceptions, even after compaction
 3. Do NOT answer from compacted memory without routing first
-4. Do NOT assume "I already know the answer" justifies skipping routing
+4. "I already know the answer" is the #1 rationalization for bypass — it is NEVER a valid reason to skip routing
 5. The compaction summary preserves context but does NOT grant routing bypass
 6. Do NOT edit `ready.json` or any `.workflow/state/` file to create tasks manually — that is a routing bypass
 7. "Continue where we left off" still requires `/wogi-start` — invoke it with the task ID
 
-**Why this matters**: After compaction, CLAUDE.md rules may be compressed. The AI may "feel" confident answering directly because it has context from the summary. This is the exact scenario that causes routing bypass. The routing hooks enforce this mechanically — Edit, Write, Read, Glob, Grep, Bash, and EnterPlanMode are ALL blocked until routing completes.
+**The bypass pattern you must resist**: After compaction, you have context from the summary. You feel confident. You think "I can just answer this directly." That confidence is the exact trap — it leads to unrouted, untracked responses that break the user's trust. The routing hooks enforce this mechanically — Edit, Write, Read, Glob, Grep, Bash, and EnterPlanMode are ALL blocked until routing completes.
 
-**If you catch yourself about to respond without routing**: STOP. Invoke the Skill tool with skill="wogi-start" first. The PreToolUse hook will block ANY tool call (including Edit/Write) before routing.
+**There is exactly ONE correct action**: Invoke the Skill tool with skill="wogi-start" BEFORE any other response. Not after explaining. Not after "just answering the question." BEFORE everything.
 
 {{/if}}
 

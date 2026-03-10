@@ -313,7 +313,8 @@ function generateTestCase(criterion, framework) {
   const lines = [];
 
   lines.push(`  describe('${escapeSingleQuotes(criterion.title)}', () => {`);
-  lines.push(`    it('should ${escapeSingleQuotes(criterion.then.split('\n')[0].toLowerCase())}', () => {`);
+  const thenText = (criterion.then || '').split('\n')[0].toLowerCase() || 'satisfy acceptance criteria';
+  lines.push(`    it('should ${escapeSingleQuotes(thenText)}', () => {`);
   lines.push(`      // Given: ${criterion.given.split('\n')[0]}`);
   lines.push(`      // When: ${criterion.when.split('\n')[0]}`);
   lines.push(`      // Then: ${criterion.then.split('\n')[0]}`);
