@@ -105,7 +105,7 @@ if (!fs.existsSync(path.join(referenceProjectPath, 'package.json')) &&
 ```
 
 ```javascript
-const { detectStack } = require('./scripts/flow-context-init.js');
+const { detectStack } = require('wogiflow/scripts/flow-context-init.js');
 // Temporarily set CWD context for the reference project
 const refStack = detectStack(referenceProjectPath);
 ```
@@ -145,7 +145,7 @@ If "Yes" or "Partially": Pre-populate the tech stack wizard (Step 3) with the de
 ```
 
 ```javascript
-const { extractPatterns, formatAsDecisions } = require('./scripts/flow-pattern-extractor.js');
+const { extractPatterns, formatAsDecisions } = require('wogiflow/scripts/flow-pattern-extractor.js');
 const result = await extractPatterns(referenceProjectPath, {
   analysisMode: 'deep',
   categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config']
@@ -190,7 +190,7 @@ AskUserQuestion({
 
 **If "Accept recommended":**
 ```javascript
-const { resolveConflictsAuto, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+const { resolveConflictsAuto, resolutionsToDecisions } = require('wogiflow/scripts/flow-conflict-resolver.js');
 const resolutions = resolveConflictsAuto(result.conflicts);
 const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
 ```
@@ -213,7 +213,7 @@ AskUserQuestion({
 ```
 Collect all resolutions:
 ```javascript
-const { resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+const { resolutionsToDecisions } = require('wogiflow/scripts/flow-conflict-resolver.js');
 const conflictDecisionsMarkdown = resolutionsToDecisions(resolutions);
 ```
 
@@ -227,7 +227,7 @@ Display: `  Conflicts resolved:  ${resolutions.length} resolved, ${skipped} skip
 
 **a) Extract file templates:**
 ```javascript
-const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
+const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('wogiflow/scripts/flow-template-extractor.js');
 const templateResult = await extractTemplates(referenceProjectPath, {
   types: ['component', 'service', 'test', 'route', 'hook', 'config'],
   outputDir: path.join(projectRoot, '.workflow', 'templates', 'extracted')
@@ -245,7 +245,7 @@ Display:
 
 **b) Scan function registry:**
 ```javascript
-const { FunctionScanner } = require('./scripts/flow-function-index.js');
+const { FunctionScanner } = require('wogiflow/scripts/flow-function-index.js');
 const funcScanner = new FunctionScanner({ projectRoot: referenceProjectPath });
 const funcRegistry = await funcScanner.scan();
 ```
@@ -254,7 +254,7 @@ Display: `  Functions found:     ${funcRegistry?.functions?.length || 0} utility
 
 **c) Scan API registry:**
 ```javascript
-const { APIScanner } = require('./scripts/flow-api-index.js');
+const { APIScanner } = require('wogiflow/scripts/flow-api-index.js');
 const apiScanner = new APIScanner({ projectRoot: referenceProjectPath });
 const apiRegistry = await apiScanner.scan();
 ```
@@ -263,7 +263,7 @@ Display: `  API endpoints found: ${apiRegistry?.endpoints?.length || 0} endpoint
 
 **d) Scan product info:**
 ```javascript
-const { scanProject, formatSummary } = require('./scripts/flow-product-scanner.js');
+const { scanProject, formatSummary } = require('wogiflow/scripts/flow-product-scanner.js');
 const refProductInfo = scanProject(referenceProjectPath);
 ```
 
@@ -275,7 +275,7 @@ const refProductInfo = scanProject(referenceProjectPath);
 
 Generate skills for the reference project's detected technologies:
 ```javascript
-const { generateSkills, enhanceSkillWithDocs } = require('./scripts/flow-skill-generator.js');
+const { generateSkills, enhanceSkillWithDocs } = require('wogiflow/scripts/flow-skill-generator.js');
 ```
 
 For each detected framework/library in `refStack`:
@@ -325,7 +325,7 @@ function sanitizeRefPath(absPath, refRoot) {
 // Apply to all registry entries
 function sanitizeRegistry(registry, refRoot) {
   if (!registry) return registry;
-  const { safeJsonParse } = require('./scripts/flow-utils.js');
+  const { safeJsonParse } = require('wogiflow/scripts/flow-utils.js');
   const sanitized = safeJsonParse(JSON.stringify(registry), registry);
   for (const item of (sanitized.functions || sanitized.endpoints || [])) {
     if (item.file) item.file = sanitizeRefPath(item.file, refRoot);
@@ -835,7 +835,7 @@ Save to `.workflow/config.json`.
 Run the skill generator to create directory structure with placeholder content:
 
 ```bash
-node scripts/flow-skill-generator.js --from-selections
+node node_modules/wogiflow/scripts/flow-skill-generator.js --from-selections
 ```
 
 This creates `.claude/skills/<name>/` for each selected technology with `skill.md`, `knowledge/patterns.md`, etc. - all with template content that will be populated in Step B.
@@ -884,7 +884,7 @@ FOR EACH skill (sequentially, NOT in parallel):
      tokens=5000
 
   3. EXTRACT: Pass fetched docs to the skill enhancer:
-     const { enhanceSkillWithDocs } = require('./scripts/flow-skill-generator.js');
+     const { enhanceSkillWithDocs } = require('wogiflow/scripts/flow-skill-generator.js');
      enhanceSkillWithDocs('<skillId>', fetchedDocs);
 
   4. FLUSH: The doc content is now written to disk.
@@ -988,7 +988,7 @@ If no components detected, create the empty template (same structure, no entries
 
 Run the function scanner to auto-generate:
 ```javascript
-const { FunctionScanner } = require('./scripts/flow-function-index.js');
+const { FunctionScanner } = require('wogiflow/scripts/flow-function-index.js');
 const scanner = new FunctionScanner();
 const registry = await scanner.scan();
 if (registry && registry.functions.length > 0) {
@@ -1020,7 +1020,7 @@ Utility functions available for reuse. **Check before creating new utilities.**
 
 Run the API scanner to auto-generate:
 ```javascript
-const { APIScanner } = require('./scripts/flow-api-index.js');
+const { APIScanner } = require('wogiflow/scripts/flow-api-index.js');
 const scanner = new APIScanner();
 const registry = await scanner.scan();
 if (registry && (registry.endpoints.length > 0 || registry.clientFunctions.length > 0)) {

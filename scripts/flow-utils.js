@@ -1964,6 +1964,8 @@ module.exports = {
   // Explicit re-exports from flow-paths.js
   getProjectRoot: flowPaths.getProjectRoot,
   PROJECT_ROOT: flowPaths.PROJECT_ROOT,
+  PACKAGE_ROOT: flowPaths.PACKAGE_ROOT,
+  PACKAGE_PATHS: flowPaths.PACKAGE_PATHS,
   WORKFLOW_DIR: flowPaths.WORKFLOW_DIR,
   STATE_DIR: flowPaths.STATE_DIR,
   CLAUDE_DIR: flowPaths.CLAUDE_DIR,

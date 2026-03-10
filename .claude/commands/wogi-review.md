@@ -212,7 +212,7 @@ Run automated tools first to catch obvious issues quickly:
 If reviewing a task with a spec file, run spec verification FIRST:
 
 ```bash
-node scripts/flow-spec-verifier.js verify wf-XXXXXXXX
+node node_modules/wogiflow/scripts/flow-spec-verifier.js verify wf-XXXXXXXX
 ```
 
 This ensures all files promised in the spec actually exist before reviewing code quality.
@@ -639,7 +639,7 @@ AI Review: M findings (X critical, Y high, Z medium, W low)
 
 **2.5.2. Parse spec for promised deliverables**:
 ```bash
-node scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
+node node_modules/wogiflow/scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
 ```
 Or manually: Read the spec's "Files to Change" / "Technical Notes" / "Components" sections and extract all files mentioned.
 
@@ -687,7 +687,7 @@ Summary: X verified, Y missing, Z unplanned
 
 **3.2. Run standards compliance check**:
 ```bash
-node scripts/flow-standards-checker.js [changed-files...]
+node node_modules/wogiflow/scripts/flow-standards-checker.js [changed-files...]
 ```
 Or if the runtime script is not available, manually check:
 - `decisions.md` - All documented coding rules and patterns
@@ -723,7 +723,7 @@ If must-fix violations found: Display violations prominently, then continue to P
 
 **4.2. Run solution optimization**:
 ```bash
-node scripts/flow-solution-optimizer.js [changed-files...]
+node node_modules/wogiflow/scripts/flow-solution-optimizer.js [changed-files...]
 ```
 Or if the runtime script is not available, manually analyze changed files for:
 - Performance: filter+map chains, sequential awaits in loops
@@ -1005,7 +1005,7 @@ When multi-pass is triggered (auto-detected or via `--multipass`), execute **4 s
 The pass modules in `scripts/flow-review-passes/` can also be used programmatically:
 
 ```javascript
-const { runMultiPassReview } = require('./scripts/flow-review-passes');
+const { runMultiPassReview } = require('wogiflow/scripts/flow-review-passes');
 
 const results = await runMultiPassReview({
   files: [{ path: 'src/api.ts', content: '...' }],
@@ -1099,7 +1099,7 @@ This phase runs AFTER AI review and BEFORE standards compliance. It validates th
 
 1. **Parse the spec** for promised deliverables using `flow-spec-verifier.js`:
    ```bash
-   node scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
+   node node_modules/wogiflow/scripts/flow-spec-verifier.js parse .workflow/changes/wf-XXXXXXXX.md
    ```
    This returns the list of files the spec promises to create or modify.
 

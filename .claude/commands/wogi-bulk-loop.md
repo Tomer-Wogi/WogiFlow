@@ -151,9 +151,9 @@ Terminal 1 will automatically pick up captured items and process them.
 ## CLI Usage
 
 ```bash
-node scripts/flow-bulk-loop.js
-node scripts/flow-bulk-loop.js --yolo --max-tasks 10
-node scripts/flow-bulk-loop.js --dry-run
+node node_modules/wogiflow/scripts/flow-bulk-loop.js
+node node_modules/wogiflow/scripts/flow-bulk-loop.js --yolo --max-tasks 10
+node node_modules/wogiflow/scripts/flow-bulk-loop.js --dry-run
 ```
 
 ## Configuration

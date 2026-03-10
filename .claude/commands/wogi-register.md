@@ -34,7 +34,7 @@ After registration, `/wogi-start` will automatically route matching requests to 
 
 First, try to discover the plugin's capabilities through MCP tools:
 
-1. Run `node scripts/flow-plugin-registry.js scan` to check for unregistered MCP servers
+1. Run `node node_modules/wogiflow/scripts/flow-plugin-registry.js scan` to check for unregistered MCP servers
 2. Use `ToolSearch` to search for tools matching the plugin name pattern
 3. Use `ListMcpResourcesTool` to check for MCP resources from matching servers
 4. Extract: tool names, descriptions, input schemas
@@ -126,7 +126,7 @@ Does this look correct? You can adjust before saving.
 Call `registerPlugin()` from `scripts/flow-plugin-registry.js`:
 
 ```javascript
-const { registerPlugin } = require('./scripts/flow-plugin-registry');
+const { registerPlugin } = require('wogiflow/scripts/flow-plugin-registry');
 registerPlugin({
   name: pluginName,
   description: discoveredDescription,

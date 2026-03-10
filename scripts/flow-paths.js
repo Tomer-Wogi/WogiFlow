@@ -61,6 +61,22 @@ function getProjectRoot() {
 }
 
 // ============================================================
+// Package Root (where wogiflow npm package lives)
+// ============================================================
+
+// __dirname is scripts/ — parent is the package root.
+// This works both when running from node_modules/wogiflow/scripts/
+// and when running from the project's own scripts/ (dev/self-hosting).
+const PACKAGE_ROOT = path.resolve(__dirname, '..');
+
+const PACKAGE_PATHS = {
+  bridges: path.join(PACKAGE_ROOT, '.workflow', 'bridges'),
+  templates: path.join(PACKAGE_ROOT, '.workflow', 'templates'),
+  agents: path.join(PACKAGE_ROOT, '.workflow', 'agents'),
+  lib: path.join(PACKAGE_ROOT, '.workflow', 'lib'),
+};
+
+// ============================================================
 // Paths
 // ============================================================
 
@@ -228,6 +244,8 @@ function checkSpecMigration() {
 module.exports = {
   getProjectRoot,
   PROJECT_ROOT,
+  PACKAGE_ROOT,
+  PACKAGE_PATHS,
   WORKFLOW_DIR,
   STATE_DIR,
   CLAUDE_DIR,

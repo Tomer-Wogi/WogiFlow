@@ -35,7 +35,7 @@ When this command is invoked (directly or via longInputGate auto-routing), you M
 ### Phase 1: Extract (Zero-Loss)
 
 ```javascript
-const { extractZeroLoss } = require('./scripts/flow-zero-loss-extraction');
+const { extractZeroLoss } = require('wogiflow/scripts/flow-zero-loss-extraction');
 const result = extractZeroLoss(inputText);
 ```
 
@@ -48,7 +48,7 @@ Breakdown: X high-confidence, Y medium, Z low, W filler.
 ### Phase 2: Auto-Review
 
 ```javascript
-const { autoReview, batchConfirm, autoComplete } = require('./scripts/flow-extraction-review');
+const { autoReview, batchConfirm, autoComplete } = require('wogiflow/scripts/flow-extraction-review');
 const reviewResult = autoReview(result);
 ```
 
@@ -89,7 +89,7 @@ const topics = [
 ### Phase 4: Run Full Pipeline (Passes 2-4)
 
 ```javascript
-const { runFullPipeline } = require('./scripts/flow-long-input');
+const { runFullPipeline } = require('wogiflow/scripts/flow-long-input');
 const pipelineResult = runFullPipeline({
   transcript: inputText,
   topics: topics,
@@ -123,7 +123,7 @@ if (pipelineResult.clarification_questions.length > 0) {
 Use `AskUserQuestion` to present all questions at once. After user answers, apply resolutions:
 
 ```javascript
-const { resolveContradictionWithChoice } = require('./scripts/flow-long-input');
+const { resolveContradictionWithChoice } = require('wogiflow/scripts/flow-long-input');
 // For each contradiction answer:
 resolveContradictionWithChoice(contradictionId, userChoice);
 ```
@@ -133,7 +133,7 @@ resolveContradictionWithChoice(contradictionId, userChoice);
 ### Phase 6: Generate Stories and Export
 
 ```javascript
-const { generateAndExportStories } = require('./scripts/flow-long-input-stories');
+const { generateAndExportStories } = require('wogiflow/scripts/flow-long-input-stories');
 const exportResult = await generateAndExportStories({ featureName: 'extract-review' });
 ```
 

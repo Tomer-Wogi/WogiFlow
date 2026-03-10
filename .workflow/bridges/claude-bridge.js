@@ -417,7 +417,11 @@ Last synced: ${new Date().toISOString()}
       'Bash(gh issue *)',
       'Bash(gh api *)',
 
-      // Flow scripts
+      // Flow scripts (package location + legacy project location)
+      `Bash(${path.join(projectDir, 'node_modules/wogiflow/scripts/flow')} *)`,
+      'Bash(./node_modules/wogiflow/scripts/flow *)',
+      'Bash(./node_modules/wogiflow/scripts/flow)',
+      // Legacy: project-level scripts (for backward compatibility)
       `Bash(${path.join(projectDir, 'scripts/flow')} *)`,
       'Bash(./scripts/flow *)',
       'Bash(./scripts/flow)',

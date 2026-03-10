@@ -46,7 +46,7 @@ if [ "$ENABLED" = "true" ]; then
     echo ""
     echo "── Local Providers ──"
     echo "  Checking..."
-    node scripts/flow-hybrid-detect.js providers 2>/dev/null | jq -r '.[] | "  \(.name): \(if .available then "✓ available (\(.models | length) models)" else "✗ not running" end)"' 2>/dev/null || echo "  Detection unavailable"
+    node node_modules/wogiflow/scripts/flow-hybrid-detect.js providers 2>/dev/null | jq -r '.[] | "  \(.name): \(if .available then "✓ available (\(.models | length) models)" else "✗ not running" end)"' 2>/dev/null || echo "  Detection unavailable"
 
     echo ""
     echo "── Session State ──"

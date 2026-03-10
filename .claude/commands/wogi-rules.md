@@ -30,7 +30,7 @@ decisions.md (Source of Truth)     .claude/rules/ (Auto-Generated)
 
 If rules seem out of date:
 ```bash
-node scripts/flow-rules-sync.js
+node node_modules/wogiflow/scripts/flow-rules-sync.js
 ```
 
 Or use this command:
@@ -98,7 +98,7 @@ When user runs `/wogi-rules`:
 
 When user runs `/wogi-rules sync`:
 
-1. Run `node scripts/flow-rules-sync.js`
+1. Run `node node_modules/wogiflow/scripts/flow-rules-sync.js`
 2. Show updated rules
 
 When user runs `/wogi-rules [name]`:

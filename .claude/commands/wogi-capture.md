@@ -116,10 +116,10 @@ Use `--no-group` to create separate items without grouping:
 ## CLI Usage
 
 ```bash
-node scripts/flow-capture.js "Add dark mode toggle"
-node scripts/flow-capture.js "Bug: login fails" --json
-node scripts/flow-capture.js "maybe add caching?" --idea
-node scripts/flow-capture.js "refactor auth" --certain
+node node_modules/wogiflow/scripts/flow-capture.js "Add dark mode toggle"
+node node_modules/wogiflow/scripts/flow-capture.js "Bug: login fails" --json
+node node_modules/wogiflow/scripts/flow-capture.js "maybe add caching?" --idea
+node node_modules/wogiflow/scripts/flow-capture.js "refactor auth" --certain
 ```
 
 ## Options

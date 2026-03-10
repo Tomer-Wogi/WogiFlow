@@ -36,7 +36,7 @@ The audit system has **two layers**:
 ### Step 1: Gather Project Files
 
 ```bash
-node scripts/flow-audit.js files
+node node_modules/wogiflow/scripts/flow-audit.js files
 ```
 
 This returns all tracked project files (excluding node_modules, dist, .workflow/state/, etc.). Use this as the base file set for all agents.
@@ -79,7 +79,7 @@ Return a structured report with:
 Audit the project's dependencies.
 
 1. Read package.json for all dependencies and devDependencies
-2. Run: node scripts/flow-audit.js outdated
+2. Run: node node_modules/wogiflow/scripts/flow-audit.js outdated
    → This runs npm outdated and returns structured results
 3. Check for:
    - Major version updates available (HIGH priority)
@@ -88,7 +88,7 @@ Audit the project's dependencies.
    - Unused dependencies (in package.json but never imported)
    - Missing peer dependencies
 4. Check for known security vulnerabilities:
-   - Run: node scripts/flow-audit.js audit
+   - Run: node node_modules/wogiflow/scripts/flow-audit.js audit
    → This runs npm audit and returns structured results
 
 Return:
@@ -212,7 +212,7 @@ Return:
 Catalog technical debt in this project.
 
 1. Find all TODO, FIXME, HACK, WORKAROUND, TEMPORARY comments:
-   - Run: node scripts/flow-audit.js todos
+   - Run: node node_modules/wogiflow/scripts/flow-audit.js todos
    → Returns structured list of all TODO/FIXME/HACK comments with file:line
 2. Find commented-out code blocks (>3 consecutive commented lines)
 3. Find functions with high complexity:
@@ -237,7 +237,7 @@ Return:
 
 After all agents complete, consolidate into a single report.
 
-**Use `node scripts/flow-audit.js score` with the agent scores to calculate a weighted overall score.**
+**Use `node node_modules/wogiflow/scripts/flow-audit.js score` with the agent scores to calculate a weighted overall score.**
 
 ### Step 4: Display Report
 

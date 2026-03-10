@@ -49,18 +49,22 @@ function findProjectRoot() {
  * @param {string[]} args - Command arguments
  */
 function executeProjectCommand(projectRoot, args) {
-  const projectFlow = path.join(projectRoot, 'scripts', 'flow');
+  // Prefer scripts from the wogiflow package in node_modules
+  const packageFlow = path.join(projectRoot, 'node_modules', 'wogiflow', 'scripts', 'flow');
+  const legacyFlow = path.join(projectRoot, 'scripts', 'flow');
+  const targetFlow = fs.existsSync(packageFlow) ? packageFlow : legacyFlow;
 
-  if (!fs.existsSync(projectFlow)) {
-    console.error('Error: scripts/flow not found in project');
-    console.error('Run `flow upgrade` to update the project structure');
+  if (!fs.existsSync(targetFlow)) {
+    console.error('Error: WogiFlow scripts not found');
+    console.error('Run `npm install wogiflow` to install');
     process.exit(1);
   }
 
-  // Spawn the project's flow script
+  // Spawn the flow script, passing project root via env var
   // Note: shell: false (default) prevents command injection
-  const child = spawn(projectFlow, args, {
+  const child = spawn(targetFlow, args, {
     cwd: projectRoot,
+    env: { ...process.env, WOGIFLOW_PROJECT_ROOT: projectRoot },
     stdio: 'inherit'
   });
 

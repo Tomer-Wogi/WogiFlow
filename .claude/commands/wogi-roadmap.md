@@ -184,7 +184,7 @@ If you detect a request that would require 5+ tasks or multiple phases:
    };
 
    // Add to roadmap
-   const { addItem } = require('./scripts/flow-roadmap');
+   const { addItem } = require('wogiflow/scripts/flow-roadmap');
    addItem(item, 'later');
    ```
 
@@ -195,7 +195,7 @@ If you detect a request that would require 5+ tasks or multiple phases:
 Before modifying any file, check if it's listed in roadmap items:
 
 ```javascript
-const { parseRoadmap } = require('./scripts/flow-roadmap');
+const { parseRoadmap } = require('wogiflow/scripts/flow-roadmap');
 const roadmap = parseRoadmap();
 
 // Collect all key files from all phases

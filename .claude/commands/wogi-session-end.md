@@ -69,7 +69,7 @@ When `config.community.enabled` is `true` and `config.community.pushOnSessionEnd
 6. If `community.enabled` is `false`: Skip silently (don't show the step at all)
 
 ```javascript
-const { collectShareableData, pushToServer, isConsentAcknowledged, acknowledgeConsent, getConsentMessage } = require('../../scripts/flow-community');
+const { collectShareableData, pushToServer, isConsentAcknowledged, acknowledgeConsent, getConsentMessage } = require('wogiflow/scripts/flow-community');
 
 // Only if community is enabled
 if (config.community?.enabled && config.community?.pushOnSessionEnd !== false) {

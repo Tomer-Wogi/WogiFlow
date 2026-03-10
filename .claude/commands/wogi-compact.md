@@ -158,18 +158,18 @@ Auto-compact fires at ~95% → Session resumes with compressed context
 **CLI commands:**
 ```bash
 # Check if compaction needed at a phase
-node scripts/flow-proactive-compact.js check exploring 0.78 wf-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-proactive-compact.js check exploring 0.78 wf-a1b2c3d4
 
 # Show current config
-node scripts/flow-proactive-compact.js config
+node node_modules/wogiflow/scripts/flow-proactive-compact.js config
 
 # Generate compaction context from checkpoint
-node scripts/flow-proactive-compact.js context
+node node_modules/wogiflow/scripts/flow-proactive-compact.js context
 
 # View/manage checkpoints
-node scripts/flow-task-checkpoint.js load
-node scripts/flow-task-checkpoint.js check
-node scripts/flow-task-checkpoint.js clear wf-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-task-checkpoint.js load
+node node_modules/wogiflow/scripts/flow-task-checkpoint.js check
+node node_modules/wogiflow/scripts/flow-task-checkpoint.js clear wf-a1b2c3d4
 ```
 
 ### Legacy Fixed Thresholds
@@ -183,22 +183,22 @@ If smart compaction is disabled, check context pressure status:
 
 ```bash
 # View tree stats
-node scripts/flow-context-compact stats
+node node_modules/wogiflow/scripts/flow-context-compact stats
 
 # Check context pressure
-node scripts/flow-context-compact pressure
+node node_modules/wogiflow/scripts/flow-context-compact pressure
 
 # View serialized tree
-node scripts/flow-context-compact show
+node node_modules/wogiflow/scripts/flow-context-compact show
 
 # Manual compact
-node scripts/flow-context-compact compact
+node node_modules/wogiflow/scripts/flow-context-compact compact
 
 # Compact and prune old nodes
-node scripts/flow-context-compact compact --prune
+node node_modules/wogiflow/scripts/flow-context-compact compact --prune
 
 # Get context for a query
-node scripts/flow-context-compact context "authentication task"
+node node_modules/wogiflow/scripts/flow-context-compact context "authentication task"
 ```
 
 After providing the summary, tell user: "Ready to compact. Please run /compact or continue and I'll auto-compact when needed."

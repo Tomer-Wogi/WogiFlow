@@ -19,53 +19,53 @@ Plan (pl-XXXXXXXX) - Strategic initiatives
 
 ### Create Feature
 ```bash
-node scripts/flow-feature.js create "<title>"
+node node_modules/wogiflow/scripts/flow-feature.js create "<title>"
 
 # With parent epic
-node scripts/flow-feature.js create "<title>" --parent ep-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-feature.js create "<title>" --parent ep-a1b2c3d4
 ```
 
 Example:
 ```bash
-node scripts/flow-feature.js create "User Authentication Flow"
+node node_modules/wogiflow/scripts/flow-feature.js create "User Authentication Flow"
 ```
 
 ### List Features
 ```bash
-node scripts/flow-feature.js list
+node node_modules/wogiflow/scripts/flow-feature.js list
 
 # JSON output
-node scripts/flow-feature.js list --json
+node node_modules/wogiflow/scripts/flow-feature.js list --json
 ```
 
 ### Show Feature Details
 ```bash
-node scripts/flow-feature.js show <featureId>
+node node_modules/wogiflow/scripts/flow-feature.js show <featureId>
 ```
 
 ### Add Story to Feature
 ```bash
-node scripts/flow-feature.js add-story <featureId> <storyId>
+node node_modules/wogiflow/scripts/flow-feature.js add-story <featureId> <storyId>
 ```
 
 Example:
 ```bash
-node scripts/flow-feature.js add-story ft-a1b2c3d4 wf-e5f6g7h8
+node node_modules/wogiflow/scripts/flow-feature.js add-story ft-a1b2c3d4 wf-e5f6g7h8
 ```
 
 ### Remove Story from Feature
 ```bash
-node scripts/flow-feature.js remove-story <featureId> <storyId>
+node node_modules/wogiflow/scripts/flow-feature.js remove-story <featureId> <storyId>
 ```
 
 ### Check Progress
 ```bash
-node scripts/flow-feature.js progress <featureId>
+node node_modules/wogiflow/scripts/flow-feature.js progress <featureId>
 ```
 
 ### Delete Feature
 ```bash
-node scripts/flow-feature.js delete <featureId>
+node node_modules/wogiflow/scripts/flow-feature.js delete <featureId>
 ```
 
 ## File Structure
@@ -106,20 +106,20 @@ When all stories in a feature are completed:
 
 ```bash
 # Link feature to epic
-node scripts/flow-epics.js add-feature <epicId> <featureId>
+node node_modules/wogiflow/scripts/flow-epics.js add-feature <epicId> <featureId>
 
 # Or when creating feature
-node scripts/flow-feature.js create "Title" --parent ep-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-feature.js create "Title" --parent ep-a1b2c3d4
 ```
 
 ## Workflow Example
 
 ```bash
 # 1. Create an epic for a major initiative
-node scripts/flow-epics.js create ep-auth --title "Authentication System"
+node node_modules/wogiflow/scripts/flow-epics.js create ep-auth --title "Authentication System"
 
 # 2. Create features for each capability
-node scripts/flow-feature.js create "Login Flow" --parent ep-auth
+node node_modules/wogiflow/scripts/flow-feature.js create "Login Flow" --parent ep-auth
 # Creates: ft-a1b2c3d4
 
 # 3. Create stories for the feature
@@ -127,13 +127,13 @@ node scripts/flow-feature.js create "Login Flow" --parent ep-auth
 # Creates: wf-e5f6g7h8
 
 # 4. Link story to feature
-node scripts/flow-feature.js add-story ft-a1b2c3d4 wf-e5f6g7h8
+node node_modules/wogiflow/scripts/flow-feature.js add-story ft-a1b2c3d4 wf-e5f6g7h8
 
 # 5. Implement the story
 /wogi-start wf-e5f6g7h8
 
 # 6. Check progress
-node scripts/flow-feature.js progress ft-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-feature.js progress ft-a1b2c3d4
 ```
 
 ## Status Icons

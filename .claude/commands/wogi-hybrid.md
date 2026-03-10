@@ -16,7 +16,7 @@ Hybrid mode is a **multi-model execution system** where Opus (the planning model
 Check what's available on your system:
 
 ```bash
-node scripts/flow-hybrid-detect.js providers
+node node_modules/wogiflow/scripts/flow-hybrid-detect.js providers
 ```
 
 This detects:
@@ -38,7 +38,7 @@ Configure multiple providers at once (for both hybrid and peer review):
 For hybrid-specific configuration only:
 
 ```bash
-node scripts/flow-hybrid-interactive.js
+node node_modules/wogiflow/scripts/flow-hybrid-interactive.js
 ```
 
 ### Model Selection (Session Persistent)
@@ -46,7 +46,7 @@ node scripts/flow-hybrid-interactive.js
 The executor model is selected once per session and remembered for subsequent runs.
 
 ```javascript
-const modelConfig = require('./scripts/flow-model-config');
+const modelConfig = require('wogiflow/scripts/flow-model-config');
 
 // Check if model already selected this session
 const sessionModel = modelConfig.getSessionModels('hybrid');

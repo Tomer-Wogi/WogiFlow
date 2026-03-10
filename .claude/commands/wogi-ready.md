@@ -70,7 +70,7 @@ When multiple ready tasks have no dependencies between them, the output will sho
 
 When 2+ ready tasks exist, automatically show parallelizability scores by running:
 ```bash
-node scripts/flow-parallel.js scores
+node node_modules/wogiflow/scripts/flow-parallel.js scores
 ```
 
 This scores each task 0-100 based on file overlap, dependencies, and feature area:

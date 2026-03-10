@@ -32,13 +32,13 @@ Use this command manually when:
 
 ```bash
 # Manual extraction from current changes
-node scripts/flow-skill-learn.js --trigger=manual
+node node_modules/wogiflow/scripts/flow-skill-learn.js --trigger=manual
 
 # Target specific skill
-node scripts/flow-skill-learn.js --skill=nestjs
+node node_modules/wogiflow/scripts/flow-skill-learn.js --skill=nestjs
 
 # Preview without making changes
-node scripts/flow-skill-learn.js --dry-run --verbose
+node node_modules/wogiflow/scripts/flow-skill-learn.js --dry-run --verbose
 ```
 
 ## Configuration

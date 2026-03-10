@@ -45,7 +45,7 @@ Configure both local and cloud models. Hybrid mode will select the best executor
 Analyzing your codebase and generating customized templates:
 
 ```bash
-node scripts/flow-templates.js generate
+node node_modules/wogiflow/scripts/flow-templates.js generate
 ```
 
 This creates templates in `templates/hybrid/` that teach executor models your project's patterns.
@@ -65,7 +65,7 @@ Configures all your models in one place:
 Runs the hybrid-specific setup wizard:
 
 ```bash
-node scripts/flow-hybrid-interactive.js
+node node_modules/wogiflow/scripts/flow-hybrid-interactive.js
 ```
 
 ## Step 4: Configure Smart Routing (Optional)

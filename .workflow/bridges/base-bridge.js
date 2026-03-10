@@ -28,6 +28,14 @@ try {
   safeJsonParse = null;
 }
 
+// Import PACKAGE_PATHS for resolving package-owned resources (templates, bridges, etc.)
+let PACKAGE_PATHS;
+try {
+  PACKAGE_PATHS = require('../../scripts/flow-paths').PACKAGE_PATHS;
+} catch {
+  PACKAGE_PATHS = null;
+}
+
 class BaseBridge {
   /**
    * @param {string} cliType - The CLI type identifier (e.g., 'claude-code')
@@ -437,7 +445,16 @@ class BaseBridge {
    * @returns {string|null} Package root path or null if not found
    */
   getPackageRoot() {
-    // Try to find the package by looking up from scripts directory
+    // Prefer PACKAGE_ROOT from flow-paths (canonical source)
+    if (PACKAGE_PATHS) {
+      // PACKAGE_PATHS.bridges is <PACKAGE_ROOT>/.workflow/bridges
+      const root = path.resolve(PACKAGE_PATHS.bridges, '..', '..');
+      if (fs.existsSync(path.join(root, 'package.json'))) {
+        return root;
+      }
+    }
+
+    // Fallback: try to find the package by looking up from __dirname
     const possibleRoots = [
       path.resolve(__dirname, '..', '..'),  // From .workflow/bridges/ -> package root
       path.resolve(__dirname, '..', '..', '..', 'node_modules', 'wogiflow'),  // From project
@@ -522,25 +539,27 @@ class BaseBridge {
       return null;
     }
 
-    const projectTemplate = path.join(this.projectDir, this.workflowDir, 'templates', templateName);
-
-    // If project template exists and is not outdated, use it
-    if (!this.isTemplateOutdated(projectTemplate)) {
-      return projectTemplate;
-    }
-
-    // Try to use package template instead
-    const packageRoot = this.getPackageRoot();
-    if (packageRoot) {
-      const packageTemplate = path.join(packageRoot, '.workflow', 'templates', templateName);
+    // Prefer package template (canonical source from node_modules/wogiflow)
+    if (PACKAGE_PATHS) {
+      const packageTemplate = path.join(PACKAGE_PATHS.templates, templateName);
       if (fs.existsSync(packageTemplate)) {
-        this.log(`Using package template for ${templateName} (project template outdated)`);
         return packageTemplate;
       }
     }
 
-    // Fall back to project template even if outdated
+    // Fallback: try package root detection
+    const packageRoot = this.getPackageRoot();
+    if (packageRoot) {
+      const packageTemplate = path.join(packageRoot, '.workflow', 'templates', templateName);
+      if (fs.existsSync(packageTemplate)) {
+        return packageTemplate;
+      }
+    }
+
+    // Last resort: check project directory (legacy installs)
+    const projectTemplate = path.join(this.projectDir, this.workflowDir, 'templates', templateName);
     if (fs.existsSync(projectTemplate)) {
+      this.log(`Using project template for ${templateName} (no package template found)`);
       return projectTemplate;
     }
 
@@ -554,24 +573,24 @@ class BaseBridge {
    * @returns {string} Partial content or empty string if not found
    */
   loadPartial(partialName) {
-    // Try project partials first
-    const projectPartialPath = path.join(
-      this.projectDir,
-      this.workflowDir,
-      'templates',
-      'partials',
-      `${partialName}.hbs`
-    );
+    // Try package partials first (canonical source)
+    if (PACKAGE_PATHS) {
+      const packagePartialPath = path.join(
+        PACKAGE_PATHS.templates,
+        'partials',
+        `${partialName}.hbs`
+      );
 
-    try {
-      if (fs.existsSync(projectPartialPath)) {
-        return fs.readFileSync(projectPartialPath, 'utf-8');
+      try {
+        if (fs.existsSync(packagePartialPath)) {
+          return fs.readFileSync(packagePartialPath, 'utf-8');
+        }
+      } catch (err) {
+        this.log(`Warning: Could not load package partial ${partialName}: ${err.message}`);
       }
-    } catch (err) {
-      this.log(`Warning: Could not load project partial ${partialName}: ${err.message}`);
     }
 
-    // Try package partials as fallback
+    // Fallback: try package root detection
     const packageRoot = this.getPackageRoot();
     if (packageRoot) {
       const packagePartialPath = path.join(
@@ -589,6 +608,23 @@ class BaseBridge {
       } catch (err) {
         this.log(`Warning: Could not load package partial ${partialName}: ${err.message}`);
       }
+    }
+
+    // Last resort: project partials (legacy)
+    const projectPartialPath = path.join(
+      this.projectDir,
+      this.workflowDir,
+      'templates',
+      'partials',
+      `${partialName}.hbs`
+    );
+
+    try {
+      if (fs.existsSync(projectPartialPath)) {
+        return fs.readFileSync(projectPartialPath, 'utf-8');
+      }
+    } catch (err) {
+      this.log(`Warning: Could not load project partial ${partialName}: ${err.message}`);
     }
 
     return '';

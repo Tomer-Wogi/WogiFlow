@@ -252,6 +252,30 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
 }
 
 /**
+ * Rewrite hook command paths from local dev paths to package paths.
+ * The package's settings.json uses local paths (node scripts/hooks/...)
+ * for development. User projects need package paths (node node_modules/wogiflow/scripts/hooks/...).
+ * @param {Object} settings - Parsed settings object (mutated in place)
+ */
+function rewriteHookPaths(settings) {
+  if (!settings || !settings.hooks) return;
+  for (const hookList of Object.values(settings.hooks)) {
+    if (!Array.isArray(hookList)) continue;
+    for (const entry of hookList) {
+      if (!entry.hooks || !Array.isArray(entry.hooks)) continue;
+      for (const hook of entry.hooks) {
+        if (hook.command && typeof hook.command === 'string') {
+          hook.command = hook.command.replace(
+            /^node scripts\//,
+            'node node_modules/wogiflow/scripts/'
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
  * Copy essential .claude/ resources from package to project
  * This ensures commands are available immediately after npm install
  *
@@ -295,6 +319,9 @@ function copyClaudeResources() {
         // Use safeJsonParseString for prototype pollution protection
         const existing = safeJsonParseString(fs.readFileSync(projectSettings, 'utf-8'), {});
         const ours = safeJsonParseString(fs.readFileSync(packageSettings, 'utf-8'), {});
+        // Rewrite hook paths: package uses local dev paths (node scripts/hooks/...)
+        // but user projects need package paths (node node_modules/wogiflow/scripts/hooks/...)
+        rewriteHookPaths(ours);
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;
@@ -314,9 +341,15 @@ function copyClaudeResources() {
         }
       }
     } else {
-      // No existing settings - copy ours directly
+      // No existing settings - read, rewrite paths, then write
       try {
-        fs.copyFileSync(packageSettings, projectSettings);
+        const ours = safeJsonParseString(fs.readFileSync(packageSettings, 'utf-8'), null);
+        if (ours) {
+          rewriteHookPaths(ours);
+          fs.writeFileSync(projectSettings, JSON.stringify(ours, null, 2), { mode: FILE_MODE });
+        } else {
+          fs.copyFileSync(packageSettings, projectSettings);
+        }
         try {
           fs.chmodSync(projectSettings, FILE_MODE);
         } catch (err) { /* non-critical */ }
@@ -452,21 +485,22 @@ function regenerateClaudeMd() {
     // No version file yet — proceed with regen
   }
 
-  // Check that bridges exist (just copied by copyWorkflowManagedDirs)
-  const bridgesIndex = path.join(PROJECT_ROOT, '.workflow', 'bridges', 'index.js');
+  // Check that bridges exist in the package
+  const bridgesIndex = path.join(PACKAGE_ROOT, '.workflow', 'bridges', 'index.js');
   if (!fs.existsSync(bridgesIndex)) {
     if (process.env.DEBUG) {
-      console.error('[postinstall] Bridge module not found, skipping CLAUDE.md regen');
+      console.error('[postinstall] Bridge module not found in package, skipping CLAUDE.md regen');
     }
     return;
   }
 
   try {
-    // Pass PROJECT_ROOT via env var instead of string interpolation in -e script.
-    // This avoids shell/quoting issues with paths containing special characters.
+    // Load bridges from the PACKAGE (not the project) and generate CLAUDE.md
+    // into the PROJECT directory. This avoids needing bridges copied to the project.
     const script = [
       'try {',
-      '  const { getBridge } = require("./.workflow/bridges");',
+      '  const bridgesPath = require("path").join(process.env.WOGIFLOW_PACKAGE_ROOT, ".workflow", "bridges");',
+      '  const { getBridge } = require(bridgesPath);',
       '  const bridge = getBridge({ projectDir: process.env.WOGIFLOW_PROJECT_ROOT });',
       '  bridge.generateRulesFile({ force: true });',
       '  process.exit(0);',
@@ -479,7 +513,7 @@ function regenerateClaudeMd() {
     const result = execFileSync(process.execPath, ['-e', script], {
       cwd: PROJECT_ROOT,
       timeout: REGEN_TIMEOUT,
-      env: { ...process.env, WOGIFLOW_PROJECT_ROOT: PROJECT_ROOT },
+      env: { ...process.env, WOGIFLOW_PROJECT_ROOT: PROJECT_ROOT, WOGIFLOW_PACKAGE_ROOT: PACKAGE_ROOT },
       stdio: ['pipe', 'pipe', 'pipe']
     });
 
@@ -675,18 +709,25 @@ function main() {
   // This ensures slash commands are available immediately
   copyClaudeResources();
 
-  // Copy scripts (for npm update scenario)
-  // This ensures scripts are updated when running npm install/update
-  copyScriptsFromPackage();
+  // NOTE: Scripts and .workflow/ managed dirs (bridges, templates, agents, lib) are
+  // NO LONGER copied to the project. They live exclusively in the wogiflow package
+  // under node_modules/wogiflow/. This keeps user projects clean.
 
-  // Copy WogiFlow-managed .workflow/ subdirectories (bridges, templates, agents)
-  // These are needed for bridge sync, CLAUDE.md generation, and agent definitions.
-  // Always overwrite — these are package-managed, not user-customizable.
-  copyWorkflowManagedDirs();
+  // Ensure .workflow/package.json exists with "type": "commonjs".
+  // Required when the project root has "type": "module" — without it,
+  // Node.js inherits ESM and require() calls in hooks fail.
+  const workflowPkg = path.join(WORKFLOW_DIR, 'package.json');
+  try {
+    fs.writeFileSync(workflowPkg, JSON.stringify({ type: 'commonjs' }, null, 2) + '\n', { flag: 'wx' });
+  } catch (err) {
+    if (err.code !== 'EEXIST') {
+      console.warn(`[postinstall] Warning: Failed to create .workflow/package.json: ${err.message}`);
+    }
+  }
 
-  // Regenerate CLAUDE.md from updated templates (for npm update scenario)
+  // Regenerate CLAUDE.md from package templates (for npm update scenario)
   // This ensures the AI reads fresh instructions matching the new package version.
-  // Must run AFTER copyWorkflowManagedDirs() so templates/bridges are up to date.
+  // Templates are read from the package via PACKAGE_PATHS (no project copy needed).
   regenerateClaudeMd();
 
   // Generate bootstrap CLAUDE.md for fresh installs (no config.json yet)
@@ -726,7 +767,7 @@ function main() {
   try {
     // Already initialized - confirm update applied
     if (isAlreadyInitialized()) {
-      output.write('\x1b[36mWogiFlow:\x1b[0m Updated scripts, hooks, and commands to latest version.\n');
+      output.write('\x1b[36mWogiFlow:\x1b[0m Updated hooks and commands to latest version.\n');
       return;
     }
 

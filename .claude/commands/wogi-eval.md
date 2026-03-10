@@ -36,7 +36,7 @@ Evaluate a completed task's output quality using multi-judge scoring (1 Opus + 2
 ### Step 1: Prepare eval data
 
 ```bash
-node scripts/flow-eval.js prepare wf-XXXXXXXX
+node node_modules/wogiflow/scripts/flow-eval.js prepare wf-XXXXXXXX
 ```
 
 This returns: spec content, implementation diff, iteration count, token estimate.
@@ -56,7 +56,7 @@ Each judge receives the same prompt (from `buildJudgePrompt()` in `flow-eval-jud
 ### Step 3: Aggregate scores
 
 ```javascript
-const { aggregateScores, parseJudgeResponse } = require('./scripts/flow-eval-judge');
+const { aggregateScores, parseJudgeResponse } = require('wogiflow/scripts/flow-eval-judge');
 
 // Parse each judge's response
 const scores = judgeResponses.map(parseJudgeResponse).filter(Boolean);
@@ -68,7 +68,7 @@ const result = aggregateScores(scores);
 ### Step 4: Save and display
 
 ```javascript
-const { saveEvalResult, formatEvalResults } = require('./scripts/flow-eval');
+const { saveEvalResult, formatEvalResults } = require('wogiflow/scripts/flow-eval');
 saveEvalResult({ taskId, aggregated: result, judgeResults: scores, model, taskType });
 ```
 

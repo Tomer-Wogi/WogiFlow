@@ -30,7 +30,7 @@ Display:
 
 1. **Auto-detect tech stack** using `scripts/flow-context-init.js`:
    ```javascript
-   const { detectStack, initContext } = require('./scripts/flow-context-init.js');
+   const { detectStack, initContext } = require('wogiflow/scripts/flow-context-init.js');
    const detected = detectStack();
    ```
    This detects:
@@ -70,7 +70,7 @@ Display:
 
 3. **Scan product information:**
    ```javascript
-   const { scanProject, formatSummary } = require('./scripts/flow-product-scanner.js');
+   const { scanProject, formatSummary } = require('wogiflow/scripts/flow-product-scanner.js');
    const productInfo = scanProject(projectRoot);
    ```
    This extracts:
@@ -96,7 +96,7 @@ Display:
 
 4. **Run pattern extractor in deep mode:**
    ```javascript
-   const { extractPatterns, formatAsDecisions, formatDataFetchingSection } = require('./scripts/flow-pattern-extractor.js');
+   const { extractPatterns, formatAsDecisions, formatDataFetchingSection } = require('wogiflow/scripts/flow-pattern-extractor.js');
    const result = await extractPatterns(projectRoot, {
      analysisMode: 'deep',
      categories: ['code', 'api', 'component', 'architecture', 'types', 'exports', 'tests', 'folders', 'comments', 'config', 'data-fetching']
@@ -166,7 +166,7 @@ Display:
 
 6. **Detect and resolve conflicts with temporal awareness:**
    ```javascript
-   const { resolveConflictsAuto, resolveConflictsInteractive, resolutionsToDecisions } = require('./scripts/flow-conflict-resolver.js');
+   const { resolveConflictsAuto, resolveConflictsInteractive, resolutionsToDecisions } = require('wogiflow/scripts/flow-conflict-resolver.js');
    ```
 
    Display:
@@ -349,7 +349,7 @@ Display:
 
    **CRITICAL: Task ID Generation**
    For EACH task created from health findings:
-   1. Generate the ID by running: `node -e "const { generateTaskId } = require('./scripts/flow-utils'); console.log(generateTaskId('[category] health findings'));"` — or call `generateTaskId()` programmatically
+   1. Generate the ID by running: `node -e "const { generateTaskId } = require('wogiflow/scripts/flow-utils'); console.log(generateTaskId('[category] health findings'));"` — or call `generateTaskId()` programmatically
    2. The ID MUST be in format `wf-[8 hex chars]` (e.g., `wf-a1b2c3d4`)
    3. **NEVER** manually construct descriptive IDs like `WF-health-1`, `wf-redundancy-check`, etc.
    4. The descriptive name goes in the `title` field, NOT the `id` field
@@ -454,7 +454,7 @@ Display:
     If data-fetching patterns were detected, generate enforceable anti-pattern rules:
 
     ```javascript
-    const { generateDataFetchingRules } = require('./scripts/flow-pattern-extractor.js');
+    const { generateDataFetchingRules } = require('wogiflow/scripts/flow-pattern-extractor.js');
     if (result.dataFetching) {
       const dfRules = generateDataFetchingRules(result.dataFetching, {
         minOccurrences: 10,  // Need 10+ hooks to establish a convention
@@ -482,7 +482,7 @@ Display:
 
 13. **Run function scanner:**
     ```javascript
-    const { FunctionScanner } = require('./scripts/flow-function-index.js');
+    const { FunctionScanner } = require('wogiflow/scripts/flow-function-index.js');
     const funcScanner = new FunctionScanner();
     const funcRegistry = await funcScanner.scan();
     if (funcRegistry && funcRegistry.functions.length > 0) {
@@ -496,7 +496,7 @@ Display:
 
 14. **Run API scanner:**
     ```javascript
-    const { APIScanner } = require('./scripts/flow-api-index.js');
+    const { APIScanner } = require('wogiflow/scripts/flow-api-index.js');
     const apiScanner = new APIScanner();
     const apiRegistry = await apiScanner.scan();
     if (apiRegistry && (apiRegistry.endpoints.length > 0 || apiRegistry.clientFunctions.length > 0)) {
@@ -541,7 +541,7 @@ Display:
 
 16. **Extract file templates:**
     ```javascript
-    const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('./scripts/flow-template-extractor.js');
+    const { extractTemplates, saveTemplates, formatTemplateDecisions } = require('wogiflow/scripts/flow-template-extractor.js');
     const templateResult = await extractTemplates(projectRoot, {
       types: ['component', 'service', 'test', 'route', 'hook', 'config']
     });
@@ -625,7 +625,7 @@ Display:
 
 18. **Generate skills based on detected stack:**
     ```javascript
-    const { generateSkills } = require('./scripts/flow-skill-generator.js');
+    const { generateSkills } = require('wogiflow/scripts/flow-skill-generator.js');
     ```
 
     For each detected framework/library:
@@ -794,7 +794,7 @@ Display:
     Now that config.json exists with `webmcp.enabled: true`, generate initial tool definitions:
 
     ```bash
-    node scripts/flow-webmcp-generator.js scan
+    node node_modules/wogiflow/scripts/flow-webmcp-generator.js scan
     ```
 
     This scans `app-map.md` for interactive components and generates tool definitions

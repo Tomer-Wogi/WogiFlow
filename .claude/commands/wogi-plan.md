@@ -20,58 +20,58 @@ Plan (pl-XXXXXXXX) - Strategic initiative
 
 ### Create Plan
 ```bash
-node scripts/flow-plan.js create "<title>"
+node node_modules/wogiflow/scripts/flow-plan.js create "<title>"
 
 # With goal
-node scripts/flow-plan.js create "<title>" --goal "Ship by Q2"
+node node_modules/wogiflow/scripts/flow-plan.js create "<title>" --goal "Ship by Q2"
 ```
 
 Example:
 ```bash
-node scripts/flow-plan.js create "Q1 2026 Product Roadmap"
+node node_modules/wogiflow/scripts/flow-plan.js create "Q1 2026 Product Roadmap"
 ```
 
 ### List Plans
 ```bash
-node scripts/flow-plan.js list
+node node_modules/wogiflow/scripts/flow-plan.js list
 
 # JSON output
-node scripts/flow-plan.js list --json
+node node_modules/wogiflow/scripts/flow-plan.js list --json
 ```
 
 ### Show Plan Details
 ```bash
-node scripts/flow-plan.js show <planId>
+node node_modules/wogiflow/scripts/flow-plan.js show <planId>
 ```
 
 ### Add Epic or Feature to Plan
 ```bash
 # Add epic
-node scripts/flow-plan.js add <planId> <epicId>
+node node_modules/wogiflow/scripts/flow-plan.js add <planId> <epicId>
 
 # Add standalone feature
-node scripts/flow-plan.js add <planId> <featureId>
+node node_modules/wogiflow/scripts/flow-plan.js add <planId> <featureId>
 ```
 
 Example:
 ```bash
-node scripts/flow-plan.js add pl-a1b2c3d4 ep-e5f6g7h8
-node scripts/flow-plan.js add pl-a1b2c3d4 ft-i9j0k1l2
+node node_modules/wogiflow/scripts/flow-plan.js add pl-a1b2c3d4 ep-e5f6g7h8
+node node_modules/wogiflow/scripts/flow-plan.js add pl-a1b2c3d4 ft-i9j0k1l2
 ```
 
 ### Remove Item from Plan
 ```bash
-node scripts/flow-plan.js remove <planId> <itemId>
+node node_modules/wogiflow/scripts/flow-plan.js remove <planId> <itemId>
 ```
 
 ### Check Progress
 ```bash
-node scripts/flow-plan.js progress <planId>
+node node_modules/wogiflow/scripts/flow-plan.js progress <planId>
 ```
 
 ### Delete Plan
 ```bash
-node scripts/flow-plan.js delete <planId>
+node node_modules/wogiflow/scripts/flow-plan.js delete <planId>
 ```
 
 ## File Structure
@@ -130,24 +130,24 @@ Each level auto-completes when all children are done.
 
 ```bash
 # 1. Create a plan for a strategic initiative
-node scripts/flow-plan.js create "Q1 2026 Product Roadmap"
+node node_modules/wogiflow/scripts/flow-plan.js create "Q1 2026 Product Roadmap"
 # Creates: pl-a1b2c3d4
 
 # 2. Create epics for major workstreams
-node scripts/flow-epics.js create ep-auth --title "Authentication"
+node node_modules/wogiflow/scripts/flow-epics.js create ep-auth --title "Authentication"
 
 # 3. Add epics to plan
-node scripts/flow-plan.js add pl-a1b2c3d4 ep-auth
+node node_modules/wogiflow/scripts/flow-plan.js add pl-a1b2c3d4 ep-auth
 
 # 4. Or add standalone features
-node scripts/flow-feature.js create "Quick Win Feature"
-node scripts/flow-plan.js add pl-a1b2c3d4 ft-quick123
+node node_modules/wogiflow/scripts/flow-feature.js create "Quick Win Feature"
+node node_modules/wogiflow/scripts/flow-plan.js add pl-a1b2c3d4 ft-quick123
 
 # 5. Work proceeds normally via stories
 /wogi-start wf-story-xyz
 
 # 6. Check overall progress
-node scripts/flow-plan.js progress pl-a1b2c3d4
+node node_modules/wogiflow/scripts/flow-plan.js progress pl-a1b2c3d4
 ```
 
 ## Use Cases

@@ -7,7 +7,13 @@ set -e
 set -o pipefail  # Catch errors in piped commands
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Use env var from bin/flow if available, otherwise derive from script location
+if [ -n "${WOGIFLOW_PROJECT_ROOT:-}" ]; then
+  PROJECT_ROOT="$WOGIFLOW_PROJECT_ROOT"
+else
+  PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
 show_version() {
     if [ -f "$PROJECT_ROOT/.wogi-version" ]; then
@@ -637,23 +643,23 @@ case "${1:-}" in
                 ;;
             add)
                 # Install skill from registry
-                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['add', '$3', ...process.argv.slice(2)])" -- "${@:4}"
+                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['add', '$3', ...process.argv.slice(2)])" -- "${@:4}"
                 ;;
             remove)
                 # Remove installed skill
-                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['remove', '$3'])"
+                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['remove', '$3'])"
                 ;;
             update)
                 # Update skills
-                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['update', '$3'])"
+                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['update', '$3'])"
                 ;;
             info)
                 # Show skill info
-                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['info', '$3'])"
+                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['info', '$3'])"
                 ;;
             registry)
                 # List skills from registry
-                node -e "require('$PROJECT_ROOT/lib/skill-registry').skill(['list'])"
+                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['list'])"
                 ;;
             *)
                 echo "Usage: flow skill [detect|list|create|add|remove|update|info|registry]"
@@ -858,7 +864,7 @@ case "${1:-}" in
         ;;
     channel)
         # Release channel management
-        node -e "require('$PROJECT_ROOT/lib/release-channel').channel(process.argv.slice(2))" -- "${@:2}"
+        node -e "require('$SCRIPT_DIR/../lib/release-channel').channel(process.argv.slice(2))" -- "${@:2}"
         ;;
     workflow)
         node "$SCRIPT_DIR/flow-workflow.js" "${@:2}"
@@ -928,7 +934,7 @@ case "${1:-}" in
         ;;
     memory-server)
         echo "Starting MCP Memory Server..."
-        node "$PROJECT_ROOT/mcp-memory-server/index.js"
+        node "$SCRIPT_DIR/../mcp-memory-server/index.js"
         ;;
     entropy)
         node "$SCRIPT_DIR/flow-entropy-monitor.js" "${@:2}"

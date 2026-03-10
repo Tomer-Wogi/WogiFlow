@@ -48,7 +48,7 @@ For each selected provider, run the appropriate setup:
 
 2. Test connection:
    ```bash
-   node -e "require('./scripts/flow-model-config').testProviderConnection('openai').then(r => console.log(JSON.stringify(r)))"
+   node -e "require('wogiflow/scripts/flow-model-config').testProviderConnection('openai').then(r => console.log(JSON.stringify(r)))"
    ```
 
 3. If successful, ask which models to enable:
@@ -67,7 +67,7 @@ For each selected provider, run the appropriate setup:
 
 4. Save configuration:
    ```javascript
-   const modelConfig = require('./scripts/flow-model-config');
+   const modelConfig = require('wogiflow/scripts/flow-model-config');
    modelConfig.addProvider('openai', {
      apiKey: userProvidedKey,
      models: selectedModels
@@ -170,7 +170,7 @@ Ask if Claude should also participate as a reviewer:
 
 Save to config:
 ```javascript
-const modelConfig = require('./scripts/flow-model-config');
+const modelConfig = require('wogiflow/scripts/flow-model-config');
 modelConfig.setIncludeClaude(userSelectedYes);
 ```
 
@@ -235,7 +235,7 @@ GOOGLE_API_KEY=AIza...
 
 If old config exists (hybrid.executor or peerReview.apiKeys), migrate automatically:
 ```javascript
-const modelConfig = require('./scripts/flow-model-config');
+const modelConfig = require('wogiflow/scripts/flow-model-config');
 modelConfig.migrateOldConfig();
 ```
 
@@ -243,8 +243,8 @@ modelConfig.migrateOldConfig();
 
 Test any provider connection:
 ```bash
-node scripts/flow-model-config.js test openai
-node scripts/flow-model-config.js test local
+node node_modules/wogiflow/scripts/flow-model-config.js test openai
+node node_modules/wogiflow/scripts/flow-model-config.js test local
 ```
 
 ## Error Handling
@@ -282,7 +282,7 @@ For users who already have API keys set in environment:
 ```bash
 # If OPENAI_API_KEY is already in environment
 node -e "
-const mc = require('./scripts/flow-model-config');
+const mc = require('wogiflow/scripts/flow-model-config');
 if (process.env.OPENAI_API_KEY) {
   mc.addProvider('openai', { models: ['gpt-4o'] });
   console.log('OpenAI configured');

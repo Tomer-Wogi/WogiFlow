@@ -48,7 +48,7 @@ Usage:
 /wogi-setup-stack
 
 # Or directly
-node scripts/flow-stack-wizard.js
+node node_modules/wogiflow/scripts/flow-stack-wizard.js
 ```
 
 ## Output
@@ -123,7 +123,7 @@ It processes skills **one at a time** to prevent context overflow.
 **Step 1: Identify skills needing docs**
 
 ```bash
-node scripts/flow-skill-generator.js --fetch-docs
+node node_modules/wogiflow/scripts/flow-skill-generator.js --fetch-docs
 ```
 
 This lists all installed skills with Context7 IDs, showing which have content and which need fetching.
@@ -142,7 +142,7 @@ Do NOT fetch multiple libraries in parallel. Process one at a time:
 
 3. **Extract & Write**: Call the enhancer to write docs to disk:
    ```javascript
-   const { enhanceSkillWithDocs } = require('./scripts/flow-skill-generator.js');
+   const { enhanceSkillWithDocs } = require('wogiflow/scripts/flow-skill-generator.js');
    await enhanceSkillWithDocs('<skillId>', fetchedDocs);
    ```
    This updates `knowledge/patterns.md`, `knowledge/anti-patterns.md`, and `rules/conventions.md`.

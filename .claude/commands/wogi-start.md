@@ -21,7 +21,7 @@ When invoked with a **quoted request** instead of a task ID, assess intent and r
 **Plugin Registry Routing**: After command catalog finds no match and `config.plugins.enabled`, check `.workflow/state/plugin-registry.json` for trigger phrase matches (score >= 0.5). Plugin routing has LOWER priority than built-in commands.
 
 **Plugin Mode-Aware Routing** (when a plugin match is found):
-- **Standalone** (`mode: 'standalone'`): If `config.plugins.standaloneBypassTask` is true, skip task creation. Clear routing flag, let the AI use the plugin directly. Log the action with `#plugin:<name>` tag by running `node -e "require('./scripts/flow-plugin-registry').logPluginAction({pluginName:'<name>',action:'<action>',mode:'standalone'})"`.
+- **Standalone** (`mode: 'standalone'`): If `config.plugins.standaloneBypassTask` is true, skip task creation. Clear routing flag, let the AI use the plugin directly. Log the action with `#plugin:<name>` tag by running `node -e "require('wogiflow/scripts/flow-plugin-registry').logPluginAction({pluginName:'<name>',action:'<action>',mode:'standalone'})"`.
 - **Flow-integrated** (`mode: 'flow-integrated'`): Requires an active task. If no task is in progress, route to `/wogi-story` first. The plugin becomes available during its declared `flowPhases` (injected via phase context prompt).
 - **Trigger** (`mode: 'trigger'`): Route to the appropriate `/wogi-*` command based on the trigger type (error triggers → `/wogi-bug`, deployment triggers → `/wogi-story`, PR triggers → `/wogi-review`). The plugin action feeds INTO WogiFlow routing.
 
@@ -94,13 +94,13 @@ When epic creation adds 2+ stories to ready.json and `config.bulkOrchestrator.en
 
 | When | Command |
 |------|---------|
-| After triage routes to task | `node scripts/flow-phase.js transition idle routing <taskId>` |
-| Before explore phase | `node scripts/flow-phase.js transition routing exploring <taskId>` |
-| After spec generated | `node scripts/flow-phase.js transition exploring spec_review <taskId>` |
-| After user approves spec | `node scripts/flow-phase.js transition spec_review coding <taskId>` |
-| For simple tasks (skip explore/spec) | `node scripts/flow-phase.js transition routing coding <taskId>` |
-| Before verification | `node scripts/flow-phase.js transition coding validating <taskId>` |
-| After verification passes | `node scripts/flow-phase.js transition validating completing <taskId>` |
+| After triage routes to task | `node node_modules/wogiflow/scripts/flow-phase.js transition idle routing <taskId>` |
+| Before explore phase | `node node_modules/wogiflow/scripts/flow-phase.js transition routing exploring <taskId>` |
+| After spec generated | `node node_modules/wogiflow/scripts/flow-phase.js transition exploring spec_review <taskId>` |
+| After user approves spec | `node node_modules/wogiflow/scripts/flow-phase.js transition spec_review coding <taskId>` |
+| For simple tasks (skip explore/spec) | `node node_modules/wogiflow/scripts/flow-phase.js transition routing coding <taskId>` |
+| Before verification | `node node_modules/wogiflow/scripts/flow-phase.js transition coding validating <taskId>` |
+| After verification passes | `node node_modules/wogiflow/scripts/flow-phase.js transition validating completing <taskId>` |
 | Task completion | Automatic (task-completed hook resets to idle) |
 
 Non-blocking if transition fails.
@@ -252,7 +252,7 @@ After implementing all scenarios, BEFORE quality gates:
 
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 
-Run `node scripts/flow-wiring-verifier.js wf-XXXXXXXX`
+Run `node node_modules/wogiflow/scripts/flow-wiring-verifier.js wf-XXXXXXXX`
 
 **Forward wiring** — For each created file, verify it's imported/used somewhere:
 - Entry points (index.ts, App.tsx, *.config.ts, tests) don't need imports
@@ -263,11 +263,11 @@ Run `node scripts/flow-wiring-verifier.js wf-XXXXXXXX`
 - Runs automatically as part of the `integrationWiring` quality gate
 - Detects orphaned references: removed type union members, exported names, component references, string literal IDs (e.g., tab IDs, route keys)
 - If orphaned references found: update consumers to remove stale references, re-verify.
-- CLI: `node scripts/flow-wiring-verifier.js removal-check [files...]`
+- CLI: `node node_modules/wogiflow/scripts/flow-wiring-verifier.js removal-check [files...]`
 
 ### Step 3.7: Standards Compliance Check (MANDATORY)
 
-Run `node scripts/flow-standards-gate.js wf-XXXXXXXX [changed-files...]`
+Run `node node_modules/wogiflow/scripts/flow-standards-gate.js wf-XXXXXXXX [changed-files...]`
 
 Checks scoped by task type: component → naming/components/security. Utility → naming/functions/security. API → naming/api/security. Bugfix → naming/security. Feature → all. Refactor/migration → all + consumer-impact verification.
 
@@ -279,7 +279,7 @@ If violations found: fix, re-run, only proceed when all pass. Violations auto-re
 
 ### Step 4: Quality Gates + Final Verification
 
-**First**: Run `node scripts/flow-spec-verifier.js verify wf-XXXXXXXX` — verify all spec deliverables exist. If missing → STOP, create them.
+**First**: Run `node node_modules/wogiflow/scripts/flow-spec-verifier.js verify wf-XXXXXXXX` — verify all spec deliverables exist. If missing → STOP, create them.
 
 **Then**: Check `config.qualityGates` for task type. Gates are type-specific:
 - **feature**: loopComplete, tests, appMapUpdate, requestLogEntry, integrationWiring, standardsCompliance
@@ -309,7 +309,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 2. Close out all TodoWrite items for this task
 3. Move task to recentlyCompleted in ready.json
 4. Update request-log.md, app-map.md, function-map.md, api-map.md as needed
-5. If `config.webmcp.enabled` and UI files created: run `node scripts/flow-webmcp-generator.js scan`
+5. If `config.webmcp.enabled` and UI files created: run `node node_modules/wogiflow/scripts/flow-webmcp-generator.js scan`
 6. Commit: `feat: Complete wf-XXXXXXXX - [title]`
 7. Show completion summary
 

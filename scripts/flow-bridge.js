@@ -13,8 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const { colors, getConfig, PROJECT_ROOT, PATHS } = require('./flow-utils');
 
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const BRIDGES_DIR = path.join(WORKFLOW_DIR, 'bridges');
+const { PACKAGE_PATHS } = require('./flow-paths');
+const BRIDGES_DIR = PACKAGE_PATHS.bridges;
 
 /**
  * Get CLI type from config

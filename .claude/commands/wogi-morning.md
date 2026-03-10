@@ -157,7 +157,7 @@ Set `enabled: false` to disable this command.
 
 When `morningBriefing.showStaleSkills` is true, the morning briefing checks skill documentation freshness:
 
-1. Run `node scripts/flow-skill-freshness.js check` or call `getSkillFreshnessReport()` programmatically
+1. Run `node node_modules/wogiflow/scripts/flow-skill-freshness.js check` or call `getSkillFreshnessReport()` programmatically
 2. If any skills have `lastDocCheck` older than `config.skills.freshnessThreshold` days (default: 90):
    - Display the skill names and ages
    - Offer to run `/wogi-setup-stack --refresh-stale`

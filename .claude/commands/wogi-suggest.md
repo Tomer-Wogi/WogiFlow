@@ -64,8 +64,8 @@ Please provide a suggestion. Example:
 ## Implementation
 
 ```javascript
-const { submitSuggestion, isConsentAcknowledged, acknowledgeConsent, getConsentMessage } = require('../../scripts/flow-community');
-const { getConfig } = require('../../scripts/flow-utils');
+const { submitSuggestion, isConsentAcknowledged, acknowledgeConsent, getConsentMessage } = require('wogiflow/scripts/flow-community');
+const { getConfig } = require('wogiflow/scripts/flow-utils');
 
 // 1. Parse args
 const args = ARGUMENTS || '';
@@ -88,9 +88,17 @@ if (!isConsentAcknowledged()) {
 
 // 4. Submit
 const config = getConfig();
-const success = await submitSuggestion(text, type, config);
+const result = await submitSuggestion(text, type, config);
 
-// 5. Display result
+// 5. Display result based on delivery status
+// result is { delivered: boolean, queued: boolean } or false
+if (result && result.delivered) {
+  // Show success output
+} else if (result && result.queued) {
+  // Show queued output (offline)
+} else {
+  // Show failure message
+}
 ```
 
 ## Privacy
