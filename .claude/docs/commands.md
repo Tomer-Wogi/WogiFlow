@@ -99,6 +99,8 @@ When user types these commands, execute the corresponding action immediately.
 
 ### Configuration
 
+**Full config reference**: See `.claude/docs/config-reference.md` for all available config.json overrides.
+
 | Command | Action |
 |---------|--------|
 | `/wogi-config` | Show current config.json settings summary. |

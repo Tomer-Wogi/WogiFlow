@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-227 | 2026-03-10 22:00
+**Type**: docs
+**Tags**: #config #documentation #onboarding
+**Request**: "Create config reference document with all possible overrides"
+**Result**: Created `.claude/docs/config-reference.md` — comprehensive reference of all config.json overrides organized by category (scripts, testing, enforcement, quality gates, commits, hooks, execution, review, research, etc.) with copy-paste presets (minimal, standard, full testing, maximum quality). Added cross-reference in `commands.md`.
+**Files**: `.claude/docs/config-reference.md` (new), `.claude/docs/commands.md`
+**Task**: wf-8c169eb5
+
 ### R-226 | 2026-03-10 21:30
 **Type**: fix
 **Tags**: #testing #security #quality-gates #review-fix
