@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-07T08:23:07.773Z",
+  "markedAt": "2026-03-09T15:24:52.808Z",
   "context": {
-    "args": "Fix security issue: remove \"Bash(git clean *)\" from settings.local.json (line 45) — it auto-allows destructive git clean commands, violating our own security rules. Also remove redundant \"Bash(test *)\" since it's now auto-approved by Claude Code natively."
+    "args": "Add removal-impact detection to WogiFlow's verification pipeline. When a type member, export, or union value is removed during a task, the wiring verifier should detect all consumers still referencing the removed item (including string literals, not just import names). This closes the gap where forward wiring checks exist (new file → is it imported?) but reverse checks don't (removed export → are all consumers updated?). This should be part of flow-wiring-verifier.js and run automatically for all WogiFlow users."
   },
   "status": "pending"
 }
