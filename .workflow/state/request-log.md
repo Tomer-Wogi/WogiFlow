@@ -11,6 +11,23 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-229 | 2026-03-10
+**Type**: fix
+**Tags**: #hooks #routing-gate #security #bypass
+**Request**: "Investigate why Bash tool calls bypass the routing gate hook"
+**Result**: Found root cause: `.routing-cleared` marker had a 5-minute TTL, creating a window where any user message sent within 5 min of a `/wogi-*` command bypassed routing entirely. Fix: (1) Reduced TTL from 5 min to 15 sec — skill chains complete within seconds, new user turns always take longer. (2) UserPromptSubmit now actively deletes the cleared marker on non-wogi-command prompts (belt-and-suspenders).
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/entry/claude-code/user-prompt-submit.js
+
+### R-228 | 2026-03-10 23:30
+**Type**: refactor
+**Tags**: #models #registry #capabilities #refactor
+**Task**: wf-0276fbff
+**Request**: "Wire up capabilities as authoritative model knowledge source"
+**Result**: Separated model system concerns. registry.json slimmed to infrastructure-only (providers, routing, costTiers, per-model structural fields). Per-model knowledge (languages, bestFor, contextPreferences, capabilities, taskScores, strengths, limitations) moved to capabilities/*.json. Unified loader in flow-model-types.js merges both transparently. flow-instruction-richness.js switched from duplicate loader to shared loadRegistry(). All 8 models have capability JSON files. YAML files removed.
+**Files**: scripts/flow-model-types.js, scripts/flow-instruction-richness.js, .workflow/models/registry.json, .workflow/models/capabilities/*.json (8 files), lib/installer.js, package.json
+
+---
+
 ### R-227 | 2026-03-10 22:00
 **Type**: docs
 **Tags**: #config #documentation #onboarding

@@ -7,9 +7,10 @@
  * Enforces implementation gate - blocks implementation requests without active task.
  */
 
+const fs = require('fs');
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
-const { setRoutingPending, clearRoutingPending } = require('../../core/routing-gate');
+const { setRoutingPending, clearRoutingPending, ROUTING_CLEARED_PATH } = require('../../core/routing-gate');
 const { getPhaseContextPrompt } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
@@ -128,6 +129,20 @@ async function main() {
     // injection via crafted prompts like "/wogi-<script>" or "/wogi-../../path"
     const isWogiCommand = typeof prompt === 'string' && /^\/wogi-[a-z0-9-]+\b/i.test(prompt.trim());
     if (!isWogiCommand) {
+      // v8.1: Delete any stale cleared marker from previous turns.
+      // The cleared marker prevents flag re-setting during skill chains (same AI response).
+      // But across user turns, it must not persist — otherwise tools are unblocked without
+      // routing for the duration of the marker's TTL. A new user prompt (non-wogi-command)
+      // is unambiguously a new turn, so the old marker is invalidated.
+      try {
+        fs.unlinkSync(ROUTING_CLEARED_PATH);
+      } catch (err) {
+        // ENOENT is fine — no marker to delete
+        if (err.code !== 'ENOENT' && process.env.DEBUG) {
+          console.error(`[Hook] Failed to delete cleared marker: ${err.message}`);
+        }
+      }
+
       try {
         setRoutingPending();
       } catch (err) {

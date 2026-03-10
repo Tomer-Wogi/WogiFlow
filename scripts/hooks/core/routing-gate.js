@@ -40,8 +40,12 @@ const ROUTING_CLEARED_PATH = SESSION_ID
   ? path.join(PATHS.state, `.routing-cleared-${SESSION_ID}`)
   : path.join(PATHS.state, '.routing-cleared');
 
-// TTL for the cleared marker — 5 minutes is enough for any skill chain to complete
-const ROUTING_CLEARED_TTL_MS = 5 * 60 * 1000;
+// TTL for the cleared marker — 15 seconds is enough for any skill chain to complete.
+// Previously 5 minutes, which created a bypass window: any user message sent within
+// 5 min of a /wogi-* command would skip routing entirely.
+// Skill chains happen within a single AI response (milliseconds to seconds), so 15s
+// is generous. New user turns always take > 15s (user reads response, types next message).
+const ROUTING_CLEARED_TTL_MS = 15 * 1000;
 
 /**
  * Check if routing gate is enabled in config
