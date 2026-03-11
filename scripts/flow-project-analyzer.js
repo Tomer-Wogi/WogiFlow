@@ -504,7 +504,7 @@ function detectExcludeTypePatterns() {
 // Project Type Detection (for Auto-Testing Suite)
 // ============================================================
 
-/** UI framework indicators in package.json dependencies */
+/** UI framework indicators in package.json dependencies (with detection weights) */
 const UI_FRAMEWORK_DEPS = {
   react: 'react',
   vue: 'vue',
@@ -556,25 +556,77 @@ const API_DIRECTORIES = [
 const API_FILES = ['openapi.yaml', 'openapi.json', 'swagger.json', 'swagger.yaml'];
 
 /**
- * Detect project type from package.json dependencies and directory structure.
+ * Default detection weights for weighted scoring (Option C).
+ * Each signal contributes a weight to uiScore/apiScore.
+ * hasUI/hasAPI are true when the score >= threshold.
+ * Configurable via config.detection.weights and config.detection.thresholds.
+ */
+const DEFAULT_DETECTION_WEIGHTS = {
+  uiFrameworkDep: 0.95,     // Definitive: you don't install react for fun
+  apiFrameworkDep: 0.95,    // Definitive: express/fastify = real backend
+  uiDirectory: 0.3,         // Weak: could be client-side routing
+  apiDirectory: 0.25,       // Weak: src/routes/ could be React Router
+  apiFile: 0.8,             // Strong: openapi.yaml = real API
+  testFrameworkDep: 0.9     // Definitive for test detection
+};
+
+const DEFAULT_DETECTION_THRESHOLDS = {
+  ui: 0.5,
+  api: 0.5
+};
+
+/**
+ * Detect project type using weighted scoring.
  *
- * Returns an object describing the project:
- *   { hasUI, hasAPI, projectType, uiFramework, apiFramework, testFramework }
+ * Each signal (dependency, directory, file) contributes a weight to uiScore/apiScore.
+ * hasUI/hasAPI are true only when the accumulated score >= threshold (default 0.5).
+ * This prevents weak signals (like src/routes/ existing) from triggering false positives.
  *
- * projectType is one of: "frontend", "backend", "fullstack", "library"
+ * Weights and thresholds are configurable via config.detection.weights and
+ * config.detection.thresholds. Manual overrides via config.detection.overrides
+ * take precedence over scoring.
  *
  * @param {string} [projectRoot] - Project root (defaults to module-level PROJECT_ROOT)
- * @returns {{ hasUI: boolean, hasAPI: boolean, projectType: string, uiFramework: string|null, apiFramework: string|null, testFramework: string|null }}
+ * @returns {{ hasUI: boolean, hasAPI: boolean, projectType: string, uiFramework: string|null, apiFramework: string|null, testFramework: string|null, uiScore: number, apiScore: number }}
  */
 function detectProjectType(projectRoot) {
   const root = projectRoot || PROJECT_ROOT;
+
+  // --- Load configurable weights/thresholds/overrides ---
+  let weights = { ...DEFAULT_DETECTION_WEIGHTS };
+  let thresholds = { ...DEFAULT_DETECTION_THRESHOLDS };
+  let overrides = null;
+  try {
+    const configPath = path.join(root, '.workflow', 'config.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = safeJsonParse(configPath, null);
+      if (cfg && cfg.detection) {
+        if (cfg.detection.weights) {
+          weights = { ...weights, ...cfg.detection.weights };
+        }
+        if (cfg.detection.thresholds) {
+          thresholds = { ...thresholds, ...cfg.detection.thresholds };
+        }
+        if (cfg.detection.overrides) {
+          overrides = cfg.detection.overrides;
+        }
+      }
+    }
+  } catch (err) {
+    // Config read failure — use defaults
+  }
+
+  let uiScore = 0;
+  let apiScore = 0;
   const result = {
     hasUI: false,
     hasAPI: false,
     projectType: 'library',
     uiFramework: null,
     apiFramework: null,
-    testFramework: null
+    testFramework: null,
+    uiScore: 0,
+    apiScore: 0
   };
 
   // --- Read package.json ---
@@ -592,64 +644,56 @@ function detectProjectType(projectRoot) {
 
   const allDeps = { ...deps, ...devDeps };
 
-  // --- Detect UI framework ---
+  // --- Detect UI framework (high-weight signal) ---
   for (const [name, depKey] of Object.entries(UI_FRAMEWORK_DEPS)) {
     if (deps[depKey] || devDeps[depKey]) {
-      result.hasUI = true;
-      // Use the existing detectUIFramework() for the canonical name when possible,
-      // but only if we haven't set one yet (first match wins by priority order)
+      uiScore += weights.uiFrameworkDep;
       if (!result.uiFramework) {
         result.uiFramework = name;
       }
     }
   }
 
-  // --- Detect API framework ---
+  // --- Detect API framework (high-weight signal) ---
   for (const [name, depKey] of Object.entries(API_FRAMEWORK_DEPS)) {
     if (deps[depKey] || devDeps[depKey]) {
-      result.hasAPI = true;
+      apiScore += weights.apiFrameworkDep;
       if (!result.apiFramework) {
         result.apiFramework = name;
       }
     }
   }
 
-  // --- Directory-based detection (supplement dependency detection) ---
-  if (!result.hasUI) {
-    for (const dir of UI_DIRECTORIES) {
-      const fullPath = path.join(root, dir);
-      try {
-        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-          result.hasUI = true;
-          break;
-        }
-      } catch (err) {
-        // stat failure — skip
+  // --- Directory-based detection (low-weight signals) ---
+  for (const dir of UI_DIRECTORIES) {
+    const fullPath = path.join(root, dir);
+    try {
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+        uiScore += weights.uiDirectory;
+        break; // Only count one directory match
       }
+    } catch (err) {
+      // stat failure — skip
     }
   }
 
-  if (!result.hasAPI) {
-    for (const dir of API_DIRECTORIES) {
-      const fullPath = path.join(root, dir);
-      try {
-        if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-          result.hasAPI = true;
-          break;
-        }
-      } catch (err) {
-        // stat failure — skip
+  for (const dir of API_DIRECTORIES) {
+    const fullPath = path.join(root, dir);
+    try {
+      if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+        apiScore += weights.apiDirectory;
+        break; // Only count one directory match
       }
+    } catch (err) {
+      // stat failure — skip
     }
   }
 
-  // --- API file indicators ---
-  if (!result.hasAPI) {
-    for (const file of API_FILES) {
-      if (fs.existsSync(path.join(root, file))) {
-        result.hasAPI = true;
-        break;
-      }
+  // --- API file indicators (strong signal) ---
+  for (const file of API_FILES) {
+    if (fs.existsSync(path.join(root, file))) {
+      apiScore += weights.apiFile;
+      break; // Only count once
     }
   }
 
@@ -659,6 +703,22 @@ function detectProjectType(projectRoot) {
       if (!result.testFramework) {
         result.testFramework = name;
       }
+    }
+  }
+
+  // --- Apply thresholds to determine hasUI/hasAPI ---
+  result.uiScore = uiScore;
+  result.apiScore = apiScore;
+  result.hasUI = uiScore >= thresholds.ui;
+  result.hasAPI = apiScore >= thresholds.api;
+
+  // --- Apply manual overrides (highest precedence) ---
+  if (overrides) {
+    if (typeof overrides.hasUI === 'boolean') result.hasUI = overrides.hasUI;
+    if (typeof overrides.hasAPI === 'boolean') result.hasAPI = overrides.hasAPI;
+    if (typeof overrides.projectType === 'string') {
+      result.projectType = overrides.projectType;
+      return result; // Skip auto-determination
     }
   }
 
@@ -1198,5 +1258,8 @@ module.exports = {
   detectPotentialIssues,
   gatherStatistics,
   generateCodebaseInsights,
-  saveCodebaseInsights
+  saveCodebaseInsights,
+  // Detection constants (for config reference)
+  DEFAULT_DETECTION_WEIGHTS,
+  DEFAULT_DETECTION_THRESHOLDS
 };

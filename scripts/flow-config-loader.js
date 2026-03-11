@@ -77,7 +77,7 @@ const KNOWN_CONFIG_KEYS = [
   'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
   'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
   'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities',
-  'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
+  'detection', 'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
   'security', 'storyDecomposition', 'techDebt', 'traces',
   'webmcp', 'workflowSteps',
   // v2.0.0+ compat shim output keys
@@ -101,7 +101,8 @@ const KNOWN_NESTED_KEYS = {
   priorities: ['defaultPriority', 'autoBoostDays', 'autoBoostAmount'],
   morningBriefing: ['enabled', 'showLastSession', 'showChanges', 'showRecommendedTasks', 'generatePrompt'],
   // v2.0.0 classification system
-  storyDecomposition: ['autoDetect', 'autoDecompose', 'complexityThreshold', 'minSubTasks', 'edgeCases', 'loadingStates', 'errorStates', 'classification', 'supportEpics', 'propagateProgress']
+  storyDecomposition: ['autoDetect', 'autoDecompose', 'complexityThreshold', 'minSubTasks', 'edgeCases', 'loadingStates', 'errorStates', 'classification', 'supportEpics', 'propagateProgress'],
+  detection: ['weights', 'thresholds', 'overrides']
 };
 
 // Track if we've already warned about config issues this session

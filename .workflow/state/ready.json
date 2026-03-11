@@ -1,9 +1,17 @@
 {
-  "lastUpdated": "2026-03-11T09:47:07.746Z",
+  "lastUpdated": "2026-03-11T12:14:26.829Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-f3a1ec3d",
+      "title": "Project-Type-Aware Configuration Pipeline",
+      "type": "feature",
+      "level": "L1",
+      "createdAt": "2026-03-11T12:04:13.925Z",
+      "completedAt": "2026-03-11T12:14:26.828Z"
+    },
     {
       "id": "wf-c22a8988",
       "title": "Fix 20 review findings from code review",

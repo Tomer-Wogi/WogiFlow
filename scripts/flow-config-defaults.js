@@ -339,6 +339,24 @@ const CONFIG_DEFAULTS = {
   checkpoint: { enabled: false },
   regressionTesting: { enabled: false },
 
+  // --- Detection (Project Type Awareness) ---
+  detection: {
+    _comment: "Weighted scoring for project type detection. Overrides take precedence over scoring.",
+    weights: {
+      uiFrameworkDep: 0.95,
+      apiFrameworkDep: 0.95,
+      uiDirectory: 0.3,
+      apiDirectory: 0.25,
+      apiFile: 0.8,
+      testFrameworkDep: 0.9
+    },
+    thresholds: {
+      ui: 0.5,
+      api: 0.5
+    },
+    overrides: null
+  },
+
   // --- Testing (Auto-Testing Suite) ---
   testing: {
     enabled: false,
@@ -941,6 +959,64 @@ function mergeWithDefaults(userConfig) {
   return deepMerge(CONFIG_DEFAULTS, userConfig);
 }
 
+/**
+ * Apply project-type-aware defaults to a config.
+ * Strips/disables irrelevant sections based on detected project type.
+ * Call AFTER mergeWithDefaults() and detection has populated testing.detected.
+ *
+ * @param {Object} config - Full merged config
+ * @returns {Object} Config with project-type-aware adjustments
+ */
+function applyProjectTypeDefaults(config) {
+  if (!config || typeof config !== 'object') return config;
+
+  const detected = config.testing?.detected;
+  if (!detected || !detected.projectType) return config;
+
+  const { hasUI, hasAPI, projectType } = detected;
+
+  // --- Adjust testing mode default ---
+  if (config.testing?.mode === 'auto') {
+    if (hasUI && !hasAPI) config.testing.mode = 'ui';
+    else if (!hasUI && hasAPI) config.testing.mode = 'api';
+    else if (hasUI && hasAPI) config.testing.mode = 'full';
+  }
+
+  // --- Disable irrelevant testing sections ---
+  if (hasUI === false) {
+    if (config.testing?.ui && !config.testing.ui._userSet) {
+      config.testing.ui = { enabled: false };
+    }
+    if (config.testing?.qualityGates) {
+      config.testing.qualityGates.uiVerification = false;
+    }
+  }
+
+  if (hasAPI === false) {
+    if (config.testing?.api && !config.testing.api._userSet) {
+      config.testing.api = { enabled: false };
+    }
+    if (config.testing?.qualityGates) {
+      config.testing.qualityGates.apiVerification = false;
+    }
+  }
+
+  // --- Adjust top-level quality gates ---
+  if (config.qualityGates?.feature?.require) {
+    const featureGates = config.qualityGates.feature.require;
+    if (hasUI === false) {
+      const idx = featureGates.indexOf('uiVerification');
+      if (idx !== -1) featureGates.splice(idx, 1);
+    }
+    if (hasAPI === false) {
+      const idx = featureGates.indexOf('apiVerification');
+      if (idx !== -1) featureGates.splice(idx, 1);
+    }
+  }
+
+  return config;
+}
+
 // ============================================================
 // Exports
 // ============================================================
@@ -965,5 +1041,6 @@ module.exports = {
   deepMerge,
   isPlainObject,
   getDefaultsForKey,
-  mergeWithDefaults
+  mergeWithDefaults,
+  applyProjectTypeDefaults
 };

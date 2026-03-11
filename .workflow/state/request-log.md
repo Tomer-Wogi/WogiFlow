@@ -11,6 +11,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-232 | 2026-03-11
+**Type**: new
+**Tags**: #detection #config #quality-gates #rules #wf-f3a1ec3d
+**Request**: "Project-Type-Aware Configuration Pipeline"
+**Result**: Implemented weighted scoring detection (Option C) replacing boolean OR — framework deps=0.95, directories=0.25, threshold=0.5. Fixes false fullstack detection for frontend-only projects with src/routes/. Added detection.overrides in config + NL support via /wogi-config ("this project has no UI"). Activated probeProject() during onboard for port detection. Project-type-aware config defaults strip irrelevant sections (UI for backend, API for frontend). Quality gates skip irrelevant checks (uiVerification for backend). Rules sync skips component-reuse.md for backend.
+**Files**: scripts/flow-project-analyzer.js, scripts/flow-config-defaults.js, scripts/flow-config-loader.js, scripts/flow-done.js, lib/installer.js, .workflow/bridges/base-bridge.js, .workflow/config-reference.json, .claude/rules/code-style/naming-conventions.md
+
+---
+
 ### R-231 | 2026-03-11
 **Type**: fix
 **Tags**: #review-fix #security #logic #integration #wf-c22a8988

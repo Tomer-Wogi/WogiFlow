@@ -592,6 +592,21 @@ function runQualityGates(taskId, taskType) {
       }
     } else if (gate === 'uiVerification' || gate === 'apiVerification') {
       const isUI = gate === 'uiVerification';
+
+      // Project-type-aware gating: skip irrelevant gates
+      const detected = config.testing?.detected;
+      if (detected && detected.projectType) {
+        const pt = detected.projectType;
+        if (isUI && (pt === 'backend' || pt === 'library')) {
+          console.log(`  ${color('dim', '·')} ${gate} (not applicable — ${pt} project)`);
+          continue;
+        }
+        if (!isUI && (pt === 'frontend' || pt === 'library')) {
+          console.log(`  ${color('dim', '·')} ${gate} (not applicable — ${pt} project)`);
+          continue;
+        }
+      }
+
       const gateModes = isUI ? ['ui', 'full', 'auto'] : ['api', 'full', 'auto'];
       const testingMode = config.testing?.mode || 'off';
       if (config.testing?.enabled && gateModes.includes(testingMode)) {

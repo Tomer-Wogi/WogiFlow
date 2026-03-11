@@ -266,11 +266,33 @@ class BaseBridge {
       fs.mkdirSync(rulesDir, { recursive: true, mode: 0o755 });
     }
 
+    // Detect project type for filtering irrelevant rules
+    let projectType = null;
+    try {
+      const configPath = path.join(this.projectDir, this.workflowDir, 'config.json');
+      if (fs.existsSync(configPath)) {
+        const cfg = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        projectType = cfg.testing?.detected?.projectType || cfg.projectType || null;
+      }
+    } catch (err) {
+      // Config read failure — copy all rules
+    }
+
+    // Rules to skip based on project type
+    const skipRules = new Set();
+    if (projectType === 'backend' || projectType === 'library') {
+      skipRules.add('component-reuse.md');
+    }
+
     // Copy any existing rules from .workflow/rules/ if present
     const sourceRulesDir = path.join(this.projectDir, this.workflowDir, 'rules');
     if (fs.existsSync(sourceRulesDir)) {
       const rules = fs.readdirSync(sourceRulesDir).filter(f => f.endsWith('.md'));
       for (const rule of rules) {
+        if (skipRules.has(rule)) {
+          this.log(`Skipped rule (not applicable to ${projectType} project): ${rule}`);
+          continue;
+        }
         fs.copyFileSync(
           path.join(sourceRulesDir, rule),
           path.join(rulesDir, rule)

@@ -378,6 +378,62 @@
           "contextManagement.proactive.enabled": true
         }
       }
+    },
+    "project-has-ui": {
+      "description": "Override: tell WogiFlow this project has a UI/frontend",
+      "aliases": ["has UI", "has frontend", "this project has UI", "add UI support", "enable UI", "we have a frontend", "this is a frontend project"],
+      "configPath": "detection.overrides.hasUI",
+      "type": "boolean",
+      "default": null,
+      "dependencies": {
+        "sets": {
+          "detection.overrides.hasUI": true
+        }
+      }
+    },
+    "project-no-ui": {
+      "description": "Override: tell WogiFlow this project has NO UI/frontend",
+      "aliases": ["no UI", "no frontend", "this project has no UI", "remove UI", "disable UI", "we don't have a frontend", "backend only", "this is a backend project"],
+      "configPath": "detection.overrides.hasUI",
+      "type": "boolean",
+      "default": null,
+      "dependencies": {
+        "sets": {
+          "detection.overrides.hasUI": false
+        }
+      }
+    },
+    "project-has-api": {
+      "description": "Override: tell WogiFlow this project has an API/backend",
+      "aliases": ["has API", "has backend", "this project has API", "add API support", "enable API", "we have a backend", "this is a backend project", "this is an API project"],
+      "configPath": "detection.overrides.hasAPI",
+      "type": "boolean",
+      "default": null,
+      "dependencies": {
+        "sets": {
+          "detection.overrides.hasAPI": true
+        }
+      }
+    },
+    "project-no-api": {
+      "description": "Override: tell WogiFlow this project has NO API/backend",
+      "aliases": ["no API", "no backend", "this project has no API", "remove API", "disable API", "we don't have a backend", "frontend only", "this is a frontend-only project"],
+      "configPath": "detection.overrides.hasAPI",
+      "type": "boolean",
+      "default": null,
+      "dependencies": {
+        "sets": {
+          "detection.overrides.hasAPI": false
+        }
+      }
+    },
+    "project-type": {
+      "description": "Override: manually set the project type (frontend/backend/fullstack/library)",
+      "aliases": ["project type", "set project type", "change project type", "this is a fullstack project", "this is a library"],
+      "configPath": "detection.overrides.projectType",
+      "type": "string",
+      "default": null,
+      "dependencies": {}
     }
   },
   "presets": {
