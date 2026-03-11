@@ -1,9 +1,18 @@
 {
-  "lastUpdated": "2026-03-11T09:28:13.255Z",
+  "lastUpdated": "2026-03-11T09:47:07.746Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-c22a8988",
+      "title": "Fix 20 review findings from code review",
+      "type": "fix",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-11T09:43:24.859Z",
+      "completedAt": "2026-03-11T09:47:07.745Z"
+    },
     {
       "id": "wf-ee8bae96",
       "title": "AI semantic matching for test discovery criteria",

@@ -52,9 +52,9 @@ const FRAMEWORK_CONFIGS = {
   cypress: ['cypress.config.js', 'cypress.config.ts', 'cypress.config.cjs', 'cypress.config.mjs']
 };
 
-/** Regex for extracting describe/it/test descriptions */
-const DESCRIBE_RE = /(?:describe|it|test)\s*\(\s*(['"`])(.*?)\1/g;
-const EACH_RE = /(?:describe|it|test)\.each[^(]*\(\s*(['"`])(.*?)\1/g;
+/** Regex patterns for extracting describe/it/test descriptions (compiled per-call, not global) */
+const DESCRIBE_PATTERN = /(?:describe|it|test)\s*\(\s*(['"`])(.*?)\1/g;
+const EACH_PATTERN = /(?:describe|it|test)\.each[^(]*\(\s*(['"`])(.*?)\1/g;
 
 /** Stop words to exclude from tokenization */
 const STOP_WORDS = new Set([
@@ -163,18 +163,18 @@ function isTestFile(relPath) {
 function extractDescriptions(content) {
   const descriptions = [];
 
-  // Reset regex lastIndex
-  DESCRIBE_RE.lastIndex = 0;
-  EACH_RE.lastIndex = 0;
+  // Create fresh regex instances to avoid shared global state issues
+  const describeRe = new RegExp(DESCRIBE_PATTERN.source, DESCRIBE_PATTERN.flags);
+  const eachRe = new RegExp(EACH_PATTERN.source, EACH_PATTERN.flags);
 
   let match;
-  while ((match = DESCRIBE_RE.exec(content)) !== null) {
+  while ((match = describeRe.exec(content)) !== null) {
     if (match[2] && match[2].trim()) {
       descriptions.push(match[2].trim());
     }
   }
 
-  while ((match = EACH_RE.exec(content)) !== null) {
+  while ((match = eachRe.exec(content)) !== null) {
     if (match[2] && match[2].trim()) {
       descriptions.push(match[2].trim());
     }
@@ -402,9 +402,8 @@ function detectFramework(projectRoot) {
 
   // Check package.json for framework hints
   const pkgPath = path.join(projectRoot, 'package.json');
-  try {
-    const content = fs.readFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(content);
+  const pkg = safeJsonParse(pkgPath, null);
+  if (pkg) {
     const allDeps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
 
     if (allDeps.vitest) return 'vitest';
@@ -412,8 +411,6 @@ function detectFramework(projectRoot) {
     if (allDeps.mocha) return 'mocha';
     if (allDeps['@playwright/test']) return 'playwright';
     if (allDeps.cypress) return 'cypress';
-  } catch (err) {
-    // package.json not readable
   }
 
   return null;
@@ -599,19 +596,18 @@ function matchTestsToCriteria(criteria, discoveredTests) {
  * @returns {string|null} Test command or null if not found
  */
 function detectTestCommand(projectRoot, profile) {
-  if (profile && profile.testCommand) {
-    return profile.testCommand;
+  // Check verification profile for test runner command
+  if (profile && profile.testRunner && profile.testRunner.command) {
+    return profile.testRunner.command;
+  }
+  if (profile && profile.ci && profile.ci.testCommand) {
+    return profile.ci.testCommand;
   }
 
   const pkgPath = path.join(projectRoot, 'package.json');
-  try {
-    const content = fs.readFileSync(pkgPath, 'utf-8');
-    const pkg = JSON.parse(content);
-    if (pkg.scripts && pkg.scripts.test && pkg.scripts.test !== 'echo "Error: no test specified" && exit 1') {
-      return 'npm test';
-    }
-  } catch (err) {
-    // package.json not readable
+  const pkg = safeJsonParse(pkgPath, null);
+  if (pkg && pkg.scripts && pkg.scripts.test && pkg.scripts.test !== 'echo "Error: no test specified" && exit 1') {
+    return 'npm test';
   }
 
   return null;
@@ -714,6 +710,10 @@ function runFailToPass(beforeResults, afterResults, matchedCriteria) {
   }
 
   // Check matched criteria tests for state changes
+  // NOTE: This comparison is advisory — parsed test names from runner output may not
+  // exactly match source-level descriptions (e.g., hierarchy prefixes, formatting).
+  // When individual test parsing fails (passed/failed arrays contain fallback strings),
+  // all criteria will appear as gaps. This is expected and non-blocking.
   for (const match of matchedCriteria) {
     let criterionVerified = false;
     for (const test of match.tests) {
@@ -820,9 +820,17 @@ function runTestDiscoveryGate(taskId, projectRoot) {
   }
 
   // Step 4: Run PASS_TO_PASS — no regressions allowed
-  const passToPass = runPassToPass(projectRoot);
+  // Load verification profile if available (provides test command override)
+  let profile = null;
+  try {
+    const vp = require('./flow-verification-profile');
+    profile = vp.loadProfile();
+  } catch (err) {
+    // flow-verification-profile not available — use defaults
+  }
+  const passToPass = runPassToPass(projectRoot, profile);
 
-  const hasRegressions = passToPass.failed.length > 0 && passToPass.exitCode !== 0;
+  const hasRegressions = passToPass.failed.length > 0 || (passToPass.exitCode !== null && passToPass.exitCode !== 0);
 
   // Step 5: Generate report
   const gateResults = {

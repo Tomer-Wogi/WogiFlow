@@ -33,6 +33,12 @@
       }
     }
   },
+  "testing": {
+    "_comment_discovery": "Smart test discovery + SWE-bench dual gate for existing project tests",
+    "discovery": { "enabled": false },
+    "_comment_scenarios": "Declarative scenario-based API testing engine",
+    "scenarios": { "enabled": false }
+  },
   "plugins": {
     "_comment_phaseInjection": "When true, the UserPromptSubmit hook appends available flow-integrated plugin hints to the phase context prompt",
     "_comment_standaloneBypassTask": "When true, standalone-mode plugin matches in /wogi-start skip task creation and invoke the plugin directly"

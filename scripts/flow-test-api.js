@@ -59,10 +59,6 @@ const REQUEST_TIMEOUT = 10000;
  * @returns {object[]} Array of {method, path, description, params}
  */
 function parseAPIMap(apiMapPath) {
-  if (!fs.existsSync(apiMapPath)) {
-    return [];
-  }
-
   let content;
   try {
     content = fs.readFileSync(apiMapPath, 'utf-8');
@@ -142,10 +138,6 @@ function parseAPIMap(apiMapPath) {
  * @returns {object} Parsed spec with endpoint schemas: { endpoints: [{method, path, responses, requestBody}] }
  */
 function parseOpenAPISpec(specPath) {
-  if (!fs.existsSync(specPath)) {
-    return { endpoints: [], raw: null };
-  }
-
   let content;
   try {
     content = fs.readFileSync(specPath, 'utf-8');
@@ -620,7 +612,6 @@ async function startAPIServer(command, baseUrl, timeout = SERVER_READY_TIMEOUT) 
     cwd: PROJECT_ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
-    shell: true,
     env: { ...process.env, NODE_ENV: 'test' }
   });
 
@@ -641,7 +632,9 @@ async function startAPIServer(command, baseUrl, timeout = SERVER_READY_TIMEOUT) 
       resolve({ exitError: err.message });
     });
     serverProcess.on('exit', (code) => {
-      if (code !== null && code !== 0) {
+      if (code === 0) {
+        resolve({ exitError: 'Server exited immediately with code 0 (expected long-running process)' });
+      } else if (code !== null) {
         resolve({ exitError: `Server exited with code ${code}` });
       }
     });

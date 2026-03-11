@@ -39,7 +39,7 @@ const http = require('http');
 const https = require('https');
 const { getProjectRoot } = require('./flow-paths');
 const { getConfig } = require('./flow-config-loader');
-const { readJson, writeJson, fileExists, ensureDir } = require('./flow-io');
+const { ensureDir } = require('./flow-io');
 const { loadProfile } = require('./flow-verification-profile');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -286,7 +286,14 @@ function assertDataInTree(snapshot, expectedValues) {
  */
 function flattenTreeToText(tree) {
   if (typeof tree === 'string') return tree;
-  if (!tree || typeof tree !== 'object') return '';
+  if (!tree) return '';
+
+  // Handle array at top level (list of nodes) — must come before object check
+  if (Array.isArray(tree)) {
+    return tree.map(flattenTreeToText).join(' ');
+  }
+
+  if (typeof tree !== 'object') return '';
 
   const parts = [];
 
@@ -301,13 +308,6 @@ function flattenTreeToText(tree) {
   if (Array.isArray(tree.children)) {
     for (const child of tree.children) {
       parts.push(flattenTreeToText(child));
-    }
-  }
-
-  // Handle array at top level (list of nodes)
-  if (Array.isArray(tree)) {
-    for (const node of tree) {
-      parts.push(flattenTreeToText(node));
     }
   }
 

@@ -837,10 +837,9 @@ async function probeProject(projectRoot) {
 /**
  * Load existing profile from disk. Returns null if not found.
  *
- * @param {string} [projectRoot] - Project root (unused, profile path is fixed)
  * @returns {object|null} The verification profile or null
  */
-function loadProfile(projectRoot) {
+function loadProfile() {
   return safeJsonParse(PROFILE_PATH, null);
 }
 

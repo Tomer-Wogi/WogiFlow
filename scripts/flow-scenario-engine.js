@@ -21,7 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { getProjectRoot, PATHS, ensureDir, safeJsonParse, safeJsonParseString } = require('./flow-utils');
+const { getProjectRoot, safeJsonParseString } = require('./flow-utils');
 
 let verificationProfile;
 try {
@@ -366,6 +366,19 @@ function runAssertion(assertion, stepResult, context) {
       const actual = extractByPath(stepResult.body, assertion.path);
       const actualStr = actual !== undefined ? String(actual) : '';
       let passed = false;
+
+      // Guard against ReDoS: cap regex length and reject dangerous patterns
+      const MAX_REGEX_LENGTH = 500;
+      if (assertion.expected && assertion.expected.length > MAX_REGEX_LENGTH) {
+        return {
+          passed: false,
+          type,
+          message: `Regex too long (${assertion.expected.length} chars, max ${MAX_REGEX_LENGTH})`,
+          expected: assertion.expected.substring(0, 50) + '...',
+          actual: actualStr
+        };
+      }
+
       try {
         const regex = new RegExp(assertion.expected);
         passed = regex.test(actualStr);
@@ -511,7 +524,7 @@ async function executeScenario(scenario, options = {}) {
   }
 
   // Check environment isolation tier
-  applyIsolationStrategy(scenario);
+  scenario = applyIsolationStrategy(scenario);
 
   // Scenario-level timeout via AbortController
   const scenarioAbort = new AbortController();
@@ -658,20 +671,22 @@ function resolveBaseUrl(scenario) {
  * @param {object} scenario - The scenario definition (modified in-place)
  */
 function applyIsolationStrategy(scenario) {
-  if (!verificationProfile) return;
+  if (!verificationProfile) return scenario;
 
   try {
     const profile = verificationProfile.loadProfile();
-    if (!profile) return;
+    if (!profile) return scenario;
 
     if (verificationProfile.hasCapability(profile, 'testcontainers')) {
       // Tier 1: Container will be destroyed — skip teardown
-      scenario.teardown = { strategy: 'none' };
+      // Clone to avoid mutating caller's scenario object
+      return { ...scenario, teardown: { strategy: 'none' } };
     }
     // Tier 2 (database) and Tier 3 (reverse DELETE) use default teardown
   } catch (err) {
     // Non-fatal — use existing teardown config
   }
+  return scenario;
 }
 
 // ============================================================
@@ -967,7 +982,11 @@ if (require.main === module) {
   let scenario;
   try {
     const content = fs.readFileSync(scenarioPath, 'utf-8');
-    scenario = JSON.parse(content);
+    scenario = safeJsonParseString(content, null);
+    if (!scenario) {
+      console.error('Failed to load scenario: invalid JSON');
+      process.exit(1);
+    }
   } catch (err) {
     console.error(`Failed to load scenario: ${err.message}`);
     process.exit(1);

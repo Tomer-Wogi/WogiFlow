@@ -11,6 +11,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-231 | 2026-03-11
+**Type**: fix
+**Tags**: #review-fix #security #logic #integration #wf-c22a8988
+**Request**: "Fix 20 review findings from /wogi-review"
+**Result**: Fixed 17/20 findings (3 non-autoFixable documented). HIGH: replaced raw JSON.parse with safeJsonParse (3 instances), fixed hasRegressions &&→|| logic bug, fixed processExited promise hang, removed shell:true injection, fixed profile.testCommand path, added testing config keys, wired profile loading in gate. MEDIUM: removed unused imports (2 files), fixed scenario mutation, fixed global regex, added ReDoS guard, documented runFailToPass limitation. LOW: removed TOCTOU pattern, removed unused param, fixed flattenTreeToText array handling.
+**Files**: scripts/flow-test-discovery.js, scripts/flow-scenario-engine.js, scripts/flow-test-api.js, scripts/flow-test-ui.js, scripts/flow-verification-profile.js, .workflow/config.json
+
+---
+
 ### R-230 | 2026-03-11
 **Type**: feature
 **Tags**: #testing #ai-matching #discovery #wf-ee8bae96
