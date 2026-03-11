@@ -1,9 +1,92 @@
 {
-  "lastUpdated": "2026-03-10T19:19:26.164Z",
+  "lastUpdated": "2026-03-11T08:52:11.653Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-03a7da1d",
+      "title": "Smart Test Discovery + SWE-bench Dual Gate",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-e90881f4",
+      "description": "Scan project for existing tests, match them to acceptance criteria using keyword + describe/it parsing. Implement SWE-bench dual-gate: PASS_TO_PASS (all existing passing tests must still pass after changes = regression gate) and FAIL_TO_PASS (tests matching new criteria should fail before implementation and pass after). Gap analysis reports criteria without test coverage.",
+      "acceptanceCriteria": [
+        "AC1: flow-test-discovery.js scans project for test files across all supported frameworks (jest/vitest/mocha/playwright/cypress/node:test) and extracts describe/it/test block descriptions",
+        "AC2: matchTestsToCriteria() takes acceptance criteria array and test descriptions, returns matched/unmatched with confidence scores using keyword overlap",
+        "AC3: PASS_TO_PASS gate: before implementation, run full test suite, record passing tests. After implementation, ALL previously-passing tests must still pass. Failures = regression blocked",
+        "AC4: FAIL_TO_PASS gate: for matched criteria tests, verify they fail before implementation and pass after. Report which criteria have test coverage and which dont",
+        "AC5: Gap analysis report saved to .workflow/verifications/<taskId>-discovery.json showing: matched criteria, unmatched criteria, coverage percentage, regression status",
+        "AC6: Integrated into flow-done.js quality gates as testDiscovery gate — runs automatically when testing.discovery.enabled is true in config"
+      ],
+      "files": [
+        "scripts/flow-test-discovery.js",
+        "scripts/flow-done.js"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-11T08:52:11.653Z"
+    },
+    {
+      "id": "wf-630b5885",
+      "title": "Verification Profiles — Auto-Detect Project Test Infrastructure",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-e90881f4",
+      "description": "On first run or /wogi-test --setup, probe the project for all test-related infrastructure: test runner, E2E framework, OpenAPI/Swagger specs, Docker availability, database type, fixture directories, CI config. Save as verification-profile.json. All verification decisions reference this profile — no hardcoded assumptions.",
+      "acceptanceCriteria": [
+        "AC1: flow-verification-profile.js probes project and detects: test runner (jest/vitest/mocha/ava/tap/node:test), E2E framework (playwright/cypress/none), OpenAPI spec (openapi.yaml/.json, swagger.yaml/.json), Docker availability (docker info), DB type (from docker-compose, .env, or ORM config), fixture directories, CI config presence",
+        "AC2: Profile saved to .workflow/state/verification-profile.json with all detected capabilities and recommended verification tiers per task type (unit-only, API, E2E, full)",
+        "AC3: Profile includes tiered verification strategy: Tier 0 (always: lint+typecheck), Tier 1 (run existing tests), Tier 2 (contract testing if OpenAPI exists), Tier 3 (container-based if Docker available), Tier 4 (AI-generated tests for gaps)",
+        "AC4: flow-test-api.js, flow-test-ui.js, flow-test-integrity.js, and flow-done.js all read from verification-profile.json instead of hardcoded defaults — baseUrl, startCommand, framework, paths all come from profile",
+        "AC5: /wogi-test --setup triggers full re-probe and profile regeneration. Profile includes lastProbed timestamp and detectedAt for each capability",
+        "AC6: Legacy project support: when profile detects zero test infrastructure, verification strategy is Tier 0 only (lint+typecheck+smoke) with clear report of whats missing and recommendations"
+      ],
+      "files": [
+        "scripts/flow-verification-profile.js",
+        "scripts/flow-test-api.js",
+        "scripts/flow-test-ui.js",
+        "scripts/flow-test-integrity.js",
+        "scripts/flow-done.js",
+        ".claude/commands/wogi-test.md"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-11T08:52:11.653Z"
+    },
+    {
+      "id": "wf-25570e33",
+      "title": "Orchestrated Verification Scenarios — Stateful Backend Testing",
+      "type": "story",
+      "level": "L1",
+      "epicId": "wf-e90881f4",
+      "description": "Replace sequential curl chains with declarative scenario JSON. Each scenario defines prerequisites (with variable extraction and chaining), the test action, assertions, and teardown. A deterministic engine executes the entire flow as one atomic operation — zero AI in the loop during execution, zero confirmations, minimal token cost. Tiered environment isolation: Testcontainers (if Docker) > test DB transaction > reverse DELETE cleanup.",
+      "acceptanceCriteria": [
+        "AC1: flow-scenario-engine.js accepts a scenario JSON definition with prerequisites (ordered steps with method/path/body/save for variable extraction), action (the actual test), assertions (status, body field checks with JSONPath), and teardown strategy",
+        "AC2: Variable chaining works: step 1 saves {{userId}} from response, step 2 uses {{userId}} in path/body/headers. Supports JSONPath extraction ($.id, $.data.token, $.items[0].id)",
+        "AC3: Scenario generation: given acceptance criteria text, generateScenario() produces the scenario JSON by inferring prerequisites from the API map and endpoint dependencies",
+        "AC4: Tiered environment isolation: (a) if Docker available + Testcontainers config exists, spin up ephemeral DB container, run migrations, execute scenario, destroy container. (b) if test DB configured in verification profile, wrap in transaction + rollback. (c) fallback: execute against dev server with reverse-order DELETE teardown",
+        "AC5: Execution engine runs deterministically — no AI prompts, no confirmations, no token cost during execution. Input: scenario JSON. Output: structured result with pass/fail per assertion, timing, and full request/response log",
+        "AC6: Integrated into flow-test-api.js as an alternative to single-endpoint testing. When testing.scenarios.enabled, scenario-based verification is preferred for endpoints with state dependencies. Config toggle in verification-profile.json",
+        "AC7: Scenario artifacts saved to .workflow/verifications/<taskId>-scenarios.json with full execution trace for debugging failures"
+      ],
+      "files": [
+        "scripts/flow-scenario-engine.js",
+        "scripts/flow-test-api.js",
+        "scripts/flow-done.js",
+        "scripts/flow-verification-profile.js"
+      ],
+      "dependencies": [
+        "wf-630b5885"
+      ],
+      "status": "completed",
+      "completedAt": "2026-03-11T08:52:11.653Z"
+    },
+    {
+      "id": "wf-0276fbff",
+      "title": "Wire up capabilities as authoritative model knowledge source",
+      "type": "refactor",
+      "level": "L1",
+      "completedAt": "2026-03-10T23:30:00.000Z"
+    },
     {
       "id": "wf-8c169eb5",
       "title": "Config reference documentation",

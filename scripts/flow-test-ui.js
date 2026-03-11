@@ -40,6 +40,7 @@ const https = require('https');
 const { getProjectRoot } = require('./flow-paths');
 const { getConfig } = require('./flow-config-loader');
 const { readJson, writeJson, fileExists, ensureDir } = require('./flow-io');
+const { loadProfile } = require('./flow-verification-profile');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -547,10 +548,11 @@ async function runUITests(taskId, options = {}) {
   const config = getConfig();
   const testingConfig = config.testing || {};
   const uiConfig = testingConfig.ui || {};
+  const profile = loadProfile() || {};
 
-  // Merge options with config (options take precedence)
-  const baseUrl = options.baseUrl || uiConfig.baseUrl || DEFAULT_BASE_URL;
-  const startCommand = options.startCommand || uiConfig.startCommand || null;
+  // Merge options with config (options > config > profile > defaults)
+  const baseUrl = options.baseUrl || uiConfig.baseUrl || (profile.api && profile.api.baseUrl) || DEFAULT_BASE_URL;
+  const startCommand = options.startCommand || uiConfig.startCommand || (profile.api && profile.api.startCommand) || null;
   const checkAccessibility = options.checkAccessibility !== undefined
     ? options.checkAccessibility
     : (uiConfig.checkAccessibility !== false);

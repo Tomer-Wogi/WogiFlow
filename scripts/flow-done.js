@@ -36,6 +36,14 @@ const { autoArchiveIfNeeded } = require('./flow-log-manager');
 // v1.9.0 regression testing (legacy - now in workflow steps)
 const { runRegressionTests } = require('./flow-regression');
 
+// v1.10 smart test discovery + SWE-bench dual gate
+let testDiscovery;
+try {
+  testDiscovery = require('./flow-test-discovery');
+} catch (err) {
+  testDiscovery = null;
+}
+
 // v2.2 modular workflow steps
 const { runSteps, getAllSteps } = require('./flow-workflow-steps');
 
@@ -109,6 +117,9 @@ try {
 } catch (err) {
   hypothesisGenerator = null;
 }
+
+// v5.2 verification profiles
+const { loadProfile: loadVerificationProfile } = require('./flow-verification-profile');
 
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
@@ -197,6 +208,9 @@ function runQualityGates(taskId, taskType) {
   console.log(color('yellow', 'Running quality gates...'));
   console.log('');
 
+  // Load verification profile — warn if missing and testing gates are configured
+  const verificationProfile = loadVerificationProfile();
+
   const config = getConfig();
   // Use task-type-specific gates, fall back to feature gates, then empty
   const normalizedType = (taskType || 'feature').toLowerCase();
@@ -205,6 +219,15 @@ function runQualityGates(taskId, taskType) {
     || [];
   const failed = [];
   const errors = {}; // Store error output for correction artifact
+
+  // Warn if testing gates are present but no verification profile exists
+  if (!verificationProfile) {
+    const hasTestingGates = gates.some(g => ['generatedTestsPass', 'uiVerification', 'apiVerification'].includes(g));
+    if (hasTestingGates && config.testing?.enabled) {
+      console.log(color('yellow', '  Note: No verification profile found. Run --setup to auto-detect project test infrastructure.'));
+      console.log('');
+    }
+  }
 
   // Cache outstanding findings result — used by both outstandingFindings and preRelease gates
   let cachedOutstandingFindings = null;
@@ -621,9 +644,62 @@ function runQualityGates(taskId, taskType) {
           } catch (err) {
             console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${err.message})`);
           }
+
+          // Also check scenario verification results if available
+          if (!isUI && validateTaskId(taskId)) {
+            const scenarioReportPath = path.join(PATHS.workflow, 'verifications', `${taskId}-scenarios.json`);
+            if (fs.existsSync(scenarioReportPath)) {
+              try {
+                const scenarioReport = safeJsonParse(scenarioReportPath, null);
+                if (scenarioReport && scenarioReport.summary) {
+                  const ss = scenarioReport.summary;
+                  if (ss.failed === 0 && ss.total > 0) {
+                    console.log(`  ${color('green', '✓')} scenarioVerification (${ss.passed}/${ss.total} scenarios passed)`);
+                  } else if (ss.failed > 0) {
+                    console.log(`  ${color('red', '✗')} scenarioVerification (${ss.failed} scenarios failed)`);
+                    const failedScenarios = (scenarioReport.scenarios || []).filter(s => !s.passed);
+                    for (const sc of failedScenarios.slice(0, 5)) {
+                      console.log(color('dim', `    - ${sc.name || 'unnamed scenario'}: ${sc.error || 'assertions failed'}`));
+                    }
+                  }
+                }
+              } catch (err) {
+                // Non-fatal — scenario report parsing failed
+              }
+            }
+          }
         }
       } else {
         console.log(`  ${color('dim', '·')} ${gate} (testing disabled or mode excludes ${isUI ? 'UI' : 'API'})`);
+      }
+    } else if (gate === 'testDiscovery') {
+      // v1.10: Smart test discovery + SWE-bench dual gate
+      const discoveryConfig = config.testing?.discovery || {};
+      if (discoveryConfig.enabled) {
+        if (testDiscovery && typeof testDiscovery.runTestDiscoveryGate === 'function') {
+          try {
+            console.log('  Running test discovery gate...');
+            const discoveryResult = testDiscovery.runTestDiscoveryGate(taskId, PATHS.root);
+            if (discoveryResult.passed) {
+              console.log(`  ${color('green', '✓')} testDiscovery (${discoveryResult.message})`);
+            } else {
+              console.log(`  ${color('red', '✗')} testDiscovery (${discoveryResult.message})`);
+              if (discoveryResult.report?.passToPass?.failed) {
+                for (const f of discoveryResult.report.passToPass.failed.slice(0, 5)) {
+                  console.log(color('dim', `    - ${f}`));
+                }
+              }
+              errors.testDiscovery = discoveryResult.message;
+              failed.push('testDiscovery');
+            }
+          } catch (err) {
+            console.log(`  ${color('yellow', '⚠')} testDiscovery (error: ${truncateOutput(err.message, 3, 200)})`);
+          }
+        } else {
+          console.log(`  ${color('yellow', '⚠')} testDiscovery (module not available — install flow-test-discovery.js)`);
+        }
+      } else {
+        console.log(`  ${color('dim', '·')} testDiscovery (disabled — set testing.discovery.enabled in config)`);
       }
     } else {
       console.log(`  ${color('yellow', '○')} ${gate} (manual check)`);

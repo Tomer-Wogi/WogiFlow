@@ -14,7 +14,8 @@ Run the WogiFlow Auto-Testing Suite — UI verification, API testing, data integ
 /wogi-test --ui                     # UI tests only
 /wogi-test --api                    # API tests only
 /wogi-test --integrity              # Data integrity chain only
-/wogi-test --setup                  # Configure testing (re-run detection)
+/wogi-test --setup                  # Configure testing (re-run detection + probe profile)
+/wogi-test --profile                # Display current verification profile
 /wogi-test --generate wf-XXXXXXXX  # Regenerate tests for a task
 ```
 
@@ -24,14 +25,14 @@ Run the WogiFlow Auto-Testing Suite — UI verification, API testing, data integ
 
 Parse `$ARGUMENTS` to extract:
 - **Task ID**: A `wf-XXXXXXXX` pattern → target task
-- **Flags**: `--ui`, `--api`, `--integrity`, `--all`, `--setup`, `--generate`
+- **Flags**: `--ui`, `--api`, `--integrity`, `--all`, `--setup`, `--profile`, `--generate`
 - **No args**: Use current in-progress task from `ready.json`
 
 ```javascript
 // Pseudo-logic for argument parsing
 const args = '$ARGUMENTS'.trim().split(/\s+/);
 let taskId = null;
-let flags = { ui: false, api: false, integrity: false, all: false, setup: false, generate: false };
+let flags = { ui: false, api: false, integrity: false, all: false, setup: false, profile: false, generate: false };
 
 for (const arg of args) {
   if (/^wf-[a-f0-9]{8}$/i.test(arg)) {
@@ -41,6 +42,7 @@ for (const arg of args) {
   else if (arg === '--integrity') flags.integrity = true;
   else if (arg === '--all') flags.all = true;
   else if (arg === '--setup') flags.setup = true;
+  else if (arg === '--profile') flags.profile = true;
   else if (arg === '--generate') flags.generate = true;
 }
 ```
@@ -91,7 +93,8 @@ Shall I enable testing and install what's needed? [Y/n/customize]
   3. Check dependencies: `node -e "const d = require('./scripts/flow-testing-deps'); console.log(JSON.stringify(d.checkDeps('[mode]')))"`
   4. If deps missing → install them: `node -e "const d = require('./scripts/flow-testing-deps'); console.log(JSON.stringify(d.installDeps('[mode]')))"`
   5. If UI mode → also configure Playwright MCP in settings (show user the MCP config to add)
-  6. Show confirmation and **continue to Step 5 (run tests)**
+  6. Generate verification profile: `node -e "const { probeProject } = require('./scripts/flow-verification-profile'); probeProject().then(() => console.log('Profile generated')).catch(err => console.error(err.message))"`
+  7. Show confirmation and **continue to Step 5 (run tests)**
 
 - **Customize** → Ask for:
   - Preferred mode (ui/api/full/unit)
@@ -107,6 +110,24 @@ Shall I enable testing and install what's needed? [Y/n/customize]
 
 **IMPORTANT**: After successful setup, do NOT stop. Continue directly to Step 5 and run the tests the user originally asked for. The whole point is that `/wogi-test` works in one invocation even on first use.
 
+### Step 2.5: Handle `--profile` Flag (Display Verification Profile)
+
+If `--profile` was passed, display the current verification profile and **STOP**:
+
+```bash
+node -e "
+const { loadProfile } = require('./scripts/flow-verification-profile');
+const profile = loadProfile();
+if (!profile) {
+  console.log('No verification profile found. Run: /wogi-test --setup');
+} else {
+  console.log(JSON.stringify(profile, null, 2));
+}
+"
+```
+
+Format the output as a readable summary showing detected capabilities (test runner, E2E, API, Docker, database, CI, etc.) and the recommended verification strategy per task type.
+
 ### Step 3: Handle `--setup` Flag (Reconfigure)
 
 If `--setup` was passed, this is an explicit reconfiguration request. Use the same flow as Step 2 (auto-setup), but ALWAYS run it even if testing is already enabled. This lets users:
@@ -114,7 +135,22 @@ If `--setup` was passed, this is an explicit reconfiguration request. Use the sa
 - Re-detect after adding backend/frontend to their project
 - Install missing deps after a fresh `npm install` that lost node_modules
 
-After reconfiguration, show confirmation:
+After reconfiguration, also regenerate the verification profile:
+```bash
+node -e "
+const { probeProject } = require('./scripts/flow-verification-profile');
+probeProject().then(p => console.log(JSON.stringify({ success: true, detected: {
+  testRunner: p.testRunner.framework || 'none',
+  e2e: p.e2e.framework || 'none',
+  api: p.api.detected,
+  docker: p.docker.available,
+  database: p.database.type || 'none',
+  ci: p.ci.platform || 'none'
+}}))).catch(err => console.error(JSON.stringify({ error: err.message })));
+"
+```
+
+Show confirmation:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Testing Reconfigured ✓
@@ -124,6 +160,7 @@ Mode: [mode] (was: [old mode])
 UI provider: playwright-mcp
 API provider: direct-http (zero deps)
 Dependencies: all installed ✓
+Verification profile: regenerated ✓
 
 Run /wogi-test to execute tests.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -241,3 +278,5 @@ Generated Tests: [passed]/[total] passed
 - All test scripts gracefully handle missing dependencies and report what's needed
 - Reports are saved to `.workflow/verifications/` for quality gate consumption
 - The quality gates `generatedTestsPass`, `uiVerification`, and `apiVerification` in `flow-done.js` will automatically run these same tests when closing a task via `/wogi-start`
+- **Verification Profile**: The `--setup` flag (and first-time auto-setup) generates a verification profile at `.workflow/state/verification-profile.json`. This profile auto-detects test runners, E2E frameworks, OpenAPI specs, Docker, databases, CI config, and more. Test scripts (`flow-test-api.js`, `flow-test-ui.js`, `flow-test-integrity.js`) read from this profile to provide smart defaults (base URLs, start commands, spec files) instead of using hardcoded values. Explicit `config.json` overrides always take precedence over profile-detected values.
+- Use `--profile` to display the current verification profile without running tests

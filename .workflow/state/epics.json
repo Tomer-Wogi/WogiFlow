@@ -90,6 +90,23 @@
       "progress": 1,
       "createdAt": "2026-03-10T18:14:05.255Z",
       "updatedAt": "2026-03-10T18:41:01.415Z"
+    },
+    "wf-e90881f4": {
+      "id": "wf-e90881f4",
+      "title": "Production-Grade Verification System",
+      "description": "Overhaul WogiFlow task completion verification to be dynamic, stack-agnostic, and production-ready. Three pillars: Smart Test Discovery with SWE-bench dual-gate model, auto-detected Verification Profiles per project, and Orchestrated Verification Scenarios replacing curl chains with declarative stateful test flows.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-03a7da1d",
+        "wf-630b5885",
+        "wf-25570e33"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 100,
+      "createdAt": "2026-03-11T08:30:34.240Z",
+      "updatedAt": "2026-03-11T08:52:11.653Z"
     }
   },
   "version": "1.0.0",

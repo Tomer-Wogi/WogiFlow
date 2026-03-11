@@ -30,6 +30,7 @@ const fs = require('fs');
 const path = require('path');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
+const { loadProfile } = require('./flow-verification-profile');
 const { parseAPIMap, executeAPITest, startAPIServer, stopAPIServer } = require('./flow-test-api');
 const { startDevServer, stopDevServer, assertDataInTree, flattenTreeToText } = require('./flow-test-ui');
 
@@ -656,11 +657,12 @@ async function runIntegrityTests(taskId, options = {}) {
 
   const apiConfig = testingConfig.api || {};
   const uiConfig = testingConfig.ui || {};
+  const profile = loadProfile() || {};
 
-  const apiBaseUrl = options.apiBaseUrl || apiConfig.baseUrl || 'http://localhost:3000';
-  const uiBaseUrl = options.uiBaseUrl || uiConfig.baseUrl || 'http://localhost:3000';
-  const apiStartCommand = options.apiStartCommand || apiConfig.startCommand || null;
-  const uiStartCommand = options.uiStartCommand || uiConfig.startCommand || null;
+  const apiBaseUrl = options.apiBaseUrl || apiConfig.baseUrl || (profile.api && profile.api.baseUrl) || 'http://localhost:3000';
+  const uiBaseUrl = options.uiBaseUrl || uiConfig.baseUrl || (profile.api && profile.api.baseUrl) || 'http://localhost:3000';
+  const apiStartCommand = options.apiStartCommand || apiConfig.startCommand || (profile.api && profile.api.startCommand) || null;
+  const uiStartCommand = options.uiStartCommand || uiConfig.startCommand || (profile.api && profile.api.startCommand) || null;
   const ignoreFields = options.ignoreFields || [];
   const maxDepth = options.maxDepth || DEFAULT_MAX_DEPTH;
   const dryRun = options.dryRun || false;

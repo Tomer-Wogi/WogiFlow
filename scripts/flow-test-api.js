@@ -23,6 +23,14 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
+const { loadProfile } = require('./flow-verification-profile');
+
+let scenarioEngine;
+try {
+  scenarioEngine = require('./flow-scenario-engine');
+} catch (err) {
+  scenarioEngine = null;
+}
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -986,6 +994,137 @@ function writeReport(taskId, report) {
 }
 
 // ============================================================
+// Scenario-Based Testing
+// ============================================================
+
+/**
+ * Check whether a task's acceptance criteria have state dependencies
+ * that benefit from scenario-based (multi-step) testing.
+ *
+ * @param {string} taskId
+ * @param {object[]} endpoints - Parsed API map endpoints
+ * @returns {boolean}
+ */
+function hasStateDependencies(taskId, endpoints) {
+  const paramEndpoints = endpoints.filter(ep =>
+    ep.params && ep.params.some(p => /Id$/.test(p) && p !== 'id')
+  );
+  return paramEndpoints.length > 0;
+}
+
+/**
+ * Load or generate scenarios for a task.
+ *
+ * Checks for pre-defined scenarios in .workflow/tests/generated/<taskId>/scenarios.json
+ * and falls back to generating scenarios from acceptance criteria + API map.
+ *
+ * @param {string} taskId
+ * @param {object} [options] - {baseUrl}
+ * @returns {object[]} Array of scenario definitions
+ */
+function loadOrGenerateScenarios(taskId, options = {}) {
+  const scenarios = [];
+
+  const scenarioDir = path.join(PROJECT_ROOT, '.workflow', 'tests', 'generated', taskId);
+  const scenarioFile = path.join(scenarioDir, 'scenarios.json');
+  const predefined = safeJsonParse(scenarioFile, null);
+  if (predefined && Array.isArray(predefined.scenarios)) {
+    return predefined.scenarios;
+  }
+  if (predefined && Array.isArray(predefined)) {
+    return predefined;
+  }
+
+  if (!scenarioEngine || !scenarioEngine.generateScenario) {
+    return scenarios;
+  }
+
+  const readyPath = path.join(PATHS.state, 'ready.json');
+  const readyData = safeJsonParse(readyPath, null);
+  if (!readyData) return scenarios;
+
+  let task = null;
+  const lists = ['inProgress', 'ready', 'blocked', 'recentlyCompleted', 'backlog'];
+  for (const list of lists) {
+    if (readyData[list]) {
+      task = readyData[list].find(t => t.id === taskId);
+      if (task) break;
+    }
+  }
+
+  if (!task || !task.acceptanceCriteria || !Array.isArray(task.acceptanceCriteria)) {
+    return scenarios;
+  }
+
+  const apiMapPath = path.join(PATHS.state, 'api-map.md');
+  let apiMapContent = null;
+  try {
+    apiMapContent = fs.readFileSync(apiMapPath, 'utf-8');
+  } catch (err) {
+    // No API map available
+  }
+
+  for (const criterion of task.acceptanceCriteria) {
+    const criterionText = typeof criterion === 'string' ? criterion : (criterion.text || criterion.description || '');
+    if (!criterionText) continue;
+
+    const scenario = scenarioEngine.generateScenario(criterionText, apiMapContent, { baseUrl: options.baseUrl });
+    if (scenario) {
+      scenarios.push(scenario);
+    }
+  }
+
+  return scenarios;
+}
+
+/**
+ * Run scenario-based tests for a task.
+ *
+ * @param {string} taskId
+ * @param {object[]} scenarios - Array of scenario definitions
+ * @param {object} [options] - {verbose, dryRun}
+ * @returns {Promise<object>} Aggregated scenario test report
+ */
+async function runScenarioTests(taskId, scenarios, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const results = [];
+  let passed = 0;
+  let failed = 0;
+
+  for (const scenario of scenarios) {
+    const result = await scenarioEngine.executeScenario(scenario, { verbose, dryRun });
+    results.push(result);
+
+    if (!dryRun) {
+      if (result.passed) passed++;
+      else failed++;
+    }
+  }
+
+  const report = {
+    taskId,
+    type: 'scenario',
+    timestamp: new Date().toISOString(),
+    summary: { passed, failed, total: passed + failed },
+    scenarios: results
+  };
+
+  if (!dryRun) {
+    const verificationsDir = path.join(PATHS.workflow, 'verifications');
+    ensureDir(verificationsDir);
+    const reportPath = path.join(verificationsDir, `${taskId}-scenarios.json`);
+    try {
+      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+      report.reportPath = reportPath;
+    } catch (err) {
+      // Non-fatal
+    }
+  }
+
+  return report;
+}
+
+// ============================================================
 // Main Runner
 // ============================================================
 
@@ -1008,13 +1147,28 @@ async function runAPITests(taskId, options = {}) {
   const config = getConfig();
   const testingConfig = config.testing || {};
   const apiConfig = testingConfig.api || {};
+  const profile = loadProfile() || {};
 
-  // Resolve configuration (options override config)
-  const baseUrl = options.baseUrl || apiConfig.baseUrl || DEFAULT_BASE_URL;
-  const startCommand = options.startCommand || apiConfig.startCommand || null;
-  const specFile = options.specFile || apiConfig.specFile || null;
+  // Resolve configuration (options > config > profile > defaults)
+  const baseUrl = options.baseUrl || apiConfig.baseUrl || (profile.api && profile.api.baseUrl) || DEFAULT_BASE_URL;
+  const startCommand = options.startCommand || apiConfig.startCommand || (profile.api && profile.api.startCommand) || null;
+  const specFile = options.specFile || apiConfig.specFile || (profile.api && profile.api.openApiSpec) || null;
   const includeErrorTests = options.includeErrorTests !== undefined ? options.includeErrorTests : true;
   const dryRun = options.dryRun || false;
+
+  // 0. Check for scenario-based testing path
+  const scenariosConfig = config.testing?.scenarios || {};
+  if (scenariosConfig.enabled && scenarioEngine) {
+    const apiMapPath = path.join(PATHS.state, 'api-map.md');
+    const endpoints = parseAPIMap(apiMapPath);
+
+    if (hasStateDependencies(taskId, endpoints)) {
+      const scenarios = loadOrGenerateScenarios(taskId, { baseUrl });
+      if (scenarios.length > 0) {
+        return runScenarioTests(taskId, scenarios, { verbose: false, dryRun });
+      }
+    }
+  }
 
   // 1. Load API endpoints from api-map.md
   const apiMapPath = path.join(PATHS.state, 'api-map.md');
@@ -1237,5 +1391,9 @@ module.exports = {
   executeFixtureRequests,
   generateReport,
   writeReport,
-  normalizePath
+  normalizePath,
+  // Scenario-based testing
+  runScenarioTests,
+  loadOrGenerateScenarios,
+  hasStateDependencies
 };
