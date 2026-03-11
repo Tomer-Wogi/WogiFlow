@@ -1,9 +1,18 @@
 {
-  "lastUpdated": "2026-03-11T09:11:38.624Z",
+  "lastUpdated": "2026-03-11T09:28:13.255Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-ee8bae96",
+      "title": "AI semantic matching for test discovery criteria",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-11T09:24:48.228Z",
+      "completedAt": "2026-03-11T09:28:13.254Z"
+    },
     {
       "id": "wf-2d07a19b",
       "title": "Smart /wogi-config with config-reference.json and natural language matching",

@@ -72,11 +72,24 @@ const STOP_WORDS = new Set([
 /** HTTP methods for bonus scoring */
 const HTTP_METHODS = new Set(['get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
 
-/** Minimum similarity score to consider a match */
+/** Minimum similarity score to consider a match (Jaccard fallback) */
 const MIN_MATCH_SCORE = 0.3;
 
 /** Test suite timeout in milliseconds (5 minutes) */
 const TEST_TIMEOUT_MS = 300000;
+
+/** Heuristic indicators that a file contains tests but regex missed */
+const TEST_HEURISTIC_PATTERNS = [
+  /assert\s*[.(]/,
+  /expect\s*\(/,
+  /\.to(?:Be|Equal|Have|Throw|Match|Contain|Include)/,
+  /\.should\./,
+  /\.assert\./,
+  /suite\s*\(/,
+  /beforeEach|afterEach|beforeAll|afterAll/,
+  /\.only\s*\(/,
+  /\.skip\s*\(/
+];
 
 // ============================================================
 // Test File Discovery
@@ -171,6 +184,209 @@ function extractDescriptions(content) {
 }
 
 /**
+ * Heuristic extraction fallback: detect likely test content when regex finds
+ * no describe/it/test calls. Returns hints about what tests exist in the file.
+ *
+ * This covers non-standard frameworks, dynamic test names, custom DSLs,
+ * Go-style TestXxx functions, Python-style def test_xxx, and template literals.
+ *
+ * @param {string} content - File content
+ * @param {string} filePath - File path (for language detection)
+ * @returns {{ hasTests: boolean, hints: string[], functionNames: string[] }}
+ */
+function extractDescriptionsHeuristic(content, filePath) {
+  const hints = [];
+  const functionNames = [];
+  let hasTests = false;
+
+  // Check heuristic patterns (assertions, lifecycle hooks, etc.)
+  for (const pattern of TEST_HEURISTIC_PATTERNS) {
+    if (pattern.test(content)) {
+      hasTests = true;
+      break;
+    }
+  }
+
+  // Extract function-level test names for various languages
+  const ext = path.extname(filePath);
+
+  if (['.js', '.ts', '.jsx', '.tsx', '.mjs', '.cjs'].includes(ext)) {
+    // Template literal test names: test(`user ${name} can login`)
+    const templateRe = /(?:describe|it|test)\s*\(\s*`([^`]*)`/g;
+    let m;
+    while ((m = templateRe.exec(content)) !== null) {
+      if (m[1] && m[1].trim()) {
+        hints.push(m[1].trim());
+        hasTests = true;
+      }
+    }
+
+    // Arrow function exports that look like tests: export const testUserLogin = ...
+    const exportTestRe = /export\s+(?:const|function)\s+(test\w+)/g;
+    while ((m = exportTestRe.exec(content)) !== null) {
+      functionNames.push(m[1]);
+      hasTests = true;
+    }
+  }
+
+  if (['.go'].includes(ext)) {
+    // Go: func TestXxx(t *testing.T)
+    const goTestRe = /func\s+(Test\w+)\s*\(/g;
+    let m;
+    while ((m = goTestRe.exec(content)) !== null) {
+      functionNames.push(m[1]);
+      hasTests = true;
+    }
+  }
+
+  if (['.py'].includes(ext)) {
+    // Python: def test_xxx or class TestXxx
+    const pyTestRe = /(?:def\s+(test_\w+)|class\s+(Test\w+))/g;
+    let m;
+    while ((m = pyTestRe.exec(content)) !== null) {
+      functionNames.push(m[1] || m[2]);
+      hasTests = true;
+    }
+  }
+
+  if (['.rb'].includes(ext)) {
+    // Ruby/RSpec: it "does something" do
+    const rbTestRe = /(?:it|context|describe)\s+(['"])(.*?)\1\s+do/g;
+    let m;
+    while ((m = rbTestRe.exec(content)) !== null) {
+      hints.push(m[2]);
+      hasTests = true;
+    }
+  }
+
+  return { hasTests, hints, functionNames };
+}
+
+/**
+ * Prepare structured data for AI-based semantic matching.
+ *
+ * Instead of using Jaccard similarity (word overlap), this outputs all criteria
+ * and test descriptions in a structured format that the AI (Claude) can use to
+ * perform genuine semantic matching.
+ *
+ * The AI reads this output and provides match results via applyAIMatchResults().
+ *
+ * @param {string[]} criteria - Acceptance criteria strings
+ * @param {{ file: string, framework: string|null, descriptions: string[], heuristic?: { hints: string[], functionNames: string[] } }[]} discoveredTests
+ * @returns {{ criteria: { index: number, text: string }[], tests: { file: string, descriptions: string[], hints: string[], functionNames: string[] }[], prompt: string }}
+ */
+function prepareAIMatchingData(criteria, discoveredTests) {
+  const criteriaData = criteria.map((text, index) => ({ index, text }));
+
+  const testsData = discoveredTests.map(t => ({
+    file: t.file,
+    descriptions: t.descriptions,
+    hints: t.heuristic?.hints || [],
+    functionNames: t.heuristic?.functionNames || []
+  }));
+
+  // Build a prompt the AI can process directly
+  const prompt = buildMatchingPrompt(criteriaData, testsData);
+
+  return { criteria: criteriaData, tests: testsData, prompt };
+}
+
+/**
+ * Build the semantic matching prompt for the AI.
+ * @param {{ index: number, text: string }[]} criteria
+ * @param {{ file: string, descriptions: string[], hints: string[], functionNames: string[] }[]} tests
+ * @returns {string}
+ */
+function buildMatchingPrompt(criteria, tests) {
+  const lines = [
+    'Match acceptance criteria to existing test descriptions using SEMANTIC understanding.',
+    'Consider intent, not just keywords. A criterion about "user authentication" should match',
+    'a test "should redirect after login" even if they share zero words.',
+    '',
+    '## Acceptance Criteria',
+    ''
+  ];
+
+  for (const c of criteria) {
+    lines.push(`[C${c.index}] ${c.text}`);
+  }
+
+  lines.push('', '## Discovered Tests', '');
+
+  for (const t of tests) {
+    if (t.descriptions.length > 0 || t.hints.length > 0 || t.functionNames.length > 0) {
+      lines.push(`### ${t.file}`);
+      for (const d of t.descriptions) {
+        lines.push(`  - "${d}"`);
+      }
+      for (const h of t.hints) {
+        lines.push(`  - (heuristic) "${h}"`);
+      }
+      for (const f of t.functionNames) {
+        lines.push(`  - (function) ${f}`);
+      }
+      lines.push('');
+    }
+  }
+
+  lines.push(
+    '## Expected Output',
+    '',
+    'Return a JSON array of matches:',
+    '[{ "criterionIndex": 0, "file": "path/to/test.js", "description": "test description", "confidence": 0.85, "reasoning": "brief explanation" }]',
+    '',
+    'confidence: 0.0–1.0 (0.7+ = strong match, 0.4–0.7 = possible, <0.4 = skip)',
+    'Include ALL matches above 0.4 confidence. One criterion can match multiple tests.'
+  );
+
+  return lines.join('\n');
+}
+
+/**
+ * Apply AI-provided match results to the criteria/test data.
+ *
+ * Called after the AI processes the output of prepareAIMatchingData() and
+ * returns semantic match results.
+ *
+ * @param {string[]} criteria - Original criteria strings
+ * @param {{ criterionIndex: number, file: string, description: string, confidence: number, reasoning?: string }[]} aiMatches
+ * @returns {{ matched: { criterion: string, tests: { file: string, description: string, score: number, reasoning?: string }[] }[], unmatched: string[] }}
+ */
+function applyAIMatchResults(criteria, aiMatches) {
+  const matchMap = new Map(); // criterionIndex → test matches
+
+  for (const m of aiMatches) {
+    if (m.criterionIndex < 0 || m.criterionIndex >= criteria.length) continue;
+    if (m.confidence < 0.4) continue;
+
+    if (!matchMap.has(m.criterionIndex)) {
+      matchMap.set(m.criterionIndex, []);
+    }
+    matchMap.get(m.criterionIndex).push({
+      file: m.file,
+      description: m.description,
+      score: Math.round(m.confidence * 1000) / 1000,
+      reasoning: m.reasoning || undefined
+    });
+  }
+
+  const matched = [];
+  const unmatched = [];
+
+  for (let i = 0; i < criteria.length; i++) {
+    const tests = matchMap.get(i);
+    if (tests && tests.length > 0) {
+      tests.sort((a, b) => b.score - a.score);
+      matched.push({ criterion: criteria[i], tests });
+    } else {
+      unmatched.push(criteria[i]);
+    }
+  }
+
+  return { matched, unmatched };
+}
+
+/**
  * Detect test framework from project config files.
  * @param {string} projectRoot - Project root path
  * @returns {string|null} Detected framework name or null
@@ -228,10 +444,35 @@ function discoverTests(projectRoot, options = {}) {
     }
 
     const descriptions = extractDescriptions(content);
+
+    // When regex finds nothing, use heuristic extraction as fallback
+    let heuristic = null;
+    if (descriptions.length === 0) {
+      heuristic = extractDescriptionsHeuristic(content, file);
+      // Add heuristic hints to descriptions so they're available for matching
+      if (heuristic.hints.length > 0) {
+        descriptions.push(...heuristic.hints);
+      }
+      if (heuristic.functionNames.length > 0) {
+        // Convert function names to readable descriptions
+        // e.g., "testUserLogin" → "test user login", "test_auth_flow" → "test auth flow"
+        for (const fn of heuristic.functionNames) {
+          const readable = fn
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/_/g, ' ')
+            .trim()
+            .toLowerCase();
+          descriptions.push(readable);
+        }
+      }
+    }
+
     results.push({
       file,
       framework,
-      descriptions
+      descriptions,
+      heuristic: heuristic || undefined,
+      needsAIExtraction: descriptions.length === 0 && (heuristic?.hasTests || false)
     });
   }
 
@@ -564,9 +805,17 @@ function runTestDiscoveryGate(taskId, projectRoot) {
   // Step 2: Load task acceptance criteria
   const criteria = loadTaskCriteria(taskId);
 
-  // Step 3: Match criteria to tests (informational)
+  // Step 3: Match criteria to tests
+  // Prepare AI matching data for semantic matching (preferred)
+  // Fall back to Jaccard if AI matching data isn't consumed
   let matching = null;
+  let aiMatchingData = null;
+
   if (criteria.length > 0) {
+    // Always prepare AI matching data — the calling AI can use it for semantic matching
+    aiMatchingData = prepareAIMatchingData(criteria, discovered);
+
+    // Jaccard fallback for automated/CI contexts where no AI is in the loop
     matching = matchTestsToCriteria(criteria, discovered);
   }
 
@@ -589,6 +838,9 @@ function runTestDiscoveryGate(taskId, projectRoot) {
     // Report generation failure should not block the gate
   }
 
+  // Files where regex failed but heuristics detected tests — AI should extract
+  const filesNeedingAI = discovered.filter(t => t.needsAIExtraction).map(t => t.file);
+
   // Gate passes if no regressions
   if (hasRegressions) {
     return {
@@ -599,7 +851,9 @@ function runTestDiscoveryGate(taskId, projectRoot) {
         matchedCriteria: matching?.matched?.length || 0,
         unmatchedCriteria: matching?.unmatched?.length || 0,
         passToPass,
-        reportPath
+        reportPath,
+        aiMatchingData,
+        filesNeedingAI
       }
     };
   }
@@ -612,7 +866,9 @@ function runTestDiscoveryGate(taskId, projectRoot) {
       matchedCriteria: matching?.matched?.length || 0,
       unmatchedCriteria: matching?.unmatched?.length || 0,
       passToPass,
-      reportPath
+      reportPath,
+      aiMatchingData,
+      filesNeedingAI
     }
   };
 }
@@ -677,6 +933,7 @@ if (require.main === module) {
   const taskId = args.find(a => !a.startsWith('--'));
   const scanOnly = args.includes('--scan-only');
   const matchOnly = args.includes('--match-only');
+  const prepareAI = args.includes('--prepare-ai');
 
   const projectRoot = PATHS.root;
 
@@ -701,6 +958,45 @@ if (require.main === module) {
         console.log(`\nDetected framework: ${framework}`);
       }
     }
+    process.exit(0);
+  }
+
+  if (prepareAI && taskId) {
+    if (!validateTaskId(taskId)) {
+      console.log(color('red', `Invalid task ID: ${taskId}`));
+      process.exit(1);
+    }
+
+    console.log(color('yellow', 'Preparing AI matching data...\n'));
+    const discovered = discoverTests(projectRoot);
+    const criteria = loadTaskCriteria(taskId);
+
+    if (criteria.length === 0) {
+      console.log('No acceptance criteria found for task.');
+      process.exit(0);
+    }
+
+    if (discovered.length === 0) {
+      console.log('No test files found.');
+      process.exit(0);
+    }
+
+    const aiData = prepareAIMatchingData(criteria, discovered);
+
+    // Output the prompt for the AI to process
+    console.log(aiData.prompt);
+
+    // Show files needing AI extraction
+    const needsAI = discovered.filter(t => t.needsAIExtraction);
+    if (needsAI.length > 0) {
+      console.log('\n' + color('yellow', '--- FILES NEEDING AI EXTRACTION ---'));
+      console.log('These files appear to contain tests but regex could not extract descriptions.');
+      console.log('Read these files and extract test descriptions semantically:\n');
+      for (const t of needsAI) {
+        console.log(`  ${t.file}`);
+      }
+    }
+
     process.exit(0);
   }
 
@@ -759,11 +1055,12 @@ if (require.main === module) {
   }
 
   // No args — show usage
-  console.log('Usage: node scripts/flow-test-discovery.js <taskId> [--scan-only] [--match-only]');
+  console.log('Usage: node scripts/flow-test-discovery.js <taskId> [--scan-only] [--match-only] [--prepare-ai]');
   console.log('');
   console.log('Options:');
-  console.log('  --scan-only   Scan for test files without running gates');
-  console.log('  --match-only  Match criteria to tests without running');
+  console.log('  --scan-only    Scan for test files without running gates');
+  console.log('  --match-only   Match criteria to tests without running (Jaccard fallback)');
+  console.log('  --prepare-ai   Output structured data for AI semantic matching');
   process.exit(0);
 }
 
@@ -774,6 +1071,9 @@ if (require.main === module) {
 module.exports = {
   discoverTests,
   matchTestsToCriteria,
+  prepareAIMatchingData,
+  applyAIMatchResults,
+  extractDescriptionsHeuristic,
   runPassToPass,
   runFailToPass,
   generateDiscoveryReport,

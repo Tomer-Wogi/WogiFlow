@@ -11,6 +11,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-230 | 2026-03-11
+**Type**: feature
+**Tags**: #testing #ai-matching #discovery #wf-ee8bae96
+**Request**: "Upgrade flow-test-discovery.js to use AI semantic matching instead of Jaccard"
+**Result**: Added AI-based semantic matching pipeline: prepareAIMatchingData() generates structured prompts for the AI to do semantic criteria→test matching, applyAIMatchResults() integrates AI results. Added heuristic extraction fallback for non-standard frameworks (Go TestXxx, Python test_xxx, Ruby RSpec, template literals). Jaccard kept as automated/CI fallback. New --prepare-ai CLI flag. 10 exported functions.
+**Files**: scripts/flow-test-discovery.js
+
+---
+
 ### R-229 | 2026-03-10
 **Type**: fix
 **Tags**: #hooks #routing-gate #security #bypass
