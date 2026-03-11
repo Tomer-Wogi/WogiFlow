@@ -1,9 +1,18 @@
 {
-  "lastUpdated": "2026-03-11T08:52:11.653Z",
+  "lastUpdated": "2026-03-11T09:11:38.624Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2d07a19b",
+      "title": "Smart /wogi-config with config-reference.json and natural language matching",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-11T09:07:43.682Z",
+      "completedAt": "2026-03-11T09:11:38.623Z"
+    },
     {
       "id": "wf-03a7da1d",
       "title": "Smart Test Discovery + SWE-bench Dual Gate",

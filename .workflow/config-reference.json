@@ -1,0 +1,466 @@
+{
+  "version": 1,
+  "features": {
+    "testing": {
+      "description": "Automated testing after task completion",
+      "aliases": ["tests", "test", "auto-test", "run tests", "enable tests", "testing suite"],
+      "configPath": "testing.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true
+        },
+        "prompts": [
+          {
+            "key": "testing.mode",
+            "question": "What type of testing? (auto/ui/api/full/unit)",
+            "default": "auto"
+          }
+        ]
+      },
+      "integrations": ["verification-profile"]
+    },
+    "test-discovery": {
+      "description": "Auto-discover test scenarios from code and acceptance criteria",
+      "aliases": ["discovery", "test discovery", "discover tests", "find tests"],
+      "configPath": "testing.discovery.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true,
+          "testing.discovery.enabled": true
+        }
+      }
+    },
+    "test-scenarios": {
+      "description": "Generate test scenarios from acceptance criteria",
+      "aliases": ["scenarios", "test scenarios", "generate scenarios"],
+      "configPath": "testing.scenarios.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true,
+          "testing.scenarios.enabled": true
+        }
+      }
+    },
+    "test-generation": {
+      "description": "Auto-generate test files from scenarios",
+      "aliases": ["generate tests", "auto generate tests", "test generation", "auto-gen tests"],
+      "configPath": "testing.generation.autoGenerate",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true,
+          "testing.generation.autoGenerate": true
+        }
+      }
+    },
+    "storybook": {
+      "description": "Auto-generate Storybook stories when creating components",
+      "aliases": ["stories", "component stories", "auto storybook", "storybook stories"],
+      "configPath": "componentReuse.autoGenerateStorybook",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "componentReuse.autoGenerateStorybook": true
+        }
+      }
+    },
+    "tdd": {
+      "description": "Test-driven development — write tests before implementation",
+      "aliases": ["test driven", "test first", "tdd mode", "write tests first"],
+      "configPath": "execution.tdd.enforced",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true,
+          "execution.tdd.enforced": true
+        },
+        "prompts": [
+          {
+            "key": "execution.tdd.defaultForTypes",
+            "question": "Which task types should use TDD? (comma-separated: bugfix, feature, refactor)",
+            "default": "bugfix,feature"
+          }
+        ]
+      }
+    },
+    "strict-mode": {
+      "description": "Strict enforcement — require task routing for every message",
+      "aliases": ["strict", "strict enforcement", "enforce tasks", "task gating"],
+      "configPath": "enforcement.strictMode",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "enforcement.strictMode": true
+        }
+      }
+    },
+    "task-gating": {
+      "description": "Block edits without an active task",
+      "aliases": ["gate tasks", "require task", "block without task", "edit gating"],
+      "configPath": "enforcement.taskGating.enabled",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "enforcement.taskGating.enabled": true
+        }
+      }
+    },
+    "scope-gating": {
+      "description": "Warn when editing files outside task scope",
+      "aliases": ["scope guard", "file scope", "scope warning", "scope enforcement"],
+      "configPath": "enforcement.scopeGating.enabled",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "enforcement.scopeGating.enabled": true
+        }
+      }
+    },
+    "routing-gate": {
+      "description": "Block tools until routed through /wogi-start",
+      "aliases": ["routing", "route gate", "routing enforcement"],
+      "configPath": "enforcement.routingGate.enabled",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "enforcement.routingGate.enabled": true
+        }
+      }
+    },
+    "loop-enforcement": {
+      "description": "Require verification loop completion before closing tasks",
+      "aliases": ["loops", "verification loops", "enforce loops", "loop gating"],
+      "configPath": "enforcement.loopEnforcement.enabled",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "enforcement.loopEnforcement.enabled": true
+        }
+      }
+    },
+    "research": {
+      "description": "Enable web research during the explore phase of task execution",
+      "aliases": ["explore", "explore phase", "web research", "research phase", "enable research"],
+      "configPath": "research.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "research.enabled": true
+        },
+        "prompts": [
+          {
+            "key": "research.planMode.researchDepth",
+            "question": "Research depth? (thorough/standard/minimal)",
+            "default": "thorough"
+          }
+        ]
+      }
+    },
+    "research-agents": {
+      "description": "Enable all research agents during explore phase",
+      "aliases": ["all agents", "research agents", "enable agents", "codebase analyzer", "best practices agent"],
+      "configPath": "research.planMode.researchAgents",
+      "type": "object",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "research.enabled": true,
+          "research.planMode.explorePhase.enabled": true,
+          "research.planMode.researchAgents.codebaseAnalyzer.enabled": true,
+          "research.planMode.researchAgents.bestPractices.enabled": true,
+          "research.planMode.researchAgents.versionVerifier.enabled": true,
+          "research.planMode.researchAgents.riskHistory.enabled": true,
+          "research.planMode.researchAgents.standardsPreview.enabled": true
+        }
+      }
+    },
+    "parallel": {
+      "description": "Enable parallel task execution with worktree isolation",
+      "aliases": ["parallel execution", "run in parallel", "multi-task", "worktrees"],
+      "configPath": "parallelExecution.parallel.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "parallelExecution.parallel.enabled": true
+        }
+      }
+    },
+    "bulk-orchestrator": {
+      "description": "Enable bulk task orchestrator for processing multiple tasks",
+      "aliases": ["bulk", "orchestrator", "bulk processing", "multi-task orchestrator", "batch tasks"],
+      "configPath": "parallelExecution.bulkOrchestrator.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "parallelExecution.bulkOrchestrator.enabled": true
+        },
+        "prompts": [
+          {
+            "key": "parallelExecution.bulkOrchestrator.parallelLimit",
+            "question": "Max parallel tasks? (1-5)",
+            "default": "3"
+          }
+        ]
+      }
+    },
+    "component-reuse": {
+      "description": "Check for existing components before creating new ones",
+      "aliases": ["reuse checking", "component check", "duplicate detection", "reuse detection", "similarity check"],
+      "configPath": "componentReuse.enabled",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "componentReuse.enabled": true
+        }
+      }
+    },
+    "hooks": {
+      "description": "Enable background automation hooks (session context, validation, lifecycle)",
+      "aliases": ["automation", "background hooks", "enable hooks", "hook system"],
+      "configPath": "hooks.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "hooks.enabled": true
+        }
+      }
+    },
+    "session-context-hook": {
+      "description": "Session context intelligence hook — enriches prompts with project context",
+      "aliases": ["session context", "context hook", "session intelligence"],
+      "configPath": "hooks.rules.intelligence.sessionContext.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "hooks.enabled": true,
+          "hooks.rules.intelligence.sessionContext.enabled": true
+        }
+      }
+    },
+    "validation-hook": {
+      "description": "Post-edit validation hook — auto-lint/typecheck after edits",
+      "aliases": ["auto validation", "validation hook", "post-edit validation", "auto lint"],
+      "configPath": "hooks.rules.intelligence.validation.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "hooks.enabled": true,
+          "hooks.rules.intelligence.validation.enabled": true
+        }
+      }
+    },
+    "task-completed-hook": {
+      "description": "Task completed lifecycle hook — runs post-completion actions",
+      "aliases": ["task completed", "completion hook", "post-task hook"],
+      "configPath": "hooks.rules.lifecycle.taskCompleted.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "hooks.enabled": true,
+          "hooks.rules.lifecycle.taskCompleted.enabled": true
+        }
+      }
+    },
+    "auto-log": {
+      "description": "Automatically update request-log.md after changes",
+      "aliases": ["request log", "auto logging", "automatic logging", "log changes"],
+      "configPath": "autoLog",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "autoLog": true
+        }
+      }
+    },
+    "auto-update-app-map": {
+      "description": "Automatically update app-map.md when components change",
+      "aliases": ["app map", "auto app map", "component registry", "auto update map"],
+      "configPath": "autoUpdateAppMap",
+      "type": "boolean",
+      "default": true,
+      "dependencies": {
+        "sets": {
+          "autoUpdateAppMap": true
+        }
+      }
+    },
+    "webmcp": {
+      "description": "WebMCP browser testing for UI verification",
+      "aliases": ["browser testing", "web testing", "webmcp testing", "browser verification", "ui testing"],
+      "configPath": "testing.webmcp.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "testing.enabled": true,
+          "testing.webmcp.enabled": true
+        }
+      }
+    },
+    "review": {
+      "description": "Code review settings — agents, finding thresholds, auto-review",
+      "aliases": ["code review", "review settings", "auto review", "review agents"],
+      "configPath": "review.agents.core",
+      "type": "array",
+      "default": ["code-logic", "security", "architecture"],
+      "dependencies": {
+        "sets": {}
+      }
+    },
+    "specification-mode": {
+      "description": "Require specification/plan approval before implementation",
+      "aliases": ["specs", "spec mode", "planning", "require spec", "specification", "plan mode"],
+      "configPath": "specificationMode.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "specificationMode.enabled": true
+        }
+      }
+    },
+    "plugins": {
+      "description": "Enable plugin system for extending WogiFlow",
+      "aliases": ["plugin system", "enable plugins", "extensions"],
+      "configPath": "plugins.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "plugins.enabled": true
+        }
+      }
+    },
+    "security-scan": {
+      "description": "Security scanning before commits (secrets, injection, npm audit)",
+      "aliases": ["security", "scan before commit", "secret scanning", "security check"],
+      "configPath": "security.scanBeforeCommit",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "security.scanBeforeCommit": true,
+          "security.blockOnHigh": true
+        }
+      }
+    },
+    "context-management": {
+      "description": "Proactive context compaction when context window fills up",
+      "aliases": ["auto compact", "context compaction", "proactive compaction", "manage context"],
+      "configPath": "contextManagement.proactive.enabled",
+      "type": "boolean",
+      "default": false,
+      "dependencies": {
+        "sets": {
+          "contextManagement.proactive.enabled": true
+        }
+      }
+    }
+  },
+  "presets": {
+    "strict": {
+      "description": "Maximum enforcement — all gates, all checks",
+      "aliases": ["make it strict", "strict mode", "maximum enforcement", "be strict", "make it stricter"],
+      "sets": {
+        "enforcement.strictMode": true,
+        "enforcement.requireTaskForImplementation": true,
+        "enforcement.requireStoryForMediumTasks": true,
+        "enforcement.taskGating.enabled": true,
+        "enforcement.scopeGating.enabled": true,
+        "enforcement.routingGate.enabled": true,
+        "enforcement.loopEnforcement.enabled": true,
+        "specificationMode.enabled": true
+      }
+    },
+    "relaxed": {
+      "description": "Minimal enforcement — faster iteration, fewer gates",
+      "aliases": ["make it relaxed", "relax", "less strict", "ease up", "minimal enforcement", "loosen up"],
+      "sets": {
+        "enforcement.strictMode": false,
+        "enforcement.requireTaskForImplementation": false,
+        "enforcement.requireStoryForMediumTasks": false,
+        "enforcement.taskGating.enabled": false,
+        "enforcement.scopeGating.enabled": false,
+        "enforcement.routingGate.enabled": false,
+        "enforcement.loopEnforcement.enabled": false
+      }
+    },
+    "fast": {
+      "description": "Speed over thoroughness — minimal research, skip specs for small tasks",
+      "aliases": ["fast mode", "speed", "quick", "minimal overhead", "less overhead", "go fast"],
+      "sets": {
+        "research.enabled": false,
+        "research.planMode.explorePhase.enabled": false,
+        "specificationMode.enabled": false,
+        "enforcement.requireStoryForMediumTasks": false,
+        "hooks.enabled": false
+      }
+    },
+    "research-heavy": {
+      "description": "Deep research before every task — all agents, thorough depth",
+      "aliases": ["deep research", "thorough research", "research everything", "more research"],
+      "sets": {
+        "research.enabled": true,
+        "research.planMode.explorePhase.enabled": true,
+        "research.planMode.researchAgents.codebaseAnalyzer.enabled": true,
+        "research.planMode.researchAgents.bestPractices.enabled": true,
+        "research.planMode.researchAgents.versionVerifier.enabled": true,
+        "research.planMode.researchAgents.riskHistory.enabled": true,
+        "research.planMode.researchAgents.standardsPreview.enabled": true,
+        "research.planMode.researchDepth": "thorough"
+      }
+    },
+    "full-testing": {
+      "description": "Complete testing suite — discovery, scenarios, all verification tiers",
+      "aliases": ["full testing", "all tests", "maximum testing", "test everything"],
+      "sets": {
+        "testing.enabled": true,
+        "testing.mode": "full",
+        "testing.discovery.enabled": true,
+        "testing.scenarios.enabled": true,
+        "testing.generation.autoGenerate": true
+      }
+    },
+    "tdd": {
+      "description": "Test-driven development — write tests first, then implement",
+      "aliases": ["test driven", "test first", "tdd mode"],
+      "sets": {
+        "testing.enabled": true,
+        "execution.tdd.enforced": true,
+        "execution.tdd.defaultForTypes": ["bugfix", "feature"]
+      }
+    },
+    "parallel": {
+      "description": "Enable parallel task execution with worktree isolation",
+      "aliases": ["parallel execution", "run in parallel", "multi-task", "bulk processing"],
+      "sets": {
+        "parallelExecution.parallel.enabled": true,
+        "parallelExecution.bulkOrchestrator.enabled": true,
+        "parallelExecution.bulkOrchestrator.useWorktrees": true
+      }
+    }
+  }
+}
