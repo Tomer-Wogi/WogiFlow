@@ -567,13 +567,15 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       }];
     }
 
-    // PreToolUse hooks for Edit/Write/TodoWrite
+    // PreToolUse hooks — matcher must be a SUPERSET of the inline gated-tools list
+    // in pre-tool-use.js and GATED_TOOLS in routing-gate.js.
+    // Extra: Skill (routing-clear + skill tracking), TodoWrite (todowrite-gate)
     const preToolUseMatchers = [];
 
-    // Task gating for Edit/Write + TodoWrite gating + Skill tracking + Bash strict adherence
+    // Task gating, routing gate, TodoWrite gating, Skill tracking, Bash strict adherence
     if (rules.taskGating?.enabled !== false || rules.todoWriteGate?.enabled !== false) {
       preToolUseMatchers.push({
-        matcher: 'Edit|Write|TodoWrite|Skill|Bash|Read|Glob|Grep|EnterPlanMode',
+        matcher: 'Edit|Write|TodoWrite|Skill|Bash|Read|Glob|Grep|EnterPlanMode|Agent|NotebookEdit|WebSearch|WebFetch',
         hooks: [hookEntry('PreToolUse', 'pre-tool-use.js', HOOK_TIMEOUTS.PRE_TOOL_USE)]
       });
     }

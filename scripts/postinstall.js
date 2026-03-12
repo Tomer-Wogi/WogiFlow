@@ -358,6 +358,73 @@ function copyClaudeResources() {
 }
 
 /**
+ * Generate a manifest of all WogiFlow-owned files in .claude/.
+ * Used by preuninstall.js to selectively delete only WogiFlow files,
+ * preserving user-created content (custom skills, rules, docs).
+ */
+function generateManifest() {
+  const claudeDir = path.join(PROJECT_ROOT, '.claude');
+  const manifestPath = path.join(claudeDir, '.wogiflow-manifest.json');
+  const files = [];
+
+  // Walk directories that WogiFlow copies into
+  const ownedDirs = ['commands', 'docs', 'rules'];
+  for (const dir of ownedDirs) {
+    const dirPath = path.join(claudeDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+    walkDir(dirPath, claudeDir, files);
+  }
+
+  // Settings.json is WogiFlow-managed (hooks section)
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    files.push('settings.json');
+  }
+
+  const manifest = {
+    version: 1,
+    generatedBy: 'wogiflow@' + getPackageVersion(),
+    generatedAt: new Date().toISOString(),
+    files: files,
+    directories: ['.workflow']
+  };
+
+  try {
+    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), { mode: FILE_MODE });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] Failed to write manifest: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Recursively walk a directory and collect all file paths relative to baseDir.
+ * @param {string} dir - Directory to walk
+ * @param {string} baseDir - Base directory for relative paths
+ * @param {string[]} files - Array to push relative paths into
+ */
+function walkDir(dir, baseDir, files) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
+      if (entry.name === '.' || entry.name === '..' || entry.name === '.DS_Store') continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walkDir(fullPath, baseDir, files);
+      } else {
+        files.push(path.relative(baseDir, fullPath));
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] walkDir error: ${err.message}`);
+    }
+  }
+}
+
+/**
  * Get the WogiFlow package version from package.json
  * @returns {string} Version string or 'unknown'
  */
@@ -579,7 +646,7 @@ function isAlreadyInitialized() {
  * When npm update installs a newer version, postinstall correctly updates
  * settings.json — but settings.local.json overrides it (Claude Code merges
  * .local on top). The stale hooks have:
- * - Narrow PreToolUse matcher (missing Skill|Bash|Read|Glob|Grep|EnterPlanMode)
+ * - Narrow PreToolUse matcher (missing Skill|Bash|Read|Glob|Grep|EnterPlanMode|Agent|NotebookEdit|WebSearch|WebFetch)
  * - Absolute local paths instead of node_modules paths
  * - Missing ConfigChange hook
  *
@@ -694,6 +761,9 @@ function main() {
   // Copy essential .claude/ resources (commands, docs, rules)
   // This ensures slash commands are available immediately
   copyClaudeResources();
+
+  // Generate manifest of WogiFlow-owned files for safe uninstall
+  generateManifest();
 
   // Migrate stale hooks from settings.local.json (if present).
   // Must run AFTER copyClaudeResources() updates settings.json,

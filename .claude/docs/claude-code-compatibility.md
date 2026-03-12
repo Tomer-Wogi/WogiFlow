@@ -66,6 +66,8 @@ flow parallel check  # See available parallel tasks
 | 1.3.0+ | 2.1.33+ | WebMCP integration, model registry (Opus 4.6/Sonnet 4.6) |
 | 1.5.0+ | 2.1.50+ | ConfigChange hook, native worktree awareness, settings.json plugin, Sonnet 4.6 1M context |
 | 1.9.1+ | 2.1.72+ | ExitWorktree, Agent model param, effort levels, /plan description, fd auto-approval, prompt cache fix |
+| 1.9.5+ | 2.1.73+ | SessionStart double-fire fix, hook context pollution fix, modelOverrides, subagent model fix on Bedrock/Vertex |
+| 1.9.5+ | 2.1.74+ | SessionEnd timeout fix, managed policy ask rules, autoMemoryDirectory, Agent tool routing gate fix |
 
 ### Environment Variables (2.1.19+)
 
@@ -184,6 +186,28 @@ await cancelTask('wf-123', 'superseded', false);
 - **CLAUDE.md HTML comments hidden**: HTML comments (`<!-- ... -->`) in CLAUDE.md are now hidden from Claude when auto-injected (still visible via Read tool). WogiFlow's templates and state files verified as unaffected — no HTML comments are used in generated CLAUDE.md or injected context.
 - **/clear safety**: `/clear` no longer kills background agent/bash tasks. WogiFlow's background research agents survive user `/clear`.
 - **CLAUDE_CODE_DISABLE_CRON**: New env var to immediately stop scheduled cron jobs mid-session.
+
+### Features in 2.1.73+
+
+- **SessionStart hooks no longer fire twice on resume**: Fixed `--resume` and `--continue` triggering SessionStart hooks twice per session. WogiFlow's session-start hook (context injection, version check, routing-pending flag, durable-session) now fires exactly once, reducing startup overhead and preventing duplicate state initialization.
+- **JSON-output hooks no longer inject no-op system-reminders**: Fixed hook JSON output being injected as system-reminder messages into the model's context on every turn. WogiFlow hooks return `hookSpecificOutput.additionalContext` which was previously re-injected every turn — now correctly processed once. Reduces context pollution and improves prompt caching.
+- **modelOverrides setting**: New user-facing setting maps model picker entries (e.g., "opus") to custom provider model IDs (e.g., Bedrock inference profile ARNs). WogiFlow's `model` parameter on Agent calls (used in explore phase, hybrid mode) transparently benefits — Claude Code resolves abstract names through the user's overrides. No WogiFlow code change needed.
+- **Subagent model parameter fixed on Bedrock/Vertex/Foundry**: Subagents with `model: opus/sonnet/haiku` were silently downgraded to older model versions. WogiFlow's explore agents using `model: "sonnet"` for cost optimization now correctly run on the latest Sonnet version on all providers.
+- **Background bash process cleanup**: Background bash processes spawned by subagents are now cleaned up when the agent exits. WogiFlow's explore and review subagents no longer risk process leaks.
+- **Bash output isolation**: Fixed bash tool output being lost when running multiple Claude Code sessions in the same project. Relevant for users running `/wogi-bulk --continuous` in one terminal alongside another session.
+- **Default Opus on Bedrock/Vertex/Foundry**: Changed from Opus 4.1 to Opus 4.6, matching direct API behavior.
+- **`/loop` available everywhere**: `/loop` now works on Bedrock, Vertex, Foundry, and with telemetry disabled. Can be used alongside WogiFlow's `/wogi-bulk-loop` for complementary recurring tasks.
+- **CPU freeze fix**: Fixed 100% CPU loops triggered by permission prompts for complex bash commands. Improves stability during WogiFlow hook execution.
+
+### Features in 2.1.74+
+
+- **SessionEnd hooks timeout fix**: SessionEnd hooks were previously killed after 1.5s regardless of configured `timeout`. Now respects the hook's `timeout` setting. WogiFlow's SessionEnd hook (`timeout: 10`) runs state cleanup (`cleanStaleFiles()`), community sync (`syncUp()`), and memory pipeline (`rememberSessionLearnings()`) — these were likely being killed prematurely. Additionally, `CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS` env var allows override beyond the hook config value.
+- **Managed policy ask rules no longer bypassed**: Fixed managed `ask` rules being bypassed by user `allow` rules or skill `allowed-tools`. WogiFlow uses `settings.json` (committed, managed) for hooks and `settings.local.json` for user permissions. This fix strengthens the managed settings hierarchy — managed `ask` rules now properly override user `allow` rules. No code change needed, but enables WogiFlow to add managed `ask` rules for dangerous operations in the future.
+- **autoMemoryDirectory setting**: New setting to configure a custom directory for auto-memory storage. WogiFlow's memory hierarchy (`MEMORY.md` is subordinate to `.workflow/state/`) works regardless of where auto-memory is stored, since Claude Code reads from the configured location. Users who customize this should ensure their `MEMORY.md` includes WogiFlow's memory hierarchy enforcement block.
+- **Full model IDs in agent frontmatter**: Fixed full model IDs (e.g., `claude-opus-4-5`) being silently ignored in agent frontmatter `model:` field. WogiFlow's agent files (`agents/`) use persona descriptions, not model frontmatter, so no impact. Explore agents use the `model` parameter on the Agent tool (already working since 2.1.72).
+- **Streaming API memory leak fix**: Fixed memory leak where streaming API response buffers were not released when the generator was terminated early. Improves stability for long WogiFlow sessions with many tool calls.
+- **Plugin install/marketplace fixes**: Fixed `/plugin install` for marketplace plugins with local sources, and marketplace update not syncing git submodules. WogiFlow's plugin system is internal (not marketplace-based), so no direct impact.
+- **`--plugin-dir` override change**: Local dev copies now override installed marketplace plugins with the same name. Useful for WogiFlow plugin development workflows.
 
 ### Simple Mode Naming Distinction
 
@@ -318,4 +342,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-03-10*
+*Last updated: 2026-03-11*

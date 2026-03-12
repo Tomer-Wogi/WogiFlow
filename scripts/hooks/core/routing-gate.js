@@ -280,7 +280,9 @@ function checkRoutingGate(toolName, config) {
   // This set must include EVERY tool that reads, writes, or executes.
   const GATED_TOOLS = new Set([
     'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
-    'Edit', 'Write', 'NotebookEdit'
+    'Edit', 'Write', 'NotebookEdit',
+    'WebSearch', 'WebFetch',
+    'Agent'
   ]);
   if (!GATED_TOOLS.has(toolName)) {
     return { allowed: true, blocked: false, reason: 'not_gated_tool', message: null };
@@ -333,7 +335,7 @@ function checkRoutingGate(toolName, config) {
  * @param {number} maxAttempts - Max attempts before clearing for real
  * @returns {{ cleared: boolean, attempts: number }}
  */
-function incrementStopAttempts(maxAttempts = 3) {
+function incrementStopAttempts(maxAttempts = 10) {
   try {
     const content = fs.readFileSync(ROUTING_FLAG_PATH, 'utf-8');
     const data = safeJsonParseString(content, { timestamp: new Date().toISOString() });

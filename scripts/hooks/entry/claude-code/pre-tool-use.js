@@ -204,17 +204,17 @@ async function main() {
       }
     }
 
-    // v6.0: Routing gate check (for Bash, EnterPlanMode, Read, Glob, Grep, Edit, Write, NotebookEdit)
-    // Blocks ALL tool calls when no /wogi-* command has been invoked first.
-    // Edit/Write MUST be gated here — without this, AI can edit ready.json
-    // (exempt from task gate) to create a fake active task, then edit freely.
-    // v7.0: Subagents are exempt from routing gate — they were spawned by the main
-    // agent which already went through routing. Blocking subagent reads would break
-    // explore phase, review, and other multi-agent workflows.
-    // v7.1: Defense-in-depth — only bypass when an active task exists, proving the
-    // parent agent already went through routing and created a task context.
+    // v6.0: Routing gate — blocks tools when no /wogi-* command has been invoked first.
+    // Edit/Write MUST be gated — AI can edit ready.json to create fake active tasks.
+    // Agent MUST be gated — AI can spawn subagents that bypass routing entirely.
+    // WebSearch/WebFetch gated for consistency with GATED_TOOLS in routing-gate.js.
+    // NOTE: This list must stay in sync with GATED_TOOLS in routing-gate.js and the
+    // PreToolUse matcher in settings.json. The matcher is a SUPERSET (adds Skill, TodoWrite).
+    // v7.0: Subagents exempt — spawned by main agent which already went through routing.
+    // v7.1: Defense-in-depth — only bypass when an active task exists.
+    // v8.0: Added Agent, WebSearch, WebFetch to close bypass vectors.
     const skipRoutingGateForSubagent = isSubagent && hasActiveTask();
-    if (!skipRoutingGateForSubagent && (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit')) {
+    if (!skipRoutingGateForSubagent && (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit' || toolName === 'Agent' || toolName === 'WebSearch' || toolName === 'WebFetch')) {
       try {
         const routingResult = checkRoutingGate(toolName, config);
         if (routingResult.blocked) {

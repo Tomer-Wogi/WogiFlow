@@ -35,7 +35,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|TodoWrite|Skill|Bash|Read|Glob|Grep|EnterPlanMode",
+        "matcher": "Edit|Write|TodoWrite|Skill|Bash|Read|Glob|Grep|EnterPlanMode|Agent|NotebookEdit|WebSearch|WebFetch",
         "hooks": [
           {
             "type": "command",
