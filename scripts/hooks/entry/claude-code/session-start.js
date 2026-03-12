@@ -82,12 +82,15 @@ async function main() {
       }
     }
 
-    // --- Version compatibility check (runs once per install/update) ---
-    // Only warns if Claude Code is below the hard minimum (2.1.23) where hooks don't work.
+    // --- Version compatibility checks ---
+    // 1. Claude Code: warns if below hard minimum (2.1.23) where hooks don't work
+    // 2. WogiFlow npm: warns if a newer version is available (checks once per 24h)
     let versionWarning = null;
+    let updateWarning = null;
     try {
-      const { checkClaudeCodeVersionOnce } = require('../../../flow-version-check');
+      const { checkClaudeCodeVersionOnce, checkWogiFlowUpdateOnce } = require('../../../flow-version-check');
       versionWarning = checkClaudeCodeVersionOnce();
+      updateWarning = checkWogiFlowUpdateOnce();
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Version check failed: ${err.message}`);
@@ -283,6 +286,11 @@ async function main() {
     // Inject version compatibility warning (if any)
     if (versionWarning && coreResult && coreResult.context) {
       coreResult.context.versionWarning = versionWarning;
+    }
+
+    // Inject WogiFlow update warning (if any)
+    if (updateWarning && coreResult && coreResult.context) {
+      coreResult.context.updateWarning = updateWarning;
     }
 
     // Inject drift detection results (if any)
