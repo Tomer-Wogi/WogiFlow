@@ -46,7 +46,7 @@ async function main() {
         // Use counter-based approach instead of clearing immediately.
         // This gives the AI multiple chances to comply before giving up.
         // Gap 4 fix: clearing immediately made this single-shot protection.
-        const { cleared, attempts } = incrementStopAttempts(3);
+        const { cleared, attempts } = incrementStopAttempts(10);
 
         if (cleared) {
           // Max attempts reached — allow stop to prevent infinite loop
@@ -57,15 +57,9 @@ async function main() {
         } else {
           // Block the stop — force the AI to route through /wogi-start
           const routingMessage = [
-            `ROUTING VIOLATION (${attempts}/3): You skipped /wogi-start routing.`,
+            `ROUTING VIOLATION (attempt ${attempts}/10): You MUST call Skill(skill="wogi-start") before responding.`,
             '',
-            'You just rationalized answering directly. This is the exact bypass pattern WogiFlow exists to prevent.',
-            'Having context or "knowing the answer" is NEVER a reason to skip routing.',
-            '',
-            'YOUR ONLY OPTION: Invoke Skill(skill="wogi-start", args="<user\'s message>") RIGHT NOW.',
-            '',
-            'Do NOT output any text first. Do NOT apologize. Do NOT explain.',
-            'The NEXT thing you do must be a Skill tool call to wogi-start. Nothing else.'
+            'Call Skill(skill="wogi-start", args="<user\'s message>") NOW. No text. No explanation. Just the Skill tool call.'
           ].join('\n');
 
           console.log(JSON.stringify({
@@ -101,8 +95,13 @@ async function main() {
     console.log(JSON.stringify(output));
     process.exit(0);
   } catch (err) {
-    // On error, allow stop (don't block user)
-    console.error(`[Wogi Flow Hook Error] ${err.message}`);
+    // On error, allow stop (don't block user) — fail-open
+    try {
+      const { logHookError } = require('../../../flow-hook-errors');
+      logHookError('Stop', err, { failMode: 'open', operation: 'stop-check' });
+    } catch (logErr) {
+      console.error(`[WogiFlow] Stop hook error: ${err.message}`);
+    }
     console.log(JSON.stringify({ continue: false })); // Allow stop
     process.exit(0);
   }

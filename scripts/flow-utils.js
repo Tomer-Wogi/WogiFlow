@@ -684,6 +684,19 @@ function moveTask(taskId, fromList, toList) {
   // Use shared helper to sync status and timestamps (DRY fix)
   syncTaskStatusOnMove(task, toList);
 
+  // Stamp routing metadata when moving to inProgress (matches moveTaskAsync behavior)
+  if (toList === 'inProgress' && typeof task === 'object') {
+    task.routedAt = new Date().toISOString();
+    try {
+      const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
+      writeJson(receiptPath, { taskId, routedAt: task.routedAt, via: 'moveTask' });
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[flow-utils] Failed to write routing receipt (sync): ${err.message}`);
+      }
+    }
+  }
+
   if (toList === 'recentlyCompleted') {
     to.unshift(task);
     // v3.2: Archive overflow instead of truncating
@@ -739,6 +752,25 @@ async function moveTaskAsync(taskId, fromList, toList) {
     // Use shared helper to sync status and timestamps (DRY fix)
     syncTaskStatusOnMove(task, toList);
 
+    // Stamp routing metadata when moving to inProgress (anti-bypass measure).
+    // Only tasks moved through moveTaskAsync get this field — manually inserted
+    // tasks in ready.json won't have it, so getActiveTask() will reject them.
+    if (toList === 'inProgress') {
+      task.routedAt = new Date().toISOString();
+      // Write routing receipt file — a second validation layer that the AI
+      // can't easily spoof because it would need to coordinate the exact task ID.
+      // The receipt is checked by getActiveTask() as defense-in-depth.
+      try {
+        const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
+        writeJson(receiptPath, { taskId, routedAt: task.routedAt, via: 'moveTaskAsync' });
+      } catch (err) {
+        // Non-blocking — routedAt field is the primary check
+        if (process.env.DEBUG) {
+          console.error(`[flow-utils] Failed to write routing receipt: ${err.message}`);
+        }
+      }
+    }
+
     if (toList === 'recentlyCompleted') {
       to.unshift(task);
       // v3.2: Archive overflow instead of truncating
@@ -747,6 +779,14 @@ async function moveTaskAsync(taskId, fromList, toList) {
         archiveCompletedTasksToLog(overflow);
       }
       data[toList] = to;
+
+      // Clean up routing receipt when task completes
+      try {
+        const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
+        fs.unlinkSync(receiptPath);
+      } catch {
+        // ENOENT is fine — receipt may not exist for pre-v1.9.5 tasks
+      }
     } else {
       to.push(task);
       data[toList] = to;

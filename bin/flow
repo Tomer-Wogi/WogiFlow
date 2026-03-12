@@ -23,7 +23,7 @@ const packageJson = require('../package.json');
 const VERSION = packageJson.version;
 
 // Global commands that don't require a project context
-const GLOBAL_COMMANDS = ['init', 'upgrade', 'version', '--version', '-v', '--help', '-h', 'skill', 'channel'];
+const GLOBAL_COMMANDS = ['init', 'upgrade', 'version', '--version', '-v', '--help', '-h', 'skill', 'channel', 'login', 'logout'];
 
 /**
  * Find the project root by looking for .workflow directory
@@ -98,6 +98,8 @@ Usage: flow <command> [options]
 Global Commands:
   init                 Initialize Wogi Flow in a new project
   upgrade              Upgrade an existing project to latest version
+  login                Connect to WogiFlow Teams
+  logout               Disconnect from WogiFlow Teams
   --version, -v        Show version number
   --help, -h           Show this help message
 
@@ -185,6 +187,24 @@ function main() {
     // Release channel management
     const releaseChannel = require('../lib/release-channel');
     releaseChannel.channel(args.slice(1));
+    return;
+  }
+
+  if (command === 'login') {
+    const { login } = require('../lib/commands/login');
+    login(args.slice(1)).catch(err => {
+      console.error(`Login failed: ${err.message}`);
+      process.exit(1);
+    });
+    return;
+  }
+
+  if (command === 'logout') {
+    const { logout } = require('../lib/commands/logout');
+    logout().catch(err => {
+      console.error(`Logout failed: ${err.message}`);
+      process.exit(1);
+    });
     return;
   }
 

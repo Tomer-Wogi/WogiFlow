@@ -223,9 +223,23 @@ function applyConfigCompatShim(config) {
     if (config.parallelExecution.taskQueue && !config.taskQueue) config.taskQueue = config.parallelExecution.taskQueue;
   }
 
-  // community <- community.sync
-  if (config.community && config.community.sync && !config.communitySync) {
-    config.communitySync = config.community.sync;
+  // community <- community.sync (with conflict detection)
+  if (config.community && config.community.sync) {
+    if (!config.communitySync) {
+      // Normal migration: old key exists, new key doesn't
+      config.communitySync = config.community.sync;
+    } else if (config.community.sync.enabled !== undefined &&
+               config.communitySync.enabled !== undefined &&
+               config.community.sync.enabled !== config.communitySync.enabled) {
+      // Conflict: both keys exist with different .enabled values
+      console.warn(
+        `[config] Conflict: community.sync.enabled (${config.community.sync.enabled}) ` +
+        `differs from communitySync.enabled (${config.communitySync.enabled}). ` +
+        `Using communitySync (preferred key). Remove community.sync from config to resolve.`
+      );
+    }
+    // Clean up deprecated nested key after migration
+    delete config.community.sync;
   }
 
   // hooks.rules.enforcement -> enforcement

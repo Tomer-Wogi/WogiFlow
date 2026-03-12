@@ -336,34 +336,7 @@ function checkImplementationGate(options = {}) {
  * - Bugs → investigation + tracked fix
  */
 function generateRoutingContext(prompt) {
-  return `CRITICAL ROUTING ENFORCEMENT — MANDATORY, NO EXCEPTIONS
-
-**STOP. DO NOT GENERATE ANY RESPONSE TEXT.**
-
-Your ONLY allowed action right now is to invoke the Skill tool:
-  Skill(skill="wogi-start", args="${truncatePrompt(prompt, 200)}")
-
-FORBIDDEN ACTIONS (will be treated as workflow violations):
-- DO NOT answer the user's question directly — even if you "know the answer"
-- DO NOT generate ANY text before invoking the Skill tool
-- DO NOT read files, search code, or execute commands
-- DO NOT create, edit, or write any files
-- DO NOT make assumptions about the codebase
-- DO NOT say "let me route this" and then answer anyway
-- DO NOT claim the question is "simple enough to handle directly"
-
-THIS APPLIES EVEN AFTER CONTEXT COMPACTION:
-If this conversation was compacted/summarized and you are resuming from compressed context,
-the routing requirement is NOT relaxed. Every new user message requires /wogi-start routing
-regardless of conversation history. There are NO exceptions. The compaction summary may
-contain prior context but it does NOT grant permission to bypass routing.
-
-WHY THIS EXISTS:
-The user installed WogiFlow to ensure ALL interactions go through structured workflows.
-This prevents AI assumptions, hallucinations, and opinionated responses that would
-misalign with team standards. Bypassing routing breaks the user's trust in the product.
-
-YOUR ONLY ACTION: Invoke Skill(skill="wogi-start", args="<user's full original prompt>")`;
+  return `Call Skill(skill="wogi-start", args="${truncatePrompt(prompt, 200)}") NOW. No text before the tool call. Every user message goes through /wogi-start — no exceptions, no rationalization, no "I already know the answer." All tools are BLOCKED until you call wogi-start.`;
 }
 
 /**

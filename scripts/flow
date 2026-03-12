@@ -60,7 +60,7 @@ show_help() {
     echo "Story & Feature Creation:"
     echo "  story <title>        Create detailed story with acceptance criteria"
     echo "  story <title> --deep Create story with automatic decomposition"
-    echo "  new-feature <n>   Create new feature"
+    echo "  new-feature <name>   Create new feature"
     echo "  bug <title>          Create bug report"
     echo "  capture <title>      Quick capture idea/bug without interrupting flow"
     echo ""
@@ -148,7 +148,7 @@ show_help() {
     echo "Code Traces:"
     echo "  trace \"<prompt>\"     Generate task-focused code trace"
     echo "  trace list           List saved traces"
-    echo "  trace show <n>    Show a saved trace"
+    echo "  trace show <name>    Show a saved trace"
     echo ""
     echo "Run History:"
     echo "  run-trace start <n>  Start a new traced run"
@@ -177,15 +177,8 @@ show_help() {
     echo "  links add <n> <url>  Add external link"
     echo ""
     echo "Team & Collaboration:"
-    echo "  team login <code>    Join team with invite code"
-    echo "  team logout          Leave current team"
-    echo "  team setup           List/select team setups"
-    echo "  team sync            Sync knowledge with team (project-scoped)"
-    echo "  team sync-status     Show sync status for project"
-    echo "  team sync-init <id>  Initialize project-based sync"
-    echo "  team proposals       View/vote on proposals"
-    echo "  team status          Show team status"
-    echo "  team dashboard       Start observability web dashboard (Phase 6)"
+    echo "  login                Connect to WogiFlow Teams (device OAuth)"
+    echo "  logout               Disconnect from WogiFlow Teams"
     echo "  export-profile       Export workflow config for team"
     echo "  import-profile       Import team config"
     echo ""
@@ -404,6 +397,9 @@ case "${1:-}" in
         ;;
     deps)
         "$SCRIPT_DIR/flow-deps" "${@:2}"
+        ;;
+    config)
+        node "$SCRIPT_DIR/flow-config-interactive.js" "${@:2}"
         ;;
     health)
         node "$SCRIPT_DIR/flow-health.js" "${@:2}"
@@ -983,9 +979,19 @@ case "${1:-}" in
     log-manager)
         node "$SCRIPT_DIR/flow-log-manager.js" "${@:2}"
         ;;
+    login)
+        node -e "require('../lib/commands/login').login(process.argv.slice(2))" -- "${@:2}"
+        ;;
+    logout)
+        node -e "require('../lib/commands/logout').logout()" --
+        ;;
     team)
-        echo "Team collaboration features are available in WogiFlow Pro."
-        echo "See: .workflow/archive/paid-features/README.md"
+        echo "The 'team' subcommand has been replaced by top-level commands:"
+        echo ""
+        echo "  flow login     Connect to WogiFlow Teams"
+        echo "  flow logout    Disconnect from WogiFlow Teams"
+        echo ""
+        echo "Run 'flow login' to get started."
         exit 0
         ;;
     prd)

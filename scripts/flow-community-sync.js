@@ -55,10 +55,17 @@ const DEFAULT_SYNC_CONFIG = {
  */
 function getSyncConfig() {
   const config = getConfig();
-  return {
+  const syncConfig = {
     ...DEFAULT_SYNC_CONFIG,
     ...(config.communitySync || {})
   };
+
+  // community.enabled is a master toggle — if false, force sync disabled
+  if (config.community && config.community.enabled === false) {
+    syncConfig.enabled = false;
+  }
+
+  return syncConfig;
 }
 
 /**

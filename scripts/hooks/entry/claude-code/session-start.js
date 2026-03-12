@@ -82,6 +82,18 @@ async function main() {
       }
     }
 
+    // --- Version compatibility check (runs once per install/update) ---
+    // Only warns if Claude Code is below the hard minimum (2.1.23) where hooks don't work.
+    let versionWarning = null;
+    try {
+      const { checkClaudeCodeVersionOnce } = require('../../../flow-version-check');
+      versionWarning = checkClaudeCodeVersionOnce();
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Version check failed: ${err.message}`);
+      }
+    }
+
     // --- Batch 1: Independent pre-context operations (async + sync) ---
     // These all operate on separate state files and have no data dependencies.
 
@@ -115,6 +127,38 @@ async function main() {
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Script validation failed: ${err.message}`);
+      }
+    }
+
+    // BUG-005 fix: Create durable-session.json for active tasks on session start.
+    // Without this, the first prompt of every task is lost because user-prompt-submit
+    // fires BEFORE post-tool-use (which creates the session file). This also fixes
+    // session resume after context compaction — durable-session.json may have been
+    // archived but the task is still inProgress in ready.json.
+    try {
+      const { getReadyData } = require('../../../flow-utils');
+      const readyData = getReadyData();
+      if (Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {
+        const task = readyData.inProgress[0];
+        const taskId = task && task.id;
+        if (taskId) {
+          const { loadDurableSession, createDurableSession } = require('../../../flow-durable-session');
+          const existing = loadDurableSession();
+          if (!existing || existing.taskId !== taskId) {
+            const criteria = task.acceptanceCriteria || task.scenarios || [];
+            const steps = Array.isArray(criteria) ? criteria : [];
+            const sessionSteps = steps.length > 0 ? steps : [task.title || taskId];
+            createDurableSession(taskId, 'task', sessionSteps);
+            if (process.env.DEBUG) {
+              console.error(`[session-start] Created durable session for active task ${taskId}`);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      // Non-blocking — prompt capture is best-effort
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Durable session init failed: ${err.message}`);
       }
     }
 
@@ -236,6 +280,11 @@ async function main() {
       coreResult.context.scriptWarnings = scriptWarnings.map(w => w.message);
     }
 
+    // Inject version compatibility warning (if any)
+    if (versionWarning && coreResult && coreResult.context) {
+      coreResult.context.versionWarning = versionWarning;
+    }
+
     // Inject drift detection results (if any)
     if (driftDetected && coreResult && coreResult.context) {
       if (driftMarkerMissing) {
@@ -252,8 +301,13 @@ async function main() {
     console.log(JSON.stringify(output));
     process.exit(0);
   } catch (err) {
-    // Non-blocking error - log to stderr, exit 1
-    console.error(`[Wogi Flow Hook Error] ${err.message}`);
+    // Non-blocking error - log with unified handler, exit 1
+    try {
+      const { logHookError } = require('../../../flow-hook-errors');
+      logHookError('SessionStart', err, { failMode: 'open', operation: 'session-initialization' });
+    } catch (logErr) {
+      console.error(`[WogiFlow] SessionStart hook error: ${err.message}`);
+    }
     process.exit(1);
   }
 }

@@ -5,17 +5,27 @@
  *
  * Runs before npm uninstall to clean up WogiFlow-created files.
  *
- * Removes:
- * - .workflow/ directory (all WogiFlow state and config)
- * - .claude/commands/wogi-*.md (WogiFlow slash commands)
- * - .claude/docs/ (WogiFlow documentation)
- * - .claude/skills/ (WogiFlow skills - may contain user customizations)
- * - .claude/hooks/ (WogiFlow hooks)
- * - .claude/rules/ (WogiFlow rules)
+ * Uses .claude/.wogiflow-manifest.json to selectively delete only
+ * WogiFlow-owned files, preserving user-created content (custom skills,
+ * rules, docs, hooks).
+ *
+ * Fallback: If no manifest exists (upgrade from older version), uses
+ * legacy behavior with a warning.
+ *
+ * Always removes:
+ * - .workflow/ directory (entirely WogiFlow-owned state and config)
  * - CLAUDE.md (if contains WogiFlow marker)
  *
+ * Selectively removes (via manifest):
+ * - .claude/commands/wogi-*.md (WogiFlow slash commands)
+ * - .claude/docs/* (only WogiFlow-tracked files)
+ * - .claude/skills/* (only WogiFlow-tracked skills)
+ * - .claude/hooks/* (only WogiFlow-tracked hooks)
+ * - .claude/rules/* (only WogiFlow-tracked rules)
+ *
  * Preserves:
- * - .claude/ directory structure (user may have other content)
+ * - User-created files in any .claude/ subdirectory
+ * - .claude/ directory structure
  * - User's git history
  */
 
@@ -25,20 +35,11 @@ const path = require('path');
 // Get project root (where npm uninstall is run)
 const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();
 
-// Directories to remove completely
-const DIRS_TO_REMOVE = [
-  path.join(PROJECT_ROOT, '.workflow'),
-  path.join(PROJECT_ROOT, '.claude', 'docs'),
-  path.join(PROJECT_ROOT, '.claude', 'skills'),
-  path.join(PROJECT_ROOT, '.claude', 'hooks'),
-  path.join(PROJECT_ROOT, '.claude', 'rules')
-];
-
-// File patterns to remove
-const CLAUDE_COMMANDS_DIR = path.join(PROJECT_ROOT, '.claude', 'commands');
+const CLAUDE_DIR = path.join(PROJECT_ROOT, '.claude');
+const MANIFEST_PATH = path.join(CLAUDE_DIR, '.wogiflow-manifest.json');
 const CLAUDE_MD_PATH = path.join(PROJECT_ROOT, 'CLAUDE.md');
 
-// WogiFlow marker in CLAUDE.md - more explicit to avoid false positives
+// WogiFlow marker in CLAUDE.md — more explicit to avoid false positives
 const WOGIFLOW_MARKER = 'WogiFlow methodology';
 
 // Debug logging helper
@@ -49,180 +50,293 @@ function debugLog(message) {
 }
 
 /**
- * Recursively remove a directory
+ * Read the WogiFlow manifest file.
+ * @returns {{ files: string[], directories: string[] } | null}
  */
-function removeDir(dirPath) {
-  if (!fs.existsSync(dirPath)) {
-    return { removed: false, reason: 'not found' };
-  }
-
+function readManifest() {
   try {
-    fs.rmSync(dirPath, { recursive: true, force: true });
-    return { removed: true };
+    const content = fs.readFileSync(MANIFEST_PATH, 'utf-8');
+    const manifest = JSON.parse(content);
+    if (manifest && Array.isArray(manifest.files)) {
+      return manifest;
+    }
+    return null;
   } catch (err) {
-    return { removed: false, reason: err.message };
+    return null;
   }
 }
 
 /**
- * Remove WogiFlow command files (wogi-*.md)
+ * Delete a single file, returning whether it was removed.
  */
-function removeWogiCommands() {
-  if (!fs.existsSync(CLAUDE_COMMANDS_DIR)) {
-    return { count: 0, files: [] };
-  }
-
-  const removed = [];
-  const skipped = [];
+function removeFile(filePath) {
   try {
-    const files = fs.readdirSync(CLAUDE_COMMANDS_DIR);
-    for (const file of files) {
-      if (file.startsWith('wogi-') && file.endsWith('.md')) {
-        const filePath = path.join(CLAUDE_COMMANDS_DIR, file);
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      debugLog(`Failed to remove ${filePath}: ${err.message}`);
+    }
+    return false;
+  }
+}
+
+/**
+ * Recursively remove a directory.
+ */
+function removeDir(dirPath) {
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+    return true;
+  } catch (err) {
+    debugLog(`Failed to remove ${dirPath}: ${err.message}`);
+    return false;
+  }
+}
+
+/**
+ * Remove empty directories bottom-up within a base directory.
+ * Only removes dirs that became empty after file deletion.
+ */
+function cleanupEmptyDirs(baseDir) {
+  if (!fs.existsSync(baseDir)) return;
+  try {
+    const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const subDir = path.join(baseDir, entry.name);
+        cleanupEmptyDirs(subDir);
+        // After recursing, check if dir is now empty
         try {
-          fs.unlinkSync(filePath);
-          removed.push(file);
+          const remaining = fs.readdirSync(subDir);
+          if (remaining.length === 0) {
+            fs.rmdirSync(subDir);
+          }
         } catch (err) {
-          debugLog(`Failed to remove ${file}: ${err.message}`);
-          skipped.push(file);
+          // Dir already gone or inaccessible
         }
       }
     }
   } catch (err) {
-    debugLog(`Failed to read commands directory: ${err.message}`);
+    debugLog(`cleanupEmptyDirs error: ${err.message}`);
   }
-
-  return { count: removed.length, files: removed, skipped };
 }
 
 /**
- * Remove CLAUDE.md if it contains WogiFlow marker
- * Note: Per security-patterns.md Rule #1, we don't use existsSync before readFileSync
- * as it creates race conditions. The try-catch handles "file not found" gracefully.
+ * Manifest-based cleanup: delete only files listed in the manifest.
+ * Returns summary of what was removed/preserved.
+ */
+function manifestBasedCleanup(manifest) {
+  const removed = [];
+  const preserved = [];
+
+  // Delete individual files from manifest
+  for (const relPath of manifest.files) {
+    const fullPath = path.join(CLAUDE_DIR, relPath);
+    if (removeFile(fullPath)) {
+      removed.push(relPath);
+    }
+  }
+
+  // Delete the manifest file itself
+  removeFile(MANIFEST_PATH);
+
+  // Clean up empty directories left behind
+  const dirsToClean = ['commands', 'docs', 'skills', 'hooks', 'rules'];
+  for (const dir of dirsToClean) {
+    const dirPath = path.join(CLAUDE_DIR, dir);
+    cleanupEmptyDirs(dirPath);
+    // Remove top-level dir if now empty
+    try {
+      const remaining = fs.readdirSync(dirPath);
+      if (remaining.length === 0) {
+        fs.rmdirSync(dirPath);
+      } else {
+        for (const f of remaining) {
+          preserved.push(path.join(dir, f));
+        }
+      }
+    } catch (err) {
+      // Dir doesn't exist or already removed
+    }
+  }
+
+  // Delete directories owned entirely by WogiFlow
+  const dirResults = [];
+  for (const dir of (manifest.directories || [])) {
+    const dirPath = path.join(PROJECT_ROOT, dir);
+    if (fs.existsSync(dirPath)) {
+      const didRemove = removeDir(dirPath);
+      dirResults.push({ path: dir, removed: didRemove });
+    }
+  }
+
+  return { removed, preserved, dirResults };
+}
+
+/**
+ * Legacy cleanup for installations without a manifest.
+ * Uses the old behavior: recursive delete of known dirs + pattern matching for commands.
+ */
+function legacyCleanup() {
+  const DIRS_TO_REMOVE = [
+    path.join(PROJECT_ROOT, '.workflow'),
+    path.join(CLAUDE_DIR, 'docs'),
+    path.join(CLAUDE_DIR, 'skills'),
+    path.join(CLAUDE_DIR, 'hooks'),
+    path.join(CLAUDE_DIR, 'rules')
+  ];
+
+  const dirResults = [];
+  for (const dir of DIRS_TO_REMOVE) {
+    const relativePath = path.relative(PROJECT_ROOT, dir);
+    if (fs.existsSync(dir)) {
+      const didRemove = removeDir(dir);
+      dirResults.push({ path: relativePath, removed: didRemove });
+    } else {
+      dirResults.push({ path: relativePath, removed: false });
+    }
+  }
+
+  // Selective deletion for commands (existing safe pattern)
+  const commandsDir = path.join(CLAUDE_DIR, 'commands');
+  const removedCommands = [];
+  if (fs.existsSync(commandsDir)) {
+    try {
+      const files = fs.readdirSync(commandsDir);
+      for (const file of files) {
+        if (file.startsWith('wogi-') && file.endsWith('.md')) {
+          const filePath = path.join(commandsDir, file);
+          if (removeFile(filePath)) {
+            removedCommands.push(file);
+          }
+        }
+      }
+    } catch (err) {
+      debugLog(`Failed to read commands directory: ${err.message}`);
+    }
+  }
+
+  return { dirResults, removedCommands };
+}
+
+/**
+ * Remove CLAUDE.md if it contains WogiFlow marker.
  */
 function removeClaudeMd() {
   try {
     const content = fs.readFileSync(CLAUDE_MD_PATH, 'utf-8');
     if (content.includes(WOGIFLOW_MARKER)) {
       fs.unlinkSync(CLAUDE_MD_PATH);
-      return { removed: true };
+      return true;
     }
-    return { removed: false, reason: 'not a WogiFlow file' };
+    return false;
   } catch (err) {
-    if (err.code === 'ENOENT') {
-      return { removed: false, reason: 'not found' };
-    }
-    debugLog(`Failed to process CLAUDE.md: ${err.message}`);
-    return { removed: false, reason: err.message };
+    return false;
   }
 }
 
 /**
- * Clean up empty .claude directory if nothing left
- * Returns info about what was preserved (for user visibility)
+ * Clean up empty .claude directory if nothing left.
  */
 function cleanupClaudeDir() {
-  const claudeDir = path.join(PROJECT_ROOT, '.claude');
-  const result = { removed: false, preserved: [] };
-
   try {
-    const remaining = fs.readdirSync(claudeDir);
-
-    // Only remove if empty or only contains 'commands' with no files
+    const remaining = fs.readdirSync(CLAUDE_DIR);
     if (remaining.length === 0) {
-      fs.rmdirSync(claudeDir);
-      result.removed = true;
-    } else if (remaining.length === 1 && remaining[0] === 'commands') {
-      const commandsDir = path.join(claudeDir, 'commands');
-      const commandFiles = fs.readdirSync(commandsDir);
-      if (commandFiles.length === 0) {
-        fs.rmdirSync(commandsDir);
-        fs.rmdirSync(claudeDir);
-        result.removed = true;
-      } else {
-        // Log non-WogiFlow files being preserved
-        result.preserved = commandFiles.filter(f => !f.startsWith('wogi-'));
-        if (result.preserved.length > 0) {
-          debugLog(`Preserving non-WogiFlow commands: ${result.preserved.join(', ')}`);
-        }
-      }
-    } else {
-      // Other content in .claude - log what's being preserved
-      result.preserved = remaining;
-      debugLog(`Preserving .claude contents: ${remaining.join(', ')}`);
+      fs.rmdirSync(CLAUDE_DIR);
+      return { removed: true, preserved: [] };
     }
+    // Filter out hidden files we own
+    const userFiles = remaining.filter(f => f !== '.wogiflow-manifest.json');
+    if (userFiles.length === 0) {
+      removeFile(MANIFEST_PATH);
+      fs.rmdirSync(CLAUDE_DIR);
+      return { removed: true, preserved: [] };
+    }
+    return { removed: false, preserved: userFiles };
   } catch (err) {
-    if (err.code !== 'ENOENT') {
-      debugLog(`Cleanup error: ${err.message}`);
-    }
+    return { removed: false, preserved: [] };
   }
-
-  return result;
 }
 
 /**
- * Check if we should be silent
+ * Check if we should be silent.
  */
 function shouldBeSilent() {
   return process.env.CI || process.env.WOGIFLOW_SILENT_UNINSTALL;
 }
 
 /**
- * Main entry point
+ * Main entry point.
  */
 function main() {
   const silent = shouldBeSilent();
-  const results = {
-    directories: [],
-    commands: null,
-    claudeMd: null
-  };
+  const manifest = readManifest();
+  const useManifest = manifest !== null;
 
-  // Remove directories
-  for (const dir of DIRS_TO_REMOVE) {
-    const relativePath = path.relative(PROJECT_ROOT, dir);
-    const result = removeDir(dir);
-    results.directories.push({ path: relativePath, ...result });
+  let result;
+
+  if (useManifest) {
+    // Manifest-based: selective deletion, preserves user content
+    result = manifestBasedCleanup(manifest);
+  } else {
+    // Legacy: no manifest found, use old behavior with warning
+    result = legacyCleanup();
+    if (!silent) {
+      process.stderr.write('\n\x1b[33mWarning:\x1b[0m No WogiFlow manifest found — using legacy cleanup.\n');
+      process.stderr.write('User-created files in .claude/ may be affected.\n\n');
+    }
   }
 
-  // Remove wogi-*.md commands
-  results.commands = removeWogiCommands();
+  // Always: remove CLAUDE.md if WogiFlow-generated
+  const claudeMdRemoved = removeClaudeMd();
 
-  // Remove CLAUDE.md if WogiFlow-generated
-  results.claudeMd = removeClaudeMd();
-
-  // Clean up empty .claude directory
-  results.claudeDir = cleanupClaudeDir();
+  // Always: clean up .claude/ if empty
+  const claudeDir = cleanupClaudeDir();
 
   // Output summary
   if (!silent) {
-    const removedDirs = results.directories.filter(d => d.removed);
-    const removedCount = removedDirs.length + results.commands.count + (results.claudeMd.removed ? 1 : 0);
+    process.stderr.write('\n\x1b[36mWogiFlow cleanup:\x1b[0m\n');
 
-    if (removedCount > 0) {
-      process.stderr.write('\n\x1b[36mWogiFlow cleanup:\x1b[0m\n');
-
-      for (const dir of removedDirs) {
-        process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${dir.path}/\n`);
+    if (useManifest) {
+      if (result.removed.length > 0) {
+        process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${result.removed.length} WogiFlow file(s)\n`);
       }
-
-      if (results.commands.count > 0) {
-        process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${results.commands.count} command(s): ${results.commands.files.join(', ')}\n`);
+      for (const dir of (result.dirResults || [])) {
+        if (dir.removed) {
+          process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${dir.path}/\n`);
+        }
       }
-
-      if (results.claudeMd.removed) {
-        process.stderr.write(`  \x1b[31m✗\x1b[0m Removed CLAUDE.md\n`);
+      if (result.preserved.length > 0) {
+        process.stderr.write(`\n\x1b[32m✓ Preserved ${result.preserved.length} user file(s):\x1b[0m\n`);
+        for (const f of result.preserved.slice(0, 10)) {
+          process.stderr.write(`    ${f}\n`);
+        }
+        if (result.preserved.length > 10) {
+          process.stderr.write(`    ... and ${result.preserved.length - 10} more\n`);
+        }
       }
-
-      // Show preserved files (user's custom content)
-      if (results.claudeDir && results.claudeDir.preserved && results.claudeDir.preserved.length > 0) {
-        process.stderr.write(`\n\x1b[33mPreserved:\x1b[0m ${results.claudeDir.preserved.join(', ')} (not WogiFlow files)\n`);
-      }
-
-      process.stderr.write('\n\x1b[2mWogiFlow has been uninstalled. Your git history is preserved.\x1b[0m\n\n');
     } else {
-      process.stderr.write('\x1b[36mWogiFlow:\x1b[0m No files to clean up.\n');
+      // Legacy output
+      for (const dir of (result.dirResults || [])) {
+        if (dir.removed) {
+          process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${dir.path}/\n`);
+        }
+      }
+      if (result.removedCommands && result.removedCommands.length > 0) {
+        process.stderr.write(`  \x1b[31m✗\x1b[0m Removed ${result.removedCommands.length} command(s)\n`);
+      }
     }
+
+    if (claudeMdRemoved) {
+      process.stderr.write(`  \x1b[31m✗\x1b[0m Removed CLAUDE.md\n`);
+    }
+
+    if (claudeDir.preserved.length > 0) {
+      process.stderr.write(`\n\x1b[33mPreserved:\x1b[0m ${claudeDir.preserved.join(', ')} (not WogiFlow files)\n`);
+    }
+
+    process.stderr.write('\n\x1b[2mWogiFlow has been uninstalled. Your git history is preserved.\x1b[0m\n\n');
   }
 }
 

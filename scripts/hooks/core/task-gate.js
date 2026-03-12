@@ -9,10 +9,11 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
+const fs = require('fs');
 const path = require('path');
 
 // Import from parent scripts directory
-const { getConfig, getReadyData, saveReadyData, generateTaskId, PATHS, safeJsonParse } = require('../../flow-utils');
+const { getConfig, getReadyData, saveReadyData, generateTaskId, validateTaskId, PATHS, safeJsonParse } = require('../../flow-utils');
 const { trackTaskStart, trackBypassAttempt } = require('../../flow-session-state');
 const { setCurrentTask } = require('../../flow-memory-blocks');
 
@@ -41,6 +42,12 @@ function isTaskGatingEnabled(config) {
 
 /**
  * Get the currently active task (if any)
+ *
+ * SECURITY: Validates that the task has a `routedAt` field, which proves it
+ * entered inProgress through a legitimate path (moveTaskAsync or createQuickTask).
+ * Tasks manually inserted into ready.json won't have this field and are rejected.
+ * This closes the bypass where AI edits ready.json directly to create fake tasks.
+ *
  * @returns {Object|null} Task object or null
  */
 function getActiveTask() {
@@ -50,13 +57,82 @@ function getActiveTask() {
     // Check inProgress queue
     if (readyData.inProgress && readyData.inProgress.length > 0) {
       const task = readyData.inProgress[0];
-      return typeof task === 'string' ? { id: task } : task;
+      if (typeof task === 'string') return { id: task };
+
+      // Validate task ID format before using it in paths (prevents path traversal)
+      if (!task.id || typeof task.id !== 'string' || !validateTaskId(task.id)) {
+        if (process.env.DEBUG) {
+          console.error(`[task-gate] Rejecting task — invalid ID format: ${task.id}`);
+        }
+        return null;
+      }
+
+      // Validate routing metadata — reject manually inserted tasks.
+      // Tasks without routedAt were not created through the proper routing system
+      // (moveTaskAsync or createQuickTask). This prevents the bypass where AI
+      // manually edits ready.json to insert a fake task after context compaction.
+      //
+      // Defense-in-depth: routedAt in the task object can be spoofed if the AI writes
+      // it directly. So we also check for a routing receipt file written by moveTaskAsync()
+      // (in flow-utils.js) when a task enters inProgress, and by createQuickTask() for
+      // auto-created tasks. These are NOT written by clearRoutingPending() — that function
+      // manages a separate routing-pending flag.
+      if (!task.routedAt) {
+        // Check for routing receipt as fallback (covers pre-v1.9.5 tasks and
+        // tasks created by flow-start.js before this change was deployed).
+        // Also accept tasks with startedAt as legacy (pre-routedAt migration).
+        if (task.startedAt) {
+          // Legacy task started before routedAt was introduced — allow it
+          return task;
+        }
+
+        const receiptPath = path.join(PATHS.state, `.routing-receipt-${task.id}`);
+        let hasReceipt = false;
+        try {
+          fs.accessSync(receiptPath);
+          hasReceipt = true;
+        } catch {
+          // No receipt
+        }
+
+        if (!hasReceipt) {
+          if (process.env.DEBUG) {
+            console.error(`[task-gate] Rejecting task ${task.id} — missing routedAt and no routing receipt (manually inserted?)`);
+          }
+          return null;
+        }
+      }
+
+      return task;
     }
 
     // Check durable session (use safeJsonParse to prevent prototype pollution)
+    // SECURITY: Apply same receipt/routedAt validation as inProgress tasks
     const durableSessionPath = path.join(PATHS.state, 'durable-session.json');
     const session = safeJsonParse(durableSessionPath, null);
     if (session && session.taskId && session.status === 'active') {
+      // Validate task ID format
+      if (!validateTaskId(session.taskId)) {
+        if (process.env.DEBUG) {
+          console.error(`[task-gate] Rejecting durable session — invalid taskId: ${session.taskId}`);
+        }
+        return null;
+      }
+      // Check for routing receipt
+      const receiptPath = path.join(PATHS.state, `.routing-receipt-${session.taskId}`);
+      let hasReceipt = false;
+      try {
+        fs.accessSync(receiptPath);
+        hasReceipt = true;
+      } catch {
+        // No receipt
+      }
+      if (!hasReceipt && !session.routedAt) {
+        if (process.env.DEBUG) {
+          console.error(`[task-gate] Rejecting durable session ${session.taskId} — no routing proof`);
+        }
+        return null;
+      }
       return { id: session.taskId, fromDurableSession: true };
     }
 
@@ -89,7 +165,8 @@ function createQuickTask(filePath, operation) {
       status: 'in_progress',
       priority: 'P2',
       startedAt: new Date().toISOString(),
-      autoCreated: true
+      autoCreated: true,
+      routedAt: new Date().toISOString()
     };
 
     // Add to inProgress
@@ -100,6 +177,14 @@ function createQuickTask(filePath, operation) {
     readyData.inProgress.unshift(task);
 
     saveReadyData(readyData);
+
+    // Write routing receipt (anti-bypass defense-in-depth)
+    try {
+      const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
+      fs.writeFileSync(receiptPath, JSON.stringify({ taskId, routedAt: task.routedAt, via: 'createQuickTask' }));
+    } catch {
+      // Non-blocking
+    }
 
     // Sync session state (same as flow-start.js does)
     try {

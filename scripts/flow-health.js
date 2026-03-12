@@ -73,9 +73,12 @@ function checkClaudeCodeVersion() {
     // effort levels simplified, /plan description, prompt cache fix
     const meets2172 = meetsVersion(major, minor, patch, 2, 1, 72);
 
-    return { version, meetsMinimum: meetsMin, meets2150, meets2172 };
+    // 2.1.73+ fixes: SessionStart double-fire, hook context pollution, subagent model on Bedrock/Vertex
+    const meets2173 = meetsVersion(major, minor, patch, 2, 1, 73);
+
+    return { version, meetsMinimum: meetsMin, meets2150, meets2172, meets2173 };
   } catch {
-    return { version: null, meetsMinimum: true, meets2150: false, meets2172: false };
+    return { version: null, meetsMinimum: true, meets2150: false, meets2172: false, meets2173: false };
   }
 }
 
@@ -211,6 +214,15 @@ function main() {
         } catch {
           console.log(`  ${color('dim', '○')} lsof: not available`);
         }
+      }
+
+      // Report 2.1.73+ fixes
+      if (versionCheck.meets2173) {
+        console.log(`  ${color('green', '✓')} Claude Code 2.1.73+ fixes applied:`);
+        console.log(`    ${color('dim', '→ SessionStart hooks fire exactly once on resume')}`);
+        console.log(`    ${color('dim', '→ Hook JSON output no longer pollutes context')}`);
+        console.log(`    ${color('dim', '→ Subagent model parameter works on Bedrock/Vertex/Foundry')}`);
+        console.log(`    ${color('dim', '→ modelOverrides setting for custom provider model IDs')}`);
       }
     }
   }
