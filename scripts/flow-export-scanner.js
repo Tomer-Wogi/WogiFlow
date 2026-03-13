@@ -16,10 +16,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot: getProjectRootFromUtils, getConfig } = require('./flow-utils');
+const { PATHS, getConfig } = require('./flow-utils');
 
-// Default to getProjectRoot from utils, can be overridden via setProjectRoot() or CLI arg
-let PROJECT_ROOT = getProjectRootFromUtils();
+// Default to PATHS.root from flow-utils, can be overridden via setProjectRoot() or CLI arg
+let PROJECT_ROOT = PATHS.root;
 let CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
 let CACHE_PATH = path.join(PROJECT_ROOT, '.workflow/state/export-map.json');
 const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes

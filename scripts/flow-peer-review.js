@@ -22,7 +22,8 @@ const {
   success,
   warn,
   error,
-  info
+  info,
+  validateTaskId
 } = require('./flow-utils');
 
 const {
@@ -92,14 +93,6 @@ function getStagedChanges() {
 }
 
 /**
- * Validate taskId format — must be wf-[8 hex chars] or legacy TASK-NNN/BUG-NNN.
- * Also prevents command injection and path traversal.
- */
-function isValidTaskId(taskId) {
-  return /^(wf-[a-f0-9]{8}(-\d{2})?|(TASK|BUG)-\d{3,})$/i.test(taskId);
-}
-
-/**
  * Validate commit hash format
  */
 function isValidCommitHash(hash) {
@@ -111,7 +104,7 @@ function isValidCommitHash(hash) {
  */
 function getTaskChanges(taskId) {
   // Validate taskId to prevent command injection
-  if (!isValidTaskId(taskId)) {
+  if (!validateTaskId(taskId).valid) {
     warn(`Invalid task ID format: ${taskId}`);
     return getStagedChanges();
   }
@@ -504,8 +497,7 @@ module.exports = {
   compareFindings,
   formatResults,
   IMPROVEMENT_PROMPT,
-  // Security validation functions
-  isValidTaskId,
+  // Security validation functions (validateTaskId imported from flow-utils)
   isValidCommitHash,
   isValidGlob,
   isValidFilePath

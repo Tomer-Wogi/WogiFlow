@@ -12,7 +12,8 @@ const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
 const { checkAndResetStalePhase } = require('../../core/phase-gate');
 const { setRoutingPending } = require('../../core/routing-gate');
-const { safeJsonParseString, getConfig } = require('../../../flow-utils');
+const { getConfig } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
 
 // Lazy-load bridge state to avoid circular dependencies
 let autoSyncBridge = null;
@@ -42,17 +43,8 @@ async function main() {
     })();
 
     // Read input from stdin (runs concurrently with bridge sync)
-    // Cap at 100KB to prevent unbounded memory growth (matches pre-tool-use.js pattern)
-    const MAX_STDIN_SIZE = 100 * 1024;
-    let inputData = '';
-    let totalSize = 0;
-    for await (const chunk of process.stdin) {
-      totalSize += chunk.length;
-      if (totalSize > MAX_STDIN_SIZE) break;
-      inputData += chunk;
-    }
-
-    const input = inputData ? (safeJsonParseString(inputData, {}) || {}) : {};
+    const { input: parsedStdin } = await readHookInput();
+    const input = parsedStdin || {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Wait for bridge sync to complete before proceeding

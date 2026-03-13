@@ -970,7 +970,7 @@ if (require.main === module) {
   }
 
   if (prepareAI && taskId) {
-    if (!validateTaskId(taskId)) {
+    if (!validateTaskId(taskId).valid) {
       console.log(color('red', `Invalid task ID: ${taskId}`));
       process.exit(1);
     }
@@ -1009,7 +1009,7 @@ if (require.main === module) {
   }
 
   if (matchOnly && taskId) {
-    if (!validateTaskId(taskId)) {
+    if (!validateTaskId(taskId).valid) {
       console.log(color('red', `Invalid task ID: ${taskId}`));
       process.exit(1);
     }
@@ -1041,7 +1041,7 @@ if (require.main === module) {
   }
 
   if (taskId) {
-    if (!validateTaskId(taskId)) {
+    if (!validateTaskId(taskId).valid) {
       console.log(color('red', `Invalid task ID: ${taskId}`));
       process.exit(1);
     }

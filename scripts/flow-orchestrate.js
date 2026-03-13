@@ -6,14 +6,9 @@
  * Executes plans created by Claude using a local LLM.
  * Updates all Wogi Flow state files after each step.
  *
- * LIMITATION: The --resume flag is documented but not yet implemented.
- * Checkpoint data is saved but recovery logic needs completion.
- * TODO: Implement resume from checkpoint functionality.
- *
  * Usage:
- *   flow-orchestrate <plan.json>              # Execute a plan
- *   flow-orchestrate --resume                 # Resume from checkpoint (NOT YET IMPLEMENTED)
- *   flow-orchestrate --rollback               # Rollback last execution
+ *   flow-orchestrate <plan.json>    # Execute a plan
+ *   flow-orchestrate --rollback     # Rollback last execution
  */
 
 const fs = require('fs');
@@ -3146,7 +3141,6 @@ Wogi Flow Hybrid Orchestrator
 
 Usage:
   flow-orchestrate <plan.json>    Execute a plan file
-  flow-orchestrate --resume       Resume from checkpoint
   flow-orchestrate --rollback     Rollback last execution
   flow-orchestrate --help         Show this help
 
@@ -3165,11 +3159,6 @@ Examples:
       log('yellow', 'No rollback checkpoint found.');
     }
     process.exit(0);
-  }
-
-  if (args.includes('--resume')) {
-    log('yellow', 'Resume not yet implemented');
-    process.exit(1);
   }
 
   const planPath = args[0];

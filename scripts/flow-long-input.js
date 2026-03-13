@@ -15,8 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
-const { estimateTokens } = require('./flow-utils');
+const { estimateTokens, generateHashId, getConfig } = require('./flow-utils');
 
 // Import extracted modules (renamed from transcript-* to long-input-*)
 const transcriptParsing = require('./flow-long-input-parsing');
@@ -106,8 +105,6 @@ const {
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
 const STATE_DIR = TMP_DIR; // Alias for backward compatibility during migration
 const ACTIVE_DIGEST_FILE = path.join(TMP_DIR, 'active-digest.json');
-const CONFIG_FILE = path.join(process.cwd(), '.workflow', 'config.json');
-
 // Colors for CLI output
 const c = {
   reset: '\x1b[0m',
@@ -124,7 +121,7 @@ const c = {
  */
 function loadConfig() {
   try {
-    const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    const config = getConfig();
     return config.longInputGate || config.transcriptDigestion || {};
   } catch (_err) {
     return {};
@@ -135,7 +132,7 @@ function loadConfig() {
  * Generate unique digest ID
  */
 function generateDigestId() {
-  return 'digest-' + crypto.randomBytes(4).toString('hex');
+  return generateHashId('digest', '', '');
 }
 
 /**
@@ -860,7 +857,7 @@ function resolveOrphan(orphan, topics) {
 function createTopicFromOrphans(orphans, _existingTopics) {
   // Guard against empty orphans array
   if (!orphans || orphans.length === 0) {
-    const topicId = 't-auto-' + crypto.randomBytes(3).toString('hex');
+    const topicId = generateHashId('t-auto', '', '');
     return {
       id: topicId,
       title: 'Miscellaneous',
@@ -875,7 +872,7 @@ function createTopicFromOrphans(orphans, _existingTopics) {
     };
   }
 
-  const topicId = 't-auto-' + crypto.randomBytes(3).toString('hex');
+  const topicId = generateHashId('t-auto', '', '');
 
   // Extract common keywords from orphans
   const allWords = orphans.flatMap(o =>

@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { ensureDir } = require('./flow-file-ops');
+const { ensureDir, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
 
 // Import helper functions from tech options
 let _techOptions = null;
@@ -895,35 +895,25 @@ function updateDecisionsMd(selections, technologies, projectRoot) {
   syncDecisionsToRules();
 }
 
-function updateConfigJson(technologies, projectRoot) {
-  const configPath = path.join(projectRoot, '.workflow', 'config.json');
-
-  if (!fs.existsSync(configPath)) {
-    console.log('  Warning: config.json not found, skipping skills registration');
-    return;
-  }
-
-  let config;
+function updateConfigJson(technologies, _projectRoot) {
   try {
-    const content = fs.readFileSync(configPath, 'utf8');
-    const parsed = JSON.parse(content);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    const config = getConfig();
+    if (!config || typeof config !== 'object') {
       console.log('  Warning: config.json is not a valid object');
       return;
     }
-    config = parsed;
+
+    // Update skills section
+    if (!config.skills) config.skills = {};
+    config.skills.installed = technologies.map(t =>
+      t.value.toLowerCase().replace(/[^a-z0-9]/g, '-')
+    );
+
+    writeJson(PATHS.config, config);
+    invalidateConfigCache();
   } catch (err) {
-    console.log(`  Warning: Failed to parse config.json: ${err.message}`);
-    return;
+    console.log(`  Warning: Failed to update config.json: ${err.message}`);
   }
-
-  // Update skills section
-  if (!config.skills) config.skills = {};
-  config.skills.installed = technologies.map(t =>
-    t.value.toLowerCase().replace(/[^a-z0-9]/g, '-')
-  );
-
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
 }
 
 // ============================================

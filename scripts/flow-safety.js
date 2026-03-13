@@ -19,11 +19,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
 
 /**
  * Custom error for safety violations
@@ -458,15 +457,12 @@ class SafetyGuard {
  * Load safety configuration from config.json
  */
 function loadSafetyConfig() {
-  if (fs.existsSync(CONFIG_PATH)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-      return config.safety || {};
-    } catch {
-      return {};
-    }
+  try {
+    const config = getConfig();
+    return config.safety || {};
+  } catch {
+    return {};
   }
-  return {};
 }
 
 /**

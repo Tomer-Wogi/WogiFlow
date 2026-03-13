@@ -13,7 +13,8 @@
 const { runValidation } = require('../../core/validation');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { captureObservation } = require('../../core/observation-capture');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
+const { logHookError } = require('../../../flow-hook-errors');
 
 function extractErrorMessage(toolResponse) {
   if (!toolResponse) return 'unknown error';
@@ -31,13 +32,14 @@ async function main() {
 
   try {
     // Read input from stdin
-    let inputData = '';
-    for await (const chunk of process.stdin) {
-      inputData += chunk;
+    const { input: rawInput } = await readHookInput();
+    if (!rawInput) {
+      console.log(JSON.stringify({ continue: true }));
+      process.exit(0);
+      return;
     }
 
-    const input = inputData ? safeJsonParseString(inputData, {}) : {};
-    const parsedInput = claudeCodeAdapter.parseInput(input);
+    const parsedInput = claudeCodeAdapter.parseInput(rawInput);
 
     const toolName = parsedInput.toolName;
     const toolInput = parsedInput.toolInput || {};
@@ -151,8 +153,8 @@ async function main() {
     console.log(JSON.stringify(output));
     process.exit(0);
   } catch (err) {
-    // Non-blocking error
-    console.error(`[Wogi Flow Hook Error] ${err.message}`);
+    // Non-blocking error — log with unified handler, allow through
+    logHookError('PostToolUse', err, { failMode: 'open', operation: 'post-tool-processing' });
     console.log(JSON.stringify({ continue: true }));
     process.exit(0);
   }

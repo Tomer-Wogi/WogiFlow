@@ -24,11 +24,10 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
-const { getProjectRoot, colors: c, estimateTokens } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c, estimateTokens } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
 
 /**
  * Provider types
@@ -970,12 +969,8 @@ async function detectProviders() {
  * Load provider from config
  */
 function loadProviderFromConfig() {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    return null;
-  }
-
   try {
-    const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+    const config = getConfig();
     const hybridConfig = config.hybrid || {};
 
     if (!hybridConfig.enabled || !hybridConfig.provider) {

@@ -23,6 +23,7 @@ const {
   dirExists,
   readFile,
   writeFile,
+  getConfig,
   color,
   success,
   warn,
@@ -35,7 +36,7 @@ const {
 
 function getCorrectionsDir() {
   try {
-    const config = JSON.parse(fs.readFileSync(PATHS.config, 'utf-8'));
+    const config = getConfig();
     const detailPath = config?.corrections?.detailPath;
     if (detailPath) {
       return path.isAbsolute(detailPath) ? detailPath : path.join(PROJECT_ROOT, detailPath);

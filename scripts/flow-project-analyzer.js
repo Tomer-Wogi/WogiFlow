@@ -12,7 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = process.argv[2] || getProjectRoot();
 
@@ -802,8 +802,8 @@ function updateConfig(analysis) {
   }
 
   try {
-    const config = safeJsonParse(CONFIG_PATH, null);
-    if (!config) return false;
+    const config = getConfig();
+    if (!config || Object.keys(config).length === 0) return false;
 
     // Ensure hybrid section exists
     if (!config.hybrid) config.hybrid = {};
@@ -1227,7 +1227,7 @@ if (require.main === module) {
   clearContextCache();
 
   // Also generate codebase insights during full analysis
-  const config = safeJsonParse(CONFIG_PATH, {});
+  const config = getConfig();
   if (config.codebaseInsights?.enabled !== false) {
     saveCodebaseInsights();
   }

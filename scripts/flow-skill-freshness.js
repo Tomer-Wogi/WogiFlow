@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { getConfig } = require('./flow-config-loader');
 
 // ============================================
 // CONFIGURATION
@@ -159,18 +160,8 @@ function updateLastDocCheck(skillDir, date) {
 // CONFIG LOADING
 // ============================================
 
-function loadConfig(projectRoot) {
-  const configPath = path.join(projectRoot, '.workflow', 'config.json');
-  try {
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(content);
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      return {};
-    }
-    return parsed;
-  } catch (err) {
-    return {};
-  }
+function loadConfig(_projectRoot) {
+  return getConfig();
 }
 
 // ============================================

@@ -141,7 +141,7 @@ let db = null;
 let embedder = null;
 let initPromise = null;
 
-// ensureDir imported from flow-file-ops
+// ensureDir imported from flow-io
 
 /**
  * Initialize database (singleton)

@@ -38,7 +38,8 @@ const {
   checkSpecMigration,
   safeJsonParse,
   meetsVersion,
-  getFdCommand
+  getFdCommand,
+  getConfig
 } = require('./flow-utils');
 
 const { execSync, execFileSync } = require('child_process');
@@ -128,7 +129,7 @@ function main() {
   let cliType = 'claude-code'; // default
   if (fileExists(PATHS.config)) {
     try {
-      const config = require(PATHS.config);
+      const config = getConfig();
       cliType = config.cli?.type || 'claude-code';
     } catch {}
   }

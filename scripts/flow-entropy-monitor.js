@@ -17,39 +17,18 @@
 const fs = require('fs');
 const path = require('path');
 const memoryDb = require('./flow-memory-db');
+const { getConfig } = require('./flow-config-loader');
+const { color } = require('./flow-output');
 
 // ============================================================
 // Configuration
 // ============================================================
 
 const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
-const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-
-function loadConfig() {
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-    }
-  } catch {}
-  return {};
-}
 
 // ============================================================
 // Output Formatting
 // ============================================================
-
-function color(c, text) {
-  const colors = {
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    cyan: '\x1b[36m',
-    gray: '\x1b[90m',
-    reset: '\x1b[0m'
-  };
-  return `${colors[c] || ''}${text}${colors.reset}`;
-}
 
 function formatEntropy(entropy) {
   if (entropy < 0.4) return color('green', `${entropy} (healthy)`);
@@ -299,7 +278,7 @@ async function showPromotionCandidates(config) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const config = loadConfig();
+  const config = getConfig();
 
   try {
     if (args.includes('--auto')) {

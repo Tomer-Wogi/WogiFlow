@@ -354,7 +354,7 @@ function determineCapabilities(text, complexity) {
  * @param {Object} analysis - Full analysis object
  * @returns {Object} Token estimates
  */
-function estimateTokens(analysis) {
+function estimateTaskTokens(analysis) {
   const { complexity, domains, languages } = analysis;
 
   const multiplier = TOKEN_FACTORS.COMPLEXITY_MULTIPLIER[complexity.level];
@@ -431,7 +431,7 @@ function analyzeTask(params) {
   };
 
   // Add token estimates
-  analysis.tokens = estimateTokens(analysis);
+  analysis.tokens = estimateTaskTokens(analysis);
 
   // Add timestamp
   analysis.analyzedAt = new Date().toISOString();
@@ -620,7 +620,7 @@ module.exports = {
   detectDomains,
   detectLanguages,
   determineCapabilities,
-  estimateTokens,
+  estimateTaskTokens,
   parseStoryFile,
   COMPLEXITY_THRESHOLDS,
   DOMAIN_PATTERNS,

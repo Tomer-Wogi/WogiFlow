@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const memoryDb = require('./flow-memory-db');
 const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
+const { color } = require('./flow-output');
 
 // ============================================================
 // Configuration
@@ -36,19 +37,6 @@ function loadConfig() {
 // ============================================================
 // Output Formatting
 // ============================================================
-
-function color(c, text) {
-  const colors = {
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    cyan: '\x1b[36m',
-    gray: '\x1b[90m',
-    reset: '\x1b[0m'
-  };
-  return `${colors[c] || ''}${text}${colors.reset}`;
-}
 
 function formatEntropy(entropy) {
   if (entropy < 0.4) return color('green', `${entropy}`);

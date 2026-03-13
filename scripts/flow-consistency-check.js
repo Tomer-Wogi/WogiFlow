@@ -511,10 +511,6 @@ function runConsistencyCheck(options = {}) {
     }
   }
 
-  // TODO: Implement crossMapConsistency check (config key exists but check is not yet implemented)
-  // This would verify that components referenced in one map exist in others
-  // (e.g., a function used by a component is also in function-map)
-
   // Determine overall status
   const mode = consistencyConfig.mode || 'warn';
   const orphanMode = consistencyConfig.orphanMode || 'warn';

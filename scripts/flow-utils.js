@@ -2089,6 +2089,7 @@ module.exports = {
   getRegistryMapFiles,
 
   // Task ID Generation & Validation (v1.9.0)
+  generateHashId,
   generateTaskId,
   validateTaskId,
   isValidWogiId,

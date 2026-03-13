@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getConfig, PATHS, safeJsonParse } = require('./flow-utils');
+const { getConfig, PATHS, safeJsonParse, validateTaskId } = require('./flow-utils');
 
 /**
  * Default estimation config (can be overridden in config.json)
@@ -32,20 +32,6 @@ const DEFAULT_REFACTOR_KEYWORDS = [
   'refactor', 'migration', 'overhaul', 'redesign', 'rewrite',
   'restructure', 'rearchitect', 'modernize', 'upgrade'
 ];
-
-// Valid task ID pattern — enforces wf-[8 hex] format and prevents path traversal
-// Also accepts legacy TASK-NNN/BUG-NNN and sub-tasks wf-XXXXXXXX-NN
-const VALID_TASK_ID_PATTERN = /^(wf-[a-f0-9]{8}(-\d{2})?|(TASK|BUG)-\d{3,})$/i;
-
-/**
- * Validate task ID format — must be wf-[8 hex chars] or legacy TASK-NNN/BUG-NNN.
- * Also prevents path traversal attacks.
- * @param {string} taskId - Task ID to validate
- * @returns {boolean} True if valid
- */
-function isValidTaskId(taskId) {
-  return typeof taskId === 'string' && VALID_TASK_ID_PATTERN.test(taskId);
-}
 
 /**
  * Get smart compaction config from config.json
@@ -90,7 +76,7 @@ function getSmartCompactionConfig() {
  */
 function readSpecFile(taskId) {
   // Validate taskId to prevent path traversal (Security Rule)
-  if (!isValidTaskId(taskId)) {
+  if (!validateTaskId(taskId).valid) {
     return null;
   }
 
@@ -476,7 +462,7 @@ if (require.main === module) {
     const taskId = args[1];
 
     // Validate taskId to prevent path traversal
-    if (!isValidTaskId(taskId)) {
+    if (!validateTaskId(taskId).valid) {
       console.error(`Invalid task ID format: ${taskId}`);
       console.error('Task IDs must contain only alphanumeric characters, hyphens, and underscores.');
       process.exit(1);
@@ -521,7 +507,7 @@ if (require.main === module) {
     const taskId = args[1];
 
     // Validate taskId to prevent path traversal
-    if (!isValidTaskId(taskId)) {
+    if (!validateTaskId(taskId).valid) {
       console.error(`Invalid task ID format: ${taskId}`);
       console.error('Task IDs must contain only alphanumeric characters, hyphens, and underscores.');
       process.exit(1);
@@ -775,8 +761,6 @@ module.exports = {
   formatEstimationResult,
   extractCriteriaCount,
   extractFileCount,
-  isValidTaskId,
-  VALID_TASK_ID_PATTERN,
   // Finding-level estimation (for review-fix sessions)
   estimateFindingContextCost,
   calculateDynamicBatchSize,

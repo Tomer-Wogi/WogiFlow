@@ -22,10 +22,10 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const {
   PATHS,
   getConfig,
+  generateHashId,
   success,
   warn,
   error,
@@ -163,7 +163,7 @@ function recordAmendment(params) {
   }
 
   // Generate amendment record
-  const id = `amend-${crypto.randomBytes(4).toString('hex')}`;
+  const id = generateHashId('amend', '', '');
   const amendment = {
     id,
     timestamp: new Date().toISOString(),

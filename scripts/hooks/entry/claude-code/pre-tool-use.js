@@ -19,7 +19,8 @@ const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
-const { safeJsonParseString, getConfig } = require('../../../flow-utils');
+const { getConfig } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
 
 // Lazy-load strict adherence to avoid circular deps and startup cost
 let _strictAdherence = null;
@@ -35,48 +36,13 @@ function getStrictAdherence() {
   return _strictAdherence;
 }
 
-// Maximum stdin size to prevent DoS (100KB should be enough for tool inputs)
-const MAX_STDIN_SIZE = 100 * 1024;
-
 async function main() {
   try {
-    // Read input from stdin with size limit
-    let inputData = '';
-    let totalSize = 0;
-    for await (const chunk of process.stdin) {
-      totalSize += chunk.length;
-      if (totalSize > MAX_STDIN_SIZE) {
-        inputData += chunk.slice(0, MAX_STDIN_SIZE - (totalSize - chunk.length));
-        break;
-      }
-      inputData += chunk;
-    }
+    // Read input from stdin with size limit and parse JSON safely
+    const { input } = await readHookInput();
 
-    // Handle empty input gracefully
-    if (!inputData || inputData.trim().length === 0) {
-      console.log(JSON.stringify({
-        continue: true,
-        hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }
-      }));
-      process.exit(0);
-      return;
-    }
-
-    // Parse JSON safely with prototype pollution protection
-    let input;
-    try {
-      input = safeJsonParseString(inputData, null);
-      if (!input) {
-        // Invalid JSON - allow through (graceful degradation)
-        console.log(JSON.stringify({
-          continue: true,
-          hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }
-        }));
-        process.exit(0);
-        return;
-      }
-    } catch (_parseErr) {
-      // Parse error - allow through (graceful degradation)
+    // Handle empty or invalid input gracefully
+    if (!input) {
       console.log(JSON.stringify({
         continue: true,
         hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }

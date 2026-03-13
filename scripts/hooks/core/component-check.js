@@ -114,6 +114,25 @@ function getSimilarityThreshold(config) {
   return config.componentReuse?.threshold || 70;
 }
 
+// Module-level cache for compiled component path patterns
+let _compiledPatterns = null;
+let _patternSource = null;
+
+function getCompiledPatterns(patterns) {
+  const key = JSON.stringify(patterns);
+  if (_patternSource === key && _compiledPatterns) {
+    return _compiledPatterns;
+  }
+  _compiledPatterns = patterns.map(pattern => {
+    const regexPattern = pattern
+      .replace(/\*\*/g, '.*')
+      .replace(/\*/g, '[^/]*');
+    return new RegExp(regexPattern);
+  });
+  _patternSource = key;
+  return _compiledPatterns;
+}
+
 /**
  * Check if a file path matches component patterns
  * @param {string} filePath - Path to check
@@ -124,13 +143,9 @@ function isComponentPath(filePath, config) {
   const patterns = getComponentPatterns(config);
   const normalizedPath = filePath.replace(/\\/g, '/');
 
-  for (const pattern of patterns) {
-    // Simple pattern matching (supports ** and *)
-    const regexPattern = pattern
-      .replace(/\*\*/g, '.*')
-      .replace(/\*/g, '[^/]*');
-
-    if (new RegExp(regexPattern).test(normalizedPath)) {
+  const compiled = getCompiledPatterns(patterns);
+  for (const regex of compiled) {
+    if (regex.test(normalizedPath)) {
       return true;
     }
   }

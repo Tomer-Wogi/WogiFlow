@@ -17,7 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
-const { readJson, writeJson, ensureDir, fileExists } = require('./flow-file-ops');
+const { readJson, writeJson, ensureDir, fileExists } = require('./flow-utils');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');
 
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');

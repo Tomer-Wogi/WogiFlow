@@ -21,14 +21,10 @@ const {
 // Logging Helper
 // ============================================================
 
-const colors = {
-  reset: '\x1b[0m',
-  cyan: '\x1b[36m',
-  dim: '\x1b[2m'
-};
+const { colors } = require('./flow-output');
 
-function log(color, ...args) {
-  console.log(colors[color] + args.join(' ') + colors.reset);
+function log(colorName, ...args) {
+  console.log((colors[colorName] || '') + args.join(' ') + colors.reset);
 }
 
 // ============================================================

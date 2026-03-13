@@ -13,10 +13,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
-
 // Import safe utilities
-const { safeJsonParse, writeJson, generateTaskId, withLock, PATHS } = require('./flow-utils');
+const { safeJsonParse, writeJson, generateTaskId, generateHashId, withLock, PATHS } = require('./flow-utils');
 
 // Utility: ISO timestamp
 function now() {
@@ -95,7 +93,7 @@ const SCENARIO_PATTERNS = [
  * Generate unique story ID
  */
 function generateStoryId() {
-  return 'story-' + crypto.randomBytes(4).toString('hex');
+  return generateHashId('story', '', '');
 }
 
 /**
@@ -1063,14 +1061,14 @@ function resetPresentation() {
  * Generate unique edit session ID
  */
 function generateEditSessionId() {
-  return 'edit-' + crypto.randomBytes(4).toString('hex');
+  return generateHashId('edit', '', '');
 }
 
 /**
  * Generate unique change ID
  */
 function generateChangeId() {
-  return 'change-' + crypto.randomBytes(3).toString('hex');
+  return generateHashId('change', '', '');
 }
 
 /**

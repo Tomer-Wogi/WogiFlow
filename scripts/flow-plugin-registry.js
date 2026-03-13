@@ -21,6 +21,7 @@ const path = require('path');
 const {
   getProjectRoot,
   safeJsonParse,
+  getConfig,
   writeJson,
   fileExists,
   isPathWithinProject,
@@ -47,8 +48,7 @@ const PROJECT_ROOT = getProjectRoot();
  * @returns {Object} Plugin configuration
  */
 function getPluginConfig() {
-  const configPath = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-  const config = safeJsonParse(configPath, {});
+  const config = getConfig();
   return config.plugins || {
     enabled: true,
     registryPath: '.workflow/state/plugin-registry.json',

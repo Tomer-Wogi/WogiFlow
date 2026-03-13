@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const TESTS = [];
@@ -52,8 +52,7 @@ test('Config file exists', () => {
 });
 
 test('Config has hybrid section', () => {
-  const configPath = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  const config = getConfig();
   if (!config.hybrid) {
     throw new Error('hybrid section missing from config');
   }

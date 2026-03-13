@@ -210,7 +210,7 @@ function checkOutstandingFindings() {
  */
 function runQualityGates(taskId, taskType) {
   // Validate taskId before using in any path construction
-  if (taskId && !validateTaskId(taskId)) {
+  if (taskId && !validateTaskId(taskId).valid) {
     console.log(color('red', `Invalid task ID format: ${String(taskId).slice(0, 30)}`));
     return { passed: false, failed: ['invalidTaskId'], errors: { invalidTaskId: 'Task ID failed validation' } };
   }
@@ -670,7 +670,7 @@ function runQualityGates(taskId, taskType) {
       }
     } else if (gate === 'generatedTestsPass') {
       if (config.testing?.enabled && config.testing?.generation?.autoGenerate) {
-        if (!validateTaskId(taskId)) {
+        if (!validateTaskId(taskId).valid) {
           console.log(`  ${color('yellow', '⚠')} generatedTestsPass (invalid task ID)`);
         } else {
           const testDir = path.join(PATHS.workflow, 'tests', 'generated', taskId);
@@ -727,7 +727,7 @@ function runQualityGates(taskId, taskType) {
       const gateModes = isUI ? ['ui', 'full', 'auto'] : ['api', 'full', 'auto'];
       const testingMode = config.testing?.mode || 'off';
       if (config.testing?.enabled && gateModes.includes(testingMode)) {
-        if (!validateTaskId(taskId)) {
+        if (!validateTaskId(taskId).valid) {
           console.log(`  ${color('yellow', '⚠')} ${gate} (invalid task ID)`);
         } else {
           try {
@@ -778,7 +778,7 @@ function runQualityGates(taskId, taskType) {
           }
 
           // Also check scenario verification results if available
-          if (!isUI && validateTaskId(taskId)) {
+          if (!isUI && validateTaskId(taskId).valid) {
             const scenarioReportPath = path.join(PATHS.workflow, 'verifications', `${taskId}-scenarios.json`);
             if (fs.existsSync(scenarioReportPath)) {
               try {

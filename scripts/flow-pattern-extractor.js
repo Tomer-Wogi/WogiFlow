@@ -37,8 +37,8 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync, execFileSync } = require('child_process');
-const crypto = require('crypto');
 const { resolvePatterns } = require('./flow-framework-resolver');
+const { getProjectRoot, generateHashId } = require('./flow-utils');
 
 // ============================================================================
 // Constants
@@ -108,24 +108,10 @@ const c = {
 // ============================================================================
 
 /**
- * Get project root directory
- */
-function getProjectRoot() {
-  try {
-    return execSync('git rev-parse --show-toplevel', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim();
-  } catch {
-    return process.cwd();
-  }
-}
-
-/**
  * Generate unique pattern ID
  */
 function generatePatternId() {
-  return 'pat-' + crypto.randomBytes(4).toString('hex');
+  return generateHashId('pat', '', '');
 }
 
 /**
@@ -420,7 +406,7 @@ function createPattern(category, subcategory, name, options = {}) {
  */
 function createConflict(patternA, patternB, options = {}) {
   return {
-    id: 'conf-' + crypto.randomBytes(4).toString('hex'),
+    id: generateHashId('conf', '', ''),
     category: patternA.category,
     subcategory: patternA.subcategory,
     description: options.description || `Conflicting ${patternA.subcategory} patterns`,

@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -383,21 +383,25 @@ function enableStep(stepName) {
     return { success: false, error: `Unknown step: ${stepName}` };
   }
 
-  const configPath = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  try {
+    const config = getConfig();
 
-  if (!config.workflowSteps) {
-    config.workflowSteps = {};
+    if (!config.workflowSteps) {
+      config.workflowSteps = {};
+    }
+
+    if (!config.workflowSteps[stepName]) {
+      config.workflowSteps[stepName] = {};
+    }
+
+    config.workflowSteps[stepName].enabled = true;
+
+    writeJson(PATHS.config, config);
+    invalidateConfigCache();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to update config: ${err.message}` };
   }
-
-  if (!config.workflowSteps[stepName]) {
-    config.workflowSteps[stepName] = {};
-  }
-
-  config.workflowSteps[stepName].enabled = true;
-
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  return { success: true };
 }
 
 /**
@@ -408,21 +412,25 @@ function disableStep(stepName) {
     return { success: false, error: `Unknown step: ${stepName}` };
   }
 
-  const configPath = path.join(PROJECT_ROOT, '.workflow', 'config.json');
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  try {
+    const config = getConfig();
 
-  if (!config.workflowSteps) {
-    config.workflowSteps = {};
+    if (!config.workflowSteps) {
+      config.workflowSteps = {};
+    }
+
+    if (!config.workflowSteps[stepName]) {
+      config.workflowSteps[stepName] = {};
+    }
+
+    config.workflowSteps[stepName].enabled = false;
+
+    writeJson(PATHS.config, config);
+    invalidateConfigCache();
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Failed to update config: ${err.message}` };
   }
-
-  if (!config.workflowSteps[stepName]) {
-    config.workflowSteps[stepName] = {};
-  }
-
-  config.workflowSteps[stepName].enabled = false;
-
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  return { success: true };
 }
 
 /**

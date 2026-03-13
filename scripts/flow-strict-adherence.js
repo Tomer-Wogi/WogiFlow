@@ -22,6 +22,7 @@ const path = require('path');
 const {
   getProjectRoot,
   safeJsonParse,
+  getConfig,
   colors,
   warn,
   error,
@@ -36,7 +37,6 @@ const {
 const PROJECT_ROOT = getProjectRoot();
 const STANDARDS_PATH = path.join(PROJECT_ROOT, '.workflow/state/project-standards.json');
 const OVERRIDES_PATH = path.join(PROJECT_ROOT, '.workflow/state/adherence-overrides.json');
-const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
 
 // Escape special regex characters for safe dynamic regex construction
 function escapeRegExp(string) {
@@ -102,7 +102,7 @@ function loadStandards() {
 function loadConfig() {
   if (_cachedConfig) return _cachedConfig;
 
-  const config = safeJsonParse(CONFIG_PATH, {});
+  const config = getConfig();
   _cachedConfig = config.strictAdherence || {
     enabled: false,
     aiMode: 'block',

@@ -22,6 +22,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { PATHS, safeJsonParse } = require('./flow-utils');
 
 /**
  * Validate a script name is safe for shell usage.
@@ -32,23 +33,11 @@ function isSafeScriptName(name) {
   return typeof name === 'string' && name.length > 0 && name.length < 100 && !UNSAFE_CHARS.test(name);
 }
 
-// Module-level caches. These are not invalidated because each hook invocation
-// runs in a fresh Node process. For long-running processes, call clearCache().
-let _projectRoot = null;
-function getProjectRoot() {
-  if (!_projectRoot) {
-    const { getProjectRoot: gpr } = require('./flow-utils');
-    _projectRoot = gpr();
-  }
-  return _projectRoot;
-}
-
 let _config = null;
 function getConfig() {
   if (!_config) {
     try {
-      const { safeJsonParse } = require('./flow-utils');
-      const configPath = path.join(getProjectRoot(), '.workflow', 'config.json');
+      const configPath = path.join(PATHS.root, '.workflow', 'config.json');
       _config = safeJsonParse(configPath, null);
     } catch {
       // Graceful fallback — no config
@@ -79,7 +68,7 @@ const SCRIPT_ALIASES = {
  * returns just the package manager string for simplicity.
  */
 function detectPackageManager(projectRoot) {
-  const root = projectRoot || getProjectRoot();
+  const root = projectRoot || PATHS.root;
   try {
     if (fs.existsSync(path.join(root, 'bun.lockb')) || fs.existsSync(path.join(root, 'bun.lock'))) return 'bun';
     if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) return 'pnpm';
@@ -122,9 +111,8 @@ function getExecCommand(pm) {
  * Read package.json scripts from the project root.
  */
 function getPackageScripts(projectRoot) {
-  const root = projectRoot || getProjectRoot();
+  const root = projectRoot || PATHS.root;
   try {
-    const { safeJsonParse } = require('./flow-utils');
     const pkgPath = path.join(root, 'package.json');
     const pkg = safeJsonParse(pkgPath, null);
     if (!pkg) return {};

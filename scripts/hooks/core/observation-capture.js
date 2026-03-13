@@ -267,13 +267,16 @@ async function captureObservation(options) {
   }
 
   try {
+    // Load settings ONCE and use directly (avoids 4x redundant getConfig() calls)
+    const settings = getObservationSettings();
+
     // Check if capture is enabled
-    if (!isObservationCaptureEnabled()) {
+    if (!settings.enabled) {
       return { skipped: true, reason: 'capture_disabled' };
     }
 
     // Check if tool should be skipped
-    if (shouldSkipTool(toolName)) {
+    if (settings.skipTools.includes(toolName)) {
       return { skipped: true, reason: 'tool_in_skip_list' };
     }
 
@@ -299,8 +302,8 @@ async function captureObservation(options) {
     const outputSummary = summarizeOutput(toolName, toolResponse, success);
 
     // Truncate full content to config limits
-    const maxInputSize = getMaxInputSize();
-    const maxOutputSize = getMaxOutputSize();
+    const maxInputSize = settings.maxInputSize;
+    const maxOutputSize = settings.maxOutputSize;
 
     let fullInput = null;
     try {

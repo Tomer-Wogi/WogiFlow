@@ -1,6 +1,6 @@
 {
   "name": "wogiflow",
-  "version": "1.9.7",
+  "version": "1.9.8",
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
@@ -9,8 +9,6 @@
   },
   "scripts": {
     "flow": "./scripts/flow",
-    "test": "node mcp-memory-server/test.js",
-    "memory-server": "node mcp-memory-server/index.js",
     "postinstall": "node scripts/postinstall.js",
     "preuninstall": "node scripts/preuninstall.js"
   },
@@ -58,10 +56,9 @@
   },
   "homepage": "https://github.com/Tomer-Wogi/WogiFlow#readme",
   "dependencies": {
-    "sql.js": "^1.10.0"
+    "sql.js": "^1.14.1"
   },
   "optionalDependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
     "@xenova/transformers": "^2.15.0"
   },
   "engines": {

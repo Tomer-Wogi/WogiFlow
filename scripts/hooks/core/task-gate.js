@@ -60,7 +60,7 @@ function getActiveTask() {
       if (typeof task === 'string') return { id: task };
 
       // Validate task ID format before using it in paths (prevents path traversal)
-      if (!task.id || typeof task.id !== 'string' || !validateTaskId(task.id)) {
+      if (!task.id || typeof task.id !== 'string' || !validateTaskId(task.id).valid) {
         if (process.env.DEBUG) {
           console.error(`[task-gate] Rejecting task — invalid ID format: ${task.id}`);
         }
@@ -112,7 +112,7 @@ function getActiveTask() {
     const session = safeJsonParse(durableSessionPath, null);
     if (session && session.taskId && session.status === 'active') {
       // Validate task ID format
-      if (!validateTaskId(session.taskId)) {
+      if (!validateTaskId(session.taskId).valid) {
         if (process.env.DEBUG) {
           console.error(`[task-gate] Rejecting durable session — invalid taskId: ${session.taskId}`);
         }
