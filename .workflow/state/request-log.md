@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-247 | 2026-03-13
+**Type**: new
+**Tags**: #compatibility #context #version #cc-2175
+**Task**: wf-7c9e6eec
+**Request**: "Claude Code 2.1.75 compatibility improvements"
+**Result**: (1) Token estimation recalibration: raised safe threshold 75%→80% and emergency 90%→92% behind 2.1.75+ soft gate (reads cached version from .version-check.json). Users with accurate token counting get ~5% more working context before compaction. (2) Version gates: added 2.1.75 to soft gates with health report showing 1M context default, accurate token estimation, hook source display, memory timestamps. Only applies when user hasn't explicitly overridden thresholds in config.
+**Files**: scripts/flow-context-estimator.js, scripts/flow-version-check.js, scripts/flow-health.js
+
 ### R-246 | 2026-03-13
 **Type**: new
 **Tags**: #gitignore #config #health #developer-experience

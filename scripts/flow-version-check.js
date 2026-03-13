@@ -135,6 +135,9 @@ function checkClaudeCodeVersionOnce() {
   // 2.1.50+: worktree hooks, agent isolation
   // 2.1.72+: ExitWorktree, effort levels, model param on Agent
   // 2.1.73+: SessionStart double-fire fix, hook context pollution fix, modelOverrides, subagent model fix
+  // 2.1.75+: 1M context default (Max/Team/Enterprise), accurate token estimation,
+  //          async hook completion suppressed by default, hook source in permission prompts,
+  //          memory file last-modified timestamps
 
   return null;
 }

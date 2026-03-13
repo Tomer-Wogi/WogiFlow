@@ -44,6 +44,32 @@ function getSmartCompactionConfig() {
   let safeThreshold = smartConfig.safeThreshold || 0.95;
   let emergencyThreshold = smartConfig.emergencyThreshold || 0.90;
 
+  // Claude Code 2.1.75+: Token estimation fix — thinking/tool_use blocks no longer
+  // over-counted. We can safely raise thresholds since compaction triggers are now
+  // more accurate, giving users ~5% more working context before compaction.
+  let ccVersion = null;
+  try {
+    const { meetsVersion } = require('./flow-utils');
+    const versionCheckPath = path.join(PATHS.state, '.version-check.json');
+    if (fs.existsSync(versionCheckPath)) {
+      const check = JSON.parse(fs.readFileSync(versionCheckPath, 'utf-8'));
+      if (check.version) {
+        const [major, minor, patch] = check.version.split('.').map(Number);
+        ccVersion = { major, minor, patch };
+        if (meetsVersion(major, minor, patch, 2, 1, 75)) {
+          // Relax thresholds — token counting is now accurate
+          if (!smartConfig.safeThreshold) safeThreshold = 0.80;
+          if (!smartConfig.emergencyThreshold) emergencyThreshold = 0.92;
+          if (process.env.DEBUG) {
+            console.log('[context-estimator] CC 2.1.75+ detected — relaxed thresholds (safe: 0.80, emergency: 0.92)');
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Non-blocking — fall back to default thresholds
+  }
+
   // Claude Code 2.1.50+: CLAUDE_CODE_DISABLE_1M_CONTEXT reduces the context window.
   // Lower thresholds to account for the smaller available context.
   const disableExtendedContext = process.env.CLAUDE_CODE_DISABLE_1M_CONTEXT;

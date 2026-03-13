@@ -77,9 +77,13 @@ function checkClaudeCodeVersion() {
     // 2.1.73+ fixes: SessionStart double-fire, hook context pollution, subagent model on Bedrock/Vertex
     const meets2173 = meetsVersion(major, minor, patch, 2, 1, 73);
 
-    return { version, meetsMinimum: meetsMin, meets2150, meets2172, meets2173 };
+    // 2.1.75+: 1M context default, accurate token estimation, async hook suppression,
+    // hook source display, memory file timestamps
+    const meets2175 = meetsVersion(major, minor, patch, 2, 1, 75);
+
+    return { version, meetsMinimum: meetsMin, meets2150, meets2172, meets2173, meets2175 };
   } catch {
-    return { version: null, meetsMinimum: true, meets2150: false, meets2172: false, meets2173: false };
+    return { version: null, meetsMinimum: true, meets2150: false, meets2172: false, meets2173: false, meets2175: false };
   }
 }
 
@@ -224,6 +228,16 @@ function main() {
         console.log(`    ${color('dim', '→ Hook JSON output no longer pollutes context')}`);
         console.log(`    ${color('dim', '→ Subagent model parameter works on Bedrock/Vertex/Foundry')}`);
         console.log(`    ${color('dim', '→ modelOverrides setting for custom provider model IDs')}`);
+      }
+
+      // Report 2.1.75+ features
+      if (versionCheck.meets2175) {
+        console.log(`  ${color('green', '✓')} Claude Code 2.1.75+ features available:`);
+        console.log(`    ${color('dim', '→ 1M context window default for Opus (Max/Team/Enterprise)')}`);
+        console.log(`    ${color('dim', '→ Accurate token estimation (no thinking/tool_use over-counting)')}`);
+        console.log(`    ${color('dim', '→ Relaxed compaction thresholds (safe: 80%, emergency: 92%)')}`);
+        console.log(`    ${color('dim', '→ Hook source displayed in permission prompts')}`);
+        console.log(`    ${color('dim', '→ Memory file last-modified timestamps for freshness')}`);
       }
     }
   }

@@ -1,10 +1,17 @@
 {
   "lastUpdated": "2026-03-13T12:00:00.000Z",
-  "inProgress": [
-  ],
+  "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-7c9e6eec",
+      "title": "Claude Code 2.1.75 compatibility — token recalibration + version gates",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "completedAt": "2026-03-13T14:45:00.000Z"
+    },
     {
       "id": "wf-bda315c0",
       "title": "Auto-add .gitignore entries when config enables features with runtime artifacts",
