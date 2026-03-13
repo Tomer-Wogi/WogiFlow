@@ -671,7 +671,7 @@ function main() {
 
   try {
     const { checkGitignoreHealth } = require('./flow-gitignore');
-    const gitignoreHealth = checkGitignoreHealth(config);
+    const gitignoreHealth = checkGitignoreHealth();
     if (gitignoreHealth.ok) {
       console.log(`  ${color('green', '✓')} All required .gitignore entries present`);
     } else {

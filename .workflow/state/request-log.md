@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-248 | 2026-03-13
+**Type**: fix
+**Tags**: #review #bugfix #security #performance
+**Request**: "Code review of v1.9.8–v1.9.10 changes"
+**Result**: 4-agent parallel review found 8 findings (1 critical, 6 medium, 1 low). Fixed 7: (1) CRITICAL — flow-health.js config variable out of scope causing gitignore health check to always fail silently. (2) Misleading comment in context-estimator ("relax" → "recalibrate"). (3) Dead ternary in flow-gitignore.js. (4) Raw JSON.parse → safeJsonParse in context-estimator. (5) syncGitignore now only runs for relevant config keys. (6) Removed unused ccVersion variable. (7) Module-level cache for .version-check.json reads. Deferred 1: getNestedValue DRY refactor (cross-file).
+**Files**: scripts/flow-health.js, scripts/flow-context-estimator.js, scripts/flow-gitignore.js, scripts/flow-config-loader.js
+
 ### R-247 | 2026-03-13
 **Type**: new
 **Tags**: #compatibility #context #version #cc-2175

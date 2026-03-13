@@ -126,7 +126,7 @@ function parseExistingEntries(content) {
   for (const line of content.split('\n')) {
     const trimmed = line.trim();
     if (trimmed && !trimmed.startsWith('#')) {
-      entries.push ? entries.add(trimmed) : entries.add(trimmed);
+      entries.add(trimmed);
     }
   }
   return entries;

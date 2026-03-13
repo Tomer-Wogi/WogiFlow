@@ -519,12 +519,14 @@ async function setConfigValue(configPath, newValue) {
     writeJson(PATHS.config, config);
     invalidateConfigCache();
 
-    // Auto-sync .gitignore when config changes enable features with runtime artifacts
-    try {
-      const { syncGitignore } = require('./flow-gitignore');
-      syncGitignore(config);
-    } catch (err) {
-      // Non-blocking — gitignore sync should never fail config writes
+    // Auto-sync .gitignore only when config keys affect gitignore mappings
+    if (configPath.startsWith('testing.') || configPath.startsWith('webmcp.')) {
+      try {
+        const { syncGitignore } = require('./flow-gitignore');
+        syncGitignore(config);
+      } catch (err) {
+        // Non-blocking — gitignore sync should never fail config writes
+      }
     }
   } finally {
     if (release) release();
@@ -557,12 +559,14 @@ function setConfigValueSync(configPath, newValue) {
   writeJson(PATHS.config, config);
   invalidateConfigCache();
 
-  // Auto-sync .gitignore when config changes enable features with runtime artifacts
-  try {
-    const { syncGitignore } = require('./flow-gitignore');
-    syncGitignore(config);
-  } catch (err) {
-    // Non-blocking — gitignore sync should never fail config writes
+  // Auto-sync .gitignore only when config keys affect gitignore mappings
+  if (configPath.startsWith('testing.') || configPath.startsWith('webmcp.')) {
+    try {
+      const { syncGitignore } = require('./flow-gitignore');
+      syncGitignore(config);
+    } catch (err) {
+      // Non-blocking — gitignore sync should never fail config writes
+    }
   }
 }
 

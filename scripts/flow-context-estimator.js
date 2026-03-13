@@ -15,6 +15,16 @@ const fs = require('fs');
 const path = require('path');
 const { getConfig, PATHS, safeJsonParse, validateTaskId } = require('./flow-utils');
 
+// Module-level cache for .version-check.json — CC version doesn't change during a session
+let _versionCheckCache = null;
+function _getCachedVersionCheck() {
+  if (!_versionCheckCache) {
+    const versionCheckPath = path.join(PATHS.state, '.version-check.json');
+    _versionCheckCache = safeJsonParse(versionCheckPath, {});
+  }
+  return _versionCheckCache;
+}
+
 /**
  * Default estimation config (can be overridden in config.json)
  */
@@ -45,24 +55,19 @@ function getSmartCompactionConfig() {
   let emergencyThreshold = smartConfig.emergencyThreshold || 0.90;
 
   // Claude Code 2.1.75+: Token estimation fix — thinking/tool_use blocks no longer
-  // over-counted. We can safely raise thresholds since compaction triggers are now
-  // more accurate, giving users ~5% more working context before compaction.
-  let ccVersion = null;
+  // over-counted. Pre-2.1.75, "95% estimated" was ~80% actual due to over-counting.
+  // With accurate estimation, we recalibrate to 80% (same effective behavior).
   try {
     const { meetsVersion } = require('./flow-utils');
-    const versionCheckPath = path.join(PATHS.state, '.version-check.json');
-    if (fs.existsSync(versionCheckPath)) {
-      const check = JSON.parse(fs.readFileSync(versionCheckPath, 'utf-8'));
-      if (check.version) {
-        const [major, minor, patch] = check.version.split('.').map(Number);
-        ccVersion = { major, minor, patch };
-        if (meetsVersion(major, minor, patch, 2, 1, 75)) {
-          // Relax thresholds — token counting is now accurate
-          if (!smartConfig.safeThreshold) safeThreshold = 0.80;
-          if (!smartConfig.emergencyThreshold) emergencyThreshold = 0.92;
-          if (process.env.DEBUG) {
-            console.log('[context-estimator] CC 2.1.75+ detected — relaxed thresholds (safe: 0.80, emergency: 0.92)');
-          }
+    const check = _getCachedVersionCheck();
+    if (check.version) {
+      const [major, minor, patch] = check.version.split('.').map(Number);
+      if (meetsVersion(major, minor, patch, 2, 1, 75)) {
+        // Recalibrate thresholds — token counting is now accurate
+        if (!smartConfig.safeThreshold) safeThreshold = 0.80;
+        if (!smartConfig.emergencyThreshold) emergencyThreshold = 0.92;
+        if (process.env.DEBUG) {
+          console.log('[context-estimator] CC 2.1.75+ detected — recalibrated thresholds (safe: 0.80, emergency: 0.92)');
         }
       }
     }

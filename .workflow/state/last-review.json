@@ -1,31 +1,66 @@
 {
-  "reviewDate": "2026-03-10T21:00:00.000Z",
+  "reviewDate": "2026-03-13T14:00:00.000Z",
   "mode": "parallel",
-  "agentsLaunched": 2,
-  "agentBreakdown": { "core": 2, "optional": 0, "projectRules": 0 },
-  "filesReviewed": [
-    "scripts/flow-done.js",
-    "scripts/flow-test-api.js",
-    "scripts/flow-test-generate.js",
-    "scripts/flow-test-integrity.js",
-    "scripts/flow-test-ui.js",
-    "scripts/flow-testing-deps.js",
-    "scripts/flow-project-analyzer.js",
-    "scripts/flow-stack-wizard.js",
-    "scripts/flow-config-defaults.js",
-    "scripts/flow-config-loader.js",
-    ".claude/commands/wogi-test.md",
-    ".claude/commands/wogi-test-generate.md"
-  ],
+  "agentsLaunched": 4,
+  "agentBreakdown": { "core": 3, "optional": 1, "projectRules": 0 },
+  "filesReviewed": ["scripts/flow-gitignore.js", "scripts/flow-context-estimator.js", "scripts/flow-health.js", "scripts/flow-config-loader.js", "scripts/flow-version-check.js", "scripts/flow-utils.js", "lib/installer.js"],
   "findings": [
-    { "id": "finding-001", "severity": "high", "category": "security", "file": "scripts/flow-done.js", "line": 571, "issue": "Shell injection via taskId in -e template", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-002", "severity": "high", "category": "code-logic", "file": "scripts/flow-done.js", "line": 570, "issue": "Import path ./scripts/flow-test-ui in spawned node", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-003", "severity": "high", "category": "security", "file": "scripts/flow-test-api.js", "line": 153, "issue": "Raw JSON.parse instead of safeJsonParse", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-004", "severity": "high", "category": "security", "file": "scripts/flow-test-api.js", "line": 745, "issue": "Missing try-catch on fs.readFileSync + raw JSON.parse", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-005", "severity": "medium", "category": "code-logic", "file": "scripts/flow-done.js", "line": 569, "issue": "Missing spawnSync timeout", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-006", "severity": "medium", "category": "architecture", "file": "scripts/flow-done.js", "line": 564, "issue": "Duplicated gate pattern (UI + API)", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-007", "severity": "medium", "category": "security", "file": "scripts/flow-test-generate.js", "line": 172, "issue": "Raw JSON.parse for package.json", "status": "fixed", "fixTask": "wf-1a11b65c" },
-    { "id": "finding-008", "severity": "medium", "category": "security", "file": "scripts/flow-test-integrity.js", "line": 555, "issue": "Raw JSON.parse for spec files", "status": "fixed", "fixTask": "wf-1a11b65c" }
+    {
+      "id": "finding-001", "severity": "critical", "category": "code-logic",
+      "file": "scripts/flow-health.js", "line": 674,
+      "issue": "config variable out of scope — gitignore check always fails silently",
+      "recommendation": "Remove config argument", "autoFixable": true, "agent": "code-logic",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-002", "severity": "medium", "category": "code-logic",
+      "file": "scripts/flow-context-estimator.js", "line": 47,
+      "issue": "Comment says 'relax' but code recalibrates thresholds",
+      "recommendation": "Fix comment to say 'recalibrate'", "autoFixable": true, "agent": "code-logic",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-003", "severity": "medium", "category": "code-logic",
+      "file": "scripts/flow-gitignore.js", "line": 129,
+      "issue": "Dead ternary — both branches identical",
+      "recommendation": "Replace with entries.add(trimmed)", "autoFixable": true, "agent": "code-logic",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-004", "severity": "medium", "category": "security",
+      "file": "scripts/flow-context-estimator.js", "line": 55,
+      "issue": "Raw JSON.parse violates security-patterns.md",
+      "recommendation": "Use safeJsonParse", "autoFixable": true, "agent": "security",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-005", "severity": "medium", "category": "architecture",
+      "file": "scripts/flow-gitignore.js", "line": 69,
+      "issue": "getNestedValue duplicates getConfigValue",
+      "recommendation": "Acknowledged — small utility, larger DRY refactor deferred", "autoFixable": true, "agent": "architecture",
+      "status": "deferred"
+    },
+    {
+      "id": "finding-006", "severity": "medium", "category": "performance",
+      "file": "scripts/flow-config-loader.js", "line": 523,
+      "issue": "syncGitignore called on every config write unconditionally",
+      "recommendation": "Guard with configPath.startsWith check", "autoFixable": true, "agent": "performance",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-007", "severity": "low", "category": "code-logic",
+      "file": "scripts/flow-context-estimator.js", "line": 50,
+      "issue": "Unused ccVersion variable",
+      "recommendation": "Remove", "autoFixable": true, "agent": "code-logic",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-008", "severity": "medium", "category": "performance",
+      "file": "scripts/flow-context-estimator.js", "line": 54,
+      "issue": "Uncached .version-check.json reads on every call",
+      "recommendation": "Module-level cache", "autoFixable": true, "agent": "performance",
+      "status": "fixed"
+    }
   ],
   "triaged": true
 }
