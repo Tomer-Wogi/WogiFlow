@@ -1,9 +1,72 @@
 {
-  "lastUpdated": "2026-03-11T18:56:47.268Z",
-  "inProgress": [],
+  "lastUpdated": "2026-03-13T12:00:00.000Z",
+  "inProgress": [
+  ],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-bda315c0",
+      "title": "Auto-add .gitignore entries when config enables features with runtime artifacts",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "completedAt": "2026-03-13T14:15:00.000Z"
+    },
+    {
+      "id": "wf-d431f2ea",
+      "title": "Dead code and dependency cleanup",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": "wf-5dfc8cfd",
+      "title": "Duplication elimination — remove duplicate modules and inline reimplementations",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": "wf-661e9242",
+      "title": "Hook performance hardening — shared stdin reader, RegExp cache, reduce file reads",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": "wf-684a92d1",
+      "title": "JSON.parse safety sweep — replaced highest-risk raw parses with getConfig/safeJsonParse",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": "wf-3fcc5732",
+      "title": "Dead feature and stale stub cleanup",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
+    {
+      "id": "wf-e90cf9cf",
+      "title": "Config access standardization — replaced direct config reads with getConfig()",
+      "type": "refactor",
+      "level": "L2",
+      "epicId": "wf-b524b712",
+      "status": "completed",
+      "completedAt": "2026-03-13T12:00:00.000Z"
+    },
     {
       "id": "wf-b2c5f11f",
       "title": "Fix 12 review findings from wf-8f430179 and wf-f96598bc code review",

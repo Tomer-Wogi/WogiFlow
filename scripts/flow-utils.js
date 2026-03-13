@@ -2161,6 +2161,10 @@ module.exports = {
   // CLI Tool Detection (Claude Code 2.1.72+ compatibility)
   meetsVersion,
   getFdCommand,
+
+  // Gitignore Auto-Management (v1.9.8)
+  get syncGitignore() { return require('./flow-gitignore').syncGitignore; },
+  get checkGitignoreHealth() { return require('./flow-gitignore').checkGitignoreHealth; },
 };
 
 // ============================================================

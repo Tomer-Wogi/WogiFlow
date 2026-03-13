@@ -88,3 +88,8 @@ mcp-memory-server/node_modules/
 
 # Team connection (contains tokens - never commit)
 .workflow/team-connection.json
+
+# WogiFlow runtime (auto-managed)
+.workflow/verifications/
+.workflow/tests/generated/
+.workflow/webmcp/

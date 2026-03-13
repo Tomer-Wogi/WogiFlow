@@ -11,6 +11,33 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-246 | 2026-03-13
+**Type**: new
+**Tags**: #gitignore #config #health #developer-experience
+**Task**: wf-bda315c0
+**Request**: "Auto-add .gitignore entries when config changes enable features with runtime artifacts"
+**Result**: Created declarative gitignore auto-management system. Config-to-gitignore mapping in RUNTIME_ARTIFACT_MAP (testing.uiProvider=playwright-mcp → .playwright-mcp/, testing.enabled → .workflow/verifications/ + .workflow/tests/generated/, webmcp.enabled → .workflow/webmcp/). Triggers on config write via setConfigValue/setConfigValueSync. Health check in /wogi-health warns on missing entries. Append-only, idempotent, grouped under "# WogiFlow runtime (auto-managed)" comment. Also runs during install.
+**Files**: scripts/flow-gitignore.js (new), scripts/flow-config-loader.js, scripts/flow-health.js, scripts/flow-utils.js, lib/installer.js
+
+### R-245 | 2026-03-13
+**Type**: refactor
+**Tags**: #audit-sweep #security #hooks #duplication #dead-code #config
+**Task**: wf-b524b712 (epic: audit sweep)
+**Request**: "Fix all 57 audit findings across 7 dimensions"
+**Result**: Completed 6 of 7 audit stories (deferred modernization sweep as low-priority). Key changes: (1) Deleted 6 legacy bash scripts + flow-file-ops.js, (2) Removed @modelcontextprotocol/sdk, updated sql.js to ^1.14.1, (3) Eliminated 3 identical inline color() functions → import from flow-output.js, (4) Consolidated inline crypto ID generation → generateHashId(), (5) Replaced duplicate getProjectRoot/isValidTaskId with imports from flow-utils, (6) Created shared stdin reader for hooks, cached RegExp in component-check, fixed observation-capture redundant config reads, (7) Wired logHookError to post-tool-use.js, (8) Replaced direct config reads with getConfig() in flow-health/flow-long-input/flow-workflow-steps/flow-skill-generator, (9) Removed --resume dead stub and crossMapConsistency TODO
+**Files**: 47 files changed — scripts/flow-done(deleted), scripts/flow-health(deleted), scripts/flow-ready(deleted), scripts/flow-start(deleted), scripts/flow-status(deleted), scripts/flow-story(deleted), scripts/flow-file-ops.js(deleted), scripts/hooks/entry/shared/read-stdin.js(new), package.json, scripts/flow-memory-compactor.js, scripts/flow-entropy-monitor.js, scripts/flow-memory-sync.js, scripts/flow-orchestrate-llm.js, scripts/flow-peer-review.js, scripts/flow-context-estimator.js, scripts/flow-script-resolver.js, scripts/flow-export-scanner.js, scripts/flow-orchestrate.js, scripts/flow-consistency-check.js, scripts/flow-health.js, scripts/flow-workflow-steps.js, scripts/hooks/core/component-check.js, scripts/hooks/core/observation-capture.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/post-tool-use.js, scripts/hooks/entry/claude-code/session-start.js, and more
+
+---
+
+### R-244 | 2026-03-13
+**Type**: fix
+**Tags**: #script:flow-health #refactor:config-loading
+**Request**: "Fix direct config loading and bare JSON.parse issues in flow-health.js and 5 other scripts"
+**Result**: Fixed `flow-health.js` line 131 — replaced `require(PATHS.config)` with `getConfig()` (added `getConfig` to imports). Verified flow-workflow-steps.js, flow-correct.js, flow-safety.js, flow-providers.js, and flow-entropy-monitor.js already use `getConfig()` correctly. All 6 files pass `node --check`.
+**Files**: scripts/flow-health.js
+
+---
+
 ### R-243 | 2026-03-12
 **Type**: fix
 **Tags**: #security #hooks #quality-gates #docs

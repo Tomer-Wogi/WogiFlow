@@ -651,6 +651,26 @@ function main() {
     }
   }
 
+  // Check .gitignore sync
+  console.log('');
+  printSection('Checking .gitignore sync...');
+
+  try {
+    const { checkGitignoreHealth } = require('./flow-gitignore');
+    const gitignoreHealth = checkGitignoreHealth(config);
+    if (gitignoreHealth.ok) {
+      console.log(`  ${color('green', '✓')} All required .gitignore entries present`);
+    } else {
+      for (const m of gitignoreHealth.missing) {
+        console.log(`  ${color('yellow', '⚠')} Missing: ${m.pattern} (${m.description})`);
+      }
+      console.log(`  ${color('yellow', '⚠')} Run: node scripts/flow-gitignore.js sync`);
+      warnings += gitignoreHealth.missing.length;
+    }
+  } catch (err) {
+    console.log(`  ${color('yellow', '○')} Gitignore check unavailable`);
+  }
+
   // Check git status
   console.log('');
   printSection('Checking git status...');

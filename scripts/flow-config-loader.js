@@ -518,6 +518,14 @@ async function setConfigValue(configPath, newValue) {
     obj[parts[parts.length - 1]] = newValue;
     writeJson(PATHS.config, config);
     invalidateConfigCache();
+
+    // Auto-sync .gitignore when config changes enable features with runtime artifacts
+    try {
+      const { syncGitignore } = require('./flow-gitignore');
+      syncGitignore(config);
+    } catch (err) {
+      // Non-blocking — gitignore sync should never fail config writes
+    }
   } finally {
     if (release) release();
   }
@@ -548,6 +556,14 @@ function setConfigValueSync(configPath, newValue) {
   obj[parts[parts.length - 1]] = newValue;
   writeJson(PATHS.config, config);
   invalidateConfigCache();
+
+  // Auto-sync .gitignore when config changes enable features with runtime artifacts
+  try {
+    const { syncGitignore } = require('./flow-gitignore');
+    syncGitignore(config);
+  } catch (err) {
+    // Non-blocking — gitignore sync should never fail config writes
+  }
 }
 
 /**
