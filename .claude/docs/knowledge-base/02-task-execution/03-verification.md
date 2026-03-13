@@ -62,7 +62,7 @@ Quality gates are requirements that must pass before a task can be completed.
 {
   "qualityGates": {
     "feature": {
-      "require": ["tests", "appMapUpdate", "requestLogEntry"],
+      "require": ["tests", "registryUpdate", "requestLogEntry"],
       "optional": ["review", "docs"]
     },
     "bugfix": {
@@ -84,7 +84,7 @@ Quality gates are requirements that must pass before a task can be completed.
 | `tests` | npm test passes |
 | `lint` | npm run lint passes (with auto-fix) |
 | `typecheck` | npm run typecheck passes |
-| `appMapUpdate` | New components added to app-map.md |
+| `registryUpdate` | All registry maps (app-map, function-map, api-map, schema-map, service-map) auto-scanned |
 | `requestLogEntry` | Task logged in request-log.md |
 | `noNewFeatures` | (Refactor) No new functionality added |
 | `integrationWiring` | Created files are imported/used somewhere (not orphaned) |
@@ -134,7 +134,7 @@ Running quality gates...
   ✓ lint passed (auto-fixed)
   ✓ typecheck passed
   ✓ requestLogEntry (found in request-log)
-  ○ appMapUpdate (verify manually if components created)
+  ✓ registryUpdate (auto-scanned: app-map.md updated)
 
 All gates passed!
 ```

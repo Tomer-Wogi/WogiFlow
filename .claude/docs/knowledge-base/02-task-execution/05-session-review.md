@@ -196,7 +196,7 @@ Session review can be added to quality gates:
 {
   "qualityGates": {
     "feature": {
-      "require": ["tests", "sessionReview", "appMapUpdate"]
+      "require": ["tests", "sessionReview", "registryUpdate"]
     }
   }
 }

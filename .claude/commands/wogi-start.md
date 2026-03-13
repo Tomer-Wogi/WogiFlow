@@ -302,7 +302,7 @@ If violations found: fix, re-run, only proceed when all pass. Violations auto-re
 **First**: Run `node node_modules/wogiflow/scripts/flow-spec-verifier.js verify wf-XXXXXXXX` — verify all spec deliverables exist. If missing → STOP, create them.
 
 **Then**: Check `config.qualityGates` for task type. Gates are type-specific:
-- **feature**: loopComplete, tests, appMapUpdate, requestLogEntry, integrationWiring, standardsCompliance
+- **feature**: loopComplete, tests, registryUpdate, requestLogEntry, integrationWiring, standardsCompliance
 - **bugfix**: loopComplete, tests, requestLogEntry, standardsCompliance, learningEnforcement
 - **refactor**: loopComplete, tests, noNewFeatures, smokeTest, standardsCompliance
 - **chore**: requestLogEntry, outstandingFindings
@@ -311,7 +311,8 @@ If violations found: fix, re-run, only proceed when all pass. Violations auto-re
 
 **Fallback behavior**: Task types not listed above (docs, style, test, perf, etc.) inherit the **feature** gates. This is intentional — feature gates are the most comprehensive and serve as a safe default.
 
-**Key automated gates** (v1.9.2):
+**Key automated gates** (v1.9.7):
+- `registryUpdate` → runs `flow registry-manager scan` on ALL active registries (app-map, function-map, api-map, schema-map, service-map). Auto-updates maps when new entries found. Replaces old `appMapUpdate` no-op gate.
 - `integrationWiring` → calls `verifyWiring()` — checks created files are imported/used
 - `standardsCompliance` → calls `runTaskStandardsCheck()` — checks naming, security, decisions.md rules
 - `outstandingFindings` → reads `last-review.json` — blocks if unresolved critical/high findings exist
@@ -328,7 +329,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 1. Reflection: "Does this match what the user asked for?"
 2. Close out all TodoWrite items for this task
 3. Move task to recentlyCompleted in ready.json
-4. Update request-log.md, app-map.md, function-map.md, api-map.md as needed
+4. Registry maps auto-updated by `registryUpdate` quality gate (runs `flow registry-manager scan` on all active registries — app-map, function-map, api-map, schema-map, service-map)
 5. If `config.webmcp.enabled` and UI files created: run `node node_modules/wogiflow/scripts/flow-webmcp-generator.js scan`
 6. Commit: `feat: Complete wf-XXXXXXXX - [title]`
 7. Show completion summary

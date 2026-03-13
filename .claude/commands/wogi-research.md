@@ -25,6 +25,46 @@ This command is **automatically triggered** (when strict mode is enabled) for:
 5. **Integration Questions**: "How to integrate X with Y?"
 6. **Comparison Questions**: "What can we learn from X?", "How does X compare to Y?"
 
+## Step 0: Config Loading (MANDATORY — before all phases)
+
+Before ANY research phase, read the project's config to determine depth, format, and verification requirements:
+
+```bash
+cat .workflow/config.json | grep -A 30 '"research"'
+```
+
+**Extract and apply these settings:**
+
+1. **Determine depth** (in priority order):
+   - CLI flag (`--deep`, `--quick`, etc.) → use that depth
+   - If auto-triggered (no flag): classify question type and look up `research.triggers`:
+     - Capability question ("Does X support Y?") → `triggers.capabilityQuestions` (default: `"standard"`)
+     - Feasibility question ("Is it possible to...") → `triggers.feasibilityQuestions` (default: `"deep"`)
+     - Existence question ("Is there a...") → `triggers.existenceQuestions` (default: `"standard"`)
+     - Architecture question ("How does X work?") → `triggers.architectureQuestions` (default: `"deep"`)
+     - Integration question ("How to integrate X with Y?") → `triggers.integrationQuestions` (default: `"deep"`)
+     - Comparison question ("How does X compare to Y?") → `triggers.comparisonQuestions` (default: `"deep"`)
+   - Fallback: `research.defaultDepth` (default: `"standard"`)
+
+2. **Apply format flags** from config:
+   - `requireVerificationFormat: true` → ALL assumptions must have `[VERIFIED]`/`[UNVERIFIED]` markers
+   - `requireCitations: true` → ALL claims must have an Evidence Chain entry
+   - `assumptionTracking: true` → Assumption Stack table is MANDATORY in output
+   - `negativeEvidenceRule: true` → Negative claims require exhaustive search evidence
+
+3. **Display header block** (MANDATORY):
+   ```markdown
+   ## Research Report
+   **Question:** [the question]
+   **Depth:** [resolved depth from step 1]
+   **Flow:** [Standard/Comparison]
+   **Config applied:** requireVerification=[yes/no], citations=[yes/no], assumptionTracking=[yes/no]
+   ```
+
+**If config.json has no `research` section or is unreadable**: use defaults (depth: standard, all format flags: true).
+
+---
+
 ## Research Protocol Phases
 
 There are two flows depending on question type:
@@ -199,6 +239,7 @@ In `.workflow/config.json`:
     "enabled": true,
     "defaultDepth": "standard",
     "autoTrigger": true,
+    "requireVerificationFormat": true,
     "maxTokensPerDepth": {
       "quick": 5000,
       "standard": 20000,
@@ -210,7 +251,15 @@ In `.workflow/config.json`:
     "cacheExpiryHours": 24,
     "budgetMode": "soft",
     "negativeEvidenceRule": true,
-    "assumptionTracking": true
+    "assumptionTracking": true,
+    "triggers": {
+      "capabilityQuestions": "standard",
+      "feasibilityQuestions": "deep",
+      "existenceQuestions": "standard",
+      "architectureQuestions": "deep",
+      "integrationQuestions": "deep",
+      "comparisonQuestions": "deep"
+    }
   }
 }
 ```
@@ -268,6 +317,26 @@ When `research.requireCitations` is enabled and `research.autoTrigger` is true:
 - Capability/feasibility questions automatically trigger research
 - Claims without citations are flagged
 - Negative claims require exhaustive search evidence
+
+## Output Checklist (MANDATORY — self-verify before presenting)
+
+Before presenting ANY research report, verify ALL of these are present. If any is missing, add it before outputting.
+
+| # | Check | Required When |
+|---|-------|---------------|
+| 1 | **Header block** with Question, Depth, Flow, Config applied | Always |
+| 2 | **Conclusion** section with direct answer | Always |
+| 3 | **Assumption Stack** table with `[VERIFIED]`/`[UNVERIFIED]` markers | `assumptionTracking: true` (default) |
+| 4 | **Evidence Chain** table with Claim, Source Type, Source Location, Confidence | `requireCitations: true` (default) |
+| 5 | **Confidence level** (HIGH/MEDIUM/LOW) | Always |
+| 6 | **Searches Performed** list (web + local) | Always |
+| 7 | **Negative Evidence format** for any "X doesn't exist" claims | `negativeEvidenceRule: true` (default) |
+| 8 | **Comparison table** (External Feature / Local Equivalent / Status) | Comparison flow only |
+| 9 | **Recommendation Verification** (EXISTS/PARTIAL/MISSING markers) | Comparison flow only |
+
+**Self-check prompt**: "Have I included all mandatory sections per config? Is every assumption marked? Is every claim cited?"
+
+If the report is missing any required section, DO NOT present it — add the missing section first.
 
 ## CLI Compatibility
 

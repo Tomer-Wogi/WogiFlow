@@ -76,8 +76,8 @@ for gate in gates:
         except:
             print('  \033[0;33m○\033[0m requestLogEntry (verify manually)')
 
-    elif gate == 'appMapUpdate':
-        print('  \033[0;33m○\033[0m appMapUpdate (verify manually if components created)')
+    elif gate == 'appMapUpdate' or gate == 'registryUpdate':
+        print('  \033[0;33m○\033[0m registryUpdate (verify manually if components created)')
 
     else:
         print(f'  \033[0;33m○\033[0m {gate} (manual check)')

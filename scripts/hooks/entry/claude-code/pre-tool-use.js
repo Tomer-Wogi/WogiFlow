@@ -213,8 +213,35 @@ async function main() {
     // v7.0: Subagents exempt — spawned by main agent which already went through routing.
     // v7.1: Defense-in-depth — only bypass when an active task exists.
     // v8.0: Added Agent, WebSearch, WebFetch to close bypass vectors.
+    // v8.1: Whitelist read-only git commands — Claude naturally runs git status/log/diff
+    //        to gather context before routing. These are pure reads with no side effects.
     const skipRoutingGateForSubagent = isSubagent && hasActiveTask();
-    if (!skipRoutingGateForSubagent && (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit' || toolName === 'Agent' || toolName === 'WebSearch' || toolName === 'WebFetch')) {
+
+    // Read-only git commands whitelist — allowed before routing.
+    // These are pure read operations that cannot bypass task tracking.
+    // Safety: reject commands with shell chaining operators to prevent abuse.
+    let skipRoutingGateForReadOnlyGit = false;
+    if (toolName === 'Bash' && toolInput.command) {
+      const cmd = toolInput.command.trim();
+      const READ_ONLY_GIT_PREFIXES = [
+        'git status', 'git log', 'git diff', 'git branch',
+        'git show', 'git rev-parse', 'git remote -v', 'git tag -l',
+        'git ls-files', 'git describe'
+      ];
+      // Block shell chaining operators AND control characters that could bypass prefix matching
+      const SHELL_CHAIN_OPERATORS = /[;&|`$()\n\r\\]/;
+      // Block destructive flags that could appear after an otherwise-safe prefix
+      const DESTRUCTIVE_GIT_FLAGS = /\s-[dD]\b|\s--delete\b|\s--force\b|\s--hard\b|\s--prune\b/;
+      if (
+        READ_ONLY_GIT_PREFIXES.some(prefix => cmd.startsWith(prefix)) &&
+        !SHELL_CHAIN_OPERATORS.test(cmd) &&
+        !DESTRUCTIVE_GIT_FLAGS.test(cmd)
+      ) {
+        skipRoutingGateForReadOnlyGit = true;
+      }
+    }
+
+    if (!skipRoutingGateForSubagent && !skipRoutingGateForReadOnlyGit && (toolName === 'Bash' || toolName === 'EnterPlanMode' || toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep' || toolName === 'Edit' || toolName === 'Write' || toolName === 'NotebookEdit' || toolName === 'Agent' || toolName === 'WebSearch' || toolName === 'WebFetch')) {
       try {
         const routingResult = checkRoutingGate(toolName, config);
         if (routingResult.blocked) {

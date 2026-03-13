@@ -122,7 +122,7 @@ Comprehensive code review before finalizing changes.
   },
   "qualityGates": {
     "feature": {
-      "require": ["tests", "appMapUpdate", "requestLogEntry"]
+      "require": ["tests", "registryUpdate", "requestLogEntry"]
     }
   }
 }

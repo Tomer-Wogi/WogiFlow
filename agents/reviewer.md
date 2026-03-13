@@ -161,7 +161,7 @@ Check what's required for this task type and verify.
 
 ### Quality Gates
 - [ ] tests: PASS/FAIL
-- [ ] appMapUpdate: PASS/FAIL
+- [ ] registryUpdate: PASS/FAIL
 - [ ] requestLogEntry: PASS/FAIL
 
 ### Issues

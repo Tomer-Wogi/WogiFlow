@@ -532,7 +532,7 @@
             "require": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"]
+              "default": ["loopComplete", "tests", "registryUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"]
             },
             "optional": {
               "type": "array",
@@ -1866,6 +1866,18 @@
         "budgetMode": { "type": "string", "default": "soft" },
         "negativeEvidenceRule": { "type": "boolean", "default": true },
         "assumptionTracking": { "type": "boolean", "default": true },
+        "triggers": {
+          "type": "object",
+          "description": "Map question types to research depth when auto-triggered (no CLI flag)",
+          "properties": {
+            "capabilityQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "standard" },
+            "feasibilityQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "deep" },
+            "existenceQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "standard" },
+            "architectureQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "deep" },
+            "integrationQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "deep" },
+            "comparisonQuestions": { "type": "string", "enum": ["quick", "standard", "deep", "exhaustive"], "default": "deep" }
+          }
+        },
         "planMode": {
           "type": "object",
           "description": "Explore phase and research agent settings",

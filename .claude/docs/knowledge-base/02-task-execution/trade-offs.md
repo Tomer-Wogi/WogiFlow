@@ -141,7 +141,7 @@ Every configuration decision in WogiFlow involves trade-offs. Understanding thes
 {
   "qualityGates": {
     "feature": {
-      "require": ["tests", "lint", "typecheck", "appMapUpdate", "requestLogEntry", "review"]
+      "require": ["tests", "lint", "typecheck", "registryUpdate", "requestLogEntry", "review"]
     }
   }
 }

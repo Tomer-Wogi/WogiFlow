@@ -11,6 +11,96 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-243 | 2026-03-12
+**Type**: fix
+**Tags**: #security #hooks #quality-gates #docs
+**Task**: wf-b2c5f11f
+**Request**: "Fix 12 review findings from wf-8f430179 and wf-f96598bc code review"
+**Result**: Fixed all 12 findings: (1) newline/backslash injection bypass in git whitelist regex, (2) destructive git flags (-D, --force, --hard) passing whitelist, (3) appMapUpdate→registryUpdate in flow-config-defaults.js, (4) lazy registry manager import, (5) missing cwd in spawnSync, (6) stdout pollution fix using stderr SCAN_RESULT marker, (7) deprecation warning for old appMapUpdate gate name, (8) updated 11 doc/agent files with registryUpdate references, (9) updated legacy Python flow-done script
+**Files**: scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/flow-done.js, scripts/flow-done, scripts/flow-config-defaults.js, agents/developer.md, agents/reviewer.md, agents/orchestrator.md, .claude/docs/config-reference.md, .claude/docs/knowledge-base/02-task-execution/03-verification.md, .claude/docs/knowledge-base/02-task-execution/trade-offs.md, .claude/docs/knowledge-base/02-task-execution/README.md, .claude/docs/knowledge-base/02-task-execution/05-session-review.md, .claude/docs/knowledge-base/configuration/all-options.md, .claude/docs/knowledge-base/configuration/README.md, .claude/commands/wogi-onboard.md
+
+---
+
+### R-242 | 2026-03-12
+**Type**: fix
+**Tags**: #registry #quality-gate #routing #hooks #product-fix
+**Task**: wf-f96598bc
+**Request**: "Fix all registry maps not updating automatically after task completion + whitelist read-only git commands in routing gate"
+**Result**: Replaced no-op `appMapUpdate` gate with programmatic `registryUpdate` gate in flow-done.js that runs `flow registry-manager scan` on ALL active registries (app-map, function-map, api-map, schema-map, service-map). Compares map file timestamps before/after scan to report what was updated. Handles backward compat (both `appMapUpdate` and `registryUpdate` gate names trigger the same logic). Updated config.schema.json default gates. Added read-only git command whitelist in pre-tool-use.js routing gate — allows git status/log/diff/branch/show/rev-parse/remote/tag/ls-files/describe before routing, with shell chaining operator detection to prevent abuse. Updated wogi-start.md docs, CLAUDE.md template, and regenerated CLAUDE.md.
+**Files**: scripts/flow-done.js, scripts/hooks/entry/claude-code/pre-tool-use.js, .workflow/config.schema.json, .claude/commands/wogi-start.md, .workflow/templates/claude-md.hbs, CLAUDE.md
+
+### R-241 | 2026-03-12
+**Type**: fix
+**Tags**: #command #research #config #auto-trigger
+**Task**: wf-8f430179
+**Request**: "Fix /wogi-research auto-trigger ignoring config.json research settings"
+**Result**: Added Step 0: Config Loading (mandatory config read before all phases) with question-type classification via triggers map, depth resolution, and format flag application. Added Output Checklist (mandatory self-verification of structured output sections). Added `triggers` section to config schema mapping question types to depth levels. Updated Configuration docs with new triggers key and requireVerificationFormat.
+**Files**: .claude/commands/wogi-research.md, .workflow/config.schema.json
+
+### R-240 | 2026-03-11
+**Type**: new
+**Tags**: #config #cli #interactive #product-fix
+**Task**: wf-04eb6705
+**Request**: "Interactive npx flow config command"
+**Result**: Created flow-config-interactive.js with 13 important options displayed with labels, descriptions, current values, and default markers. Supports subcommands: show (default), set (delegates to flow-config-set.js), export (JSON overrides only), reset (clear to defaults). Color-coded output with `*` marker for custom overrides. Added `--json` flag for machine-readable output. Wired into flow CLI as `flow config` command.
+**Files**: scripts/flow-config-interactive.js (new), scripts/flow
+
+### R-239 | 2026-03-11
+**Type**: new
+**Tags**: #hooks #error-handling #unified #product-fix
+**Task**: wf-05828958
+**Request**: "Unified hook error handling system"
+**Result**: Created flow-hook-errors.js with error classification (LOAD_FAILURE, FILE_IO, CORRUPTED_STATE, PERMISSION_ERROR, TIMEOUT, CONFIG_ERROR, CRITICAL), per-hook fail mode policy registry (4 hooks, 15 operations), formatHookError() and logHookError() utilities. Integrated into all 3 entry hooks (session-start, pre-tool-use, stop) replacing ad-hoc console.error calls. User-facing messages include error type, description, and resolution instructions.
+**Files**: scripts/flow-hook-errors.js (new), scripts/hooks/entry/claude-code/session-start.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/stop.js
+
+### R-238 | 2026-03-11
+**Type**: new
+**Tags**: #version-check #session-start #hooks #product-fix
+**Task**: wf-2920202e
+**Request**: "Version compatibility check at session start"
+**Result**: Created flow-version-check.js with once-per-install check. Integrated into session-start.js hook. Warns only below hard minimum (2.1.23). Stores check state in .workflow/state/.version-check.json keyed by WogiFlow version. Soft feature gates (2.1.50+, 2.1.72+) degrade gracefully without warnings.
+**Files**: scripts/flow-version-check.js (new), scripts/hooks/entry/claude-code/session-start.js
+
+### R-237 | 2026-03-11
+**Type**: new
+**Tags**: #uninstall #manifest #data-safety #product-fix
+**Task**: wf-a17c1c86
+**Request**: "Manifest-based safe uninstall for skills, rules, docs, hooks"
+**Result**: Added `.claude/.wogiflow-manifest.json` tracking all WogiFlow-owned files. postinstall.js generates manifest after copying resources. preuninstall.js reads manifest and only deletes listed files, preserving user-created content. Falls back to legacy behavior with warning if no manifest exists. installer.js updates manifest when /wogi-init adds skills.
+**Files**: scripts/postinstall.js, scripts/preuninstall.js, lib/installer.js
+
+### R-236 | 2026-03-11
+**Type**: fix
+**Tags**: #config #community-sync #migration #product-fix
+**Task**: wf-6633986f
+**Request**: "Config inconsistency: communitySync.enabled and community.sync.enabled contradict each other"
+**Result**: Fixed three issues: (1) Added conflict detection in applyConfigCompatShim() — warns when community.sync.enabled and communitySync.enabled have different values, (2) Added master toggle enforcement in getSyncConfig() — community.enabled: false now forces sync disabled, (3) Migration now deletes deprecated community.sync key after processing to prevent future confusion.
+**Files**: scripts/flow-config-loader.js, scripts/flow-community-sync.js
+
+### R-235 | 2026-03-11
+**Type**: fix
+**Tags**: #prompt-capture #durable-session #hooks #product-fix
+**Task**: wf-76fe56a7
+**Request**: "Fix BUG-005: prompt-history.json captures zero prompts"
+**Result**: Added durable-session.json creation in session-start.js when an active task exists in ready.json. Fixes two issues: (1) first prompt always dropped because durable-session.json didn't exist yet when user-prompt-submit fired, (2) prompts dropped after context compaction/session restart because session file was archived but never recreated. Uses same pattern as post-tool-use.js bridge but triggers earlier in the lifecycle.
+**Files**: scripts/hooks/entry/claude-code/session-start.js
+
+### R-234 | 2026-03-11
+**Type**: fix
+**Tags**: #routing #enforcement #product-fix #hooks
+**Task**: wf-5cc1e323
+**Request**: "Investigate and fix routing enforcement — product-level solution"
+**Result**: Fixed 4 root causes of routing bypass: (1) Added WebSearch + WebFetch to GATED_TOOLS in routing-gate.js — AI could previously use these to answer without routing. (2) Raised stop hook max attempts from 3 to 10 — AI could previously escape routing enforcement by persisting through 3 stop attempts. (3) Added WebSearch + WebFetch to PreToolUse routing gate condition — matching the GATED_TOOLS set. (4) Shortened implementation-gate routing enforcement message from 20+ lines to 1 razor-sharp directive — verbose messages gave AI text to rationalize around.
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/core/implementation-gate.js, scripts/hooks/entry/claude-code/stop.js, scripts/hooks/entry/claude-code/pre-tool-use.js
+
+### R-233 | 2026-03-11
+**Type**: fix
+**Tags**: #security #routing #login #review-fix
+**Task**: wf-420e640e
+**Request**: "Fix 20 review findings from routing bypass + login/logout review"
+**Result**: Fixed all 20 findings: closed durable-session bypass hole, added task.id validation (path traversal), added routedAt to sync moveTask(), replaced raw JSON.parse with safe parsing, enforced HTTPS-only, added response size limit, validated server URLs before browser open, added login/logout dispatch to scripts/flow, fixed variable shadowing, cursor math, type guards, null checks, terminal raw mode cleanup, --api-base validation, backward compat for pre-routedAt tasks, moved fs to top-level require, corrected inaccurate comments, fixed truncated help text
+**Files**: scripts/hooks/core/task-gate.js, scripts/flow-utils.js, lib/commands/team-connection.js, lib/commands/login.js, scripts/flow
+
 ### R-232 | 2026-03-11
 **Type**: new
 **Tags**: #detection #config #quality-gates #rules #wf-f3a1ec3d
@@ -2177,3 +2267,27 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Build multi-page Figma analysis pipeline with state inference"
 **Result**: Created 3 new scripts: flow-figma-registry.js (accumulating component registry from Figma data), flow-figma-state-analyzer.js (structural diffing + state inference with confidence gating), flow-figma-orchestrator.js (page-by-page processing coordinator). Modified flow-figma-match.js to support --figma-registry flag. Updated skill.md with multi-page workflow docs.
 **Files**: scripts/flow-figma-registry.js, scripts/flow-figma-state-analyzer.js, scripts/flow-figma-orchestrator.js, scripts/flow-figma-match.js, .claude/skills/figma-analyzer/skill.md
+
+### R-233 | 2026-03-11
+**Type**: feature
+**Tags**: #auth #login #cli #teams
+**Task**: wf-f70cb258
+**Request**: "Wire flow login/logout to CLI router, add interactive project selection, write cloud API requirements"
+**Result**: Wired login/logout as global commands in bin/flow. Rewrote login.js with device OAuth + interactive arrow-key project selection + auto-reconnect for saved projects. Updated help text in scripts/flow (removed old team subcommands, added login/logout). Created detailed API requirements doc for cloud developer at .workflow/specs/cloud-login-api-requirements.md covering 6 endpoints + web UI + data model.
+**Files**: bin/flow, lib/commands/login.js, lib/commands/logout.js, scripts/flow, .workflow/specs/cloud-login-api-requirements.md
+
+### R-234 | 2026-03-11
+**Type**: fix
+**Tags**: #security #hooks #routing
+**Task**: wf-89ac1676
+**Request**: "Fix routing bypass hole — AI can manually insert fake tasks into ready.json inProgress"
+**Result**: Added routedAt timestamp to tasks entering inProgress via moveTaskAsync() and createQuickTask(). getActiveTask() now rejects tasks without routedAt or a routing receipt file. Verified: fake tasks blocked, legitimate tasks accepted, receipt fallback works.
+**Files**: scripts/flow-utils.js, scripts/hooks/core/task-gate.js
+
+### R-235 | 2026-03-11
+**Type**: fix
+**Tags**: #auth #login #cli #security
+**Task**: wf-e984c24b
+**Request**: "Re-do login/logout CLI wiring through proper pipeline — fix quality issues from unrouted implementation"
+**Result**: Extracted shared team-connection.js module (DRY fix). Fixed: exec→execFile for URL opening (command injection), added prototype pollution guards on JSON.parse, added request timeouts, file permissions 0600 on token file, fixed escape key vs arrow key ambiguity, fixed logout HTTPS-only mismatch. Extracted ANSI constants.
+**Files**: lib/commands/team-connection.js (new), lib/commands/login.js, lib/commands/logout.js, bin/flow, scripts/flow

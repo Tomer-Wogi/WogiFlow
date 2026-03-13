@@ -410,7 +410,7 @@ Per-task-type quality requirements that must pass before task completion.
   "qualityGates": {
     "preTaskBaseline": { "enabled": false },
     "feature": {
-      "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"],
+      "require": ["loopComplete", "tests", "registryUpdate", "requestLogEntry", "integrationWiring", "standardsCompliance"],
       "optional": ["review", "docs", "webmcpVerification"]
     },
     "bugfix": {
@@ -433,7 +433,7 @@ Per-task-type quality requirements that must pass before task completion.
 | `qualityGates.bugfix.require` | string[] | See above | Required gates for bugfix tasks |
 | `qualityGates.refactor.require` | string[] | See above | Required gates for refactor tasks |
 
-Available gate values: `loopComplete`, `tests`, `appMapUpdate`, `requestLogEntry`, `integrationWiring`, `standardsCompliance`, `learningEnforcement`, `resolutionPopulated`, `noNewFeatures`, `smokeTest`, `review`, `docs`, `webmcpVerification`.
+Available gate values: `loopComplete`, `tests`, `registryUpdate`, `requestLogEntry`, `integrationWiring`, `standardsCompliance`, `learningEnforcement`, `resolutionPopulated`, `noNewFeatures`, `smokeTest`, `review`, `docs`, `webmcpVerification`.
 
 ---
 

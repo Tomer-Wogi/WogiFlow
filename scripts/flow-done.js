@@ -121,6 +121,20 @@ try {
 // v5.2 verification profiles
 const { loadProfile: loadVerificationProfile } = require('./flow-verification-profile');
 
+// v1.9.7 registry map update gate — lazy-loaded to avoid startup cost
+// Loaded inside the registryUpdate gate branch only
+let _registryManagerModule = undefined; // undefined = not yet loaded, null = load failed
+function getRegistryManager() {
+  if (_registryManagerModule === undefined) {
+    try {
+      _registryManagerModule = require('./flow-registry-manager');
+    } catch (err) {
+      _registryManagerModule = null;
+    }
+  }
+  return _registryManagerModule;
+}
+
 // Path for last failure artifact
 const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
 
@@ -338,8 +352,111 @@ function runQualityGates(taskId, taskType) {
         if (process.env.DEBUG) console.error(`[DEBUG] requestLogEntry check: ${err.message}`);
         console.log(`  ${color('yellow', '○')} requestLogEntry (could not check)`);
       }
-    } else if (gate === 'appMapUpdate') {
-      console.log(`  ${color('yellow', '○')} appMapUpdate (verify manually if components created)`);
+    } else if (gate === 'appMapUpdate' || gate === 'registryUpdate') {
+      // v1.9.7: Programmatic registry scan — replaces manual "verify manually" no-op.
+      // Runs flow-registry-manager scan on all active registries, comparing modified files
+      // against registry entries to detect missing registrations.
+      // v1.9.8: Deprecation warning for old gate name
+      if (gate === 'appMapUpdate') {
+        console.log(`  ${color('yellow', '⚠')} appMapUpdate is deprecated — update config.json qualityGates to use 'registryUpdate'`);
+      }
+      const registryMod = getRegistryManager();
+      if (registryMod) {
+        try {
+          console.log('  Running registry update check...');
+          const modifiedFiles = getModifiedFiles();
+
+          // Get map file timestamps BEFORE scan (to detect changes)
+          const mapFiles = ['app-map.md', 'function-map.md', 'api-map.md', 'schema-map.md', 'service-map.md'];
+          const beforeHashes = {};
+          for (const mf of mapFiles) {
+            const mapPath = path.join(PATHS.state, mf);
+            try {
+              beforeHashes[mf] = fs.existsSync(mapPath) ? fs.statSync(mapPath).mtimeMs : 0;
+            } catch (err) {
+              beforeHashes[mf] = 0;
+            }
+          }
+
+          // Detect active plugins to check if scan is needed (lightweight, no async)
+          const { RegistryManager } = registryMod;
+          const manager = new RegistryManager();
+          manager.loadPlugins();
+          manager.detectStack();
+          manager.activatePlugins();
+
+          // Only scan if there are active plugins
+          if (manager.activePlugins.length > 0) {
+            // scanAll is async but we need sync behavior in quality gates
+            // Use spawnSync to run the scan as a child process
+            // v1.9.8: Added cwd, write JSON to stderr to avoid stdout pollution from require() side-effects
+            const scanResult = spawnSync('node', [
+              '-e',
+              `const {RegistryManager} = require(${JSON.stringify(path.join(__dirname, 'flow-registry-manager'))});
+              const m = new RegistryManager(); m.loadPlugins(); m.detectStack(); m.activatePlugins();
+              m.scanAll().then(r => { process.stderr.write('SCAN_RESULT:' + JSON.stringify(r)); process.exit(0); })
+              .catch(err => { process.stderr.write('SCAN_RESULT:' + JSON.stringify({error: err.message})); process.exit(1); });`
+            ], {
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'pipe'],
+              timeout: 30000,
+              cwd: process.cwd()
+            });
+
+            if (scanResult.status === 0) {
+              // Extract scan result from stderr (after SCAN_RESULT: marker) to avoid stdout pollution
+              const stderrOutput = scanResult.stderr || '';
+              const markerIdx = stderrOutput.indexOf('SCAN_RESULT:');
+              const jsonStr = markerIdx >= 0 ? stderrOutput.slice(markerIdx + 'SCAN_RESULT:'.length) : '{}';
+              const results = safeJsonParseString(jsonStr, {});
+
+              // Check which map files were updated
+              const updatedMaps = [];
+              for (const mf of mapFiles) {
+                const mapPath = path.join(PATHS.state, mf);
+                try {
+                  const afterMtime = fs.existsSync(mapPath) ? fs.statSync(mapPath).mtimeMs : 0;
+                  if (afterMtime > beforeHashes[mf]) {
+                    updatedMaps.push(mf);
+                  }
+                } catch (err) {
+                  // ignore
+                }
+              }
+
+              // Check if modified files include patterns that should be in registries
+              const relevantExtensions = ['.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte'];
+              const codeFiles = modifiedFiles.filter(f => relevantExtensions.some(ext => f.endsWith(ext)));
+              const nonTestFiles = codeFiles.filter(f => !f.includes('test') && !f.includes('spec') && !f.includes('__test'));
+
+              const activeIds = manager.activePlugins.map(p => p.constructor.id);
+              const scanSummary = Object.entries(results)
+                .filter(([id, r]) => r.success && !r.empty)
+                .map(([id]) => id);
+
+              if (updatedMaps.length > 0) {
+                console.log(`  ${color('green', '✓')} registryUpdate (auto-scanned: ${updatedMaps.join(', ')} updated)`);
+              } else if (scanSummary.length > 0) {
+                console.log(`  ${color('green', '✓')} registryUpdate (scanned ${activeIds.join(', ')} — maps already current)`);
+              } else if (nonTestFiles.length === 0) {
+                console.log(`  ${color('green', '✓')} registryUpdate (no registrable code files modified)`);
+              } else {
+                console.log(`  ${color('green', '✓')} registryUpdate (scanned — no new entries found)`);
+              }
+            } else {
+              console.log(`  ${color('yellow', '⚠')} registryUpdate (scan error — degraded to manual check)`);
+              if (process.env.DEBUG) console.error(`[DEBUG] registry scan stderr: ${scanResult.stderr}`);
+            }
+          } else {
+            console.log(`  ${color('green', '✓')} registryUpdate (no active registry plugins)`);
+          }
+        } catch (err) {
+          // Graceful degradation — don't block task completion on scan errors
+          console.log(`  ${color('yellow', '⚠')} registryUpdate (error: ${truncateOutput(err.message, 3, 200)} — verify manually)`);
+        }
+      } else {
+        console.log(`  ${color('yellow', '⚠')} registryUpdate (registry manager not available — verify manually)`);
+      }
     } else if (gate === 'loopComplete') {
       // v2.1: Explicit loop completion check
       const activeLoop = getActiveLoop();

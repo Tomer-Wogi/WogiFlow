@@ -205,7 +205,7 @@ And [additional result]
 Read `config.json` for task type requirements:
 ```json
 "qualityGates": {
-  "feature": { "require": ["tests", "appMapUpdate"] }
+  "feature": { "require": ["tests", "registryUpdate"] }
 }
 ```
 

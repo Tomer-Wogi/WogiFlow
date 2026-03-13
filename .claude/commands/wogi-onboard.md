@@ -701,7 +701,7 @@ Display:
     for (const reqs of [featureReqs, bugfixReqs, refactorReqs]) {
       reqs.push('requestLogEntry');
     }
-    featureReqs.push('appMapUpdate');
+    featureReqs.push('registryUpdate');
 
     config.qualityGates = {
       feature: { require: featureReqs },

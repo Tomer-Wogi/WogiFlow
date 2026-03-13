@@ -163,7 +163,7 @@ Customize which checks are required per task type.
 {
   "qualityGates": {
     "feature": {
-      "require": ["loopComplete", "tests", "appMapUpdate", "requestLogEntry"],
+      "require": ["loopComplete", "tests", "registryUpdate", "requestLogEntry"],
       "optional": ["review"]
     },
     "bugfix": {
@@ -174,7 +174,7 @@ Customize which checks are required per task type.
 }
 ```
 
-**Available gates**: `loopComplete`, `tests`, `generatedTestsPass`, `uiVerification`, `apiVerification`, `appMapUpdate`, `requestLogEntry`, `integrationWiring`, `standardsCompliance`, `outstandingFindings`, `preRelease`, `noNewFeatures`, `smokeTest`, `learningEnforcement`, `review`, `docs`, `webmcpVerification`
+**Available gates**: `loopComplete`, `tests`, `generatedTestsPass`, `uiVerification`, `apiVerification`, `registryUpdate`, `requestLogEntry`, `integrationWiring`, `standardsCompliance`, `outstandingFindings`, `preRelease`, `noNewFeatures`, `smokeTest`, `learningEnforcement`, `review`, `docs`, `webmcpVerification`
 
 **Task types**: `feature`, `bugfix`, `refactor`, `chore`, `release`, `fix`
 

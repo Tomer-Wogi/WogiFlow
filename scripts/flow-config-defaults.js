@@ -302,7 +302,7 @@ const CONFIG_DEFAULTS = {
   qualityGates: {
     preTaskBaseline: { enabled: false },
     feature: {
-      require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'appMapUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
+      require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'registryUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
       optional: ['review', 'docs', 'webmcpVerification']
     },
     bugfix: {

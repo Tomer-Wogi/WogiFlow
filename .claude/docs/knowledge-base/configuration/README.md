@@ -127,7 +127,7 @@ cat .workflow/config.json
   },
   "qualityGates": {
     "feature": {
-      "require": ["tests", "appMapUpdate", "requestLogEntry", "review"]
+      "require": ["tests", "registryUpdate", "requestLogEntry", "review"]
     }
   }
 }

@@ -193,7 +193,7 @@ Check `config.json` before marking done:
 
 ```json
 "qualityGates": {
-  "feature": { "require": ["tests", "appMapUpdate"] }
+  "feature": { "require": ["tests", "registryUpdate"] }
 }
 ```
 
