@@ -16,8 +16,9 @@
  *     node scripts/flow-conflict-resolver.js --input conflicts.json
  */
 
-const fs = require('fs');
-const readline = require('readline');
+const fs = require('node:fs');
+const readline = require('node:readline');
+const { safeJsonParseString } = require('./flow-io');
 
 // ============================================================================
 // Constants
@@ -33,22 +34,9 @@ const DAYS_PER_MONTH = 30;
 const DAYS_PER_YEAR = 365;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-// Colors for CLI output
-// TODO: Consider using flow-output.js for shared color definitions
-const c = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  bold: '\x1b[1m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  magenta: '\x1b[35m',
-  bgBlue: '\x1b[44m',
-  bgGreen: '\x1b[42m',
-  underline: '\x1b[4m'
-};
+// Colors for CLI output (from shared flow-output.js + underline extension)
+const { colors } = require('./flow-output');
+const c = { ...colors, underline: '\x1b[4m' };
 
 // Resolution values
 const RESOLUTION = {
@@ -491,55 +479,6 @@ function resolutionsToDecisions(resolutions) {
   return lines.join('\n');
 }
 
-/**
- * Safe JSON parsing with prototype pollution prevention
- */
-function safeJsonParse(content, defaultValue = null) {
-  try {
-    // Check for prototype pollution attempts in raw content
-    if (/__proto__|constructor\s*["'`:]|prototype\s*["'`:]/i.test(content)) {
-      console.error(`${c.red}Suspicious content detected in JSON${c.reset}`);
-      return defaultValue;
-    }
-
-    const parsed = JSON.parse(content);
-
-    // Validate it's an array or object
-    if (typeof parsed !== 'object' || parsed === null) {
-      return defaultValue;
-    }
-
-    // Recursive check for prototype pollution in nested structures
-    function hasPrototypePollution(obj) {
-      if (typeof obj !== 'object' || obj === null) {
-        return false;
-      }
-      if (!Array.isArray(obj)) {
-        const keys = Object.getOwnPropertyNames(obj);
-        if (keys.includes('__proto__') || keys.includes('constructor') || keys.includes('prototype')) {
-          return true;
-        }
-      }
-      // Recursively check all values (array elements or object properties)
-      for (const value of Object.values(obj)) {
-        if (hasPrototypePollution(value)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    if (hasPrototypePollution(parsed)) {
-      console.error(`${c.red}Prototype pollution attempt detected${c.reset}`);
-      return defaultValue;
-    }
-
-    return parsed;
-  } catch (err) {
-    console.error(`${c.red}JSON parse error: ${err.message}${c.reset}`);
-    return defaultValue;
-  }
-}
 
 /**
  * Load conflicts from JSON file
@@ -547,7 +486,7 @@ function safeJsonParse(content, defaultValue = null) {
 function loadConflictsFromFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const data = safeJsonParse(content);
+    const data = safeJsonParseString(content);
 
     if (!data) {
       console.error(`${c.red}Error: Failed to parse conflicts file.${c.reset}`);

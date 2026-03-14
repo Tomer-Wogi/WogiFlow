@@ -16,15 +16,13 @@
  * Part of Crush research improvements (wf-0bff91f3)
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
-  safeJsonParse,
-  color,
-  printHeader,
-  printSection
-} = require('./flow-utils');
+  safeJsonParse
+} = require('./flow-utils')
+const { color, printHeader, printSection, success } = require('./flow-output');;
 
 // ============================================================
 // Configuration
@@ -260,7 +258,7 @@ function main() {
       if (permanent.length > 0) {
         printSection('Permanent (Always)');
         for (const p of permanent) {
-          console.log(`  ${color('green', '✓')} ${p.operation}`);
+          success(`${p.operation}`);
           console.log(`    ${color('gray', `Granted: ${p.grantedAt}`)}`);
         }
       }
@@ -311,7 +309,7 @@ function main() {
 
     case 'clear-session': {
       const result = clearSessionPermissions();
-      console.log(color('green', `✓ Cleared ${result.cleared} session permission(s)`));
+      success(`Cleared ${result.cleared} session permission(s)`);
       break;
     }
 
@@ -326,7 +324,7 @@ function main() {
 
       const result = checkPermission(operation);
       if (result.granted) {
-        console.log(color('green', `✓ Permission granted (${result.scope})`));
+        success(`Permission granted (${result.scope})`);
         console.log(color('gray', `  Granted: ${result.grantedAt}`));
       } else {
         console.log(color('yellow', '○ Permission not granted'));

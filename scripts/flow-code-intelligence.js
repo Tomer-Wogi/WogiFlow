@@ -16,9 +16,10 @@
  *   const relationships = await analyzeRelationships('src/components/Button.tsx');
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
+const { success, error: errorMsg } = require('./flow-output');
 const { safeGrep, safeFind, escapeRegex } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -41,7 +42,7 @@ function resolvePathAlias(alias) {
     if (!paths || !paths[alias]) return null;
     const mapped = paths[alias][0]; // e.g., './src/*'
     return mapped.replace(/^\.\//, '').replace(/\/\*$/, '');
-  } catch { return null; }
+  } catch (_err) { return null; }
 }
 
 /**
@@ -461,14 +462,7 @@ async function generateEnhancedIndex() {
   const indexPath = path.join(PATHS.state, 'component-index.json');
 
   // Read existing index
-  let existingIndex = { components: [] };
-  if (fs.existsSync(indexPath)) {
-    try {
-      existingIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-    } catch {
-      // Ignore
-    }
-  }
+  let existingIndex = readJson(indexPath, { components: [] });
 
   // Enhance with relationships
   const enhanced = {
@@ -644,7 +638,7 @@ async function main() {
   switch (command) {
     case 'analyze': {
       if (!target) {
-        console.log(`${colors.red}Error: File path required${colors.reset}`);
+        errorMsg('File path required');
         process.exit(1);
       }
 
@@ -690,7 +684,7 @@ async function main() {
       });
 
       if (files.length === 0) {
-        console.log(`${colors.red}Error scanning directory or no files found${colors.reset}`);
+        errorMsg('Error scanning directory or no files found');
         process.exit(1);
       }
 
@@ -713,7 +707,7 @@ async function main() {
 
     case 'related': {
       if (!target) {
-        console.log(`${colors.red}Error: Query required${colors.reset}`);
+        errorMsg('Query required');
         process.exit(1);
       }
 
@@ -755,7 +749,7 @@ async function main() {
       if (jsonOutput) {
         console.log(JSON.stringify(enhanced, null, 2));
       } else {
-        console.log(`${colors.green}✓ Enhanced index generated${colors.reset}`);
+        success('Enhanced index generated');
         console.log(`  Nodes: ${enhanced.dependencyGraph.nodes.length}`);
         console.log(`  Edges: ${enhanced.dependencyGraph.edges.length}`);
         console.log(`  Relationships: ${Object.keys(enhanced.relationships || {}).length}`);
@@ -764,7 +758,7 @@ async function main() {
     }
 
     default:
-      console.log(`${colors.red}Unknown command: ${command}${colors.reset}`);
+      errorMsg(`Unknown command: ${command}`);
       showHelp();
       process.exit(1);
   }

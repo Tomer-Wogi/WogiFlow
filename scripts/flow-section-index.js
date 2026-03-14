@@ -20,9 +20,9 @@
  *   node scripts/flow-section-index.js --json    # Output JSON result
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -651,7 +651,7 @@ function generateIndex() {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Fallback: just parse app-map.md
     if (fileExists(PATHS.appMap)) {
       try {
@@ -811,7 +811,7 @@ function needsRegeneration() {
         if (currentHash !== indexedHash) return true;
       }
     }
-  } catch {
+  } catch (_err) {
     // Fallback: just check app-map.md
     if (fileExists(PATHS.appMap)) {
       const currentHash = hashContent(readFile(PATHS.appMap));

@@ -6,9 +6,9 @@
  * and "Let AI decide" option for intelligent defaults
  */
 
-const readline = require('readline');
-const path = require('path');
-const fs = require('fs');
+const readline = require('node:readline');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import centralized tech options
 const {
@@ -40,17 +40,7 @@ const {
 // COLORS & FORMATTING
 // ============================================
 
-const COLORS = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  white: '\x1b[37m'
-};
-
-const c = (color, text) => `${COLORS[color]}${text}${COLORS.reset}`;
+const { colors: COLORS, color: c } = require('./flow-output');
 
 // ============================================
 // WIZARD CLASS
@@ -1020,13 +1010,14 @@ module.exports = { EnhancedStackWizard };
 
 // Run if called directly
 if (require.main === module) {
-  const wizard = new EnhancedStackWizard();
-  wizard.run()
-    .then((selections) => {
+  (async () => {
+    try {
+      const wizard = new EnhancedStackWizard();
+      await wizard.run();
       process.exit(0);
-    })
-    .catch((error) => {
-      console.error('Wizard error:', error);
+    } catch (err) {
+      console.error('Wizard error:', err);
       process.exit(1);
-    });
+    }
+  })();
 }

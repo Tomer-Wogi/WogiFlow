@@ -9,9 +9,9 @@
  * This is best-effort — failures never block task completion.
  */
 
-const path = require('path');
-const fs = require('fs');
-const { execFileSync } = require('child_process');
+const path = require('node:path');
+const fs = require('node:fs');
+const { execFileSync } = require('node:child_process');
 const { getConfig, PATHS, safeJsonParse, readFile, writeFile, ensureDir, isPathWithinProject, validateTaskId } = require('./flow-utils');
 
 /**
@@ -48,7 +48,7 @@ function findStoryFile(taskId, feature) {
       if (fs.existsSync(featurePath)) {
         return featurePath;
       }
-    } catch {
+    } catch (_err) {
       // Permission or access error — continue to other lookups
     }
   }
@@ -59,7 +59,7 @@ function findStoryFile(taskId, feature) {
     if (fs.existsSync(directPath)) {
       return directPath;
     }
-  } catch {
+  } catch (_err) {
     // Continue
   }
 
@@ -74,13 +74,13 @@ function findStoryFile(taskId, feature) {
             if (fs.existsSync(subPath)) {
               return subPath;
             }
-          } catch {
+          } catch (_err) {
             // Continue scanning
           }
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // readdirSync failed
   }
 
@@ -154,7 +154,7 @@ function collectVerificationResults(taskId) {
         return results;
       }
     }
-  } catch {
+  } catch (_err) {
     // Continue without verification data
   }
 
@@ -174,12 +174,12 @@ function collectVerificationResults(taskId) {
               });
             }
           }
-        } catch {
+        } catch (_err) {
           // Skip unreadable artifact
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // No verification data available
   }
 
@@ -217,7 +217,7 @@ function collectReviewFindings(taskId, changedFiles) {
         summary.deferred = relevantFindings.filter(f => f.status !== 'fixed' && f.status !== 'dismissed').length;
       }
     }
-  } catch {
+  } catch (_err) {
     // No review data
   }
 
@@ -250,7 +250,7 @@ function getChangedFiles(taskId) {
               timeout: 5000
             });
             files = rangeOutput.trim().split('\n').filter(Boolean);
-          } catch {
+          } catch (_err) {
             // oldest~1 fails on root commit — use diff-tree --root instead
             const rootOutput = execFileSync('git', ['diff-tree', '--root', '--no-commit-id', '--name-only', '-r', 'HEAD'], {
               encoding: 'utf-8',
@@ -261,7 +261,7 @@ function getChangedFiles(taskId) {
           const output = files.join('\n');
           return output.trim().split('\n').filter(Boolean);
         }
-      } catch {
+      } catch (_err) {
         // Fall through to single-commit fallback
       }
     }
@@ -272,7 +272,7 @@ function getChangedFiles(taskId) {
       timeout: 5000
     });
     return output.trim().split('\n').filter(Boolean);
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -298,7 +298,7 @@ function formatDuration(startedAt, completedAt) {
 
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
-  } catch {
+  } catch (_err) {
     return 'unknown';
   }
 }
@@ -343,7 +343,7 @@ function generateCompletionSummary(task, input) {
     try {
       const content = fs.readFileSync(storyFile, 'utf-8');
       criteria = extractAcceptanceCriteria(content);
-    } catch {
+    } catch (_err) {
       // Story file unreadable
     }
   }
@@ -493,11 +493,11 @@ function collectLessonsLearned(taskId) {
             lessons.push(preventionMatch[1].trim());
           }
         }
-      } catch {
+      } catch (_err) {
         // Skip unreadable correction file
       }
     }
-  } catch {
+  } catch (_err) {
     // No corrections directory or can't read it
   }
 

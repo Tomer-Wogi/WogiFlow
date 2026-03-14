@@ -10,9 +10,10 @@
  *   const { PATHS, PROJECT_ROOT, getProjectRoot } = require('./flow-paths');
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
+const { warn } = require('./flow-output');
 
 // ============================================================
 // Project Root Detection
@@ -27,6 +28,11 @@ const { execSync } = require('child_process');
  * @returns {string} Absolute path to project root
  */
 function getProjectRoot() {
+  // Strategy 0: Use cached env var (avoids execSync on every hook invocation)
+  if (process.env.WOGI_PROJECT_ROOT && fs.existsSync(path.join(process.env.WOGI_PROJECT_ROOT, '.workflow'))) {
+    return process.env.WOGI_PROJECT_ROOT;
+  }
+
   // Strategy 1: Try git root (works in submodules, worktrees, and nested repos)
   try {
     const gitRoot = execSync('git rev-parse --show-toplevel', {
@@ -40,7 +46,7 @@ function getProjectRoot() {
         return gitRoot;
       }
     }
-  } catch {
+  } catch (_err) {
     // Not in a git repo or git not available
   }
 
@@ -81,6 +87,10 @@ const PACKAGE_PATHS = {
 // ============================================================
 
 const PROJECT_ROOT = getProjectRoot();
+// Cache for subsequent hook invocations (avoids execSync per call)
+if (!process.env.WOGI_PROJECT_ROOT) {
+  process.env.WOGI_PROJECT_ROOT = PROJECT_ROOT;
+}
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 const CLAUDE_DIR = path.join(PROJECT_ROOT, '.claude');
@@ -106,6 +116,8 @@ const PATHS = {
   epics: path.join(WORKFLOW_DIR, 'epics'),
   features: path.join(WORKFLOW_DIR, 'features'),
   plans: path.join(WORKFLOW_DIR, 'plans'),
+  // Scratch directory for temporary files (auto-cleaned at session end)
+  scratch: path.join(WORKFLOW_DIR, 'scratch'),
   // Additional workflow directories
   runs: path.join(WORKFLOW_DIR, 'runs'),
   checkpoints: path.join(WORKFLOW_DIR, 'checkpoints'),
@@ -153,9 +165,16 @@ const PATHS = {
  * @returns {boolean} True if path is within base directory
  */
 function isPathWithinProject(targetPath, baseDir = PROJECT_ROOT) {
-  const resolved = path.resolve(targetPath);
-  const resolvedBase = path.resolve(baseDir);
-  return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
+  try {
+    const resolved = fs.realpathSync(path.resolve(targetPath));
+    const resolvedBase = fs.realpathSync(path.resolve(baseDir));
+    return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
+  } catch (_err) {
+    // If realpathSync fails (e.g., file doesn't exist yet), fall back to path.resolve
+    const resolved = path.resolve(targetPath);
+    const resolvedBase = path.resolve(baseDir);
+    return resolved === resolvedBase || resolved.startsWith(resolvedBase + path.sep);
+  }
 }
 
 // ============================================================
@@ -186,7 +205,7 @@ function getSpecFilePath(name, options = {}) {
 
   const mapping = SPEC_FILE_MAP[name.toLowerCase()];
   if (!mapping) {
-    console.log(`\x1b[33m\u26a0\x1b[0m Unknown spec file: ${name}. Valid options: stack, architecture, testing`);
+    warn(`Unknown spec file: ${name}. Valid options: stack, architecture, testing`);
     return null;
   }
 
@@ -201,7 +220,7 @@ function getSpecFilePath(name, options = {}) {
   // Check old location
   if (fs.existsSync(oldPath)) {
     if (warnOnOld) {
-      console.log(`\x1b[33m\u26a0\x1b[0m ${name}.md found in deprecated location (state/). Run 'flow migrate specs' to move to specs/`);
+      warn(`${name}.md found in deprecated location (state/). Run 'flow migrate specs' to move to specs/`);
     }
     return oldPath;
   }

@@ -13,8 +13,8 @@
  * Enforcement is STRICT - all violations block completion.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
@@ -49,7 +49,7 @@ try {
       STANDARDS_FILES[key] = path.join(PATHS.state, reg.mapFile);
     }
   }
-} catch {
+} catch (_err) {
   // Fallback: keep original three
 }
 

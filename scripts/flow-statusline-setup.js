@@ -14,11 +14,12 @@
  *   flow statusline-setup --disable # Disable status line
  */
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const readline = require('readline');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const readline = require('node:readline');
 const { colors, printHeader, safeJsonParse } = require('./flow-utils');
+const { success, error: errorMsg } = require('./flow-output');
 
 // Status line format presets
 const FORMATS = {
@@ -65,7 +66,7 @@ function saveClaudeSettings(settings) {
     fs.writeFileSync(CLAUDE_SETTINGS_PATH, JSON.stringify(settings, null, 2));
     return true;
   } catch (err) {
-    console.error(`${colors.red}Error: Could not save Claude settings: ${err.message}${colors.reset}`);
+    errorMsg(`Could not save Claude settings: ${err.message}`);
     return false;
   }
 }
@@ -114,7 +115,7 @@ async function interactiveSetup() {
   const selectedFormat = format.trim() || 'standard';
 
   if (!FORMATS[selectedFormat]) {
-    console.log(`${colors.red}Invalid format: ${selectedFormat}${colors.reset}`);
+    errorMsg(`Invalid format: ${selectedFormat}`);
     rl.close();
     process.exit(1);
   }
@@ -129,7 +130,8 @@ async function interactiveSetup() {
 
   if (confirm.toLowerCase() === 'y') {
     if (saveClaudeSettings(settings)) {
-      console.log(`\n${colors.green}✓ Status line configured successfully!${colors.reset}`);
+      console.log('');
+      success('Status line configured successfully!');
       console.log(`${colors.dim}Restart Claude Code to see changes.${colors.reset}`);
     }
   } else {
@@ -182,7 +184,7 @@ Examples:
     const settings = loadClaudeSettings();
     settings.statusLine = { enabled: false };
     if (saveClaudeSettings(settings)) {
-      console.log(`${colors.green}✓ Status line disabled.${colors.reset}`);
+      success('Status line disabled.');
     }
     process.exit(0);
   }
@@ -191,7 +193,7 @@ Examples:
   if (formatIndex >= 0) {
     const format = args[formatIndex + 1];
     if (!format || !FORMATS[format]) {
-      console.log(`${colors.red}Invalid format. Use: minimal, compact, standard, or detailed${colors.reset}`);
+      errorMsg('Invalid format. Use: minimal, compact, standard, or detailed');
       process.exit(1);
     }
 
@@ -202,7 +204,7 @@ Examples:
     };
 
     if (saveClaudeSettings(settings)) {
-      console.log(`${colors.green}✓ Status line configured with "${format}" format.${colors.reset}`);
+      success(`Status line configured with "${format}" format.`);
       console.log(`${colors.dim}Restart Claude Code to see changes.${colors.reset}`);
     }
     process.exit(0);
@@ -213,6 +215,6 @@ Examples:
 }
 
 main().catch(err => {
-  console.error(`${colors.red}Error: ${err.message}${colors.reset}`);
+  errorMsg(err.message);
   process.exit(1);
 });

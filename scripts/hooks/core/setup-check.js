@@ -10,8 +10,8 @@
  * created by postinstall and prompts the AI to run setup.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import from flow-utils for consistent paths and safe JSON parsing
 const { safeJsonParse, PATHS } = require('../../flow-utils');

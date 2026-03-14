@@ -14,11 +14,12 @@
  * Output: component-index.json (machine-readable), app-map.md entries (additive)
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, getConfig, color, success, warn } = require('../flow-utils');
 const { RegistryPlugin } = require('../flow-registry-manager');
 const { BaseScanner, PROJECT_ROOT } = require('../flow-scanner-base');
+const { info } = require('../flow-output');
 
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
@@ -225,7 +226,7 @@ class ComponentScanner extends BaseScanner {
   }
 
   async scan() {
-    console.log('\n' + color('cyan', '🔍 Scanning codebase for components...') + '\n');
+    info('Scanning codebase for components...');
 
     const directories = this.findDirectories();
     if (directories.length === 0) {

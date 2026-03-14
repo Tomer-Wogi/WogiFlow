@@ -10,7 +10,7 @@
  * if needed, ensuring CLAUDE.md stays current mid-session.
  */
 
-const path = require('path');
+const path = require('node:path');
 
 /**
  * Handle a config change event.
@@ -65,7 +65,7 @@ function handleConfigChange(options = {}) {
     let bridgeState = null;
     try {
       bridgeState = require('../../flow-bridge-state');
-    } catch {
+    } catch (_err) {
       // Bridge state module unavailable
     }
 
@@ -73,7 +73,7 @@ function handleConfigChange(options = {}) {
     if (bridgeState) {
       try {
         needsSync = bridgeState.hasConfigChanged();
-      } catch {
+      } catch (_err) {
         needsSync = true;
       }
     } else {
@@ -88,7 +88,7 @@ function handleConfigChange(options = {}) {
         try {
           bridgeState.autoSyncBridge('claude-code', { silent: true }).catch(() => {});
           syncAttempted = true;
-        } catch {
+        } catch (_err) {
           // Sync failed
         }
       }

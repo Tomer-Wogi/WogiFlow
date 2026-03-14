@@ -16,8 +16,8 @@
  * Part of v1.8.0 - Automatic Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const memoryDb = require('./flow-memory-db');
 const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
 const { color } = require('./flow-output');
@@ -26,13 +26,7 @@ const { color } = require('./flow-output');
 // Configuration
 // ============================================================
 
-function loadConfig() {
-  try {
-    return getConfig();
-  } catch {
-    return {};
-  }
-}
+// loadConfig() removed — getConfig() already handles errors gracefully
 
 // ============================================================
 // Output Formatting
@@ -292,7 +286,7 @@ async function showPreview(config) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const config = loadConfig();
+  const config = getConfig();
 
   try {
     if (args.includes('--demote')) {

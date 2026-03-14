@@ -14,15 +14,15 @@
  *   flow queue advance             - Manually advance to next task
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
-  color,
-  error,
-  getConfig
-} = require('./flow-utils');
+  getConfig,
+  readJson
+} = require('./flow-utils')
+const { color, error, success } = require('./flow-output');;
 
 const {
   initTaskQueue,
@@ -91,7 +91,7 @@ function getTasksFromReady(count) {
   }
 
   try {
-    const data = JSON.parse(fs.readFileSync(readyPath, 'utf-8'));
+    const data = readJson(readyPath, { ready: [] });
     const ready = data.ready || [];
 
     // Sort by priority (P0 first)
@@ -182,7 +182,7 @@ function initQueue(taskIds, source = 'cli') {
   initTaskQueue(taskIds, source);
 
   console.log('');
-  console.log(color('green', '✓ Task queue initialized'));
+  success('Task queue initialized');
   console.log('');
   console.log(`Tasks queued: ${taskIds.length}`);
   taskIds.forEach((id, i) => {
@@ -219,7 +219,7 @@ function parseCommand(input) {
  */
 function clearQueue() {
   clearTaskQueue();
-  console.log(color('green', '✓ Task queue cleared'));
+  success('Task queue cleared');
 }
 
 /**
@@ -243,7 +243,7 @@ function advance() {
   const newStatus = getQueueStatus();
   const nextTask = newStatus.tasks[newStatus.currentIndex];
 
-  console.log(color('green', '✓ Advanced to next task'));
+  success('Advanced to next task');
   console.log(`Next task: ${nextTask}`);
   console.log('');
   console.log('Start with:');

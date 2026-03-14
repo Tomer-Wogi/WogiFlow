@@ -7,8 +7,8 @@
  * v2.0: Integrates with durable session for crash recovery and suspension support.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
@@ -19,6 +19,7 @@ const {
   getConfig,
   safeJsonParse
 } = require('./flow-utils');
+const { success, warn, info, printHeader, printSection } = require('./flow-output');
 const { getCommand: resolveCommand } = require('./flow-script-resolver');
 // Auto-context module (optional - graceful degradation)
 let autoContext = null;
@@ -356,7 +357,7 @@ async function main() {
         console.log('');
 
         if (suspension.canResume) {
-          console.log(color('green', '✓ Resume condition is met!'));
+          success('Resume condition is met!');
           if (forceResume) {
             console.log('Resuming session...');
             resumeSession({ force: true });
@@ -365,7 +366,7 @@ async function main() {
             process.exit(0);
           }
         } else {
-          console.log(color('red', '✗ Resume condition not yet met'));
+          error('Resume condition not yet met');
           console.log(`Reason: ${suspension.resumeReason}`);
           console.log('');
           console.log(`To override: ${color('cyan', `flow start ${taskId} --skip-suspension`)}`);
@@ -406,17 +407,17 @@ async function main() {
   const found = findTask(taskId);
 
   if (!found) {
-    console.log(color('red', `Task ${taskId} not found in any queue`));
+    error(`Task ${taskId} not found in any queue`);
     process.exit(1);
   }
 
   if (found.list === 'inProgress') {
-    console.log(color('yellow', `Task ${taskId} is already in progress`));
+    warn(`Task ${taskId} is already in progress`);
     process.exit(0);
   }
 
   if (found.list !== 'ready') {
-    console.log(color('red', `Task ${taskId} is in ${found.list}, not ready`));
+    error(`Task ${taskId} is in ${found.list}, not ready`);
     process.exit(1);
   }
 
@@ -440,7 +441,7 @@ async function main() {
       console.log('');
 
       try {
-        const { execFileSync } = require('child_process');
+        const { execFileSync } = require('node:child_process');
         const testCommand = baselineConfig.command || resolveCommand('test') || 'npm test';
         const [cmd, ...args] = testCommand.split(' ');
 
@@ -449,7 +450,7 @@ async function main() {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        console.log(color('green', '✓ Test baseline passed - all tests passing'));
+        success('Test baseline passed - all tests passing');
         console.log('');
       } catch (err) {
         // Parse test output to count failures
@@ -458,7 +459,7 @@ async function main() {
         const failureCount = failureMatch ? parseInt(failureMatch[1], 10) : 1;
         const threshold = baselineConfig.failureThreshold || 5;
 
-        console.log(color('red', `✗ Test baseline FAILED - ${failureCount} test(s) failing`));
+        error(`Test baseline FAILED - ${failureCount} test(s) failing`);
         console.log('');
 
         if (failureCount > threshold) {
@@ -490,7 +491,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(color('green', `✓ Started: ${taskId}`));
+  success(`Started: ${taskId}`);
 
   const taskTitle = result.task && typeof result.task === 'object' && result.task.title
     ? result.task.title
@@ -782,7 +783,7 @@ async function main() {
         console.log(`  Run: ${color('cyan', `flow trace "${taskDescription}"`)}`);
         console.log('');
       }
-    } catch {
+    } catch (_err) {
       // Ignore trace suggestion errors
     }
   }
@@ -803,7 +804,7 @@ async function main() {
         console.log(`  Run: ${color('cyan', `flow multi-approach --analyze "${taskDescription}"`)}`);
         console.log('');
       }
-    } catch {
+    } catch (_err) {
       // Ignore multi-approach errors
     }
   }

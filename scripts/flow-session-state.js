@@ -15,8 +15,8 @@
  * Part of v1.7.0 Context Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   STATE_DIR,

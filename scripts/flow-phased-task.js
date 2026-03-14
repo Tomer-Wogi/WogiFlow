@@ -15,8 +15,8 @@
  * 5. Polish - Optimization, cleanup, docs
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   getConfig,

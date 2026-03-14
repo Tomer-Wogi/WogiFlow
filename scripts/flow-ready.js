@@ -16,12 +16,9 @@ const {
   getReadyData,
   getConfig,
   parseFlags,
-  outputJson,
-  color,
-  printSection,
-  error,
-  warn
-} = require('./flow-utils');
+  outputJson
+} = require('./flow-utils')
+const { color, printSection, error, warn, success } = require('./flow-output');;
 
 // Parallel execution detection
 const { findParallelizable, getParallelConfig } = require('./flow-parallel');
@@ -167,7 +164,7 @@ function main() {
 
   // Ready tasks (sorted by priority)
   if (ready.length > 0) {
-    console.log(color('green', '✓ READY'));
+    success('READY');
     for (const task of ready) {
       const { priority, id, title } = formatTask(task);
       const priorityColor = priority === 'P0' ? 'red' : priority === 'P1' ? 'yellow' : 'dim';

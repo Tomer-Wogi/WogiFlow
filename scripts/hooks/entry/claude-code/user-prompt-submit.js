@@ -7,7 +7,7 @@
  * Enforces implementation gate - blocks implementation requests without active task.
  */
 
-const fs = require('fs');
+const fs = require('node:fs');
 const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
 const { setRoutingPending, clearRoutingPending, ROUTING_CLEARED_PATH } = require('../../core/routing-gate');
@@ -16,28 +16,15 @@ const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
 const { spawnBackgroundDetection } = require('../../../flow-correction-detector');
-const { safeJsonParseString, getConfig } = require('../../../flow-utils');
-
-// Maximum stdin size to prevent DoS (100KB should be more than enough for prompts)
-const MAX_STDIN_SIZE = 100 * 1024;
+const { getConfig } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
 
 async function main() {
   try {
-    // Read input from stdin with size limit
-    let inputData = '';
-    let totalSize = 0;
-    for await (const chunk of process.stdin) {
-      totalSize += chunk.length;
-      if (totalSize > MAX_STDIN_SIZE) {
-        // Truncate at limit to prevent memory exhaustion
-        inputData += chunk.slice(0, MAX_STDIN_SIZE - (totalSize - chunk.length));
-        break;
-      }
-      inputData += chunk;
-    }
+    const { input: parsedStdin } = await readHookInput();
 
     // Handle empty input gracefully
-    if (!inputData || inputData.trim().length === 0) {
+    if (!parsedStdin) {
       console.log(JSON.stringify({ continue: true, hookSpecificOutput: { hookEventName: 'UserPromptSubmit' } }));
       process.exit(0);
       return;
@@ -46,7 +33,7 @@ async function main() {
     // Parse JSON safely with prototype pollution protection
     let input;
     try {
-      input = safeJsonParseString(inputData, null);
+      input = parsedStdin;
       if (!input) {
         // Invalid JSON - allow through (graceful degradation)
         console.log(JSON.stringify({ continue: true, hookSpecificOutput: { hookEventName: 'UserPromptSubmit' } }));

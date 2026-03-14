@@ -13,8 +13,8 @@
  *   node scripts/flow-capture.js "<title>" [--type bug|feature] [--tags tag1,tag2] [--json]
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -132,7 +132,7 @@ function addToDiscussionQueue(item) {
   let content;
   try {
     content = fs.readFileSync(queuePath, 'utf-8');
-  } catch {
+  } catch (_err) {
     content = `# Discussion Queue
 
 Ideas that need review before becoming tasks.
@@ -148,7 +148,7 @@ Ideas that need review before becoming tasks.
   }
 
   // Format today's date
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   const time = new Date().toTimeString().slice(0, 5);
 
   // Find or create today's section
@@ -190,7 +190,7 @@ function addToRoadmap(item) {
   let content;
   try {
     content = fs.readFileSync(roadmapPath, 'utf-8');
-  } catch {
+  } catch (_err) {
     content = `# Roadmap
 
 Planned features and improvements.
@@ -206,7 +206,7 @@ Planned features and improvements.
   }
 
   // Format entry
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   const entry = `\n### ${item.title}\n\n**Captured:** ${today}\n**Type:** ${item.type}\n**Status:** Pending story creation\n${item.groupedFrom ? `**Items:** ${item.groupedFrom.join(', ')}\n` : ''}`;
 
   // Add under "## Captured Ideas"
@@ -532,7 +532,7 @@ function detectType(title) {
  * @returns {string}
  */
 function generateCaptureId(existingBacklog) {
-  const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const today = getTodayDate().replace(/-/g, '');
 
   // Find highest number for today
   const todayPattern = new RegExp(`^cap-${today}-(\\d{3})$`);
@@ -556,7 +556,7 @@ function getCurrentTask() {
   try {
     const sessionState = loadSessionState();
     return sessionState.currentTask || null;
-  } catch {
+  } catch (_err) {
     return null;
   }
 }

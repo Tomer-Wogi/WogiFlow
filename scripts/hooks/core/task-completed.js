@@ -14,8 +14,8 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId, archiveCompletedTasksToLog } = require('../../flow-utils');
@@ -187,7 +187,7 @@ async function handleTaskCompleted(input) {
           console.error(`[Task Completed] Stats recording failed: ${err.message}`);
         }
       });
-    } catch {
+    } catch (_err) {
       // Non-critical - stats collector may not be available
     }
 
@@ -195,7 +195,7 @@ async function handleTaskCompleted(input) {
     try {
       const { clearCheckpoint } = require('../../flow-task-checkpoint');
       clearCheckpoint(completedTask.id);
-    } catch {
+    } catch (_err) {
       // Non-critical - checkpoint may not exist
     }
 
@@ -205,7 +205,7 @@ async function handleTaskCompleted(input) {
       memoryDb.markTaskObservationsCommitted(completedTask.id).catch(() => {
         // Non-critical - silently ignore DB errors
       });
-    } catch {
+    } catch (_err) {
       // Non-critical - memory DB may not be available
     }
 
@@ -220,7 +220,7 @@ async function handleTaskCompleted(input) {
       ).catch(() => {
         // Non-critical - memory pipeline may not be available
       });
-    } catch {
+    } catch (_err) {
       // Non-critical - memory DB may not be available
     }
 
@@ -232,7 +232,7 @@ async function handleTaskCompleted(input) {
         if (process.env.DEBUG && !summaryResult.success) {
           console.error(`[Task Completed] Summary generation: ${summaryResult.reason || 'unknown'}`);
         }
-      } catch {
+      } catch (_err) {
         // Non-critical - summary generator may not be available
       }
     }
@@ -248,7 +248,7 @@ async function handleTaskCompleted(input) {
           console.error(`[Task Completed] Registry scan failed: ${err.message}`);
         }
       });
-    } catch {
+    } catch (_err) {
       // Non-critical - registry manager may not be available
     }
   } catch (err) {

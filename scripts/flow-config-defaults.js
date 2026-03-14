@@ -602,7 +602,7 @@ const CONFIG_DEFAULTS = {
   ],
 
   // --- Matching & Edit ---
-  semanticMatching: { enabled: false },
+  semanticMatching: { enabled: true },
   guidedEdit: { enabled: false },
 
   // --- Traces & Worktree ---
@@ -721,6 +721,14 @@ const CONFIG_DEFAULTS = {
     blockOnHigh: true,
     checkPatterns: { secrets: true, injection: true, npmAudit: true },
     ignoreFiles: ['*.test.ts', '*.spec.ts']
+  },
+
+  // --- Proactive Compaction ---
+  proactiveCompaction: {
+    enabled: true,
+    triggerThreshold: 0.80,
+    useHaiku: true,
+    phases: ['exploring', 'spec_review', 'scenario', 'criteria_check', 'validating']
   },
 
   // --- Damage Control ---
@@ -903,9 +911,9 @@ function deepMerge(base, override) {
   const result = {};
 
   for (const key of Object.keys(base)) {
-    if (!Object.prototype.hasOwnProperty.call(base, key)) continue;
+    if (!Object.hasOwn(base, key)) continue;
 
-    if (Object.prototype.hasOwnProperty.call(override, key)) {
+    if (Object.hasOwn(override, key)) {
       if (isPlainObject(base[key]) && isPlainObject(override[key])) {
         result[key] = deepMerge(base[key], override[key]);
       } else {
@@ -917,8 +925,8 @@ function deepMerge(base, override) {
   }
 
   for (const key of Object.keys(override)) {
-    if (!Object.prototype.hasOwnProperty.call(override, key)) continue;
-    if (!Object.prototype.hasOwnProperty.call(result, key)) {
+    if (!Object.hasOwn(override, key)) continue;
+    if (!Object.hasOwn(result, key)) {
       result[key] = override[key];
     }
   }
@@ -939,7 +947,7 @@ function getDefaultsForKey(keyPath) {
     if (current === null || current === undefined || typeof current !== 'object') {
       return undefined;
     }
-    if (!Object.prototype.hasOwnProperty.call(current, part)) {
+    if (!Object.hasOwn(current, part)) {
       return undefined;
     }
     current = current[part];

@@ -15,8 +15,8 @@
  *   flow config export       # Export current overrides as JSON
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   getConfig,
@@ -277,7 +277,7 @@ function main() {
         error('Usage: flow config set <key> <value>');
         process.exit(1);
       }
-      const { execFileSync } = require('child_process');
+      const { execFileSync } = require('node:child_process');
       try {
         execFileSync(process.execPath, [path.join(__dirname, 'flow-config-set.js'), key, value], {
           stdio: 'inherit'

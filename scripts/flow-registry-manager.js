@@ -16,8 +16,8 @@
  *   flow registry-manager status       # Show detailed activation status
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, getConfig, safeJsonParse, color, success, warn, error, info } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -464,7 +464,7 @@ async function main() {
 
   switch (command) {
     case 'scan': {
-      console.log('\n' + color('cyan', '🔍 Registry Manager — Scanning all active registries...') + '\n');
+      info('Registry Manager — Scanning all active registries...');
       const results = await manager.scanAll();
 
       console.log('\n' + color('cyan', '━'.repeat(50)));

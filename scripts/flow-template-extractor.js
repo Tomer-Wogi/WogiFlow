@@ -18,9 +18,9 @@
  *   --json               JSON output for scripting
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 // ============================================================================
 // Constants
@@ -77,15 +77,7 @@ const IGNORE_PATTERNS = [
 ];
 
 // Colors for CLI
-const c = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  bold: '\x1b[1m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  cyan: '\x1b[36m',
-  red: '\x1b[31m'
-};
+const { colors: c } = require('./flow-output');
 
 // ============================================================================
 // File Classification
@@ -142,7 +134,7 @@ function classifyProjectFiles(projectRoot) {
     let content;
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
+    } catch (_err) {
       continue;
     }
 
@@ -175,7 +167,7 @@ function getSourceFiles(projectRoot) {
     let entries;
     try {
       entries = fs.readdirSync(path.join(projectRoot, dir), { withFileTypes: true });
-    } catch {
+    } catch (_err) {
       return;
     }
 
@@ -217,13 +209,13 @@ function getGitFileDate(projectRoot, filePath) {
     if (!isNaN(timestamp) && timestamp > 0) {
       return new Date(timestamp * 1000);
     }
-  } catch {
+  } catch (_err) {
     // Not a git repo or file not tracked
   }
 
   try {
     return fs.statSync(path.join(projectRoot, filePath)).mtime;
-  } catch {
+  } catch (_err) {
     return new Date(0);
   }
 }
@@ -371,7 +363,7 @@ function generateTemplate(file, type) {
   const header = [
     `// Template: ${FILE_TYPES[type]?.label || type}`,
     `// Source: ${file.path}`,
-    `// Extracted: ${new Date().toISOString().split('T')[0]}`,
+    `// Extracted: ${getTodayDate()}`,
     `// Lines: ${file.lines} (original) → ${templateLines.length} (template)`,
     '//',
     '// Markers:',
@@ -642,7 +634,7 @@ async function main() {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     }).trim();
-  } catch {
+  } catch (_err) {
     projectRoot = process.cwd();
   }
 

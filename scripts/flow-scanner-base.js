@@ -12,8 +12,8 @@
  * - Type annotation conversion
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -64,7 +64,7 @@ class BaseScanner {
     try {
       this.parser = require('@babel/parser');
       this.traverse = require('@babel/traverse').default;
-    } catch {
+    } catch (_err) {
       // Babel not available, will use regex parsing
     }
   }

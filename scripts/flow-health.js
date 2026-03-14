@@ -11,8 +11,8 @@
  *   flow health --json  JSON output
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -25,24 +25,19 @@ const {
   getLastRequestLogEntry,
   getGitStatus,
   countFiles,
-  color,
-  printSection,
-  printHeader,
-  success,
-  warn,
-  error,
-  info,
   validatePermissions,
   parseFlags,
   outputJson,
   checkSpecMigration,
   safeJsonParse,
+  readJson,
   meetsVersion,
   getFdCommand,
   getConfig
-} = require('./flow-utils');
+} = require('./flow-utils')
+const { color, printSection, printHeader, success, warn, error, info } = require('./flow-output');;
 
-const { execSync, execFileSync } = require('child_process');
+const { execSync, execFileSync } = require('node:child_process');
 
 /**
  * Check Claude Code version and compare against minimum recommended (2.1.23)
@@ -82,7 +77,7 @@ function checkClaudeCodeVersion() {
     const meets2175 = meetsVersion(major, minor, patch, 2, 1, 75);
 
     return { version, meetsMinimum: meetsMin, meets2150, meets2172, meets2173, meets2175 };
-  } catch {
+  } catch (_err) {
     return { version: null, meetsMinimum: true, meets2150: false, meets2172: false, meets2173: false, meets2175: false };
   }
 }
@@ -115,16 +110,16 @@ function main() {
         name: `.workflow/state/${reg.mapFile}`
       });
     }
-  } catch {
+  } catch (_err) {
     // Fallback: just check app-map.md
     requiredFiles.push({ path: PATHS.appMap, name: '.workflow/state/app-map.md' });
   }
 
   for (const file of requiredFiles) {
     if (fileExists(file.path)) {
-      console.log(`  ${color('green', '✓')} ${file.name}`);
+      success(`${file.name}`);
     } else {
-      console.log(`  ${color('red', '✗')} ${file.name} - MISSING`);
+      error(`${file.name} - MISSING`);
       issues++;
     }
   }
@@ -135,15 +130,15 @@ function main() {
     try {
       const config = getConfig();
       cliType = config.cli?.type || 'claude-code';
-    } catch {}
+    } catch (_err) {}
   }
 
   // Only Claude Code is supported
   const rulesFile = { path: path.join(PROJECT_ROOT, 'CLAUDE.md'), name: 'CLAUDE.md' };
   if (fileExists(rulesFile.path)) {
-    console.log(`  ${color('green', '✓')} ${rulesFile.name} (${cliType})`);
+    success(`${rulesFile.name} (${cliType})`);
   } else {
-    console.log(`  ${color('red', '✗')} ${rulesFile.name} - MISSING (${cliType})`);
+    error(`${rulesFile.name} - MISSING (${cliType})`);
     issues++;
   }
 
@@ -151,8 +146,10 @@ function main() {
   try {
     const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
     if (fileExists(pkgPath)) {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-      console.log(`  ${color('green', '✓')} WogiFlow version: ${pkg.version}`);
+      const pkg = readJson(pkgPath, null);
+      if (pkg) {
+        success(`WogiFlow version: ${pkg.version}`);
+      }
     }
   } catch (err) {
     // Non-critical — skip silently
@@ -163,7 +160,7 @@ function main() {
     const versionCheck = checkClaudeCodeVersion();
     if (versionCheck.version) {
       if (versionCheck.meetsMinimum) {
-        console.log(`  ${color('green', '✓')} Claude Code version: ${versionCheck.version}`);
+        success(`Claude Code version: ${versionCheck.version}`);
       } else {
         console.log(`  ${color('yellow', '○')} Claude Code version: ${versionCheck.version} (2.1.23+ recommended)`);
         console.log(`    ${color('dim', '→ Older versions may have silent search failures and shared system issues')}`);
@@ -172,7 +169,7 @@ function main() {
 
       // Report 2.1.50+ features
       if (versionCheck.meets2150) {
-        console.log(`  ${color('green', '✓')} Claude Code 2.1.50+ features available:`);
+        success(`Claude Code 2.1.50+ features available:`);
         console.log(`    ${color('dim', '→ WorktreeCreate/WorktreeRemove hooks')}`);
         console.log(`    ${color('dim', '→ Agent isolation: "worktree" mode')}`);
         console.log(`    ${color('dim', '→ claude agents CLI command')}`);
@@ -186,18 +183,18 @@ function main() {
           }).trim();
           if (agentsOutput) {
             const agentCount = agentsOutput.split('\n').filter(l => l.trim()).length;
-            console.log(`  ${color('green', '✓')} claude agents: ${agentCount} agent(s) configured`);
+            success(`claude agents: ${agentCount} agent(s) configured`);
           } else {
             console.log(`  ${color('dim', '○')} claude agents: no agents configured`);
           }
-        } catch {
+        } catch (_err) {
           console.log(`  ${color('dim', '○')} claude agents: command unavailable`);
         }
       }
 
       // Report 2.1.72+ features
       if (versionCheck.meets2172) {
-        console.log(`  ${color('green', '✓')} Claude Code 2.1.72+ features available:`);
+        success(`Claude Code 2.1.72+ features available:`);
         console.log(`    ${color('dim', '→ ExitWorktree tool for clean worktree exit')}`);
         console.log(`    ${color('dim', '→ Agent model parameter for hybrid routing')}`);
         console.log(`    ${color('dim', '→ /plan description argument')}`);
@@ -207,7 +204,7 @@ function main() {
         // Check for fd/fdfind availability (auto-approved in 2.1.72+)
         const fdCmd = getFdCommand();
         if (fdCmd) {
-          console.log(`  ${color('green', '✓')} ${fdCmd}: available (auto-approved for fast file search)`);
+          success(`${fdCmd}: available (auto-approved for fast file search)`);
         } else {
           console.log(`  ${color('dim', '○')} fd/fdfind: not installed (install for faster file search)`);
         }
@@ -215,15 +212,15 @@ function main() {
         // Check for lsof availability (auto-approved in 2.1.72+)
         try {
           execFileSync('lsof', ['-v'], { stdio: 'pipe', timeout: 3000 });
-          console.log(`  ${color('green', '✓')} lsof: available (auto-approved for diagnostics)`);
-        } catch {
+          success(`lsof: available (auto-approved for diagnostics)`);
+        } catch (_err) {
           console.log(`  ${color('dim', '○')} lsof: not available`);
         }
       }
 
       // Report 2.1.73+ fixes
       if (versionCheck.meets2173) {
-        console.log(`  ${color('green', '✓')} Claude Code 2.1.73+ fixes applied:`);
+        success(`Claude Code 2.1.73+ fixes applied:`);
         console.log(`    ${color('dim', '→ SessionStart hooks fire exactly once on resume')}`);
         console.log(`    ${color('dim', '→ Hook JSON output no longer pollutes context')}`);
         console.log(`    ${color('dim', '→ Subagent model parameter works on Bedrock/Vertex/Foundry')}`);
@@ -232,7 +229,7 @@ function main() {
 
       // Report 2.1.75+ features
       if (versionCheck.meets2175) {
-        console.log(`  ${color('green', '✓')} Claude Code 2.1.75+ features available:`);
+        success(`Claude Code 2.1.75+ features available:`);
         console.log(`    ${color('dim', '→ 1M context window default for Opus (Max/Team/Enterprise)')}`);
         console.log(`    ${color('dim', '→ Accurate token estimation (no thinking/tool_use over-counting)')}`);
         console.log(`    ${color('dim', '→ Relaxed compaction thresholds (safe: 80%, emergency: 92%)')}`);
@@ -258,9 +255,9 @@ function main() {
 
   for (const dir of requiredDirs) {
     if (dirExists(dir.path)) {
-      console.log(`  ${color('green', '✓')} ${dir.name}/`);
+      success(`${dir.name}/`);
     } else {
-      console.log(`  ${color('red', '✗')} ${dir.name}/ - MISSING`);
+      error(`${dir.name}/ - MISSING`);
       issues++;
     }
   }
@@ -277,7 +274,7 @@ function main() {
 
   for (const dir of universalDirs) {
     if (dirExists(dir.path)) {
-      console.log(`  ${color('green', '✓')} ${dir.name}/`);
+      success(`${dir.name}/`);
     } else {
       console.log(`  ${color('yellow', '○')} ${dir.name}/ - not found (run 'flow migrate' to add)`);
       warnings++;
@@ -289,9 +286,9 @@ function main() {
   if (fileExists(registryPath)) {
     const result = validateJson(registryPath);
     if (result.valid) {
-      console.log(`  ${color('green', '✓')} Model registry valid`);
+      success(`Model registry valid`);
     } else {
-      console.log(`  ${color('red', '✗')} Model registry invalid JSON`);
+      error(`Model registry invalid JSON`);
       issues++;
     }
   }
@@ -313,7 +310,7 @@ function main() {
   try {
     const { checkAllDrift } = require('./flow-knowledge-sync');
     driftStatus = checkAllDrift();
-  } catch {
+  } catch (_err) {
     // Knowledge sync not available
   }
 
@@ -322,10 +319,10 @@ function main() {
       // Check sync status if available
       const categoryStatus = driftStatus?.categories?.[file.category];
       if (categoryStatus?.status === 'drifted') {
-        console.log(`  ${color('yellow', '⚠')} ${file.name} - out of sync (${categoryStatus.reason})`);
+        warn(`${file.name} - out of sync (${categoryStatus.reason})`);
         warnings++;
       } else {
-        console.log(`  ${color('green', '✓')} ${file.name}`);
+        success(`${file.name}`);
       }
     } else {
       console.log(`  ${color('yellow', '○')} ${file.name} - not found (run 'flow onboard' to generate)`);
@@ -346,9 +343,9 @@ function main() {
   if (fileExists(PATHS.config)) {
     const result = validateJson(PATHS.config);
     if (result.valid) {
-      console.log(`  ${color('green', '✓')} Valid JSON`);
+      success(`Valid JSON`);
     } else {
-      console.log(`  ${color('red', '✗')} Invalid JSON syntax`);
+      error(`Invalid JSON syntax`);
       issues++;
     }
   }
@@ -360,9 +357,9 @@ function main() {
   if (fileExists(PATHS.ready)) {
     const result = validateJson(PATHS.ready);
     if (result.valid) {
-      console.log(`  ${color('green', '✓')} Valid JSON`);
+      success(`Valid JSON`);
     } else {
-      console.log(`  ${color('red', '✗')} Invalid JSON syntax`);
+      error(`Invalid JSON syntax`);
       issues++;
     }
   }
@@ -388,15 +385,15 @@ function main() {
           if (isProjectRefsMode) {
             const cmdIsNoEmit = !typecheckCmd || typecheckCmd.includes('tsc --noEmit') || typecheckCmd === 'npx tsc --noEmit';
             if (cmdIsNoEmit) {
-              console.log(`  ${color('yellow', '⚠')} TypeScript project references detected but typecheck command may not support them`);
+              warn(`TypeScript project references detected but typecheck command may not support them`);
               console.log(`    ${color('dim', '→ Consider: configure config.scripts.typecheck to use tsc --build --force')}`);
               warnings++;
             } else {
-              console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
+              success(`Typecheck command: ${typecheckCmd}`);
               console.log(`    ${color('dim', '→ Project references mode detected — command appears compatible')}`);
             }
           } else if (typecheckCmd) {
-            console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd}`);
+            success(`Typecheck command: ${typecheckCmd}`);
           } else {
             console.log(`  ${color('yellow', '○')} No typecheck command configured — auto-detection will handle this`);
           }
@@ -404,12 +401,12 @@ function main() {
           console.log(`  ${color('yellow', '○')} Could not parse tsconfig.json: ${err.message}`);
         }
       } else if (typecheckCmd) {
-        console.log(`  ${color('green', '✓')} Typecheck command: ${typecheckCmd} (no tsconfig.json found)`);
+        success(`Typecheck command: ${typecheckCmd} (no tsconfig.json found)`);
       } else {
         console.log(`  ${color('dim', '○')} No tsconfig.json found — typecheck not applicable`);
       }
     } catch (err) {
-      console.log(`  ${color('yellow', '⚠')} Could not check typecheck configuration: ${err.message}`);
+      warn(`Could not check typecheck configuration: ${err.message}`);
       warnings++;
     }
   }
@@ -425,7 +422,7 @@ function main() {
       claudeMdContent = fs.readFileSync(claudeMdPath, 'utf-8');
       claudeMdSize = Buffer.byteLength(claudeMdContent, 'utf-8');
     } catch (err) {
-      console.log(`  ${color('yellow', '⚠')} Could not read CLAUDE.md: ${err.message}`);
+      warn(`Could not read CLAUDE.md: ${err.message}`);
       warnings++;
       claudeMdContent = '';
       claudeMdSize = 0;
@@ -434,9 +431,9 @@ function main() {
 
     // Check CLAUDE.md size (should be under 20KB for reliable loading)
     if (sizeKb <= 20) {
-      console.log(`  ${color('green', '✓')} CLAUDE.md size: ${sizeKb}KB (under 20KB limit)`);
+      success(`CLAUDE.md size: ${sizeKb}KB (under 20KB limit)`);
     } else {
-      console.log(`  ${color('yellow', '⚠')} CLAUDE.md size: ${sizeKb}KB (over 20KB - may get truncated)`);
+      warn(`CLAUDE.md size: ${sizeKb}KB (over 20KB - may get truncated)`);
       warnings++;
     }
 
@@ -447,9 +444,9 @@ function main() {
     );
 
     if (hasEnforcementAtTop) {
-      console.log(`  ${color('green', '✓')} Enforcement section: FOUND at top of CLAUDE.md`);
+      success(`Enforcement section: FOUND at top of CLAUDE.md`);
     } else {
-      console.log(`  ${color('yellow', '⚠')} Enforcement section not found at top of CLAUDE.md`);
+      warn(`Enforcement section not found at top of CLAUDE.md`);
       warnings++;
     }
   }
@@ -461,16 +458,16 @@ function main() {
       try {
         const config = safeJsonParse(PATHS.config, {});
         if (config.enforcement?.strictMode === true) {
-          console.log(`  ${color('green', '✓')} Strict mode: ENABLED`);
+          success(`Strict mode: ENABLED`);
         } else if (config.enforcement?.strictMode === false) {
-          console.log(`  ${color('yellow', '⚠')} Strict mode: DISABLED (Claude may skip task creation)`);
+          warn(`Strict mode: DISABLED (Claude may skip task creation)`);
           warnings++;
         } else {
-          console.log(`  ${color('yellow', '⚠')} Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
+          warn(`Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
           warnings++;
         }
       } catch (err) {
-        console.log(`  ${color('yellow', '⚠')} Could not parse config.json for strict mode check`);
+        warn(`Could not parse config.json for strict mode check`);
         warnings++;
       }
     }
@@ -489,14 +486,14 @@ function main() {
     console.log(`  Components in app-map: ${mappedCount}`);
 
     if (componentCount > mappedCount + 5) {
-      console.log(`  ${color('yellow', '⚠')} App-map may be out of sync`);
+      warn(`App-map may be out of sync`);
       console.log('    Run: ./scripts/flow update-map scan src/components');
       warnings++;
     } else {
-      console.log(`  ${color('green', '✓')} App-map appears in sync`);
+      success(`App-map appears in sync`);
     }
   } else {
-    console.log(`  ${color('yellow', '⚠')} src/components/ not found (may be OK for new projects)`);
+    warn(`src/components/ not found (may be OK for new projects)`);
   }
 
   // Check permission rules (Claude Code specific)
@@ -516,18 +513,18 @@ function main() {
 
       // Show duplicates (warning)
       if (validation.analysis.duplicates.length > 0) {
-        console.log(`  ${color('yellow', '⚠')} ${validation.analysis.duplicates.length} duplicate rule(s) found`);
+        warn(`${validation.analysis.duplicates.length} duplicate rule(s) found`);
         for (const dup of validation.analysis.duplicates.slice(0, 3)) {
           console.log(`    - ${dup}`);
         }
         warnings++;
       } else {
-        console.log(`  ${color('green', '✓')} No duplicate rules`);
+        success(`No duplicate rules`);
       }
 
       // Show overly broad rules (issue)
       if (validation.analysis.overbroad.length > 0) {
-        console.log(`  ${color('yellow', '⚠')} ${validation.analysis.overbroad.length} overly broad rule(s)`);
+        warn(`${validation.analysis.overbroad.length} overly broad rule(s)`);
         for (const ob of validation.analysis.overbroad) {
           console.log(`    - ${ob}`);
         }
@@ -541,13 +538,13 @@ function main() {
 
       // Check for respectGitignore
       if (settings.respectGitignore === true) {
-        console.log(`  ${color('green', '✓')} respectGitignore: enabled`);
+        success(`respectGitignore: enabled`);
       } else {
         console.log(`  ${color('yellow', '○')} respectGitignore: not set`);
       }
 
     } catch (err) {
-      console.log(`  ${color('yellow', '⚠')} Could not parse settings.local.json`);
+      warn(`Could not parse settings.local.json`);
       warnings++;
     }
   } else {
@@ -609,37 +606,37 @@ function main() {
       }
 
       if (hasEnterPlanMode) {
-        console.log(`  ${color('green', '✓')} PreToolUse matcher includes EnterPlanMode`);
+        success(`PreToolUse matcher includes EnterPlanMode`);
       } else {
-        console.log(`  ${color('red', '✗')} PreToolUse matcher MISSING EnterPlanMode — Claude can bypass /wogi-start`);
+        error(`PreToolUse matcher MISSING EnterPlanMode — Claude can bypass /wogi-start`);
         console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate hooks")}`);
         issues++;
       }
 
       if (hasCorrectMatcher) {
-        console.log(`  ${color('green', '✓')} PreToolUse matcher has core tools (Edit|Write|Bash|Skill)`);
+        success(`PreToolUse matcher has core tools (Edit|Write|Bash|Skill)`);
       } else if (preToolHooks.length > 0) {
-        console.log(`  ${color('yellow', '⚠')} PreToolUse matcher may be outdated — missing core tools`);
+        warn(`PreToolUse matcher may be outdated — missing core tools`);
         console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate hooks")}`);
         warnings++;
       }
 
       if (hookScriptsMissing.length > 0) {
-        console.log(`  ${color('red', '✗')} ${hookScriptsMissing.length} hook script(s) MISSING:`);
+        error(`${hookScriptsMissing.length} hook script(s) MISSING:`);
         for (const missing of hookScriptsMissing.slice(0, 5)) {
           console.log(`    - ${missing}`);
         }
         console.log(`    ${color('dim', "→ Run 'npm install -D wogiflow' or 'flow init' to restore scripts")}`);
         issues++;
       } else if (preToolHooks.length > 0) {
-        console.log(`  ${color('green', '✓')} All hook scripts exist`);
+        success(`All hook scripts exist`);
       }
     } catch (err) {
-      console.log(`  ${color('yellow', '⚠')} Could not parse settings.local.json for hooks: ${err.message}`);
+      warn(`Could not parse settings.local.json for hooks: ${err.message}`);
       warnings++;
     }
   } else {
-    console.log(`  ${color('yellow', '⚠')} .claude/settings.local.json not found — hooks not configured`);
+    warn(`.claude/settings.local.json not found — hooks not configured`);
     console.log(`    ${color('dim', "→ Run 'flow bridge sync' to generate hooks")}`);
     warnings++;
   }
@@ -654,9 +651,9 @@ function main() {
         claudeContent.includes('MANDATORY')
       );
       if (hasRouting) {
-        console.log(`  ${color('green', '✓')} CLAUDE.md contains routing instructions`);
+        success(`CLAUDE.md contains routing instructions`);
       } else {
-        console.log(`  ${color('red', '✗')} CLAUDE.md has NO routing instructions — Claude will bypass /wogi-start`);
+        error(`CLAUDE.md has NO routing instructions — Claude will bypass /wogi-start`);
         console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate CLAUDE.md from template")}`);
         issues++;
       }
@@ -673,12 +670,12 @@ function main() {
     const { checkGitignoreHealth } = require('./flow-gitignore');
     const gitignoreHealth = checkGitignoreHealth();
     if (gitignoreHealth.ok) {
-      console.log(`  ${color('green', '✓')} All required .gitignore entries present`);
+      success(`All required .gitignore entries present`);
     } else {
       for (const m of gitignoreHealth.missing) {
-        console.log(`  ${color('yellow', '⚠')} Missing: ${m.pattern} (${m.description})`);
+        warn(`Missing: ${m.pattern} (${m.description})`);
       }
-      console.log(`  ${color('yellow', '⚠')} Run: node scripts/flow-gitignore.js sync`);
+      warn(`Run: node scripts/flow-gitignore.js sync`);
       warnings += gitignoreHealth.missing.length;
     }
   } catch (err) {
@@ -692,13 +689,13 @@ function main() {
   const git = getGitStatus();
   if (git.isRepo) {
     if (git.clean) {
-      console.log(`  ${color('green', '✓')} Working directory clean`);
+      success(`Working directory clean`);
     } else {
-      console.log(`  ${color('yellow', '⚠')} ${git.uncommitted} uncommitted changes`);
+      warn(`${git.uncommitted} uncommitted changes`);
       warnings++;
     }
   } else {
-    console.log(`  ${color('yellow', '⚠')} Not a git repository`);
+    warn(`Not a git repository`);
     warnings++;
   }
 
@@ -729,9 +726,9 @@ function main() {
   for (const agent of coreAgents) {
     const agentPath = path.join(agentsDir, `${agent}.md`);
     if (fileExists(agentPath)) {
-      console.log(`  ${color('green', '✓')} ${agent}.md`);
+      success(`${agent}.md`);
     } else {
-      console.log(`  ${color('red', '✗')} ${agent}.md - MISSING (core agent)`);
+      error(`${agent}.md - MISSING (core agent)`);
       issues++;
     }
   }
@@ -739,7 +736,7 @@ function main() {
   for (const agent of optionalAgents) {
     const agentPath = path.join(agentsDir, `${agent}.md`);
     if (fileExists(agentPath)) {
-      console.log(`  ${color('green', '✓')} ${agent}.md (optional)`);
+      success(`${agent}.md (optional)`);
     }
   }
 
@@ -748,11 +745,11 @@ function main() {
   console.log('========================');
 
   if (issues === 0 && warnings === 0) {
-    console.log(color('green', '✓ Workflow is healthy!'));
+    success('Workflow is healthy!');
   } else if (issues === 0) {
-    console.log(color('yellow', `⚠ ${warnings} warning(s), but no critical issues`));
+    warn(`${warnings} warning(s), but no critical issues`);
   } else {
-    console.log(color('red', `✗ ${issues} issue(s), ${warnings} warning(s)`));
+    error(`${issues} issue(s), ${warnings} warning(s)`);
     console.log('');
     console.log("Run './scripts/flow init' to fix missing files");
   }
@@ -790,7 +787,7 @@ function loadManifest() {
   if (fileExists(manifestPath)) {
     try {
       return safeJsonParse(manifestPath, null);
-    } catch {
+    } catch (_err) {
       return null;
     }
   }
@@ -817,7 +814,7 @@ function deepAudit(flags = {}) {
 
   for (const dir of expectedDirs) {
     if (dirExists(dir.path) && isDirEmpty(dir.path)) {
-      console.log(`  ${color('yellow', '⚠')} ${dir.name}`);
+      warn(`${dir.name}`);
       console.log(`      Purpose: ${dir.purpose}`);
       console.log(`      Action: Run the feature or document why empty`);
       issues.push({
@@ -829,7 +826,7 @@ function deepAudit(flags = {}) {
       });
     } else if (dirExists(dir.path)) {
       const count = fs.readdirSync(dir.path).filter(f => f !== '.gitkeep').length;
-      console.log(`  ${color('green', '✓')} ${dir.name} (${count} files)`);
+      success(`${dir.name} (${count} files)`);
     } else {
       console.log(`  ${color('dim', '○')} ${dir.name} (not created)`);
     }
@@ -842,7 +839,7 @@ function deepAudit(flags = {}) {
   const specMigrations = checkSpecMigration();
   if (specMigrations.length > 0) {
     for (const file of specMigrations) {
-      console.log(`  ${color('yellow', '⚠')} ${file.name}.md`);
+      warn(`${file.name}.md`);
       console.log(`      Current: state/${file.name}.md`);
       console.log(`      Should be: specs/${file.name}.md`);
       console.log(`      Action: Run 'flow migrate specs'`);
@@ -856,7 +853,7 @@ function deepAudit(flags = {}) {
       });
     }
   } else {
-    console.log(`  ${color('green', '✓')} All spec files in correct location`);
+    success(`All spec files in correct location`);
   }
 
   // 3. Check rules structure
@@ -872,9 +869,9 @@ function deepAudit(flags = {}) {
       const subdirs = fs.readdirSync(rulesDir, { withFileTypes: true })
         .filter(e => e.isDirectory())
         .map(e => e.name);
-      console.log(`  ${color('green', '✓')} Categorized structure (${subdirs.join(', ')})`);
+      success(`Categorized structure (${subdirs.join(', ')})`);
     } else {
-      console.log(`  ${color('yellow', '⚠')} Flat structure (${ruleFiles.length} files, no subdirs)`);
+      warn(`Flat structure (${ruleFiles.length} files, no subdirs)`);
       console.log(`      Suggestion: Organize into code-style/, security/, architecture/`);
       issues.push({
         type: 'unstructured',
@@ -904,9 +901,9 @@ function deepAudit(flags = {}) {
     const skillExists = fileExists(path.join(PROJECT_ROOT, feature.skill));
 
     if (scriptExists && folderExists) {
-      console.log(`  ${color('green', '✓')} ${feature.name}: script + folder`);
+      success(`${feature.name}: script + folder`);
     } else if (scriptExists && !folderExists) {
-      console.log(`  ${color('yellow', '⚠')} ${feature.name}: script exists but folder missing`);
+      warn(`${feature.name}: script exists but folder missing`);
       issues.push({
         type: 'missing_folder',
         severity: 'warning',
@@ -914,7 +911,7 @@ function deepAudit(flags = {}) {
         message: `Script exists but ${feature.folder} missing`
       });
     } else if (!scriptExists && folderExists) {
-      console.log(`  ${color('yellow', '⚠')} ${feature.name}: folder exists but no script`);
+      warn(`${feature.name}: folder exists but no script`);
       issues.push({
         type: 'missing_script',
         severity: 'warning',
@@ -931,11 +928,11 @@ function deepAudit(flags = {}) {
   printSection('Folder Manifest');
 
   if (manifest) {
-    console.log(`  ${color('green', '✓')} manifest.json found`);
+    success(`manifest.json found`);
     const folderCount = Object.keys(manifest.folders || {}).length;
     console.log(`      ${folderCount} folder(s) documented`);
   } else {
-    console.log(`  ${color('yellow', '⚠')} manifest.json not found`);
+    warn(`manifest.json not found`);
     console.log(`      Suggestion: Create .workflow/manifest.json to document folder purposes`);
     issues.push({
       type: 'missing_manifest',

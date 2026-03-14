@@ -15,23 +15,14 @@
 
 const { handleInstructionsLoaded } = require('../../core/instructions-loaded');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
 
 process.stdin.setEncoding('utf8');
 
 async function main() {
   try {
-    // Read input from stdin with size limit (matches pre-tool-use.js pattern)
-    const MAX_STDIN_SIZE = 100 * 1024;
-    let inputData = '';
-    let totalSize = 0;
-    for await (const chunk of process.stdin) {
-      totalSize += chunk.length;
-      if (totalSize > MAX_STDIN_SIZE) break;
-      inputData += chunk;
-    }
-
-    const input = inputData ? safeJsonParseString(inputData, {}) : {};
+    const { input: parsedStdin } = await readHookInput();
+    const input = parsedStdin || {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
     const projectRoot = parsedInput.cwd || process.cwd();
 

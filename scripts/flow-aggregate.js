@@ -14,9 +14,9 @@
  *   flow aggregate --promote    # Interactive promotion wizard
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -431,7 +431,7 @@ function appendToDecisions(pattern) {
   const decisionsPath = PATHS.decisions;
   let content = readFile(decisionsPath, '# Decisions\n\n');
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const entry = `\n## ${date} - Promoted Pattern\n\n**Rule**: ${pattern}\n**Source**: Aggregated from learnings (3+ occurrences)\n\n`;
 
   content += entry;
@@ -453,7 +453,7 @@ function appendToAgent(agentName, pattern) {
   }
 
   let content = readFile(agentPath, '');
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const entry = `\n\n## Learned Pattern (${date})\n\n${pattern}\n`;
 
   content += entry;

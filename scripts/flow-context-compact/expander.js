@@ -13,7 +13,7 @@
  * 4. Clean up old expansions when context pressure increases
  */
 
-const path = require('path');
+const path = require('node:path');
 const { getConfig, readJson, writeJson, ensureDir, PATHS } = require('../flow-utils');
 const { loadTree, saveTree, estimateTokens, calculateTreeTokens } = require('./summary-tree');
 const { scoreNodeRelevance, extractKeywords } = require('./section-extractor');
@@ -29,7 +29,7 @@ const EXPANSION_STATE_PATH = path.join(PATHS.state, 'context-expansions.json');
  * @returns {Object} Expansion state
  */
 function loadExpansionState() {
-  const fs = require('fs');
+  const fs = require('node:fs');
   const defaultState = {
     expandedNodes: {},  // nodeId -> { expandedAt, tokens, reason }
     totalExpanded: 0,
@@ -43,7 +43,7 @@ function loadExpansionState() {
   try {
     const state = readJson(EXPANSION_STATE_PATH);
     return state || defaultState;
-  } catch {
+  } catch (_err) {
     return defaultState;
   }
 }

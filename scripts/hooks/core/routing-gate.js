@@ -13,8 +13,8 @@
  * - Fail-open: routing gate is a convenience enforcement, not a hard security boundary
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { getConfig, getReadyData, PATHS, safeJsonParseString } = require('../../flow-utils');
 
@@ -101,10 +101,10 @@ function isRoutingRecentlyCleared() {
         return true;
       }
       // Stale marker — clean up
-      try { fs.unlinkSync(ROUTING_CLEARED_PATH); } catch { /* ignore */ }
+      try { fs.unlinkSync(ROUTING_CLEARED_PATH); } catch (_err) { /* ignore */ }
     }
     return false;
-  } catch {
+  } catch (_err) {
     // ENOENT (no marker) or any other error — treat as not cleared.
     // Fail-open here is correct: if we can't confirm routing was cleared,
     // the routing gate should enforce normally rather than silently bypassing.
@@ -256,10 +256,10 @@ function isRoutingPending() {
       const stat = fs.statSync(ROUTING_FLAG_PATH);
       const age = Date.now() - stat.mtimeMs;
       if (age > ROUTING_FLAG_TTL_MS) {
-        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (_err) { /* ignore */ }
         return false; // Stale flag — don't block
       }
-    } catch {
+    } catch (_err) {
       // statSync also failed — truly can't access the file
     }
     return true;
@@ -345,7 +345,7 @@ function incrementStopAttempts(maxAttempts = 10) {
     const attempts = (Number.isFinite(rawAttempts) && rawAttempts >= 0 ? Math.floor(rawAttempts) : 0) + 1;
     if (attempts >= maxAttempts) {
       // Max retries reached — clear flag to prevent infinite loop
-      try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch { /* ignore */ }
+      try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (_err) { /* ignore */ }
       if (process.env.DEBUG) {
         console.error(`[routing-gate] Max stop attempts (${maxAttempts}) reached, clearing flag`);
       }

@@ -7,20 +7,17 @@
  * v3.1: Integrates spec verification and multi-pass review system.
  */
 
-const { execFileSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const {
+  execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
   getConfig,
-  color,
-  success,
-  warn,
-  error,
-  info,
   isPathWithinProject
-} = require('./flow-utils');
+} = require('./flow-utils')
+const { color, success, warn, error, info } = require('./flow-output');;
 
 // v3.1 spec verification
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
@@ -606,10 +603,10 @@ Configure in config.json under review.autoMultiPass.
   // If verify-only, stop here with appropriate exit code
   if (verifyOnly) {
     if (gateResults && !gateResults.allPassed) {
-      console.log(color('yellow', '⚠ Verification complete with failures.'));
+      warn('Verification complete with failures.');
       process.exit(1);
     }
-    console.log(color('green', '✓ Verification complete.'));
+    success('Verification complete.');
     process.exit(0);
   }
 
@@ -631,7 +628,7 @@ Configure in config.json under review.autoMultiPass.
   // Run multi-pass review if needed
   if (useMultiPass) {
     if (!multiPassReview) {
-      console.log(color('red', '✗ Multi-pass review module not available.'));
+      error('Multi-pass review module not available.');
       process.exit(1);
     }
 
@@ -685,7 +682,7 @@ Configure in config.json under review.autoMultiPass.
 
     if (taskAlreadyPassed) {
       // Task already passed standards check at completion
-      console.log(color('green', '✓ Standards check: Passed at task completion (skipping redundant check)'));
+      success('Standards check: Passed at task completion (skipping redundant check)');
       console.log(color('dim', '  Task passed standards compliance during wogi-start execution.'));
     } else {
       console.log(color('cyan', 'Running project standards compliance check...'));

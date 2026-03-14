@@ -11,16 +11,12 @@
 
 const { handleSetup, handleMaintenance } = require('../../core/setup-handler');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
+const { readHookInput } = require('../shared/read-stdin');
 
 async function main() {
   try {
-    // Read input from stdin
-    let inputData = '';
-    for await (const chunk of process.stdin) {
-      inputData += chunk;
-    }
-
-    const input = inputData ? JSON.parse(inputData) : {};
+    const { input: parsedStdin } = await readHookInput();
+    const input = parsedStdin || {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // Determine what type of setup event this is

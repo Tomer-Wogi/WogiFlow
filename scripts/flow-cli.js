@@ -22,9 +22,10 @@
  *   cli.fail('Something went wrong', 1);
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { colors: c, parseFlags: utilsParseFlags } = require('./flow-utils');
+const { success: outputSuccess, warn: outputWarn, error: outputError, info: outputInfo } = require('./flow-output');
 
 // Exit codes
 const EXIT_CODES = {
@@ -110,7 +111,7 @@ function success(message, data = {}) {
   if (globalOptions.json) {
     output({ success: true, message, ...data });
   } else if (!globalOptions.quiet) {
-    console.log(`${color('green')}✅ ${message}${color('reset')}`);
+    outputSuccess(message);
   }
 }
 
@@ -121,7 +122,7 @@ function warn(message, data = {}) {
   if (globalOptions.json) {
     output({ success: true, warning: message, ...data });
   } else if (!globalOptions.quiet) {
-    console.log(`${color('yellow')}⚠️  ${message}${color('reset')}`);
+    outputWarn(message);
   }
 }
 
@@ -132,7 +133,7 @@ function error(message, data = {}) {
   if (globalOptions.json) {
     output({ success: false, error: message, ...data }, { json: true });
   } else {
-    console.error(`${color('red')}❌ ${message}${color('reset')}`);
+    outputError(message);
   }
 }
 
@@ -141,7 +142,7 @@ function error(message, data = {}) {
  */
 function info(message) {
   if (!globalOptions.json && !globalOptions.quiet) {
-    console.log(`${color('cyan')}ℹ ${color('reset')}${message}`);
+    outputInfo(message);
   }
 }
 
@@ -222,12 +223,12 @@ function spinner(label) {
     succeed: (msg) => {
       running = false;
       clearInterval(interval);
-      console.log(`\r${color('green')}✅${color('reset')} ${msg || label}`);
+      success(msg || label);
     },
     fail: (msg) => {
       running = false;
       clearInterval(interval);
-      console.log(`\r${color('red')}❌${color('reset')} ${msg || label}`);
+      error(msg || label);
     }
   };
 }

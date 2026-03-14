@@ -11,8 +11,8 @@
  *   await runSteps('afterTask', { taskId: 'TASK-001', files: [...] });
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, colors, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();

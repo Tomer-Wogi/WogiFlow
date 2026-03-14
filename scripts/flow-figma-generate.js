@@ -17,10 +17,17 @@
  *   flow figma generate                    # Use saved decisions
  */
 
-const fs = require('fs');
-const path = require('path');
-const { detectFramework } = require('./flow-figma-index');
-const { getProjectRoot, getConfig, addRequestLogEntry, addAppMapComponent } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  detectFramework } = require('./flow-figma-index');
+const { getProjectRoot,
+  getConfig,
+  addRequestLogEntry,
+  addAppMapComponent,
+  readJson
+} = require('./flow-utils')
+const { error, info } = require('./flow-output');;
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -239,10 +246,7 @@ class CodeGenerator {
   }
 
   loadRegistry() {
-    if (fs.existsSync(REGISTRY_PATH)) {
-      return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
-    }
-    return { components: [] };
+    return readJson(REGISTRY_PATH, { components: [] });
   }
 
   generate() {
@@ -581,7 +585,7 @@ async function main() {
   let decisionsPath = input || DECISIONS_PATH;
 
   if (!fs.existsSync(decisionsPath)) {
-    console.error(`❌ Decisions file not found: ${decisionsPath}`);
+    error(`Decisions file not found: ${decisionsPath}`);
     console.error(`   Run "flow figma confirm" first to create decisions.`);
     process.exit(1);
   }
@@ -605,7 +609,7 @@ Framework: ${output.framework}
 `);
 
   if (output.imports.length > 0) {
-    console.log(`📦 Components to Import (${output.imports.length}):`);
+    info(`� Components to Import (${output.imports.length}):`);
     output.imports.forEach(i => {
       console.log(`   • ${i.componentName} → ${i.usage}`);
     });
@@ -621,7 +625,7 @@ Framework: ${output.framework}
   }
 
   if (output.newComponents.length > 0) {
-    console.log(`🆕 New Components to Create (${output.newComponents.length}):`);
+    info(`� New Components to Create (${output.newComponents.length}):`);
     output.newComponents.forEach(c => {
       console.log(`   • ${c.componentName} → ${c.suggestedPath}`);
     });
@@ -631,7 +635,7 @@ Framework: ${output.framework}
   // Save output
   const outputPath = path.join(WORKFLOW_DIR, 'state', 'figma-output.json');
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
-  console.log(`📄 Full output saved to: ${path.relative(PROJECT_ROOT, outputPath)}`);
+  info(`� Full output saved to: ${path.relative(PROJECT_ROOT, outputPath)}`);
 
   // Print prompts for new components
   if (output.prompts.length > 0) {
@@ -684,7 +688,7 @@ ${'─'.repeat(70)}
       if (added) addedCount++;
     }
     if (addedCount > 0) {
-      console.log(`📋 Added ${addedCount} component(s) to app-map.md`);
+      info(`� Added ${addedCount} component(s) to app-map.md`);
     }
   }
 }

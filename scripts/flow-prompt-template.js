@@ -13,8 +13,8 @@
  * Part of S4: Hybrid Mode + Prompt Templates
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -232,7 +232,7 @@ function substituteVariables(text, variables) {
 
   return text.replace(/\{(\w+)\}/g, (match, key) => {
     if (BLOCKED_KEYS.has(key)) return match;
-    if (!Object.prototype.hasOwnProperty.call(variables, key)) return match;
+    if (!Object.hasOwn(variables, key)) return match;
     return String(variables[key] || '');
   });
 }

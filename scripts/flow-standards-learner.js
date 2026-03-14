@@ -10,8 +10,8 @@
  * - Syncs rules to .claude/rules/ directory
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
@@ -222,7 +222,7 @@ function recordViolationPattern(learning) {
     : getDefaultFeedbackPatternsContent();
 
   // Check if pattern already exists in table
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = getTodayDate();
   const patternRegex = new RegExp(`\\|\\s*[\\d-]+\\s*\\|\\s*${patternKey.replace(/[-]/g, '[-]?')}\\s*\\|\\s*(\\d+)\\s*\\|`, 'i');
 
   if (patternRegex.test(content)) {
@@ -334,7 +334,7 @@ function promoteToDecisions(learning, count) {
   const nextSectionIdx = content.indexOf('\n## ', sectionIdx + targetSection.length);
 
   // Build the rule entry
-  const dateStr = new Date().toISOString().split('T')[0];
+  const dateStr = getTodayDate();
   const ruleEntry = `
 
 ### ${learning.patternName} (${dateStr})

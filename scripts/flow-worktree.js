@@ -22,11 +22,13 @@
  *   await discardWorktree(worktree);
  */
 
-const { execFileSync, spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const { execFileSync, spawn } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
 const { sanitizeCommitMessage } = require('./flow-security');
+const { readJson } = require('./flow-utils');
+const { success } = require('./flow-output');
 
 // ============================================================
 // Configuration
@@ -83,7 +85,7 @@ function isGitRepo(cwd = process.cwd()) {
   try {
     execFileSync('git', ['rev-parse', '--git-dir'], { cwd, stdio: 'pipe' });
     return true;
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -301,7 +303,7 @@ async function discardWorktree(worktree, options = {}) {
   // Remove the worktree
   try {
     git(['worktree', 'remove', worktreePath, '--force'], { cwd: repoRoot, silent: true });
-  } catch {
+  } catch (_err) {
     // If git remove fails, try manual cleanup
     if (fs.existsSync(worktreePath)) {
       fs.rmSync(worktreePath, { recursive: true, force: true });
@@ -343,9 +345,7 @@ function listWorktrees(repoRoot = process.cwd()) {
       let info = { path: worktreePath, branchName: branch };
 
       if (fs.existsSync(infoPath)) {
-        try {
-          info = JSON.parse(fs.readFileSync(infoPath, 'utf-8'));
-        } catch { /* ignore */ }
+        info = readJson(infoPath, info);
       }
 
       worktrees.push(info);
@@ -374,7 +374,7 @@ async function cleanupStaleWorktrees(repoRoot = process.cwd(), maxAgeMs = 24 * 6
       try {
         await discardWorktree(worktree);
         cleaned.push(worktree.branchName);
-      } catch { /* ignore cleanup errors */ }
+      } catch (_err) { /* ignore cleanup errors */ }
     }
   }
 
@@ -503,7 +503,7 @@ if (require.main === module) {
           process.exit(1);
         }
         await discardWorktree(worktree);
-        console.log(`✅ Discarded worktree: ${branchName}`);
+        success(`Discarded worktree: ${branchName}`);
         break;
       }
 

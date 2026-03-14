@@ -6,10 +6,10 @@
  * Tests the hybrid mode components work together.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
-const { getProjectRoot, getConfig } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const { getProjectRoot, getConfig, error, success } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const TESTS = [];
@@ -27,10 +27,10 @@ async function run() {
   for (const t of TESTS) {
     try {
       await t.fn();
-      console.log(`✅ ${t.name}`);
+      success(`${t.name}`);
       passed++;
     } catch (err) {
-      console.log(`❌ ${t.name}`);
+      error(`${t.name}`);
       console.log(`   Error: ${err.message}`);
       failed++;
     }

@@ -13,16 +13,13 @@
  *   node scripts/flow-setup-hooks.js --status  # Check hook status
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
-  getConfig,
-  color,
-  success,
-  warn,
-  error
-} = require('./flow-utils');
+  getConfig
+} = require('./flow-utils')
+const { color, success, warn, error } = require('./flow-output');;
 
 const PROJECT_ROOT = getProjectRoot();
 const GIT_DIR = path.join(PROJECT_ROOT, '.git');
@@ -210,20 +207,20 @@ function installHooks() {
   try {
     installHook('pre-commit', PRE_COMMIT_HOOK);
     results.push({ name: 'pre-commit', success: true });
-    console.log(`  ${color('green', '✓')} pre-commit hook installed`);
+    success(`pre-commit hook installed`);
   } catch (err) {
     results.push({ name: 'pre-commit', success: false, error: err.message });
-    console.log(`  ${color('red', '✗')} pre-commit: ${err.message}`);
+    error(`pre-commit: ${err.message}`);
   }
 
   // Install post-commit hook
   try {
     installHook('post-commit', POST_COMMIT_HOOK);
     results.push({ name: 'post-commit', success: true });
-    console.log(`  ${color('green', '✓')} post-commit hook installed`);
+    success(`post-commit hook installed`);
   } catch (err) {
     results.push({ name: 'post-commit', success: false, error: err.message });
-    console.log(`  ${color('red', '✗')} post-commit: ${err.message}`);
+    error(`post-commit: ${err.message}`);
   }
 
   console.log('');
@@ -257,9 +254,9 @@ function removeHooks() {
     if (result.skipped) {
       console.log(`  ${color('yellow', '○')} ${hook}: ${result.reason}`);
     } else if (result.restored) {
-      console.log(`  ${color('green', '✓')} ${hook} removed (backup restored)`);
+      success(`${hook} removed (backup restored)`);
     } else if (result.removed) {
-      console.log(`  ${color('green', '✓')} ${hook} removed`);
+      success(`${hook} removed`);
     } else {
       console.log(`  ${color('dim', '-')} ${hook}: not installed`);
     }
@@ -286,7 +283,7 @@ function showStatus() {
     if (!status.installed) {
       console.log(`  ${color('dim', '-')} ${hook}: not installed`);
     } else if (status.managed) {
-      console.log(`  ${color('green', '✓')} ${hook}: installed (Wogi Flow managed)`);
+      success(`${hook}: installed (Wogi Flow managed)`);
     } else {
       console.log(`  ${color('yellow', '○')} ${hook}: installed (external)`);
     }
@@ -299,7 +296,7 @@ function showStatus() {
     const config = getConfig();
     const scanOn = config.componentIndex?.scanOn || [];
     console.log(color('dim', 'Config: componentIndex.scanOn = ' + JSON.stringify(scanOn)));
-  } catch {
+  } catch (_err) {
     console.log(color('dim', 'Config: Unable to read'));
   }
 }

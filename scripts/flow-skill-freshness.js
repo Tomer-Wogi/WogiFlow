@@ -5,8 +5,8 @@
  * Checks when skills were last updated and flags stale documentation.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getConfig } = require('./flow-config-loader');
 
 // ============================================
@@ -129,7 +129,7 @@ function updateLastDocCheck(skillDir, date) {
   const skillMdPath = path.join(skillDir, 'skill.md');
 
   // Validate date format to prevent YAML injection
-  const dateStr = date || new Date().toISOString().split('T')[0];
+  const dateStr = date || getTodayDate();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     console.error(`Invalid date format: ${dateStr} (expected YYYY-MM-DD)`);
     return;

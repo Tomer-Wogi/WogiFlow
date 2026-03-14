@@ -1,6 +1,6 @@
 {
   "name": "wogiflow",
-  "version": "1.9.10",
+  "version": "2.0.0",
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
@@ -9,6 +9,8 @@
   },
   "scripts": {
     "flow": "./scripts/flow",
+    "test": "NODE_ENV=test node --test tests/auto-compact-prompt.test.js tests/flow-paths.test.js tests/flow-io.test.js tests/flow-config-loader.test.js tests/flow-damage-control.test.js tests/flow-output.test.js tests/flow-constants.test.js tests/flow-session-state.test.js tests/flow-hooks-integration.test.js tests/flow-utils.test.js tests/flow-security.test.js tests/flow-memory-db.test.js tests/flow-durable-session.test.js tests/flow-skill-matcher.test.js tests/flow-bridge.test.js tests/flow-proactive-compact.test.js tests/flow-cascade-completion.test.js && NODE_ENV=test node tests/run-quality-gates.test.js",
+    "test:syntax": "find scripts/ lib/ -name '*.js' -not -path '*/node_modules/*' -exec node --check {} +",
     "postinstall": "node scripts/postinstall.js",
     "preuninstall": "node scripts/preuninstall.js"
   },
@@ -59,7 +61,12 @@
     "sql.js": "^1.14.1"
   },
   "optionalDependencies": {
+    "@babel/parser": "^7.29.0",
+    "@babel/traverse": "^7.29.0",
     "@xenova/transformers": "^2.15.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

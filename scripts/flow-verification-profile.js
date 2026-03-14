@@ -22,9 +22,9 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 
@@ -652,21 +652,17 @@ function detectCI() {
 
 /**
  * Detect package manager.
+ * Delegates to the canonical detectPackageManager() from flow-script-resolver
+ * and enriches with lockFile info for the verification profile.
  * @returns {object} packageManager profile section
  */
 function detectPackageManager() {
-  for (const [manager, lockFile] of Object.entries(LOCK_FILES)) {
-    if (existsInProject(lockFile)) {
-      return {
-        detected: manager,
-        lockFile
-      };
-    }
-  }
-
+  const { detectPackageManager: detectPM } = require('./flow-script-resolver');
+  const manager = detectPM();
+  const lockFile = LOCK_FILES[manager] || null;
   return {
-    detected: 'npm',
-    lockFile: null
+    detected: manager,
+    lockFile: existsInProject(lockFile) ? lockFile : null
   };
 }
 
@@ -921,32 +917,32 @@ function hasCapability(profile, capability) {
 // ============================================================
 
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
   const command = args[0] || 'probe';
 
   if (command === 'probe') {
     console.log('Probing project for verification capabilities...');
-    probeProject()
-      .then((profile) => {
-        console.log('');
-        console.log(`Profile saved to: ${PROFILE_PATH}`);
-        console.log('');
-        console.log('Detected capabilities:');
-        console.log(`  Test runner: ${profile.testRunner.detected ? `${profile.testRunner.framework} (${profile.testRunner.command})` : 'not detected'}`);
-        console.log(`  E2E: ${profile.e2e.detected ? profile.e2e.framework : 'not detected'}`);
-        console.log(`  API: ${profile.api.detected ? `${profile.api.baseUrl}` : 'not detected'}`);
-        console.log(`  OpenAPI: ${profile.api.openApiSpec || 'not detected'}`);
-        console.log(`  Docker: ${profile.docker.available ? 'available' : 'not available'}`);
-        console.log(`  Database: ${profile.database.detected ? `${profile.database.type} (${profile.database.source})` : 'not detected'}`);
-        console.log(`  Fixtures: ${profile.fixtures.detected ? (profile.fixtures.directory || profile.fixtures.files[0]) : 'not detected'}`);
-        console.log(`  CI: ${profile.ci.detected ? profile.ci.platform : 'not detected'}`);
-        console.log(`  Package manager: ${profile.packageManager.detected}`);
-        console.log(`  Language: ${profile.language.primary}`);
-      })
-      .catch((err) => {
-        console.error(`Probe failed: ${err.message}`);
-        process.exit(1);
-      });
+    try {
+      const profile = await probeProject();
+      console.log('');
+      console.log(`Profile saved to: ${PROFILE_PATH}`);
+      console.log('');
+      console.log('Detected capabilities:');
+      console.log(`  Test runner: ${profile.testRunner.detected ? `${profile.testRunner.framework} (${profile.testRunner.command})` : 'not detected'}`);
+      console.log(`  E2E: ${profile.e2e.detected ? profile.e2e.framework : 'not detected'}`);
+      console.log(`  API: ${profile.api.detected ? `${profile.api.baseUrl}` : 'not detected'}`);
+      console.log(`  OpenAPI: ${profile.api.openApiSpec || 'not detected'}`);
+      console.log(`  Docker: ${profile.docker.available ? 'available' : 'not available'}`);
+      console.log(`  Database: ${profile.database.detected ? `${profile.database.type} (${profile.database.source})` : 'not detected'}`);
+      console.log(`  Fixtures: ${profile.fixtures.detected ? (profile.fixtures.directory || profile.fixtures.files[0]) : 'not detected'}`);
+      console.log(`  CI: ${profile.ci.detected ? profile.ci.platform : 'not detected'}`);
+      console.log(`  Package manager: ${profile.packageManager.detected}`);
+      console.log(`  Language: ${profile.language.primary}`);
+    } catch (err) {
+      console.error(`Probe failed: ${err.message}`);
+      process.exit(1);
+    }
   } else if (command === 'show') {
     const profile = loadProfile();
     if (!profile) {
@@ -974,6 +970,7 @@ if (require.main === module) {
     console.log('  strategy <type>    Show verification strategy for task type');
     process.exit(1);
   }
+  })();
 }
 
 // ============================================================

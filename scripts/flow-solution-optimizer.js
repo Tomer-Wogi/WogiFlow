@@ -16,8 +16,9 @@
  * v1.0 - Initial implementation
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
+const { colors } = require('./flow-output');
 
 // ============================================================
 // Pattern Definitions
@@ -376,11 +377,7 @@ function runOptimizationAnalysis(files) {
 function formatOptimizationResults(results) {
   const lines = [];
 
-  const cyan = '\x1b[36m';
-  const yellow = '\x1b[33m';
-  const green = '\x1b[32m';
-  const dim = '\x1b[2m';
-  const reset = '\x1b[0m';
+  const { cyan, yellow, green, dim, reset } = colors;
 
   lines.push('');
   lines.push(`${cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${reset}`);
@@ -459,10 +456,7 @@ function priorityOrder(priority) {
  * @returns {string} Formatted priority badge
  */
 function formatPriority(priority) {
-  const red = '\x1b[31m';
-  const yellow = '\x1b[33m';
-  const dim = '\x1b[2m';
-  const reset = '\x1b[0m';
+  const { red, yellow, dim, reset } = colors;
 
   switch (priority) {
     case 'High': return `${red}[High]${reset}`;

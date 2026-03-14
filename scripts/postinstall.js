@@ -13,9 +13,9 @@
  * Full setup (config, skills, etc.) is done by the AI via /wogi-init command.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 // Get project root (where npm install was run, not node_modules/wogiflow)
 // Validate INIT_CWD: must be an absolute path that exists (prevents injected values)
@@ -105,7 +105,8 @@ function createMinimalStructure() {
     WORKFLOW_DIR,
     STATE_DIR,
     path.join(WORKFLOW_DIR, 'changes'),
-    path.join(WORKFLOW_DIR, 'specs')
+    path.join(WORKFLOW_DIR, 'specs'),
+    path.join(WORKFLOW_DIR, 'scratch')
   ];
 
   for (const dir of dirs) {
@@ -252,6 +253,10 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
  */
 function rewriteHookPaths(settings) {
   if (!settings || !settings.hooks) return;
+  // Skip rewrite when developing wogiflow itself (PROJECT_ROOT === PACKAGE_ROOT).
+  // In self-development, hooks should use local paths (node scripts/hooks/...)
+  // not package paths (node node_modules/wogiflow/scripts/hooks/...) which don't exist.
+  if (path.resolve(PROJECT_ROOT) === path.resolve(PACKAGE_ROOT)) return;
   for (const hookList of Object.values(settings.hooks)) {
     if (!Array.isArray(hookList)) continue;
     for (const entry of hookList) {

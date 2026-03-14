@@ -14,8 +14,8 @@
  * - Generates learning entries on task completion
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   safeJsonParse,
@@ -307,7 +307,7 @@ function appendClarificationLearning(entry) {
   const clPath = getClarificationsPath();
   ensureDir(path.dirname(clPath));
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
 
   // Build markdown entry
   const markdown = `

@@ -14,7 +14,7 @@
  * 4. Integration (Sonnet, conditional) - Breaking changes, contracts
  */
 
-const path = require('path');
+const path = require('node:path');
 const { getConfig, readJson, writeJson, PATHS, success, warn, error, info } = require('../flow-utils');
 
 // Import pass modules
@@ -387,6 +387,7 @@ module.exports = {
 
 // CLI entry point
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
 
   if (args.includes('--help') || args.includes('-h')) {
@@ -430,18 +431,20 @@ Passes:
   };
 
   // Run review
-  runMultiPassReview(context, {
-    passes: passes || undefined,
-    earlyExitOnCritical: earlyExit,
-    passForward
-  }).then(results => {
+  try {
+    const results = await runMultiPassReview(context, {
+      passes: passes || undefined,
+      earlyExitOnCritical: earlyExit,
+      passForward
+    });
     if (json) {
       console.log(JSON.stringify(results, null, 2));
     } else {
       console.log(formatResults(results));
     }
-  }).catch(err => {
+  } catch (err) {
     error(`Review failed: ${err.message}`);
     process.exit(1);
-  });
+  }
+  })();
 }

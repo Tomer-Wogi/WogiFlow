@@ -13,10 +13,10 @@
  *    - Warns if local version is outdated
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const { PATHS, meetsVersion } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
+const { PATHS, meetsVersion, readJson } = require('./flow-utils');
 
 const VERSION_CHECK_PATH = path.join(PATHS.state, '.version-check.json');
 
@@ -58,14 +58,8 @@ function readLastCheck() {
  * Save the version check result.
  */
 function saveCheck(version) {
-  let wogiflowVersion = 'unknown';
-  try {
-    const pkgPath = path.join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    wogiflowVersion = pkg.version || 'unknown';
-  } catch (err) {
-    // non-critical
-  }
+  const savePkg = readJson(path.join(__dirname, '..', 'package.json'), null);
+  const wogiflowVersion = savePkg?.version || 'unknown';
 
   const data = {
     version: version,
@@ -95,14 +89,8 @@ function checkClaudeCodeVersionOnce() {
   // Check if we already ran since last install/update
   const lastCheck = readLastCheck();
 
-  let wogiflowVersion = 'unknown';
-  try {
-    const pkgPath = path.join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    wogiflowVersion = pkg.version || 'unknown';
-  } catch (err) {
-    // non-critical
-  }
+  const oncePkg = readJson(path.join(__dirname, '..', 'package.json'), null);
+  const wogiflowVersion = oncePkg?.version || 'unknown';
 
   // Skip if already checked for this WogiFlow version
   if (lastCheck && lastCheck.wogiflowVersion === wogiflowVersion) {
@@ -138,6 +126,10 @@ function checkClaudeCodeVersionOnce() {
   // 2.1.75+: 1M context default (Max/Team/Enterprise), accurate token estimation,
   //          async hook completion suppressed by default, hook source in permission prompts,
   //          memory file last-modified timestamps
+  // 2.1.76+: PostCompact hook (state recovery after compaction), Elicitation/ElicitationResult hooks
+  //          (MCP structured input), worktree.sparsePaths (sparse checkout for monorepos),
+  //          /effort slash command, deferred tools schema fix after compaction,
+  //          auto-compaction circuit breaker (3 retries), background agent partial results preserved
 
   return null;
 }
@@ -152,13 +144,8 @@ const UPDATE_CHECK_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
  * @returns {string} Version string or 'unknown'
  */
 function getLocalWogiFlowVersion() {
-  try {
-    const pkgPath = path.join(__dirname, '..', 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    return pkg.version || 'unknown';
-  } catch (err) {
-    return 'unknown';
-  }
+  const pkg = readJson(path.join(__dirname, '..', 'package.json'), null);
+  return pkg?.version || 'unknown';
 }
 
 /**

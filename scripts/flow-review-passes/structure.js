@@ -15,7 +15,7 @@
  * - Export patterns
  */
 
-const path = require('path');
+const path = require('node:path');
 const { readFile, PATHS, getConfig } = require('../flow-utils');
 
 /**
@@ -129,7 +129,7 @@ function loadProjectPatterns() {
     }
 
     return patterns;
-  } catch {
+  } catch (_err) {
     return [];
   }
 }

@@ -14,9 +14,9 @@
  *   flow regression --count N    # Test N random tasks
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
 const { getExecParts, getCommand } = require('./flow-script-resolver');
 
@@ -92,7 +92,7 @@ function findTestFiles(taskId, taskData) {
     let logContent;
     try {
       logContent = fs.readFileSync(logPath, 'utf8');
-    } catch {
+    } catch (_err) {
       return [...new Set(testFiles)]; // Dedupe and return what we have
     }
     // Escape special regex characters in taskId
@@ -219,7 +219,7 @@ function detectTestRunner(testFiles) {
         }
         return null; // No test runner detected — caller should handle gracefully
       }
-    } catch {
+    } catch (_err) {
       // package.json is malformed, fall through to default
     }
   }
@@ -357,6 +357,7 @@ async function runRegressionTests(options = {}) {
 
 // CLI handling
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
 
   const options = {
@@ -415,16 +416,16 @@ Exit codes:
 
   const onFailure = options.onFailure || getConfig().regressionTesting?.onFailure || 'warn';
 
-  runRegressionTests(options)
-    .then(result => {
-      if (!result.success && onFailure === 'block') {
-        process.exit(1);
-      }
-    })
-    .catch(err => {
-      log('red', `Error: ${err.message}`);
+  try {
+    const result = await runRegressionTests(options);
+    if (!result.success && onFailure === 'block') {
       process.exit(1);
-    });
+    }
+  } catch (err) {
+    log('red', `Error: ${err.message}`);
+    process.exit(1);
+  }
+  })();
 }
 
 // Export for use by other modules

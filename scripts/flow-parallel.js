@@ -34,9 +34,9 @@
  *   execution instead of manually managing worktrees via flow-worktree.js.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, readJson, info } = require('./flow-utils');
 
 // ============================================================
 // Configuration (uses centralized getConfig from flow-utils)
@@ -193,7 +193,7 @@ function createProgressTracker(tasks) {
       console.log(`[${bar}]`);
 
       if (state.inProgress.size > 0) {
-        console.log(`🔄 Running: ${[...state.inProgress].join(', ')}`);
+        info(`� Running: ${[...state.inProgress].join(', ')}`);
       }
       console.log('─'.repeat(60));
     },
@@ -456,7 +456,7 @@ if (require.main === module) {
         process.exit(1);
       }
 
-      const ready = JSON.parse(fs.readFileSync(readyPath, 'utf-8'));
+      const ready = readJson(readyPath, { ready: [] });
       const tasks = (ready.ready || []).filter(t => t.status === 'pending' || t.status === 'ready');
 
       if (tasks.length === 0) {
@@ -490,7 +490,7 @@ if (require.main === module) {
         process.exit(1);
       }
 
-      const scoresReady = JSON.parse(fs.readFileSync(scoresReadyPath, 'utf-8'));
+      const scoresReady = readJson(scoresReadyPath, { ready: [] });
       const scoreTasks = scoresReady.ready || [];
 
       if (scoreTasks.length < 2) {

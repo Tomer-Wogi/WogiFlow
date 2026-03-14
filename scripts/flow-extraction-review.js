@@ -14,24 +14,15 @@
  * 5. Only proceed when user confirms the list is complete
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Paths
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
 const REVIEW_FILE = path.join(TMP_DIR, 'review-session.json');
 
 // Colors
-const c = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  red: '\x1b[31m',
-  bold: '\x1b[1m'
-};
+const { colors: c } = require('./flow-output');
 
 // =============================================================================
 // REVIEW SESSION MANAGEMENT

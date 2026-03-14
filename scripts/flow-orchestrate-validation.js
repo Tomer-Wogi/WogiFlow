@@ -14,7 +14,7 @@
  * - validateImports: Import validation against export map
  */
 
-const path = require('path');
+const path = require('node:path');
 const { getConfig, escapeRegex } = require('./flow-utils');
 const { loadCachedExportMap } = require('./flow-export-scanner');
 
@@ -46,7 +46,7 @@ function extractCodeFromResponse(response, modelName = '') {
     if (jsonMatch) {
       code = JSON.parse(`"${jsonMatch[1]}"`); // Unescape JSON string
     }
-  } catch { /* not JSON wrapped */ }
+  } catch (_err) { /* not JSON wrapped */ }
 
   // 1. Remove model-specific thinking tags and artifacts
   const thinkingPatterns = [
@@ -415,7 +415,7 @@ function validateImports(code, exportMap = null) {
   try {
     const config = getConfig();
     doNotImport = config.hybrid?.projectContext?.doNotImport || ['React'];
-  } catch {}
+  } catch (_err) {}
 
   // Build a lookup map for all exports by import path
   const exportsByPath = new Map();

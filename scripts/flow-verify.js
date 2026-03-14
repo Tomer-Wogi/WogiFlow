@@ -19,12 +19,14 @@
  *   flow verify --json              # Output JSON for CI
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawn, execSync } = require('child_process');
-const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn, execSync } = require('node:child_process');
+const { getProjectRoot, getConfig, colors: c, readJson } = require('./flow-utils');
+const { success: printSuccess, error: printError } = require('./flow-output');
 const { recordCommandResult } = require('./flow-metrics');
 const { detectPackageManager, getExecCommand, getRunPrefix } = require('./flow-script-resolver');
+const { CREDENTIAL_SCAN_PATTERNS } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -338,7 +340,7 @@ const ERROR_PARSERS = {
           code: 'LOW_VULN'
         });
       }
-    } catch {
+    } catch (_err) {
       // Not JSON, try line-based parsing
       if (output.includes('found 0 vulnerabilities')) {
         // Clean
@@ -370,11 +372,9 @@ function detectCommand(gate) {
   let deps = {};
 
   if (fs.existsSync(packageJsonPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+    const pkg = readJson(packageJsonPath, null);
+    if (pkg) {
       deps = { ...pkg.dependencies, ...pkg.devDependencies };
-    } catch {
-      // Ignore parse errors
     }
   }
 
@@ -691,7 +691,7 @@ function getStagedFiles() {
       encoding: 'utf-8'
     });
     return output.split('\n').filter(f => f.trim() && /\.(ts|tsx|js|jsx|json|env)$/i.test(f));
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -731,7 +731,7 @@ function findSourceFiles(dir, extensions, limit) {
           }
         }
       }
-    } catch {
+    } catch (_err) {
       // Skip unreadable directories
     }
   }
@@ -748,20 +748,6 @@ function checkForSecrets(files) {
   const config = getConfig();
   const ignorePatterns = config.security?.ignoreFiles || ['*.test.ts', '*.spec.ts'];
 
-  const secretPatterns = [
-    { pattern: /password\s*[:=]\s*['"][^'"]{8,}['"]/gi, name: 'Hardcoded password' },
-    { pattern: /api[_-]?key\s*[:=]\s*['"][^'"]{10,}['"]/gi, name: 'Hardcoded API key' },
-    { pattern: /secret\s*[:=]\s*['"][^'"]{8,}['"]/gi, name: 'Hardcoded secret' },
-    { pattern: /-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----/g, name: 'Private key' },
-    { pattern: /sk_live_[a-zA-Z0-9]{24,}/g, name: 'Stripe live key' },
-    { pattern: /sk_test_[a-zA-Z0-9]{24,}/g, name: 'Stripe test key' },
-    { pattern: /ghp_[a-zA-Z0-9]{36}/g, name: 'GitHub personal token' },
-    { pattern: /gho_[a-zA-Z0-9]{36}/g, name: 'GitHub OAuth token' },
-    { pattern: /xox[baprs]-[a-zA-Z0-9-]{10,}/g, name: 'Slack token' },
-    { pattern: /AKIA[0-9A-Z]{16}/g, name: 'AWS access key' },
-    { pattern: /mongodb(\+srv)?:\/\/[^:]+:[^@]+@/g, name: 'MongoDB connection string with password' }
-  ];
-
   for (const file of files) {
     // Skip ignored patterns
     const shouldIgnore = ignorePatterns.some(pattern => {
@@ -776,7 +762,9 @@ function checkForSecrets(files) {
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
 
-      for (const { pattern, name } of secretPatterns) {
+      for (const { pattern, name } of CREDENTIAL_SCAN_PATTERNS) {
+        // Reset lastIndex for regex with /g flag
+        pattern.lastIndex = 0;
         const matches = content.match(pattern);
         if (matches) {
           errors.push({
@@ -788,7 +776,7 @@ function checkForSecrets(files) {
           });
         }
       }
-    } catch {
+    } catch (_err) {
       // Skip unreadable files
     }
   }
@@ -843,7 +831,7 @@ function checkForInjection(files) {
           }
         }
       }
-    } catch {
+    } catch (_err) {
       // Skip unreadable files
     }
   }
@@ -869,7 +857,7 @@ async function runSecurityChecks(gateResult) {
       if (fs.existsSync(srcDir)) {
         files = findSourceFiles(srcDir, ['.ts', '.tsx', '.js', '.jsx'], 100);
       }
-    } catch {
+    } catch (_err) {
       files = [];
     }
   }
@@ -964,9 +952,9 @@ async function runGate(gateName, options = {}) {
 
   if (!options.quiet) {
     if (result.passed) {
-      console.log(`${c.green}✅ ${gateConfig.name} passed${c.reset} (${result.duration}ms)`);
+      printSuccess(`${gateConfig.name} passed (${result.duration}ms)`);
     } else {
-      console.log(`${c.red}❌ ${gateConfig.name} failed${c.reset} (${result.duration}ms)`);
+      printError(`${gateConfig.name} failed (${result.duration}ms)`);
       console.log(`   ${result.errors.length} error(s), ${result.warnings.length} warning(s)`);
     }
   }
@@ -1133,6 +1121,7 @@ module.exports = {
 
 // CLI Handler
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
 
   if (args.includes('--help') || args.includes('-h')) {
@@ -1178,25 +1167,25 @@ ${c.bold}Exit Codes:${c.reset}
     gateNames.push('all');
   }
 
-  runGates(gateNames, { verbose, stopOnFailure, quiet })
-    .then(results => {
-      if (jsonOutput) {
-        console.log(JSON.stringify(getSummary(results), null, 2));
-      } else if (llmContext) {
-        const failures = results.filter(r => !r.passed);
-        for (const failure of failures) {
-          console.log(failure.toLLMContext());
-          console.log('\n---\n');
-        }
-      } else {
-        console.log(formatResults(results, { verbose }));
+  try {
+    const results = await runGates(gateNames, { verbose, stopOnFailure, quiet });
+    if (jsonOutput) {
+      console.log(JSON.stringify(getSummary(results), null, 2));
+    } else if (llmContext) {
+      const failures = results.filter(r => !r.passed);
+      for (const failure of failures) {
+        console.log(failure.toLLMContext());
+        console.log('\n---\n');
       }
+    } else {
+      console.log(formatResults(results, { verbose }));
+    }
 
-      const summary = getSummary(results);
-      process.exit(summary.allPassed ? 0 : 1);
-    })
-    .catch(err => {
-      console.error(`${c.red}Error: ${err.message}${c.reset}`);
-      process.exit(2);
-    });
+    const summary = getSummary(results);
+    process.exit(summary.allPassed ? 0 : 1);
+  } catch (err) {
+    console.error(`${c.red}Error: ${err.message}${c.reset}`);
+    process.exit(2);
+  }
+  })();
 }

@@ -24,8 +24,8 @@
  *   updateModelProfile('qwen3-coder', { taskType: 'create', ... });
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -395,7 +395,7 @@ function updateModelProfile(modelId, learning) {
 
   // Add failure record if provided
   if (learning.failure) {
-    const date = new Date().toISOString().split('T')[0];
+    const date = getTodayDate();
     profile.failures.push({
       date,
       taskType: learning.taskType || 'unknown',

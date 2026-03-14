@@ -21,7 +21,7 @@ const {
   SUSPENSION_TYPE,
   RESUME_CONDITION
 } = require('./flow-durable-session');
-const { color, getConfig } = require('./flow-utils');
+const { color, getConfig, warn } = require('./flow-utils');
 const { validateCommand } = require('./flow-workflow');
 
 function parseArgs() {
@@ -219,7 +219,7 @@ function main() {
 
   // Display confirmation
   console.log('');
-  console.log(color('yellow', '⏸️  Task Suspended'));
+  warn('Task Suspended');
   console.log(color('yellow', '─'.repeat(50)));
   console.log(`Task: ${session.taskId}`);
   console.log(`Type: ${options.type}`);

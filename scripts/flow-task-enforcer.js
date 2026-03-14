@@ -12,8 +12,8 @@
  * Config: Uses config.tasks.* settings (fallback to config.loops.* for migration)
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse } = require('./flow-utils');
 const { getCommand } = require('./flow-script-resolver');
 
@@ -325,7 +325,7 @@ function endSimpleLoop(status = 'completed') {
   try {
     const parsed = readJson(historyPath, []);
     if (Array.isArray(parsed)) history = parsed;
-  } catch { /* use empty array */ }
+  } catch (_err) { /* use empty array */ }
   history.push(session);
   if (history.length > 50) {
     history = history.slice(-50);
@@ -702,7 +702,7 @@ function endLoop(status = 'completed') {
   try {
     const parsed = readJson(historyPath, []);
     if (Array.isArray(parsed)) history = parsed;
-  } catch { /* use empty array */ }
+  } catch (_err) { /* use empty array */ }
   history.push(session);
 
   // Keep last 50 sessions
@@ -763,7 +763,7 @@ function getLoopStats() {
       failed,
       avgIterations: Math.round(avgIterations * 10) / 10
     };
-  } catch {
+  } catch (_err) {
     return { totalLoops: 0, completed: 0, failed: 0, avgIterations: 0 };
   }
 }
@@ -773,7 +773,7 @@ function getLoopStats() {
  * Returns { passed: boolean|null, message: string, verification: string }
  */
 function verifyCriterion(criterion, context = {}) {
-  const { execSync, execFileSync } = require('child_process');
+  const { execSync, execFileSync } = require('node:child_process');
   const { changedFiles = [], testResults = null, lintResults = null } = context;
   const config = getConfig();
   const taskConfig = getTaskConfig();

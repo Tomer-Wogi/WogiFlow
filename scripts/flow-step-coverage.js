@@ -7,10 +7,10 @@
  * Supports Jest, Vitest, NYC/Istanbul coverage formats.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
+const { getProjectRoot, colors, getConfig, safeJsonParse, readJson, error } = require('./flow-utils');
 const { getCommand, getExec } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -91,7 +91,7 @@ async function run(options = {}) {
   if (modifiedFileCoverage && modifiedFileCoverage.uncovered.length > 0) {
     console.log(colors.yellow + '\n  Modified files with low coverage:' + colors.reset);
     for (const file of modifiedFileCoverage.uncovered) {
-      console.log(colors.red + `    ✗ ${file.name}: ${file.coverage.toFixed(1)}%` + colors.reset);
+      error(`${file.name}: ${file.coverage.toFixed(1)}%`);
     }
   }
 
@@ -120,12 +120,14 @@ function findExistingCoverage() {
     if (fs.existsSync(fullPath)) {
       try {
         if (coveragePath.endsWith('.json')) {
-          return JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+          const result = readJson(fullPath, null);
+          if (result) return result;
         }
         // For HTML reports, try to find accompanying JSON
         const jsonPath = fullPath.replace('.html', '.json');
         if (fs.existsSync(jsonPath)) {
-          return JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+          const result = readJson(jsonPath, null);
+          if (result) return result;
         }
       } catch (err) {
         // Continue to next path

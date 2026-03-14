@@ -9,8 +9,8 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS, getReadyData, safeJsonParse, isPathWithinProject } = require('../../flow-utils');
@@ -172,7 +172,7 @@ function cleanStaleFiles() {
   let config;
   try {
     config = getConfig();
-  } catch {
+  } catch (_err) {
     // Config unreadable — default to enabled (fail-closed, consistent with routing gate)
     config = {};
   }
@@ -198,7 +198,7 @@ function cleanStaleFiles() {
       try {
         // lstatSync: don't follow symlinks — prevents deletion of symlink targets outside project
         stat = fs.lstatSync(filePath);
-      } catch {
+      } catch (_err) {
         continue;
       }
 
@@ -207,7 +207,7 @@ function cleanStaleFiles() {
         try {
           fs.unlinkSync(filePath);
           cleaned.push(entry);
-        } catch {
+        } catch (_err) {
           // Skip symlinks we can't remove
         }
         continue;
@@ -227,7 +227,7 @@ function cleanStaleFiles() {
         try {
           fs.unlinkSync(filePath);
           cleaned.push(entry);
-        } catch {
+        } catch (_err) {
           // Skip files we can't remove
         }
         continue;
@@ -243,7 +243,7 @@ function cleanStaleFiles() {
         try {
           fs.unlinkSync(filePath);
           cleaned.push(entry);
-        } catch {
+        } catch (_err) {
           // Skip files we can't remove
         }
       } else {
@@ -252,7 +252,7 @@ function cleanStaleFiles() {
         warnings.push(`Unknown file in state/: ${entry} (${ageDays}d old — will auto-remove after ${STALE_THRESHOLD_DAYS}d)`);
       }
     }
-  } catch {
+  } catch (_err) {
     // readdirSync failed — state dir may not exist yet
   }
 
@@ -319,7 +319,7 @@ function getCurrentTask(readyData) {
       return typeof task === 'string' ? { id: task } : task;
     }
     return null;
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -344,7 +344,7 @@ function getPendingTaskSummary(readyData) {
       readyTaskIds: ready.slice(0, 10).map(t => typeof t === 'object' ? t.id : t),
       inProgressTaskIds: inProgress.map(t => typeof t === 'object' ? t.id : t)
     };
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -382,7 +382,7 @@ function getKeyDecisions(maxEntries = 5) {
     }
 
     return decisions;
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -437,7 +437,7 @@ function getRecentActivity(maxEntries = 3) {
     }
 
     return entries.reverse(); // Most recent first
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -468,7 +468,7 @@ function getCheckpointRecovery(readyData) {
       // Task no longer exists — checkpoint is stale, clean it up
       try {
         clearCheckpoint(checkpoint.taskId);
-      } catch {
+      } catch (_err) {
         // Non-critical
       }
       return null;
@@ -545,7 +545,7 @@ async function gatherSessionContext(options = {}) {
   // Clean up stale files from previous sessions (fire-and-forget)
   try {
     cleanStaleFiles();
-  } catch {
+  } catch (_err) {
     // Non-critical — never block session start
   }
 
@@ -571,7 +571,7 @@ async function gatherSessionContext(options = {}) {
   let readyData;
   try {
     readyData = getReadyData();
-  } catch {
+  } catch (_err) {
     readyData = { ready: [], inProgress: [], blocked: [] };
   }
 
@@ -705,7 +705,7 @@ async function gatherSessionContext(options = {}) {
         });
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical
   }
 

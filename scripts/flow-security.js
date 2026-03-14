@@ -15,9 +15,9 @@
  * - validateRepoFormat: Validate GitHub repository format
  */
 
-const { execFileSync, spawnSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execFileSync, spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 const { escapeRegex } = require('./flow-utils');
 
 // ============================================================
@@ -436,6 +436,149 @@ function isPrivateIP(ip) {
 }
 
 // ============================================================
+// Credential Scan Patterns (centralized)
+// ============================================================
+
+/**
+ * Unified credential/secret scan patterns.
+ *
+ * Each entry has:
+ *   pattern  – RegExp (use /g or /gi as appropriate)
+ *   name     – human-readable label
+ *   severity – 'critical' | 'high'
+ *   type     – 'credential'
+ *   owasp    – OWASP reference (optional)
+ *
+ * Consumers: flow-step-security.js, flow-verify.js,
+ *            flow-review-passes/security.js
+ */
+const CREDENTIAL_SCAN_PATTERNS = [
+  // ---- Generic credential assignments ----
+  {
+    pattern: /(?:password|passwd|pwd|secret|token|apikey|api_key|api[_-]?key|auth|auth[_-]?token|access[_-]?token)\s*[:=]\s*['"][^'"]{8,}['"]/gi,
+    name: 'Hardcoded credential',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Well-known API key/token prefixes ----
+  {
+    pattern: /['"](?:sk-|pk_|rk_|AIza|AKIA|ghu_|ghs_|ghr_)[a-zA-Z0-9]{20,}['"]/g,
+    name: 'API key/token prefix detected',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Private keys ----
+  {
+    pattern: /-----BEGIN\s+(?:RSA\s+|DSA\s+|EC\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/gi,
+    name: 'Private key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Stripe keys ----
+  {
+    pattern: /sk_live_[a-zA-Z0-9]{24,}/g,
+    name: 'Stripe live key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  {
+    pattern: /sk_test_[a-zA-Z0-9]{24,}/g,
+    name: 'Stripe test key',
+    severity: 'high',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- GitHub tokens ----
+  {
+    pattern: /ghp_[a-zA-Z0-9]{36}/g,
+    name: 'GitHub personal token',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  {
+    pattern: /gho_[a-zA-Z0-9]{36}/g,
+    name: 'GitHub OAuth token',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Slack tokens ----
+  {
+    pattern: /xox[baprs]-[a-zA-Z0-9-]{10,}/g,
+    name: 'Slack token',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- AWS access keys (bare pattern) ----
+  {
+    pattern: /AKIA[0-9A-Z]{16}/g,
+    name: 'AWS access key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Database connection strings with embedded credentials ----
+  {
+    pattern: /(?:mongodb|mysql|postgres|redis)(\+srv)?:\/\/[^:]+:[^@]+@/gi,
+    name: 'Database connection string with credentials',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021'
+  },
+  // ---- Azure connection strings ----
+  {
+    pattern: /DefaultEndpointsProtocol=https;AccountName=[^;]{3,}/gi,
+    name: 'Azure Connection String',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021',
+    description: 'Azure Storage connection string'
+  },
+  // ---- npm tokens ----
+  {
+    pattern: /npm_[A-Za-z0-9]{36}/g,
+    name: 'npm Token',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021',
+    description: 'npm authentication token'
+  },
+  // ---- Anthropic API keys ----
+  {
+    pattern: /sk-ant-[a-zA-Z0-9\-_]{20,}/g,
+    name: 'Anthropic API Key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021',
+    description: 'Anthropic API key (sk-ant- prefix)'
+  },
+  // ---- Twilio API keys ----
+  {
+    pattern: /SK[a-f0-9]{32}/g,
+    name: 'Twilio API Key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021',
+    description: 'Twilio API key'
+  },
+  // ---- SendGrid API keys ----
+  {
+    pattern: /SG\.[a-zA-Z0-9]{22}\.[a-zA-Z0-9\-_]{43}/g,
+    name: 'SendGrid API Key',
+    severity: 'critical',
+    type: 'credential',
+    owasp: 'A07:2021',
+    description: 'SendGrid API key'
+  }
+];
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -467,5 +610,6 @@ module.exports = {
 
   // Constants
   MAX_REGEX_LENGTH,
-  VALID_CODE_EXTENSIONS
+  VALID_CODE_EXTENSIONS,
+  CREDENTIAL_SCAN_PATTERNS
 };

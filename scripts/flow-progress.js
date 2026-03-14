@@ -6,7 +6,7 @@
  * Provides visual feedback during hybrid execution.
  */
 
-const readline = require('readline');
+const readline = require('node:readline');
 const { colors } = require('./flow-utils');
 
 const symbols = {

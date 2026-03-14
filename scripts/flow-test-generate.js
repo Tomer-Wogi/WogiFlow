@@ -18,8 +18,8 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 

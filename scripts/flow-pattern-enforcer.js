@@ -19,8 +19,8 @@
  * Part of v1.8.0 - Active Learning Enforcement
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
   getConfig,
@@ -578,7 +578,7 @@ function generateCrossSessionRuleSlug(request) {
  * Generate rule text for decisions.md from a cross-session pattern
  */
 function generateCrossSessionRule(pattern, userReason = '') {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   const category = detectCrossSessionCategory(pattern.representativeRequest);
   const slug = generateCrossSessionRuleSlug(pattern.representativeRequest);
 
@@ -922,7 +922,7 @@ if (require.main === module) {
       if (result.violations.length > 0) {
         console.log('\nViolations:');
         for (const v of result.violations) {
-          console.log(`  ✗ [${v.category}] ${v.rule}`);
+          error(`[${v.category}] ${v.rule}`);
           console.log(`    ${v.message}`);
         }
       }

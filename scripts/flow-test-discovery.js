@@ -12,9 +12,9 @@
  *   node scripts/flow-test-discovery.js <taskId> [--scan-only] [--match-only]
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const {
   PATHS,
   fileExists,
@@ -23,8 +23,7 @@ const {
   readFile,
   writeJson,
   validateTaskId,
-  color
-} = require('./flow-utils');
+  color, error, success } = require('./flow-utils');
 
 // ============================================================
 // Constants
@@ -1027,7 +1026,7 @@ if (require.main === module) {
     console.log(`Matched: ${result.matched.length}, Unmatched: ${result.unmatched.length}\n`);
 
     for (const m of result.matched) {
-      console.log(color('green', `  ✓ ${m.criterion}`));
+      success(m.criterion);
       for (const t of m.tests.slice(0, 3)) {
         console.log(color('dim', `    → ${t.file}: "${t.description}" (score: ${t.score})`));
       }
@@ -1048,7 +1047,7 @@ if (require.main === module) {
 
     console.log(color('yellow', `Running test discovery gate for ${taskId}...\n`));
     const result = runTestDiscoveryGate(taskId, projectRoot);
-    console.log(result.passed ? color('green', `✓ ${result.message}`) : color('red', `✗ ${result.message}`));
+    result.passed ? success(result.message) : error(result.message);
 
     if (result.report) {
       console.log(`\n  Discovered: ${result.report.discoveredFiles} test file(s)`);

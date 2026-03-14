@@ -12,18 +12,14 @@
 
 const { handleWorktreeCreate } = require('../../core/worktree-lifecycle');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { safeJsonParseString } = require('../../../flow-utils');
+const { readHookInput } = require('../shared/read-stdin');
 
 process.stdin.setEncoding('utf8');
 
 async function main() {
   try {
-    let inputData = '';
-    for await (const chunk of process.stdin) {
-      inputData += chunk;
-    }
-
-    const input = inputData ? safeJsonParseString(inputData, {}) : {};
+    const { input: parsedStdin } = await readHookInput();
+    const input = parsedStdin || {};
 
     const worktreePath = input.worktree_path || input.worktreePath || '';
     const projectRoot = input.cwd || process.cwd();

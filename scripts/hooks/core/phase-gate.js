@@ -12,8 +12,8 @@
  * Fail-open: If state file is missing/corrupt, skip phase check (existing gates still enforce).
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 const { getConfig, PATHS, safeJsonParse } = require('../../flow-utils');
 
 const PHASE_FILE = path.join(PATHS.state, 'workflow-phase.json');

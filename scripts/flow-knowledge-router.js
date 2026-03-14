@@ -19,8 +19,8 @@
  * Part of v1.8.0 Team Collaboration
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -295,7 +295,7 @@ Coding conventions and project-specific rules.
 `;
   }
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const entry = `\n### ${date}
 
 ${correction}
@@ -416,6 +416,7 @@ Examples:
 
 // Main CLI handler
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -450,14 +451,13 @@ if (require.main === module) {
         route = { type: routeType };
       }
 
-      storeByRoute(text, route, {}).then(result => {
-        if (result.success) {
-          success(result.message);
-        } else {
-          error(result.error);
-          process.exit(1);
-        }
-      });
+      const result = await storeByRoute(text, route, {});
+      if (result.success) {
+        success(result.message);
+      } else {
+        error(result.error);
+        process.exit(1);
+      }
       break;
     }
 
@@ -505,6 +505,7 @@ Available route types:
       printUsage();
       process.exit(command ? 1 : 0);
   }
+  })();
 }
 
 // ============================================================

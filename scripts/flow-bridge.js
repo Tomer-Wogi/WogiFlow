@@ -9,9 +9,10 @@
  *   flow bridge list     - List available CLI bridges
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { colors, getConfig, PROJECT_ROOT, PATHS } = require('./flow-utils');
+const { success, warn, error, info, printHeader } = require('./flow-output');
 
 const { PACKAGE_PATHS } = require('./flow-paths');
 const BRIDGES_DIR = PACKAGE_PATHS.bridges;
@@ -113,7 +114,7 @@ async function syncBridge(options = {}) {
   const requestedCliType = cliTypeArg ? normalizeCliType(cliTypeArg) : null;
 
   if (cliTypeArg && !requestedCliType) {
-    console.error(`${colors.red}Error:${colors.reset} Unknown CLI type: ${cliTypeArg}`);
+    error(`Unknown CLI type: ${cliTypeArg}`);
     console.error('Only claude-code is supported.');
     process.exit(1);
   }
@@ -129,7 +130,7 @@ async function syncBridge(options = {}) {
     try {
       bridges = require(path.join(BRIDGES_DIR, 'index.js'));
     } catch (err) {
-      console.error(`${colors.red}Error:${colors.reset} Bridges module not found.`);
+      error('Bridges module not found.');
       console.error('Make sure .workflow/bridges/index.js exists.');
       process.exit(1);
     }
@@ -142,14 +143,14 @@ async function syncBridge(options = {}) {
     });
 
     if (result.success) {
-      console.log(`${colors.green}✓ Bridge sync complete${colors.reset}`);
+      success('Bridge sync complete');
       console.log('');
       console.log(`  CLI Type: ${result.cliType}`);
       console.log(`  Folder:   ${result.cliFolder}`);
       console.log(`  Synced:   ${result.synced.join(', ')}`);
       console.log(`  Duration: ${result.duration}ms`);
     } else {
-      console.log(`${colors.yellow}⚠ Bridge sync completed with issues${colors.reset}`);
+      warn('Bridge sync completed with issues');
       console.log('');
       if (result.error) {
         console.log(`  Error: ${result.error}`);
@@ -161,7 +162,7 @@ async function syncBridge(options = {}) {
       }
     }
   } catch (err) {
-    console.error(`${colors.red}Error:${colors.reset} ${err.message}`);
+    error(err.message);
     process.exit(1);
   }
 

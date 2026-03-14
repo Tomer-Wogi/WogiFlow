@@ -11,7 +11,7 @@
  *   node scripts/flow-clarifying-questions.js --task "<description>" --context "<context>"
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -299,7 +299,7 @@ function loadTaskContext(taskId) {
   if (fileExists(specPath)) {
     try {
       context.spec = readFile(specPath);
-    } catch {
+    } catch (_err) {
       // Ignore spec read errors
     }
   }
@@ -309,7 +309,7 @@ function loadTaskContext(taskId) {
   if (fileExists(changePath)) {
     try {
       context.change = readFile(changePath);
-    } catch {
+    } catch (_err) {
       // Ignore change read errors
     }
   }
@@ -357,7 +357,7 @@ Examples:
     if (flags.context) {
       try {
         Object.assign(context, JSON.parse(flags.context));
-      } catch {
+      } catch (_err) {
         // Ignore invalid JSON
       }
     }

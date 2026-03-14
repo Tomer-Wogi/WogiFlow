@@ -17,9 +17,10 @@
  *   flow context conventions       # Show conventions.md
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { success: printSuccess } = require('./flow-output');
 const { detectPackageManager } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -55,7 +56,8 @@ function detectStack() {
   const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const pkg = readJson(packageJsonPath, null);
+      if (!pkg) throw new Error('Failed to parse package.json');
       const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
       stack.runtime = 'Node.js';
@@ -251,7 +253,7 @@ function detectStack() {
       if (cargo.includes('actix-web')) stack.frameworks.backend = 'Actix Web';
       else if (cargo.includes('rocket')) stack.frameworks.backend = 'Rocket';
       else if (cargo.includes('axum')) stack.frameworks.backend = 'Axum';
-    } catch { /* ignore */ }
+    } catch (_err) { /* ignore */ }
   }
 
   // Check for Go projects
@@ -269,7 +271,7 @@ function detectStack() {
       else if (goMod.includes('gofiber/fiber')) stack.frameworks.backend = 'Fiber';
       else if (goMod.includes('labstack/echo')) stack.frameworks.backend = 'Echo';
       else if (goMod.includes('go-chi/chi')) stack.frameworks.backend = 'Chi';
-    } catch { /* ignore */ }
+    } catch (_err) { /* ignore */ }
   }
 
   return stack;
@@ -355,7 +357,7 @@ function initContext(options = {}) {
     const content = generateStackContent(stack);
     fs.writeFileSync(stackPath, content);
     results.stack = true;
-    console.log(`${c.green}✅ ${options.rescan ? 'Updated' : 'Created'} stack.md${c.reset}`);
+    printSuccess(`${options.rescan ? 'Updated' : 'Created'} stack.md`);
   } else {
     console.log(`${c.dim}   stack.md already exists (use --rescan to update)${c.reset}`);
   }
@@ -369,7 +371,7 @@ function initContext(options = {}) {
       content = content.replace(/\{\{date\}\}/g, new Date().toISOString().slice(0, 10));
       fs.writeFileSync(constraintsPath, content);
       results.constraints = true;
-      console.log(`${c.green}✅ Created constraints.md${c.reset}`);
+      printSuccess('Created constraints.md');
     }
   } else {
     console.log(`${c.dim}   constraints.md already exists${c.reset}`);
@@ -382,7 +384,7 @@ function initContext(options = {}) {
     if (fs.existsSync(templatePath)) {
       fs.copyFileSync(templatePath, conventionsPath);
       results.conventions = true;
-      console.log(`${c.green}✅ Created conventions.md${c.reset}`);
+      printSuccess('Created conventions.md');
     }
   } else {
     console.log(`${c.dim}   conventions.md already exists${c.reset}`);

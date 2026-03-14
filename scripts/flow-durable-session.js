@@ -15,10 +15,11 @@
  * - Backward compatibility with existing APIs
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
 const { getConfig, getProjectRoot, MAX_SESSION_HISTORY, withLock, writeJson, ensureDir, safeJsonParse, PATHS, validateTaskId } = require('./flow-utils');
+const { success } = require('./flow-output');
 const { validateCommand } = require('./flow-workflow');
 const { validatePathWithinProject } = require('./flow-security');
 
@@ -1281,7 +1282,7 @@ function getSessionStats() {
         ? Math.round(history.reduce((sum, h) => sum + (h.metrics?.tokensSaved || 0), 0) / history.length)
         : 0
     };
-  } catch {
+  } catch (_err) {
     return { totalSessions: 0, completed: 0, failed: 0, cancelled: 0, avgSteps: 0, avgTokensSaved: 0 };
   }
 }
@@ -1759,7 +1760,7 @@ if (require.main === module) {
       const sessionPath = getSessionPath();
       if (fs.existsSync(sessionPath)) {
         fs.unlinkSync(sessionPath);
-        console.log('✅ Active session cleared');
+        success('Active session cleared');
       } else {
         console.log('No active session to clear');
       }
@@ -1784,7 +1785,7 @@ if (require.main === module) {
         console.log(`Session already exists for ${taskId}`);
       } else {
         createDurableSession(taskId, 'task', [title]);
-        console.log(`✅ Durable session created for ${taskId}`);
+        success(`Durable session created for ${taskId}`);
       }
       break;
     }

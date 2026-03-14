@@ -12,8 +12,8 @@
  * Part of v1.7.0 Context Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -71,7 +71,7 @@ function getDefaultBlocks() {
  */
 function getDefaultProgress() {
   const blocks = getDefaultBlocks();
-  const now = new Date().toISOString().split('T')[0];
+  const now = getTodayDate();
 
   return `# Progress & Handoff Notes
 

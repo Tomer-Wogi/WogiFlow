@@ -16,9 +16,10 @@
  *   flow metrics --reset      # Clear metrics
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors, showHelp: showHelpGeneric } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, PATHS, colors, showHelp: showHelpGeneric, readJson } = require('./flow-utils');
+const { success, error: errorMsg } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const METRICS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'command-metrics.json');
@@ -42,13 +43,8 @@ function getEmptyMetrics() {
 }
 
 function loadMetrics() {
-  try {
-    if (fs.existsSync(METRICS_PATH)) {
-      return JSON.parse(fs.readFileSync(METRICS_PATH, 'utf-8'));
-    }
-  } catch (err) {
-    console.error(`${colors.yellow}Warning: Could not load metrics, starting fresh${colors.reset}`);
-  }
+  const metrics = readJson(METRICS_PATH, null);
+  if (metrics) return metrics;
   return getEmptyMetrics();
 }
 
@@ -272,7 +268,7 @@ function formatMetricsReport() {
  */
 function resetMetrics() {
   saveMetrics(getEmptyMetrics());
-  console.log(`${colors.green}✓${colors.reset} Metrics reset`);
+  success('Metrics reset');
 }
 
 // ============================================================
@@ -313,7 +309,7 @@ function main() {
   if (args.includes('--problems')) {
     const problems = getProblematicCommands();
     if (problems.length === 0) {
-      console.log(`${colors.green}✓${colors.reset} No problematic commands found`);
+      success('No problematic commands found');
     } else {
       console.log(`${colors.red}Found ${problems.length} problematic command(s):${colors.reset}\n`);
       for (const p of problems) {

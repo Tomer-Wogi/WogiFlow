@@ -16,8 +16,8 @@
  * @module flow-context-scoring
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // ============================================================
 // Imports
@@ -179,7 +179,7 @@ function estimateFileTokens(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
     return estimateTokens(content, { useLineEstimate: true });
-  } catch {
+  } catch (_err) {
     return 0;
   }
 }
@@ -334,11 +334,11 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
             relevance: scoreRelevance(importContent, taskContext),
             metadata: { importedFrom: file, importPath: imp.path }
           }));
-        } catch {
+        } catch (_err) {
           // Skip unreadable import files
         }
       }
-    } catch {
+    } catch (_err) {
       // Skip unreadable target files
     }
   }
@@ -370,7 +370,7 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
         }));
       }
     }
-  } catch {
+  } catch (_err) {
     // Skip if decisions.md is unreadable
   }
 
@@ -430,7 +430,7 @@ function resolveImportPath(importPath, baseDir) {
       if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
         return fullPath;
       }
-    } catch {
+    } catch (_err) {
       // Skip if path check fails (permissions, symlink issues)
     }
   }
@@ -581,7 +581,7 @@ function analyzeFile(filePath) {
   let content;
   try {
     content = fs.readFileSync(resolvedPath, 'utf8');
-  } catch {
+  } catch (_err) {
     return { error: 'Failed to read file' };
   }
   const lines = content.split('\n');

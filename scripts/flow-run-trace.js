@@ -16,10 +16,12 @@
  *   flow run-trace cleanup             # Remove old runs
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const { readJson } = require('./flow-io');
+const crypto = require('node:crypto');
 const { getProjectRoot, colors: c } = require('./flow-utils');
+const { success: printSuccess } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -175,9 +177,8 @@ function logEvent(runId, eventType, data = {}) {
  */
 function updateManifestFromEvent(runId, eventType, data) {
   const manifestPath = path.join(RUNS_DIR, runId, 'manifest.json');
-  if (!fs.existsSync(manifestPath)) return;
-
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readJson(manifestPath, null);
+  if (!manifest) return;
 
   switch (eventType) {
     case EVENT_TYPES.STEP_START:
@@ -252,7 +253,10 @@ function endRun(runId, status = 'completed') {
   }
 
   const manifestPath = path.join(runDir, 'manifest.json');
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readJson(manifestPath, null);
+  if (!manifest) {
+    throw new Error(`Manifest not found for run: ${runId}`);
+  }
 
   manifest.endedAt = new Date().toISOString();
   manifest.status = status;
@@ -395,11 +399,7 @@ function updateIndex(runId, manifest) {
   let index = { runs: [], lastUpdated: new Date().toISOString() };
 
   if (fs.existsSync(indexPath)) {
-    try {
-      index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-    } catch {
-      // Reset if corrupt
-    }
+    index = readJson(indexPath, index);
   }
 
   // Remove existing entry if updating
@@ -421,14 +421,9 @@ function updateIndex(runId, manifest) {
   });
 
   // Load config for retention settings
-  let maxRuns = 100;
   const configPath = path.join(WORKFLOW_DIR, 'config.json');
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      maxRuns = config.traces?.runs?.maxRuns || 100;
-    } catch {}
-  }
+  const config = readJson(configPath, {});
+  const maxRuns = config.traces?.runs?.maxRuns || 100;
 
   // Keep only configured number of runs in index
   index.runs = index.runs.slice(0, maxRuns);
@@ -442,11 +437,10 @@ function updateIndex(runId, manifest) {
  */
 function listRuns(limit = 10) {
   const indexPath = path.join(RUNS_DIR, 'index.json');
-  if (!fs.existsSync(indexPath)) {
+  const index = readJson(indexPath, null);
+  if (!index) {
     return [];
   }
-
-  const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
   return index.runs.slice(0, limit);
 }
 
@@ -484,16 +478,9 @@ function inspectRun(runId) {
  */
 function cleanupRuns() {
   const configPath = path.join(WORKFLOW_DIR, 'config.json');
-  let retentionDays = 30;
-  let maxRuns = 100;
-
-  if (fs.existsSync(configPath)) {
-    try {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      retentionDays = config.traces?.runs?.retentionDays || 30;
-      maxRuns = config.traces?.runs?.maxRuns || 100;
-    } catch {}
-  }
+  const cleanupConfig = readJson(configPath, {});
+  const retentionDays = cleanupConfig.traces?.runs?.retentionDays || 30;
+  const maxRuns = cleanupConfig.traces?.runs?.maxRuns || 100;
 
   if (!fs.existsSync(RUNS_DIR)) return { deleted: 0 };
 
@@ -501,9 +488,8 @@ function cleanupRuns() {
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
   const indexPath = path.join(RUNS_DIR, 'index.json');
-  if (!fs.existsSync(indexPath)) return { deleted: 0 };
-
-  const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+  const index = readJson(indexPath, null);
+  if (!index) return { deleted: 0 };
   let deleted = 0;
 
   // Delete runs older than retention period or exceeding max
@@ -607,7 +593,7 @@ if (require.main === module) {
         if (jsonOutput) {
           console.log(JSON.stringify({ success: true, runId }));
         } else {
-          console.log(`${c.green}✅ Started run: ${runId}${c.reset}`);
+          printSuccess(`Started run: ${runId}`);
         }
         break;
       }
@@ -636,7 +622,7 @@ if (require.main === module) {
         if (jsonOutput) {
           console.log(JSON.stringify({ success: true, manifest }));
         } else {
-          console.log(`${c.green}✅ Ended run: ${currentId} (${status})${c.reset}`);
+          printSuccess(`Ended run: ${currentId} (${status})`);
         }
         break;
       }
@@ -682,7 +668,7 @@ if (require.main === module) {
         if (jsonOutput) {
           console.log(JSON.stringify(result));
         } else {
-          console.log(`${c.green}✅ Cleaned up ${result.deleted} old runs${c.reset}`);
+          printSuccess(`Cleaned up ${result.deleted} old runs`);
         }
         break;
       }

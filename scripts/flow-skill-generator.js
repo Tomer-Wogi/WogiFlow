@@ -5,9 +5,9 @@
  * Fetches documentation via Context7 MCP and generates skill files
  */
 
-const fs = require('fs');
-const path = require('path');
-const { ensureDir, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { ensureDir, getConfig, invalidateConfigCache, writeJson, PATHS, success } = require('./flow-utils');
 
 // Import helper functions from tech options
 let _techOptions = null;
@@ -229,7 +229,7 @@ async function fetchDocsViaContext7(technology) {
 // ============================================
 
 function generateSkillMd(tech, docs) {
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
 
   return `---
 name: ${tech.value}
@@ -401,7 +401,7 @@ ${docs.libraryReference}
 
 ---
 *Fetched from Context7: ${tech.context7 || 'N/A'}*
-*Last refreshed: ${new Date().toISOString().split('T')[0]}*
+*Last refreshed: ${getTodayDate()}*
 `;
   }
 
@@ -467,7 +467,7 @@ When working with ${label.toLowerCase()} in ${parentFramework}:
  * Generate skill.md for a hub (framework) skill
  */
 function generateHubSkillMd(tech, docs, ecosystemSkills) {
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
 
   const ecosystemSection = ecosystemSkills.length > 0
     ? `## Ecosystem Skills
@@ -529,7 +529,7 @@ ${ecosystemSection}
  * Generate skill.md for a spoke (library) skill
  */
 function generateSpokeSkillMd(tech, docs, parentFramework) {
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
 
   const parentSection = parentFramework
     ? `## Parent Framework
@@ -830,7 +830,7 @@ function updateDecisionsMd(selections, technologies, projectRoot) {
   // Build tech stack section
   const lines = [
     '\n## Tech Stack (auto-generated)\n',
-    `*Generated: ${new Date().toISOString().split('T')[0]}*\n`
+    `*Generated: ${getTodayDate()}*\n`
   ];
 
   if (selections.frontend && selections.frontend !== 'none') {
@@ -929,7 +929,7 @@ async function generateSkills(technologies, selections) {
   if (migration.migrated.length > 0) {
     console.log('\n  Migrated skills from skills/ to .claude/skills/:');
     for (const skill of migration.migrated) {
-      console.log(`    ✓ ${skill}`);
+      success(skill);
     }
   }
   if (migration.skipped.length > 0) {
@@ -997,7 +997,7 @@ async function generateSkills(technologies, selections) {
       console.log(`\n  Copying pre-built framework: ${fw.label} (hub)...`);
       const result = copyPrebuiltSkill(prebuiltPath, projectRoot, skillId);
       prebuiltCopied.push(fw.value);
-      console.log(`    ✓ Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
+      success(`Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
     } else {
       // No pre-built — generate from scratch (may need Context7)
       console.log(`\n  Generating framework: ${fw.label} (hub)...`);
@@ -1021,11 +1021,11 @@ async function generateSkills(technologies, selections) {
       // Write ecosystem link files
       if (Object.keys(ecosystem.categories).length > 0) {
         await writeEcosystemLinks(result.skillId, ecosystem.categories, projectRoot);
-        console.log(`    ✓ Created ecosystem links in: ${result.skillId}/ecosystem/`);
+        success(`Created ecosystem links in: ${result.skillId}/ecosystem/`);
       }
 
       generated.push(fw.value);
-      console.log(`    ✓ Generated: ${path.relative(projectRoot, result.skillDir)}`);
+      success(`Generated: ${path.relative(projectRoot, result.skillDir)}`);
     }
   }
 
@@ -1039,7 +1039,7 @@ async function generateSkills(technologies, selections) {
       console.log(`\n  Copying pre-built library: ${lib.label} (spoke)...`);
       const result = copyPrebuiltSkill(prebuiltPath, projectRoot, skillId);
       prebuiltCopied.push(lib.value);
-      console.log(`    ✓ Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
+      success(`Copied pre-built: ${path.relative(projectRoot, result.skillDir)}`);
     } else {
       // No pre-built — generate from scratch (may need Context7)
       console.log(`\n  Generating library: ${lib.label} (spoke)...`);
@@ -1056,7 +1056,7 @@ async function generateSkills(technologies, selections) {
       });
 
       generated.push(lib.value);
-      console.log(`    ✓ Generated: ${path.relative(projectRoot, result.skillDir)}`);
+      success(`Generated: ${path.relative(projectRoot, result.skillDir)}`);
     }
   }
 
@@ -1213,7 +1213,7 @@ async function enhanceSkillWithDocs(skillId, docs) {
     if (parsed.antiPatterns) sections.push(`## Anti-Patterns\n\n${parsed.antiPatterns}`);
     if (parsed.examples) sections.push(`## Examples\n\n${parsed.examples}`);
 
-    const libraryRefContent = `# ${skillId} Library Reference\n\n<!-- Library Reference (supplementary) — fetched via Context7 MCP -->\n\n${sections.join('\n\n')}\n\n---\n*Last refreshed: ${new Date().toISOString().split('T')[0]}*\n`;
+    const libraryRefContent = `# ${skillId} Library Reference\n\n<!-- Library Reference (supplementary) — fetched via Context7 MCP -->\n\n${sections.join('\n\n')}\n\n---\n*Last refreshed: ${getTodayDate()}*\n`;
     ensureDir(path.join(skillDir, 'knowledge'));
     fs.writeFileSync(libraryRefPath, libraryRefContent, 'utf8');
   }
@@ -1292,10 +1292,10 @@ function listSkillsNeedingDocs(projectRoot) {
       let content;
       try {
         content = fs.readFileSync(path.join(entryPath, 'skill.md'), 'utf8');
-      } catch {
+      } catch (_err) {
         try {
           content = fs.readFileSync(path.join(entryPath, 'SKILL.md'), 'utf8');
-        } catch {
+        } catch (_err) {
           continue; // Neither file readable
         }
       }
@@ -1315,7 +1315,7 @@ function listSkillsNeedingDocs(projectRoot) {
         try {
           const patternsContent = fs.readFileSync(patternsPath, 'utf8');
           hasContent = !patternsContent.includes('[Name]') && !patternsContent.includes('When fetching documentation');
-        } catch {
+        } catch (_err) {
           // patterns.md doesn't exist or unreadable - treat as no content
         }
 
@@ -1385,6 +1385,7 @@ module.exports = {
 
 // CLI support
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
 
   if (args.includes('--help')) {
@@ -1480,11 +1481,13 @@ For manual use, run the wizard first: node flow-stack-wizard.js
     const { collectTechnologiesFromSelections } = require('./flow-tech-options');
     const technologies = collectTechnologiesFromSelections(selections);
 
-    generateSkills(technologies, selections)
-      .then(() => process.exit(0))
-      .catch((err) => {
-        console.error('Error:', err);
-        process.exit(1);
-      });
+    try {
+      await generateSkills(technologies, selections);
+      process.exit(0);
+    } catch (err) {
+      console.error('Error:', err);
+      process.exit(1);
+    }
   }
+  })();
 }

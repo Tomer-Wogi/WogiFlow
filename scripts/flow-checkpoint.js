@@ -20,10 +20,11 @@
  *   flow checkpoint cleanup              # Remove old checkpoints
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync, spawnSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync, spawnSync } = require('node:child_process');
 const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
+const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -78,7 +79,7 @@ class Checkpoint {
       try {
         const { readJson } = require('./flow-utils');
       this.checkpoints = readJson(CHECKPOINT_LOG, []);
-      } catch {
+      } catch (_err) {
         this.checkpoints = [];
       }
     }
@@ -174,7 +175,7 @@ class Checkpoint {
       for (const mapFile of getRegistryMapFiles()) {
         stateFiles.push(`state/${mapFile}`);
       }
-    } catch {
+    } catch (_err) {
       stateFiles.push('state/app-map.md');
     }
 
@@ -208,7 +209,7 @@ class Checkpoint {
         encoding: 'utf-8'
       });
       return result.stdout && result.stdout.trim().length > 0;
-    } catch {
+    } catch (_err) {
       return false;
     }
   }
@@ -236,7 +237,7 @@ class Checkpoint {
         });
         return hashResult.stdout.trim();
       }
-    } catch {
+    } catch (_err) {
       // Git commit failed
     }
     return null;
@@ -404,7 +405,7 @@ if (require.main === module) {
       const message = args.slice(1).join(' ') || 'Manual checkpoint';
       console.log(`${c.cyan}Creating checkpoint...${c.reset}`);
       const checkpoint = cp.create(message);
-      console.log(`${c.green}✅ Checkpoint created: ${checkpoint.id}${c.reset}`);
+      printSuccess(`Checkpoint created: ${checkpoint.id}`);
       if (checkpoint.gitCommit) {
         console.log(`   Git commit: ${checkpoint.gitCommit}`);
       }
@@ -430,14 +431,14 @@ if (require.main === module) {
         const results = cp.rollback(checkpointId);
 
         if (results.stateRestored) {
-          console.log(`${c.green}✅ State files restored${c.reset}`);
+          printSuccess('State files restored');
         }
         if (results.gitRestored) {
-          console.log(`${c.green}✅ Git rolled back${c.reset}`);
+          printSuccess('Git rolled back');
         }
         if (results.errors.length > 0) {
           for (const err of results.errors) {
-            console.log(`${c.yellow}⚠ ${err}${c.reset}`);
+            printWarn(err);
           }
         }
       } catch (err) {
@@ -449,7 +450,7 @@ if (require.main === module) {
 
     case 'cleanup': {
       const remaining = cp.cleanup();
-      console.log(`${c.green}✅ Cleanup complete. ${remaining} checkpoints remaining${c.reset}`);
+      printSuccess(`Cleanup complete. ${remaining} checkpoints remaining`);
       break;
     }
 

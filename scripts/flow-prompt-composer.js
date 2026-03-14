@@ -14,8 +14,8 @@
  *   flow prompt-compose --list-fragments
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PROJECT_ROOT,
   parseFlags,
@@ -111,7 +111,7 @@ function parseFragment(content) {
       if (value.startsWith('[') && value.endsWith(']')) {
         try {
           value = value.slice(1, -1).split(',').map(v => v.trim());
-        } catch {
+        } catch (_err) {
           parseErrors.push(`Failed to parse array for key "${key}"`);
           continue;
         }
@@ -354,7 +354,7 @@ function applyTemplate(template, data) {
       if (FORBIDDEN_KEYS.has(keyLower)) return match;
       if (value === undefined || value === null) return match;
       // Only access own properties
-      if (!Object.prototype.hasOwnProperty.call(value, key)) return match;
+      if (!Object.hasOwn(value, key)) return match;
       value = value[key];
     }
 

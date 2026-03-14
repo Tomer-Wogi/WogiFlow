@@ -15,8 +15,8 @@
  * - Opt-out available via config.communitySync.enabled = false
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,

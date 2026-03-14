@@ -12,8 +12,8 @@
  * Called by flow-session-end.js, can also run standalone.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
@@ -43,7 +43,7 @@ const REQUEST_LOG_PATH = PATHS.requestLog;
  * Get today's date as YYYY-MM-DD string
  */
 function getTodayDateString() {
-  return new Date().toISOString().split('T')[0];
+  return getTodayDate();
 }
 
 // Default configuration

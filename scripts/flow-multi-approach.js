@@ -25,9 +25,10 @@
  *   flow multi-approach --analyze "task"    # Just analyze, don't execute
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir, readJson } = require('./flow-utils');
+const { success, error: errorMsg } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const APPROACHES_DIR = path.join(PROJECT_ROOT, '.workflow', 'state', 'approaches');
@@ -336,7 +337,7 @@ function loadSession(sessionId) {
     return null;
   }
 
-  return JSON.parse(fs.readFileSync(sessionPath, 'utf-8'));
+  return readJson(sessionPath, null);
 }
 
 /**
@@ -381,7 +382,7 @@ function analyzeForMultiApproach(taskDescription, complexityLevel = null) {
       const { assessTaskComplexity } = require('./flow-complexity');
       const result = assessTaskComplexity(taskDescription);
       complexity = result.level;
-    } catch {
+    } catch (_err) {
       complexity = 'medium';
     }
   }
@@ -592,7 +593,7 @@ function main() {
     .join(' ');
 
   if (!taskDescription) {
-    console.log(`${colors.red}Error: Please provide a task description${colors.reset}`);
+    errorMsg('Please provide a task description');
     showHelp();
     process.exit(1);
   }
@@ -613,7 +614,7 @@ function main() {
     if (jsonOutput) {
       console.log(JSON.stringify(session, null, 2));
     } else {
-      console.log(`${colors.green}✓${colors.reset} Created multi-approach session: ${session.id}`);
+      success(`Created multi-approach session: ${session.id}`);
       console.log(`  Status: ${session.status}`);
       console.log(`  Approaches: ${session.approaches.length}`);
       console.log(`\n  Session saved to: ${APPROACHES_DIR}/${session.id}.json`);

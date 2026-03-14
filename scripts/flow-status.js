@@ -10,7 +10,7 @@
  *   flow status --json    JSON output for programmatic access
  */
 
-const path = require('path');
+const path = require('node:path');
 
 const {
   PATHS,
@@ -29,8 +29,7 @@ const {
   outputJson,
   printHeader,
   printSection,
-  color
-} = require('./flow-utils');
+  color, info } = require('./flow-utils');
 
 const {
   getBypassTracking
@@ -97,7 +96,7 @@ function collectStatus() {
       } else {
         status.cli.bridgeStatus = 'legacy';
       }
-    } catch {
+    } catch (_err) {
       status.cli.bridgeStatus = 'error';
     }
   }
@@ -118,7 +117,7 @@ function collectStatus() {
   // Bypass tracking (enforcement)
   try {
     status.bypassTracking = getBypassTracking();
-  } catch {
+  } catch (_err) {
     status.bypassTracking = { count: 0, attempts: [], autoCreatedTasks: [] };
   }
 
@@ -240,7 +239,7 @@ function main() {
     }
 
     console.log('');
-    console.log(color('cyan', '  💡 Use /wogi-start before making changes to follow the workflow.'));
+    info('Use /wogi-start before making changes to follow the workflow.');
     console.log('');
   }
 

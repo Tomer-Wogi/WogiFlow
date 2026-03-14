@@ -12,16 +12,18 @@
  * This creates a feedback loop that improves prompts over time.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { getProjectRoot, colors } = require('./flow-utils');
+const { error: errorMsg } = require('./flow-output');
+const { readJson } = require('./flow-io');
 const { storeSingleLearning, getAdapterPath } = require('./flow-model-adapter');
 const {
   FailureCategory,
   detectCategory,
   shouldEscalate: checkShouldEscalate
-} = require('../.workflow/lib/failure-categories');
+} = require('./flow-failure-categories');
 const { validateRepoFormat, safeGitCommand, sanitizeCommitMessage } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -34,7 +36,7 @@ const STRATEGY_STATS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'strat
 
 /**
  * Error categories with detection patterns and fix strategies
- * Now uses centralized FailureCategory from .workflow/lib/failure-categories.js
+ * Now uses centralized FailureCategory from scripts/flow-failure-categories.js
  *
  * Legacy mapping for backward compatibility - maps to centralized categories
  */
@@ -339,7 +341,7 @@ function recordSuccessfulRecovery(modelName, failures, successContext = {}) {
 
   // Generate learning entry (with deduplication)
   const learnings = [];
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   let newLearningsCount = 0;
 
   for (const [category, data] of Object.entries(categoryCounts)) {
@@ -427,15 +429,7 @@ function generateGuidanceFromFailures(category, details) {
  * Log learning to persistent file for analysis
  */
 function logLearning(modelName, failures, context) {
-  let log = { entries: [] };
-
-  if (fs.existsSync(LEARNING_LOG_PATH)) {
-    try {
-      log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-    } catch (err) {
-      log = { entries: [] };
-    }
-  }
+  const log = readJson(LEARNING_LOG_PATH, { entries: [] });
 
   log.entries.push({
     timestamp: new Date().toISOString(),
@@ -469,15 +463,7 @@ function logLearning(modelName, failures, context) {
  * This helps us learn which refinement strategies work best per model
  */
 function trackStrategyEffectiveness(modelName, strategy, succeeded) {
-  let stats = {};
-
-  if (fs.existsSync(STRATEGY_STATS_PATH)) {
-    try {
-      stats = JSON.parse(fs.readFileSync(STRATEGY_STATS_PATH, 'utf-8'));
-    } catch (err) {
-      stats = {};
-    }
-  }
+  const stats = readJson(STRATEGY_STATS_PATH, {});
 
   if (!stats[modelName]) {
     stats[modelName] = {};
@@ -514,12 +500,9 @@ function getStrategyEffectiveness(modelName) {
     return null;
   }
 
-  try {
-    const stats = JSON.parse(fs.readFileSync(STRATEGY_STATS_PATH, 'utf-8'));
-    return stats[modelName] || null;
-  } catch (err) {
-    return null;
-  }
+  const stats = readJson(STRATEGY_STATS_PATH, null);
+  if (!stats) return null;
+  return stats[modelName] || null;
 }
 
 /**
@@ -685,7 +668,7 @@ function exportLearningsForSharing() {
     return { success: false, error: 'No learning data found' };
   }
 
-  const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
+  const log = readJson(LEARNING_LOG_PATH, { entries: [] });
 
   // Aggregate by model
   for (const entry of log.entries) {
@@ -1079,7 +1062,7 @@ if (require.main === module) {
     case 'stats': {
       // Show learning statistics
       if (fs.existsSync(LEARNING_LOG_PATH)) {
-        const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
+        const log = readJson(LEARNING_LOG_PATH, { entries: [] });
         console.log('\n📊 Adaptive Learning Statistics\n');
         console.log(`Total recoveries: ${log.entries.length}`);
 
@@ -1185,20 +1168,20 @@ Or use: flow hybrid learning contribute --auto-pr --fork=yourusername/wogi-flow
 
       if (autoPR) {
         if (!forkRepo) {
-          console.log(`${colors.red}Error: --fork=username/wogi-flow required for auto-PR${colors.reset}`);
+          errorMsg('--fork=username/wogi-flow required for auto-PR');
           console.log('Example: flow hybrid learning contribute --auto-pr --fork=myuser/wogi-flow');
           process.exit(1);
         }
 
         const result = await createAutoPR(upstreamRepo, { forkRepo });
         if (!result.success) {
-          console.log(`${colors.red}Error: ${result.error}${colors.reset}`);
+          errorMsg(result.error);
           process.exit(1);
         }
       } else {
         const result = await contributeLearnings(upstreamRepo);
         if (!result.success) {
-          console.log(`${colors.red}Error: ${result.error}${colors.reset}`);
+          errorMsg(result.error);
           process.exit(1);
         }
       }
@@ -1215,7 +1198,7 @@ Or use: flow hybrid learning contribute --auto-pr --fork=yourusername/wogi-flow
         break;
       }
 
-      const stats = JSON.parse(fs.readFileSync(STRATEGY_STATS_PATH, 'utf-8'));
+      const stats = readJson(STRATEGY_STATS_PATH, {});
 
       for (const [model, strategies] of Object.entries(stats)) {
         console.log(`\n${colors.cyan}${model}${colors.reset}`);

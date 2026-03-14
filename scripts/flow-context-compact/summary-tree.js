@@ -22,8 +22,8 @@
  * - relevance: Current relevance score (0-1)
  */
 
-const path = require('path');
-const crypto = require('crypto');
+const path = require('node:path');
+const crypto = require('node:crypto');
 const { getConfig, readJson, writeJson, ensureDir, PATHS, estimateTokens } = require('../flow-utils');
 
 // ============================================================
@@ -255,7 +255,7 @@ function buildSummaryTree(sessionData) {
  * @returns {Object} Updated tree
  */
 function mergeIntoTree(existingTree, newData) {
-  const tree = JSON.parse(JSON.stringify(existingTree)); // Deep clone
+  const tree = structuredClone(existingTree); // Deep clone
 
   // Apply relevance decay to existing nodes
   const config = getConfig();
@@ -406,13 +406,13 @@ function saveTree(tree) {
  * @returns {Object|null} Summary tree or null
  */
 function loadTree() {
-  const fs = require('fs');
+  const fs = require('node:fs');
   if (!fs.existsSync(COMPACT_STATE_PATH)) {
     return null;
   }
   try {
     return readJson(COMPACT_STATE_PATH);
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -422,7 +422,7 @@ function loadTree() {
  * @returns {boolean}
  */
 function treeExists() {
-  const fs = require('fs');
+  const fs = require('node:fs');
   return fs.existsSync(COMPACT_STATE_PATH);
 }
 

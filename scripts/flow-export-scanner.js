@@ -14,9 +14,9 @@
  * When used as a module, call setProjectRoot() before other functions.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { PATHS, getConfig } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { PATHS, getConfig, readJson, success } = require('./flow-utils');
 
 // Default to PATHS.root from flow-utils, can be overridden via setProjectRoot() or CLI arg
 let PROJECT_ROOT = PATHS.root;
@@ -652,8 +652,8 @@ function loadCachedExportMap() {
 
     if (age > CACHE_MAX_AGE_MS) return null;
 
-    return JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8'));
-  } catch {
+    return readJson(CACHE_PATH, null);
+  } catch (_err) {
     return null;
   }
 }
@@ -681,7 +681,7 @@ function clearCache() {
   try {
     if (fs.existsSync(CACHE_PATH)) {
       fs.unlinkSync(CACHE_PATH);
-      console.log('✓ Cleared export map cache');
+      success('Cleared export map cache');
     }
   } catch (err) {
     console.error(`Warning: Could not clear cache: ${err.message}`);
@@ -1020,7 +1020,7 @@ if (require.main === module) {
     console.log(formatExportMapForTemplate(exportMap));
   }
 
-  console.log(`\n✓ Export map saved to ${CACHE_PATH}`);
+  success(`Export map saved to ${CACHE_PATH}`);
 }
 
 module.exports = {

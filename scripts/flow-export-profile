@@ -486,8 +486,8 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
 
             # Extract example snippets from patterns (using safe JSON parsing)
             node -e "
-                const fs = require('fs');
-                const path = require('path');
+                const fs = require('node:fs');
+                const path = require('node:path');
 
                 try {
                     const content = fs.readFileSync('$PATTERNS_OUTPUT', 'utf-8');
@@ -502,7 +502,7 @@ if [ "$EXTRACT_PATTERNS" = true ]; then
                     for (const category in p.patterns) {
                         for (const pattern of p.patterns[category] || []) {
                             if (pattern.examples && pattern.examples.length > 0) {
-                                const safeName = require('path').basename(
+                                const safeName = require('node:path').basename(
                                     pattern.subcategory.replace(/\\./g, '-')
                                 ) + '.txt';
                                 const filename = safeName;

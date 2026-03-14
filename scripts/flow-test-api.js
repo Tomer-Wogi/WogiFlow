@@ -18,9 +18,9 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 const { loadProfile } = require('./flow-verification-profile');

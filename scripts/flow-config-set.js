@@ -45,7 +45,7 @@ function parseValue(valueStr) {
       (valueStr.startsWith('[') && valueStr.endsWith(']'))) {
     try {
       return JSON.parse(valueStr);
-    } catch {
+    } catch (_err) {
       // Not valid JSON, treat as string
     }
   }
@@ -129,7 +129,7 @@ async function main() {
       setNestedValue(freshConfig, keyPath, value);
 
       // Write config using fs directly (withLock handles the file)
-      const fs = require('fs');
+      const fs = require('node:fs');
       fs.writeFileSync(PATHS.config, JSON.stringify(freshConfig, null, 2));
       invalidateConfigCache();
     });

@@ -11,9 +11,9 @@
  * Used by hybrid mode to get accurate type info instead of guessing.
  */
 
-const { spawn, spawnSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+const { spawn, spawnSync } = require('node:child_process');
+const path = require('node:path');
+const fs = require('node:fs');
 const { getConfig, PROJECT_ROOT, colors, success, warn, error } = require('./flow-utils');
 
 /**

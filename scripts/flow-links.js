@@ -20,12 +20,13 @@
  *   flow links show <name>             # Show cached content
  */
 
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const http = require('http');
+const fs = require('node:fs');
+const path = require('node:path');
+const https = require('node:https');
+const http = require('node:http');
 const dns = require('dns');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { success: printSuccess } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -130,18 +131,14 @@ function loadLinks() {
     try {
       const content = fs.readFileSync(LINKS_PATH, 'utf-8');
       return parseYaml(content);
-    } catch {
+    } catch (_err) {
       // Fall through to JSON
     }
   }
 
   // Try JSON
   if (fs.existsSync(LINKS_JSON_PATH)) {
-    try {
-      return JSON.parse(fs.readFileSync(LINKS_JSON_PATH, 'utf-8'));
-    } catch {
-      return {};
-    }
+    return readJson(LINKS_JSON_PATH, {});
   }
 
   return {};
@@ -436,11 +433,7 @@ function getCachedContent(name) {
   let metadata = {};
 
   if (fs.existsSync(metaFile)) {
-    try {
-      metadata = JSON.parse(fs.readFileSync(metaFile, 'utf-8'));
-    } catch {
-      // Ignore
-    }
+    metadata = readJson(metaFile, {});
   }
 
   return {
@@ -652,7 +645,7 @@ if (require.main === module) {
         }
 
         addLink(name, url, section);
-        console.log(`${c.green}✅ Added link: ${name}${c.reset}`);
+        printSuccess(`Added link: ${name}`);
         break;
       }
 
@@ -664,7 +657,7 @@ if (require.main === module) {
         }
 
         removeLink(name);
-        console.log(`${c.green}✅ Removed link: ${name}${c.reset}`);
+        printSuccess(`Removed link: ${name}`);
         break;
       }
 
@@ -678,7 +671,7 @@ if (require.main === module) {
         console.log(`${c.cyan}Fetching ${name}...${c.reset}`);
         try {
           const result = await fetchLink(name);
-          console.log(`${c.green}✅ Fetched and cached: ${result.contentLength} chars${c.reset}`);
+          printSuccess(`Fetched and cached: ${result.contentLength} chars`);
         } catch (err) {
           console.error(`${c.red}Error: ${err.message}${c.reset}`);
           process.exit(1);
@@ -714,7 +707,7 @@ if (require.main === module) {
       case 'init': {
         const created = initLinks();
         if (created) {
-          console.log(`${c.green}✅ Created links.yaml template${c.reset}`);
+          printSuccess('Created links.yaml template');
         } else {
           console.log(`${c.yellow}links.yaml already exists${c.reset}`);
         }

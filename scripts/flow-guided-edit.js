@@ -20,21 +20,20 @@
  *   node scripts/flow-guided-edit.js abort      # Cancel session
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const {
+  execSync } = require('node:child_process');
 const {
   getProjectRoot,
   getConfig,
   PATHS,
-  color,
-  success,
-  warn,
-  error,
   readFile,
   writeFile,
-  writeJson
-} = require('./flow-utils');
+  writeJson,
+  readJson
+} = require('./flow-utils')
+const { color, success, warn, error } = require('./flow-output');;
 
 const PROJECT_ROOT = getProjectRoot();
 const SESSION_FILE = path.join(PATHS.state, 'guided-edit-session.json');
@@ -47,14 +46,7 @@ const SESSION_FILE = path.join(PATHS.state, 'guided-edit-session.json');
  * Load current guided edit session
  */
 function loadSession() {
-  if (!fs.existsSync(SESSION_FILE)) {
-    return null;
-  }
-  try {
-    return JSON.parse(fs.readFileSync(SESSION_FILE, 'utf-8'));
-  } catch {
-    return null;
-  }
+  return readJson(SESSION_FILE, null);
 }
 
 /**
@@ -204,11 +196,11 @@ function findAffectedFiles(search, options = {}) {
           matches: matches.slice(0, 5), // First 5 matches
           status: 'pending'
         });
-      } catch {
+      } catch (_err) {
         // Skip files that can't be read
       }
     }
-  } catch {
+  } catch (_err) {
     // No matches or grep failed
   }
 
@@ -492,7 +484,7 @@ function showStatus() {
   }
   console.log('');
   console.log(`Progress: ${reviewed}/${session.files.length} files reviewed`);
-  console.log(`  ${color('green', '✓')} Approved: ${session.stats.approved}`);
+  success(`Approved: ${session.stats.approved}`);
   console.log(`  ${color('yellow', '✗')} Rejected: ${session.stats.rejected}`);
   console.log(`  ${color('dim', '○')} Skipped: ${session.stats.skipped}`);
   console.log(`  ${color('cyan', '•')} Pending: ${pending}`);
@@ -509,7 +501,7 @@ function showSummary(session) {
   console.log(color('cyan', '═'.repeat(40)));
   console.log(color('cyan', '📊 Session Complete'));
   console.log(color('cyan', '═'.repeat(40)));
-  console.log(`  ${color('green', '✓')} Approved: ${session.stats.approved}`);
+  success(`Approved: ${session.stats.approved}`);
   console.log(`  ${color('yellow', '✗')} Rejected: ${session.stats.rejected}`);
   console.log(`  ${color('dim', '○')} Skipped: ${session.stats.skipped}`);
   console.log('');

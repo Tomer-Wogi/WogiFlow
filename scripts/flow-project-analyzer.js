@@ -10,8 +10,8 @@
  *   node flow-project-analyzer.js [project-root]
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, safeJsonParse, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = process.argv[2] || getProjectRoot();
@@ -129,7 +129,7 @@ function findFiles(dir, pattern, results = [], depth = 0) {
         results.push(fullPath);
       }
     }
-  } catch {
+  } catch (_err) {
     // Ignore read errors
   }
 
@@ -259,7 +259,7 @@ function scanComponentExports(componentDir) {
         };
       }
     }
-  } catch {
+  } catch (_err) {
     // Ignore scan errors
   }
 
@@ -929,7 +929,7 @@ function detectConventions() {
       else if (/from\s+['"]\.\.?\//.test(content)) conventions.imports = 'Relative imports';
     }
 
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -960,7 +960,7 @@ function detectPotentialIssues() {
             message: `Large file (${lines} lines) - consider splitting`
           });
         }
-      } catch { /* File read error during size check — skip */ }
+      } catch (_err) { /* File read error during size check — skip */ }
     }
 
     // Check for files without tests
@@ -994,7 +994,7 @@ function detectPotentialIssues() {
         const content = fs.readFileSync(file, 'utf-8');
         const matches = content.match(/console\.(log|warn|error)\(/g);
         if (matches) consoleCount += matches.length;
-      } catch { /* File read error during console scan — skip */ }
+      } catch (_err) { /* File read error during console scan — skip */ }
     }
     if (consoleCount > CONSOLE_WARN_THRESHOLD) {
       issues.push({
@@ -1004,7 +1004,7 @@ function detectPotentialIssues() {
       });
     }
 
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -1055,7 +1055,7 @@ function gatherStatistics() {
     // Detect data-fetching library
     stats.dataFetchingLibrary = detectDataFetchingLibrary();
 
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -1079,7 +1079,7 @@ function generateCodebaseInsights() {
 
   let markdown = `# Codebase Insights
 
-Generated: ${new Date().toISOString().split('T')[0]}
+Generated: ${getTodayDate()}
 
 ## Architecture Pattern
 

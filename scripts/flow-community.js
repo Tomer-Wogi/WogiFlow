@@ -10,12 +10,12 @@
  * Uses ONLY Node.js built-in modules — no external dependencies.
  */
 
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const crypto = require('crypto');
-const os = require('os');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const https = require('node:https');
+const crypto = require('node:crypto');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 
 const { PATHS, safeJsonParse, safeJsonParseString, escapeRegex } = require('./flow-utils');
 
@@ -75,7 +75,7 @@ function getOrCreateAnonId() {
 function isConsentAcknowledged() {
   try {
     return fs.existsSync(CONSENT_PATH);
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -149,7 +149,7 @@ function stripPII(data, config) {
   try {
     gitUser = execFileSync('git', ['config', 'user.name'], { encoding: 'utf-8', timeout: 2000 }).trim();
     gitEmail = execFileSync('git', ['config', 'user.email'], { encoding: 'utf-8', timeout: 2000 }).trim();
-  } catch {
+  } catch (_err) {
     // Git not available or no config — that's fine
   }
 
@@ -268,7 +268,7 @@ function getWogiFlowVersion() {
     const pkg = safeJsonParse(pkgPath, {});
     _cachedVersion = pkg.version || 'unknown';
     return _cachedVersion;
-  } catch {
+  } catch (_err) {
     // Fallback: resolve relative to this file (works when running from source repo)
     try {
       const fallbackPath = path.join(__dirname, '..', 'package.json');
@@ -278,7 +278,7 @@ function getWogiFlowVersion() {
       } else {
         _cachedVersion = 'unknown';
       }
-    } catch {
+    } catch (_err) {
       _cachedVersion = 'unknown';
     }
     return _cachedVersion;
@@ -315,11 +315,11 @@ function collectModelIntelligence() {
             adjustments: adjustments || null
           });
         }
-      } catch {
+      } catch (_err) {
         // Skip unreadable files
       }
     }
-  } catch {
+  } catch (_err) {
     // Model adapters dir may not exist
   }
   return items;
@@ -379,12 +379,12 @@ function collectErrorRecovery() {
               successRate: data.successRate || null
             });
           }
-        } catch {
+        } catch (_err) {
           // Skip
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical
   }
   return items;
@@ -418,7 +418,7 @@ function collectPatternConvergence() {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical
   }
   return items;
@@ -460,7 +460,7 @@ function collectSessionStatistics() {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical
   }
   return stats;
@@ -479,7 +479,7 @@ function collectSkillLearnings() {
     const skillNames = fs.readdirSync(skillsDir).filter(d => {
       try {
         return fs.statSync(path.join(skillsDir, d)).isDirectory();
-      } catch {
+      } catch (_err) {
         return false;
       }
     });
@@ -499,12 +499,12 @@ function collectSkillLearnings() {
             type: file.replace(/\.md$/, ''),
             content: truncated
           });
-        } catch {
+        } catch (_err) {
           // Skip
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical
   }
   return items;
@@ -545,7 +545,7 @@ function isAllowedServerUrl(urlStr) {
       if (a === 169 && b === 254) return false;            // 169.254.0.0/16 (link-local)
     }
     return true;
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -610,7 +610,7 @@ function httpRequest(method, urlStr, body = null, timeoutMs = REQUEST_TIMEOUT_MS
         req.write(JSON.stringify(body));
       }
       req.end();
-    } catch {
+    } catch (_err) {
       resolve(null);
     }
   });
@@ -640,14 +640,14 @@ async function pushToServer(payload, config) {
           fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
         }
         fs.writeFileSync(LAST_PUSH_PATH, new Date().toISOString(), 'utf-8');
-      } catch {
+      } catch (_err) {
         // Non-critical
       }
       return true;
     }
 
     return false;
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -690,14 +690,14 @@ async function pullFromServer(config) {
         knowledge._cachedAt = new Date().toISOString();
         saveCommunityCache(knowledge);
         return knowledge;
-      } catch {
+      } catch (_err) {
         return cached || null;
       }
     }
 
     // Server unreachable — use stale cache
     return cached || null;
-  } catch {
+  } catch (_err) {
     return cached || null;
   }
 }
@@ -748,7 +748,7 @@ async function submitSuggestion(text, type, config) {
     // Server returned non-2xx — queue for retry
     queuePendingSuggestion(suggestion);
     return { delivered: false, queued: true };
-  } catch {
+  } catch (_err) {
     // Server unreachable — queue for retry
     queuePendingSuggestion(suggestion);
     return { delivered: false, queued: true };
@@ -773,7 +773,7 @@ function queuePendingSuggestion(suggestion) {
         if (Array.isArray(parsed)) {
           pending = parsed;
         }
-      } catch {
+      } catch (_err) {
         // Corrupt file — start fresh
       }
     }
@@ -806,7 +806,7 @@ async function retryPendingSuggestions(config) {
     let pending;
     try {
       pending = safeJsonParseString(content, null);
-    } catch {
+    } catch (_err) {
       return;
     }
 
@@ -823,14 +823,14 @@ async function retryPendingSuggestions(config) {
           stillPending.push(suggestion);
         }
         // Successfully sent — don't re-add
-      } catch {
+      } catch (_err) {
         stillPending.push(suggestion);
       }
     }
 
     if (stillPending.length === 0) {
       // All sent — remove the file
-      try { fs.unlinkSync(PENDING_SUGGESTIONS_PATH); } catch { /* ignore */ }
+      try { fs.unlinkSync(PENDING_SUGGESTIONS_PATH); } catch (_err) { /* ignore */ }
     } else {
       fs.writeFileSync(PENDING_SUGGESTIONS_PATH, JSON.stringify(stillPending, null, 2), 'utf-8');
     }
@@ -854,7 +854,7 @@ function loadCommunityCache() {
     if (!fs.existsSync(COMMUNITY_CACHE_PATH)) return null;
     const content = fs.readFileSync(COMMUNITY_CACHE_PATH, 'utf-8');
     return safeJsonParseString(content, null);
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -940,7 +940,7 @@ function mergeModelIntelligence(items) {
 
   try {
     if (!fs.existsSync(adaptersDir)) return 0;
-  } catch {
+  } catch (_err) {
     return 0;
   }
 
@@ -982,7 +982,7 @@ function mergeModelIntelligence(items) {
         fs.writeFileSync(filePath, content.trimEnd() + section, 'utf-8');
         merged++;
       }
-    } catch {
+    } catch (_err) {
       // Skip individual file failures
     }
   }
@@ -1005,7 +1005,7 @@ function mergeErrorStrategies(items) {
     if (fs.existsSync(filePath)) {
       data = safeJsonParse(filePath, {});
     }
-  } catch {
+  } catch (_err) {
     data = {};
   }
 
@@ -1067,12 +1067,12 @@ function mergePatterns(items) {
     } else {
       return 0; // Don't create the file if it doesn't exist
     }
-  } catch {
+  } catch (_err) {
     return 0;
   }
 
   let merged = 0;
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   const newRows = [];
 
   for (const item of items.slice(0, 20)) {

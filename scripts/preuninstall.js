@@ -29,8 +29,8 @@
  * - User's git history
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Get project root (where npm uninstall is run)
 const PROJECT_ROOT = process.env.INIT_CWD || process.cwd();

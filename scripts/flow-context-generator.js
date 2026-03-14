@@ -19,8 +19,8 @@
  *   const context = await generateProjectContext({ directories: ['src'] });
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -207,7 +207,7 @@ function hasSuspiciousKeys(obj) {
     if (depth > 10 || !o || typeof o !== 'object') return false;
 
     for (const key of suspiciousKeys) {
-      if (Object.prototype.hasOwnProperty.call(o, key)) {
+      if (Object.hasOwn(o, key)) {
         return true;
       }
     }

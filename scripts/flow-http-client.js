@@ -12,8 +12,8 @@
  *   const data = await client.get('/endpoint');
  */
 
-const https = require('https');
-const http = require('http');
+const https = require('node:https');
+const http = require('node:http');
 const { TIMEOUTS, LIMITS, BACKOFF } = require('./flow-constants');
 
 /**

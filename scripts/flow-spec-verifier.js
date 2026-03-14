@@ -16,9 +16,9 @@
  *   }
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const {
   PATHS,
   getConfig,
@@ -301,7 +301,7 @@ function parseSpecDeliverables(specPath) {
         const filePath = match[patternDef.group];
 
         // Validate it looks like a real file path
-        if (isValidFilePath(filePath) && !foundFiles.has(filePath)) {
+        if (looksLikeFilePath(filePath) && !foundFiles.has(filePath)) {
           foundFiles.set(filePath, section.name);
         }
       }
@@ -334,7 +334,7 @@ function parseSpecDeliverables(specPath) {
  * @param {string} str - String to check
  * @returns {boolean}
  */
-function isValidFilePath(str) {
+function looksLikeFilePath(str) {
   if (!str || str.length < 3) return false;
 
   // Must have an extension

@@ -14,16 +14,14 @@
  *   flow mcp-docs context [task]    - Get relevant MCP tool context for a task
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
   safeJsonParse,
-  fileExists,
-  color,
-  printHeader,
-  printSection
-} = require('./flow-utils');
+  fileExists
+} = require('./flow-utils')
+const { color, printHeader, printSection, success } = require('./flow-output');;
 
 // ============================================================
 // Configuration
@@ -499,8 +497,8 @@ function main() {
       const results = scanMcpServers();
       saveScanResults(results);
 
-      console.log(color('green', `✓ Scanned ${Object.keys(results.servers).length} server(s)`));
-      console.log(color('green', `✓ Found ${results.totalTools} tool(s)`));
+      success(`Scanned ${Object.keys(results.servers).length} server(s)`);
+      success(`Found ${results.totalTools} tool(s)`);
       console.log('');
 
       for (const [serverName, server] of Object.entries(results.servers)) {
@@ -597,7 +595,7 @@ function main() {
       const markdown = generateMarkdown(results);
       saveMarkdownDocs(markdown);
 
-      console.log(color('green', `✓ Generated documentation with ${results.totalTools} tools`));
+      success(`Generated documentation with ${results.totalTools} tools`);
       console.log(color('dim', `Output: ${DOCS_OUTPUT_PATH}`));
       break;
     }

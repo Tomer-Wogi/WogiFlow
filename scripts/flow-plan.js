@@ -15,8 +15,8 @@
  * File format: .workflow/plans/pl-XXXXXXXX.md
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -53,7 +53,7 @@ function loadPlansIndex() {
   }
   try {
     return safeJsonParse(PLANS_INDEX_PATH, { plans: {}, version: '1.0.0' });
-  } catch {
+  } catch (_err) {
     return { plans: {}, version: '1.0.0' };
   }
 }

@@ -14,9 +14,10 @@
  *   flow figma export            # Export registry as JSON
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, readJson } = require('./flow-utils');
+const { success: printSuccess, error: printError, info: printInfo } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -77,19 +78,16 @@ function detectFramework(projectRoot) {
     return 'react'; // Default
   }
 
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const pkg = readJson(packageJsonPath, null);
+  if (!pkg) return 'react';
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
 
-    if (deps['vue'] || deps['nuxt']) return 'vue';
-    if (deps['svelte'] || deps['@sveltejs/kit']) return 'svelte';
-    if (deps['@angular/core']) return 'angular';
-    if (deps['react'] || deps['next'] || deps['gatsby']) return 'react';
+  if (deps['vue'] || deps['nuxt']) return 'vue';
+  if (deps['svelte'] || deps['@sveltejs/kit']) return 'svelte';
+  if (deps['@angular/core']) return 'angular';
+  if (deps['react'] || deps['next'] || deps['gatsby']) return 'react';
 
-    return 'react'; // Default
-  } catch {
-    return 'react';
-  }
+  return 'react'; // Default
 }
 
 // ============================================================
@@ -121,19 +119,19 @@ class ComponentScanner {
     try {
       this.parser = require('@babel/parser');
       this.traverse = require('@babel/traverse').default;
-    } catch {
+    } catch (_err) {
       // Babel not available, will use regex parsing
     }
   }
 
   async scan() {
-    console.log('\n🔍 Scanning codebase for components...\n');
+    printInfo('Scanning codebase for components...\n');
     console.log(`   Framework detected: ${this.framework}`);
 
     // Find component directory
     const componentDir = this.findComponentDir();
     if (!componentDir) {
-      console.error('❌ No component directory found');
+      printError('No component directory found');
       console.log('   Searched:', this.config.componentDirs.join(', '));
       return null;
     }
@@ -155,7 +153,7 @@ class ComponentScanner {
     // Save registry
     this.saveRegistry();
 
-    console.log(`\n✅ Found ${this.registry.components.length} components`);
+    printSuccess(`Found ${this.registry.components.length} components`);
     console.log(`📄 Registry saved to: ${path.relative(PROJECT_ROOT, REGISTRY_PATH)}`);
 
     return this.registry;
@@ -260,7 +258,7 @@ class ComponentScanner {
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
+    } catch (_err) {
       return;
     }
 
@@ -803,10 +801,7 @@ class ComponentScanner {
   }
 
   loadRegistry() {
-    if (fs.existsSync(REGISTRY_PATH)) {
-      return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
-    }
-    return null;
+    return readJson(REGISTRY_PATH, null);
   }
 }
 

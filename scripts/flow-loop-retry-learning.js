@@ -13,10 +13,10 @@
  * - Suggests updates to decisions.md / patterns
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getConfig, getProjectRoot, colors } = require('./flow-utils');
-const { FailureCategory, detectCategory } = require('../.workflow/lib/failure-categories');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getConfig, getProjectRoot, colors, readJson, info, success } = require('./flow-utils');
+const { FailureCategory, detectCategory } = require('./flow-failure-categories');
 
 const PROJECT_ROOT = getProjectRoot();
 const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptive-learning.json');
@@ -256,7 +256,7 @@ function generateLearning(rootCause, session) {
   }
 
   const categoryConfig = ROOT_CAUSE_CATEGORIES[rootCause.primaryCategory];
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
 
   return {
     timestamp: new Date().toISOString(),
@@ -285,22 +285,19 @@ function isDuplicateLearning(rootCause, taskId) {
     return false;
   }
 
-  try {
-    const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-    const loopLearnings = log.loopRetryLearnings || [];
+  const log = readJson(LEARNING_LOG_PATH, null);
+  if (!log) return false;
+  const loopLearnings = log.loopRetryLearnings || [];
 
-    // Check for same root cause in last 7 days
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const cutoffDate = sevenDaysAgo.toISOString();
+  // Check for same root cause in last 7 days
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const cutoffDate = sevenDaysAgo.toISOString();
 
-    return loopLearnings.some(l =>
-      l.rootCause === rootCause &&
-      l.timestamp >= cutoffDate
-    );
-  } catch {
-    return false;
-  }
+  return loopLearnings.some(l =>
+    l.rootCause === rootCause &&
+    l.timestamp >= cutoffDate
+  );
 }
 
 /**
@@ -311,13 +308,9 @@ function storeLearning(learning) {
   let log = { entries: [], loopRetryLearnings: [] };
 
   if (fs.existsSync(LEARNING_LOG_PATH)) {
-    try {
-      log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-      if (!log.loopRetryLearnings) {
-        log.loopRetryLearnings = [];
-      }
-    } catch {
-      log = { entries: [], loopRetryLearnings: [] };
+    log = readJson(LEARNING_LOG_PATH, { entries: [], loopRetryLearnings: [] });
+    if (!log.loopRetryLearnings) {
+      log.loopRetryLearnings = [];
     }
   }
 
@@ -421,26 +414,23 @@ function getLearningStats() {
     return { total: 0, byCategory: {}, recentLearnings: [], avgIterations: 0 };
   }
 
-  try {
-    const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-    const learnings = log.loopRetryLearnings || [];
+  const log = readJson(LEARNING_LOG_PATH, null);
+  if (!log) return { total: 0, byCategory: {}, recentLearnings: [], avgIterations: 0 };
+  const learnings = log.loopRetryLearnings || [];
 
-    const byCategory = {};
-    for (const l of learnings) {
-      byCategory[l.rootCause] = (byCategory[l.rootCause] || 0) + 1;
-    }
-
-    return {
-      total: learnings.length,
-      byCategory,
-      recentLearnings: learnings.slice(-5),
-      avgIterations: learnings.length > 0
-        ? Math.round(learnings.reduce((sum, l) => sum + l.iterations, 0) / learnings.length * 10) / 10
-        : 0
-    };
-  } catch {
-    return { total: 0, byCategory: {}, recentLearnings: [], avgIterations: 0 };
+  const byCategory = {};
+  for (const l of learnings) {
+    byCategory[l.rootCause] = (byCategory[l.rootCause] || 0) + 1;
   }
+
+  return {
+    total: learnings.length,
+    byCategory,
+    recentLearnings: learnings.slice(-5),
+    avgIterations: learnings.length > 0
+      ? Math.round(learnings.reduce((sum, l) => sum + l.iterations, 0) / learnings.length * 10) / 10
+      : 0
+  };
 }
 
 /**
@@ -452,22 +442,19 @@ function getUnappliedSuggestions() {
     return [];
   }
 
-  try {
-    const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
-    const learnings = log.loopRetryLearnings || [];
+  const log = readJson(LEARNING_LOG_PATH, null);
+  if (!log) return [];
+  const learnings = log.loopRetryLearnings || [];
 
-    return learnings
-      .filter(l => !l.applied)
-      .map(l => ({
-        taskId: l.taskId,
-        rootCause: l.rootCause,
-        suggestion: l.suggestion,
-        targetFile: l.targetFile,
-        date: l.date
-      }));
-  } catch {
-    return [];
-  }
+  return learnings
+    .filter(l => !l.applied)
+    .map(l => ({
+      taskId: l.taskId,
+      rootCause: l.rootCause,
+      suggestion: l.suggestion,
+      targetFile: l.targetFile,
+      date: l.date
+    }));
 }
 
 /**
@@ -481,7 +468,8 @@ function markLearningApplied(taskId) {
   }
 
   try {
-    const log = JSON.parse(fs.readFileSync(LEARNING_LOG_PATH, 'utf-8'));
+    const log = readJson(LEARNING_LOG_PATH, null);
+    if (!log) return false;
     const learning = (log.loopRetryLearnings || []).find(l => l.taskId === taskId);
 
     if (learning) {
@@ -492,7 +480,7 @@ function markLearningApplied(taskId) {
     }
 
     return false;
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -558,11 +546,11 @@ if (require.main === module) {
     case 'suggestions': {
       const suggestions = getUnappliedSuggestions();
       if (suggestions.length === 0) {
-        console.log('\n✅ No unapplied suggestions');
+        success('No unapplied suggestions');
         break;
       }
 
-      console.log('\n💡 Unapplied Learning Suggestions');
+      info('Unapplied Learning Suggestions');
       console.log('─'.repeat(40));
       for (const s of suggestions) {
         console.log(`\n📝 ${s.taskId} (${s.date})`);

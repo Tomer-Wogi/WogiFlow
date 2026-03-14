@@ -9,9 +9,9 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');
@@ -57,13 +57,13 @@ function getValidationCommands(ext, config) {
 
   // Only add tsc if tsconfig.json exists (project actually uses TypeScript)
   const hasTsConfig = (() => {
-    try { return fs.existsSync(path.join(PATHS.root, 'tsconfig.json')); } catch { return false; }
+    try { return fs.existsSync(path.join(PATHS.root, 'tsconfig.json')); } catch (_err) { return false; }
   })();
 
   const tscCmd = hasTsConfig ? (typecheckCmd || getExec('tsc', ['--noEmit'])) : null;
   // Only use eslint fallback if ESLint is detectable in the project
   const hasEslint = (() => {
-    try { return fs.existsSync(path.join(PATHS.root, 'node_modules', '.bin', 'eslint')); } catch { return false; }
+    try { return fs.existsSync(path.join(PATHS.root, 'node_modules', '.bin', 'eslint')); } catch (_err) { return false; }
   })();
   const eslintCmd = lintCmd || (hasEslint ? getExec('eslint', ['{file}']) : null);
 

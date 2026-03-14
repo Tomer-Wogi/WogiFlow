@@ -9,8 +9,8 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { PATHS } = require('../../flow-utils');
 const {
   checkResearchGate,

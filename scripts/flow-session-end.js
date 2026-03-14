@@ -6,9 +6,12 @@
  * Ensures all workflow state is saved, optionally commits and pushes.
  */
 
-const { execSync, execFileSync, spawnSync } = require('child_process');
-const readline = require('readline');
-const path = require('path');
+const {
+  execSync,
+  execFileSync,
+  spawnSync } = require('node:child_process');
+const readline = require('node:readline');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -19,12 +22,9 @@ const {
   readFile,
   writeFile,
   isGitRepo,
-  getGitStatus,
-  color,
-  printSection,
-  success,
-  warn
-} = require('./flow-utils');
+  getGitStatus
+} = require('./flow-utils')
+const { color, printSection, success, warn, error } = require('./flow-output');;
 
 // v1.7.0 context memory management
 const { checkContextHealth } = require('./flow-context-monitor');
@@ -158,7 +158,7 @@ async function handleUncommittedChanges() {
     try {
       const status = execSync('git status --short', { encoding: 'utf-8' });
       console.log(status);
-    } catch {
+    } catch (_err) {
       // Ignore
     }
 
@@ -462,7 +462,7 @@ async function offerPush() {
       execSync('git push', { stdio: 'inherit' });
       success('Pushed to remote');
     }
-  } catch {
+  } catch (_err) {
     // No remote configured, skip
   }
 }
@@ -726,7 +726,7 @@ async function automaticMemoryManagement() {
   } finally {
     try {
       memoryDb.closeDatabase();
-    } catch {}
+    } catch (_err) {}
   }
 }
 
@@ -738,7 +738,7 @@ async function syncRulesIfChanged() {
   if (!rulesSync) return;
 
   try {
-    const crypto = require('crypto');
+    const crypto = require('node:crypto');
     const decisionsPath = PATHS.decisions;
 
     if (!fileExists(decisionsPath)) {
@@ -757,7 +757,7 @@ async function syncRulesIfChanged() {
       try {
         const hashState = JSON.parse(readFile(hashStatePath));
         lastHash = hashState.hash;
-      } catch {
+      } catch (_err) {
         // Ignore parse errors
       }
     }
@@ -795,7 +795,7 @@ async function syncRulesIfChanged() {
     } else {
       warn('Rules sync had errors');
       for (const err of result.errors) {
-        console.log(`  ${color('red', '✗')} ${err}`);
+        error(`${err}`);
       }
     }
   } catch (err) {
@@ -841,7 +841,7 @@ async function offerKnowledgeSync() {
     const answer = await prompt('Regenerate now? (y/N): ');
     if (answer.toLowerCase() === 'y') {
       try {
-        const { spawnSync } = require('child_process');
+        const { spawnSync } = require('node:child_process');
         const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-onboard');
         console.log(color('dim', 'Regenerating knowledge files...'));
 
@@ -863,7 +863,7 @@ async function offerKnowledgeSync() {
     } else {
       console.log(color('dim', 'Skipped - run: flow knowledge-sync regenerate'));
     }
-  } catch {
+  } catch (_err) {
     // Knowledge sync not available - skip silently
   }
 }
@@ -905,10 +905,10 @@ async function offerDebtCleanup() {
     console.log(`  ${severityParts.join(', ')}`);
 
     if (stats.autoFixable > 0) {
-      console.log(`  ${color('green', '✓')} ${stats.autoFixable} are auto-fixable`);
+      success(`${stats.autoFixable} are auto-fixable`);
     }
     if (stats.agingCount > 0) {
-      console.log(`  ${color('yellow', '⚠')} ${stats.agingCount} have been aging (3+ sessions)`);
+      warn(`${stats.agingCount} have been aging (3+ sessions)`);
     }
 
     console.log('');
@@ -979,7 +979,7 @@ async function offerDebtCleanup() {
         console.log(color('dim', 'Skipping debt cleanup.'));
         break;
     }
-  } catch {
+  } catch (_err) {
     // Tech debt manager not available - skip silently
   }
 }
@@ -1015,7 +1015,7 @@ async function cleanupStaleTasks() {
       uncommittedFiles = status.trim().split('\n')
         .filter(Boolean)
         .map(line => line.substring(3).trim()); // Remove status prefix
-    } catch {
+    } catch (_err) {
       // Not a git repo or git error, skip
       return;
     }
@@ -1125,7 +1125,7 @@ function showSummary() {
         encoding: 'utf-8',
         stdio: 'inherit'
       });
-    } catch {
+    } catch (_err) {
       console.log("  (run 'flow status' for details)");
     }
   } else {

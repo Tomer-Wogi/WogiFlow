@@ -169,6 +169,14 @@ function showHelp(scriptName, description, commands, opts = {}) {
  * @param {string} str - String to escape
  * @returns {string} Escaped string safe for regex
  */
+/**
+ * Get today's date as YYYY-MM-DD string
+ * @returns {string}
+ */
+function getTodayDate() {
+  return new Date().toISOString().split('T')[0];
+}
+
 function escapeRegex(str) {
   if (!str || typeof str !== 'string') {
     return '';
@@ -188,4 +196,5 @@ module.exports = {
   info,
   showHelp,
   escapeRegex,
+  getTodayDate,
 };

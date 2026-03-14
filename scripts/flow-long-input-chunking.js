@@ -9,8 +9,9 @@
  * Dependencies: Requires core functions from flow-transcript-digest.js
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
+const { readJson } = require('./flow-io');
 
 // Core functions are injected via init() to avoid circular dependencies
 let digestCore = null;
@@ -52,23 +53,11 @@ const DURABLE_DIGEST_VERSION = '1.0';
  * Load durable digest sessions (E5-S3)
  */
 function loadDurableSessions() {
-  if (!fs.existsSync(DURABLE_DIGEST_PATH)) {
-    return {
-      version: DURABLE_DIGEST_VERSION,
-      sessions: [],
-      active_session_id: null
-    };
-  }
-
-  try {
-    return JSON.parse(fs.readFileSync(DURABLE_DIGEST_PATH, 'utf8'));
-  } catch (_err) {
-    return {
-      version: DURABLE_DIGEST_VERSION,
-      sessions: [],
-      active_session_id: null
-    };
-  }
+  return readJson(DURABLE_DIGEST_PATH, {
+    version: DURABLE_DIGEST_VERSION,
+    sessions: [],
+    active_session_id: null
+  });
 }
 
 /**
@@ -128,24 +117,20 @@ function getSessionProgress(digestPath) {
 
   // Check topics
   const topicsPath = path.join(digestPath, 'topics.json');
-  if (fs.existsSync(topicsPath)) {
-    try {
-      const topics = JSON.parse(fs.readFileSync(topicsPath, 'utf8'));
-      progress.topics_count = topics.topics?.length || 0;
-      progress.passes_completed.push('topics');
-      progress.phase = 'topics';
-    } catch (_err) { /* ignore parse errors */ }
+  const topics = readJson(topicsPath, null);
+  if (topics) {
+    progress.topics_count = topics.topics?.length || 0;
+    progress.passes_completed.push('topics');
+    progress.phase = 'topics';
   }
 
   // Check statements
   const stmtPath = path.join(digestPath, 'statement-map.json');
-  if (fs.existsSync(stmtPath)) {
-    try {
-      const stmtMap = JSON.parse(fs.readFileSync(stmtPath, 'utf8'));
-      progress.statements_count = stmtMap.statements?.length || 0;
-      progress.passes_completed.push('statements');
-      progress.phase = 'statements';
-    } catch (_err) { /* ignore parse errors */ }
+  const stmtMap = readJson(stmtPath, null);
+  if (stmtMap) {
+    progress.statements_count = stmtMap.statements?.length || 0;
+    progress.passes_completed.push('statements');
+    progress.phase = 'statements';
   }
 
   // Check orphans pass
@@ -157,25 +142,21 @@ function getSessionProgress(digestPath) {
 
   // Check clarifications
   const clarPath = path.join(digestPath, 'clarifications.json');
-  if (fs.existsSync(clarPath)) {
-    try {
-      const clar = JSON.parse(fs.readFileSync(clarPath, 'utf8'));
-      progress.passes_completed.push('contradictions');
-      progress.questions_total = clar.questions?.length || 0;
-      progress.questions_answered = clar.questions?.filter(q => q.status === 'answered')?.length || 0;
-      progress.phase = 'clarification';
-    } catch (_err) { /* ignore parse errors */ }
+  const clar = readJson(clarPath, null);
+  if (clar) {
+    progress.passes_completed.push('contradictions');
+    progress.questions_total = clar.questions?.length || 0;
+    progress.questions_answered = clar.questions?.filter(q => q.status === 'answered')?.length || 0;
+    progress.phase = 'clarification';
   }
 
   // Check stories
   const storiesPath = path.join(digestPath, 'stories.json');
-  if (fs.existsSync(storiesPath)) {
-    try {
-      const stories = JSON.parse(fs.readFileSync(storiesPath, 'utf8'));
-      progress.stories_generated = stories.stories?.length || 0;
-      progress.stories_approved = stories.stories?.filter(s => s.approval_status === 'approved')?.length || 0;
-      progress.phase = 'stories';
-    } catch (_err) { /* ignore parse errors */ }
+  const stories = readJson(storiesPath, null);
+  if (stories) {
+    progress.stories_generated = stories.stories?.length || 0;
+    progress.stories_approved = stories.stories?.filter(s => s.approval_status === 'approved')?.length || 0;
+    progress.phase = 'stories';
   }
 
   // Check queue for presentation phase
@@ -957,11 +938,7 @@ function loadChunkingState() {
   }
 
   const chunkingPath = path.join(activeDigest.session.digest_path, 'chunking.json');
-  if (!fs.existsSync(chunkingPath)) {
-    return null;
-  }
-
-  return JSON.parse(fs.readFileSync(chunkingPath, 'utf8'));
+  return readJson(chunkingPath, null);
 }
 
 /**
@@ -1018,11 +995,10 @@ function getChunkContent(chunkId) {
   }
 
   const chunksPath = path.join(activeDigest.session.digest_path, 'chunks.json');
-  if (!fs.existsSync(chunksPath)) {
+  const chunksData = readJson(chunksPath, null);
+  if (!chunksData) {
     return null;
   }
-
-  const chunksData = JSON.parse(fs.readFileSync(chunksPath, 'utf8'));
   const chunk = chunksData.chunks.find(c => c.chunk_id === chunkId);
 
   return chunk || null;

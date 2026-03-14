@@ -17,8 +17,8 @@
  * Part of v1.8.0 - Automatic Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const memoryDb = require('./flow-memory-db');
 const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
 const { color } = require('./flow-output');
@@ -38,16 +38,7 @@ function syncDecisionsToRules() {
 
 const DECISIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
 
-function loadConfig() {
-  try {
-    return getConfig();
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[memory-sync] Failed to load config: ${err.message}`);
-    }
-    return {};
-  }
-}
+// loadConfig() removed — getConfig() already handles errors gracefully
 
 // ============================================================
 // Pattern Analysis
@@ -88,7 +79,7 @@ function loadDecisions() {
     if (fs.existsSync(DECISIONS_PATH)) {
       return fs.readFileSync(DECISIONS_PATH, 'utf-8');
     }
-  } catch {}
+  } catch (_err) {}
   return '';
 }
 
@@ -393,7 +384,7 @@ async function showStatus(config) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const config = loadConfig();
+  const config = getConfig();
 
   try {
     if (args.includes('--list')) {

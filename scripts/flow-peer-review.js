@@ -10,8 +10,8 @@
  *   node scripts/flow-peer-review.js [--files <glob>] [--task <id>] [--json]
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
+const { execSync } = require('node:child_process');
+const path = require('node:path');
 const {
   PATHS,
   parseFlags,
@@ -168,9 +168,9 @@ function getFilesContent(glob) {
         continue;
       }
       try {
-        const fileContent = require('fs').readFileSync(file, 'utf-8');
+        const fileContent = require('node:fs').readFileSync(file, 'utf-8');
         content += `\n// File: ${file}\n${fileContent}\n`;
-      } catch {
+      } catch (_err) {
         // File may have been deleted, skip it
       }
     }

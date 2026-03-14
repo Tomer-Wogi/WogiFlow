@@ -12,9 +12,10 @@
  *   flow figma match --threshold 80            # Set match threshold
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, safeJsonParse, safeJsonParseString } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, safeJsonParse, safeJsonParseString } = require('./flow-utils')
+const { error } = require('./flow-output');;
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -554,7 +555,7 @@ async function main() {
     // Use the Figma-sourced multi-page registry
     const figmaRegistryPath = path.join(WORKFLOW_DIR, 'state', 'figma-component-registry.json');
     if (!fs.existsSync(figmaRegistryPath)) {
-      console.error('❌ Figma component registry not found.');
+      error('Figma component registry not found.');
       console.error('   Run the multi-page scan first.');
       process.exit(1);
     }
@@ -563,7 +564,7 @@ async function main() {
   } else {
     // Default: use codebase component registry
     if (!fs.existsSync(REGISTRY_PATH)) {
-      console.error('❌ Component registry not found.');
+      error('Component registry not found.');
       console.error('   Run "flow figma scan" first to build the registry.');
       process.exit(1);
     }

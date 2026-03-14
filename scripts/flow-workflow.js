@@ -21,10 +21,11 @@
  *   flow workflow validate <name>         # Validate workflow
  */
 
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawn } = require('node:child_process');
+const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { success: printSuccess, error: printError } = require('./flow-output');
 const { detectPackageManager } = require('./flow-script-resolver');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -704,7 +705,8 @@ function loadWorkflow(name) {
   } else if (fs.existsSync(ymlPath)) {
     definition = parseYaml(fs.readFileSync(ymlPath, 'utf-8'));
   } else if (fs.existsSync(jsonPath)) {
-    definition = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+    definition = readJson(jsonPath, null);
+    if (!definition) throw new Error(`Failed to parse workflow JSON: ${name}`);
   } else {
     throw new Error(`Workflow not found: ${name}`);
   }
@@ -733,7 +735,7 @@ function listWorkflows() {
           description: workflow.description,
           steps: workflow.steps.length
         });
-      } catch {
+      } catch (_err) {
         workflows.push({ name, error: 'Failed to parse' });
       }
     }
@@ -918,9 +920,9 @@ if (require.main === module) {
 
           console.log('');
           if (results.success) {
-            console.log(`${c.green}✅ Workflow completed successfully${c.reset}`);
+            printSuccess('Workflow completed successfully');
           } else {
-            console.log(`${c.red}❌ Workflow failed${c.reset}`);
+            printError('Workflow failed');
             process.exit(1);
           }
         } catch (err) {
@@ -938,7 +940,7 @@ if (require.main === module) {
         }
 
         const filePath = createWorkflowTemplate(name);
-        console.log(`${c.green}✅ Created workflow: ${filePath}${c.reset}`);
+        printSuccess(`Created workflow: ${filePath}`);
         break;
       }
 
@@ -952,9 +954,9 @@ if (require.main === module) {
         const result = validateWorkflow(name);
 
         if (result.valid) {
-          console.log(`${c.green}✅ Workflow "${name}" is valid${c.reset}`);
+          printSuccess(`Workflow "${name}" is valid`);
         } else {
-          console.log(`${c.red}❌ Workflow "${name}" has errors:${c.reset}`);
+          printError(`Workflow "${name}" has errors:`);
           for (const err of result.errors) {
             console.log(`   ${c.red}• ${err}${c.reset}`);
           }

@@ -14,8 +14,8 @@
  *   const { formatTodoWriteInit, formatTodoWriteUpdate, getTodoWriteStats } = require('./flow-todowrite-sync');
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, safeJsonParse } = require('./flow-utils');
 
 // ============================================================================

@@ -13,10 +13,10 @@
  * 3. Warns or blocks based on configuration
  */
 
-const path = require('path');
+const path = require('node:path');
 
 // Import from parent scripts directory
-const { getConfig, getProjectRoot } = require('../../flow-utils');
+const { getConfig, isPathWithinProject } = require('../../flow-utils');
 const { checkTaskGate, getActiveTask } = require('./task-gate');
 const { getSessionFileScope, getSessionBoundaries } = require('../../flow-durable-session');
 
@@ -69,21 +69,6 @@ function getExemptPatterns(config) {
   return getScopeGatingSettings(config).exemptPatterns;
 }
 
-/**
- * Validate that a path is within the project root (prevents path traversal)
- * @param {string} filePath - The file path to validate
- * @returns {boolean} True if path is within project
- */
-function isPathWithinProject(filePath) {
-  try {
-    const projectRoot = getProjectRoot();
-    const resolvedPath = path.resolve(projectRoot, filePath);
-    return resolvedPath.startsWith(projectRoot + path.sep) || resolvedPath === projectRoot;
-  } catch (_err) {
-    // If we can't resolve, reject for safety
-    return false;
-  }
-}
 
 /**
  * Check if a file path matches a pattern

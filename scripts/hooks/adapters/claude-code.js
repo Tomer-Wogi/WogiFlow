@@ -7,8 +7,8 @@
  * Handles SessionStart, PreToolUse, PostToolUse, Stop, SessionEnd.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 const { BaseAdapter } = require('./base-adapter');
 
 // Import from parent scripts directory
@@ -28,6 +28,7 @@ const HOOK_TIMEOUTS = {
   USER_PROMPT_SUBMIT: 5,  // Implementation gate check
   PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
   POST_TOOL_USE: 60,      // Validation (linting, type checking)
+  POST_COMPACT: 5,        // Post-compaction state recovery (Claude Code 2.1.76+)
   STOP: 5,                // Loop enforcement check
   SESSION_END: 10,        // Session cleanup/logging
   TASK_COMPLETED: 10,     // Post-task cleanup (Claude Code 2.1.33+)
@@ -53,6 +54,7 @@ const CLAUDE_CODE_EVENTS = [
   'WorktreeRemove',       // Claude Code 2.1.50+ — clean up worktree state
   'ConfigChange',         // Claude Code 2.1.63+ — mid-session config change detection
   'InstructionsLoaded',   // Claude Code latest — fires when CLAUDE.md/.claude/rules loaded
+  'PostCompact',          // Claude Code 2.1.76+ — fires after context compaction completes
 ];
 
 /**
@@ -60,9 +62,11 @@ const CLAUDE_CODE_EVENTS = [
  * See: https://code.claude.com/docs/en/hooks for the full event list.
  */
 // const UNUSED_SUPPORTED_EVENTS = [
-//   'SubagentStart',   // Supported but not yet used by WogiFlow
-//   'SubagentStop',    // Supported but not yet used by WogiFlow
-//   'Notification',    // Supported but not yet used by WogiFlow
+//   'SubagentStart',      // Supported but not yet used by WogiFlow
+//   'SubagentStop',       // Supported but not yet used by WogiFlow
+//   'Notification',       // Supported but not yet used by WogiFlow
+//   'Elicitation',        // Claude Code 2.1.76+ — intercept MCP elicitation requests before dialog
+//   'ElicitationResult',  // Claude Code 2.1.76+ — intercept/override elicitation responses before sending
 // ];
 
 /**
@@ -196,6 +200,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformWorktreeRemove(coreResult);
       case 'InstructionsLoaded':
         return this.transformInstructionsLoaded(coreResult);
+      case 'PostCompact':
+        return this.transformPostCompact(coreResult);
       default:
         return { continue: true };
     }
@@ -528,6 +534,25 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform PostCompact result (Claude Code 2.1.76+)
+   * Re-injects critical state after context compaction.
+   * Always non-blocking — informational only.
+   */
+  transformPostCompact(coreResult) {
+    if (!coreResult.enabled || !coreResult.hasContext) {
+      return { continue: true };
+    }
+
+    return {
+      continue: true,
+      hookSpecificOutput: {
+        hookEventName: 'PostCompact',
+        additionalContext: coreResult.message
+      }
+    };
+  }
+
+  /**
    * Generate Claude Code hook configuration
    */
   generateConfig(rules, projectRoot, transportConfig) {
@@ -631,6 +656,13 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.configChange?.enabled !== false) {
       hooks.ConfigChange = [{
         hooks: [hookEntry('ConfigChange', 'config-change.js', HOOK_TIMEOUTS.CONFIG_CHANGE)]
+      }];
+    }
+
+    // PostCompact hook — re-inject state after compaction (Claude Code 2.1.76+)
+    if (rules.postCompact?.enabled !== false) {
+      hooks.PostCompact = [{
+        hooks: [hookEntry('PostCompact', 'post-compact.js', HOOK_TIMEOUTS.POST_COMPACT)]
       }];
     }
 

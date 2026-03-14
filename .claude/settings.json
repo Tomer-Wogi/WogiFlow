@@ -11,17 +11,6 @@
         ]
       }
     ],
-    "Setup": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node scripts/hooks/entry/claude-code/setup.js",
-            "timeout": 30
-          }
-        ]
-      }
-    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -89,6 +78,28 @@
         ]
       }
     ],
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/worktree-create.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "WorktreeRemove": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/worktree-remove.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "ConfigChange": [
       {
         "hooks": [
@@ -99,9 +110,31 @@
           }
         ]
       }
+    ],
+    "InstructionsLoaded": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/instructions-loaded.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/post-compact.js",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "_wogiFlowManaged": true,
-  "_wogiFlowVersion": "1.8.6",
+  "_wogiFlowVersion": "1.9.10",
   "_comment": "Shared WogiFlow hook configuration. Committed to repo for team use. User-specific overrides go in settings.local.json."
 }

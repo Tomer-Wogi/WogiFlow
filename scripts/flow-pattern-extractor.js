@@ -34,11 +34,11 @@
  *   --json                 JSON output for scripting
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync, execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync, execFileSync } = require('node:child_process');
 const { resolvePatterns } = require('./flow-framework-resolver');
-const { getProjectRoot, generateHashId } = require('./flow-utils');
+const { getProjectRoot, generateHashId, readJson } = require('./flow-utils');
 
 // ============================================================================
 // Constants
@@ -92,16 +92,7 @@ const IGNORE_PATTERNS = [
 ];
 
 // Colors for CLI output
-const c = {
-  reset: '\x1b[0m',
-  dim: '\x1b[2m',
-  bold: '\x1b[1m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  cyan: '\x1b[36m'
-};
+const { colors: c } = require('./flow-output');
 
 // ============================================================================
 // Utility Functions
@@ -152,7 +143,7 @@ function globFiles(projectRoot, patterns, ignorePatterns = IGNORE_PATTERNS) {
           }
         }
       }
-    } catch {
+    } catch (_err) {
       // Skip directories we can't read
     }
   }
@@ -246,7 +237,7 @@ function detectFramework(projectRoot) {
       }
 
       return 'javascript';
-    } catch {
+    } catch (_err) {
       return 'javascript';
     }
   }
@@ -265,7 +256,7 @@ function detectFramework(projectRoot) {
         if (reqs.includes('django')) return 'django';
         if (reqs.includes('flask')) return 'flask';
       }
-    } catch {
+    } catch (_err) {
       // Ignore
     }
     return 'python';
@@ -316,7 +307,7 @@ function _getGitBlameDate(projectRoot, filePath, lineNumber) {
     if (timestampMatch) {
       return new Date(parseInt(timestampMatch[1]) * 1000);
     }
-  } catch {
+  } catch (_err) {
     // Git blame failed (file not tracked, invalid line, etc.)
   }
   return null;
@@ -354,7 +345,7 @@ function _getGitFileDate(projectRoot, filePath) {
       _gitFileDateCache.set(key, date);
       return date;
     }
-  } catch {
+  } catch (_err) {
     // Git log failed (not a git repo, file not tracked, etc.)
   }
 
@@ -372,7 +363,7 @@ function getFileMtime(projectRoot, filePath) {
     const fullPath = path.join(projectRoot, filePath);
     const stats = fs.statSync(fullPath);
     return stats.mtime;
-  } catch {
+  } catch (_err) {
     return new Date(0);
   }
 }
@@ -459,7 +450,7 @@ function extractCodePatterns(projectRoot, files, _options = {}) {
 
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
+    } catch (_err) {
       continue;
     }
 
@@ -791,7 +782,7 @@ function extractApiPatterns(projectRoot, files, options = {}) {
 
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
+    } catch (_err) {
       continue;
     }
 
@@ -918,7 +909,7 @@ function extractComponentPatterns(projectRoot, files, _options = {}) {
 
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
+    } catch (_err) {
       continue;
     }
 
@@ -1050,7 +1041,7 @@ function extractTypePatterns(projectRoot, files, _options = {}) {
 
     const fullPath = path.join(projectRoot, file);
     let content;
-    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch (_err) { continue; }
 
     // Interface prefix: IUser vs User
     const interfaceMatches = content.matchAll(/\binterface\s+([A-Z][a-zA-Z0-9]*)/g);
@@ -1121,7 +1112,7 @@ function extractExportPatterns(projectRoot, files, _options = {}) {
 
     const fullPath = path.join(projectRoot, file);
     let content;
-    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch (_err) { continue; }
 
     const basename = path.basename(file);
 
@@ -1187,7 +1178,7 @@ function extractTestPatterns(projectRoot, files, _options = {}) {
 
     const fullPath = path.join(projectRoot, file);
     let content;
-    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch (_err) { continue; }
 
     // Assertion style
     if (content.includes('expect(')) {
@@ -1336,7 +1327,7 @@ function extractCommentPatterns(projectRoot, files, _options = {}) {
 
     const fullPath = path.join(projectRoot, file);
     let content;
-    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch (_err) { continue; }
 
     // Doc-style comments
     if (content.includes('/**')) {
@@ -1413,7 +1404,7 @@ function extractConfigPatterns(projectRoot, files, _options = {}) {
   for (const file of files) {
     const fullPath = path.join(projectRoot, file);
     let content;
-    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch { continue; }
+    try { content = fs.readFileSync(fullPath, 'utf-8'); } catch (_err) { continue; }
 
     // Environment variable access
     if (/process\.env\.[A-Z_]/.test(content)) {
@@ -1507,11 +1498,9 @@ function extractDataFetchingPatterns(projectRoot, files, _options = {}) {
   // --- Step 1: Detect data-fetching libraries from package.json ---
   const packageJsonPath = path.join(projectRoot, 'package.json');
   let deps = {};
-  try {
-    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  const pkg = readJson(packageJsonPath, null);
+  if (pkg) {
     deps = { ...pkg.dependencies, ...pkg.devDependencies };
-  } catch {
-    // No package.json — skip library detection but still scan files
   }
 
   const detectedLibs = [];
@@ -1554,7 +1543,7 @@ function extractDataFetchingPatterns(projectRoot, files, _options = {}) {
     let content;
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch {
+    } catch (_err) {
       continue;
     }
 
@@ -2058,7 +2047,7 @@ function formatAsJson(result) {
  */
 function formatAsDecisions(result) {
   let md = `# Extracted Patterns\n\n`;
-  md += `Generated: ${new Date().toISOString().split('T')[0]}\n`;
+  md += `Generated: ${getTodayDate()}\n`;
   md += `Framework: ${result.meta.framework}\n`;
   md += `Files scanned: ${result.meta.filesScanned}\n\n`;
 

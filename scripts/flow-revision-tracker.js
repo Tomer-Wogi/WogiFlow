@@ -12,8 +12,8 @@
  * Part of S2: Model Performance Tracking
  */
 
-const { execFileSync } = require('child_process');
-const path = require('path');
+const { execFileSync } = require('node:child_process');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,

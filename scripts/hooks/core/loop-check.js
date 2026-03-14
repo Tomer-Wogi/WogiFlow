@@ -9,11 +9,11 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS } = require('../../flow-utils');
+const { getConfig, PATHS, readJson } = require('../../flow-utils');
 const { checkQueueContinuation, advanceTaskQueue, checkPendingSkillExecution } = require('../../flow-durable-session');
 
 /**
@@ -50,8 +50,8 @@ function getActiveLoopSession() {
       return null;
     }
 
-    const session = JSON.parse(fs.readFileSync(loopSessionPath, 'utf-8'));
-    if (session.status !== 'active') {
+    const session = readJson(loopSessionPath, null);
+    if (!session || session.status !== 'active') {
       return null;
     }
 
@@ -258,7 +258,7 @@ async function checkLoopExit() {
         };
       }
     }
-  } catch {
+  } catch (_err) {
     // Non-critical - don't fail loop check for thrashing detection
   }
 

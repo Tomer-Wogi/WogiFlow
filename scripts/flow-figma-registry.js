@@ -13,8 +13,8 @@
  *   CLI: flow figma registry show | reset | stats
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, readJson, writeJson } = require('./flow-utils');
 const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
 

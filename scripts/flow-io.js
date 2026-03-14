@@ -10,8 +10,8 @@
  *   const { readJson, writeJson, fileExists, acquireLock } = require('./flow-io');
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { PROJECT_ROOT } = require('./flow-paths');
 
 // ============================================================
@@ -40,7 +40,7 @@ const LOCK_MAX_RETRIES = 5;
 function fileExists(filePath) {
   try {
     return fs.existsSync(filePath);
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -51,7 +51,7 @@ function fileExists(filePath) {
 function dirExists(dirPath) {
   try {
     return fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -135,7 +135,7 @@ function readJson(filePath, defaultValue = undefined) {
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Failed to read JSON from ${filePath}: ${err.message}`);
+    throw new Error(`Failed to read JSON from ${filePath}: ${err.message}`, { cause: err });
   }
 }
 
@@ -156,8 +156,8 @@ function writeJson(filePath, data) {
     return true;
   } catch (err) {
     // Clean up temp file if it exists
-    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write JSON to ${filePath}: ${err.message}`);
+    try { fs.unlinkSync(tempPath); } catch (_err) { /* ignore */ }
+    throw new Error(`Failed to write JSON to ${filePath}: ${err.message}`, { cause: err });
   }
 }
 
@@ -234,7 +234,7 @@ function safeJsonParseString(jsonString, defaultValue = null) {
     }
 
     return parsed;
-  } catch {
+  } catch (_err) {
     return defaultValue;
   }
 }
@@ -258,7 +258,7 @@ function readFile(filePath, defaultValue = undefined) {
     if (defaultValue !== undefined) {
       return defaultValue;
     }
-    throw new Error(`Failed to read file ${filePath}: ${err.message}`);
+    throw new Error(`Failed to read file ${filePath}: ${err.message}`, { cause: err });
   }
 }
 
@@ -274,8 +274,8 @@ function writeFile(filePath, content) {
     return true;
   } catch (err) {
     // Clean up temp file if it exists
-    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
-    throw new Error(`Failed to write file ${filePath}: ${err.message}`);
+    try { fs.unlinkSync(tempPath); } catch (_err) { /* ignore */ }
+    throw new Error(`Failed to write file ${filePath}: ${err.message}`, { cause: err });
   }
 }
 
@@ -307,7 +307,7 @@ function listDirs(dirPath) {
         const fullPath = path.join(dirPath, name);
         return fs.statSync(fullPath).isDirectory();
       });
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -325,7 +325,7 @@ function listFiles(dirPath, extension = null) {
         if (extension && !name.endsWith(extension)) return false;
         return true;
       });
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -464,7 +464,7 @@ async function acquireLock(filePath, options = {}) {
             // Directory not empty or other error - force cleanup
             try {
               fs.rmSync(lockDir, { recursive: true, force: true });
-            } catch {
+            } catch (_err) {
               // Last resort failed - log if debug
               if (process.env.DEBUG) {
                 console.warn(`[DEBUG] Lock dir cleanup failed: ${err.message}`);
@@ -487,7 +487,7 @@ async function acquireLock(filePath, options = {}) {
           } else {
             isStale = attempt >= 2;
           }
-        } catch {
+        } catch (_err) {
           // Can't read lock info - assume stale if we've waited long enough
           isStale = attempt >= 2;
         }
@@ -526,7 +526,7 @@ async function acquireLock(filePath, options = {}) {
         }
       }
 
-      throw new Error(`Failed to acquire lock for ${filePath}: ${err.message}`);
+      throw new Error(`Failed to acquire lock for ${filePath}: ${err.message}`, { cause: err });
     }
   }
 

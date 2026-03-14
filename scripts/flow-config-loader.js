@@ -10,16 +10,17 @@
  *   const { getConfig, getConfigValue, setConfigValue } = require('./flow-config-loader');
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { PATHS, PROJECT_ROOT, isPathWithinProject } = require('./flow-paths');
 const { checkForDangerousKeys, readJson, writeJson, acquireLock } = require('./flow-io');
+const { warn } = require('./flow-output');
 
 // Late-loaded to avoid circular dependency
 let configSubstitution = null;
 function getConfigSubstitution() {
   if (!configSubstitution) {
-    configSubstitution = require('../.workflow/lib/config-substitution');
+    configSubstitution = require('./flow-config-substitution');
   }
   return configSubstitution;
 }
@@ -28,7 +29,7 @@ function getConfigSubstitution() {
 let _configDefaults = null;
 try {
   _configDefaults = require('./flow-config-defaults');
-} catch {
+} catch (_err) {
   // Graceful degradation if defaults module not available
 }
 
@@ -45,44 +46,8 @@ let _configCacheTime = 0; // Timestamp of last cache population (ms)
 // Known Config Keys (for validation)
 // ============================================================
 
-// Known config keys for validation (prevents typos causing silent failures)
-// Updated v1.10.0: dead keys removed per audit wf-cf977256
-const KNOWN_CONFIG_KEYS = [
-  // Core
-  'version', 'projectName', 'cli', 'scripts',
-  // Execution
-  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'execution',
-  'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
-  // Quality & validation
-  'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
-  // Components & registries
-  'componentRules', 'componentReuse', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
-  // Learning & memory
-  'learning', 'automaticMemory', 'automaticPromotion',
-  'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
-  'codebaseInsights', 'knowledgeRouting',
-  // Skills & context
-  'skills', 'autoContext', 'context', 'contextManagement', 'taskContext', 'contextMonitor', 'contextScoring',
-  // Review & analysis
-  'review', 'reviewFix', 'originTaskTracing', 'standardsCompliance',
-  'semanticMatching', 'peerReview', 'triage', 'consistency',
-  // Planning & research
-  'planMode', 'research', 'clarifyingQuestions', 'multiApproach',
-  // Session management
-  'metrics', 'requestLog', 'sessionState', 'smartCompaction',
-  // Features (alphabetical)
-  'audit', 'bestOfN', 'bugFlow', 'capture',
-  'cascade', 'checkpoint', 'commits', 'community',
-  'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
-  'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
-  'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
-  'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities',
-  'detection', 'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
-  'security', 'storyDecomposition', 'techDebt', 'traces',
-  'webmcp', 'workflowSteps',
-  // v2.0.0+ compat shim output keys
-  'proactiveCompaction', 'communitySync'
-];
+// Known config keys — single source of truth in flow-constants.js
+const { KNOWN_CONFIG_KEYS } = require('./flow-constants');
 
 // Known nested keys for common config sections
 const KNOWN_NESTED_KEYS = {
@@ -464,7 +429,7 @@ function getConfigValue(configPath, defaultValue = null) {
   let value = config;
 
   for (const part of parts) {
-    if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, part)) {
+    if (value && typeof value === 'object' && Object.hasOwn(value, part)) {
       value = value[part];
     } else {
       return defaultValue;
@@ -497,7 +462,7 @@ async function setConfigValue(configPath, newValue) {
     release = await acquireLock(lockPath, { retries: 5, retryDelay: 100, exponentialBackoff: true });
   } catch (err) {
     // SECURITY: Don't fall back to non-locked write - throw instead
-    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`);
+    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`, { cause: err });
   }
 
   try {
@@ -509,7 +474,7 @@ async function setConfigValue(configPath, newValue) {
 
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
-      if (!Object.prototype.hasOwnProperty.call(obj, part)) {
+      if (!Object.hasOwn(obj, part)) {
         obj[part] = {};
       }
       obj = obj[part];
@@ -549,7 +514,7 @@ function setConfigValueSync(configPath, newValue) {
 
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
-    if (!Object.prototype.hasOwnProperty.call(obj, part)) {
+    if (!Object.hasOwn(obj, part)) {
       obj[part] = {};
     }
     obj = obj[part];
@@ -584,7 +549,7 @@ function resolveConfigValue(value) {
     const varName = value.slice(5, -1);
     // Validate env var name format
     if (!/^[A-Z_][A-Z0-9_]*$/i.test(varName)) {
-      console.log(`\x1b[33m\u26a0\x1b[0m Invalid environment variable name: ${varName}`);
+      warn(`Invalid environment variable name: ${varName}`);
       return null;
     }
     return process.env[varName] || null;
@@ -607,13 +572,13 @@ function resolveConfigValue(value) {
     const isWithinHome = homeDir && resolvedPath.startsWith(homeDir + path.sep);
 
     if (!isWithinProjectDir && !isWithinHome) {
-      console.log(`\x1b[33m\u26a0\x1b[0m File path outside allowed locations blocked: ${resolvedPath}`);
+      warn(`File path outside allowed locations blocked: ${resolvedPath}`);
       return null;
     }
 
     try {
       return fs.readFileSync(resolvedPath, 'utf-8').trim();
-    } catch {
+    } catch (_err) {
       return null;
     }
   }

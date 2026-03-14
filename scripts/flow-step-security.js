@@ -7,10 +7,11 @@
  * Runs npm audit and checks for common vulnerabilities.
  */
 
-const { execSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot } = require('./flow-utils');
+const { CREDENTIAL_SCAN_PATTERNS } = require('./flow-security');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -28,15 +29,7 @@ async function run(options = {}) {
   const severity = stepConfig.severity || 'high';
   const issues = [];
 
-  // 1. Check for secrets in modified files
-  const secretPatterns = [
-    /(?:api[_-]?key|apikey)\s*[:=]\s*['"][^'"]+['"]/gi,
-    /(?:secret|password|passwd|pwd)\s*[:=]\s*['"][^'"]+['"]/gi,
-    /(?:access[_-]?token|auth[_-]?token)\s*[:=]\s*['"][^'"]+['"]/gi,
-    /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----/i,
-    /(?:aws[_-]?access[_-]?key[_-]?id)\s*[:=]\s*['"][A-Z0-9]+['"]/gi,
-  ];
-
+  // 1. Check for secrets in modified files (using centralized patterns)
   for (const file of files) {
     const filePath = path.join(PROJECT_ROOT, file);
     if (!fs.existsSync(filePath)) continue;
@@ -48,13 +41,15 @@ async function run(options = {}) {
 
     try {
       const content = fs.readFileSync(filePath, 'utf8');
-      for (const pattern of secretPatterns) {
+      for (const { pattern, name } of CREDENTIAL_SCAN_PATTERNS) {
+        // Reset lastIndex for regex with /g flag
+        pattern.lastIndex = 0;
         if (pattern.test(content)) {
           issues.push({
             type: 'secret',
             severity: 'high',
             file,
-            message: 'Potential secret or credential detected',
+            message: name || 'Potential secret or credential detected',
           });
           break; // One issue per file is enough
         }

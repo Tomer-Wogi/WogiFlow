@@ -109,36 +109,40 @@ const BACKOFF = {
 // ============================================================
 
 const KNOWN_CONFIG_KEYS = [
-  'hybrid',
-  'parallel',
-  'worktree',
-  'qualityGates',
-  'testing',
-  'componentReuse',
-  'mandatorySteps',
-  'phases',
-  'corrections',
-  'skills',
-  'autoContext',
-  'metrics',
-  'figmaAnalyzer',
-  'learning',
-  'hooks',
-  'project',
-  'projectType',
-  'contextMonitor',
-  'requestLog',
-  'sessionState',
-  'priorities',
-  'morningBriefing',
-  'commits',
-  'enforcement',
-  'damageControl',
-  'storyDecomposition',
-  'specificationMode',
-  'contextManagement',
-  'taskContext',
-  'reporting',
+  // Core
+  'version', 'projectName', 'cli', 'scripts',
+  // Execution
+  'hybrid', 'parallel', 'worktree', 'enforcement', 'tasks', 'execution',
+  'loops', 'taskQueue', 'durableSteps', 'suspension', 'phases',
+  // Quality & validation
+  'qualityGates', 'testing', 'validation', 'specificationMode', 'tdd',
+  // Components & registries
+  'componentRules', 'componentReuse', 'componentIndex', 'registries', 'functionRegistry', 'apiRegistry',
+  // Learning & memory
+  'learning', 'automaticMemory', 'automaticPromotion',
+  'crossSessionLearning', 'sessionLearning', 'skillLearning', 'memory',
+  'codebaseInsights', 'knowledgeRouting',
+  // Skills & context
+  'skills', 'autoContext', 'context', 'contextManagement', 'taskContext', 'contextMonitor', 'contextScoring',
+  // Review & analysis
+  'review', 'reviewFix', 'originTaskTracing', 'standardsCompliance',
+  'semanticMatching', 'peerReview', 'triage', 'consistency',
+  // Planning & research
+  'planMode', 'research', 'clarifyingQuestions', 'multiApproach',
+  // Session management
+  'metrics', 'requestLog', 'sessionState', 'smartCompaction',
+  // Features (alphabetical)
+  'audit', 'bestOfN', 'bugFlow', 'capture',
+  'cascade', 'checkpoint', 'commits', 'community',
+  'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
+  'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
+  'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
+  'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities',
+  'detection', 'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
+  'security', 'storyDecomposition', 'techDebt', 'traces',
+  'webmcp', 'workflowSteps',
+  // v2.0.0+ compat shim output keys
+  'proactiveCompaction', 'communitySync'
 ];
 
 module.exports = {

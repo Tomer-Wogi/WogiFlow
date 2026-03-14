@@ -13,8 +13,8 @@
  * stale data from accumulating.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 /**
  * Essential state files to copy into new worktrees.
@@ -27,7 +27,7 @@ function getEssentialStateFiles() {
   try {
     const { getRegistryMapFiles } = require('../../flow-utils');
     return [...CORE_STATE_FILES, ...getRegistryMapFiles()];
-  } catch {
+  } catch (_err) {
     return [...CORE_STATE_FILES, 'app-map.md', 'function-map.md', 'api-map.md'];
   }
 }

@@ -18,9 +18,9 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 const { getProjectRoot, safeJsonParseString } = require('./flow-utils');
 
 let verificationProfile;
@@ -94,7 +94,7 @@ function resolveVariables(value, context) {
       if (trimmed === '$random') return randomHex(8);
 
       // Context variables
-      if (Object.prototype.hasOwnProperty.call(context, trimmed)) {
+      if (Object.hasOwn(context, trimmed)) {
         return String(context[trimmed]);
       }
 
@@ -961,6 +961,7 @@ function generateScenario(criterionText, apiMapContent, options = {}) {
 // ============================================================
 
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
   const scenarioFile = args.find(a => !a.startsWith('--'));
   const dryRun = args.includes('--dry-run');
@@ -992,64 +993,64 @@ if (require.main === module) {
     process.exit(1);
   }
 
-  executeScenario(scenario, { dryRun, verbose })
-    .then((result) => {
-      if (dryRun) {
-        console.log(`Scenario: ${result.name}`);
-        console.log('Plan:');
-        if (result.plan.prerequisites.length > 0) {
-          console.log('  Prerequisites:');
-          for (const p of result.plan.prerequisites) {
-            console.log(`    - ${p}`);
-          }
+  try {
+    const result = await executeScenario(scenario, { dryRun, verbose });
+    if (dryRun) {
+      console.log(`Scenario: ${result.name}`);
+      console.log('Plan:');
+      if (result.plan.prerequisites.length > 0) {
+        console.log('  Prerequisites:');
+        for (const p of result.plan.prerequisites) {
+          console.log(`    - ${p}`);
         }
-        if (result.plan.action) {
-          console.log(`  Action: ${result.plan.action}`);
-        }
-        if (result.plan.assertions.length > 0) {
-          console.log('  Assertions:');
-          for (const a of result.plan.assertions) {
-            console.log(`    - ${a}`);
-          }
-        }
-        console.log(`  Teardown: ${result.plan.teardown}`);
-      } else {
-        const marker = result.passed ? 'PASS' : 'FAIL';
-        console.log(`[${marker}] ${result.name} (${result.timing.duration}ms)`);
-
-        if (result.prerequisites.length > 0) {
-          console.log('  Prerequisites:');
-          for (const p of result.prerequisites) {
-            const m = p.passed ? 'OK' : 'FAIL';
-            console.log(`    [${m}] ${p.step}: ${p.status || 'ERR'} (${p.duration}ms)`);
-            if (p.error) console.log(`         ${p.error}`);
-          }
-        }
-
-        if (result.action) {
-          const am = result.action.passed !== false ? 'OK' : 'FAIL';
-          console.log(`  Action: [${am}] ${result.action.step}: ${result.action.status || 'ERR'} (${result.action.duration}ms)`);
-        }
-
-        if (result.assertions.length > 0) {
-          console.log('  Assertions:');
-          for (const a of result.assertions) {
-            const am = a.passed ? 'PASS' : 'FAIL';
-            console.log(`    [${am}] ${a.message}`);
-          }
-        }
-
-        if (result.error) {
-          console.log(`  Error: ${result.error}`);
-        }
-
-        process.exit(result.passed ? 0 : 1);
       }
-    })
-    .catch((err) => {
-      console.error(`Scenario engine error: ${err.message}`);
-      process.exit(1);
-    });
+      if (result.plan.action) {
+        console.log(`  Action: ${result.plan.action}`);
+      }
+      if (result.plan.assertions.length > 0) {
+        console.log('  Assertions:');
+        for (const a of result.plan.assertions) {
+          console.log(`    - ${a}`);
+        }
+      }
+      console.log(`  Teardown: ${result.plan.teardown}`);
+    } else {
+      const marker = result.passed ? 'PASS' : 'FAIL';
+      console.log(`[${marker}] ${result.name} (${result.timing.duration}ms)`);
+
+      if (result.prerequisites.length > 0) {
+        console.log('  Prerequisites:');
+        for (const p of result.prerequisites) {
+          const m = p.passed ? 'OK' : 'FAIL';
+          console.log(`    [${m}] ${p.step}: ${p.status || 'ERR'} (${p.duration}ms)`);
+          if (p.error) console.log(`         ${p.error}`);
+        }
+      }
+
+      if (result.action) {
+        const am = result.action.passed !== false ? 'OK' : 'FAIL';
+        console.log(`  Action: [${am}] ${result.action.step}: ${result.action.status || 'ERR'} (${result.action.duration}ms)`);
+      }
+
+      if (result.assertions.length > 0) {
+        console.log('  Assertions:');
+        for (const a of result.assertions) {
+          const am = a.passed ? 'PASS' : 'FAIL';
+          console.log(`    [${am}] ${a.message}`);
+        }
+      }
+
+      if (result.error) {
+        console.log(`  Error: ${result.error}`);
+      }
+
+      process.exit(result.passed ? 0 : 1);
+    }
+  } catch (err) {
+    console.error(`Scenario engine error: ${err.message}`);
+    process.exit(1);
+  }
+  })();
 }
 
 // ============================================================

@@ -11,8 +11,8 @@
  * when patterns reach the promotion threshold.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -266,7 +266,7 @@ function captureFromSessionReview(issues) {
   }
 
   const patterns = loadAutoPatterns();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   let capturedCount = 0;
   const promotionCandidates = [];
 
@@ -341,7 +341,7 @@ function captureFromBugFix(taskId, files, description) {
   }
 
   const patterns = loadAutoPatterns();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   const promotionCandidates = [];
 
   for (const detected of detectedPatterns) {
@@ -469,7 +469,7 @@ function promoteToDecisions(pattern) {
     }
 
     // Generate rule entry (escape markdown special characters in pattern name)
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     const escapedPattern = pattern.pattern.replace(/[#*_\[\]()\\]/g, '\\$&');
     const ruleEntry = `\n### ${escapedPattern} (${today})
 **Source**: Auto-learned from ${pattern.count} occurrences (${pattern.source})

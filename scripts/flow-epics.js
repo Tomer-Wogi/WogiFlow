@@ -14,8 +14,8 @@
  * - Subtask (L3): Atomic operation, 1 file
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -28,7 +28,6 @@ const {
   info,
   findAllWithParent,
   normalizeTask,
-  CLASSIFICATION_LEVELS,
   generateEpicId
 } = require('./flow-utils');
 
@@ -60,7 +59,7 @@ function loadEpicsState() {
   }
   try {
     return readJson(EPICS_STATE_PATH) || { epics: {}, version: '1.0.0' };
-  } catch {
+  } catch (_err) {
     return { epics: {}, version: '1.0.0' };
   }
 }
@@ -85,7 +84,7 @@ function loadReadyData() {
   }
   try {
     return readJson(PATHS.ready) || { ready: [], inProgress: [], recentlyCompleted: [] };
-  } catch {
+  } catch (_err) {
     return { ready: [], inProgress: [], recentlyCompleted: [] };
   }
 }

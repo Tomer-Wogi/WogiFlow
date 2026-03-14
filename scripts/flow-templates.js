@@ -11,9 +11,9 @@
  *   flow-templates analyze     # Analyze project patterns only
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, readJson, info } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const TEMPLATES_DIR = path.join(PROJECT_ROOT, 'templates', 'hybrid');
@@ -38,7 +38,7 @@ class ProjectAnalyzer {
   }
 
   analyze() {
-    console.log('🔍 Analyzing project...\n');
+    info('� Analyzing project...\n');
 
     this.detectFramework();
     this.detectStateManagement();
@@ -244,8 +244,8 @@ class ProjectAnalyzer {
   extractImportPatterns() {
     const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
     if (fs.existsSync(tsconfigPath)) {
-      try {
-        const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf-8'));
+      const tsconfig = readJson(tsconfigPath, null);
+      if (tsconfig) {
         const paths = tsconfig.compilerOptions?.paths || {};
 
         this.patterns.importAliases = Object.keys(paths).map(alias => ({
@@ -254,18 +254,13 @@ class ProjectAnalyzer {
         }));
 
         console.log(`\n  Import aliases: ${this.patterns.importAliases.map(a => a.alias).join(', ') || 'None'}`);
-      } catch (err) {
-        // Ignore tsconfig parse errors
       }
     }
   }
 
   loadPackageJson() {
     const pkgPath = path.join(PROJECT_ROOT, 'package.json');
-    if (fs.existsSync(pkgPath)) {
-      return JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
-    }
-    return null;
+    return readJson(pkgPath, null);
   }
 }
 

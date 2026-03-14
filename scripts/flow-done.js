@@ -6,26 +6,33 @@
  * Runs quality gates and moves task from inProgress to completed.
  */
 
-const { execSync, execFileSync, spawnSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
-const {
-  PATHS,
-  fileExists,
-  getConfig,
-  moveTaskAsync,
-  findTask,
-  readFile,
-  readJson,
-  safeJsonParse,
-  safeJsonParseString,
-  writeJson,
-  color,
-  success,
-  warn,
-  error,
-  validateTaskId
-} = require('./flow-utils');
+const cp = require('node:child_process');
+const { execFileSync } = cp;
+// Use indirect access for spawnSync/execSync so tests can mock them
+const _cp = { spawnSync: cp.spawnSync, execSync: cp.execSync };
+const spawnSync = (...args) => _cp.spawnSync(...args);
+const execSync = (...args) => _cp.execSync(...args);
+const fs = require('node:fs');
+const path = require('node:path');
+const _flowUtils = require('./flow-utils');
+const { PATHS, moveTaskAsync, findTask, writeJson, color, success, warn, error } = _flowUtils;
+// Indirect access for testable functions — tests can swap _io members
+const _io = {
+  getConfig: _flowUtils.getConfig,
+  fileExists: _flowUtils.fileExists,
+  readFile: _flowUtils.readFile,
+  readJson: _flowUtils.readJson,
+  safeJsonParse: _flowUtils.safeJsonParse,
+  safeJsonParseString: _flowUtils.safeJsonParseString,
+  validateTaskId: _flowUtils.validateTaskId
+};
+const getConfig = (...args) => _io.getConfig(...args);
+const fileExists = (...args) => _io.fileExists(...args);
+const readFile = (...args) => _io.readFile(...args);
+const readJson = (...args) => _io.readJson(...args);
+const safeJsonParse = (...args) => _io.safeJsonParse(...args);
+const safeJsonParseString = (...args) => _io.safeJsonParseString(...args);
+const validateTaskId = (...args) => _io.validateTaskId(...args);
 
 // v1.7.0 context memory management
 const { warnIfContextHigh } = require('./flow-context-monitor');
@@ -72,17 +79,14 @@ const clearTodoWriteState = todoWriteSync?.clearTodoWriteState || (() => {});
 // v3.0 epic progress propagation
 const { updateEpicProgress, listEpics, getEpic } = require('./flow-epics');
 
-// v3.2 hierarchical work item management
-let flowFeature;
-let flowPlan;
-try {
-  flowFeature = require('./flow-feature');
-  flowPlan = require('./flow-plan');
-} catch (err) {
-  // Modules optional - graceful degradation
-  flowFeature = null;
-  flowPlan = null;
-}
+// v3.2 cascade completion (extracted to flow-cascade-completion.js)
+const {
+  findParentFeature, findParentEpic, findParentPlan,
+  allStoriesComplete, allFeaturesComplete, allEpicsComplete,
+  markFeatureComplete, markEpicComplete, markPlanComplete,
+  archiveByType, archiveCompletedParent, cascadeCompletion,
+  CASCADE_MAX_DEPTH, VALID_CASCADE_TYPES
+} = require('./flow-cascade-completion');
 
 // v3.1 spec verification gate
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
@@ -143,21 +147,32 @@ const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
  */
 function getModifiedFiles() {
   try {
-    // Get staged and unstaged changes
-    const staged = execSync('git diff --cached --name-only', {
+    // Single git call replaces 3 sequential execSync calls
+    const porcelain = execSync('git status --porcelain', {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
-    }).trim().split('\n').filter(Boolean);
+    }).trim();
 
-    const unstaged = execSync('git diff --name-only', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim().split('\n').filter(Boolean);
+    const staged = [];
+    const unstaged = [];
+    const untracked = [];
 
-    const untracked = execSync('git ls-files --others --exclude-standard', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim().split('\n').filter(Boolean);
+    if (porcelain) {
+      for (const line of porcelain.split('\n')) {
+        if (!line || line.length < 3) continue;
+        const indexStatus = line[0];
+        const workTreeStatus = line[1];
+        // Handle renamed files: "R  old -> new" — take the new name
+        const rawPath = line.slice(3);
+        const fileName = rawPath.includes(' -> ') ? rawPath.split(' -> ')[1] : rawPath;
+        if (indexStatus === '?' && workTreeStatus === '?') {
+          untracked.push(fileName);
+        } else {
+          if (indexStatus !== ' ' && indexStatus !== '?') staged.push(fileName);
+          if (workTreeStatus !== ' ' && workTreeStatus !== '?') unstaged.push(fileName);
+        }
+      }
+    }
 
     // Combine and dedupe
     const all = [...new Set([...staged, ...unstaged, ...untracked])];
@@ -261,9 +276,9 @@ function runQualityGates(taskId, taskType) {
           stdio: ['pipe', 'pipe', 'pipe']
         });
         if (result.status === 0) {
-          console.log(`  ${color('green', '✓')} tests passed`);
+          success(`tests passed`);
         } else {
-          console.log(`  ${color('red', '✗')} tests failed`);
+          error(`tests failed`);
           // Capture error output
           const errorOutput = result.stderr || result.stdout || '';
           if (errorOutput) {
@@ -301,9 +316,9 @@ function runQualityGates(taskId, taskType) {
         });
 
         if (result.status === 0) {
-          console.log(`  ${color('green', '✓')} lint passed (auto-fixed)`);
+          success(`lint passed (auto-fixed)`);
         } else {
-          console.log(`  ${color('red', '✗')} lint failed (manual fix required)`);
+          error(`lint failed (manual fix required)`);
           const errorOutput = result.stderr || result.stdout || '';
           if (errorOutput) {
             console.log(color('dim', '  Remaining issues:'));
@@ -316,7 +331,7 @@ function runQualityGates(taskId, taskType) {
           failed.push('lint');
         }
       } else {
-        console.log(`  ${color('green', '✓')} lint passed`);
+        success(`lint passed`);
       }
     } else if (gate === 'typecheck') {
       console.log('  Running typecheck...');
@@ -325,9 +340,9 @@ function runQualityGates(taskId, taskType) {
         stdio: ['pipe', 'pipe', 'pipe']
       });
       if (result.status === 0) {
-        console.log(`  ${color('green', '✓')} typecheck passed`);
+        success(`typecheck passed`);
       } else {
-        console.log(`  ${color('red', '✗')} typecheck failed`);
+        error(`typecheck failed`);
         const errorOutput = result.stderr || result.stdout || '';
         if (errorOutput) {
           console.log(color('dim', '  Type errors:'));
@@ -344,7 +359,7 @@ function runQualityGates(taskId, taskType) {
       try {
         const content = readFile(PATHS.requestLog, '');
         if (content.includes(taskId)) {
-          console.log(`  ${color('green', '✓')} requestLogEntry (found in request-log)`);
+          success(`requestLogEntry (found in request-log)`);
         } else {
           console.log(`  ${color('yellow', '○')} requestLogEntry (add entry to request-log.md)`);
         }
@@ -358,7 +373,7 @@ function runQualityGates(taskId, taskType) {
       // against registry entries to detect missing registrations.
       // v1.9.8: Deprecation warning for old gate name
       if (gate === 'appMapUpdate') {
-        console.log(`  ${color('yellow', '⚠')} appMapUpdate is deprecated — update config.json qualityGates to use 'registryUpdate'`);
+        warn(`appMapUpdate is deprecated — update config.json qualityGates to use 'registryUpdate'`);
       }
       const registryMod = getRegistryManager();
       if (registryMod) {
@@ -435,40 +450,40 @@ function runQualityGates(taskId, taskType) {
                 .map(([id]) => id);
 
               if (updatedMaps.length > 0) {
-                console.log(`  ${color('green', '✓')} registryUpdate (auto-scanned: ${updatedMaps.join(', ')} updated)`);
+                success(`registryUpdate (auto-scanned: ${updatedMaps.join(', ')} updated)`);
               } else if (scanSummary.length > 0) {
-                console.log(`  ${color('green', '✓')} registryUpdate (scanned ${activeIds.join(', ')} — maps already current)`);
+                success(`registryUpdate (scanned ${activeIds.join(', ')} — maps already current)`);
               } else if (nonTestFiles.length === 0) {
-                console.log(`  ${color('green', '✓')} registryUpdate (no registrable code files modified)`);
+                success(`registryUpdate (no registrable code files modified)`);
               } else {
-                console.log(`  ${color('green', '✓')} registryUpdate (scanned — no new entries found)`);
+                success(`registryUpdate (scanned — no new entries found)`);
               }
             } else {
-              console.log(`  ${color('yellow', '⚠')} registryUpdate (scan error — degraded to manual check)`);
+              warn(`registryUpdate (scan error — degraded to manual check)`);
               if (process.env.DEBUG) console.error(`[DEBUG] registry scan stderr: ${scanResult.stderr}`);
             }
           } else {
-            console.log(`  ${color('green', '✓')} registryUpdate (no active registry plugins)`);
+            success(`registryUpdate (no active registry plugins)`);
           }
         } catch (err) {
           // Graceful degradation — don't block task completion on scan errors
-          console.log(`  ${color('yellow', '⚠')} registryUpdate (error: ${truncateOutput(err.message, 3, 200)} — verify manually)`);
+          warn(`registryUpdate (error: ${truncateOutput(err.message, 3, 200)} — verify manually)`);
         }
       } else {
-        console.log(`  ${color('yellow', '⚠')} registryUpdate (registry manager not available — verify manually)`);
+        warn(`registryUpdate (registry manager not available — verify manually)`);
       }
     } else if (gate === 'loopComplete') {
       // v2.1: Explicit loop completion check
       const activeLoop = getActiveLoop();
       if (!activeLoop) {
         // No active loop - either completed or not used
-        console.log(`  ${color('green', '✓')} loopComplete (no active loop session)`);
+        success(`loopComplete (no active loop session)`);
       } else {
         const exitResult = canExitLoop();
         if (exitResult.canExit) {
-          console.log(`  ${color('green', '✓')} loopComplete (${exitResult.reason})`);
+          success(`loopComplete (${exitResult.reason})`);
         } else {
-          console.log(`  ${color('red', '✗')} loopComplete (${exitResult.pending || 0} pending, ${exitResult.failed || 0} failed)`);
+          error(`loopComplete (${exitResult.pending || 0} pending, ${exitResult.failed || 0} failed)`);
           errors.loopComplete = exitResult.message || 'Loop not complete';
           failed.push('loopComplete');
         }
@@ -483,10 +498,10 @@ function runQualityGates(taskId, taskType) {
           console.log('  Running integration wiring check...');
           const result = wiringVerifier.verifyWiring(taskId);
           if (result.passed) {
-            console.log(`  ${color('green', '✓')} integrationWiring (${result.verified || 0} files verified)`);
+            success(`integrationWiring (${result.verified || 0} files verified)`);
           } else {
             const unwiredCount = result.unwired?.length || 0;
-            console.log(`  ${color('red', '✗')} integrationWiring (${unwiredCount} unwired file${unwiredCount !== 1 ? 's' : ''})`);
+            error(`integrationWiring (${unwiredCount} unwired file${unwiredCount !== 1 ? 's' : ''})`);
             if (result.unwired) {
               for (const item of result.unwired.slice(0, 5)) {
                 console.log(color('dim', `    - ${item.file || item}`));
@@ -504,10 +519,10 @@ function runQualityGates(taskId, taskType) {
               const removalResult = wiringVerifier.verifyRemovalImpact(modifiedFiles);
               if (removalResult.identifiersChecked > 0) {
                 if (removalResult.passed) {
-                  console.log(`  ${color('green', '✓')} removalImpact (${removalResult.identifiersChecked} removed identifiers verified)`);
+                  success(`removalImpact (${removalResult.identifiersChecked} removed identifiers verified)`);
                 } else {
                   const orphanCount = removalResult.orphanedRefs.length;
-                  console.log(`  ${color('red', '✗')} removalImpact (${orphanCount} orphaned reference${orphanCount !== 1 ? 's' : ''} to removed exports)`);
+                  error(`removalImpact (${orphanCount} orphaned reference${orphanCount !== 1 ? 's' : ''} to removed exports)`);
                   for (const ref of removalResult.orphanedRefs.slice(0, 5)) {
                     console.log(color('dim', `    - "${ref.identifier}" removed from ${ref.removedFrom}, still used in ${ref.totalRefs} file${ref.totalRefs !== 1 ? 's' : ''}`));
                     for (const consumer of ref.referencedBy.slice(0, 2)) {
@@ -522,10 +537,10 @@ function runQualityGates(taskId, taskType) {
           }
         } catch (err) {
           // Graceful degradation: verifier error is not a hard failure — gate passes with warning
-          console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
+          warn(`integrationWiring (verifier error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
-        console.log(`  ${color('yellow', '⚠')} integrationWiring (verifier module not available — install flow-wiring-verifier.js)`);
+        warn(`integrationWiring (verifier module not available — install flow-wiring-verifier.js)`);
         if (process.env.DEBUG) console.error('[DEBUG] wiringVerifier module failed to load or missing verifyWiring export');
       }
     } else if (gate === 'standardsCompliance') {
@@ -538,9 +553,9 @@ function runQualityGates(taskId, taskType) {
           const result = standardsGate.runTaskStandardsCheck(taskContext, modifiedFiles);
           const mustFixCount = result.violations?.filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').length || 0;
           if (mustFixCount === 0) {
-            console.log(`  ${color('green', '✓')} standardsCompliance (${result.violations?.length || 0} suggestions, 0 must-fix)`);
+            success(`standardsCompliance (${result.violations?.length || 0} suggestions, 0 must-fix)`);
           } else {
-            console.log(`  ${color('red', '✗')} standardsCompliance (${mustFixCount} must-fix violation${mustFixCount !== 1 ? 's' : ''})`);
+            error(`standardsCompliance (${mustFixCount} must-fix violation${mustFixCount !== 1 ? 's' : ''})`);
             for (const v of (result.violations || []).filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').slice(0, 5)) {
               console.log(color('dim', `    - ${v.file || ''}:${v.line || ''} ${v.issue || v.message || ''}`));
             }
@@ -549,19 +564,19 @@ function runQualityGates(taskId, taskType) {
           }
         } catch (err) {
           // Graceful degradation: checker error is not a hard failure — gate passes with warning
-          console.log(`  ${color('yellow', '⚠')} standardsCompliance (checker error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
+          warn(`standardsCompliance (checker error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
         }
       } else {
-        console.log(`  ${color('yellow', '⚠')} standardsCompliance (checker module not available — install flow-standards-gate.js)`);
+        warn(`standardsCompliance (checker module not available — install flow-standards-gate.js)`);
         if (process.env.DEBUG) console.error('[DEBUG] standardsGate module failed to load or missing runTaskStandardsCheck export');
       }
     } else if (gate === 'outstandingFindings') {
       // v1.9.1: Check for unresolved MUST_FIX findings from last review
       const outstanding = getOutstandingFindings();
       if (!outstanding.hasOutstanding) {
-        console.log(`  ${color('green', '✓')} outstandingFindings (no unresolved critical/high findings)`);
+        success(`outstandingFindings (no unresolved critical/high findings)`);
       } else {
-        console.log(`  ${color('red', '✗')} outstandingFindings (${outstanding.count} unresolved finding${outstanding.count !== 1 ? 's' : ''} from last review)`);
+        error(`outstandingFindings (${outstanding.count} unresolved finding${outstanding.count !== 1 ? 's' : ''} from last review)`);
         for (const f of outstanding.findings.slice(0, 5)) {
           console.log(color('dim', `    - [${f.severity}] ${f.file || ''}:${f.line || ''} ${f.issue || ''}`));
         }
@@ -576,7 +591,7 @@ function runQualityGates(taskId, taskType) {
       // Check outstanding findings (uses cached result)
       const outstanding = getOutstandingFindings();
       if (outstanding.hasOutstanding) {
-        console.log(`  ${color('red', '✗')} preRelease: ${outstanding.count} unresolved findings from last review`);
+        error(`preRelease: ${outstanding.count} unresolved findings from last review`);
         preReleaseFailed = true;
       }
 
@@ -586,7 +601,7 @@ function runQualityGates(taskId, taskType) {
           encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
         });
         if (lintResult.status !== 0) {
-          console.log(`  ${color('red', '✗')} preRelease: lint failed`);
+          error(`preRelease: lint failed`);
           preReleaseFailed = true;
         }
       }
@@ -597,13 +612,13 @@ function runQualityGates(taskId, taskType) {
           encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
         });
         if (tcResult.status !== 0) {
-          console.log(`  ${color('red', '✗')} preRelease: typecheck failed`);
+          error(`preRelease: typecheck failed`);
           preReleaseFailed = true;
         }
       }
 
       if (!preReleaseFailed) {
-        console.log(`  ${color('green', '✓')} preRelease (codebase is releasable)`);
+        success(`preRelease (codebase is releasable)`);
       } else {
         errors.preRelease = 'Codebase is not in a releasable state';
         failed.push('preRelease');
@@ -614,7 +629,7 @@ function runQualityGates(taskId, taskType) {
         const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
         const content = readFile(feedbackPath, '');
         if (content.includes(taskId)) {
-          console.log(`  ${color('green', '✓')} learningEnforcement (pattern recorded in feedback-patterns.md)`);
+          success(`learningEnforcement (pattern recorded in feedback-patterns.md)`);
         } else {
           console.log(`  ${color('yellow', '○')} learningEnforcement (add bug pattern to feedback-patterns.md)`);
         }
@@ -629,7 +644,7 @@ function runQualityGates(taskId, taskType) {
         const content = readFile(specPath, '');
         if (content) {
           if (content.toLowerCase().includes('resolution') || content.toLowerCase().includes('root cause') || content.toLowerCase().includes('fix')) {
-            console.log(`  ${color('green', '✓')} resolutionPopulated (resolution documented in spec)`);
+            success(`resolutionPopulated (resolution documented in spec)`);
           } else {
             console.log(`  ${color('yellow', '○')} resolutionPopulated (add resolution/root cause to spec)`);
           }
@@ -653,13 +668,13 @@ function runQualityGates(taskId, taskType) {
             encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
           });
           if (result.status !== 0) {
-            console.log(`  ${color('red', '✗')} smokeTest: syntax error in ${file}`);
+            error(`smokeTest: syntax error in ${file}`);
             allPassed = false;
             break;
           }
         }
         if (allPassed) {
-          console.log(`  ${color('green', '✓')} smokeTest (${jsFiles.length} file${jsFiles.length !== 1 ? 's' : ''} pass syntax check)`);
+          success(`smokeTest (${jsFiles.length} file${jsFiles.length !== 1 ? 's' : ''} pass syntax check)`);
         } else {
           errors.smokeTest = 'Syntax errors in modified files';
           failed.push('smokeTest');
@@ -671,7 +686,7 @@ function runQualityGates(taskId, taskType) {
     } else if (gate === 'generatedTestsPass') {
       if (config.testing?.enabled && config.testing?.generation?.autoGenerate) {
         if (!validateTaskId(taskId).valid) {
-          console.log(`  ${color('yellow', '⚠')} generatedTestsPass (invalid task ID)`);
+          warn(`generatedTestsPass (invalid task ID)`);
         } else {
           const testDir = path.join(PATHS.workflow, 'tests', 'generated', taskId);
           if (fs.existsSync(testDir)) {
@@ -683,9 +698,9 @@ function runQualityGates(taskId, taskType) {
                 timeout: 120000
               });
               if (result.status === 0) {
-                console.log(`  ${color('green', '✓')} generatedTestsPass`);
+                success(`generatedTestsPass`);
               } else {
-                console.log(`  ${color('red', '✗')} generatedTestsPass`);
+                error(`generatedTestsPass`);
                 const errorOutput = result.stderr || result.stdout || '';
                 if (errorOutput) {
                   console.log(color('dim', '  Error output:'));
@@ -728,7 +743,7 @@ function runQualityGates(taskId, taskType) {
       const testingMode = config.testing?.mode || 'off';
       if (config.testing?.enabled && gateModes.includes(testingMode)) {
         if (!validateTaskId(taskId).valid) {
-          console.log(`  ${color('yellow', '⚠')} ${gate} (invalid task ID)`);
+          warn(`${gate} (invalid task ID)`);
         } else {
           try {
             const label = isUI ? 'UI' : 'API';
@@ -755,14 +770,14 @@ function runQualityGates(taskId, taskType) {
             if (testResult.status === 2) {
               const parsed = safeJsonParseString(testResult.stdout, {});
               const errMsg = parsed.error || testResult.stderr?.trim()?.slice(0, 200) || 'Unknown error';
-              console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${errMsg})`);
+              warn(`${gate} (error: ${errMsg})`);
             } else {
               const report = safeJsonParseString(testResult.stdout || '{}', {});
               const summary = report.summary || { passed: 0, failed: 0, total: 0 };
               if (summary.failed === 0) {
-                console.log(`  ${color('green', '✓')} ${gate} (${summary.passed}/${summary.total} passed)`);
+                success(`${gate} (${summary.passed}/${summary.total} passed)`);
               } else {
-                console.log(`  ${color('red', '✗')} ${gate} (${summary.failed} failed)`);
+                error(`${gate} (${summary.failed} failed)`);
                 const failedItems = isUI
                   ? (report.assertions || []).filter(a => a.status === 'failed')
                   : (report.endpoints || []).flatMap(e => (e.tests || []).filter(t => t.status === 'failed'));
@@ -774,7 +789,7 @@ function runQualityGates(taskId, taskType) {
               }
             }
           } catch (err) {
-            console.log(`  ${color('yellow', '⚠')} ${gate} (error: ${err.message})`);
+            warn(`${gate} (error: ${err.message})`);
           }
 
           // Also check scenario verification results if available
@@ -786,9 +801,9 @@ function runQualityGates(taskId, taskType) {
                 if (scenarioReport && scenarioReport.summary) {
                   const ss = scenarioReport.summary;
                   if (ss.failed === 0 && ss.total > 0) {
-                    console.log(`  ${color('green', '✓')} scenarioVerification (${ss.passed}/${ss.total} scenarios passed)`);
+                    success(`scenarioVerification (${ss.passed}/${ss.total} scenarios passed)`);
                   } else if (ss.failed > 0) {
-                    console.log(`  ${color('red', '✗')} scenarioVerification (${ss.failed} scenarios failed)`);
+                    error(`scenarioVerification (${ss.failed} scenarios failed)`);
                     const failedScenarios = (scenarioReport.scenarios || []).filter(s => !s.passed);
                     for (const sc of failedScenarios.slice(0, 5)) {
                       console.log(color('dim', `    - ${sc.name || 'unnamed scenario'}: ${sc.error || 'assertions failed'}`));
@@ -813,9 +828,9 @@ function runQualityGates(taskId, taskType) {
             console.log('  Running test discovery gate...');
             const discoveryResult = testDiscovery.runTestDiscoveryGate(taskId, PATHS.root);
             if (discoveryResult.passed) {
-              console.log(`  ${color('green', '✓')} testDiscovery (${discoveryResult.message})`);
+              success(`testDiscovery (${discoveryResult.message})`);
             } else {
-              console.log(`  ${color('red', '✗')} testDiscovery (${discoveryResult.message})`);
+              error(`testDiscovery (${discoveryResult.message})`);
               if (discoveryResult.report?.passToPass?.failed) {
                 for (const f of discoveryResult.report.passToPass.failed.slice(0, 5)) {
                   console.log(color('dim', `    - ${f}`));
@@ -825,10 +840,10 @@ function runQualityGates(taskId, taskType) {
               failed.push('testDiscovery');
             }
           } catch (err) {
-            console.log(`  ${color('yellow', '⚠')} testDiscovery (error: ${truncateOutput(err.message, 3, 200)})`);
+            warn(`testDiscovery (error: ${truncateOutput(err.message, 3, 200)})`);
           }
         } else {
-          console.log(`  ${color('yellow', '⚠')} testDiscovery (module not available — install flow-test-discovery.js)`);
+          warn(`testDiscovery (module not available — install flow-test-discovery.js)`);
         }
       } else {
         console.log(`  ${color('dim', '·')} testDiscovery (disabled — set testing.discovery.enabled in config)`);
@@ -955,458 +970,7 @@ function archiveChangeSpec(taskId) {
   return { archived, archivedFolder, skipped };
 }
 
-// ============================================================
-// Cascade Completion (v3.2)
-// ============================================================
-
-/**
- * Find parent feature for a story
- * @param {string} storyId - Story ID (wf-XXXXXXXX)
- * @returns {Object|null} Feature object or null
- */
-function findParentFeature(storyId) {
-  if (!flowFeature) return null;
-
-  try {
-    const features = flowFeature.listFeatures();
-    for (const feature of features) {
-      if (feature.stories && feature.stories.includes(storyId)) {
-        return feature;
-      }
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] findParentFeature: ${err.message}`);
-  }
-  return null;
-}
-
-/**
- * Find parent epic for a feature
- * @param {string} featureId - Feature ID (ft-XXXXXXXX)
- * @returns {Object|null} Epic object or null
- */
-function findParentEpic(featureId) {
-  try {
-    const epics = listEpics();
-    for (const epic of epics) {
-      if (epic.features && epic.features.includes(featureId)) {
-        return epic;
-      }
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] findParentEpic: ${err.message}`);
-  }
-  return null;
-}
-
-/**
- * Find parent plan for an epic
- * @param {string} epicId - Epic ID (ep-XXXXXXXX)
- * @returns {Object|null} Plan object or null
- */
-function findParentPlan(epicId) {
-  if (!flowPlan) return null;
-
-  try {
-    const plans = flowPlan.listPlans();
-    for (const plan of plans) {
-      if (plan.epics && plan.epics.includes(epicId)) {
-        return plan;
-      }
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] findParentPlan: ${err.message}`);
-  }
-  return null;
-}
-
-/**
- * Check if all stories in a feature are complete
- * @param {Object} feature - Feature object
- * @returns {boolean} True if all stories are complete
- */
-function allStoriesComplete(feature) {
-  if (!feature.stories || feature.stories.length === 0) {
-    return false;  // No stories = not complete
-  }
-
-  try {
-    // Use safeJsonParse per security-patterns.md Rule #2 (protects against prototype pollution)
-    const readyData = safeJsonParse(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
-
-    for (const storyId of feature.stories) {
-      // Story must be in recentlyCompleted to be considered complete
-      const isComplete = (readyData.recentlyCompleted || []).some(
-        t => (typeof t === 'string' ? t : t.id) === storyId
-      );
-      if (!isComplete) {
-        return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] allStoriesComplete: ${err.message}`);
-    return false;
-  }
-}
-
-/**
- * Check if all features in an epic are complete
- * @param {Object} epic - Epic object
- * @returns {boolean} True if all features are complete
- */
-function allFeaturesComplete(epic) {
-  if (!flowFeature) return false;
-  if (!epic.features || epic.features.length === 0) {
-    // If epic has no features, check stories directly
-    if (!epic.stories || epic.stories.length === 0) {
-      return false;
-    }
-    // Check if all direct stories are complete
-    try {
-      // Use safeJsonParse per security-patterns.md Rule #2
-      const readyData = safeJsonParse(PATHS.ready, { ready: [], inProgress: [], recentlyCompleted: [] });
-      for (const storyId of epic.stories) {
-        const isComplete = (readyData.recentlyCompleted || []).some(
-          t => (typeof t === 'string' ? t : t.id) === storyId
-        );
-        if (!isComplete) return false;
-      }
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
-  try {
-    for (const featureId of epic.features) {
-      const feature = flowFeature.getFeature(featureId);
-      if (!feature || feature.status !== 'completed') {
-        return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] allFeaturesComplete: ${err.message}`);
-    return false;
-  }
-}
-
-/**
- * Check if all epics in a plan are complete
- * @param {Object} plan - Plan object
- * @returns {boolean} True if all epics are complete
- */
-function allEpicsComplete(plan) {
-  if (!plan.epics || plan.epics.length === 0) {
-    // Check standalone features in the plan
-    if (!flowFeature || !plan.features || plan.features.length === 0) {
-      return false;
-    }
-    for (const featureId of plan.features) {
-      const feature = flowFeature.getFeature(featureId);
-      if (!feature || feature.status !== 'completed') {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  try {
-    for (const epicId of plan.epics) {
-      const epic = getEpic(epicId);
-      if (!epic || epic.status !== 'completed') {
-        return false;
-      }
-    }
-    return true;
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] allEpicsComplete: ${err.message}`);
-    return false;
-  }
-}
-
-/**
- * Mark a feature as complete and optionally archive
- * @param {string} featureId - Feature ID
- * @param {boolean} archive - Whether to archive (default: true)
- */
-function markFeatureComplete(featureId, archive = true) {
-  if (!flowFeature) return;
-
-  try {
-    flowFeature.updateFeatureFile(featureId, { status: 'completed', progress: 100 });
-    const index = flowFeature.loadFeaturesIndex();
-    if (index.features[featureId]) {
-      index.features[featureId].status = 'completed';
-      index.features[featureId].progress = 100;
-      flowFeature.saveFeaturesIndex(index);
-    }
-    console.log(color('green', `  ✓ Feature ${featureId} auto-completed (all stories done)`));
-
-    // Archive the completed feature
-    if (archive) {
-      archiveCompletedParent(featureId, 'feature');
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] markFeatureComplete: ${err.message}`);
-  }
-}
-
-/**
- * Mark an epic as complete and optionally archive
- * @param {string} epicId - Epic ID
- * @param {boolean} archive - Whether to archive (default: true)
- */
-function markEpicComplete(epicId, archive = true) {
-  try {
-    const { updateEpicFile, loadEpicsState, saveEpicsState } = require('./flow-epics');
-    updateEpicFile(epicId, { status: 'completed', progress: 100 });
-    const state = loadEpicsState();
-    if (state.epics[epicId]) {
-      state.epics[epicId].status = 'completed';
-      state.epics[epicId].progress = 1;  // 0-1 range in epics.json
-      saveEpicsState(state);
-    }
-    console.log(color('green', `  ✓ Epic ${epicId} auto-completed (all features/stories done)`));
-
-    // Archive the completed epic
-    if (archive) {
-      archiveCompletedParent(epicId, 'epic');
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] markEpicComplete: ${err.message}`);
-  }
-}
-
-/**
- * Mark a plan as complete and optionally archive
- * @param {string} planId - Plan ID
- * @param {boolean} archive - Whether to archive (default: true)
- */
-function markPlanComplete(planId, archive = true) {
-  if (!flowPlan) return;
-
-  try {
-    flowPlan.updatePlanFile(planId, { status: 'completed', progress: 100 });
-    const index = flowPlan.loadPlansIndex();
-    if (index.plans[planId]) {
-      index.plans[planId].status = 'completed';
-      index.plans[planId].progress = 100;
-      flowPlan.savePlansIndex(index);
-    }
-    console.log(color('green', `  ✓ Plan ${planId} auto-completed (all epics done)`));
-
-    // Archive the completed plan
-    if (archive) {
-      archiveCompletedParent(planId, 'plan');
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] markPlanComplete: ${err.message}`);
-  }
-}
-
-// ============================================================
-// Type-Aware Archive System (v3.2)
-// ============================================================
-
-/**
- * Archive a work item by type
- * Routes to correct archive directory based on item type
- *
- * | Type    | Source                | Destination                        |
- * |---------|----------------------|-------------------------------------|
- * | story   | .workflow/changes/   | .workflow/archive/specs/YYYY-MM/    |
- * | feature | .workflow/features/  | .workflow/archive/features/YYYY-MM/ |
- * | epic    | .workflow/epics/     | .workflow/archive/epics/YYYY-MM/    |
- * | plan    | .workflow/plans/     | .workflow/archive/plans/YYYY-MM/    |
- *
- * @param {string} itemId - Item ID to archive
- * @param {string} itemType - Type: 'story', 'feature', 'epic', 'plan'
- * @returns {Object} Archive result
- */
-function archiveByType(itemId, itemType) {
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-  const typeConfig = {
-    story: {
-      sourceDir: path.join(PATHS.workflow, 'changes'),
-      archiveDir: path.join(PATHS.workflow, 'archive', 'specs', yearMonth),
-      pattern: /^wf-[a-f0-9]{8}/i
-    },
-    feature: {
-      sourceDir: path.join(PATHS.workflow, 'features'),
-      archiveDir: path.join(PATHS.workflow, 'archive', 'features', yearMonth),
-      pattern: /^ft-[a-f0-9]{8}/i
-    },
-    epic: {
-      sourceDir: path.join(PATHS.workflow, 'epics'),
-      archiveDir: path.join(PATHS.workflow, 'archive', 'epics', yearMonth),
-      pattern: /^ep-[a-f0-9]{8}/i
-    },
-    plan: {
-      sourceDir: path.join(PATHS.workflow, 'plans'),
-      archiveDir: path.join(PATHS.workflow, 'archive', 'plans', yearMonth),
-      pattern: /^pl-[a-f0-9]{8}/i
-    }
-  };
-
-  const config = typeConfig[itemType];
-  if (!config) {
-    return { error: `Unknown item type: ${itemType}` };
-  }
-
-  const fileName = `${itemId}.md`;
-  const sourcePath = path.join(config.sourceDir, fileName);
-
-  if (!fs.existsSync(sourcePath)) {
-    return { skipped: true, reason: 'Source file not found' };
-  }
-
-  try {
-    // Ensure archive directory exists
-    if (!fs.existsSync(config.archiveDir)) {
-      fs.mkdirSync(config.archiveDir, { recursive: true });
-    }
-
-    const targetPath = path.join(config.archiveDir, fileName);
-    fs.renameSync(sourcePath, targetPath);
-
-    return {
-      archived: true,
-      from: sourcePath,
-      to: targetPath,
-      itemId,
-      itemType,
-      yearMonth
-    };
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] archiveByType: ${err.message}`);
-    return { error: err.message };
-  }
-}
-
-/**
- * Archive completed parent work item and update indices
- * Called when cascade completion marks a parent as complete
- *
- * @param {string} itemId - Item ID to archive
- * @param {string} itemType - Type: 'feature', 'epic', 'plan'
- */
-function archiveCompletedParent(itemId, itemType) {
-  try {
-    const result = archiveByType(itemId, itemType);
-
-    if (result.archived) {
-      console.log(color('dim', `  📦 Archived ${itemType} ${itemId} to ${result.yearMonth}/`));
-
-      // Update the appropriate index
-      if (itemType === 'feature' && flowFeature) {
-        const index = flowFeature.loadFeaturesIndex();
-        if (index.features[itemId]) {
-          index.features[itemId].archived = true;
-          index.features[itemId].archivedAt = new Date().toISOString();
-          flowFeature.saveFeaturesIndex(index);
-        }
-      } else if (itemType === 'epic') {
-        const { loadEpicsState, saveEpicsState } = require('./flow-epics');
-        const state = loadEpicsState();
-        if (state.epics[itemId]) {
-          state.epics[itemId].archived = true;
-          state.epics[itemId].archivedAt = new Date().toISOString();
-          saveEpicsState(state);
-        }
-      } else if (itemType === 'plan' && flowPlan) {
-        const index = flowPlan.loadPlansIndex();
-        if (index.plans[itemId]) {
-          index.plans[itemId].archived = true;
-          index.plans[itemId].archivedAt = new Date().toISOString();
-          flowPlan.savePlansIndex(index);
-        }
-      }
-    }
-
-    return result;
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] archiveCompletedParent: ${err.message}`);
-    return { error: err.message };
-  }
-}
-
-/**
- * Maximum recursion depth for cascade completion
- * Hierarchy is: subtask/story → feature → epic → plan (max 4 levels)
- * Set to 10 as safety buffer to handle edge cases like nested sub-stories.
- * In normal operation, cascade should never exceed depth 4.
- */
-const CASCADE_MAX_DEPTH = 10;
-
-/**
- * Valid item types for cascade completion
- * Used to validate input and prevent silent failures on typos
- */
-const VALID_CASCADE_TYPES = ['subtask', 'story', 'feature', 'epic'];
-
-/**
- * Cascade completion up the hierarchy
- * When a work item completes, check if parent can be auto-completed
- *
- * @param {string} itemId - Completed item ID
- * @param {string} itemType - Type: 'subtask', 'story', 'feature', 'epic'
- * @param {number} depth - Current recursion depth (for safety limit)
- */
-function cascadeCompletion(itemId, itemType, depth = 0) {
-  if (!itemId || !itemType) return;
-
-  // Validate itemType to catch typos/invalid values early
-  if (!VALID_CASCADE_TYPES.includes(itemType)) {
-    if (process.env.DEBUG) {
-      console.error(`[DEBUG] cascadeCompletion: Invalid itemType "${itemType}", expected one of: ${VALID_CASCADE_TYPES.join(', ')}`);
-    }
-    return;
-  }
-
-  // Safety check: prevent infinite recursion
-  if (depth >= CASCADE_MAX_DEPTH) {
-    if (process.env.DEBUG) {
-      console.error(`[DEBUG] cascadeCompletion: Max depth (${CASCADE_MAX_DEPTH}) reached, stopping cascade`);
-    }
-    warn(`Cascade completion stopped at depth ${depth} - possible circular reference`);
-    return;
-  }
-
-  try {
-    if (itemType === 'subtask' || itemType === 'story') {
-      // Check if parent feature can be completed
-      const feature = findParentFeature(itemId);
-      if (feature && allStoriesComplete(feature)) {
-        markFeatureComplete(feature.id);
-        cascadeCompletion(feature.id, 'feature', depth + 1);
-      }
-    }
-
-    if (itemType === 'feature') {
-      // Check if parent epic can be completed
-      const epic = findParentEpic(itemId);
-      if (epic && allFeaturesComplete(epic)) {
-        markEpicComplete(epic.id);
-        cascadeCompletion(epic.id, 'epic', depth + 1);
-      }
-    }
-
-    if (itemType === 'epic') {
-      // Check if parent plan can be completed
-      const plan = findParentPlan(itemId);
-      if (plan && allEpicsComplete(plan)) {
-        markPlanComplete(plan.id);
-        // Plan is the top level, no further cascade needed
-      }
-    }
-  } catch (err) {
-    if (process.env.DEBUG) console.error(`[DEBUG] cascadeCompletion: ${err.message}`);
-  }
-}
+// Cascade completion functions imported from ./flow-cascade-completion (see require at top)
 
 /**
  * Update implementation timeline with completed task
@@ -1666,7 +1230,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(color('green', `✓ Completed: ${taskId}`));
+  success(`Completed: ${taskId}`);
 
   // v5.0: Show TodoWrite completion stats if available
   if (todoWriteSync) {
@@ -1730,7 +1294,7 @@ async function main() {
       if (learningResult.refinementCount >= 3) {
         try {
           const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
-          const today = new Date().toISOString().split('T')[0];
+          const today = getTodayDate();
           const truncatedInitial = learningResult.entry.initial?.length > 50
             ? learningResult.entry.initial.slice(0, 50) + '...'
             : learningResult.entry.initial || 'unclear request';
@@ -1752,7 +1316,7 @@ async function main() {
             }
           }
 
-          console.log(color('yellow', `⚠ High-refinement pattern flagged (${learningResult.refinementCount} clarifications needed)`));
+          warn(`High-refinement pattern flagged (${learningResult.refinementCount} clarifications needed)`);
           console.log(color('dim', 'Consider adding clearer guidance to decisions.md'));
         } catch (flagErr) {
           if (process.env.DEBUG) console.error(`[DEBUG] High-refinement flagging: ${flagErr.message}`);
@@ -1850,7 +1414,7 @@ async function main() {
     // Warn about orphaned files that don't follow naming convention
     if (specArchive.skipped && specArchive.skipped.length > 0) {
       console.log('');
-      console.log(color('yellow', '⚠️  Found files in .workflow/changes/ that don\'t follow naming convention:'));
+      warn('️  Found files in .workflow/changes/ that don\'t follow naming convention:');
       specArchive.skipped.forEach(f => console.log(color('yellow', `   • ${f}`)));
       console.log(color('dim', '   Expected format: wf-XXXXXXXX.md or wf-XXXXXXXX-NN.md'));
       console.log(color('dim', '   Run: flow health --fix to clean up, or manually archive to .workflow/archive/specs/'));
@@ -2016,7 +1580,20 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error(`Error: ${err.message}`);
-  process.exit(1);
-});
+// Test-only exports — not part of public API
+if (process.env.NODE_ENV === 'test') {
+  module.exports = {
+    _test: {
+      runQualityGates,
+      getModifiedFiles,
+      checkOutstandingFindings,
+      _cp, // Allows tests to swap spawnSync/execSync
+      _io  // Allows tests to swap getConfig/fileExists/readFile/etc.
+    }
+  };
+} else {
+  main().catch(err => {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  });
+}

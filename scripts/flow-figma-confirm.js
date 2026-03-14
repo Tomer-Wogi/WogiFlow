@@ -11,10 +11,10 @@
  *   flow figma confirm --auto                 # Auto-confirm high matches
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -189,7 +189,7 @@ Let's go through each component:
       extraInfo.componentName = componentName.trim() || suggestedName;
     }
 
-    console.log(`\n   ${c.green}✓ ${this.formatAction(action, bestMatch?.registryComponent, extraInfo)}${c.reset}`);
+    console.log(`\n   undefined✓ ${this.formatAction(action, bestMatch?.registryComponent, extraInfo)}${c.reset}`);
 
     return {
       figmaComponent: figmaComponent,
@@ -217,7 +217,7 @@ Let's go through each component:
     const suggestedName = suggestion.suggestedName || this.suggestName(figmaComponent.name);
     const componentName = await this.prompt(`   Component name [${suggestedName}]: `);
 
-    console.log(`\n   ${c.green}✓ Will create new component: ${componentName || suggestedName}${c.reset}`);
+    console.log(`\n   undefined✓ Will create new component: ${componentName || suggestedName}${c.reset}`);
 
     return {
       figmaComponent: figmaComponent,
@@ -376,7 +376,11 @@ Example:
     process.exit(1);
   }
 
-  const matchResults = JSON.parse(fs.readFileSync(input, 'utf-8'));
+  const matchResults = readJson(input, null);
+  if (!matchResults) {
+    console.error(`${c.red}Error: Failed to parse match results file${c.reset}`);
+    process.exit(1);
+  }
 
   let decisions;
 

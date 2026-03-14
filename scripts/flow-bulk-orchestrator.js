@@ -19,7 +19,7 @@
  *   await orchestrateBulk(['wf-001', 'wf-002', 'wf-003'], options);
  */
 
-const { getConfig, getReadyData } = require('./flow-utils');
+const { getConfig, getReadyData, success, error, info } = require('./flow-utils');
 const { detectDependencies } = require('./flow-parallel');
 
 // ============================================================
@@ -604,6 +604,7 @@ module.exports = {
 // ============================================================
 
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -622,19 +623,18 @@ if (require.main === module) {
         process.exit(1);
       }
 
-      orchestrateBulk(taskIds, { dryRun: true })
-        .then(result => {
-          if (result.success) {
-            console.log('\n✓ Execution plan generated (dry run)');
-          } else {
-            console.error('\n✗ Planning failed:', result.error);
-            process.exit(1);
-          }
-        })
-        .catch(err => {
-          console.error('Error:', err.message);
+      try {
+        const result = await orchestrateBulk(taskIds, { dryRun: true });
+        if (result.success) {
+          success('Execution plan generated (dry run)');
+        } else {
+          error(`Planning failed: ${result.error}`);
           process.exit(1);
-        });
+        }
+      } catch (err) {
+        console.error('Error:', err.message);
+        process.exit(1);
+      }
       break;
     }
 
@@ -652,27 +652,26 @@ if (require.main === module) {
       }
       const dryRun = args.includes('--dry-run');
 
-      continuousWorkLoop({
-        idleTimeout,
-        dryRun,
-        onIdleCheck: ({ idleChecks, maxIdleChecks }) => {
-          console.log(`  [idle check ${idleChecks}/${maxIdleChecks}]`);
-        }
-      })
-        .then(result => {
-          console.log('\n✓ Continuous loop completed');
-          console.log(JSON.stringify(result, null, 2));
-        })
-        .catch(err => {
-          console.error('\n✗ Continuous loop failed:', err.message);
-          process.exit(1);
+      try {
+        const result = await continuousWorkLoop({
+          idleTimeout,
+          dryRun,
+          onIdleCheck: ({ idleChecks, maxIdleChecks }) => {
+            console.log(`  [idle check ${idleChecks}/${maxIdleChecks}]`);
+          }
         });
+        success('Continuous loop completed');
+        console.log(JSON.stringify(result, null, 2));
+      } catch (err) {
+        error(`Continuous loop failed: ${err.message}`);
+        process.exit(1);
+      }
       break;
     }
 
     case 'check': {
       const tasks = getReadyTasks();
-      console.log(`\n📋 Ready tasks: ${tasks.length}`);
+      info(`Ready tasks: ${tasks.length}`);
       for (const task of tasks) {
         console.log(`  • ${task.id} - ${task.title}`);
       }
@@ -708,4 +707,5 @@ Examples:
   node flow-bulk-orchestrator.js continuous --idle-timeout 30 --dry-run
 `);
   }
+  })();
 }

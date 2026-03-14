@@ -11,8 +11,8 @@
  *   flow hooks status     - Check hook status
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { PROJECT_ROOT, success, warn, error, info, color, parseFlags } = require('./flow-utils');
 
 const GIT_HOOKS_DIR = path.join(PROJECT_ROOT, '.git', 'hooks');
@@ -64,7 +64,7 @@ function isWogiFlowHook(hookPath) {
   try {
     const content = fs.readFileSync(hookPath, 'utf-8');
     return content.includes(HOOK_MARKER);
-  } catch {
+  } catch (_err) {
     return false;
   }
 }

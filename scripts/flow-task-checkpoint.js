@@ -14,8 +14,8 @@
  * Part of S1: Smart Context Compaction
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   STATE_DIR,
@@ -398,7 +398,7 @@ function checkRecoveryNeeded() {
 // CLI
 // ============================================================
 
-function main() {
+async function main() {
   const [command, ...args] = process.argv.slice(2);
 
   switch (command) {
@@ -409,13 +409,12 @@ function main() {
         console.error('Usage: flow-task-checkpoint.js save <taskId> <phase>');
         process.exit(1);
       }
-      saveCheckpoint({ taskId, currentPhase: phase }).then((ok) => {
-        if (ok) console.log(`Checkpoint saved: ${taskId} at ${phase}`);
-        else {
-          console.error('Checkpoint save failed');
-          process.exit(1);
-        }
-      });
+      const ok = await saveCheckpoint({ taskId, currentPhase: phase });
+      if (ok) console.log(`Checkpoint saved: ${taskId} at ${phase}`);
+      else {
+        console.error('Checkpoint save failed');
+        process.exit(1);
+      }
       break;
     }
 

@@ -107,8 +107,26 @@
       "progress": 100,
       "createdAt": "2026-03-11T08:30:34.240Z",
       "updatedAt": "2026-03-11T08:52:11.653Z"
+    },
+    "epic-oss-hardening": {
+      "id": "epic-oss-hardening",
+      "title": "OSS Release Hardening",
+      "description": "5 production readiness improvements: version compat check, interactive config command, manifest-based safe uninstall, unified hook error handling",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-2920202e",
+        "wf-04eb6705",
+        "wf-a17c1c86",
+        "wf-05828958"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-03-11T18:41:29.892Z",
+      "updatedAt": "2026-03-11T19:01:21.302Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-10T18:41:01.416Z"
+  "lastUpdated": "2026-03-11T19:01:21.302Z"
 }

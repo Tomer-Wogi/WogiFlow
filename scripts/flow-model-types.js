@@ -15,7 +15,7 @@
  *   flow-models.js -> flow-model-router.js (one-directional)
  */
 
-const fs = require('fs');
+const fs = require('node:fs');
 const {
   PATHS,
   fileExists,
@@ -29,7 +29,7 @@ const {
 // Paths (from canonical PATHS registry in flow-paths.js)
 // ============================================================
 
-const path = require('path');
+const path = require('node:path');
 
 const MODELS_DIR = PATHS.modelsDir;
 const REGISTRY_PATH = PATHS.modelRegistry;

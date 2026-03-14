@@ -16,8 +16,9 @@
  * - OWASP Top 10 patterns
  */
 
-const path = require('path');
+const path = require('node:path');
 const { readFile, PATHS, getConfig } = require('../flow-utils');
+const { CREDENTIAL_SCAN_PATTERNS } = require('../flow-security');
 
 /**
  * SQL Injection patterns
@@ -129,38 +130,16 @@ const COMMAND_INJECTION_PATTERNS = [
 ];
 
 /**
- * Credential/secret exposure patterns
+ * Credential/secret exposure patterns — imported from flow-security.js
+ * Local alias with 'message' field mapped from 'name' for this pass's format.
  */
-const CREDENTIAL_PATTERNS = [
-  {
-    pattern: /(?:password|passwd|pwd|secret|token|apikey|api_key|auth)\s*[:=]\s*['"][^'"]{8,}['"]/gi,
-    severity: 'critical',
-    message: 'Hardcoded credential detected - use environment variables',
-    type: 'credential',
-    owasp: 'A07:2021'
-  },
-  {
-    pattern: /['"](?:sk-|pk_|rk_|AIza|AKIA|ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{20,}['"]/g,
-    severity: 'critical',
-    message: 'API key/token pattern detected in code - must be removed',
-    type: 'credential',
-    owasp: 'A07:2021'
-  },
-  {
-    pattern: /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----/g,
-    severity: 'critical',
-    message: 'Private key in source code - serious security violation',
-    type: 'credential',
-    owasp: 'A07:2021'
-  },
-  {
-    pattern: /(?:mongodb|mysql|postgres|redis):\/\/[^:]+:[^@]+@/gi,
-    severity: 'critical',
-    message: 'Database connection string with credentials in code',
-    type: 'credential',
-    owasp: 'A07:2021'
-  }
-];
+const CREDENTIAL_PATTERNS = CREDENTIAL_SCAN_PATTERNS.map(p => ({
+  pattern: p.pattern,
+  severity: p.severity,
+  message: p.name,
+  type: p.type,
+  owasp: p.owasp
+}));
 
 /**
  * Insecure crypto patterns

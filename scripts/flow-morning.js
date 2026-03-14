@@ -11,9 +11,9 @@
  *   flow morning --json    JSON output for programmatic access
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync, execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync, execFileSync } = require('node:child_process');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -104,7 +104,7 @@ function getProgressData() {
       if (memoryData.sessionContext) {
         result.blockers = memoryData.sessionContext.blockers || [];
       }
-    } catch {
+    } catch (_err) {
       // Ignore parse errors
     }
   }
@@ -158,7 +158,7 @@ function getGitChangesSinceSession(lastActiveTimestamp) {
         cwd: PATHS.root,
         stdio: ['pipe', 'pipe', 'pipe']
       }).trim();
-    } catch {
+    } catch (_err) {
       // Git command may fail on some systems or if no commits match
     }
     const commits = logOutput ? logOutput.split('\n').filter(Boolean) : [];
@@ -174,7 +174,7 @@ function getGitChangesSinceSession(lastActiveTimestamp) {
       }).trim();
       // Deduplicate file list
       filesChanged = [...new Set(diffOutput.split('\n').filter(Boolean))];
-    } catch {
+    } catch (_err) {
       // Git command may fail on some systems
     }
 
@@ -199,7 +199,7 @@ function getGitChangesSinceSession(lastActiveTimestamp) {
       newBugs,
       filesChanged: filesChanged.slice(0, 10) // Limit to 10
     };
-  } catch {
+  } catch (_err) {
     return { commits: 0, commitDetails: [], newBugs: 0, filesChanged: [] };
   }
 }
@@ -460,7 +460,7 @@ function printBriefing(briefing) {
         // Auto-regenerate if enabled
         if (morningConfig.autoRegenerateKnowledge !== false) {
           try {
-            const { spawnSync } = require('child_process');
+            const { spawnSync } = require('node:child_process');
             const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-knowledge-sync.js');
             const result = spawnSync('node', [scriptPath, 'regenerate'], {
               cwd: PROJECT_ROOT,
@@ -485,7 +485,7 @@ function printBriefing(briefing) {
 
         console.log('');
       }
-    } catch {
+    } catch (_err) {
       // Knowledge sync not available - skip silently
     }
   }
@@ -527,7 +527,7 @@ function printBriefing(briefing) {
 
         console.log('');
       }
-    } catch {
+    } catch (_err) {
       // Tech debt manager not available - skip silently
     }
   }

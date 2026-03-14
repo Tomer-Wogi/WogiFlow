@@ -78,7 +78,7 @@ async function main() {
     // are never initialized. This bridge detects the edit and initializes them.
     if ((toolName === 'Edit' || toolName === 'Write') && filePath && filePath.endsWith('ready.json') && !toolFailed) {
       try {
-        const fs = require('fs');
+        const fs = require('node:fs');
         const { safeJsonParse } = require('../../../flow-utils');
         const readyData = safeJsonParse(filePath, null);
         if (readyData && Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {

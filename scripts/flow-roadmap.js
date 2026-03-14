@@ -14,8 +14,8 @@
  *   flow roadmap list [--phase]     List items by phase
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PROJECT_ROOT,
   PATHS,
@@ -27,6 +27,7 @@ const {
   isPathWithinProject,
   escapeRegex
 } = require('./flow-utils');
+const { success, warn, error, info, printHeader } = require('./flow-output');
 
 // Phase headers constant (used by add and move)
 const PHASE_HEADERS = {
@@ -117,7 +118,7 @@ function parseRoadmap() {
   try {
     content = fs.readFileSync(ROADMAP_PATH, 'utf-8');
   } catch (err) {
-    console.error(`${colors.red}Error reading roadmap:${colors.reset} ${err.message}`);
+    error(`Error reading roadmap: ${err.message}`);
     return { exists: false, phases: { now: [], next: [], later: [], ideas: [], completed: [] } };
   }
 
@@ -162,7 +163,7 @@ function parseRoadmap() {
     }
   } catch (err) {
     roadmap.parseError = `Parse error: ${err.message}`;
-    console.error(`${colors.yellow}Warning: Error parsing roadmap:${colors.reset} ${err.message}`);
+    warn(`Error parsing roadmap: ${err.message}`);
   }
 
   return roadmap;
@@ -328,7 +329,7 @@ function addItem(item, phase = 'later') {
   }
 
   // Build item block
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const itemBlock = buildItemBlock(item, date);
 
   // Find the phase section and insert (completed phase not valid for addItem)
@@ -752,12 +753,12 @@ function main() {
     case 'init':
       const initResult = initRoadmap();
       if (initResult.success) {
-        console.log(`${colors.green}+${colors.reset} ${initResult.message}`);
+        success(initResult.message);
         if (initResult.path) {
           console.log(`  ${colors.dim}${initResult.path}${colors.reset}`);
         }
       } else {
-        console.error(`${colors.red}Error:${colors.reset} ${initResult.error}`);
+        error(initResult.error);
         process.exit(1);
       }
       break;
@@ -766,7 +767,7 @@ function main() {
       const rawTitle = positional.slice(1).join(' ') || flags.title;
       const title = sanitizeTitle(rawTitle);
       if (!title) {
-        console.error(`${colors.red}Error:${colors.reset} Please provide an item title`);
+        error('Please provide an item title');
         console.log('Usage: flow roadmap add "Feature name"');
         process.exit(1);
       }
@@ -775,7 +776,7 @@ function main() {
       const addPhase = flags.phase || 'later';
       const phaseValidation = validatePhase(addPhase, false); // completed not allowed for add
       if (!phaseValidation.valid) {
-        console.error(`${colors.red}Error:${colors.reset} ${phaseValidation.error}`);
+        error(phaseValidation.error);
         process.exit(1);
       }
 
@@ -791,9 +792,9 @@ function main() {
 
       const addResult = addItem(item, phaseValidation.phase);
       if (addResult.success) {
-        console.log(`${colors.green}+${colors.reset} ${addResult.message}`);
+        success(addResult.message);
       } else {
-        console.error(`${colors.red}Error:${colors.reset} ${addResult.error}`);
+        error(addResult.error);
         process.exit(1);
       }
       break;
@@ -803,13 +804,13 @@ function main() {
       const rawValidateTitle = positional.slice(1).join(' ');
       const validateTitle = sanitizeTitle(rawValidateTitle);
       if (!validateTitle) {
-        console.error(`${colors.red}Error:${colors.reset} Please provide an item title`);
+        error('Please provide an item title');
         process.exit(1);
       }
 
       const itemToValidate = findItem(validateTitle);
       if (!itemToValidate) {
-        console.error(`${colors.red}Error:${colors.reset} Item not found: ${validateTitle}`);
+        error(`Item not found: ${validateTitle}`);
         process.exit(1);
       }
 
@@ -831,13 +832,13 @@ function main() {
       const toPhaseRaw = flags.to || flags.phase;
 
       if (!moveTitle) {
-        console.error(`${colors.red}Error:${colors.reset} Please provide an item title`);
+        error('Please provide an item title');
         console.log('Usage: flow roadmap move "Feature name" --to=next');
         process.exit(1);
       }
 
       if (!toPhaseRaw) {
-        console.error(`${colors.red}Error:${colors.reset} Please provide a target phase with --to=<phase>`);
+        error('Please provide a target phase with --to=<phase>');
         console.log('Usage: flow roadmap move "Feature name" --to=next');
         process.exit(1);
       }
@@ -845,15 +846,15 @@ function main() {
       // Validate target phase (allow completed for moves)
       const movePhaseValidation = validatePhase(toPhaseRaw, true);
       if (!movePhaseValidation.valid) {
-        console.error(`${colors.red}Error:${colors.reset} ${movePhaseValidation.error}`);
+        error(movePhaseValidation.error);
         process.exit(1);
       }
 
       const moveResult = moveItem(moveTitle, movePhaseValidation.phase);
       if (moveResult.success) {
-        console.log(`${colors.green}+${colors.reset} ${moveResult.message}`);
+        success(moveResult.message);
       } else {
-        console.error(`${colors.red}Error:${colors.reset} ${moveResult.error}`);
+        error(moveResult.error);
         process.exit(1);
       }
       break;
@@ -862,14 +863,14 @@ function main() {
       const rawPromoteTitle = positional.slice(1).join(' ');
       const promoteTitle = sanitizeTitle(rawPromoteTitle);
       if (!promoteTitle) {
-        console.error(`${colors.red}Error:${colors.reset} Please provide an item title`);
+        error('Please provide an item title');
         console.log('Usage: flow roadmap promote "Feature name"');
         process.exit(1);
       }
 
       const itemToPromote = findItem(promoteTitle);
       if (!itemToPromote) {
-        console.error(`${colors.red}Error:${colors.reset} Item not found: ${promoteTitle}`);
+        error(`Item not found: ${promoteTitle}`);
         process.exit(1);
       }
 
@@ -887,7 +888,7 @@ function main() {
       // Move to completed with "Promoted" status
       const promoteResult = moveItem(itemToPromote.title, 'completed');
       if (!promoteResult.success) {
-        console.error(`${colors.red}Error:${colors.reset} ${promoteResult.error}`);
+        error(promoteResult.error);
         process.exit(1);
       }
 
@@ -900,7 +901,7 @@ function main() {
           nextStep: `Create story: /wogi-story "${itemToPromote.title}"`
         }, null, 2));
       } else {
-        console.log(`${colors.green}+${colors.reset} Promoted "${itemToPromote.title}" to completed`);
+        success(`Promoted "${itemToPromote.title}" to completed`);
         console.log(`${colors.dim}  From: ${itemToPromote.phase}${colors.reset}`);
         if (itemToPromote.plan && itemToPromote.plan.length > 0) {
           console.log(`\n${colors.cyan}Implementation Plan:${colors.reset}`);
@@ -937,7 +938,7 @@ function main() {
       break;
 
     default:
-      console.error(`${colors.red}Unknown command:${colors.reset} ${command}`);
+      error(`Unknown command: ${command}`);
       showHelp();
       process.exit(1);
   }

@@ -10,9 +10,9 @@
  * Part of S3: Eval System
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execFileSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const {
   getConfig,
   PATHS,
@@ -188,14 +188,14 @@ function findSpecFile(taskId) {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Ignore directory scan errors
   }
 
   for (const p of candidates) {
     try {
       if (fs.existsSync(p)) return p;
-    } catch {
+    } catch (_err) {
       // Ignore
     }
   }
@@ -216,7 +216,7 @@ function findSpecFile(taskId) {
       if (!fullPath.startsWith(PATHS.root)) return null;
       if (fs.existsSync(fullPath)) return fullPath;
     }
-  } catch {
+  } catch (_err) {
     // Ignore
   }
 
@@ -276,11 +276,11 @@ function loadEvalHistory(limit = 20) {
     return files.map((f) => {
       try {
         return readJson(path.join(EVALS_DIR, f), null);
-      } catch {
+      } catch (_err) {
         return null;
       }
     }).filter(Boolean);
-  } catch {
+  } catch (_err) {
     return [];
   }
 }

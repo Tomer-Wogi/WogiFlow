@@ -23,9 +23,9 @@
  *     manager.getStats();
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 // Import shared utilities from flow-utils
 const {
@@ -37,6 +37,7 @@ const {
   ensureDir,
   generateTaskId
 } = require('./flow-utils');
+const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
 // ============================================================================
 // Constants
@@ -66,7 +67,7 @@ function generateDebtId() {
  * Get current date in YYYY-MM-DD format
  */
 function getCurrentDate() {
-  return new Date().toISOString().split('T')[0];
+  return getTodayDate();
 }
 
 /**
@@ -526,7 +527,7 @@ function showSummary(manager) {
               `${c.dim}Low: ${stats.bySeverity.low}${c.reset}`);
 
   if (stats.agingCount > 0) {
-    console.log(`\n${c.yellow}⚠ ${stats.agingCount} items aging (3+ sessions)${c.reset}`);
+    printWarn(`${stats.agingCount} items aging (3+ sessions)`);
   }
 
   if (stats.autoFixable > 0) {
@@ -592,7 +593,7 @@ function runFix(manager) {
   }
 
   if (result.failed > 0) {
-    console.log(`\n${c.yellow}⚠ Could not fix ${result.failed} issues${c.reset}`);
+    printWarn(`Could not fix ${result.failed} issues`);
     for (const { issue, reason } of result.details.failed) {
       console.log(`  ${c.dim}[${issue.id}] ${reason}${c.reset}`);
     }

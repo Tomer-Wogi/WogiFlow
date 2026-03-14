@@ -11,8 +11,8 @@
  *   flow migrate --help     Show help
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const {
   PATHS,
@@ -22,16 +22,10 @@ const {
   dirExists,
   parseFlags,
   outputJson,
-  printHeader,
-  printSection,
-  color,
-  success,
-  warn,
-  error,
-  info,
   checkSpecMigration,
   SPEC_FILE_MAP
-} = require('./flow-utils');
+} = require('./flow-utils')
+const { printHeader, printSection, color, success, warn, error, info } = require('./flow-output');;
 
 /**
  * Show help message
@@ -83,10 +77,10 @@ function checkMigration(flags) {
   // Spec files
   printSection('Spec Files (state/ → specs/)');
   if (results.specs.length === 0) {
-    console.log(`  ${color('green', '✓')} All spec files in correct location`);
+    success(`All spec files in correct location`);
   } else {
     for (const file of results.specs) {
-      console.log(`  ${color('yellow', '⚠')} ${file.name}.md needs migration`);
+      warn(`${file.name}.md needs migration`);
       console.log(`      from: ${path.relative(PROJECT_ROOT, file.from)}`);
       console.log(`      to:   ${path.relative(PROJECT_ROOT, file.to)}`);
     }
@@ -164,10 +158,10 @@ function migrateSpecs(flags) {
 
       // Now safe to remove original
       fs.unlinkSync(file.from);
-      console.log(`  ${color('green', '✓')} Moved ${fromRel} → ${toRel}`);
+      success(`Moved ${fromRel} → ${toRel}`);
       migrated++;
     } catch (err) {
-      console.log(`  ${color('red', '✗')} Failed to migrate ${fromRel}: ${err.message}`);
+      error(`Failed to migrate ${fromRel}: ${err.message}`);
       errors.push({ file: file.name, error: err.message });
     }
   }
@@ -193,7 +187,7 @@ function migrateSpecs(flags) {
         fs.readFileSync(tmpl.to, 'utf-8');
         // Destination exists, skip this file
         continue;
-      } catch {
+      } catch (_err) {
         // Destination doesn't exist - proceed with migration
       }
 
@@ -212,12 +206,12 @@ function migrateSpecs(flags) {
       }
 
       fs.unlinkSync(tmpl.from);
-      console.log(`  ${color('green', '✓')} Moved ${fromRel} → ${toRel}`);
+      success(`Moved ${fromRel} → ${toRel}`);
       migrated++;
     } catch (err) {
       // ENOENT means source doesn't exist - that's ok, skip silently
       if (err.code !== 'ENOENT') {
-        console.log(`  ${color('red', '✗')} Failed to migrate ${fromRel}: ${err.message}`);
+        error(`Failed to migrate ${fromRel}: ${err.message}`);
         errors.push({ file: tmpl.name, error: err.message });
       }
     }

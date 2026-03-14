@@ -15,7 +15,7 @@
  * - Non-blocking — graceful degradation on errors
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   safeJsonParse,
@@ -286,7 +286,7 @@ function spawnBackgroundDetection(userMessage, taskId) {
   if (!process.env.ANTHROPIC_API_KEY) return;
 
   try {
-    const { spawn } = require('child_process');
+    const { spawn } = require('node:child_process');
     // Pass user message via env var instead of CLI args to prevent argument injection.
     // Only propagate necessary env vars to minimize exposure.
     const child = spawn(process.execPath, [
@@ -498,7 +498,7 @@ function pipeCorrectionsToFeedback(corrections) {
   try {
     const { loadAutoPatterns, saveAutoPatterns } = require('./flow-auto-learn');
     const patterns = loadAutoPatterns();
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     let written = 0;
     const promotionCandidates = [];
 

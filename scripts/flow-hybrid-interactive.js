@@ -8,13 +8,14 @@
  * (GPT-4o-mini, Claude Haiku, Gemini Flash).
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const http = require('http');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const http = require('node:http');
 const { HttpClient } = require('./flow-http-client');
-const { URL, URLSearchParams } = require('url');
+const { URL, URLSearchParams } = require('node:url');
 const { getProjectRoot, colors, safeJsonParse } = require('./flow-utils');
+const { error: errorMsg } = require('./flow-output');
 
 // Import model registry for smart model selection
 let modelRegistry = null;
@@ -796,6 +797,6 @@ ${executorType === 'cloud'
 }
 
 main().catch(err => {
-  console.error(`${colors.red}Error: ${err.message}${colors.reset}`);
+  errorMsg(err.message);
   process.exit(1);
 });

@@ -42,6 +42,9 @@ mcp-memory-server/node_modules/
 # Temp processing files (long input processing)
 .workflow/tmp/
 
+# Scratch directory (temp files, auto-cleaned at session end)
+.workflow/scratch/
+
 # Memory database (vector embeddings)
 .workflow/memory/
 

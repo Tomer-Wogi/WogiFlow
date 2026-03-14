@@ -16,7 +16,7 @@
  * Part of S3: Eval System
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -215,7 +215,7 @@ function parseJudgeResponse(response) {
       }
       if (isValidScoreObject(parsed)) return parsed;
     }
-  } catch {
+  } catch (_err) {
     // Not direct JSON
   }
 
@@ -230,7 +230,7 @@ function parseJudgeResponse(response) {
         }
         if (isValidScoreObject(parsed)) return parsed;
       }
-    } catch {
+    } catch (_err) {
       // Failed to parse extracted JSON
     }
   }

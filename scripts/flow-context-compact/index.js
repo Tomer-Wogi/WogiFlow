@@ -102,9 +102,9 @@ function checkPressure() {
  * @returns {Object} Cleanup result with cleaned count and file list
  */
 function cleanupPlanFiles() {
-  const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
 
   const result = { cleaned: 0, archived: 0, files: [] };
 
@@ -270,7 +270,7 @@ function getStats() {
  * @returns {Object} Clear result
  */
 function clearAll() {
-  const fs = require('fs');
+  const fs = require('node:fs');
 
   // Clear tree
   if (summaryTree.treeExists()) {

@@ -11,8 +11,8 @@
  * This hook is non-blocking (never rejects).
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const { safeJsonParse } = require('../../flow-utils');
 
@@ -58,7 +58,7 @@ function checkPackageChanges(projectRoot) {
       newPackages,
       message: `New dependencies detected since last scan: ${newPackages.slice(0, 5).join(', ')}${newPackages.length > 5 ? ` (+${newPackages.length - 5} more)` : ''}. Consider running \`/wogi-rescan\` to update rules and skills.`
     };
-  } catch {
+  } catch (_err) {
     return { changed: false, newPackages: [], message: null };
   }
 }
@@ -93,7 +93,7 @@ function checkWorkflowState(projectRoot) {
     }
 
     return { missing: false, message: null };
-  } catch {
+  } catch (_err) {
     return { missing: false, message: null };
   }
 }
@@ -122,7 +122,7 @@ function detectRuleConflicts(projectRoot) {
     try {
       const decisionsContent = fs.readFileSync(decisionsPath, 'utf-8');
       extractDirectives(decisionsContent, 'decisions.md', ruleDirectives);
-    } catch {
+    } catch (_err) {
       // Skip if unreadable
     }
 
@@ -154,7 +154,7 @@ function detectRuleConflicts(projectRoot) {
       conflicts: unresolvedConflicts,
       message: `Potential rule conflicts detected:\n${conflictMessages.join('\n')}\n\nThese rules may contradict each other. Check decisions.md for prior resolutions, or use \`/wogi-decide\` to resolve.`
     };
-  } catch {
+  } catch (_err) {
     return { conflicts: [], message: null };
   }
 }
@@ -174,12 +174,12 @@ function collectRuleDirectives(dir, directives) {
           const content = fs.readFileSync(fullPath, 'utf-8');
           const relativePath = path.relative(process.cwd(), fullPath);
           extractDirectives(content, relativePath, directives);
-        } catch {
+        } catch (_err) {
           // Skip unreadable files
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Skip unreadable directories
   }
 }
@@ -271,7 +271,7 @@ function getResolvedConflicts(feedbackPath) {
     for (const match of matches) {
       resolved.add(match[1].trim());
     }
-  } catch {
+  } catch (_err) {
     // Ignore
   }
   return resolved;

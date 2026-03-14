@@ -15,8 +15,8 @@
  * File format: .workflow/features/ft-XXXXXXXX.md
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -56,7 +56,7 @@ function loadFeaturesIndex() {
   }
   try {
     return safeJsonParse(FEATURES_INDEX_PATH, { features: {}, version: '1.0.0' });
-  } catch {
+  } catch (_err) {
     return { features: {}, version: '1.0.0' };
   }
 }

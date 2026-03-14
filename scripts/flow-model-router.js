@@ -16,7 +16,7 @@
  *   flow route "<task>" --constraints '{"maxCostTier":"standard"}'
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PROJECT_ROOT,
   parseFlags,

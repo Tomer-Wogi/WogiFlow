@@ -7,8 +7,8 @@
  * Tests random completed tasks to catch regressions.
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
+const { execSync } = require('node:child_process');
+const path = require('node:path');
 const { getProjectRoot } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();

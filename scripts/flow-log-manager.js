@@ -13,8 +13,8 @@
  * Part of v1.7.0 Context Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -261,7 +261,7 @@ Search archives in \`.workflow/archive/\` for full details.
   }
 
   // Create summary section for this archive batch
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   let newSummary = `\n### Archived ${date} (${archivedEntries.length} entries)\n`;
 
   for (const [type, requests] of Object.entries(byType)) {
@@ -464,7 +464,7 @@ function searchEntries(query, options = {}) {
           }
         }
       }
-    } catch {
+    } catch (_err) {
       // Ignore errors reading archives
     }
   }
@@ -635,7 +635,7 @@ function getLogStats() {
         const entries = parseEntries(content);
         stats.archivedEntries += entries.length;
       }
-    } catch {
+    } catch (_err) {
       // Ignore errors
     }
   }

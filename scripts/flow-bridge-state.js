@@ -13,9 +13,9 @@
  *   await autoSyncBridge('claude-code', { silent: true });
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 // Import canonical safeJsonParse from flow-utils (consolidated per code review)
 const { safeJsonParse } = require('./flow-utils');
@@ -45,7 +45,7 @@ function getConfigChecksum() {
   try {
     const content = fs.readFileSync(CONFIG_PATH, 'utf-8');
     return crypto.createHash('md5').update(content).digest('hex');
-  } catch {
+  } catch (_err) {
     return '';
   }
 }
@@ -63,7 +63,7 @@ function getTemplateChecksum(cliType) {
     const templatePath = path.join(WORKFLOW_DIR, 'templates', templateName);
     const content = fs.readFileSync(templatePath, 'utf-8');
     return crypto.createHash('md5').update(content).digest('hex');
-  } catch {
+  } catch (_err) {
     return '';
   }
 }
@@ -427,7 +427,7 @@ function checkClaudeMdDrift() {
     }
 
     return { drifted: false, reason: 'unchanged' };
-  } catch {
+  } catch (_err) {
     return { drifted: false, reason: 'error' };
   }
 }
@@ -450,7 +450,7 @@ function storeClaudeMdHash() {
     if (!state.syncs['claude-code']) state.syncs['claude-code'] = {};
     state.syncs['claude-code'].contentHash = contentHash;
     writeSyncState(state);
-  } catch {
+  } catch (_err) {
     // Non-critical — skip
   }
 }

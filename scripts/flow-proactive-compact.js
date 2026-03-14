@@ -28,7 +28,7 @@ const { getSmartCompactionConfig } = require('./flow-context-estimator');
  */
 const DEFAULT_PROACTIVE_CONFIG = {
   enabled: true,
-  triggerThreshold: 0.75,   // Compact at 75% context usage
+  triggerThreshold: 0.80,   // Compact at 80% context usage
   useHaiku: true,           // Use Haiku for compaction summaries when available
   phases: [                 // Which phase boundaries trigger compaction check
     'exploring',            // After explore phase completes

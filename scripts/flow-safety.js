@@ -17,9 +17,10 @@
  *   flow safety status                # Show current limits and permissions
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
+const { success: printSuccess, error: printError } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -460,7 +461,7 @@ function loadSafetyConfig() {
   try {
     const config = getConfig();
     return config.safety || {};
-  } catch {
+  } catch (_err) {
     return {};
   }
 }
@@ -513,7 +514,7 @@ if (require.main === module) {
           process.exit(1);
         }
         guard.checkFilePermission(filePath);
-        console.log(`${c.green}✅ File access allowed: ${filePath}${c.reset}`);
+        printSuccess(`File access allowed: ${filePath}`);
         break;
       }
 
@@ -524,7 +525,7 @@ if (require.main === module) {
           process.exit(1);
         }
         guard.checkCommandPermission(cmd);
-        console.log(`${c.green}✅ Command allowed: ${cmd}${c.reset}`);
+        printSuccess(`Command allowed: ${cmd}`);
         break;
       }
 
@@ -575,7 +576,7 @@ ${c.bold}Configuration:${c.reset}
     }
   } catch (err) {
     if (err.isSafetyViolation) {
-      console.error(`${c.red}❌ Safety Violation: ${err.message}${c.reset}`);
+      printError(`Safety Violation: ${err.message}`);
       process.exit(5); // Safety violation exit code
     }
     throw err;

@@ -10,12 +10,13 @@
  * Or run: flow hooks install
  */
 
-const { execSync } = require('child_process');
-const path = require('path');
+const { execSync } = require('node:child_process');
+const path = require('node:path');
 
 // Resolve paths relative to this script's location
 const scriptsDir = path.resolve(__dirname, '../..');
 const { getReadyData, saveReadyData, info, color } = require(path.join(scriptsDir, 'flow-utils'));
+const { success } = require('../../flow-output');
 
 /**
  * Get list of files changed in the most recent commit
@@ -28,7 +29,7 @@ function getCommittedFiles() {
       stdio: ['pipe', 'pipe', 'pipe']
     });
     return output.trim().split('\n').filter(Boolean);
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -122,7 +123,7 @@ function autoCloseMatchingTasks() {
     readyData.recentlyCompleted = readyData.recentlyCompleted.slice(0, 10);
 
     // Output notification (visible in git output)
-    console.log(`${color('green', '✓')} Auto-closed task: ${task.id} (${task.title})`);
+    success(`Auto-closed task: ${task.id} (${task.title})`);
   }
 
   // Save changes

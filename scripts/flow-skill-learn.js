@@ -17,9 +17,9 @@
  *   flow skill-learn --dry-run          # Show what would be updated
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
 const { getProjectRoot, getConfig, colors } = require('./flow-utils');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
@@ -542,7 +542,7 @@ function updateSkillVersion(skillPath) {
   let content = fs.readFileSync(mdPath, 'utf-8');
 
   // Update lastUpdated
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
   if (content.includes('lastUpdated:')) {
     content = content.replace(/lastUpdated:\s*[\d-]+/, `lastUpdated: ${today}`);
   }

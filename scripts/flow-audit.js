@@ -15,9 +15,9 @@
  *   flow-audit.js score     - Calculate weighted health score
  */
 
-const { execFileSync } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { execFileSync } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   getConfig,
@@ -103,7 +103,7 @@ function findTodos() {
             });
           }
         }
-      } catch {
+      } catch (_err) {
         // git grep returns exit code 1 when no matches — not an error
       }
     }
@@ -146,7 +146,7 @@ function getOutdatedDeps() {
           type: info.type || 'dependencies'
         }));
       }
-    } catch {
+    } catch (_err) {
       // Parsing failed
     }
     return [];
@@ -189,7 +189,7 @@ function getAuditResults() {
           critical: meta.critical || 0
         };
       }
-    } catch {
+    } catch (_err) {
       // Parsing failed
     }
     return { vulnerabilities: 0, info: 0, low: 0, moderate: 0, high: 0, critical: 0 };

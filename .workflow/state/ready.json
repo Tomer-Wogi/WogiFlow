@@ -1,12 +1,95 @@
 {
-  "lastUpdated": "2026-03-13T12:00:00.000Z",
+  "lastUpdated": "2026-03-14T00:15:00.000Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-14ce6d29",
+      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
+      "type": "refactor",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P3",
+      "source": "audit-2026-03-13",
+      "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
+      "createdAt": "2026-03-13T15:00:00.000Z"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-01c7b00d",
+      "title": "Test harness for god function decomposition — 34 smoke tests for autoCompactPrompt + runQualityGates",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T11:00:00.000Z"
+    },
+    {
+      "id": "wf-4309146d",
+      "title": "Claude Code 2.1.76 compatibility — PostCompact hook + new events + version gates",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "completedAt": "2026-03-14T10:15:00.000Z"
+    },
+    {
+      "id": "wf-1febfe66",
+      "title": "Dependency hygiene — prune extraneous packages, fix versions, add missing deps",
+      "type": "fix",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:00:00.000Z"
+    },
+    {
+      "id": "wf-cae060ac",
+      "title": "KNOWN_CONFIG_KEYS dedup + redundant loadConfig removal",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:05:00.000Z"
+    },
+    {
+      "id": "wf-c512df88",
+      "title": "Duplication sweep — shared stdin reader, getTodayDate, detectPackageManager",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:10:00.000Z"
+    },
+    {
+      "id": "wf-cf340bfc",
+      "title": "safeJsonParse sweep — covered by tasks 2+3 (config via getConfig, hooks via readHookInput)",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:12:00.000Z"
+    },
+    {
+      "id": "wf-f4ce3cec",
+      "title": "Hook performance — parallelized version checks + collapsed git calls",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:08:00.000Z"
+    },
+    {
+      "id": "wf-9c5e962e",
+      "title": "Modernization — node: prefix on 236 files + Object.hasOwn on 15 call sites",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "source": "audit-2026-03-13",
+      "completedAt": "2026-03-14T00:14:00.000Z"
+    },
+    {
       "id": "wf-7c9e6eec",
-      "title": "Claude Code 2.1.75 compatibility — token recalibration + version gates",
+      "title": "Claude Code 2.1.75 compatibility \u2014 token recalibration + version gates",
       "type": "feature",
       "level": "L2",
       "status": "completed",
@@ -31,7 +114,7 @@
     },
     {
       "id": "wf-5dfc8cfd",
-      "title": "Duplication elimination — remove duplicate modules and inline reimplementations",
+      "title": "Duplication elimination \u2014 remove duplicate modules and inline reimplementations",
       "type": "refactor",
       "level": "L2",
       "epicId": "wf-b524b712",
@@ -40,7 +123,7 @@
     },
     {
       "id": "wf-661e9242",
-      "title": "Hook performance hardening — shared stdin reader, RegExp cache, reduce file reads",
+      "title": "Hook performance hardening \u2014 shared stdin reader, RegExp cache, reduce file reads",
       "type": "refactor",
       "level": "L2",
       "epicId": "wf-b524b712",
@@ -49,7 +132,7 @@
     },
     {
       "id": "wf-684a92d1",
-      "title": "JSON.parse safety sweep — replaced highest-risk raw parses with getConfig/safeJsonParse",
+      "title": "JSON.parse safety sweep \u2014 replaced highest-risk raw parses with getConfig/safeJsonParse",
       "type": "refactor",
       "level": "L2",
       "epicId": "wf-b524b712",
@@ -67,7 +150,7 @@
     },
     {
       "id": "wf-e90cf9cf",
-      "title": "Config access standardization — replaced direct config reads with getConfig()",
+      "title": "Config access standardization \u2014 replaced direct config reads with getConfig()",
       "type": "refactor",
       "level": "L2",
       "epicId": "wf-b524b712",
@@ -159,7 +242,7 @@
     },
     {
       "id": "wf-76fe56a7",
-      "title": "Fix BUG-005: prompt-history.json captures zero prompts — durable session timing gap",
+      "title": "Fix BUG-005: prompt-history.json captures zero prompts \u2014 durable session timing gap",
       "type": "bugfix",
       "level": "L2",
       "status": "completed",
@@ -169,7 +252,7 @@
     },
     {
       "id": "wf-5cc1e323",
-      "title": "Investigate and fix routing enforcement — product-level solution",
+      "title": "Investigate and fix routing enforcement \u2014 product-level solution",
       "type": "bugfix",
       "level": "L2",
       "status": "completed",
@@ -254,7 +337,7 @@
         "AC3: PASS_TO_PASS gate: before implementation, run full test suite, record passing tests. After implementation, ALL previously-passing tests must still pass. Failures = regression blocked",
         "AC4: FAIL_TO_PASS gate: for matched criteria tests, verify they fail before implementation and pass after. Report which criteria have test coverage and which dont",
         "AC5: Gap analysis report saved to .workflow/verifications/<taskId>-discovery.json showing: matched criteria, unmatched criteria, coverage percentage, regression status",
-        "AC6: Integrated into flow-done.js quality gates as testDiscovery gate — runs automatically when testing.discovery.enabled is true in config"
+        "AC6: Integrated into flow-done.js quality gates as testDiscovery gate \u2014 runs automatically when testing.discovery.enabled is true in config"
       ],
       "files": [
         "scripts/flow-test-discovery.js",
@@ -265,16 +348,16 @@
     },
     {
       "id": "wf-630b5885",
-      "title": "Verification Profiles — Auto-Detect Project Test Infrastructure",
+      "title": "Verification Profiles \u2014 Auto-Detect Project Test Infrastructure",
       "type": "story",
       "level": "L1",
       "epicId": "wf-e90881f4",
-      "description": "On first run or /wogi-test --setup, probe the project for all test-related infrastructure: test runner, E2E framework, OpenAPI/Swagger specs, Docker availability, database type, fixture directories, CI config. Save as verification-profile.json. All verification decisions reference this profile — no hardcoded assumptions.",
+      "description": "On first run or /wogi-test --setup, probe the project for all test-related infrastructure: test runner, E2E framework, OpenAPI/Swagger specs, Docker availability, database type, fixture directories, CI config. Save as verification-profile.json. All verification decisions reference this profile \u2014 no hardcoded assumptions.",
       "acceptanceCriteria": [
         "AC1: flow-verification-profile.js probes project and detects: test runner (jest/vitest/mocha/ava/tap/node:test), E2E framework (playwright/cypress/none), OpenAPI spec (openapi.yaml/.json, swagger.yaml/.json), Docker availability (docker info), DB type (from docker-compose, .env, or ORM config), fixture directories, CI config presence",
         "AC2: Profile saved to .workflow/state/verification-profile.json with all detected capabilities and recommended verification tiers per task type (unit-only, API, E2E, full)",
         "AC3: Profile includes tiered verification strategy: Tier 0 (always: lint+typecheck), Tier 1 (run existing tests), Tier 2 (contract testing if OpenAPI exists), Tier 3 (container-based if Docker available), Tier 4 (AI-generated tests for gaps)",
-        "AC4: flow-test-api.js, flow-test-ui.js, flow-test-integrity.js, and flow-done.js all read from verification-profile.json instead of hardcoded defaults — baseUrl, startCommand, framework, paths all come from profile",
+        "AC4: flow-test-api.js, flow-test-ui.js, flow-test-integrity.js, and flow-done.js all read from verification-profile.json instead of hardcoded defaults \u2014 baseUrl, startCommand, framework, paths all come from profile",
         "AC5: /wogi-test --setup triggers full re-probe and profile regeneration. Profile includes lastProbed timestamp and detectedAt for each capability",
         "AC6: Legacy project support: when profile detects zero test infrastructure, verification strategy is Tier 0 only (lint+typecheck+smoke) with clear report of whats missing and recommendations"
       ],
@@ -291,17 +374,17 @@
     },
     {
       "id": "wf-25570e33",
-      "title": "Orchestrated Verification Scenarios — Stateful Backend Testing",
+      "title": "Orchestrated Verification Scenarios \u2014 Stateful Backend Testing",
       "type": "story",
       "level": "L1",
       "epicId": "wf-e90881f4",
-      "description": "Replace sequential curl chains with declarative scenario JSON. Each scenario defines prerequisites (with variable extraction and chaining), the test action, assertions, and teardown. A deterministic engine executes the entire flow as one atomic operation — zero AI in the loop during execution, zero confirmations, minimal token cost. Tiered environment isolation: Testcontainers (if Docker) > test DB transaction > reverse DELETE cleanup.",
+      "description": "Replace sequential curl chains with declarative scenario JSON. Each scenario defines prerequisites (with variable extraction and chaining), the test action, assertions, and teardown. A deterministic engine executes the entire flow as one atomic operation \u2014 zero AI in the loop during execution, zero confirmations, minimal token cost. Tiered environment isolation: Testcontainers (if Docker) > test DB transaction > reverse DELETE cleanup.",
       "acceptanceCriteria": [
         "AC1: flow-scenario-engine.js accepts a scenario JSON definition with prerequisites (ordered steps with method/path/body/save for variable extraction), action (the actual test), assertions (status, body field checks with JSONPath), and teardown strategy",
         "AC2: Variable chaining works: step 1 saves {{userId}} from response, step 2 uses {{userId}} in path/body/headers. Supports JSONPath extraction ($.id, $.data.token, $.items[0].id)",
         "AC3: Scenario generation: given acceptance criteria text, generateScenario() produces the scenario JSON by inferring prerequisites from the API map and endpoint dependencies",
         "AC4: Tiered environment isolation: (a) if Docker available + Testcontainers config exists, spin up ephemeral DB container, run migrations, execute scenario, destroy container. (b) if test DB configured in verification profile, wrap in transaction + rollback. (c) fallback: execute against dev server with reverse-order DELETE teardown",
-        "AC5: Execution engine runs deterministically — no AI prompts, no confirmations, no token cost during execution. Input: scenario JSON. Output: structured result with pass/fail per assertion, timing, and full request/response log",
+        "AC5: Execution engine runs deterministically \u2014 no AI prompts, no confirmations, no token cost during execution. Input: scenario JSON. Output: structured result with pass/fail per assertion, timing, and full request/response log",
         "AC6: Integrated into flow-test-api.js as an alternative to single-endpoint testing. When testing.scenarios.enabled, scenario-based verification is preferred for endpoints with state dependencies. Config toggle in verification-profile.json",
         "AC7: Scenario artifacts saved to .workflow/verifications/<taskId>-scenarios.json with full execution trace for debugging failures"
       ],

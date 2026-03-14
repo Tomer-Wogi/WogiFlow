@@ -15,26 +15,12 @@
 const { checkLoopExit } = require('../../core/loop-check');
 const { isRoutingPending, incrementStopAttempts } = require('../../core/routing-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { safeJsonParseString } = require('../../../flow-utils');
-
-// Maximum stdin size to prevent DoS (100KB — consistent with pre-tool-use.js)
-const MAX_STDIN_SIZE = 100 * 1024;
+const { readHookInput } = require('../shared/read-stdin');
 
 async function main() {
   try {
-    // Read input from stdin with size limit
-    let inputData = '';
-    let totalSize = 0;
-    for await (const chunk of process.stdin) {
-      totalSize += chunk.length;
-      if (totalSize > MAX_STDIN_SIZE) {
-        inputData += chunk.slice(0, MAX_STDIN_SIZE - (totalSize - chunk.length));
-        break;
-      }
-      inputData += chunk;
-    }
-
-    const input = inputData ? safeJsonParseString(inputData, {}) : {};
+    const { input: rawInput } = await readHookInput();
+    const input = rawInput || {};
     const parsedInput = claudeCodeAdapter.parseInput(input);
 
     // v6.2: Routing enforcement check — catches text-only response bypass

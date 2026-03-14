@@ -29,9 +29,9 @@
  *   await modelConfig.addProvider('openai', { apiKey: 'sk-...' });
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, safeJsonParse, colors: c } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, safeJsonParse, colors: c, error, success } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -362,8 +362,8 @@ async function testProviderConnection(providerName) {
  * Test local LLM provider (Ollama/LM Studio)
  */
 async function testLocalProvider(endpoint) {
-  const https = require('https');
-  const http = require('http');
+  const https = require('node:https');
+  const http = require('node:http');
 
   return new Promise((resolve) => {
     const url = new URL('/api/tags', endpoint);
@@ -405,7 +405,7 @@ async function testLocalProvider(endpoint) {
  * Test LM Studio provider
  */
 async function testLMStudio(baseEndpoint) {
-  const http = require('http');
+  const http = require('node:http');
 
   return new Promise((resolve) => {
     // LM Studio uses OpenAI-compatible endpoint
@@ -443,7 +443,7 @@ async function testLMStudio(baseEndpoint) {
  * Test cloud provider connection
  */
 async function testCloudProvider(providerName, endpoint, apiKey) {
-  const https = require('https');
+  const https = require('node:https');
 
   return new Promise((resolve, reject) => {
     let url, headers;
@@ -755,12 +755,12 @@ if (require.main === module) {
       }
       testProviderConnection(providerName).then(result => {
         if (result.success) {
-          console.log(`${c.green}✓${c.reset} ${result.message}`);
+          success(result.message);
           if (result.models) {
             console.log('  Models:', result.models.slice(0, 5).join(', '));
           }
         } else {
-          console.log(`${c.red}✗${c.reset} ${result.message}`);
+          error(result.message);
         }
       });
       break;

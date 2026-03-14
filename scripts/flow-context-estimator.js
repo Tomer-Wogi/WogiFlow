@@ -11,8 +11,8 @@
  *   current_usage + estimated_need > safe_threshold (95%)
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getConfig, PATHS, safeJsonParse, validateTaskId } = require('./flow-utils');
 
 // Module-level cache for .version-check.json — CC version doesn't change during a session

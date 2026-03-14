@@ -12,11 +12,11 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const path = require('path');
-const fs = require('fs');
+const path = require('node:path');
+const fs = require('node:fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS } = require('../../flow-utils');
+const { getConfig, PATHS, readJson } = require('../../flow-utils');
 const {
   calculateStringSimilarity,
   findSimilarItems,
@@ -162,9 +162,8 @@ function isComponentPath(filePath, config) {
 function loadComponentIndex() {
   try {
     const indexPath = path.join(PATHS.state, 'component-index.json');
-    if (fs.existsSync(indexPath)) {
-      return JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
-    }
+    const loaded = readJson(indexPath, null);
+    if (loaded) return loaded;
 
     // Fallback: build a minimal index from all *-map.md files in state/
     const stateDir = PATHS.state;

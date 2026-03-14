@@ -15,10 +15,11 @@
  *   flow diff --apply <operations.json>    # Apply changes from JSON
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
-const { colors: c, getProjectRoot } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
+const { colors: c, getProjectRoot, readJson } = require('./flow-utils');
+const { success: printSuccess, warn: printWarn, error: printError } = require('./flow-output');
 
 /**
  * Simple diff implementation (line-based)
@@ -493,12 +494,12 @@ async function previewAndApply(operations, options = {}) {
     // Auto-apply
     const results = applyDiffs(operations);
     const successCount = results.filter(r => r.success).length;
-    console.log(`${c.green}✅ Applied ${successCount}/${results.length} changes${c.reset}`);
+    printSuccess(`Applied ${successCount}/${results.length} changes`);
     return { applied: true, results, diffs };
   }
 
   if (options.nonInteractive) {
-    console.log(`${c.yellow}⚠️  Non-interactive mode: use --apply to apply changes${c.reset}`);
+    printWarn('Non-interactive mode: use --apply to apply changes');
     return { applied: false, diffs };
   }
 
@@ -508,7 +509,7 @@ async function previewAndApply(operations, options = {}) {
   if (confirmed) {
     const results = applyDiffs(operations);
     const successCount = results.filter(r => r.success).length;
-    console.log(`${c.green}✅ Applied ${successCount}/${results.length} changes${c.reset}`);
+    printSuccess(`Applied ${successCount}/${results.length} changes`);
     return { applied: true, results, diffs };
   }
 
@@ -623,16 +624,16 @@ ${c.bold}SEARCH/REPLACE Format:${c.reset}
     const result = applySearchReplaceToFile(targetFile, changesContent);
 
     if (result.success) {
-      console.log(`${c.green}✅ Applied ${result.applied} change(s) successfully${c.reset}`);
+      printSuccess(`Applied ${result.applied} change(s) successfully`);
     } else if (result.partial) {
-      console.log(`${c.yellow}⚠️  Partial success: ${result.applied} applied, ${result.failed.length} failed${c.reset}`);
+      printWarn(`Partial success: ${result.applied} applied, ${result.failed.length} failed`);
       for (const f of result.failed) {
         console.log(`   ${c.red}✗${c.reset} ${f.reason}`);
         console.log(`     ${c.dim}Search: ${f.search}${c.reset}`);
       }
       process.exit(1);
     } else {
-      console.log(`${c.red}❌ All changes failed${c.reset}`);
+      printError('All changes failed');
       for (const f of result.failed) {
         console.log(`   ${c.red}✗${c.reset} ${f.reason}`);
         console.log(`     ${c.dim}Search: ${f.search}${c.reset}`);
@@ -647,7 +648,11 @@ ${c.bold}SEARCH/REPLACE Format:${c.reset}
       process.exit(1);
     }
 
-    const operations = JSON.parse(fs.readFileSync(jsonFile, 'utf-8'));
+    const operations = readJson(jsonFile, null);
+    if (!operations) {
+      console.error(`${c.red}Error: Failed to parse operations JSON file${c.reset}`);
+      process.exit(1);
+    }
 
     previewAndApply(operations, {
       dryRun,

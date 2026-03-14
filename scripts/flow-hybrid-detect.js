@@ -10,8 +10,8 @@
  *   flow-hybrid-detect test <url>    # Test a specific endpoint
  */
 
-const http = require('http');
-const https = require('https');
+const http = require('node:http');
+const https = require('node:https');
 
 const PROVIDERS = {
   ollama: {

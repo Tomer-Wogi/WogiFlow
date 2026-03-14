@@ -11,10 +11,11 @@
  *   flow skill-create <name> --from-patterns  # Create from feedback patterns
  */
 
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
 const { getProjectRoot, colors } = require('./flow-utils');
+const { success, warn, error: errorMsg, info, print } = require('./flow-output');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -83,7 +84,7 @@ async function createSkill(name, options = {}) {
   const displayName = pathParts[pathParts.length - 1]; // Base name for display
 
   if (fs.existsSync(skillPath)) {
-    log('red', `Skill '${name}' already exists at ${skillPath}`);
+    errorMsg(`Skill '${name}' already exists at ${skillPath}`);
     return false;
   }
 
@@ -103,7 +104,7 @@ async function createSkill(name, options = {}) {
   const filePatterns = options.filePatterns || await prompt('File patterns (comma-separated)', '*.ts');
   const useCases = options.useCases || await prompt('Use cases (comma-separated)', 'General development');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getTodayDate();
 
   const replacements = {
     SKILL_NAME: name,
@@ -117,7 +118,7 @@ async function createSkill(name, options = {}) {
 
   // Copy template
   if (!fs.existsSync(TEMPLATE_DIR)) {
-    log('yellow', 'Template directory not found, creating basic structure...');
+    warn('Template directory not found, creating basic structure...');
 
     fs.mkdirSync(skillPath, { recursive: true });
     fs.mkdirSync(path.join(skillPath, 'knowledge'));
@@ -172,7 +173,9 @@ _Add key patterns here._
     copyDirectory(TEMPLATE_DIR, skillPath, replacements);
   }
 
-  log('green', `\n✅ Skill created: ${skillPath}\n`);
+  console.log('');
+  success(`Skill created: ${skillPath}`);
+  console.log('');
 
   log('white', 'Next steps:');
   log('dim', `  1. Edit ${path.join(skillPath, 'skill.md')} to customize`);
@@ -187,7 +190,7 @@ async function createFromPatterns() {
   const feedbackPath = path.join(PROJECT_ROOT, '.workflow', 'state', 'feedback-patterns.md');
 
   if (!fs.existsSync(feedbackPath)) {
-    log('yellow', 'No feedback-patterns.md found');
+    warn('No feedback-patterns.md found');
     return;
   }
 

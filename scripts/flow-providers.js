@@ -20,11 +20,12 @@
  *   flow providers configure <type>     # Configure a provider
  */
 
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
-const http = require('http');
+const fs = require('node:fs');
+const path = require('node:path');
+const https = require('node:https');
+const http = require('node:http');
 const { getProjectRoot, getConfig, colors: c, estimateTokens } = require('./flow-utils');
+const { success: printSuccess, error: printError } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -266,7 +267,7 @@ class OllamaProvider extends BaseProvider {
         size: m.size,
         capabilities: detectModelCapabilities(m.name)
       }));
-    } catch {
+    } catch (_err) {
       return [];
     }
   }
@@ -306,7 +307,7 @@ class OllamaProvider extends BaseProvider {
           source: 'api+heuristic'
         }
       };
-    } catch {
+    } catch (_err) {
       // Fall back to heuristic only
       return {
         name: modelName,
@@ -334,7 +335,7 @@ class OllamaProvider extends BaseProvider {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch {
+          } catch (_err) {
             reject(new Error(`Invalid response: ${data.slice(0, 100)}`));
           }
         });
@@ -402,7 +403,7 @@ class LMStudioProvider extends BaseProvider {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch {
+          } catch (_err) {
             reject(new Error(`Invalid response: ${data.slice(0, 100)}`));
           }
         });
@@ -432,7 +433,7 @@ class LMStudioProvider extends BaseProvider {
           try {
             const parsed = JSON.parse(data);
             resolve((parsed.data || []).map(m => ({ id: m.id, name: m.id })));
-          } catch {
+          } catch (_err) {
             resolve([]);
           }
         });
@@ -510,7 +511,7 @@ class AnthropicProvider extends BaseProvider {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch {
+          } catch (_err) {
             reject(new Error(`Invalid response: ${data.slice(0, 100)}`));
           }
         });
@@ -588,7 +589,7 @@ class OpenAIProvider extends BaseProvider {
           name: m.id,
           owned_by: m.owned_by
         }));
-    } catch {
+    } catch (_err) {
       return [];
     }
   }
@@ -612,7 +613,7 @@ class OpenAIProvider extends BaseProvider {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch {
+          } catch (_err) {
             reject(new Error(`Invalid response: ${data.slice(0, 100)}`));
           }
         });
@@ -701,7 +702,7 @@ class GoogleProvider extends BaseProvider {
           name: m.displayName || m.name,
           description: m.description
         }));
-    } catch {
+    } catch (_err) {
       return [];
     }
   }
@@ -725,7 +726,7 @@ class GoogleProvider extends BaseProvider {
         res.on('end', () => {
           try {
             resolve(JSON.parse(data));
-          } catch {
+          } catch (_err) {
             reject(new Error(`Invalid response: ${data.slice(0, 100)}`));
           }
         });
@@ -896,7 +897,7 @@ async function detectProviders() {
         models: models.slice(0, 5)
       });
     }
-  } catch {
+  } catch (_err) {
     // Not available
   }
 
@@ -913,7 +914,7 @@ async function detectProviders() {
         models: models
       });
     }
-  } catch {
+  } catch (_err) {
     // Not available
   }
 
@@ -984,7 +985,7 @@ function loadProviderFromConfig() {
       apiKey: hybridConfig.apiKey,
       ...hybridConfig.settings
     });
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -1034,7 +1035,7 @@ async function getModelContextLimit(providerType, endpoint, modelName) {
                 // Default for LM Studio
                 resolve(8192);
               }
-            } catch {
+            } catch (_err) {
               resolve(8192);
             }
           });
@@ -1225,7 +1226,7 @@ if (require.main === module) {
           console.log(`${c.dim}Make sure Ollama/LM Studio is running, or set API keys.${c.reset}`);
         } else {
           for (const p of available) {
-            console.log(`${c.green}✅ ${p.name}${c.reset}`);
+            printSuccess(p.name);
             if (p.models && p.models.length > 0) {
               console.log(`   Models: ${p.models.map(m => m.id).join(', ')}`);
             }
@@ -1249,14 +1250,14 @@ if (require.main === module) {
           const result = await provider.test();
 
           if (result.success) {
-            console.log(`${c.green}✅ ${providerType} is working${c.reset}`);
+            printSuccess(`${providerType} is working`);
             console.log(`   Response: ${result.response.content.slice(0, 50)}...`);
           } else {
-            console.log(`${c.red}❌ ${providerType} test failed${c.reset}`);
+            printError(`${providerType} test failed`);
             console.log(`   Error: ${result.error}`);
           }
         } catch (err) {
-          console.log(`${c.red}❌ ${providerType} test failed${c.reset}`);
+          printError(`${providerType} test failed`);
           console.log(`   Error: ${err.message}`);
         }
         break;

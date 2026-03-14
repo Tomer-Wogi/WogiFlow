@@ -18,8 +18,8 @@
  * Updated v10.1 - Code review fixes (SQL safety, DRY, constants)
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { ensureDir } = require('./flow-io');
 
 // ============================================================
@@ -54,7 +54,8 @@ const DEFAULTS = {
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = process.env.WOGI_PROJECT_ROOT || process.cwd();
+const { getProjectRoot } = require('./flow-paths');
+const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 const MEMORY_DIR = path.join(WORKFLOW_DIR, 'memory');
 const DB_PATH = path.join(MEMORY_DIR, 'local.db');
@@ -127,7 +128,7 @@ function safeParseArray(json) {
     if (/__proto__|constructor|prototype/i.test(json)) return [];
     const parsed = JSON.parse(json);
     return Array.isArray(parsed) ? parsed : [];
-  } catch {
+  } catch (_err) {
     return [];
   }
 }
@@ -397,7 +398,7 @@ function saveDatabase() {
     fs.renameSync(tempPath, DB_PATH);
   } catch (err) {
     // Clean up temp file on failure
-    try { fs.unlinkSync(tempPath); } catch {}
+    try { fs.unlinkSync(tempPath); } catch (_err) {}
     throw err;
   }
 }

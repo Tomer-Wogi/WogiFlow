@@ -13,7 +13,7 @@
  * 4. Respect token budget constraints
  */
 
-const path = require('path');
+const path = require('node:path');
 const { getConfig } = require('../flow-utils');
 const { loadTree, estimateTokens, calculateTreeTokens } = require('./summary-tree');
 

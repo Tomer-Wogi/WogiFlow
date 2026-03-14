@@ -14,7 +14,7 @@
  *         token count, wall clock time, revision rate, WogiFlow version
  */
 
-const path = require('path');
+const path = require('node:path');
 const { getConfig, PATHS } = require('./flow-utils');
 
 // ============================================================

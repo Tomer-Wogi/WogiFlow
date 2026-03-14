@@ -21,7 +21,7 @@ function getAutoSyncBridge() {
   if (!autoSyncBridge) {
     try {
       autoSyncBridge = require('../../../flow-bridge-state').autoSyncBridge;
-    } catch {
+    } catch (_err) {
       autoSyncBridge = async () => ({ synced: false, reason: 'unavailable' });
     }
   }
@@ -74,15 +74,19 @@ async function main() {
       }
     }
 
-    // --- Version compatibility checks ---
+    // --- Version compatibility checks (parallelized) ---
     // 1. Claude Code: warns if below hard minimum (2.1.23) where hooks don't work
     // 2. WogiFlow npm: warns if a newer version is available (checks once per 24h)
     let versionWarning = null;
     let updateWarning = null;
     try {
       const { checkClaudeCodeVersionOnce, checkWogiFlowUpdateOnce } = require('../../../flow-version-check');
-      versionWarning = checkClaudeCodeVersionOnce();
-      updateWarning = checkWogiFlowUpdateOnce();
+      const [vw, uw] = await Promise.all([
+        (async () => { try { return await checkClaudeCodeVersionOnce(); } catch (_err) { return null; } })(),
+        (async () => { try { return await checkWogiFlowUpdateOnce(); } catch (_err) { return null; } })()
+      ]);
+      versionWarning = vw;
+      updateWarning = uw;
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[session-start] Version check failed: ${err.message}`);

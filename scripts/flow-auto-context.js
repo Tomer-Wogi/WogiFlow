@@ -19,9 +19,9 @@
  *   flow auto-context "task description"
  */
 
-const fs = require('fs');
-const path = require('path');
-const { execSync, spawnSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync, spawnSync } = require('node:child_process');
 const {
   getProjectRoot,
   getConfig,
@@ -36,13 +36,14 @@ const {
   isPathWithinProject,
   safeJsonParse
 } = require('./flow-utils');
+const { error: errorMsg } = require('./flow-output');
 
 // Semantic memory search (optional - may not be initialized)
 let searchFacts = null;
 try {
   const memoryDb = require('./flow-memory-db');
   searchFacts = memoryDb.searchFacts;
-} catch {
+} catch (_err) {
   // Memory DB not available - that's ok
 }
 
@@ -50,7 +51,7 @@ try {
 let smartContextGatherer = null;
 try {
   smartContextGatherer = require('./flow-context-gatherer');
-} catch {
+} catch (_err) {
   // Smart context gatherer not available - that's ok
 }
 
@@ -94,7 +95,7 @@ function checkAndRefreshIndex(config) {
       });
       return true;
     }
-  } catch {
+  } catch (_err) {
     // Ignore errors - stale check is best-effort
   }
 
@@ -285,7 +286,7 @@ function searchTraces(keywords) {
             score: matchScore + 4 // Bonus for being a trace (high value)
           });
         }
-      } catch {
+      } catch (_err) {
         // Skip files that can't be read
       }
     }
@@ -293,7 +294,7 @@ function searchTraces(keywords) {
     // Sort by score and limit
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, 3); // Max 3 traces
-  } catch {
+  } catch (_err) {
     return results;
   }
 }
@@ -336,7 +337,7 @@ function searchAppMap(keywords) {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -399,7 +400,7 @@ function searchComponentIndex(keywords, config = null) {
         score: 0
       });
     }
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -468,7 +469,7 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
               } else {
                 content = fullContent;
               }
-            } catch {
+            } catch (_err) {
               // Ignore read errors
             }
           }
@@ -482,7 +483,7 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
           });
         }
       }
-    } catch {
+    } catch (_err) {
       // Ignore grep errors (no matches, timeout, etc.)
     }
 
@@ -538,7 +539,7 @@ function searchRelatedTasks(keywords) {
         }
       }
     }
-  } catch {
+  } catch (_err) {
     // Ignore errors
   }
 
@@ -616,7 +617,7 @@ async function enrichWithLSP(fileResults, config) {
     const lspModule = require('./flow-lsp');
     getLSP = lspModule.getLSP;
     isLSPEnabled = lspModule.isLSPEnabled;
-  } catch {
+  } catch (_err) {
     return fileResults; // LSP module not available
   }
 
@@ -661,7 +662,7 @@ async function enrichWithLSP(fileResults, config) {
               warningCount: (diagnostics || []).filter(d => d.severity === 'warning').length
             }
           };
-        } catch {
+        } catch (_err) {
           return result; // Graceful fallback for individual files
         }
       })),
@@ -674,7 +675,7 @@ async function enrichWithLSP(fileResults, config) {
     // Merge enriched results back into full list
     const enrichedMap = new Map(enriched.map(r => [r.path, r]));
     return fileResults.map(r => enrichedMap.get(r.path) || r);
-  } catch {
+  } catch (_err) {
     // If anything fails, return original results
     return fileResults;
   }
@@ -1155,7 +1156,7 @@ async function main() {
     .join(' ');
 
   if (!description) {
-    console.log(`${colors.red}Error: Please provide a task description${colors.reset}`);
+    errorMsg('Please provide a task description');
     showHelp();
     process.exit(1);
   }

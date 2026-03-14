@@ -20,8 +20,8 @@
  *   flow dc check "rm -rf node_modules"     Shorthand
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, colors, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -573,6 +573,10 @@ function checkPromptEvent(prompt) {
  */
 function isSafeCommand(cmd) {
   const normalizedCmd = cmd.trim();
+  // Reject commands with shell operators — they could chain dangerous commands
+  if (/[;&|`$(){}><]/.test(normalizedCmd)) {
+    return false;
+  }
   return SAFE_COMMANDS.some(pattern => pattern.test(normalizedCmd));
 }
 
@@ -724,6 +728,12 @@ async function promptHookCheck(cmd) {
     return { action: 'allow' };
   }
 
+  // Warn users that the AI prompt analysis feature is not yet implemented.
+  // Pattern-based checking below still works — only the AI analysis is stubbed.
+  if (process.env.DEBUG) {
+    console.error('[damage-control] promptHook AI analysis is not yet implemented — using pattern matching only');
+  }
+
   // Skip if already caught by patterns
   const patternResult = checkCommand(cmd);
   if (patternResult.action !== 'allow') {
@@ -755,7 +765,8 @@ function getStatus() {
     enabled: dcConfig.enabled || false,
     promptHook: {
       enabled: dcConfig.promptHook?.enabled || false,
-      model: dcConfig.promptHook?.model || 'haiku'
+      model: dcConfig.promptHook?.model || 'haiku',
+      aiAnalysis: 'not-implemented (pattern matching only)'
     },
     patternsFile: dcConfig.patternsFile || '.workflow/damage-control.yaml',
     events: dcConfig.events || { bash: true, file: false, stop: false, prompt: false },

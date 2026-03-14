@@ -19,10 +19,10 @@
  * This file re-exports all functions from the above for backwards compatibility.
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { execSync } = require('node:child_process');
 
 // ============================================================
 // Import from focused modules
@@ -405,9 +405,10 @@ function validateReadyJson(data) {
 }
 
 // Ready data cache (avoids repeated file reads within same process)
+// 200ms TTL covers a single hook invocation (<100ms) but expires between user actions (seconds apart)
 let _readyDataCache = null;
-let _readyDataMtime = null;
 let _readyDataCacheTime = 0;
+const READY_DATA_CACHE_TTL = 200;
 
 /**
  * Read ready.json task queue with optional validation
@@ -416,8 +417,8 @@ let _readyDataCacheTime = 0;
  * @throws {Error} If validate is true and structure is invalid
  */
 function getReadyData(validate = false) {
-  // Fast path: skip file read if cache is fresh (within 1 second)
-  if (_readyDataCache && !validate && (Date.now() - _readyDataCacheTime) < 1000) {
+  // Fast path: skip file read if cache is fresh (within TTL)
+  if (_readyDataCache && !validate && (Date.now() - _readyDataCacheTime) < READY_DATA_CACHE_TTL) {
     return _readyDataCache;
   }
 
@@ -548,13 +549,14 @@ function saveReadyData(data) {
   let previousData = null;
   try {
     previousData = readJson(PATHS.ready, null);
-  } catch {
+  } catch (_err) {
     // If we can't read previous data, validate all entries
   }
   validateReadyDataIds(data, previousData);
   const toSave = { ...data, lastUpdated: new Date().toISOString() };
-  invalidateReadyDataCache();
-  return writeJson(PATHS.ready, toSave);
+  const result = writeJson(PATHS.ready, toSave);
+  invalidateReadyDataCache(); // Invalidate AFTER write completes to avoid stale cache race
+  return result;
 }
 
 /**
@@ -570,13 +572,14 @@ async function saveReadyDataAsync(data) {
     let previousData = null;
     try {
       previousData = readJson(PATHS.ready, null);
-    } catch {
+    } catch (_err) {
       // If we can't read previous data, validate all entries
     }
     validateReadyDataIds(data, previousData);
     const toSave = { ...data, lastUpdated: new Date().toISOString() };
-    invalidateReadyDataCache();
-    return writeJson(PATHS.ready, toSave);
+    const result = writeJson(PATHS.ready, toSave);
+    invalidateReadyDataCache(); // Invalidate AFTER write completes
+    return result;
   });
 }
 
@@ -597,7 +600,7 @@ function archiveCompletedTasksToLog(tasks) {
     try {
       const loaded = readJson(archiveLogPath, []);
       if (Array.isArray(loaded)) archive = loaded;
-    } catch {
+    } catch (_err) {
       archive = [];
     }
 
@@ -784,7 +787,7 @@ async function moveTaskAsync(taskId, fromList, toList) {
       try {
         const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
         fs.unlinkSync(receiptPath);
-      } catch {
+      } catch (_err) {
         // ENOENT is fine — receipt may not exist for pre-v1.9.5 tasks
       }
     } else {
@@ -896,7 +899,7 @@ function countRequestLogEntries() {
     const content = readFile(PATHS.requestLog, '');
     const matches = content.match(/^### R-/gm);
     return matches ? matches.length : 0;
-  } catch {
+  } catch (_err) {
     return 0;
   }
 }
@@ -909,7 +912,7 @@ function getLastRequestLogEntry() {
     const content = readFile(PATHS.requestLog, '');
     const matches = content.match(/^### R-.*$/gm);
     return matches ? matches[matches.length - 1] : null;
-  } catch {
+  } catch (_err) {
     return null;
   }
 }
@@ -931,7 +934,7 @@ function getHighestRequestId() {
       return num ? parseInt(num[1], 10) : 0;
     });
     return Math.max(...numbers);
-  } catch {
+  } catch (_err) {
     return 0;
   }
 }
@@ -1003,7 +1006,7 @@ function countAppMapComponents() {
     const headerCount = (content.match(/^## /gm) || []).length * 1;
     const count = dataRows ? Math.max(0, dataRows.length - headerCount) : 0;
     return count;
-  } catch {
+  } catch (_err) {
     return 0;
   }
 }
@@ -1089,7 +1092,7 @@ function addAppMapComponent(component) {
 // CLI Tool Detection (Claude Code 2.1.72+ compatibility)
 // ============================================================
 
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('node:child_process');
 
 /**
  * Compare a parsed semver against a required minimum.
@@ -1127,7 +1130,7 @@ function getFdCommand() {
       execFileSync(cmd, ['--version'], { stdio: 'pipe', timeout: 3000 });
       _fdCommand = cmd;
       return cmd;
-    } catch {
+    } catch (_err) {
       // Not available
     }
   }
@@ -1234,7 +1237,7 @@ function analyzePermissions(permissions) {
               result.shadowed.push({ specific: spec, wildcard: wild });
               break;
             }
-          } catch {
+          } catch (_err) {
             // Invalid regex, skip
           }
         }
@@ -1329,7 +1332,7 @@ function isAstGrepAvailable() {
   try {
     execSync('which sg', { stdio: 'ignore' });
     return true;
-  } catch {
+  } catch (_err) {
     return false;
   }
 }
@@ -1374,7 +1377,7 @@ function astGrepSearch(pattern, options = {}) {
 
   try {
     // Use execFileSync with array args to prevent shell injection (Security Rule 8)
-    const { execFileSync } = require('child_process');
+    const { execFileSync } = require('node:child_process');
     const result = execFileSync('sg', [
       '--pattern', pattern,
       '--lang', lang,
@@ -1404,7 +1407,7 @@ function astGrepSearch(pattern, options = {}) {
           content: m.text || m.match,
           meta: m.metaVariables || {}
         }));
-      } catch {
+      } catch (_err) {
         // Ignore parse errors
       }
     }
@@ -1488,353 +1491,9 @@ function findTypeDefinitions(namePattern = null, options = {}) {
 }
 
 // ============================================================
-// Classification System (v2.0.0 - Recursive Enhancements)
+// Hierarchical Task Utilities
 // ============================================================
 
-/**
- * Classification levels for work items
- */
-const CLASSIFICATION_LEVELS = {
-  L0: 'epic',      // 15+ files, 3+ stories, new subsystem
-  L1: 'story',     // 5-15 files, 3-10 AC, multi-component
-  L2: 'task',      // 1-5 files, 1-3 AC, single concern
-  L3: 'subtask'    // 1 file, atomic operation
-};
-
-/**
- * Default classification thresholds (can be overridden in config)
- */
-const DEFAULT_CLASSIFICATION_THRESHOLDS = {
-  epic: { minFiles: 15, minStories: 3 },
-  story: { minFiles: 5, maxFiles: 15, minCriteria: 3 },
-  task: { minFiles: 1, maxFiles: 5, minCriteria: 1 }
-};
-
-/**
- * Default classification keywords (can be overridden in config)
- */
-const DEFAULT_CLASSIFICATION_KEYWORDS = {
-  epic: ['system', 'architecture', 'migration', 'redesign', 'platform', 'infrastructure', 'overhaul'],
-  story: ['feature', 'flow', 'integration', 'module', 'workflow', 'implement'],
-  task: ['add', 'fix', 'update', 'change', 'remove', 'button', 'field', 'tweak']
-};
-
-/**
- * Estimate the number of files that might be affected by a request
- * @param {string} request - User's request text
- * @param {Object} context - Optional context with file hints
- * @returns {number} Estimated file count
- */
-function estimateFileCount(request, context = {}) {
-  // If explicit files are mentioned in context, use that
-  if (context.files && Array.isArray(context.files)) {
-    return context.files.length;
-  }
-
-  // Use context hint if provided
-  if (context.estimatedFiles) {
-    return context.estimatedFiles;
-  }
-
-  const lower = request.toLowerCase();
-
-  // Count file path mentions (e.g., src/components/Button.tsx)
-  const filePathPattern = /\b[\w\-./]+\.(ts|tsx|js|jsx|vue|py|go|rs|java|rb)\b/gi;
-  const fileMatches = request.match(filePathPattern) || [];
-
-  // Count component/module mentions
-  const componentPattern = /\b(component|module|service|controller|hook|util|helper|screen|page|modal)s?\b/gi;
-  const componentMatches = request.match(componentPattern) || [];
-
-  // System-level keywords suggest many files
-  if (/\b(architecture|migration|redesign|platform|infrastructure|overhaul|authentication system|authorization system)\b/i.test(request)) {
-    return Math.max(15, fileMatches.length + componentMatches.length * 3);
-  }
-
-  // "system" alone with complexity indicators also suggests many files
-  if (/\bsystem\b/i.test(request) && /\b(complete|full|entire|build|create)\b/i.test(request)) {
-    return Math.max(10, fileMatches.length + componentMatches.length * 2);
-  }
-
-  // Feature keywords suggest medium file count
-  if (/\b(feature|flow|integration|module|workflow)\b/i.test(request)) {
-    return Math.max(5, fileMatches.length + componentMatches.length * 2);
-  }
-
-  // Explicit mentions get priority
-  if (fileMatches.length > 0) {
-    return Math.max(fileMatches.length, componentMatches.length);
-  }
-
-  // Default: estimate based on request complexity
-  const wordCount = request.split(/\s+/).length;
-  if (wordCount > 50) return 5;
-  if (wordCount > 20) return 3;
-  return 1;
-}
-
-/**
- * Extract mentioned components from request
- * @param {string} request - User's request text
- * @returns {string[]} Array of mentioned component names
- */
-function extractComponents(request) {
-  const components = [];
-
-  // Match PascalCase component names
-  const pascalCasePattern = /\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b/g;
-  const pascalMatches = request.match(pascalCasePattern) || [];
-  components.push(...pascalMatches);
-
-  // Match explicit component references
-  const explicitPattern = /\b([\w]+(?:Component|Button|Modal|Dialog|Form|Card|List|Table|View|Page|Screen))\b/gi;
-  const explicitMatches = request.match(explicitPattern) || [];
-  components.push(...explicitMatches);
-
-  // Dedupe
-  return [...new Set(components)];
-}
-
-/**
- * Analyze a request for classification
- * @param {string} request - User's request text
- * @param {Object} context - Optional context
- * @returns {Object} Analysis results
- */
-function analyzeRequest(request, context = {}) {
-  const lower = request.toLowerCase();
-  const config = getConfig();
-  const classificationConfig = config.storyDecomposition?.classification || {};
-  const keywords = classificationConfig.keywords || DEFAULT_CLASSIFICATION_KEYWORDS;
-
-  return {
-    estimatedFiles: estimateFileCount(request, context),
-    hasEpicKeywords: keywords.epic.some(kw => lower.includes(kw)),
-    hasStoryKeywords: keywords.story.some(kw => lower.includes(kw)),
-    hasTaskKeywords: keywords.task.some(kw => lower.includes(kw)),
-    mentionedComponents: extractComponents(request),
-    complexity: estimateComplexity(request),
-    wordCount: request.split(/\s+/).length,
-    hasMultipleRequirements: /\b(and|also|additionally|plus)\b/i.test(request) || (request.match(/[,;]/g) || []).length > 2
-  };
-}
-
-/**
- * Calculate epic score
- * @param {Object} analysis - Request analysis
- * @returns {number} Score 0-1
- */
-function calculateEpicScore(analysis) {
-  const config = getConfig();
-  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
-
-  let score = 0;
-
-  // High file count is strong epic indicator
-  if (analysis.estimatedFiles >= thresholds.epic.minFiles) {
-    score += 0.5;
-  } else if (analysis.estimatedFiles >= thresholds.story.maxFiles) {
-    score += 0.3;
-  }
-
-  // Epic keywords
-  if (analysis.hasEpicKeywords) {
-    score += 0.3;
-  }
-
-  // High complexity
-  if (analysis.complexity === 'high') {
-    score += 0.15;
-  }
-
-  // Many components
-  if (analysis.mentionedComponents.length >= 5) {
-    score += 0.1;
-  }
-
-  return Math.min(1, score);
-}
-
-/**
- * Calculate story score
- * @param {Object} analysis - Request analysis
- * @returns {number} Score 0-1
- */
-function calculateStoryScore(analysis) {
-  const config = getConfig();
-  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
-
-  let score = 0;
-
-  // Medium file count
-  if (analysis.estimatedFiles >= thresholds.story.minFiles &&
-      analysis.estimatedFiles <= thresholds.story.maxFiles) {
-    score += 0.4;
-  } else if (analysis.estimatedFiles >= thresholds.task.maxFiles) {
-    score += 0.2;
-  }
-
-  // Story keywords
-  if (analysis.hasStoryKeywords) {
-    score += 0.25;
-  }
-
-  // Medium complexity
-  if (analysis.complexity === 'medium') {
-    score += 0.2;
-  }
-
-  // Multiple requirements
-  if (analysis.hasMultipleRequirements) {
-    score += 0.15;
-  }
-
-  // Multiple components
-  if (analysis.mentionedComponents.length >= 2 && analysis.mentionedComponents.length < 5) {
-    score += 0.1;
-  }
-
-  return Math.min(1, score);
-}
-
-/**
- * Calculate task score
- * @param {Object} analysis - Request analysis
- * @returns {number} Score 0-1
- */
-function calculateTaskScore(analysis) {
-  const config = getConfig();
-  const thresholds = config.storyDecomposition?.classification?.thresholds || DEFAULT_CLASSIFICATION_THRESHOLDS;
-
-  let score = 0;
-
-  // Low file count
-  if (analysis.estimatedFiles >= thresholds.task.minFiles &&
-      analysis.estimatedFiles <= thresholds.task.maxFiles) {
-    score += 0.5;
-  }
-
-  // Task keywords
-  if (analysis.hasTaskKeywords) {
-    score += 0.25;
-  }
-
-  // Low complexity
-  if (analysis.complexity === 'low') {
-    score += 0.15;
-  }
-
-  // Single component
-  if (analysis.mentionedComponents.length === 1) {
-    score += 0.1;
-  }
-
-  return Math.min(1, score);
-}
-
-/**
- * Calculate subtask score
- * @param {Object} analysis - Request analysis
- * @returns {number} Score 0-1
- */
-function calculateSubtaskScore(analysis) {
-  let score = 0;
-
-  // Single file
-  if (analysis.estimatedFiles === 1) {
-    score += 0.5;
-  }
-
-  // Very low complexity
-  if (analysis.complexity === 'low' && analysis.wordCount < 15) {
-    score += 0.3;
-  }
-
-  // No multiple requirements
-  if (!analysis.hasMultipleRequirements) {
-    score += 0.1;
-  }
-
-  // Short request
-  if (analysis.wordCount < 10) {
-    score += 0.1;
-  }
-
-  return Math.min(1, score);
-}
-
-/**
- * Classify a work item request
- * @param {string} request - User's request text
- * @param {Object} context - Optional context (files mentioned, etc.)
- * @returns {Object} { level: 'L0'|'L1'|'L2'|'L3', type: string, confidence: number, analysis: Object }
- */
-function classifyWorkItem(request, context = {}) {
-  const config = getConfig();
-  const classificationConfig = config.storyDecomposition?.classification || {};
-
-  // Check if classification is disabled
-  if (classificationConfig.enabled === false) {
-    return {
-      level: 'L2',
-      type: 'task',
-      confidence: 100,
-      analysis: null,
-      disabled: true
-    };
-  }
-
-  const analysis = analyzeRequest(request, context);
-
-  // Use existing codeComplexityCheck patterns if available
-  const complexityHint = context.complexityHint || null;
-  if (complexityHint === 'high') {
-    analysis.complexity = 'high';
-  } else if (complexityHint === 'low') {
-    analysis.complexity = 'low';
-  }
-
-  const scores = {
-    epic: calculateEpicScore(analysis),
-    story: calculateStoryScore(analysis),
-    task: calculateTaskScore(analysis),
-    subtask: calculateSubtaskScore(analysis)
-  };
-
-  // Return highest scoring classification
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const [type, score] = sorted[0];
-
-  const levelMap = { epic: 'L0', story: 'L1', task: 'L2', subtask: 'L3' };
-  const actionMap = {
-    epic: 'create_epic',
-    story: 'create_story',
-    task: 'create_story',  // Tasks are still created as stories but simpler
-    subtask: 'create_story'
-  };
-
-  // Determine parent suggestion based on context
-  let parentSuggestion = null;
-  if (context.parentId) {
-    // Explicit parent provided
-    const parentPrefix = context.parentId.substring(0, 2);
-    const parentTypeMap = { 'ep': 'epic', 'ft': 'feature', 'wf': 'story', 'pl': 'plan' };
-    parentSuggestion = {
-      type: parentTypeMap[parentPrefix] || 'unknown',
-      id: context.parentId
-    };
-  }
-
-  return {
-    level: levelMap[type],
-    type,
-    confidence: Math.round(score * 100),
-    suggestedAction: actionMap[type],
-    parentSuggestion,
-    analysis,
-    scores
-  };
-}
 
 /**
  * Normalize a task object to include optional hierarchical fields
@@ -1903,98 +1562,6 @@ function findTaskInAllLists(readyData, taskId) {
 
   return null;
 }
-
-// ============================================================
-// Safe Search Utilities (Claude Code 2.1.23+ compatibility)
-// ============================================================
-
-/**
- * Perform a safe grep search with proper timeout and error handling.
- * Returns results and metadata about search status.
- *
- * @param {string} pattern - Search pattern
- * @param {Object} options - Search options
- * @param {string} [options.path] - Directory to search (default: PROJECT_ROOT)
- * @param {string[]} [options.extensions] - File extensions to include (e.g., ['ts', 'tsx'])
- * @param {number} [options.timeout] - Timeout in ms (default: 10000)
- * @param {number} [options.maxResults] - Maximum results to return (default: 50)
- * @param {boolean} [options.caseInsensitive] - Case insensitive search (default: true)
- * @returns {{ results: string[], timedOut: boolean, error: string|null }}
- */
-function safeGrepSearch(pattern, options = {}) {
-  const { spawnSync } = require('child_process');
-
-  const searchPath = options.path || PROJECT_ROOT;
-  const extensions = options.extensions || ['ts', 'tsx', 'js', 'jsx'];
-  const timeout = options.timeout || 10000;
-  const maxResults = options.maxResults || 50;
-  const caseInsensitive = options.caseInsensitive !== false;
-
-  const args = ['-rl'];
-  if (caseInsensitive) args.push('-i');
-
-  // Add include patterns for extensions
-  for (const ext of extensions) {
-    args.push(`--include=*.${ext}`);
-  }
-
-  args.push(pattern, searchPath);
-
-  try {
-    const result = spawnSync('grep', args, {
-      encoding: 'utf-8',
-      timeout,
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    // Check for timeout
-    if (result.signal === 'SIGTERM') {
-      return {
-        results: [],
-        timedOut: true,
-        error: `Search timed out after ${timeout}ms`
-      };
-    }
-
-    // Check for error (but exit code 1 just means no matches)
-    if (result.status > 1) {
-      return {
-        results: [],
-        timedOut: false,
-        error: result.stderr?.trim() || `grep exited with code ${result.status}`
-      };
-    }
-
-    const files = (result.stdout || '')
-      .split('\n')
-      .filter(f => f.trim())
-      .slice(0, maxResults);
-
-    return {
-      results: files,
-      timedOut: false,
-      error: null
-    };
-  } catch (err) {
-    // Handle ETIMEDOUT and other errors
-    const isTimeout = err.code === 'ETIMEDOUT' || err.killed;
-    return {
-      results: [],
-      timedOut: isTimeout,
-      error: isTimeout ? `Search timed out after ${timeout}ms` : err.message
-    };
-  }
-}
-
-/**
- * Configuration defaults for search operations
- */
-const SEARCH_DEFAULTS = {
-  timeout: 10000,        // 10 seconds
-  maxResults: 50,        // Maximum files to return
-  retryOnTimeout: true,  // Whether to retry with reduced scope on timeout
-  extensions: ['ts', 'tsx', 'js', 'jsx', 'vue', 'svelte']
-};
 
 // ============================================================
 // Exports
@@ -2071,6 +1638,7 @@ module.exports = {
   info: flowOutput.info,
   showHelp: flowOutput.showHelp,
   escapeRegex: flowOutput.escapeRegex,
+  getTodayDate: flowOutput.getTodayDate,
 
   // Constants (defined in this file)
   DEFAULT_COMMAND_TIMEOUT_MS,
@@ -2144,19 +1712,10 @@ module.exports = {
   findCustomHooks,
   findTypeDefinitions,
 
-  // Classification System (v2.0.0)
-  CLASSIFICATION_LEVELS,
-  DEFAULT_CLASSIFICATION_THRESHOLDS,
-  DEFAULT_CLASSIFICATION_KEYWORDS,
-  classifyWorkItem,
+  // Hierarchical Task Utilities
   normalizeTask,
   findAllWithParent,
   findTaskInAllLists,
-  analyzeRequest,
-
-  // Safe Search (Claude Code 2.1.23+ compatibility)
-  safeGrepSearch,
-  SEARCH_DEFAULTS,
 
   // CLI Tool Detection (Claude Code 2.1.72+ compatibility)
   meetsVersion,
@@ -2183,7 +1742,7 @@ module.exports = {
         console.log(`[DEBUG] Auto-cleaned ${cleaned} stale lock(s) from ${STATE_DIR}`);
       }
     }
-  } catch {
+  } catch (_err) {
     // Silent failure - don't break module loading
   }
 })();

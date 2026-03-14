@@ -14,18 +14,16 @@
  *   flow hooks test <hook>     # Test a hook with sample input
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
-  getConfig,
-  color,
-  success,
-  warn,
-  error
-} = require('./flow-utils');
+  getConfig
+} = require('./flow-utils')
+const { color, success, warn, error } = require('./flow-output');;
 
 const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/adapters');
+const { readJson } = require('./flow-io');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -34,20 +32,20 @@ const PROJECT_ROOT = getProjectRoot();
  * @returns {string} Version string or 'unknown'
  */
 function getInstalledVersion() {
-  try {
-    const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+  const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
+  const pkg = readJson(pkgPath, null);
+  if (pkg) {
     return pkg.version || 'unknown';
-  } catch (err) {
-    // Fallback: try settings.json (legacy)
-    try {
-      const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return settings._wogiFlowVersion || 'unknown';
-    } catch (err) {
-      return 'unknown';
-    }
   }
+
+  // Fallback: try settings.json (legacy)
+  const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
+  const settings = readJson(settingsPath, null);
+  if (settings) {
+    return settings._wogiFlowVersion || 'unknown';
+  }
+
+  return 'unknown';
 }
 const HOOK_MARKER = '// WOGI_FLOW_MANAGED_HOOKS';
 
@@ -168,7 +166,7 @@ function installClaudeCodeHooks(adapter, hooksConfig) {
 
   // Write config
   fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
-  console.log(`  ${color('green', '✓')} Hooks written to ${path.relative(PROJECT_ROOT, configPath)}`);
+  success(`Hooks written to ${path.relative(PROJECT_ROOT, configPath)}`);
 
   return true;
 }
@@ -268,10 +266,10 @@ function removeClaudeCodeHooks(adapter) {
     // Check if config is now empty
     if (Object.keys(config).length === 0) {
       fs.unlinkSync(configPath);
-      console.log(`  ${color('green', '✓')} Removed ${path.basename(configPath)}`);
+      success(`Removed ${path.basename(configPath)}`);
     } else {
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-      console.log(`  ${color('green', '✓')} Removed hooks from ${path.basename(configPath)}`);
+      success(`Removed hooks from ${path.basename(configPath)}`);
     }
 
     // Restore backup if exists
@@ -283,7 +281,7 @@ function removeClaudeCodeHooks(adapter) {
         const finalConfig = { ...config, hooks: backupConfig.hooks };
         fs.writeFileSync(configPath, JSON.stringify(finalConfig, null, 2));
         fs.unlinkSync(backupPath);
-        console.log(`  ${color('green', '✓')} Restored original hooks from backup`);
+        success(`Restored original hooks from backup`);
       }
     }
 
@@ -381,7 +379,7 @@ function checkIfInstalled(adapter) {
       const content = fs.readFileSync(configPath, 'utf-8');
       const config = JSON.parse(content);
       return config._wogiFlowManaged === true;
-    } catch {
+    } catch (_err) {
       return false;
     }
   }
@@ -434,7 +432,7 @@ async function testHook(hookName) {
     return;
   }
 
-  const { spawn } = require('child_process');
+  const { spawn } = require('node:child_process');
   const proc = spawn('node', [hookPath], {
     cwd: PROJECT_ROOT,
     stdio: ['pipe', 'pipe', 'pipe']
@@ -459,7 +457,7 @@ async function testHook(hookName) {
       try {
         const output = JSON.parse(stdout);
         console.log(JSON.stringify(output, null, 2));
-      } catch {
+      } catch (_err) {
         console.log(stdout);
       }
     }

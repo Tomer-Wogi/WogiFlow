@@ -12,8 +12,8 @@
  *   flow story "Add login form" --deep       # Create with decomposition
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
   colors,
@@ -26,6 +26,7 @@ const {
   safeJsonParse,
   isPathWithinProject
 } = require('./flow-utils');
+const { success, warn, error, info, print, printHeader } = require('./flow-output');
 
 // Import context orchestrator for product context
 let contextOrchestrator = null;
@@ -536,7 +537,7 @@ Examples:
   }
 
   if (positional.length === 0) {
-    log('red', 'Error: Title is required');
+    error('Title is required');
     process.exit(1);
   }
 
@@ -545,7 +546,7 @@ Examples:
   // Validate priority if provided
   let priority = flags.priority;
   if (priority && !/^P[0-4]$/.test(priority)) {
-    log('yellow', `Warning: Invalid priority "${priority}", using default`);
+    warn(`Invalid priority "${priority}", using default`);
     priority = undefined;
   }
 
@@ -568,11 +569,11 @@ Examples:
   // Human-readable output
   console.log('');
   if (result.dryRun) {
-    log('yellow', `[DRY RUN] Would create story: ${result.taskId}`);
-    log('cyan', `  Would write: ${result.storyFile}`);
+    warn(`[DRY RUN] Would create story: ${result.taskId}`);
+    info(`  Would write: ${result.storyFile}`);
   } else {
-    log('green', `✓ Created story: ${result.taskId}`);
-    log('cyan', `  ${result.storyFile}`);
+    success(`Created story: ${result.taskId}`);
+    info(`  ${result.storyFile}`);
   }
   console.log('');
   log('white', `Title: ${result.title}`);
@@ -589,10 +590,10 @@ Examples:
     });
     if (result.addedToReady) {
       console.log('');
-      log('green', '✓ Added parent and sub-tasks to ready.json');
+      success('Added parent and sub-tasks to ready.json');
     } else if (result.wouldAddToReady) {
       console.log('');
-      log('yellow', '[DRY RUN] Would add parent and sub-tasks to ready.json');
+      warn('[DRY RUN] Would add parent and sub-tasks to ready.json');
     }
 
     // Show parallel execution info
@@ -631,7 +632,7 @@ Examples:
     }
   }
   })().catch(err => {
-    log('red', `Error: ${err.message}`);
+    error(err.message);
     process.exit(1);
   });
 }

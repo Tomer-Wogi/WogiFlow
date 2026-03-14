@@ -22,8 +22,8 @@
  *   const learning = await learnFromFailure(modelId, taskType, code, error);
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -471,7 +471,7 @@ function updateLearningStats(result) {
     // Clean up temp file if rename failed
     try {
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-    } catch {
+    } catch (_err) {
       // Ignore cleanup errors
     }
     // Not critical - stats update failure won't break functionality

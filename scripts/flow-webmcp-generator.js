@@ -13,9 +13,9 @@
  *   flow webmcp-generate export       # Output tools JSON to stdout
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
 const { readJson, writeJson, ensureDir, fileExists } = require('./flow-utils');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');
@@ -138,7 +138,8 @@ class WebMCPGenerator extends BaseScanner {
   detectFramework() {
     const pkgPath = path.join(PROJECT_ROOT, 'package.json');
     try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      const pkg = readJson(pkgPath, null);
+      if (!pkg) return 'unknown';
       const allDeps = {
         ...(pkg.dependencies || {}),
         ...(pkg.devDependencies || {})
@@ -147,7 +148,7 @@ class WebMCPGenerator extends BaseScanner {
       if (allDeps.react || allDeps['react-dom'] || allDeps.next) return 'react';
       if (allDeps.vue || allDeps.nuxt) return 'vue';
       if (allDeps.svelte || allDeps['@sveltejs/kit']) return 'svelte';
-    } catch {
+    } catch (_err) {
       // package.json not found or invalid
     }
 
@@ -671,7 +672,11 @@ class WebMCPGenerator extends BaseScanner {
     }
 
     try {
-      const registry = JSON.parse(fs.readFileSync(TOOLS_PATH, 'utf-8'));
+      const registry = readJson(TOOLS_PATH, null);
+      if (!registry) {
+        error('Failed to parse tools.json');
+        return;
+      }
 
       console.log(color('cyan', '\nWebMCP Tools Summary'));
       console.log(color('gray', '═'.repeat(50)));

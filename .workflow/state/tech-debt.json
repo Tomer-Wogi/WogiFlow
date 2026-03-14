@@ -1,10 +1,99 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-01-15T00:00:00.000Z",
-  "issues": [],
+  "lastUpdated": "2026-03-14T12:00:00.000Z",
+  "issues": [
+    {
+      "id": "TD-001",
+      "severity": "high",
+      "title": "flow-long-input.js is 8,411 LOC — needs continued extraction",
+      "file": "scripts/flow-long-input.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "Extraction into sub-modules (flow-long-input-*.js) was partial. The main file still contains too much logic."
+    },
+    {
+      "id": "TD-002",
+      "severity": "high",
+      "title": "flow-orchestrate.js is 3,203 LOC with 6 embedded classes",
+      "file": "scripts/flow-orchestrate.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "ProjectContextGenerator, TemplateEngine, RollbackManager, StateManager, Validator, Orchestrator should be extracted to individual modules."
+    },
+    {
+      "id": "TD-003",
+      "severity": "medium",
+      "title": "flow-done.js is 2,053 LOC / 22 functions — coordinator with accumulated logic",
+      "file": "scripts/flow-done.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "Completion reporting and gate runner logic could be extracted to flow-done-report.js and flow-done-gates.js."
+    },
+    {
+      "id": "TD-004",
+      "severity": "medium",
+      "title": "flow-durable-session.js is 1,801 LOC / 53 functions — multiple responsibilities",
+      "file": "scripts/flow-durable-session.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "Candidate for splitting into flow-durable-session-core.js (step state), flow-durable-suspension.js, and flow-durable-history.js."
+    },
+    {
+      "id": "TD-005",
+      "severity": "medium",
+      "title": "flow-utils.js facade refactoring half-done — 70+ exports remain",
+      "file": "scripts/flow-utils.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "Task ID generation, ready.json CRUD, request log management, git utilities, and AST-grep integration should be extracted to focused modules."
+    },
+    {
+      "id": "TD-006",
+      "severity": "medium",
+      "title": "session-start.js entry hook contains business logic",
+      "file": "scripts/hooks/entry/claude-code/session-start.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "CLAUDE.md drift detection logic (30+ LOC) belongs in a core/ module, not the entry hook."
+    },
+    {
+      "id": "TD-007",
+      "severity": "medium",
+      "title": "8+ learning modules with overlapping storage targets",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "flow-failure-learning, flow-session-learning, flow-adaptive-learning, flow-auto-learn, flow-loop-retry-learning, flow-tiered-learning, flow-skill-learn, flow-standards-learner have overlapping writes to feedback-patterns.md and decisions.md."
+    },
+    {
+      "id": "TD-008",
+      "severity": "low",
+      "title": "Deprecated hybrid-session code paths still present",
+      "file": "scripts/flow-orchestrate.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "StateManager.updateHybridSession() explicitly prints deprecation warnings but still executes legacy code."
+    },
+    {
+      "id": "TD-009",
+      "severity": "medium",
+      "title": "flow-damage-control.js promptHook AI analysis is a stub",
+      "file": "scripts/flow-damage-control.js",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "evaluatePromptWithAI() always returns 'allow'. Feature is disabled by default but needs implementation or clear documentation."
+    },
+    {
+      "id": "TD-010",
+      "severity": "low",
+      "title": "234 flow-*.js files in flat scripts/ directory",
+      "status": "open",
+      "addedDate": "2026-03-14",
+      "description": "Consider subdirectory grouping (scripts/memory/, scripts/context/, scripts/session/) for discoverability. Deferred to major version to avoid breaking require paths."
+    }
+  ],
   "stats": {
-    "totalOpen": 0,
-    "bySeverity": { "critical": 0, "high": 0, "medium": 0, "low": 0 },
+    "totalOpen": 10,
+    "bySeverity": { "critical": 0, "high": 2, "medium": 6, "low": 2 },
     "autoFixable": 0
   }
 }

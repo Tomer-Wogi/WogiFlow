@@ -17,8 +17,8 @@
  *   const richness = getInstructionRichness('large');
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function warn(msg) {
   if (process.env.DEBUG || process.env.WOGIFLOW_VERBOSE) {
@@ -404,7 +404,7 @@ function loadRelevantTypes(projectRoot, filePath, options = {}) {
             types.push(...relevantTypes.slice(0, maxTypes - types.length));
           }
         }
-      } catch {
+      } catch (_err) {
         // Ignore read errors
       }
     }
@@ -577,11 +577,11 @@ function loadRelatedCode(projectRoot, filePath, stepType) {
           // Take first 50 lines as example
           const preview = content.split('\n').slice(0, 50).join('\n');
           related.push(`// Example from ${path.relative(projectRoot, fullFilePath)}\n${preview}`);
-        } catch {
+        } catch (_err) {
           // Ignore read errors
         }
       }
-    } catch {
+    } catch (_err) {
       // Ignore dir read errors
     }
 
@@ -624,7 +624,7 @@ function globSync(basePath, pattern) {
             results.push(fullPath);
           }
         }
-      } catch { /* ignore permission errors */ }
+      } catch (_err) { /* ignore permission errors */ }
     } else if (current.includes('*')) {
       try {
         const entries = fs.readdirSync(currentPath, { withFileTypes: true });
@@ -638,7 +638,7 @@ function globSync(basePath, pattern) {
             }
           }
         }
-      } catch { /* ignore permission errors */ }
+      } catch (_err) { /* ignore permission errors */ }
     } else {
       const nextPath = path.join(currentPath, current);
       if (fs.existsSync(nextPath)) {
@@ -766,7 +766,7 @@ function loadSimilarExamples(projectRoot, stepType, maxExamples = 2) {
         const truncated = truncateForExample(content);
 
         examples.push(`### Example: ${relativePath}\n\`\`\`typescript\n${truncated}\`\`\``);
-      } catch { /* ignore read errors */ }
+      } catch (_err) { /* ignore read errors */ }
     }
   }
 

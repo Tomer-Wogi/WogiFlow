@@ -22,7 +22,7 @@ const {
   isSuspended,
   RESUME_CONDITION
 } = require('./flow-durable-session');
-const { color, getConfig } = require('./flow-utils');
+const { color, getConfig, error, info, success, warn } = require('./flow-utils');
 
 function parseArgs() {
   const args = process.argv.slice(2);
@@ -109,7 +109,7 @@ function showStatus() {
   console.log('');
 
   if (!isSuspended()) {
-    console.log(color('green', '▶️  Status: ACTIVE'));
+    success('Status: ACTIVE');
     const resumeInfo = canResumeFromStep(session);
     if (resumeInfo.canResume) {
       console.log(`Progress: ${resumeInfo.completedCount}/${resumeInfo.totalSteps} steps`);
@@ -117,7 +117,7 @@ function showStatus() {
     }
   } else {
     const status = getSuspensionStatus();
-    console.log(color('yellow', '⏸️  Status: SUSPENDED'));
+    warn('Status: SUSPENDED');
     console.log('');
     console.log(`Type: ${status.type}`);
     console.log(`Reason: ${status.reason}`);
@@ -128,16 +128,16 @@ function showStatus() {
     }
 
     console.log('');
-    console.log(color('cyan', '📋 Resume Condition:'));
+    info('Resume Condition:');
 
     const conditionCheck = checkResumeCondition(session.suspension);
 
     if (conditionCheck.canResume) {
-      console.log(color('green', `  ✓ Condition met: ${conditionCheck.reason}`));
+      success(`Condition met: ${conditionCheck.reason}`);
       console.log('');
       console.log(`Run ${color('cyan', 'flow resume')} to continue.`);
     } else {
-      console.log(color('red', `  ✗ Waiting: ${conditionCheck.reason}`));
+      error(`Waiting: ${conditionCheck.reason}`);
 
       // Show specific waiting info
       switch (session.suspension?.resumeCondition?.type) {

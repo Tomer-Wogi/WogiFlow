@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-10T19:10:16.390Z",
+  "markedAt": "2026-03-14T12:06:31.224Z",
   "context": {
-    "args": "Clean up WogiFlow model registry: registry.json has per-model data (languages, bestFor, contextPreferences) that duplicates the more granular capabilities/*.md files. Slim registry.json to infrastructure-only (providers, routing, costTiers, capability taxonomy) and remove per-model knowledge that belongs in capabilities/. This affects all WogiFlow users."
+    "args": "Final push to adopt flow-output.js in more WogiFlow scripts. Find all remaining scripts with ANSI escape codes or emoji console output that don't already import flow-output, and convert them to use flow-output helpers. Target: 50+ total importers."
   },
   "status": "pending"
 }

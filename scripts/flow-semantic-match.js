@@ -13,8 +13,8 @@
  * - AI-as-judge for candidates above 50% combined score
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getConfig, PATHS, color } = require('./flow-utils');
 
 // ============================================================

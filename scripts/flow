@@ -407,6 +407,9 @@ case "${1:-}" in
     safety)
         node "$SCRIPT_DIR/flow-safety.js" "${@:2}"
         ;;
+    item-link)
+        node "$SCRIPT_DIR/flow-item-link.js" "${@:2}"
+        ;;
     damage-control|dc)
         node "$SCRIPT_DIR/flow-damage-control.js" "${@:2}"
         ;;

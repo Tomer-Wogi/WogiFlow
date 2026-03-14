@@ -304,14 +304,14 @@ function parseJsonResponse(response) {
   // Try direct parse first
   try {
     return JSON.parse(content);
-  } catch {}
+  } catch (_err) {}
 
   // Extract JSON from markdown fence
   const jsonMatch = content.match(/```(?:json)?\n([\s\S]*?)```/);
   if (jsonMatch) {
     try {
       return JSON.parse(jsonMatch[1].trim());
-    } catch {}
+    } catch (_err) {}
   }
 
   // Look for JSON object pattern - find balanced braces
@@ -321,7 +321,7 @@ function parseJsonResponse(response) {
     if (jsonStr) {
       try {
         return JSON.parse(jsonStr);
-      } catch {}
+      } catch (_err) {}
     }
   }
 
@@ -332,7 +332,7 @@ function parseJsonResponse(response) {
     if (jsonStr) {
       try {
         return JSON.parse(jsonStr);
-      } catch {}
+      } catch (_err) {}
     }
   }
 

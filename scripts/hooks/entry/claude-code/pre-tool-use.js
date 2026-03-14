@@ -11,7 +11,7 @@
  * v6.0: Added routing gate — blocks Bash before /wogi-* routing
  */
 
-const path = require('path');
+const path = require('node:path');
 const { checkScopeGate } = require('../../core/scope-gate');
 const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
@@ -265,6 +265,70 @@ async function main() {
             process.exit(0);
             return;
           }
+        }
+      }
+    }
+
+    // Damage control check (for Bash commands)
+    // Checks commands against damage-control rules (force-push, rm -rf, etc.)
+    if (toolName === 'Bash' && toolInput.command && config?.damageControl?.enabled) {
+      try {
+        const dc = require('../../../flow-damage-control');
+        const dcResult = dc.checkBashEvent(toolInput.command);
+        if (dcResult && dcResult.action === 'block') {
+          coreResult = {
+            allowed: false,
+            blocked: true,
+            reason: `Damage control: ${dcResult.reason || dcResult.message || 'blocked by rule'}`,
+            message: `\u26d4 BLOCKED by damage control: ${dcResult.message || dcResult.reason || 'This command matches a blocked pattern.'}\n\nRule: ${dcResult.rule || 'unknown'}`
+          };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+        if (dcResult && dcResult.action === 'ask') {
+          // Emit 'ask' warning immediately so it's visible to the user
+          // (don't let subsequent hook stages overwrite it)
+          coreResult = {
+            allowed: true,
+            blocked: false,
+            reason: `Damage control warning: ${dcResult.reason || dcResult.message || 'requires confirmation'}`,
+            message: `\u26a0\ufe0f Damage control: ${dcResult.message || dcResult.reason || 'This command matches an ask-before-execute pattern.'}`
+          };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+      } catch (err) {
+        // Fail-open for damage control — don't block work if DC module has issues
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Damage control error (fail-open): ${err.message}`);
+        }
+      }
+    }
+
+    // Damage control check (for file operations)
+    if ((toolName === 'Edit' || toolName === 'Write') && filePath && config?.damageControl?.enabled && config?.damageControl?.events?.file) {
+      try {
+        const dc = require('../../../flow-damage-control');
+        const dcResult = dc.checkFileEvent(filePath, toolName.toLowerCase());
+        if (dcResult && dcResult.action === 'block') {
+          coreResult = {
+            allowed: false,
+            blocked: true,
+            reason: `Damage control: ${dcResult.reason || 'file access blocked'}`,
+            message: `\u26d4 BLOCKED by damage control: ${dcResult.message || 'This file is protected.'}`
+          };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Damage control file check error (fail-open): ${err.message}`);
         }
       }
     }

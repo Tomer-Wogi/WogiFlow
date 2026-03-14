@@ -8,9 +8,9 @@
  * and ensures tests exist for new functionality.
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, colors } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, colors, readJson } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -102,11 +102,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
   let coverageData = null;
 
   if (fs.existsSync(coveragePath)) {
-    try {
-      coverageData = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
-    } catch (err) {
-      // Can't read coverage
-    }
+    coverageData = readJson(coveragePath, null);
   }
 
   for (const file of sourceFiles) {

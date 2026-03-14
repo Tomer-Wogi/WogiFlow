@@ -13,7 +13,7 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const { execFileSync } = require('child_process');
+const { execFileSync } = require('node:child_process');
 const { getConfig, PATHS } = require('../../flow-utils');
 const { cleanStaleFiles } = require('./session-context');
 
@@ -68,6 +68,38 @@ function handleSessionEnd(input) {
       result.logged = false;
     }
 
+    // Scratch directory cleanup — remove temp files created during session
+    try {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const scratchDir = path.join(PATHS.workflow, 'scratch');
+      if (fs.existsSync(scratchDir)) {
+        const files = fs.readdirSync(scratchDir);
+        let scratchCleaned = 0;
+        for (const file of files) {
+          if (file === '.gitkeep') continue; // Keep the directory marker
+          try {
+            const filePath = path.join(scratchDir, file);
+            const stat = fs.statSync(filePath);
+            if (stat.isFile()) {
+              fs.unlinkSync(filePath);
+              scratchCleaned++;
+            } else if (stat.isDirectory()) {
+              fs.rmSync(filePath, { recursive: true, force: true });
+              scratchCleaned++;
+            }
+          } catch (_err) {
+            // Skip files that can't be deleted
+          }
+        }
+        if (scratchCleaned > 0) {
+          result.scratchCleaned = scratchCleaned;
+        }
+      }
+    } catch (_err) {
+      // Non-critical — never block session end
+    }
+
     // State folder hygiene — clean stale/orphan files (fire-and-forget)
     try {
       const hygiene = cleanStaleFiles();
@@ -77,7 +109,7 @@ function handleSessionEnd(input) {
       if (hygiene.warnings && hygiene.warnings.length > 0) {
         result.hygieneWarnings = hygiene.warnings;
       }
-    } catch {
+    } catch (_err) {
       // Non-critical — never block session end
     }
 

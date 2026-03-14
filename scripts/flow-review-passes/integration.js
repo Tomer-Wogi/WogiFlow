@@ -16,7 +16,7 @@
  * - Cross-module state sharing issues
  */
 
-const path = require('path');
+const path = require('node:path');
 const { readFile, PATHS, getConfig } = require('../flow-utils');
 
 /**

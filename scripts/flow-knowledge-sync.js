@@ -15,9 +15,9 @@
  *   flow knowledge-sync --json     JSON output
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 
 const {
   PATHS,
@@ -26,19 +26,13 @@ const {
   dirExists,
   parseFlags,
   outputJson,
-  printHeader,
-  printSection,
-  color,
-  success,
-  warn,
-  error,
-  info,
   getConfig,
   isPathWithinProject,
   safeJsonParse,
   writeJson,
   getSpecFilePath
-} = require('./flow-utils');
+} = require('./flow-utils')
+const { printHeader, printSection, color, success, warn, error, info } = require('./flow-output');;
 
 // Files that indicate stack/architecture changes
 const STACK_INDICATORS = [
@@ -156,7 +150,7 @@ function findIndicatorFiles(patterns) {
           try {
             const stat = fs.lstatSync(fullPath);
             if (stat.isSymbolicLink()) continue;
-          } catch {
+          } catch (_err) {
             continue;
           }
 
@@ -164,7 +158,7 @@ function findIndicatorFiles(patterns) {
             found.push(file);
           }
         }
-      } catch {
+      } catch (_err) {
         // Directory read error - silently skip
       }
     } else {
@@ -183,7 +177,7 @@ function findIndicatorFiles(patterns) {
         if (!stat.isSymbolicLink() && fs.existsSync(fullPath)) {
           found.push(pattern);
         }
-      } catch {
+      } catch (_err) {
         // File doesn't exist - skip
       }
     }
@@ -427,16 +421,16 @@ function printStatus(driftStatus) {
 
     // File existence
     if (status.fileExists) {
-      console.log(`  ${color('green', '✓')} File exists`);
+      success(`File exists`);
     } else {
-      console.log(`  ${color('red', '✗')} File missing`);
+      error(`File missing`);
     }
 
     // Sync status
     if (status.status === 'synced') {
-      console.log(`  ${color('green', '✓')} In sync`);
+      success(`In sync`);
     } else if (status.status === 'drifted') {
-      console.log(`  ${color('yellow', '⚠')} Drifted: ${status.reason}`);
+      warn(`Drifted: ${status.reason}`);
     } else {
       console.log(`  ${color('yellow', '○')} ${status.reason}`);
     }
@@ -452,7 +446,7 @@ function printStatus(driftStatus) {
   // Overall recommendation
   printSection('📌 Recommendation');
   if (driftStatus.overall === 'synced') {
-    console.log(`  ${color('green', '✓')} All knowledge files are up to date`);
+    success(`All knowledge files are up to date`);
   } else if (driftStatus.anyMissing) {
     console.log(`  Run: ${color('cyan', 'flow onboard')} to generate missing files`);
   } else if (driftStatus.anyDrift) {
@@ -470,7 +464,7 @@ function printStatus(driftStatus) {
 async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', 'testing']) {
   info('Regenerating knowledge files...');
 
-  const { spawn } = require('child_process');
+  const { spawn } = require('node:child_process');
 
   return new Promise((resolve, reject) => {
     // Use spawn without shell to prevent command injection

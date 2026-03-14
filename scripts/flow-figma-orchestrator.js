@@ -18,8 +18,8 @@
  *   CLI: flow figma orchestrate <fileKey> [options]
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, writeJson, readJson } = require('./flow-utils');
 const { FigmaExtractor } = require('./flow-figma-extract');
 const { FigmaComponentRegistry } = require('./flow-figma-registry');

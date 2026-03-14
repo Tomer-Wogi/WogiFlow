@@ -14,7 +14,7 @@
  * - Graceful shutdown on Ctrl+C
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -22,12 +22,9 @@ const {
   safeJsonParse,
   writeJson,
   fileExists,
-  readFile,
-  color,
-  success,
-  warn,
-  error
-} = require('./flow-utils');
+  readFile
+} = require('./flow-utils')
+const { color, success, warn, error } = require('./flow-output');;
 
 const { loadDurableSession, saveDurableSession } = require('./flow-durable-session');
 
@@ -59,7 +56,7 @@ let startTime = Date.now();
 // Graceful shutdown handler
 process.on('SIGINT', () => {
   console.log('');
-  console.log(color('yellow', '⚠ Graceful shutdown requested...'));
+  warn('Graceful shutdown requested...');
   console.log(color('dim', 'Current task will complete before stopping.'));
   running = false;
 });
@@ -203,7 +200,7 @@ function getNextCapture() {
  * @returns {Promise<Object>} Execution result
  */
 async function executeTask(taskId, options = {}) {
-  const { spawnSync } = require('child_process');
+  const { spawnSync } = require('node:child_process');
 
   const args = ['scripts/flow-start.js', taskId];
 
@@ -243,7 +240,7 @@ async function executeTask(taskId, options = {}) {
  * @returns {Promise<Object>} Created story info
  */
 async function createStoryFromCapture(capture) {
-  const { spawnSync } = require('child_process');
+  const { spawnSync } = require('node:child_process');
 
   console.log(color('dim', `  Creating story from capture: "${capture.title}"`));
 
@@ -321,7 +318,7 @@ function getContextUsage() {
  * @returns {Promise<boolean>} Success
  */
 async function runCompact() {
-  const { spawnSync } = require('child_process');
+  const { spawnSync } = require('node:child_process');
 
   console.log(color('yellow', '  Running context compaction...'));
 
@@ -405,30 +402,30 @@ async function runBulkLoop(options = {}) {
 
     // Check stop conditions
     if (tasksCompleted >= config.maxTasks) {
-      console.log(color('green', '✓ Max tasks reached. Stopping.'));
+      success('Max tasks reached. Stopping.');
       break;
     }
 
     if (iterations > config.maxIterations) {
-      console.log(color('yellow', '⚠ Max iterations reached. Stopping.'));
+      warn('Max iterations reached. Stopping.');
       break;
     }
 
     if (consecutiveErrors >= config.errorThreshold) {
-      console.log(color('red', '✗ Error threshold exceeded. Stopping.'));
+      error('Error threshold exceeded. Stopping.');
       break;
     }
 
     // Check timeout (if configured)
     if (config.loopTimeout && (Date.now() - startTime) >= config.loopTimeout) {
-      console.log(color('yellow', `⚠ Timeout reached (${formatDuration(config.loopTimeout)}). Stopping.`));
+      warn(`Timeout reached (${formatDuration(config.loopTimeout)}). Stopping.`);
       break;
     }
 
     // Check context usage
     const contextUsage = getContextUsage();
     if (contextUsage >= config.contextThreshold) {
-      console.log(color('yellow', `⚠ Context at ${Math.round(contextUsage * 100)}%. Running compact...`));
+      warn(`Context at ${Math.round(contextUsage * 100)}%. Running compact...`);
       await runCompact();
     }
 
@@ -608,17 +605,17 @@ Examples:
 // ============================================================================
 
 if (require.main === module) {
-  const args = process.argv.slice(2);
-  const options = parseArgs(args);
-
-  runBulkLoop(options)
-    .then(result => {
+  (async () => {
+    try {
+      const args = process.argv.slice(2);
+      const options = parseArgs(args);
+      const result = await runBulkLoop(options);
       process.exit(result.errors > 0 ? 1 : 0);
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(color('red', `Error: ${err.message}`));
       process.exit(1);
-    });
+    }
+  })();
 }
 
 // ============================================================================

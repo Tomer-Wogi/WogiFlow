@@ -16,8 +16,8 @@
  *   const context = await loadSkillContext(skills);
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Helpers for SKILL.md standard compatibility (accept both skill.md and SKILL.md)
 function hasSkillFile(dir) {
@@ -29,6 +29,7 @@ function getSkillFilePath(dir) {
   return fs.existsSync(lower) ? lower : path.join(dir, 'SKILL.md');
 }
 const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const { error: errorMsg } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
 const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
@@ -697,7 +698,7 @@ async function main() {
     .join(' ');
 
   if (!description) {
-    console.log(`${colors.red}Error: Please provide a task description${colors.reset}`);
+    errorMsg('Please provide a task description');
     showHelp();
     process.exit(1);
   }

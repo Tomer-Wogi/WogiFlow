@@ -14,17 +14,16 @@
  *   flow background logs [id]        - Show task output logs
  */
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getProjectRoot,
   safeJsonParse,
   fileExists,
   color,
   printHeader,
-  printSection
-} = require('./flow-utils');
+  printSection, success } = require('./flow-utils');
 
 // ============================================================
 // Configuration
@@ -402,7 +401,7 @@ function main() {
 
       try {
         const result = runBackgroundTask(taskName);
-        console.log(color('green', `✓ Started background task: ${result.displayName}`));
+        success(`Started background task: ${result.displayName}`);
         console.log(`  ID: ${color('cyan', result.id)}`);
         console.log(`  PID: ${result.pid}`);
         console.log(`  Log: ${color('dim', result.logFile)}`);
@@ -472,7 +471,7 @@ function main() {
 
       const success = cancelTask(taskId);
       if (success) {
-        console.log(color('green', `✓ Cancelled task: ${taskId}`));
+        success(`Cancelled task: ${taskId}`);
       } else {
         console.log(color('yellow', `Task not found or already completed: ${taskId}`));
       }

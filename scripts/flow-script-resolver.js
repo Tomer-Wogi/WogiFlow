@@ -20,9 +20,9 @@
  *   const warnings = validateScripts();    // drift detection for session start
  */
 
-const fs = require('fs');
-const path = require('path');
-const { PATHS, safeJsonParse } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { PATHS, safeJsonParse, getConfig, success, warn } = require('./flow-utils');
 
 /**
  * Validate a script name is safe for shell usage.
@@ -31,19 +31,6 @@ const { PATHS, safeJsonParse } = require('./flow-utils');
 const UNSAFE_CHARS = /[;&|$`()"'\\<>!\n\r/]/;
 function isSafeScriptName(name) {
   return typeof name === 'string' && name.length > 0 && name.length < 100 && !UNSAFE_CHARS.test(name);
-}
-
-let _config = null;
-function getConfig() {
-  if (!_config) {
-    try {
-      const configPath = path.join(PATHS.root, '.workflow', 'config.json');
-      _config = safeJsonParse(configPath, null);
-    } catch {
-      // Graceful fallback — no config
-    }
-  }
-  return _config || {};
 }
 
 /**
@@ -73,7 +60,7 @@ function detectPackageManager(projectRoot) {
     if (fs.existsSync(path.join(root, 'bun.lockb')) || fs.existsSync(path.join(root, 'bun.lock'))) return 'bun';
     if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) return 'pnpm';
     if (fs.existsSync(path.join(root, 'yarn.lock'))) return 'yarn';
-  } catch {
+  } catch (_err) {
     // Fall through to default
   }
   return 'npm';
@@ -117,7 +104,7 @@ function getPackageScripts(projectRoot) {
     const pkg = safeJsonParse(pkgPath, null);
     if (!pkg) return {};
     return pkg.scripts || {};
-  } catch {
+  } catch (_err) {
     return {};
   }
 }
@@ -300,8 +287,7 @@ function validateScripts(options = {}) {
  * Clear cached config and project root (useful for testing).
  */
 function clearCache() {
-  _projectRoot = null;
-  _config = null;
+  // No local caches remain — config caching is handled by flow-config-loader
 }
 
 module.exports = {
@@ -338,7 +324,7 @@ if (require.main === module) {
     for (const name of canonical) {
       const cmd = getCommand(name);
       if (cmd) {
-        console.log(`  ${c.green}✓${c.reset} ${name}: ${cmd}`);
+        success(`${name}: ${cmd}`);
       } else {
         console.log(`  ${c.yellow}–${c.reset} ${name}: not available`);
       }
@@ -347,7 +333,7 @@ if (require.main === module) {
     if (warnings.length > 0) {
       console.log(`\n${c.yellow}Warnings:${c.reset}`);
       for (const w of warnings) {
-        console.log(`  ${c.yellow}⚠${c.reset} ${w.message}`);
+        warn(w.message);
       }
     }
   } else if (subcmd === 'resolve' && args[1]) {

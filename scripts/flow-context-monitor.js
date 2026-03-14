@@ -9,8 +9,8 @@
  * Part of v1.7.0 Context Memory Management
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,
@@ -54,7 +54,7 @@ function estimateFileTokens(filePath) {
     // Use code estimation for code files
     const isCode = /\.(js|ts|jsx|tsx|json|css|scss)$/.test(filePath) || isCodeContent(content);
     return estimateTokens(content, { isCode });
-  } catch {
+  } catch (_err) {
     return 0;
   }
 }
@@ -81,7 +81,7 @@ function getContextBreakdown() {
     for (const reg of getActiveRegistries()) {
       files[reg.mapFile] = path.join(PATHS.state, reg.mapFile);
     }
-  } catch {
+  } catch (_err) {
     // Fallback to just app-map
     files['app-map.md'] = PATHS.appMap;
   }
@@ -105,7 +105,7 @@ function getContextBreakdown() {
       for (const file of componentFiles) {
         componentTokens += estimateFileTokens(path.join(componentsDir, file));
       }
-    } catch {
+    } catch (_err) {
       // Ignore errors
     }
   }

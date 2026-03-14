@@ -919,7 +919,7 @@ if [ "$SKIP_RULES" != true ] && [ -f "$PROFILE_DIR/.workflow/state/decisions.md"
                     RESOLUTIONS_FILE=$(mktemp)
                     node -e "
                         const readline = require('readline');
-                        const fs = require('fs');
+                        const fs = require('node:fs');
                         const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
                         const conflicts = JSON.parse(process.argv[1]).conflicts || [];
                         const resolutions = {};

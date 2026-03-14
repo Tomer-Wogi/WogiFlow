@@ -25,9 +25,9 @@
  *   flow model-adapter --stats      # Show per-model statistics
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const ADAPTERS_DIR = path.join(PROJECT_ROOT, '.workflow', 'model-adapters');
@@ -67,7 +67,7 @@ function getCurrentModel() {
     const { getCurrentModel: getModelFromRegistry } = require('./flow-models');
     const result = getModelFromRegistry();
     return normalizeModelName(result.name || 'claude-opus');
-  } catch {
+  } catch (_err) {
     // Fallback if flow-models not available
     const config = getConfig();
 
@@ -362,19 +362,11 @@ function getPromptAdjustments(modelName = null) {
  * Load model statistics
  */
 function loadModelStats() {
-  try {
-    if (fs.existsSync(MODEL_STATS_PATH)) {
-      return JSON.parse(fs.readFileSync(MODEL_STATS_PATH, 'utf-8'));
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return {
+  return readJson(MODEL_STATS_PATH, {
     version: '1.0.0',
     lastUpdated: new Date().toISOString(),
     models: {}
-  };
+  });
 }
 
 /**
@@ -518,7 +510,7 @@ function storeSingleLearning(modelName, learning, context = {}) {
     }
   }
 
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const source = context.taskId || context.sourceContext || 'user-correction';
   const trigger = context.trigger || 'knowledge-router';
 
@@ -576,7 +568,7 @@ function addLearningToAdapter(modelName, errors) {
   }
 
   // Add new learning entry
-  const date = new Date().toISOString().split('T')[0];
+  const date = getTodayDate();
   const learningEntry = [];
 
   learningEntry.push(`\n### ${date} - Auto-learned from repeated errors\n`);

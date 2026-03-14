@@ -11,7 +11,7 @@
  * debugging when standard fix strategies fail.
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   readJson,
@@ -584,6 +584,7 @@ module.exports = {
 // ============================================================
 
 if (require.main === module) {
+  (async () => {
   const args = process.argv.slice(2);
   const command = args[0];
 
@@ -616,18 +617,17 @@ if (require.main === module) {
         error('Usage: flow hypothesis-generator recover "error text"');
         process.exit(1);
       }
-      recoverWithHypotheses(errorText, {}).then(result => {
-        if (result.success) {
-          success('Found confirmed hypothesis!');
-          console.log(`Hypothesis: ${result.confirmedHypothesis.hypothesis}`);
-          console.log(`Fix strategy: ${result.fixStrategy}`);
-        } else {
-          warn(`Recovery failed: ${result.reason}`);
-          console.log(`Tested ${result.testedCount || 0} hypotheses`);
-        }
-        console.log('');
-        console.log(formatHypothesisTree(result.hypothesisTree));
-      });
+      const result = await recoverWithHypotheses(errorText, {});
+      if (result.success) {
+        success('Found confirmed hypothesis!');
+        console.log(`Hypothesis: ${result.confirmedHypothesis.hypothesis}`);
+        console.log(`Fix strategy: ${result.fixStrategy}`);
+      } else {
+        warn(`Recovery failed: ${result.reason}`);
+        console.log(`Tested ${result.testedCount || 0} hypotheses`);
+      }
+      console.log('');
+      console.log(formatHypothesisTree(result.hypothesisTree));
       break;
     }
 
@@ -648,4 +648,5 @@ Examples:
   node flow-hypothesis-generator recover "Property 'bar' does not exist"
 `);
   }
+  })();
 }

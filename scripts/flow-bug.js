@@ -15,8 +15,8 @@
  *   --json       Output JSON instead of human-readable
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,
@@ -374,7 +374,7 @@ Examples:
 
     if (addedToReady) {
       console.log('');
-      console.log(color('green', `✓ Added to ready.json`));
+      success(`Added to ready.json`);
       console.log(`Start with: ${color('cyan', `/wogi-start ${id}`)}`);
     }
 

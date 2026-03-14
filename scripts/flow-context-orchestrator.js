@@ -18,7 +18,7 @@
  *   const context = await getTargetedContext({ task: "Add user auth" });
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   fileExists,

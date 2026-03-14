@@ -22,16 +22,16 @@
  *   node flow-figma-mcp-server.js --http 8080  # HTTP on custom port
  */
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const readline = require('node:readline');
 
 const { ComponentScanner } = require('./flow-figma-index');
 const { FigmaExtractor } = require('./flow-figma-extract');
 const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
 const { CodeGenerator } = require('./flow-figma-generate');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, readJson } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();
 const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
@@ -262,14 +262,7 @@ class FigmaAnalyzerMCP {
   }
 
   loadRegistry() {
-    if (fs.existsSync(REGISTRY_PATH)) {
-      try {
-        return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf-8'));
-      } catch {
-        return null;
-      }
-    }
-    return null;
+    return readJson(REGISTRY_PATH, null);
   }
 }
 

@@ -10,7 +10,7 @@
  * Updated v10.1 - Code review fixes (validation, config caching, DRY)
  */
 
-const path = require('path');
+const path = require('node:path');
 
 // ============================================================
 // Constants
@@ -27,7 +27,7 @@ const DEFAULTS = {
 // Lazy-loaded Dependencies (avoid circular imports)
 // ============================================================
 
-const fs = require('fs');
+const fs = require('node:fs');
 
 // Import from parent scripts directory
 const { getConfig, PATHS } = require('../../flow-utils');

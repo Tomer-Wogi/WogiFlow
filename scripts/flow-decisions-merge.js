@@ -18,8 +18,8 @@
  *   node flow-decisions-merge.js manual <existing> <imported> --resolutions <file> [--output <file>]
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // ============================================================
 // Section Parser
@@ -170,7 +170,7 @@ function mergeImportWins(existing, imported, source) {
 
   // Add metadata comment
   parts.push('');
-  parts.push(`<!-- Merged from: ${source || 'imported profile'} on ${new Date().toISOString().split('T')[0]} -->`);
+  parts.push(`<!-- Merged from: ${source || 'imported profile'} on ${getTodayDate()} -->`);
 
   for (const section of resultSections) {
     parts.push('');
@@ -223,7 +223,7 @@ function mergeManual(existing, imported, resolutions, source) {
   }
 
   parts.push('');
-  parts.push(`<!-- Merged from: ${source || 'imported profile'} on ${new Date().toISOString().split('T')[0]} -->`);
+  parts.push(`<!-- Merged from: ${source || 'imported profile'} on ${getTodayDate()} -->`);
 
   for (const section of resultSections) {
     parts.push('');

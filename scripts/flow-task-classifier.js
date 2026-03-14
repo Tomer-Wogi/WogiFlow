@@ -18,8 +18,8 @@
  *   const context = await getTaskTypeContext('create');
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,

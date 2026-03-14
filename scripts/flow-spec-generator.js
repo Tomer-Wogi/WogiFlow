@@ -13,9 +13,10 @@
  *   const spec = await generateSpec(taskId, taskContext);
  */
 
-const fs = require('fs');
-const path = require('path');
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const fs = require('node:fs');
+const path = require('node:path');
+const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
+const { success, warn, error: errorMsg, info } = require('./flow-output');
 const { matchSkills, loadSkillContext } = require('./flow-skill-matcher');
 const { getCommand } = require('./flow-script-resolver');
 
@@ -110,7 +111,7 @@ async function generateSpec(taskId, taskContext) {
         detectAssumptions,
         getAssumptionsNeedingClarification,
         generateClarificationQuestions
-      } = require('../.workflow/lib/assumption-detector');
+      } = require('./flow-assumption-detector');
       const assumptions = detectAssumptions({
         title: taskContext.title,
         description: taskContext.description || taskContext.userStory || '',
@@ -249,7 +250,7 @@ async function detectFilesToChange(taskContext) {
   const indexPath = path.join(PATHS.state, 'component-index.json');
   if (fs.existsSync(indexPath)) {
     try {
-      const index = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
+      const index = readJson(indexPath, { components: [] });
       const components = index.components || [];
 
       // Find components that match keywords
@@ -270,7 +271,7 @@ async function detectFilesToChange(taskContext) {
           }
         }
       }
-    } catch {
+    } catch (_err) {
       // Ignore errors
     }
   }
@@ -587,9 +588,9 @@ function formatSpecAsMarkdown(spec) {
 
     // Format assumptions using assumption-detector if available
     try {
-      const { formatAssumptionsForSpec } = require('../.workflow/lib/assumption-detector');
+      const { formatAssumptionsForSpec } = require('./flow-assumption-detector');
       md += formatAssumptionsForSpec(spec.sections.assumptions.detected);
-    } catch {
+    } catch (_err) {
       // Fallback formatting
       for (const a of spec.sections.assumptions.detected) {
         const confidenceDisplay = Math.round(a.confidence * 100);
@@ -634,11 +635,7 @@ function loadSpec(taskId) {
     return null;
   }
 
-  try {
-    return JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-  } catch {
-    return null;
-  }
+  return readJson(jsonPath, null);
 }
 
 /**
@@ -756,7 +753,7 @@ async function main() {
   const jsonOutput = args.includes('--json');
 
   if (!taskId && command !== '--help') {
-    console.log(`${colors.red}Error: Task ID required${colors.reset}`);
+    errorMsg('Task ID required');
     process.exit(1);
   }
 
@@ -782,9 +779,9 @@ async function main() {
         console.log(JSON.stringify(spec, null, 2));
       } else {
         if (spec.skipped) {
-          console.log(`${colors.yellow}Spec generation skipped: ${spec.reason}${colors.reset}`);
+          warn(`Spec generation skipped: ${spec.reason}`);
         } else {
-          console.log(`${colors.green}✓ Spec generated: ${spec.filePath}${colors.reset}`);
+          success(`Spec generated: ${spec.filePath}`);
           console.log(`\n${colors.cyan}Sections:${colors.reset}`);
           for (const [name, content] of Object.entries(spec.sections)) {
             const count = Array.isArray(content) ? content.length : Object.keys(content).length;
@@ -798,7 +795,7 @@ async function main() {
     case 'view': {
       const spec = loadSpec(taskId);
       if (!spec) {
-        console.log(`${colors.red}Spec not found for ${taskId}${colors.reset}`);
+        errorMsg(`Spec not found for ${taskId}`);
         process.exit(1);
       }
 
@@ -817,9 +814,9 @@ async function main() {
         console.log(JSON.stringify(result, null, 2));
       } else {
         if (result.valid) {
-          console.log(`${colors.green}✓ Spec validation passed${colors.reset}`);
+          success('Spec validation passed');
         } else {
-          console.log(`${colors.red}✗ Spec validation failed${colors.reset}`);
+          errorMsg('Spec validation failed');
           for (const error of result.errors) {
             console.log(`  ${colors.red}• ${error}${colors.reset}`);
           }
@@ -837,15 +834,15 @@ async function main() {
     case 'approve': {
       const spec = updateSpecStatus(taskId, 'approved');
       if (!spec) {
-        console.log(`${colors.red}Spec not found for ${taskId}${colors.reset}`);
+        errorMsg(`Spec not found for ${taskId}`);
         process.exit(1);
       }
-      console.log(`${colors.green}✓ Spec approved for ${taskId}${colors.reset}`);
+      success(`Spec approved for ${taskId}`);
       break;
     }
 
     default:
-      console.log(`${colors.red}Unknown command: ${command}${colors.reset}`);
+      errorMsg(`Unknown command: ${command}`);
       showHelp();
       process.exit(1);
   }

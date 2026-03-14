@@ -9,8 +9,8 @@
  * Returns a standardized result that adapters transform for specific CLIs.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // Import from parent scripts directory
 const { getConfig, getReadyData, saveReadyData, generateTaskId, validateTaskId, PATHS, safeJsonParse } = require('../../flow-utils');
@@ -91,7 +91,7 @@ function getActiveTask() {
         try {
           fs.accessSync(receiptPath);
           hasReceipt = true;
-        } catch {
+        } catch (_err) {
           // No receipt
         }
 
@@ -124,7 +124,7 @@ function getActiveTask() {
       try {
         fs.accessSync(receiptPath);
         hasReceipt = true;
-      } catch {
+      } catch (_err) {
         // No receipt
       }
       if (!hasReceipt && !session.routedAt) {
@@ -182,7 +182,7 @@ function createQuickTask(filePath, operation) {
     try {
       const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
       fs.writeFileSync(receiptPath, JSON.stringify({ taskId, routedAt: task.routedAt, via: 'createQuickTask' }));
-    } catch {
+    } catch (_err) {
       // Non-blocking
     }
 

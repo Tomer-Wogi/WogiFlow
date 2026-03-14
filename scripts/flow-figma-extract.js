@@ -11,8 +11,8 @@
  *   flow figma extract --stdin             # Read MCP output from stdin
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 // ============================================================
 // Figma Node Parser
@@ -36,7 +36,7 @@ class FigmaExtractor {
     if (typeof figmaData === 'string') {
       try {
         figmaData = JSON.parse(figmaData);
-      } catch {
+      } catch (_err) {
         console.error('Failed to parse Figma data as JSON');
         return { components: [], tokens: {} };
       }

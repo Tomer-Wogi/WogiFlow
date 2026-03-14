@@ -11,7 +11,7 @@
  *   const response = await callModel('openai:gpt-4o', prompt);
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   PATHS,
   getConfig,

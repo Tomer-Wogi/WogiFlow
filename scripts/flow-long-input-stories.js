@@ -11,8 +11,8 @@
  * Dependencies: Requires core functions from flow-transcript-digest.js
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 // Import safe utilities
 const { safeJsonParse, writeJson, generateTaskId, generateHashId, withLock, PATHS } = require('./flow-utils');
 

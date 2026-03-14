@@ -14,7 +14,7 @@
  *   flow best-of-n config             Show Best-of-N configuration
  */
 
-const path = require('path');
+const path = require('node:path');
 const {
   getConfig,
   PATHS,

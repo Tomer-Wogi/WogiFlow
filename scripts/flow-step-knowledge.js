@@ -7,8 +7,8 @@
  * Helps capture institutional knowledge automatically.
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, colors, getConfig } = require('./flow-utils');
 
 const PROJECT_ROOT = getProjectRoot();

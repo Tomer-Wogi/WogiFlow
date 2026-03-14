@@ -13,8 +13,8 @@
  *   flow function-index map          # Regenerate function-map.md
  */
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse } = require('./flow-utils');
 const {
   findSimilarItems,
@@ -515,7 +515,7 @@ function checkFunction(name, purpose) {
     }
 
     if (similar.length === 0) {
-      console.log(color('green', '✓ No similar functions found. Safe to create.'));
+      success('No similar functions found. Safe to create.');
       return;
     }
 
