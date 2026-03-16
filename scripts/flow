@@ -600,6 +600,9 @@ case "${1:-}" in
                 ;;
         esac
         ;;
+    pending)
+        node "$SCRIPT_DIR/flow-pending.js" "${@:2}"
+        ;;
     queue)
         node "$SCRIPT_DIR/flow-queue.js" "${@:2}"
         ;;

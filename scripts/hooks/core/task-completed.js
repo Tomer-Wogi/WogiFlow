@@ -251,6 +251,19 @@ async function handleTaskCompleted(input) {
     } catch (_err) {
       // Non-critical - registry manager may not be available
     }
+    // Check pending queue — notify user if items are waiting
+    try {
+      const { getPendingCount } = require('../../flow-pending');
+      const pendingCount = getPendingCount();
+      if (pendingCount > 0) {
+        result.pendingQueue = {
+          count: pendingCount,
+          message: `You have ${pendingCount} pending item${pendingCount !== 1 ? 's' : ''} queued. Run /wogi-pending --list to review, or I'll process them next.`
+        };
+      }
+    } catch (_err) {
+      // Non-critical — pending module may not be available
+    }
   } catch (err) {
     result.message = `Task completed handler error: ${err.message}`;
   }

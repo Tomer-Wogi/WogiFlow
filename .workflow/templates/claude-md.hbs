@@ -158,6 +158,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "audit project", "project audit", "full project analysis", "full analysis" | `/wogi-audit` |
 | "register plugin", "list plugins", "remove plugin", "register MCP" | `/wogi-register` |
 | "run tests", "test everything", "verify tests", "run the tests", "test this task", "check if it works" | `/wogi-test` |
+| "save for later", "add to pending", "queue this", "pending items", "show pending" | `/wogi-pending` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation. These `/wogi-*` commands satisfy the mandatory routing requirement — you do NOT also need to invoke `/wogi-start` when a detection match exists. `/wogi-start` is the fallback for messages that don't match this table.
 
