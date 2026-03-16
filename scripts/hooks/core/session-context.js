@@ -796,6 +796,18 @@ function formatContextForInjection(context) {
     output += `\`\`\`bash\nunset CLAUDE_CODE_SIMPLE\n\`\`\`\n\n`;
   }
 
+  // Version compatibility warning (Claude Code below hard minimum or missing features)
+  if (ctx.versionWarning) {
+    output += `### Version Warning\n`;
+    output += `${ctx.versionWarning}\n\n`;
+  }
+
+  // WogiFlow npm update available
+  if (ctx.updateWarning) {
+    output += `### Update Available\n`;
+    output += `${ctx.updateWarning}\n\n`;
+  }
+
   // PRIORITY: Setup required - show first if needs setup
   if (ctx.setupRequired && ctx.setupRequired.needsSetup) {
     output += `### ⚠️ Setup Required\n`;
