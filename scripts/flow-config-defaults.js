@@ -684,7 +684,7 @@ const CONFIG_DEFAULTS = {
   longInputGate: {
     enabled: true,
     charThreshold: 3000,
-    lineThreshold: 60,
+    lineThreshold: 40,
     smartDefault: true,
     contentRules: { transcript: 'full', spec: 'full', requirements: 'full', code: 'skip', default: 'quick' },
     autoTriggerTypes: ['transcript', 'specs', 'requirements', 'feature-request'],

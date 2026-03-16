@@ -16,7 +16,11 @@ When invoked with a **quoted request** instead of a task ID, assess intent and r
 
 ### Pre-Routing Checks (Automatic)
 
-**Long Input Detection**: If `config.longInputGate.enabled` and prompt > `lineThreshold` (60) lines, auto-invoke `/wogi-extract-review` instead of normal triage. Skip for task IDs or primarily-code prompts.
+**Long Input Detection**: If `config.longInputGate.enabled` and EITHER:
+- Prompt > `lineThreshold` (40) lines, OR
+- Prompt contains 5+ discrete items (numbered lists, bullet points, semicolon-separated requests)
+
+→ Auto-invoke `/wogi-extract-review` instead of normal triage. This ensures zero-loss extraction of every item. Skip for task IDs or primarily-code prompts.
 
 **Plugin Registry Routing**: After command catalog finds no match and `config.plugins.enabled`, check `.workflow/state/plugin-registry.json` for trigger phrase matches (score >= 0.5). Plugin routing has LOWER priority than built-in commands.
 
@@ -158,6 +162,36 @@ Before generating specs (skip for small tasks ≤2 files, bugfixes, explicit spe
 - Scope validation, assumption surfacing, edge cases, integration points
 - Config: `config.clarifyingQuestions`
 
+### Step 1.25: Item Reconciliation Gate (Multi-Item Inputs)
+
+**Activates when**: User input contains 3+ discrete requests (identified by: numbered lists, bullet points, "and also", "plus", semicolons separating requests, or distinct topics in voice-transcribed text).
+
+**Purpose**: Prevent item loss when the AI compresses many requests into fewer stories. This is the #1 cause of "silently dropped items" in long inputs.
+
+**Procedure**:
+1. **Enumerate**: Produce a numbered checklist of EVERY discrete request from the user's input. Each item = one testable action. No compression, no grouping, no summarization.
+2. **Confirm count**: Display the checklist and count: "I found N items in your request: [list]. Is this complete?"
+3. **Map to work items**: Each checklist item becomes a trackable acceptance criterion. Items may be grouped into stories, but EVERY item must appear as a criterion in at least one story. No item may be dropped during grouping.
+4. **Reconciliation check**: After stories/tasks are created, cross-reference: for each original checklist item, verify it appears in at least one acceptance criterion. If any item is missing → add it before proceeding.
+5. **At completion** (Step 3.5): The criteria verification must trace back to this original checklist. Every checklist item must be verified as implemented.
+
+**Example**:
+```
+User: "Fix the login page, add forgot password, remove mock data,
+       update the header logo, and add loading states to all forms"
+
+Item Reconciliation:
+  1. Fix the login page [→ Story A, criterion 1]
+  2. Add forgot password flow [→ Story A, criterion 2]
+  3. Remove all mock data [→ Story B, all criteria]
+  4. Update header logo [→ Story C, criterion 1]
+  5. Add loading states to all forms [→ Story C, criterion 2]
+
+  5 items found → 5 criteria across 3 stories → 0 items dropped ✓
+```
+
+**Skip when**: Input has only 1-2 items, or is a task ID reference.
+
 ### Step 1.3: Explore Phase (MANDATORY Multi-Agent Research)
 
 **For L2+ tasks. Research is MANDATORY** — do NOT skip even if you think you know the answer.
@@ -269,6 +303,31 @@ After implementing all scenarios, BEFORE quality gates:
 4. Only proceed when ALL criteria verified
 
 **This prevents "claiming done when not done."**
+
+### Step 3.55: Semantic Verification Pass (for "remove/fix all X" tasks)
+
+**Activates when**: The task involves removing, cleaning up, or fixing ALL instances of something (e.g., "remove all mock data", "fix all console.log", "replace all hardcoded URLs", "remove all deprecated APIs").
+
+**Purpose**: Pattern-based search (regex, grep) finds instances that match a naming pattern. But semantic variants — hardcoded values, helper functions that serve the same purpose, inline fallbacks — are invisible to pattern search. This pass catches what regex misses.
+
+**Procedure**:
+1. After the implementation agent completes, do NOT immediately mark the task as done
+2. Run a **second verification pass** that asks SEMANTICALLY, not syntactically:
+   - "Does any remaining code serve the purpose of [what we're removing]?"
+   - NOT: "Does any remaining code match the pattern [MOCK_*]?"
+3. For each type of removal, use type-specific semantic checks:
+
+| Removal Type | Semantic Check |
+|-------------|----------------|
+| Mock data | Scan render output for hardcoded business data (customer names, dollar amounts, percentages, dates that look like test data) |
+| Console.log | Scan for any debugging output (console.warn, console.debug, alert(), debugger statements) |
+| Hardcoded URLs | Scan for string literals containing http://, https://, localhost, IP addresses |
+| Deprecated APIs | Scan for the FUNCTIONALITY the API provided, not just its name |
+
+4. Use AI reasoning, NOT regex — the whole point is catching what regex misses
+5. Report any findings as additional criteria to fix before completion
+
+**Cross-cutting principle**: Pattern matching is for discovery. AI reasoning is for verification. The two-pass approach (pattern search → semantic verification) is the standard for any "fix all X" task.
 
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 
