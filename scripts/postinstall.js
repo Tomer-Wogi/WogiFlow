@@ -246,6 +246,82 @@ function copyDir(src, dest, mergeMode = false, depth = 0) {
 }
 
 /**
+ * Hook types and the minimum Claude Code version that supports them.
+ * Claude Code rejects the ENTIRE settings.json if any hook key is unrecognized,
+ * so we must exclude hooks that the installed version doesn't support.
+ */
+const HOOK_VERSION_MAP = {
+  // Hooks available since 2.1.23 (HARD_MIN)
+  SessionStart: { major: 2, minor: 1, patch: 23 },
+  UserPromptSubmit: { major: 2, minor: 1, patch: 23 },
+  PreToolUse: { major: 2, minor: 1, patch: 23 },
+  PostToolUse: { major: 2, minor: 1, patch: 23 },
+  Stop: { major: 2, minor: 1, patch: 23 },
+  SessionEnd: { major: 2, minor: 1, patch: 23 },
+  TaskCompleted: { major: 2, minor: 1, patch: 23 },
+  // Hooks added in 2.1.50+
+  WorktreeCreate: { major: 2, minor: 1, patch: 50 },
+  WorktreeRemove: { major: 2, minor: 1, patch: 50 },
+  // Hooks added in 2.1.72+
+  ConfigChange: { major: 2, minor: 1, patch: 72 },
+  InstructionsLoaded: { major: 2, minor: 1, patch: 72 },
+  // Hooks added in 2.1.76+
+  PostCompact: { major: 2, minor: 1, patch: 76 },
+};
+
+/**
+ * Detect Claude Code version.
+ * @returns {{ major: number, minor: number, patch: number } | null}
+ */
+function detectClaudeCodeVersion() {
+  try {
+    const output = execFileSync('claude', ['--version'], {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000
+    }).trim();
+    const match = output.match(/(\d+)\.(\d+)\.(\d+)/);
+    if (match) {
+      return { major: parseInt(match[1], 10), minor: parseInt(match[2], 10), patch: parseInt(match[3], 10) };
+    }
+  } catch (_err) {
+    // Claude CLI not available — can't detect version
+  }
+  return null;
+}
+
+/**
+ * Check if version A meets minimum version B.
+ * @returns {boolean}
+ */
+function versionMeetsMinimum(version, minimum) {
+  if (version.major !== minimum.major) return version.major > minimum.major;
+  if (version.minor !== minimum.minor) return version.minor > minimum.minor;
+  return version.patch >= minimum.patch;
+}
+
+/**
+ * Remove hook types from settings.json that the installed Claude Code version doesn't support.
+ * Claude Code rejects the ENTIRE settings file if any hook key is unrecognized.
+ * @param {Object} settings - Parsed settings object (mutated in place)
+ * @param {{ major: number, minor: number, patch: number } | null} ccVersion - Detected version
+ * @returns {string[]} List of removed hook names
+ */
+function stripUnsupportedHooks(settings, ccVersion) {
+  if (!settings || !settings.hooks || !ccVersion) return [];
+
+  const removed = [];
+  for (const hookName of Object.keys(settings.hooks)) {
+    const minVersion = HOOK_VERSION_MAP[hookName];
+    if (minVersion && !versionMeetsMinimum(ccVersion, minVersion)) {
+      delete settings.hooks[hookName];
+      removed.push(`${hookName} (requires ${minVersion.major}.${minVersion.minor}.${minVersion.patch}+)`);
+    }
+  }
+  return removed;
+}
+
+/**
  * Rewrite hook command paths from local dev paths to package paths.
  * The package's settings.json uses local paths (node scripts/hooks/...)
  * for development. User projects need package paths (node node_modules/wogiflow/scripts/hooks/...).
@@ -320,6 +396,18 @@ function copyClaudeResources() {
         // Rewrite hook paths: package uses local dev paths (node scripts/hooks/...)
         // but user projects need package paths (node node_modules/wogiflow/scripts/hooks/...)
         rewriteHookPaths(ours);
+        // Strip hooks unsupported by the installed Claude Code version.
+        // Claude Code rejects the ENTIRE settings.json if any hook key is unrecognized,
+        // so we must exclude hooks that the version doesn't support.
+        const ccVersion = detectClaudeCodeVersion();
+        const removedHooks = stripUnsupportedHooks(ours, ccVersion);
+        if (removedHooks.length > 0) {
+          console.log(`[wogiflow] Claude Code ${ccVersion.major}.${ccVersion.minor}.${ccVersion.patch} detected. Excluded unsupported hooks:`);
+          for (const h of removedHooks) {
+            console.log(`  - ${h}`);
+          }
+          console.log('[wogiflow] Update Claude Code for full functionality: npm i -g @anthropic-ai/claude-code@latest');
+        }
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;

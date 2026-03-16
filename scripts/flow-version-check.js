@@ -119,17 +119,20 @@ function checkClaudeCodeVersionOnce() {
     return `Claude Code ${version} is below the minimum required version (${HARD_MIN.major}.${HARD_MIN.minor}.${HARD_MIN.patch}). WogiFlow hooks will not work correctly. Update with: npm install -g @anthropic-ai/claude-code@latest`;
   }
 
-  // Soft gates — degrade gracefully, no warning
-  // 2.1.50+: worktree hooks, agent isolation
-  // 2.1.72+: ExitWorktree, effort levels, model param on Agent
-  // 2.1.73+: SessionStart double-fire fix, hook context pollution fix, modelOverrides, subagent model fix
-  // 2.1.75+: 1M context default (Max/Team/Enterprise), accurate token estimation,
-  //          async hook completion suppressed by default, hook source in permission prompts,
-  //          memory file last-modified timestamps
-  // 2.1.76+: PostCompact hook (state recovery after compaction), Elicitation/ElicitationResult hooks
-  //          (MCP structured input), worktree.sparsePaths (sparse checkout for monorepos),
-  //          /effort slash command, deferred tools schema fix after compaction,
-  //          auto-compaction circuit breaker (3 retries), background agent partial results preserved
+  // Soft gates — generate informational warning listing disabled features
+  const SOFT_GATES = [
+    { version: [2, 1, 50], features: 'worktree hooks, agent isolation' },
+    { version: [2, 1, 72], features: 'ConfigChange/InstructionsLoaded hooks, effort levels' },
+    { version: [2, 1, 76], features: 'PostCompact hook (state recovery after compaction)' },
+  ];
+
+  const disabledFeatures = SOFT_GATES
+    .filter(gate => !meetsVersion(major, minor, patch, ...gate.version))
+    .map(gate => `  - ${gate.features} (requires ${gate.version.join('.')}+)`);
+
+  if (disabledFeatures.length > 0) {
+    return `Claude Code ${version} — some WogiFlow features are disabled:\n${disabledFeatures.join('\n')}\nUpdate for full functionality: npm i -g @anthropic-ai/claude-code@latest`;
+  }
 
   return null;
 }
