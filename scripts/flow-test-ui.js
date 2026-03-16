@@ -576,7 +576,7 @@ async function runUITests(taskId, options = {}) {
   if (testFlows.length === 0) {
     const report = generateReport(
       taskId,
-      [{ name: 'No UI tests found', status: 'skipped', expected: [], found: [], missing: [], duration: 0 }],
+      [{ name: 'No UI test files found', status: 'skipped', reason: 'no-test-files', expected: [], found: [], missing: [], duration: 0, hint: 'Run /wogi-test --generate to create tests, or /wogi-test-browser for interactive browser testing' }],
       { checked: stateChecks, covered: [], missing: stateChecks },
       null
     );

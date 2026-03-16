@@ -193,12 +193,24 @@ Determine which test types to run:
 | No flag | Run based on `config.testing.mode`: `ui`→UI only, `api`→API only, `full`→all 3, `auto`→detect and run applicable |
 
 #### Run UI Tests
+
+**Pre-check (MANDATORY)**: Before running UI tests, verify the testing tool is available. Do NOT skip this step — it prevents false-negative "not available" reports.
+
+1. If `config.testing.provider` is `playwright-mcp`: Call `ToolSearch("playwright")` to verify Playwright MCP tools are loaded. If tools are found → proceed. If not found → report "Playwright MCP not configured" (distinct from "no test files").
+
+2. Run the test script:
 ```bash
 node -e "
 const { runUITests } = require('./scripts/flow-test-ui');
 runUITests('TASK_ID').then(r => console.log(JSON.stringify(r))).catch(err => console.error(JSON.stringify({error: err.message})));
 "
 ```
+
+3. **Interpret results separately**:
+   - Script returns `reason: 'no-test-files'` → "No test files found. Run `/wogi-test --generate` to create tests."
+   - MCP tools not available → "Playwright MCP not configured. Add it to `.claude/settings.json` MCP servers."
+   - Both → Show both facts separately, don't merge into one message.
+   - Script returns test results → show normally.
 
 #### Run API Tests
 ```bash
