@@ -415,7 +415,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 
 **Quality gate keeps failing**: Report, attempt fix, after 3 failures suggest `/wogi-debug-hypothesis`.
 
-**Context too large**: Pre-task check handles proactively. Mid-task: commit progress, suggest `/wogi-compact`.
+**Context too large**: When `config.autoCompact.betweenTasks` is true (default), compact AUTOMATICALLY between tasks — do NOT ask the user. Just do it. Mid-task: commit progress, invoke `/wogi-compact` directly (don't suggest — execute).
 
 ## Mandatory Rules
 

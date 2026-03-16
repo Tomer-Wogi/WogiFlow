@@ -132,7 +132,7 @@ const KNOWN_CONFIG_KEYS = [
   // Session management
   'metrics', 'requestLog', 'sessionState', 'smartCompaction',
   // Features (alphabetical)
-  'audit', 'bestOfN', 'bugFlow', 'capture',
+  'audit', 'autoCompact', 'bestOfN', 'bugFlow', 'capture',
   'cascade', 'checkpoint', 'commits', 'community', 'contractSurface',
   'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
   'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',

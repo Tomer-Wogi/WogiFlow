@@ -23,16 +23,31 @@ Execute multiple tasks in sequence, following all workflow rules.
 **Default behavior** (when `bulkOrchestrator.enabled: true`):
 
 1. **Build Execution Plan**:
-   - Detect dependencies between tasks
+   - Detect dependencies between tasks (parent→child, shared files, API contracts)
    - Group independent tasks into parallel batches
    - Order batches to respect dependencies
 
-2. **Execute Each Batch**:
+2. **Smart Ordering** (when `config.autoCompact.smartOrdering: true`):
+   Within each batch, order tasks to maximize context reuse:
+   - Analyze which files each task will likely touch (from spec, title, or task type)
+   - Group tasks that touch the same files/components together
+   - Execute related tasks consecutively to reuse loaded context
+   - Example: Tasks touching auth files → tasks touching UI files → tasks touching API files
+   - **Dependencies always take priority over context optimization**
+
+3. **Execute Each Batch**:
    - For each batch, spawn sub-agent(s) with **fresh context**
    - Independent tasks in same batch run in parallel
    - Dependent tasks wait for their dependencies
 
-3. **Pass-Forward Summaries**:
+4. **Auto-Compact Between Tasks** (when `config.autoCompact.betweenTasks: true`):
+   - After completing a task, check: does the NEXT task share context with this one?
+   - If YES (same files/components): keep context, proceed immediately
+   - If NO (different area of codebase): compact automatically before starting next task
+   - **Do NOT ask the user** — compact silently between tasks. This is automatic.
+   - This prevents context pollution and saves tokens on long batch runs
+
+5. **Pass-Forward Summaries**:
    - When Task A completes, generate completion summary
    - Task B (if dependent on A) receives summary as context
    - Ensures continuity without context pollution

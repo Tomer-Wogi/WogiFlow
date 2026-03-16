@@ -732,6 +732,13 @@ const CONFIG_DEFAULTS = {
   },
 
   // --- Damage Control ---
+  // --- Auto-Compact (context-aware task scheduling) ---
+  autoCompact: {
+    betweenTasks: true,
+    smartOrdering: true,
+    respectDependencies: true
+  },
+
   // --- Contract Surface (Teams-only — activated on wogi login) ---
   contractSurface: {
     enabled: false,
