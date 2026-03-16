@@ -732,6 +732,26 @@ const CONFIG_DEFAULTS = {
   },
 
   // --- Damage Control ---
+  // --- Contract Surface (Teams-only — activated on wogi login) ---
+  contractSurface: {
+    enabled: false,
+    projectType: 'auto',
+    scanOn: ['sessionStart', 'afterTask'],
+    scanners: {
+      httpClients: true,
+      routes: true,
+      events: true,
+      sharedTypes: true,
+      envVars: true
+    },
+    httpClientPatterns: ['axios', 'fetch', 'ky', '$fetch'],
+    routePatterns: ['express', 'fastify', 'hono', 'next-api'],
+    ignoreEndpoints: ['/health', '/metrics', '/favicon.ico'],
+    sharedPackages: [],
+    maxFiles: 500
+  },
+
+  // --- Damage Control ---
   damageControl: {
     enabled: false,
     patternsFile: '.workflow/damage-control.yaml',

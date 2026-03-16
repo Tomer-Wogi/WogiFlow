@@ -133,7 +133,7 @@ const KNOWN_CONFIG_KEYS = [
   'metrics', 'requestLog', 'sessionState', 'smartCompaction',
   // Features (alphabetical)
   'audit', 'bestOfN', 'bugFlow', 'capture',
-  'cascade', 'checkpoint', 'commits', 'community',
+  'cascade', 'checkpoint', 'commits', 'community', 'contractSurface',
   'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
   'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
   'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',

@@ -1031,6 +1031,10 @@ case "${1:-}" in
         # Background task execution
         node "$SCRIPT_DIR/flow-background.js" "${@:2}"
         ;;
+    contract-scan)
+        # Contract surface scanner (teams feature)
+        node "$SCRIPT_DIR/flow-contract-scan.js" "${@:2}"
+        ;;
     version|--version|-v)
         show_version
         ;;
