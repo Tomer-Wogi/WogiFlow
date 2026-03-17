@@ -99,7 +99,7 @@ const ROOT_CAUSE_CATEGORIES = {
   },
   CONTEXT_OVERFLOW: {
     ...FailureCategory.CONTEXT_OVERFLOW,
-    suggestion: 'Use /wogi-compact before large tasks',
+    suggestion: 'Use /wogi-pre-compact before large tasks',
     targetFile: 'config.json'
   },
   CAPABILITY_MISMATCH: {

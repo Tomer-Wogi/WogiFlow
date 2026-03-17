@@ -266,7 +266,7 @@ Check \`config.json → commits\` before committing:
     sections.push(`
 ## Context Management
 
-Use \`/wogi-compact\` when:
+Use \`/wogi-pre-compact\` when:
 - After completing 2-3 tasks
 - After 15-20 messages
 - Before starting large tasks

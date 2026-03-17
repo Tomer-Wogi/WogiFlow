@@ -291,7 +291,7 @@ function clearAll() {
 function getSerializedTree(level = 1) {
   const tree = summaryTree.loadTree();
   if (!tree) {
-    return '# No Context Saved\n\nRun /wogi-compact to save session context.';
+    return '# No Context Saved\n\nRun /wogi-pre-compact to save session context.';
   }
 
   return summaryTree.serializeTree(tree, level);

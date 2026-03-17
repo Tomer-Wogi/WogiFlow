@@ -9,7 +9,7 @@
     "commands/wogi-bulk.md",
     "commands/wogi-capture.md",
     "commands/wogi-changelog.md",
-    "commands/wogi-compact.md",
+    "commands/wogi-pre-compact.md",
     "commands/wogi-config.md",
     "commands/wogi-context.md",
     "commands/wogi-correction.md",

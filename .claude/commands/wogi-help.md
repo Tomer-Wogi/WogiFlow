@@ -41,7 +41,7 @@ WORKFLOW
 /wogi-health             Check all workflow files
 /wogi-standup            Generate standup summary
 /wogi-session-end        End session properly
-/wogi-compact            Prepare for context compaction
+/wogi-pre-compact            Prepare for context compaction
 /wogi-roadmap            Show phase-based roadmap (if enabled)
 
 ═══════════════════════════════════════════════════════════════

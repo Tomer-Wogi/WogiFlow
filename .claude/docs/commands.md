@@ -44,7 +44,7 @@ When user types these commands, execute the corresponding action immediately.
 | `/wogi-onboard` | Analyze existing project with deep temporal analysis, pattern extraction, and state file generation. |
 | `/wogi-rescan` | Re-scan project after external changes. Smart diff: auto-adds new items, auto-removes deleted items, presents conflicts one-by-one. Options: `--dry-run`, `--auto-resolve`, `--category`, `--since`. |
 | `/wogi-morning` | Morning briefing - where you left off, pending tasks, key context, recommended starting task. |
-| `/wogi-compact` | Run memory compaction to free context space. Preview with `--preview`. |
+| `/wogi-pre-compact` | Run memory compaction to free context space. Preview with `--preview`. |
 | `/wogi-debt` | View and manage technical debt across sessions. |
 | `/wogi-roadmap` | View and manage deferred work items. Add, archive, promote to stories. |
 

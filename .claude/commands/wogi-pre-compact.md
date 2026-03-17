@@ -1,7 +1,11 @@
 ---
-description: "Compact conversation context using the recursive summary tree"
+description: "Save workflow state before context compaction (pre-compact phase)"
 ---
-Compact the conversation to free up context space using the recursive summary tree.
+Save workflow state (task progress, checkpoints, session context) before context compaction.
+
+**Why "pre-compact"**: This skill saves state but cannot trigger `/compact` programmatically — `/compact` is a Claude Code native command that only the user or Claude Code's auto-compaction can invoke. Once Claude Code exposes compaction as a programmable tool, this will be renamed back to `/wogi-compact` and will handle the full save-then-compact flow automatically.
+
+**After running this**: Run `/compact` to actually compact the context. The PostCompact hook will restore critical state automatically.
 
 ## Recursive Context Compaction
 

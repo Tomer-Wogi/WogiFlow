@@ -168,7 +168,7 @@ Skills with documentation are now ready for use.
 
 - **Context7 MCP not available**: Skills keep placeholder content. User can retry later.
 - **Single library fails**: Skip it and continue with remaining libraries.
-- **Context getting large**: Suggest `/wogi-compact` between fetches if needed.
+- **Context getting large**: Suggest `/wogi-pre-compact` between fetches if needed.
 
 ### Alternative: Install from skills.sh
 

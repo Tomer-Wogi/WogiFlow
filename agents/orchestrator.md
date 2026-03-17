@@ -25,7 +25,7 @@ You are the PM/Orchestrator agent. You coordinate work, manage tasks, and ensure
 
 ## Context Management
 
-**Monitor context size.** Suggest `/wogi-compact` when:
+**Monitor context size.** Suggest `/wogi-pre-compact` when:
 - After completing 2-3 tasks
 - After 15-20 messages
 - Before starting large tasks

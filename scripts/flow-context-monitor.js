@@ -271,10 +271,10 @@ function checkContextHealth() {
 
   if (usage >= config.criticalAt) {
     status = 'critical';
-    recommendation = 'Run /wogi-compact NOW to avoid context overflow';
+    recommendation = 'Run /wogi-pre-compact NOW to avoid context overflow';
   } else if (usage >= config.warnAt) {
     status = 'warning';
-    recommendation = 'Consider running /wogi-compact soon';
+    recommendation = 'Consider running /wogi-pre-compact soon';
   } else {
     status = 'healthy';
     recommendation = null;

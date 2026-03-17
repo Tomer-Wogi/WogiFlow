@@ -257,7 +257,7 @@ Context Health:
 # Or if high:
 Context Health:
   Usage: 165,000 / 200,000 tokens (82.5%)
-  Status: Consider running /wogi-compact
+  Status: Consider running /wogi-pre-compact
 ```
 
 ---

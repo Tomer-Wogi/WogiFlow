@@ -112,6 +112,38 @@ function handlePostCompact() {
     }
   }
 
+  // 5. Check for auto-compaction circuit breaker state (Claude Code 2.1.76+)
+  // Claude Code stops auto-compaction after 3 consecutive failures.
+  // If we detect repeated compactions in quick succession, warn about potential issues.
+  try {
+    const path = require('node:path');
+    const fs = require('node:fs');
+    const { PATHS, safeJsonParse } = require('../../flow-utils');
+    const compactStatePath = path.join(PATHS.state, '.compact-tracker.json');
+    const tracker = safeJsonParse(compactStatePath, { count: 0, lastAt: null });
+    const now = Date.now();
+    const lastAt = tracker.lastAt ? new Date(tracker.lastAt).getTime() : 0;
+    const timeSinceLast = now - lastAt;
+
+    // If compaction happened less than 2 minutes ago, increment counter
+    if (timeSinceLast < 2 * 60 * 1000 && lastAt > 0) {
+      tracker.count = (tracker.count || 0) + 1;
+    } else {
+      tracker.count = 1;
+    }
+    tracker.lastAt = new Date().toISOString();
+
+    fs.writeFileSync(compactStatePath, JSON.stringify(tracker, null, 2));
+
+    if (tracker.count >= 3) {
+      contextParts.push('**WARNING**: Multiple compactions detected in quick succession. Claude Code 2.1.76+ stops auto-compaction after 3 consecutive failures. If context keeps growing, consider starting a new session or committing progress and using `/wogi-pre-compact`.');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[post-compact] Compact tracker failed: ${err.message}`);
+    }
+  }
+
   // Build the result
   if (contextParts.length === 0) {
     return {

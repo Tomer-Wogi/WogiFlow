@@ -66,7 +66,7 @@ Recommendation: Run /compact before continuing
 ### Compact When Needed
 
 ```bash
-/wogi-compact
+/wogi-pre-compact
 ```
 
 ---
@@ -165,7 +165,7 @@ When context is high:
 
 | Command | Purpose |
 |---------|---------|
-| `/wogi-compact` | Compact conversation context |
+| `/wogi-pre-compact` | Compact conversation context |
 | `/wogi-standup` | Morning briefing with context |
 | `flow session status` | Check session state |
 | `flow session restore` | Restore previous session |

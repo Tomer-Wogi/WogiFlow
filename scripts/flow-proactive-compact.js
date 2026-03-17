@@ -68,7 +68,7 @@ function getProactiveCompactionConfig() {
  * Check whether proactive compaction should trigger at a phase boundary.
  *
  * This is called by /wogi-start at each phase transition.
- * The actual compaction is performed by the AI agent using /wogi-compact.
+ * The actual compaction is performed by the AI agent using /wogi-pre-compact.
  *
  * @param {Object} params - Check parameters
  * @param {string} params.phase - The phase that just completed
@@ -161,7 +161,7 @@ async function handlePhaseBoundary(params) {
 
 /**
  * Generate a compaction summary for the current task state.
- * Used by /wogi-compact when proactive compaction triggers.
+ * Used by /wogi-pre-compact when proactive compaction triggers.
  *
  * @param {Object} checkpoint - Current checkpoint data
  * @returns {string} Formatted compaction summary
@@ -253,7 +253,7 @@ function formatCompactionMessage(result, contextPercent) {
   lines.push(`Context at ${pct}%. Compacting before next phase...`);
   lines.push(`Reason: ${result.reason}`);
   lines.push('');
-  lines.push('Task state has been checkpointed. Run /wogi-compact to compact now.');
+  lines.push('Task state has been checkpointed. Run /wogi-pre-compact to compact now.');
   lines.push('After compaction, read task-checkpoint.json to restore context.');
 
   return lines.join('\n');

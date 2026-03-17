@@ -33,7 +33,7 @@
     {
       "key": "ctrl+shift+c",
       "command": "runSlashCommand",
-      "args": { "command": "/wogi-compact" },
+      "args": { "command": "/wogi-pre-compact" },
       "when": "inputFocused",
       "description": "Compact conversation context"
     },

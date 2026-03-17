@@ -92,7 +92,7 @@ Compaction summarizes the conversation to free context space while preserving es
 ### How to Compact
 
 ```bash
-/wogi-compact
+/wogi-pre-compact
 ```
 
 ### What's Preserved

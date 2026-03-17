@@ -297,4 +297,4 @@ flow queue advance
 3. **Commit after each task** - Progress saved even if interrupted
 4. **Stop on failure** - If quality gates fail, stop and report
 5. **Respect dependencies** - Tasks sorted by dependencies then priority
-6. **Context management** - Consider `/wogi-compact` after 3+ tasks
+6. **Context management** - Consider `/wogi-pre-compact` after 3+ tasks

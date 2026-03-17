@@ -21,7 +21,7 @@ This command extracts learnings from recent work and updates relevant skills.
 This runs automatically on:
 - **Pre-commit hook** (if hooks enabled)
 - **Session end** (`/wogi-session-end`)
-- **Context compaction** (`/wogi-compact`)
+- **Context compaction** (`/wogi-pre-compact`)
 
 Use this command manually when:
 - You want to extract learnings mid-session

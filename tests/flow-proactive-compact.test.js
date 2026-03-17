@@ -407,12 +407,12 @@ describe('formatCompactionMessage', () => {
     assert.ok(result.includes(reason));
   });
 
-  it('mentions /wogi-compact when compaction needed', () => {
+  it('mentions /wogi-pre-compact when compaction needed', () => {
     const result = mod.formatCompactionMessage(
       { compactionNeeded: true, reason: 'test' },
       0.90
     );
-    assert.ok(result.includes('/wogi-compact'));
+    assert.ok(result.includes('/wogi-pre-compact'));
   });
 
   it('rounds percentage correctly', () => {

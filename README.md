@@ -61,7 +61,7 @@ See the [Knowledge Base](.claude/docs/knowledge-base/) for detailed documentatio
 | **Registries** | `/wogi-map`, `/wogi-map-add`, `/wogi-map-scan`, `/wogi-map-sync`, `/wogi-map-check`, `/wogi-map-index` | Component registry management |
 | **Rules** | `/wogi-decide`, `/wogi-learn`, `/wogi-rules`, `/wogi-retrospective` | Create rules, promote patterns, session retros |
 | **Research** | `/wogi-research`, `/wogi-correction` | Zero-trust verification, correction reports |
-| **Context** | `/wogi-compact`, `/wogi-context`, `/wogi-suspend`, `/wogi-resume` | Memory management, task context, suspend/resume |
+| **Context** | `/wogi-pre-compact`, `/wogi-context`, `/wogi-suspend`, `/wogi-resume` | Memory management, task context, suspend/resume |
 | **Capture** | `/wogi-capture`, `/wogi-extract-review`, `/wogi-changelog` | Quick capture, transcript extraction, changelogs |
 | **Hybrid** | `/wogi-hybrid`, `/wogi-hybrid-setup`, `/wogi-hybrid-edit`, `/wogi-hybrid-off`, `/wogi-hybrid-status` | Local LLM integration |
 | **Skills** | `/wogi-skills`, `/wogi-skill-learn`, `/wogi-setup-stack` | Skill packages, learning extraction, stack detection |
