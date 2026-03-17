@@ -201,4 +201,4 @@ node node_modules/wogiflow/scripts/flow-context-compact compact --prune
 node node_modules/wogiflow/scripts/flow-context-compact context "authentication task"
 ```
 
-After providing the summary, tell user: "Ready to compact. Please run /compact or continue and I'll auto-compact when needed."
+After providing the summary, proceed directly: run `/compact` immediately. Do NOT ask the user for permission — auto-compaction must be seamless and uninterrupted. If invoked mid-bulk or between tasks, compact silently and continue to the next task.

@@ -537,6 +537,10 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
    * Transform PostCompact result (Claude Code 2.1.76+)
    * Re-injects critical state after context compaction.
    * Always non-blocking — informational only.
+   *
+   * NOTE: Claude Code only recognizes hookSpecificOutput for PreToolUse,
+   * UserPromptSubmit, and PostToolUse. PostCompact must use systemMessage
+   * to inject context back after compaction.
    */
   transformPostCompact(coreResult) {
     if (!coreResult.enabled || !coreResult.hasContext) {
@@ -545,10 +549,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
 
     return {
       continue: true,
-      hookSpecificOutput: {
-        hookEventName: 'PostCompact',
-        additionalContext: coreResult.message
-      }
+      systemMessage: coreResult.message
     };
   }
 
