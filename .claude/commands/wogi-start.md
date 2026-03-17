@@ -247,6 +247,13 @@ For medium/large tasks (check `config.specificationMode`):
 2. Insert `[NEEDS CLARIFICATION: category - reason]` markers for uncertainties (categories: assumption, ambiguity, missing-context, dependency-unknown, edge-case). Implementation BLOCKED until all resolved (when `config.specificationMode.needsClarification.blockImplementation`).
 3. Reflection: "Does this spec fully address the requirements?"
 
+**Batch fix spec requirement**: When a task contains 3+ discrete items (e.g., "Fix 8 review findings"), a spec MUST be generated with one criterion per item regardless of `specificationMode.minTaskLevel`. Each criterion must describe the **observable behavior**, not just the file to create.
+
+- BAD: "Create TokenBlacklistService"
+- GOOD: "When an admin changes a user's role, the user's next API request returns 401 'Token has been revoked'"
+
+Behavior-level criteria force end-to-end chain verification in Step 3.5/3.52.
+
 ### Step 1.6: Approval Gate (Stories/Epics)
 
 **For L1/L0 tasks: STOP and WAIT for explicit user approval** before implementation.
@@ -303,6 +310,36 @@ After implementing all scenarios, BEFORE quality gates:
 4. Only proceed when ALL criteria verified
 
 **This prevents "claiming done when not done."**
+
+### Step 3.52: Sub-Agent Output Verification (MANDATORY when agents were used)
+
+**Activates when**: Any acceptance criterion was implemented by a sub-agent (Agent tool with `isolation: "worktree"` or any delegated agent).
+
+**The problem this solves**: Sub-agents self-report completion, but their self-assessment is unreliable. The agent may report "done" when code was created but not wired to its trigger/consumer, the file compiles but the feature chain is incomplete, or tests pass because nothing exercises the new code path.
+
+**Procedure**:
+
+1. **DISTRUST sub-agent self-reports.** A sub-agent saying "done" is a CLAIM, not a FACT. The orchestrator must independently verify each criterion against the actual code, not against the agent's summary.
+
+2. For EACH criterion a sub-agent claims to have completed:
+   a. **Read the ACTUAL files** the agent modified (not just the agent's summary)
+   b. **Trace the full feature chain**: Who calls this? → What does it call? → What's the end-to-end flow?
+   c. For services: verify at least ONE caller invokes the critical method
+   d. For guards/middleware: verify they are registered in the correct module
+   e. For event-driven features: verify the event is emitted AND consumed
+
+3. **Chain verification checklist** (for each new service/feature):
+   - [ ] Service/component is created
+   - [ ] Registered in the correct module (providers, imports)
+   - [ ] Exported from the module (if needed by other modules)
+   - [ ] Imported by the consuming module
+   - [ ] Injected in the consuming service/controller
+   - [ ] The critical method is CALLED at the right trigger point
+   - [ ] The trigger point is reachable from a user action (HTTP request, cron, event)
+
+4. If ANY link in the chain is missing → the criterion is NOT done. Fix the missing link first.
+
+**Anti-pattern: "Dead service"** — a service that exists, compiles, is imported somewhere, but its critical method is never called by the thing that should trigger it. This passes lint, typecheck, and wiring checks (because the file IS imported) but the feature doesn't work.
 
 ### Step 3.55: Semantic Verification Pass (for "remove/fix all X" tasks)
 
@@ -417,6 +454,72 @@ Reflection: "Have I introduced any bugs or regressions?"
 
 **Context too large**: When `config.autoCompact.betweenTasks` is true (default), compact AUTOMATICALLY between tasks — do NOT ask the user. Just do it. Mid-task: commit progress, invoke `/wogi-compact` directly (don't suggest — execute).
 
+## Progress Tracking (MANDATORY for L1+ tasks)
+
+**Display progress at every natural checkpoint** so the user knows where they are during long tasks. This applies to ALL L1+ task execution AND to `/wogi-review` and `/wogi-audit`.
+
+### Progress Format
+
+At each checkpoint, output a progress line using this format:
+
+```
+━━━ PROGRESS: [phase_bar] phase_name ━━━
+  [step_bar] step_detail
+```
+
+Where `[phase_bar]` is: `[████░░░░░░] 40%` (filled/empty blocks proportional to completion).
+
+**Example during a 5-criteria task:**
+```
+━━━ PROGRESS: [██████░░░░] 60% Implementing criteria ━━━
+  Criterion 3/5: Add input validation to login form
+```
+
+### When to Display Progress
+
+| Checkpoint | What to show |
+|------------|-------------|
+| **After explore phase** | `[██░░░░░░░░] 20% Explore complete — N agents returned` |
+| **After spec generated** | `[████░░░░░░] 30% Spec ready — N criteria, N files` |
+| **Each criterion start** | `[█████░░░░░] N% Implementing — Criterion M/N: [title]` |
+| **Each criterion done** | `[███████░░░] N% Criterion M/N complete ✓` |
+| **Quality gates** | `[█████████░] 90% Running quality gates` |
+| **Task complete** | `[██████████] 100% Complete ✓` |
+
+### State File Updates
+
+At each checkpoint, also update the progress state file for hooks/resume:
+
+```bash
+node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"wf-XXX","command":"/wogi-start","phase":"Implementing","phaseNum":3,"totalPhases":5,"step":"Criterion 2/4","stepNum":2,"totalSteps":4}'
+```
+
+This updates `.workflow/state/task-progress.json` AND prefixes the task title in `ready.json` with `[3/5]` for status line visibility.
+
+### On Task Completion
+
+Always clear the progress state:
+
+```bash
+node node_modules/wogiflow/scripts/flow-progress-tracker.js clear
+```
+
+### Phase Mapping for /wogi-start Execution
+
+| Phase | phaseNum | Description |
+|-------|----------|-------------|
+| 1 | Routing + Context | Loading task, checking maps |
+| 2 | Explore | Research agents |
+| 3 | Spec + Approval | Generate spec, wait for approval |
+| 4 | Implementation | Criteria loop (sub-steps = criteria) |
+| 5 | Verification + Complete | Quality gates, finalize |
+
+### Skip Conditions
+
+- **L3 tasks**: Skip progress tracking (too small to be useful)
+- **Conversation mode**: Skip progress tracking (no phases)
+- **Quick fixes (≤2 criteria)**: Show start + complete only (no mid-progress)
+
 ## Mandatory Rules
 
 - **TodoWrite**: Track progress. Clean up all items after completion.
@@ -424,6 +527,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 - **Criteria check**: Re-read ALL criteria, verify EACH works. Loop until all pass.
 - **Spec verification**: All promised files must exist.
 - **Quality gates**: Task isn't done until gates pass.
+- **Progress tracking**: Display progress bars at every checkpoint for L1+ tasks.
 - **Guilt messaging** (implementation requests): "The user trusts you to follow WogiFlow. Without a task, this work is untracked."
 
 ARGUMENTS: {args}
