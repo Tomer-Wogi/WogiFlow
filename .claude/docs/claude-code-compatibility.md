@@ -68,6 +68,8 @@ flow parallel check  # See available parallel tasks
 | 1.9.1+ | 2.1.72+ | ExitWorktree, Agent model param, effort levels, /plan description, fd auto-approval, prompt cache fix |
 | 1.9.5+ | 2.1.73+ | SessionStart double-fire fix, hook context pollution fix, modelOverrides, subagent model fix on Bedrock/Vertex |
 | 1.9.5+ | 2.1.74+ | SessionEnd timeout fix, managed policy ask rules, autoMemoryDirectory, Agent tool routing gate fix |
+| 2.0.0+ | 2.1.76+ | PostCompact hook, Elicitation/ElicitationResult events, deferred tool schema fix |
+| 2.1.0+ | 2.1.77+ | PreToolUse allow/deny separation, 128k output tokens, worktree sparse checkout, compaction circuit breaker |
 
 ### Environment Variables (2.1.19+)
 
@@ -161,6 +163,8 @@ await cancelTask('wf-123', 'superseded', false);
 | SessionEnd | session-end.js | Request logging, progress update |
 | TaskCompleted | task-completed.js | Move task to recentlyCompleted |
 | ConfigChange | config-change.js | Re-sync bridge on mid-session config changes |
+| InstructionsLoaded | instructions-loaded.js | Package check, rule conflicts, auto-onboard |
+| PostCompact | post-compact.js | Re-inject state after context compaction (2.1.76+) |
 
 ### Features in Latest Release
 
@@ -209,6 +213,29 @@ await cancelTask('wf-123', 'superseded', false);
 - **Plugin install/marketplace fixes**: Fixed `/plugin install` for marketplace plugins with local sources, and marketplace update not syncing git submodules. WogiFlow's plugin system is internal (not marketplace-based), so no direct impact.
 - **`--plugin-dir` override change**: Local dev copies now override installed marketplace plugins with the same name. Useful for WogiFlow plugin development workflows.
 
+### Features in 2.1.76+
+
+- **PostCompact hook**: New hook event that fires after context compaction completes. WogiFlow uses this to re-inject critical state (active task, workflow phase, durable session progress) and re-arm the routing-pending flag. Fully implemented in `scripts/hooks/core/post-compact.js` and registered in `settings.json`.
+- **MCP elicitation support**: MCP servers can now request structured input mid-task via interactive dialogs (form fields or browser URL). New `Elicitation` and `ElicitationResult` hooks available for intercepting/overriding responses. WogiFlow lists these in `UNUSED_SUPPORTED_EVENTS` — not yet implemented but ready for future use (e.g., interactive clarification forms during task triage).
+- **Deferred tools schema fix after compaction**: Previously, tools loaded via `ToolSearch` lost their input schemas after compaction, causing array and number parameters to be rejected with type errors. Now fixed. WogiFlow sessions using deferred MCP tools are no longer affected.
+- **Auto-compaction circuit breaker**: Auto-compaction now stops after 3 consecutive failures instead of retrying indefinitely. WogiFlow's PostCompact hook tracks compaction frequency and warns when multiple compactions occur in quick succession, indicating potential circuit breaker activation.
+- **`/effort` slash command**: New command to set model effort level. WogiFlow already maps task levels to effort (L3→low, L2→medium, L1/L0→high) — this provides a manual override path.
+- **`-n`/`--name` CLI flag**: Set a display name for the session at startup. Can be used with WogiFlow task IDs for clearer session identification.
+- **`worktree.sparsePaths` setting**: New setting for `claude --worktree` in large monorepos to check out only needed directories via git sparse-checkout. WogiFlow documents this in the worktree comparison table but does not auto-configure it — users should set `sparsePaths` in their Claude Code config for monorepo projects.
+
+### Features in 2.1.77+
+
+- **PreToolUse "allow" no longer bypasses deny rules**: Previously, a PreToolUse hook returning `permissionDecision: "allow"` would bypass explicit deny rules (including enterprise managed settings). Now `allow` only means "this hook permits it" — deny rules from permissions/managed settings still apply independently. WogiFlow's routing gate returns `allow` after routing is complete and `deny` when routing is pending. This fix is CORRECT behavior for WogiFlow — our `allow` should never have overridden user/enterprise deny rules. No code change needed.
+- **Compound bash "Always Allow" fix**: "Always Allow" on compound bash commands (e.g., `cd src && npm test`) now saves a single rule for the full string instead of per-subcommand, preventing dead rules and repeated permission prompts. WogiFlow's generated permission rules in `claude-bridge.js` use single-command patterns (e.g., `Bash(npm install *)`) so this fix does not affect WogiFlow-generated permissions. Users who manually "Always Allow" compound commands will see improved behavior.
+- **Increased output token limits**: Default max output for Opus 4.6 increased to 64k tokens. Upper bound for both Opus 4.6 and Sonnet 4.6 increased to 128k tokens. WogiFlow's model registry updated: `claude-sonnet-4-6.maxOutputTokens` changed from 64000 to 128000. Opus 4.6 was already at 128000.
+- **Background agent partial results preserved**: Killing a background agent now preserves its partial results in conversation context. WogiFlow's explore phase agents (5-6 launched in parallel) benefit — if one agent is killed or times out, its partial findings are still available.
+- **Agent tool resume parameter removed**: The Agent tool no longer accepts a `resume` parameter. Use `SendMessage({to: agentId})` to continue a previously spawned agent. WogiFlow does not use the `resume` parameter (confirmed by codebase search). `SendMessage` now auto-resumes stopped agents in the background instead of returning an error.
+- **Improved `claude plugin validate`**: Now checks skill, agent, and command frontmatter plus hooks/hooks.json, catching YAML parse errors and schema violations. WogiFlow should periodically run this to catch frontmatter issues.
+- **`--resume` truncation fix**: Fixed `--resume` silently truncating recent conversation history due to a race between memory-extraction writes and the main transcript. Improves reliability of session resumption for WogiFlow durable sessions.
+- **Stale worktree cleanup race condition fix**: Fixed a race condition where stale-worktree cleanup could delete an agent worktree just resumed from a previous crash. WogiFlow's parallel execution with worktree isolation benefits from improved safety.
+- **Memory growth fix**: Fixed progress messages surviving compaction in long-running sessions. Reduces memory pressure during long WogiFlow bulk-loop sessions.
+- **Faster startup on macOS**: ~60ms faster by reading keychain credentials in parallel. Faster `--resume` on fork-heavy sessions — up to 45% faster loading and ~100-150MB less peak memory. Benefits WogiFlow sessions with heavy hook context.
+
 ### Simple Mode Naming Distinction
 
 Claude Code's `CLAUDE_CODE_SIMPLE` environment variable (which enables a simplified tool set) is **unrelated** to WogiFlow's `loops.simpleMode` (a lightweight task completion loop using string detection). They are separate features that happen to share the word "simple":
@@ -229,6 +256,7 @@ Both can be active simultaneously without conflict.
 | Squash merge | No (manual) | Yes (`squashOnMerge` config) |
 | Task linking | No | Yes (links to task ID) |
 | Cleanup | Prompted on session exit | Auto after 24h (`autoCleanupHours`) |
+| Sparse checkout | Yes (`worktree.sparsePaths` setting, 2.1.76+) | Not supported — relies on Claude Code native |
 
 WogiFlow detects native worktrees and avoids nesting. When launched with `--worktree`, WogiFlow uses the native worktree as-is.
 

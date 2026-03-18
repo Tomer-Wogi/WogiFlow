@@ -31,6 +31,32 @@ The audit system has **two layers**:
 1. **Runtime script** (`flow-audit.js`) — provides helper functions for file scanning, TODO finding, dependency checking, and score calculation.
 2. **AI instructions** (this document) — describe the 7-agent parallel analysis, scoring, and post-audit workflow. You (the AI) orchestrate the full audit.
 
+## Progress Tracking
+
+At each step checkpoint, display a progress bar AND update the progress state file:
+
+```bash
+node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"audit","command":"/wogi-audit","phase":"Agents","phaseNum":2,"totalPhases":6,"step":"Agent 5/7 complete","stepNum":5,"totalSteps":7}'
+```
+
+**Phase mapping for /wogi-audit:**
+| Phase | phaseNum | Description |
+|-------|----------|-------------|
+| 1 | Gather Files | Scan project files |
+| 2 | Agents | 7 parallel agents (sub-steps = agents) |
+| 3 | Consolidate | Score calculation |
+| 4 | Pattern Promotion | AI clustering + cross-reference + gaps |
+| 5 | Report | Display formatted report |
+| 6 | Persist | Save to last-audit.json |
+
+**Display at each agent completion:**
+```
+━━━ PROGRESS: [████░░░░░░] 35% Step 2: Audit Agents ━━━
+  Agent 5/7 complete (Architecture, Dependencies, Duplication, Performance, Consistency done)
+```
+
+On audit completion, clear progress: `node node_modules/wogiflow/scripts/flow-progress-tracker.js clear`
+
 ## How It Works
 
 ### Step 1: Gather Project Files
@@ -291,14 +317,146 @@ Top 5 Quick Wins (highest impact, lowest effort):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
+### Step 4.5: Pattern Promotion Analysis (MANDATORY)
+
+After displaying the report, run pattern promotion analysis **before** offering post-audit actions. This step has 3 phases.
+
+#### Phase 1: AI Semantic Clustering
+
+Launch a single Agent (`subagent_type=Explore`, `model="sonnet"`) with ALL findings from the 7 audit agents:
+
+```
+You are a pattern clustering judge. You receive findings from 7 audit agents.
+Your job is to semantically group findings that describe the SAME underlying issue.
+
+IMPORTANT: This is semantic matching, not string matching.
+"Missing try-catch", "no error handling", and "unprotected JSON.parse" are the SAME pattern.
+"Inconsistent naming" and "mixed camelCase and snake_case" are the SAME pattern.
+
+For the findings below, produce a JSON array of clusters:
+
+[findings from all 7 agents pasted here]
+
+Output format (ONLY output valid JSON, no markdown):
+[
+  {
+    "patternId": "kebab-case-id",
+    "category": "architecture|code-style|security|performance|consistency|dependencies|tech-debt",
+    "description": "One sentence describing the underlying issue",
+    "severity": "HIGH|MEDIUM|LOW",
+    "isSystemic": true/false (true if 5+ files affected),
+    "instanceCount": N,
+    "instances": [{"file": "path", "detail": "brief description"}]
+  }
+]
+
+Rules:
+- Merge findings that describe the same root cause, even if different agents worded them differently
+- patternId must be stable: same issue should produce the same ID across audits
+- severity: HIGH if 5+ files, MEDIUM if 3-4, LOW if 1-2
+- Do NOT create a cluster for single-file, one-off issues — only patterns (2+ instances)
+- Maximum 20 clusters (if more, merge the most similar)
+```
+
+Parse the AI output as JSON. If parsing fails, log a warning and skip to Step 5.
+
+#### Phase 2: Cross-Reference & Promotion
+
+Run the promote command with the clustered findings:
+
+```bash
+node node_modules/wogiflow/scripts/flow-audit.js promote '<clusters-json>'
+```
+
+This automatically:
+1. Checks each pattern against `decisions.md` — marks `ENFORCEMENT_GAP` if a rule already exists
+2. Records/increments patterns in `feedback-patterns.md`
+3. Auto-promotes to `decisions.md` when count reaches threshold (default: 3)
+4. Detects `RECURRING` patterns by comparing with `last-audit.json`
+
+Display the promotion summary in the report:
+
+```
+━━━ PATTERN PROMOTION ━━━
+  Patterns found: N
+  - Promoted to rules:    N (auto-promoted to decisions.md)
+  - Tracking:             N (count below threshold)
+  - Enforcement gaps:     N (rule exists, still violated!)
+  - New patterns:         N (first occurrence)
+  - Recurring:            N (seen in previous audit)
+
+  [For each ENFORCEMENT_GAP]:
+  ⚠ ENFORCEMENT GAP: "pattern description"
+    Rule in: ## Section > ### Rule Name
+    Still violated in N files
+
+  [For each PROMOTED]:
+  ✓ PROMOTED: "pattern description" (N occurrences → decisions.md)
+
+  [For each SYSTEMIC (5+ files)]:
+  ! SYSTEMIC: "pattern description" (N files affected)
+    Consider creating an immediate rule
+```
+
+#### Phase 3: Enforcement Gap Investigation (on demand)
+
+This phase runs ONLY if enforcement gaps were found AND the user selects it from post-audit actions.
+
+For each `ENFORCEMENT_GAP` pattern, launch an Agent (`subagent_type=Explore`, `model="sonnet"`):
+
+```
+You are investigating why a rule in decisions.md is still being violated.
+
+THE RULE (from decisions.md):
+[insert ruleText from promotion results]
+
+THE VIOLATIONS (files still violating this rule):
+[insert instances array from cluster]
+
+Investigate WHY this rule was violated. Check:
+1. Is the rule too vague? Does it say WHAT to do but not HOW?
+2. Is the rule too long or buried in a large section? Key constraint might be lost in noise.
+3. Is the rule outdated? Does it reference patterns/APIs that have changed?
+4. Is the rule in the wrong section? Might be overlooked if categorized poorly.
+5. Does the rule have programmatic enforcement? Or is it text-only with no automated checks?
+6. Does the rule conflict with another rule or common practice in the codebase?
+7. Does the code predate the rule? (Check git blame dates vs rule creation date if available)
+
+Output format (ONLY output valid JSON):
+{
+  "rootCause": "TOO_VAGUE|TOO_LONG|OUTDATED|WRONG_SCOPE|NO_ENFORCEMENT|CONTRADICTORY|PRE_EXISTING",
+  "explanation": "2-3 sentences explaining what's wrong",
+  "recommendation": "REWRITE|SPLIT|ADD_TO_STANDARDS_GATE|BACKFILL|NO_ACTION",
+  "suggestedFix": "If REWRITE or SPLIT: the improved rule text. If ADD_TO_STANDARDS_GATE: the pattern to add. If BACKFILL: description of cleanup needed."
+}
+```
+
+Display investigation results:
+
+```
+━━━ ENFORCEMENT GAP INVESTIGATION ━━━
+  [For each gap]:
+  Pattern: "description"
+  Root cause: TOO_VAGUE — "The rule says to handle errors but doesn't specify the pattern"
+  Recommendation: REWRITE
+  Suggested fix: [improved rule text]
+
+  Actions available:
+  - Apply suggested rewrites to decisions.md
+  - Create backfill cleanup tasks in ready.json
+  - Add patterns to standards gate for programmatic enforcement
+```
+
 ### Step 5: Post-Audit Actions
 
-After displaying the report, offer these options using AskUserQuestion:
+After displaying the report and promotion summary, offer these options using AskUserQuestion:
 
 1. **Create tasks** — Convert high-priority findings to stories/tasks in ready.json
 2. **Add to tech debt** — Add findings to `.workflow/state/tech-debt.json` via `/wogi-debt`
 3. **Save report** — Persist to `.workflow/audits/YYYY-MM-DD-audit.md`
-4. **Create rules** — Promote recurring patterns to decisions.md via `/wogi-decide`
+4. **Create rules** — Manually promote specific patterns via `/wogi-decide`
+5. **Investigate enforcement gaps** — Run Phase 3 investigation for all `ENFORCEMENT_GAP` patterns
+6. **Apply all promotions** — Batch-confirm all auto-promoted rules (already written by Phase 2)
 
 ### Step 6: Persist Report
 
@@ -323,7 +481,35 @@ Regardless of user choice, always save the audit results to `.workflow/state/las
     "medium": 18,
     "low": 19
   },
-  "topFindings": [...]
+  "topFindings": [...],
+  "patterns": [
+    {
+      "patternId": "missing-error-handling",
+      "category": "security",
+      "description": "Functions missing try-catch around I/O operations",
+      "instanceCount": 7,
+      "severity": "HIGH",
+      "status": "ENFORCEMENT_GAP",
+      "count": 5,
+      "isSystemic": true
+    }
+  ],
+  "enforcementGaps": [
+    {
+      "patternId": "json-parse-safety",
+      "ruleLocation": "## Coding Standards",
+      "rootCause": "TOO_VAGUE",
+      "recommendation": "REWRITE",
+      "suggestedFix": "..."
+    }
+  ],
+  "promotions": {
+    "promoted": 2,
+    "tracking": 5,
+    "gaps": 1,
+    "new": 3,
+    "recurring": 4
+  }
 }
 ```
 

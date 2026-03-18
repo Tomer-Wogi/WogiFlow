@@ -255,6 +255,134 @@ function calculateHealthScore(scores) {
 }
 
 // ============================================================
+// Pattern Promotion (Audit → Learning Pipeline)
+// ============================================================
+
+// Severity classification thresholds for audit patterns
+const SYSTEMIC_THRESHOLD = 5;   // 5+ files = HIGH severity / systemic
+const MEDIUM_THRESHOLD = 3;     // 3-4 files = MEDIUM severity
+
+/**
+ * Process AI-clustered audit findings through the learning pipeline.
+ *
+ * For each clustered pattern:
+ * 1. Check if a rule already exists in decisions.md → ENFORCEMENT_GAP
+ * 2. Record/increment in feedback-patterns.md
+ * 3. Check promotion threshold → auto-promote if met
+ * 4. Check last-audit.json → detect RECURRING patterns
+ *
+ * @param {Object[]} clusters - AI-clustered patterns from audit
+ * @param {Object} [previousAudit] - Previous audit data for recurrence detection
+ * @returns {Object} Promotion results per pattern
+ */
+function promoteAuditPatterns(clusters, previousAudit) {
+  const {
+    recordAuditPattern,
+    checkEnforcementGap,
+    promoteToDecisions,
+    syncToRulesDir,
+    mapAuditCategoryToLearnerCategory,
+    buildAuditRuleTemplate
+  } = require('./flow-standards-learner');
+
+  const previousPatternIds = new Set(
+    (previousAudit?.patterns || []).map(p => p.patternId)
+  );
+
+  const results = {
+    patterns: [],
+    summary: {
+      total: clusters.length,
+      promoted: 0,
+      promotionFailed: 0,
+      tracking: 0,
+      enforcementGaps: 0,
+      newPatterns: 0,
+      recurring: 0
+    }
+  };
+
+  for (const cluster of clusters) {
+    const patternResult = {
+      patternId: cluster.patternId,
+      category: cluster.category,
+      description: cluster.description,
+      instanceCount: cluster.instanceCount,
+      severity: cluster.severity || (cluster.instanceCount >= SYSTEMIC_THRESHOLD ? 'HIGH' : cluster.instanceCount >= MEDIUM_THRESHOLD ? 'MEDIUM' : 'LOW'),
+      isSystemic: cluster.isSystemic || cluster.instanceCount >= SYSTEMIC_THRESHOLD,
+      status: 'NEW',
+      count: 0,
+      rootCause: null,
+      recommendation: null
+    };
+
+    // Step 1: Check for enforcement gap
+    const gapCheck = checkEnforcementGap(cluster.patternId, cluster.description);
+    if (gapCheck.exists) {
+      patternResult.status = 'ENFORCEMENT_GAP';
+      patternResult.ruleLocation = gapCheck.section;
+      patternResult.ruleText = gapCheck.ruleText;
+      results.summary.enforcementGaps++;
+    } else {
+      // Step 2: Record/increment in feedback-patterns
+      const recordResult = recordAuditPattern(cluster);
+
+      if (recordResult.recorded) {
+        patternResult.count = recordResult.newCount;
+
+        // Step 3: Check promotion threshold
+        if (recordResult.shouldPromote) {
+          // Build a learning object for promotion (reuse learner functions)
+          const learning = {
+            canLearn: true,
+            violationType: cluster.category,
+            category: mapAuditCategoryToLearnerCategory(cluster.category),
+            patternName: cluster.description.slice(0, 100),
+            message: `${cluster.instanceCount} instances found (audit source, ${recordResult.newCount} occurrences)`,
+            ruleTemplate: buildAuditRuleTemplate(cluster)
+          };
+
+          const promoteResult = promoteToDecisions(learning, recordResult.newCount);
+          if (promoteResult.promoted) {
+            patternResult.status = 'PROMOTED';
+            results.summary.promoted++;
+
+            // Also sync to rules dir
+            const syncLearning = {
+              ...learning,
+              subcategory: cluster.patternId
+            };
+            syncToRulesDir(syncLearning);
+          } else {
+            // Distinguish "not yet at threshold" from "promotion failed"
+            patternResult.status = 'PROMOTION_FAILED';
+            patternResult.failureReason = promoteResult.reason || 'Unknown promotion failure';
+            results.summary.promotionFailed++;
+          }
+        } else {
+          patternResult.status = `TRACKING (${recordResult.newCount}/${recordResult.threshold})`;
+          results.summary.tracking++;
+        }
+      }
+    }
+
+    // Step 4: Check recurrence
+    if (previousPatternIds.has(cluster.patternId)) {
+      if (patternResult.status !== 'ENFORCEMENT_GAP' && patternResult.status !== 'PROMOTED') {
+        patternResult.status = `RECURRING — ${patternResult.status}`;
+      }
+      results.summary.recurring++;
+    } else if (patternResult.status === 'NEW' || patternResult.status.startsWith('TRACKING')) {
+      results.summary.newPatterns++;
+    }
+
+    results.patterns.push(patternResult);
+  }
+
+  return results;
+}
+
+// ============================================================
 // CLI Interface
 // ============================================================
 
@@ -307,6 +435,30 @@ function main() {
       break;
     }
 
+    case 'promote': {
+      // Process AI-clustered findings through the learning pipeline
+      // Usage: node scripts/flow-audit.js promote '<clusters-json>'
+      const clustersArg = process.argv[3];
+      if (!clustersArg) {
+        console.error('Usage: flow-audit.js promote \'[{patternId, category, description, instanceCount, instances}]\'');
+        process.exit(1);
+      }
+
+      const clusters = safeJsonParseString(clustersArg, null);
+      if (!Array.isArray(clusters)) {
+        console.error('Invalid JSON clusters argument — expected an array');
+        process.exit(1);
+      }
+
+      // Load previous audit for recurrence detection
+      const lastAuditPath = path.join(PATHS.state, 'last-audit.json');
+      const previousAudit = safeJsonParse(lastAuditPath, {});
+
+      const promoteResults = promoteAuditPatterns(clusters, previousAudit);
+      console.log(JSON.stringify(promoteResults, null, 2));
+      break;
+    }
+
     default: {
       console.log(`
 Wogi Flow - Project Audit Helpers
@@ -319,9 +471,13 @@ Commands:
   outdated   Run npm outdated (structured JSON output)
   audit      Run npm audit (structured JSON output)
   score      Calculate weighted health score from agent grades
+  promote    Process AI-clustered findings through learning pipeline
 
 Score usage:
   node scripts/flow-audit.js score '{"architecture":"B+","dependencies":"A-"}'
+
+Promote usage:
+  node scripts/flow-audit.js promote '[{"patternId":"missing-error-handling","category":"security","description":"...","instanceCount":7}]'
 `);
       break;
     }
@@ -333,7 +489,8 @@ module.exports = {
   findTodos,
   getOutdatedDeps,
   getAuditResults,
-  calculateHealthScore
+  calculateHealthScore,
+  promoteAuditPatterns
 };
 
 if (require.main === module) {

@@ -341,30 +341,75 @@ After implementing all scenarios, BEFORE quality gates:
 
 **Anti-pattern: "Dead service"** — a service that exists, compiles, is imported somewhere, but its critical method is never called by the thing that should trigger it. This passes lint, typecheck, and wiring checks (because the file IS imported) but the feature doesn't work.
 
-### Step 3.55: Semantic Verification Pass (for "remove/fix all X" tasks)
+### Step 3.55: Inventory-Based Verification (for "remove/fix/replace all X" tasks)
 
-**Activates when**: The task involves removing, cleaning up, or fixing ALL instances of something (e.g., "remove all mock data", "fix all console.log", "replace all hardcoded URLs", "remove all deprecated APIs").
+**Activates when**: The task involves removing, cleaning up, fixing, or replacing ALL instances of something (e.g., "remove all mock data", "fix all console.log", "replace all hardcoded URLs", "remove all deprecated APIs").
 
-**Purpose**: Pattern-based search (regex, grep) finds instances that match a naming pattern. But semantic variants — hardcoded values, helper functions that serve the same purpose, inline fallbacks — are invisible to pattern search. This pass catches what regex misses.
+**The problem this solves**: Pattern-based search (grep, regex) only finds instances that match a naming convention. Semantic variants — inline hardcoded arrays, helper functions that wrap the target, useState initializers with fake data, constants not named with the expected prefix — are invisible to pattern search. In practice, pattern search finds ~60-70% of instances. The AI then declares "done" and the remaining 30-40% persist undetected. This has caused repeated false completions (3-4x on a single project).
 
-**Procedure**:
-1. After the implementation agent completes, do NOT immediately mark the task as done
-2. Run a **second verification pass** that asks SEMANTICALLY, not syntactically:
-   - "Does any remaining code serve the purpose of [what we're removing]?"
-   - NOT: "Does any remaining code match the pattern [MOCK_*]?"
-3. For each type of removal, use type-specific semantic checks:
+**Core principle**: For each file in scope, ask **"does anything in this file serve the PURPOSE of [what we're removing]?"** — regardless of what it's named. Reason about function, not strings.
 
-| Removal Type | Semantic Check |
-|-------------|----------------|
-| Mock data | Scan render output for hardcoded business data (customer names, dollar amounts, percentages, dates that look like test data) |
-| Console.log | Scan for any debugging output (console.warn, console.debug, alert(), debugger statements) |
-| Hardcoded URLs | Scan for string literals containing http://, https://, localhost, IP addresses |
-| Deprecated APIs | Scan for the FUNCTIONALITY the API provided, not just its name |
+**Procedure (3 phases — ALL mandatory)**:
 
-4. Use AI reasoning, NOT regex — the whole point is catching what regex misses
-5. Report any findings as additional criteria to fix before completion
+#### Phase A: Pre-Implementation Inventory (BEFORE any code changes)
 
-**Cross-cutting principle**: Pattern matching is for discovery. AI reasoning is for verification. The two-pass approach (pattern search → semantic verification) is the standard for any "fix all X" task.
+1. **Identify all files in scope** — every file that could contain instances of [X]. Use both:
+   - Pattern search (grep/glob) for syntactic matches
+   - File-by-file reading of components/pages/modules that CONSUME data related to [X]
+
+2. **For each file, answer the semantic question**: "Does anything in this file serve the purpose of [what we're removing]?" Examples by task type:
+
+   | Task Type | Semantic Question | What Pattern Search Misses |
+   |-----------|-------------------|---------------------------|
+   | Remove mock data | "Where does this component get its displayed data? Is it from an API call or a local constant/array/useState?" | Inline arrays (`const customers = [{...}]`), useState initializers (`useState([...POLICY_DATA])`), export constants not named `MOCK_*` |
+   | Remove console.log | "What in this file produces output to any channel?" | `console.warn`, `console.debug`, `debugger`, `alert()`, custom logger wrappers |
+   | Replace hardcoded URLs | "What string values in this file resolve to network addresses?" | URLs built from concatenation, template literals, env var fallbacks with hardcoded defaults |
+   | Remove deprecated API | "What in this file provides the same FUNCTIONALITY as the deprecated API?" | Wrapper functions, polyfills, compatibility shims, re-implementations |
+   | Fix all raw JSON.parse | "What in this file deserializes JSON?" | Utility functions that call JSON.parse internally, library wrappers |
+
+3. **Produce a numbered inventory** and display it to the user:
+   ```
+   ━━━ PRE-IMPLEMENTATION INVENTORY ━━━
+   Found N instances of [X] across M files:
+
+     1. [file:lines] — [description] [TYPE: syntactic|semantic]
+     2. [file:lines] — [description] [TYPE: syntactic|semantic]
+     ...
+
+   Total: N instances (S syntactic, M semantic)
+   Confirm inventory is complete before proceeding? [Y/adjust]
+   ```
+
+4. **Wait for user confirmation** that the inventory is complete. If the user identifies missing items, add them. This step is CRITICAL — it commits the AI to a concrete scope that can be verified later.
+
+#### Phase B: Implementation
+
+5. Implement the removal/fix/replacement for EVERY item in the inventory. Each inventory item becomes a trackable unit of work.
+
+#### Phase C: Post-Implementation Re-Inventory (AFTER all changes)
+
+6. **Re-run the SAME semantic scan** from Phase A on the SAME set of files. Use the same questions — do NOT downgrade to pattern-only search.
+
+7. **Diff the inventories**:
+   ```
+   ━━━ POST-IMPLEMENTATION VERIFICATION ━━━
+   Re-scanned M files for [X]:
+
+     1. [file:lines] — [description]          → REMOVED ✓
+     2. [file:lines] — [description]          → REMOVED ✓
+     3. [file:lines] — [description]          → STILL PRESENT ✗
+     ...
+
+   Result: N/N removed (0 remaining)
+   ```
+
+8. **If ANY items remain** → task is NOT done. Fix the remaining items and re-verify. Do NOT proceed to quality gates with remaining items.
+
+9. **If new instances are discovered** during re-scan that weren't in the original inventory → add them, fix them, and note them as "discovered during verification."
+
+**Why this works**: The inventory creates a concrete, numbered checklist BEFORE implementation. The AI cannot claim "done" when the post-inventory shows items still present — the evidence is in the conversation. The pre/post diff is unfakeable.
+
+**Skip conditions**: Tasks that target a specific file or a small known set (e.g., "remove the mock import in Dashboard.tsx") don't need the full inventory — they're scoped enough already. The inventory is for "all X" / "every X" / "clean up X everywhere" tasks.
 
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 

@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Wogi Flow - Prompt Capture System
+ * Wogi Flow - Prompt Capture System (v2 — Flat Array Architecture)
  *
  * Two-file system for capturing and learning from user prompts:
- * 1. prompt-history.json - Full history of all prompts during task execution
+ * 1. prompt-history.json - Chronological flat array of ALL prompts (v2)
  * 2. clarifications.md - Learning entries from refinement patterns
  *
- * Features:
- * - Captures all user prompts during task execution
- * - Detects refinement/clarification patterns
- * - Tracks refinement count for learning system
- * - Generates learning entries on task completion
+ * v2 Architecture (Approach B):
+ * - All prompts are ALWAYS saved, regardless of whether a taskId exists
+ * - taskId is optional metadata on each prompt, not a primary key
+ * - First prompt is never lost (saved with taskId: null, tagged retrospectively)
+ * - Stale taskIds are detected via ready.json cross-check
+ * - v1 → v2 migration happens automatically on first load
+ *
+ * Fixes bugs: wf-ddd498de
+ * - Bug 1: First prompt lost (no taskId yet) → now saved with taskId: null
+ * - Bug 2: Prompts persist under stale taskId → cross-check with ready.json
+ * - Bug 3: Top-level prompts[] never used → now the primary storage
  */
 
 const fs = require('node:fs');
@@ -23,9 +29,19 @@ const {
   ensureDir,
   fileExists,
   readFile,
-  writeFile
+  writeFile,
+  getReadyData
 } = require('./flow-utils');
-const { loadDurableSession } = require('./flow-durable-session');
+const { getTodayDate } = require('./flow-output');
+
+// Lazy-load to avoid circular dependency (durable-session imports flow-utils too)
+let _loadDurableSession;
+function loadDurableSession() {
+  if (!_loadDurableSession) {
+    _loadDurableSession = require('./flow-durable-session').loadDurableSession;
+  }
+  return _loadDurableSession();
+}
 
 // ============================================================================
 // Constants
@@ -33,7 +49,8 @@ const { loadDurableSession } = require('./flow-durable-session');
 
 const PROMPT_HISTORY_FILE = 'prompt-history.json';
 const CLARIFICATIONS_FILE = 'clarifications.md';
-const MAX_TASK_HISTORY = 50; // Max tasks to keep in history before cleanup
+const MAX_PROMPTS = 500; // Max prompts to keep before cleanup (flat array)
+const SCHEMA_VERSION = 2;
 
 // Patterns that indicate a refinement/clarification
 const REFINEMENT_PATTERNS = [
@@ -80,9 +97,7 @@ function detectRefinement(prompt) {
   if (!prompt || typeof prompt !== 'string') {
     return false;
   }
-
-  const trimmed = prompt.trim();
-  return REFINEMENT_PATTERNS.some(pattern => pattern.test(trimmed));
+  return REFINEMENT_PATTERNS.some(pattern => pattern.test(prompt.trim()));
 }
 
 /**
@@ -91,31 +106,97 @@ function detectRefinement(prompt) {
  * @returns {Object} Analysis result
  */
 function analyzePrompt(prompt) {
-  const isRefinement = detectRefinement(prompt);
-
   return {
-    isRefinement,
+    isRefinement: detectRefinement(prompt),
     length: prompt?.length || 0,
     timestamp: new Date().toISOString()
   };
 }
 
 // ============================================================================
-// Prompt History Management
+// v1 → v2 Migration
 // ============================================================================
 
 /**
- * Load prompt history from file
- * @returns {Object} Prompt history keyed by task ID
+ * Migrate v1 (task-keyed object) to v2 (flat array) format.
+ * v1: { "wf-xxx": { prompts: [...], ... }, "wf-yyy": { ... } }
+ * v2: { version: 2, prompts: [{ taskId, content, timestamp, ... }] }
+ *
+ * @param {Object} v1Data - v1 format data
+ * @returns {Object} v2 format data
+ */
+function migrateV1ToV2(v1Data) {
+  const prompts = [];
+
+  for (const [taskId, taskEntry] of Object.entries(v1Data)) {
+    // Skip metadata keys
+    if (taskId === 'version' || taskId === 'prompts') continue;
+    if (!taskEntry || !Array.isArray(taskEntry.prompts)) continue;
+
+    for (const prompt of taskEntry.prompts) {
+      prompts.push({
+        timestamp: prompt.timestamp || taskEntry.startedAt || new Date().toISOString(),
+        content: prompt.content || '',
+        taskId: taskId,
+        taskTitle: taskEntry.title || null,
+        isRefinement: prompt.isRefinement || false,
+        isInitial: prompt.isInitial || false,
+        sessionId: null,
+        source: 'migrated-v1'
+      });
+    }
+  }
+
+  // Sort chronologically
+  prompts.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  return { version: SCHEMA_VERSION, prompts };
+}
+
+// ============================================================================
+// Prompt History Management (v2 — Flat Array)
+// ============================================================================
+
+/**
+ * Load prompt history, auto-migrating v1 → v2 if needed.
+ * @returns {{ version: number, prompts: Object[] }}
  */
 function loadPromptHistory() {
   const historyPath = getPromptHistoryPath();
-  return safeJsonParse(historyPath, {});
+  const raw = safeJsonParse(historyPath, null);
+
+  // No file yet
+  if (!raw) {
+    return { version: SCHEMA_VERSION, prompts: [] };
+  }
+
+  // Already v2
+  if (raw.version === SCHEMA_VERSION && Array.isArray(raw.prompts)) {
+    return raw;
+  }
+
+  // v1 format detected — migrate
+  if (!raw.version && typeof raw === 'object') {
+    const migrated = migrateV1ToV2(raw);
+    // Save migrated data
+    try {
+      ensureDir(path.dirname(historyPath));
+      writeJson(historyPath, migrated);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[prompt-capture] Migration write failed: ${err.message}`);
+      }
+    }
+    return migrated;
+  }
+
+  // Unknown format — start fresh
+  return { version: SCHEMA_VERSION, prompts: [] };
 }
 
 /**
  * Save prompt history to file
- * @param {Object} history - History object to save
+ * @param {Object} history - v2 history object
  */
 function savePromptHistory(history) {
   const historyPath = getPromptHistoryPath();
@@ -124,69 +205,151 @@ function savePromptHistory(history) {
 }
 
 /**
- * Capture a user prompt for the current task
- * @param {string} taskId - Current task ID
+ * Get current valid task ID — cross-checked against ready.json.
+ * Returns null if:
+ * - No durable session exists
+ * - durable-session taskId is not in ready.json inProgress (stale)
+ *
+ * @returns {string|null} Valid task ID or null
+ */
+function getCurrentTaskId() {
+  try {
+    const session = loadDurableSession();
+    const taskId = session?.taskId;
+    if (!taskId) return null;
+
+    // Cross-check: is this task actually in progress?
+    const readyData = getReadyData();
+    const inProgress = Array.isArray(readyData.inProgress) ? readyData.inProgress : [];
+    const isActive = inProgress.some(t =>
+      (typeof t === 'string' ? t : t.id) === taskId
+    );
+
+    if (!isActive) {
+      // Task is no longer in progress — stale durable session
+      if (process.env.DEBUG) {
+        console.error(`[prompt-capture] Stale taskId ${taskId} — not in ready.json inProgress`);
+      }
+      return null;
+    }
+
+    return taskId;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Capture a user prompt. ALWAYS saves — taskId is optional metadata.
+ *
  * @param {string} prompt - User prompt text
- * @param {Object} options - Additional options
- * @param {string} options.taskTitle - Task title
+ * @param {Object} [options] - Additional options
+ * @param {string} [options.taskId] - Override task ID (otherwise auto-detected)
+ * @param {string} [options.taskTitle] - Task title
+ * @param {string} [options.sessionId] - Session ID
  * @returns {Object} Captured prompt entry
  */
-function capturePrompt(taskId, prompt, options = {}) {
-  if (!taskId || !prompt) {
+function capturePrompt(prompt, options = {}) {
+  if (!prompt || typeof prompt !== 'string') {
     return null;
   }
 
-  const history = loadPromptHistory();
-
-  // Initialize task entry if not exists
-  if (!history[taskId]) {
-    history[taskId] = {
-      taskId,
-      title: options.taskTitle || null,
-      startedAt: new Date().toISOString(),
-      prompts: [],
-      refinementCount: 0
-    };
-  }
-
+  const taskId = options.taskId !== undefined ? options.taskId : getCurrentTaskId();
   const analysis = analyzePrompt(prompt);
-  const isInitial = history[taskId].prompts.length === 0;
 
   const entry = {
     timestamp: analysis.timestamp,
     content: prompt,
-    isInitial,
-    isRefinement: analysis.isRefinement
+    taskId: taskId || null,
+    taskTitle: options.taskTitle || null,
+    isRefinement: analysis.isRefinement,
+    sessionId: options.sessionId || process.env.CLAUDE_CODE_SESSION_ID || null,
+    source: 'hook'
   };
 
-  history[taskId].prompts.push(entry);
+  const history = loadPromptHistory();
+  history.prompts.push(entry);
 
-  // Track refinement count
-  if (analysis.isRefinement) {
-    history[taskId].refinementCount = (history[taskId].refinementCount || 0) + 1;
+  // Cleanup if over limit
+  if (history.prompts.length > MAX_PROMPTS) {
+    history.prompts = history.prompts.slice(-MAX_PROMPTS);
   }
-
-  // Update title if provided
-  if (options.taskTitle && !history[taskId].title) {
-    history[taskId].title = options.taskTitle;
-  }
-
-  // Cleanup old tasks if we have too many
-  cleanupOldTasks(history);
 
   savePromptHistory(history);
-
   return entry;
 }
 
 /**
- * Get prompt history for a specific task
+ * Capture prompt for current task (backward-compatible wrapper).
+ * In v2, this ALWAYS saves — even without a taskId.
+ *
+ * @param {string} prompt - User prompt text
+ * @returns {Object|null} Captured entry (null only if prompt is empty)
+ */
+function captureCurrentPrompt(prompt) {
+  return capturePrompt(prompt);
+}
+
+/**
+ * Tag recent untagged prompts with a taskId (retrospective tagging).
+ * Called after task creation to tag the initial prompt that triggered it.
+ *
+ * @param {string} taskId - Task ID to tag with
+ * @param {string} [taskTitle] - Task title
+ * @param {number} [lookbackMs=60000] - How far back to look (default 1 min)
+ * @returns {{ tagged: number }}
+ */
+function tagRecentPrompts(taskId, taskTitle, lookbackMs = 60000) {
+  if (!taskId) return { tagged: 0 };
+
+  const history = loadPromptHistory();
+  const cutoff = Date.now() - lookbackMs;
+  let tagged = 0;
+
+  // Walk backwards through recent prompts
+  for (let i = history.prompts.length - 1; i >= 0; i--) {
+    const prompt = history.prompts[i];
+    const promptTime = new Date(prompt.timestamp).getTime();
+
+    // Stop if we've gone past the lookback window
+    if (promptTime < cutoff) break;
+
+    // Tag untagged prompts
+    if (!prompt.taskId) {
+      prompt.taskId = taskId;
+      if (taskTitle) prompt.taskTitle = taskTitle;
+      tagged++;
+    }
+  }
+
+  if (tagged > 0) {
+    savePromptHistory(history);
+  }
+
+  return { tagged };
+}
+
+// ============================================================================
+// Query Functions (backward-compatible)
+// ============================================================================
+
+/**
+ * Get prompt history for a specific task (filters flat array by taskId).
  * @param {string} taskId - Task ID
- * @returns {Object|null} Task prompt history or null
+ * @returns {{ taskId: string, prompts: Object[], refinementCount: number }|null}
  */
 function getTaskPromptHistory(taskId) {
   const history = loadPromptHistory();
-  return history[taskId] || null;
+  const taskPrompts = history.prompts.filter(p => p.taskId === taskId);
+
+  if (taskPrompts.length === 0) return null;
+
+  return {
+    taskId,
+    title: taskPrompts[0]?.taskTitle || null,
+    prompts: taskPrompts,
+    refinementCount: taskPrompts.filter(p => p.isRefinement).length
+  };
 }
 
 /**
@@ -213,42 +376,13 @@ function getLastRefinement(taskId) {
 }
 
 /**
- * Mark a task as completed in prompt history
- * @param {string} taskId - Task ID
+ * Mark a task as completed in prompt history.
+ * In v2, this is a no-op for the flat array (completedAt is tracked in ready.json).
+ * Kept for backward compatibility with flow-done.js.
+ * @param {string} _taskId - Task ID (unused in v2)
  */
-function markTaskCompleted(taskId) {
-  const history = loadPromptHistory();
-
-  if (history[taskId]) {
-    history[taskId].completedAt = new Date().toISOString();
-    savePromptHistory(history);
-  }
-}
-
-/**
- * Cleanup old task entries to prevent unbounded growth
- * @param {Object} history - History object (modified in place)
- */
-function cleanupOldTasks(history) {
-  const taskIds = Object.keys(history);
-
-  if (taskIds.length <= MAX_TASK_HISTORY) {
-    return;
-  }
-
-  // Sort by startedAt and remove oldest
-  // Tasks without startedAt get epoch 0 (oldest) so they're cleaned first
-  const sorted = taskIds.sort((a, b) => {
-    const dateA = history[a].startedAt ? new Date(history[a].startedAt).getTime() : 0;
-    const dateB = history[b].startedAt ? new Date(history[b].startedAt).getTime() : 0;
-    return dateA - dateB;
-  });
-
-  const toRemove = sorted.slice(0, sorted.length - MAX_TASK_HISTORY);
-
-  for (const taskId of toRemove) {
-    delete history[taskId];
-  }
+function markTaskCompleted(_taskId) {
+  // No-op in v2 — task completion is tracked in ready.json, not prompt-history
 }
 
 // ============================================================================
@@ -271,18 +405,12 @@ function generateClarificationId() {
  */
 function generateClarificationEntry(taskId, taskTitle) {
   const taskHistory = getTaskPromptHistory(taskId);
-
-  if (!taskHistory) {
-    return null;
-  }
+  if (!taskHistory) return null;
 
   const refinements = taskHistory.prompts.filter(p => p.isRefinement);
+  if (refinements.length === 0) return null;
 
-  if (refinements.length === 0) {
-    return null; // No clarifications needed
-  }
-
-  const initial = taskHistory.prompts.find(p => p.isInitial);
+  const initial = taskHistory.prompts[0];
   const final = refinements[refinements.length - 1];
 
   return {
@@ -308,8 +436,6 @@ function appendClarificationLearning(entry) {
   ensureDir(path.dirname(clPath));
 
   const today = getTodayDate();
-
-  // Build markdown entry
   const markdown = `
 ### ${entry.id} | ${entry.taskId} | ${entry.taskTitle}
 **Initial Request:** "${truncateString(entry.initial, 200)}"
@@ -322,11 +448,9 @@ function appendClarificationLearning(entry) {
 
   try {
     let content = '';
-
     if (fileExists(clPath)) {
       content = readFile(clPath, '');
     } else {
-      // Create file with header
       content = `# Clarification Learnings
 
 This file contains learnings from user clarifications during task execution.
@@ -335,18 +459,16 @@ High-value patterns can be promoted to decisions.md for permanent rules.
 `;
     }
 
-    // Add date header if new day
     if (!content.includes(`## ${today}`)) {
       content += `\n## ${today}\n`;
     }
 
     content += markdown;
-
     writeFile(clPath, content);
     return true;
   } catch (err) {
     if (process.env.DEBUG) {
-      console.error(`[DEBUG] appendClarificationLearning: ${err.message}`);
+      console.error(`[prompt-capture] appendClarificationLearning: ${err.message}`);
     }
     return false;
   }
@@ -359,20 +481,15 @@ High-value patterns can be promoted to decisions.md for permanent rules.
  * @returns {Object} Result with entry details
  */
 function processTaskCompletion(taskId, taskTitle) {
-  // Generate entry if refinements exist
   const entry = generateClarificationEntry(taskId, taskTitle);
 
   if (!entry) {
     return { generated: false, reason: 'no-refinements' };
   }
 
-  // Append to clarifications.md
   const success = appendClarificationLearning(entry);
 
   if (success) {
-    // Mark task as completed in history
-    markTaskCompleted(taskId);
-
     return {
       generated: true,
       entry,
@@ -384,52 +501,14 @@ function processTaskCompletion(taskId, taskTitle) {
 }
 
 // ============================================================================
-// Auto-Detection from Session
-// ============================================================================
-
-/**
- * Get current task ID from durable session
- * @returns {string|null} Task ID or null
- */
-function getCurrentTaskId() {
-  try {
-    const session = loadDurableSession();
-    return session?.taskId || null;
-  } catch (err) {
-    return null;
-  }
-}
-
-/**
- * Capture prompt for current task (auto-detects task ID)
- * @param {string} prompt - User prompt text
- * @returns {Object|null} Captured entry or null
- */
-function captureCurrentPrompt(prompt) {
-  const taskId = getCurrentTaskId();
-
-  if (!taskId) {
-    // No active task - don't capture
-    return null;
-  }
-
-  return capturePrompt(taskId, prompt);
-}
-
-// ============================================================================
 // Utility Functions
 // ============================================================================
 
 /**
  * Truncate string with ellipsis
- * @param {string} str - String to truncate
- * @param {number} maxLength - Max length
- * @returns {string} Truncated string
  */
 function truncateString(str, maxLength) {
-  if (!str || str.length <= maxLength) {
-    return str || '';
-  }
+  if (!str || str.length <= maxLength) return str || '';
   return str.slice(0, maxLength - 3) + '...';
 }
 
@@ -443,15 +522,12 @@ if (require.main === module) {
 
   switch (command) {
     case 'capture': {
-      const taskId = args[1];
-      const prompt = args.slice(2).join(' ');
-
-      if (!taskId || !prompt) {
-        console.log('Usage: node flow-prompt-capture.js capture <taskId> <prompt>');
+      const prompt = args.slice(1).join(' ');
+      if (!prompt) {
+        console.log('Usage: node flow-prompt-capture.js capture <prompt>');
         process.exit(1);
       }
-
-      const result = capturePrompt(taskId, prompt);
+      const result = capturePrompt(prompt);
       console.log(JSON.stringify(result, null, 2));
       break;
     }
@@ -463,20 +539,30 @@ if (require.main === module) {
         console.log(JSON.stringify(history, null, 2));
       } else {
         const allHistory = loadPromptHistory();
-        console.log(JSON.stringify(allHistory, null, 2));
+        console.log(JSON.stringify({ version: allHistory.version, count: allHistory.prompts.length, prompts: allHistory.prompts.slice(-20) }, null, 2));
       }
+      break;
+    }
+
+    case 'tag': {
+      const taskId = args[1];
+      if (!taskId) {
+        console.log('Usage: node flow-prompt-capture.js tag <taskId> [title]');
+        process.exit(1);
+      }
+      const title = args.slice(2).join(' ') || null;
+      const result = tagRecentPrompts(taskId, title);
+      console.log(JSON.stringify(result, null, 2));
       break;
     }
 
     case 'complete': {
       const taskId = args[1];
       const title = args.slice(2).join(' ') || taskId;
-
       if (!taskId) {
         console.log('Usage: node flow-prompt-capture.js complete <taskId> [title]');
         process.exit(1);
       }
-
       const result = processTaskCompletion(taskId, title);
       console.log(JSON.stringify(result, null, 2));
       break;
@@ -488,9 +574,13 @@ if (require.main === module) {
         console.log('Usage: node flow-prompt-capture.js analyze <prompt>');
         process.exit(1);
       }
+      console.log(JSON.stringify({ prompt, isRefinement: detectRefinement(prompt) }, null, 2));
+      break;
+    }
 
-      const isRefinement = detectRefinement(prompt);
-      console.log(JSON.stringify({ prompt, isRefinement }, null, 2));
+    case 'migrate': {
+      const history = loadPromptHistory(); // auto-migrates on load
+      console.log(JSON.stringify({ version: history.version, promptCount: history.prompts.length, migrated: true }, null, 2));
       break;
     }
 
@@ -499,10 +589,12 @@ if (require.main === module) {
 Usage: node flow-prompt-capture.js <command> [args]
 
 Commands:
-  capture <taskId> <prompt>  - Capture a prompt for a task
-  history [taskId]           - Show prompt history (all or for specific task)
-  complete <taskId> [title]  - Process task completion (generate learning entry)
-  analyze <prompt>           - Analyze if prompt is a refinement
+  capture <prompt>            - Capture a prompt (taskId auto-detected)
+  history [taskId]            - Show prompt history (all or filtered by task)
+  tag <taskId> [title]        - Tag recent untagged prompts with a taskId
+  complete <taskId> [title]   - Process task completion (generate learning entry)
+  analyze <prompt>            - Analyze if prompt is a refinement
+  migrate                     - Force v1 → v2 migration
 `);
   }
 }
@@ -517,10 +609,11 @@ module.exports = {
   analyzePrompt,
   REFINEMENT_PATTERNS,
 
-  // Prompt history
+  // Prompt history (v2)
   loadPromptHistory,
   capturePrompt,
   captureCurrentPrompt,
+  tagRecentPrompts,
   getTaskPromptHistory,
   getRefinementCount,
   getLastRefinement,

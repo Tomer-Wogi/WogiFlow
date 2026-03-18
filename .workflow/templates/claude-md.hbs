@@ -142,7 +142,7 @@ See `.claude/docs/commands.md` for complete command reference.
 | "show tasks", "what's ready", "available tasks" | `/wogi-ready` |
 | "project status", "show status", "where are we" | `/wogi-status` |
 | "check health", "workflow health", "is everything ok" | `/wogi-health` |
-| "wrap up", "end session", "that's all" | `/wogi-session-end` |
+| "wrap up", "end session", "that's all" | `/wogi-session-end` (**intent-check required** — see note below) |
 | "compact context", "save context", "running low on context" | `/wogi-pre-compact` |
 | "show roadmap", "what's planned", "future work", "deferred items" | `/wogi-roadmap` |
 | "debug this", "investigate hypotheses", "competing theories", "parallel debug" | `/wogi-debug-hypothesis` |
@@ -161,6 +161,14 @@ See `.claude/docs/commands.md` for complete command reference.
 | "save for later", "add to pending", "queue this", "pending items", "show pending" | `/wogi-pending` |
 
 **IMPORTANT**: When a user's message matches one of these patterns, immediately invoke the Skill tool with the corresponding command. Do not ask for confirmation. These `/wogi-*` commands satisfy the mandatory routing requirement — you do NOT also need to invoke `/wogi-start` when a detection match exists. `/wogi-start` is the fallback for messages that don't match this table.
+
+**Session-end intent check**: `/wogi-session-end` requires extra care. Phrases like "wrap up", "that's all", "let's finish with this" often mean "finish this topic" not "end the entire session." Only invoke `/wogi-session-end` when the user clearly intends to **stop working entirely** — not when they're concluding one topic before moving to another. Examples:
+- "that's all for today, thanks" → session-end (clear finality)
+- "let's wrap up this task and move on to the auth bug" → NOT session-end (continuing work)
+- "I'm done" → session-end (if no follow-up topic mentioned)
+- "let's finish with that and then do X" → NOT session-end (next topic follows)
+
+When in doubt, route through `/wogi-start` which will classify correctly.
 
 ## CRITICAL: Universal Entry Point — ALL Requests
 
@@ -274,7 +282,29 @@ Before closing any task, ensure all required gates pass (per `config.json → qu
 
 ## Context Management
 
-Use `/wogi-pre-compact` when context is getting large. Before compacting: update progress.md, ensure request-log is current, commit work.
+Context compaction happens automatically — WogiFlow persists all critical state to disk continuously, and the PostCompact hook restores it after compaction. You do NOT need to manually run `/wogi-pre-compact` before compaction.
+
+**What survives compaction automatically** (via PostCompact hook + state files):
+- Active task ID, title, type, and acceptance criteria
+- Which criteria are completed vs pending (from durable-session.json)
+- Current workflow phase
+- Changed files list (from task-checkpoint.json)
+- Last request-log entry number
+- Routing enforcement (re-armed automatically)
+
+**`/wogi-pre-compact` is optional** — use it only when you want a detailed summary for a very long session. It is NOT required for state safety.
+
+**For L1+ tasks**: The pre-task context estimator (Step 0.25) checks if the task fits in remaining context. If it doesn't → compact BEFORE starting to avoid mid-task compaction.
+
+## Compact Instructions
+
+When compacting this conversation, preserve the following WogiFlow state:
+- The current task ID and title from `.workflow/state/ready.json` inProgress array
+- Which acceptance criteria are done vs pending
+- The current workflow phase (routing, exploring, coding, validating, completing)
+- The list of files changed in this session
+- Any spec decisions or architectural choices made during this session
+- Read `.workflow/state/task-checkpoint.json` after compaction for full state recovery
 
 ## Continuous Learning
 

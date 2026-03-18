@@ -11,6 +11,83 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-259 | 2026-03-18
+**Type**: new
+**Tags**: #compaction #hooks #context-management #post-compact #checkpoint
+**Request**: "Make /wogi-pre-compact redundant — seamless auto-compaction"
+**Result**: Three changes to make auto-compaction safe: (1) Added "Compact Instructions" section to CLAUDE.md template telling Claude Code's native compactor to preserve WogiFlow state (task ID, criteria, phase, changed files). (2) Enriched PostCompact hook with acceptance criteria from task-checkpoint.json, changed files from checkpoint or git diff, and last request-log entry number — giving AI everything needed to continue seamlessly. (3) Added continuous file tracking in post-tool-use.js (writes to task-checkpoint.json after every Edit/Write) and criteria persistence when durable session initializes. Updated Context Management section in template to document that /wogi-pre-compact is now optional.
+**Files**: .workflow/templates/claude-md.hbs, scripts/hooks/core/post-compact.js, scripts/hooks/entry/claude-code/post-tool-use.js, scripts/flow-task-checkpoint.js, CLAUDE.md
+
+### R-258 | 2026-03-18
+**Type**: change
+**Tags**: #methodology #verification #quality-gates #wogi-start
+**Request**: "Strengthen Step 3.55 for 'remove/fix all X' tasks — inventory-before-and-after approach"
+**Result**: Replaced vague semantic verification with mandatory 3-phase inventory methodology: (A) pre-implementation inventory — read files and classify by PURPOSE not pattern, display numbered checklist, get user confirmation, (B) implementation against concrete inventory, (C) post-implementation re-inventory + diff. Generalizes across all removal types (mock data, console.log, hardcoded URLs, deprecated APIs, etc.). Key insight: AI must commit to a numbered inventory BEFORE starting work — cannot later claim done when items remain.
+**Files**: .claude/commands/wogi-start.md
+
+### R-257 | 2026-03-18
+**Type**: new
+**Tags**: #hooks #enforcement #quality-gates #request-log #registry
+**Request**: "Mechanical enforcement for request-log and registry updates — pre-commit blocking gate + auto registry scan"
+**Result**: (1) Created commit-log-gate.js core module — blocks `git commit` when active task exists but request-log.md not in staged changes. Whitelists: no active task, merge commits, state-only commits, gate disabled. (2) Wired into pre-tool-use.js after routing gate, fail-open on errors. (3) Added auto registry scan in post-tool-use.js — fires after every successful `git commit` regardless of task level, removing AI dependency for registry updates. (4) Added `enforcement.commitLogGate.enabled: true` config toggle.
+**Files**: scripts/hooks/core/commit-log-gate.js (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/post-tool-use.js, .workflow/config.json
+
+### R-256 | 2026-03-17
+**Type**: fix
+**Tags**: #bugfix #architecture #prompt-history
+**Request**: "Fix prompt history — implement Approach B (flat array architecture)"
+**Result**: Rewrote flow-prompt-capture.js from task-keyed (v1) to flat chronological array (v2). Fixed all 3 bugs: (1) First prompt no longer lost — capturePrompt() always saves with taskId: null, tagRecentPrompts() retrospectively tags after task creation. (2) Stale taskId detected — getCurrentTaskId() cross-checks durable-session against ready.json inProgress. (3) All prompts stored — captureCurrentPrompt() always saves. Added v1→v2 auto-migration on first load. Backward-compatible API: getTaskPromptHistory() filters flat array, processTaskCompletion() signature unchanged, markTaskCompleted() is graceful no-op. New CLI: capture (no taskId needed), tag, migrate commands. 5/5 functional tests pass.
+**Files**: scripts/flow-prompt-capture.js
+
+### R-255 | 2026-03-17
+**Type**: fix
+**Tags**: #review #bugfix #security #quality
+**Request**: "Fix 6 review findings round 3"
+**Result**: (1) CRITICAL — imported getTodayDate from flow-output.js into flow-standards-learner.js (pre-existing bug, never worked). (2) MEDIUM — moved title-strip into task-completed withLock callback, simplified clearProgress to only delete file (no more unlocked ready.json mutation). (3) LOW — replaced raw JSON.parse with safeJsonParseString in progress tracker CLI. (4) LOW — changed updateTitle to opt-in (=== true). (5) LOW — removed unnecessary PATHS/safeJsonParse aliases in post-compact.js section 5.
+**Files**: scripts/flow-standards-learner.js, scripts/flow-progress-tracker.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/post-compact.js
+
+### R-254 | 2026-03-17
+**Type**: new
+**Tags**: #progress #ux #statusline
+**Request**: "Build progress tracking system for long-running tasks"
+**Result**: Built flow-progress-tracker.js with state management + ASCII progress bar formatting. Added progress tracking protocol to wogi-start.md (phase mapping for 5 phases, checkpoint format, state file updates). Added progress sections to wogi-review.md and wogi-audit.md with phase mappings. Integrated auto-clear into task-completed hook. Progress state written to .workflow/state/task-progress.json, task title in ready.json prefixed with [N/M] for status line visibility. Format: [████░░░░░░] 40% Phase 2: AI Review — Agent 3/6 complete.
+**Files**: scripts/flow-progress-tracker.js (new), scripts/hooks/core/task-completed.js, .claude/commands/wogi-start.md, .claude/commands/wogi-review.md, .claude/commands/wogi-audit.md
+
+### R-253 | 2026-03-17
+**Type**: fix
+**Tags**: #review #bugfix #quality
+**Request**: "Fix 5 delta review findings"
+**Result**: (1) Cleaned compactPath/compactFs aliases to standard path/fs names in post-compact.js (block-scoped, not function-scoped — reviewer was wrong about reuse). (2) Removed [-]? optional hyphen from patternKey regex — hyphens required for exact table matching. (3) Made fuzzy threshold proportional: max(3, ceil(words*0.5)). (4) Added promotionFailed counter separate from tracking. (5) Added backtick fence and angle bracket stripping to sanitizeForMarkdown.
+**Files**: scripts/hooks/core/post-compact.js, scripts/flow-standards-learner.js, scripts/flow-audit.js
+
+### R-252 | 2026-03-17
+**Type**: change
+**Tags**: #review #learning #rules #enforcement
+**Request**: "Wire pattern promotion + enforcement gap functionality into /wogi-review"
+**Result**: Wired the audit pattern promotion pipeline into /wogi-review at two integration points: (1) Phase 3 enhanced with step 3.3 — after standards check, violations are clustered and fed through recordAuditPattern() / checkEnforcementGap() for pattern tracking, auto-promotion, and enforcement gap detection. (2) Phase 5.4 learning capture replaced with full promotion pipeline — all findings (not just standards) feed into the same infrastructure as /wogi-audit, including enforcement gap investigation with root cause analysis (too vague, too long, outdated, no enforcement, contradictory, pre-existing) and suggested fixes. Reviews and audits now share the same promotion counter — a pattern found 2x in audits + 1x in review hits the threshold and auto-promotes.
+**Files**: .claude/commands/wogi-review.md
+
+### R-251 | 2026-03-17
+**Type**: fix
+**Tags**: #review #security #bugfix #dry
+**Request**: "Fix 9 review findings from code review"
+**Result**: Fixed all 9 findings: (1) CRITICAL — path ReferenceError in post-compact.js section 5 — added const compactPath = require('node:path') in correct scope. (2-3) HIGH — ReDoS in flow-standards-learner.js — added escapeRegex() import and applied to all 3 regex construction sites (checkEnforcementGap, recordViolationPattern, promoteToDecisions). (4) MEDIUM — markdown/prompt injection — added sanitizeForMarkdown() and applied to all cluster data interpolated into decisions.md. (5) MEDIUM — DRY violation — deleted mapCategoryForPromotion() and buildPromotionRuleTemplate() from flow-audit.js, now imports from flow-standards-learner.js. (6) MEDIUM — silent promotion failure — added PROMOTION_FAILED status with failureReason instead of misleading TRACKING. (7) Deferred — raw JSON.stringify in post-compact.js acceptable for isolated try block. (8) LOW — extracted SYSTEMIC_THRESHOLD and MEDIUM_THRESHOLD constants. (9) LOW — separated patternId check from fuzzy description matching, added stopword filter.
+**Files**: scripts/flow-standards-learner.js, scripts/flow-audit.js, scripts/hooks/core/post-compact.js
+
+### R-250 | 2026-03-17
+**Type**: new
+**Tags**: #audit #learning #rules #enforcement
+**Request**: "Add pattern promotion step to /wogi-audit — AI clustering, enforcement gap investigation, auto-promotion"
+**Result**: Built 3-phase pattern promotion system in /wogi-audit. Phase 1: AI-as-judge semantic clustering of findings (Sonnet agent groups semantically similar findings into canonical patterns). Phase 2: Cross-reference with decisions.md (enforcement gaps), feedback-patterns.md (count tracking + auto-promotion), and last-audit.json (recurrence detection). Phase 3: Enforcement gap investigation — when a rule exists but is still violated, investigates WHY (too vague, too long, outdated, no enforcement, contradictory, pre-existing) and recommends action (rewrite, split, add to standards gate, backfill). Extended flow-standards-learner.js with checkEnforcementGap() and recordAuditPattern(). Added promote subcommand to flow-audit.js. Updated wogi-audit.md with Step 4.5 (3 phases), expanded Step 5 menu (investigate gaps, apply promotions), and enriched last-audit.json schema (patterns, enforcementGaps, promotions fields).
+**Files**: scripts/flow-standards-learner.js, scripts/flow-audit.js, .claude/commands/wogi-audit.md, .workflow/specs/wf-6a06eafd.md
+
+### R-249 | 2026-03-17
+**Type**: change
+**Tags**: #compatibility #hooks #models #claude-code
+**Request**: "Review Claude Code 2.1.76 + 2.1.77 release notes and update WogiFlow"
+**Result**: Updated for 2.1.77 compatibility: (1) Sonnet 4.6 maxOutputTokens 64k→128k in model registry. (2) Added 2.1.77 soft version gate. (3) Added compaction circuit breaker awareness to PostCompact hook (tracks rapid compactions, warns at 3+). (4) Added 2.1.76 + 2.1.77 sections to compatibility doc with all relevant impacts. (5) Updated hook events table with InstructionsLoaded + PostCompact. (6) Updated worktree comparison table with sparse checkout. (7) Verified PreToolUse allow/deny behavior is correct — no code change needed. (8) Verified compound bash permissions are single-command patterns — no impact. (9) Confirmed Elicitation hooks already listed in UNUSED_SUPPORTED_EVENTS.
+**Files**: .workflow/models/registry.json, scripts/flow-version-check.js, scripts/hooks/core/post-compact.js, .claude/docs/claude-code-compatibility.md
+
 ### R-248 | 2026-03-13
 **Type**: fix
 **Tags**: #review #bugfix #security #performance

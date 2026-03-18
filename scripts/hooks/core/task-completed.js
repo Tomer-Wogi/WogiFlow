@@ -93,6 +93,12 @@ async function handleTaskCompleted(input) {
       completedTask.status = 'completed';
       completedTask.completedAt = new Date().toISOString();
 
+      // Strip progress prefix from title (e.g., "[3/5] Title" → "Title")
+      // Done inside the lock to avoid race conditions with progress tracker
+      if (completedTask.title) {
+        completedTask.title = completedTask.title.replace(/^\[\d+\/\d+\]\s*/, '');
+      }
+
       // Remove from inProgress
       ready.inProgress = ready.inProgress.filter(t =>
         (typeof t === 'string' ? t : t.id) !== completedTask.id
@@ -136,6 +142,19 @@ async function handleTaskCompleted(input) {
       } catch (err) {
         if (process.env.DEBUG) {
           console.error(`[Task Completed] Phase reset failed: ${err.message}`);
+        }
+      }
+    }
+
+    // Clear progress tracker state on task completion
+    if (result.completed) {
+      try {
+        const { clearProgress } = require('../../flow-progress-tracker');
+        clearProgress();
+      } catch (err) {
+        // Non-fatal — progress tracker may not exist in older installs
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Progress clear failed: ${err.message}`);
         }
       }
     }

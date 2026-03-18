@@ -23,6 +23,31 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 /wogi-review --skip-optimization  # Skip solution optimization suggestions
 ```
 
+## Progress Tracking
+
+At each phase checkpoint, display a progress bar AND update the progress state file:
+
+```bash
+node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"wf-XXX","command":"/wogi-review","phase":"AI Review","phaseNum":2,"totalPhases":5,"step":"Agent 3/6 complete","stepNum":3,"totalSteps":6}'
+```
+
+**Standard format for each checkpoint:**
+```
+━━━ PROGRESS: [████░░░░░░] 40% Phase 2: AI Review ━━━
+  Agent 3/6 complete
+```
+
+**Phase mapping for /wogi-review:**
+| Phase | phaseNum | Description |
+|-------|----------|-------------|
+| 1 | Verification Gates | Syntax, lint, tests |
+| 2 | AI Review | N agents (sub-steps = agents) |
+| 3 | Standards + Promotion | Compliance check + pattern learning |
+| 4 | Optimization | Solution suggestions |
+| 5 | Post-Review | Fix routing, learning, archive |
+
+On review completion, clear progress: `node node_modules/wogiflow/scripts/flow-progress-tracker.js clear`
+
 ## Review Phases (v5.0)
 
 ```
@@ -695,7 +720,20 @@ Or if the runtime script is not available, manually check:
 - `naming-conventions.md` - File names (kebab-case), catch variables (`err` not `e`)
 - `security-patterns.md` - Raw JSON.parse, unprotected fs.readFileSync
 
-**3.3. Display Phase 3 results**:
+**3.3. Pattern Promotion on Violations**:
+
+After running the standards check, feed any violations through the pattern promotion pipeline (same infrastructure as `/wogi-audit` Step 4.5):
+
+1. **Cluster violations by pattern**: Group findings that describe the same underlying issue. For review (smaller scope than audit), simple grouping by violation `type` + `category` is sufficient — no AI clustering agent needed.
+
+2. **Cross-reference with learning pipeline**: For each cluster, call `flow-audit.js promote` or use the learner directly:
+   - Check `decisions.md` — if a rule exists for this pattern, it's an **ENFORCEMENT_GAP**
+   - Record/increment in `feedback-patterns.md` via `recordAuditPattern()`
+   - Auto-promote to `decisions.md` if count reaches threshold (default 3)
+
+3. **Flag enforcement gaps**: When a violation matches an existing rule in `decisions.md`, this is critical — the rule exists but the AI still violated it. Mark as `ENFORCEMENT_GAP` and include in the report.
+
+**3.4. Display Phase 3 results**:
 ```
 ═══════════════════════════════════════
 PHASE 3: STANDARDS COMPLIANCE [3/5]
@@ -704,6 +742,13 @@ PHASE 3: STANDARDS COMPLIANCE [3/5]
 ✓ decisions.md: passed
 ✗ naming-conventions: 1 violation [MUST FIX]
    → src/utils.ts:45 - Catch variable "e" should be "err"
+
+Pattern Learning:
+  Patterns tracked: N
+  - ENFORCEMENT_GAP: 1 (rule exists, still violated!)
+    ⚠ "err in catch blocks" — rule in ## Coding Standards, violated in src/utils.ts
+  - Tracked: 1 (security-json-parse-safety: 2/3 toward promotion)
+  - Promoted: 0
 
 Summary: N checks, M violations (X must-fix, Y warnings)
 
@@ -770,10 +815,11 @@ Phase Results:
   Phase 1 (Verification): 4/4 gates passed
   Phase 2 (AI Review): M findings from N agents
   Phase 2.5 (Git Claims): X verified, Y missing, Z unplanned
-  Phase 3 (Standards): N checks, M violations
+  Phase 3 (Standards): N checks, M violations, P patterns tracked
   Phase 4 (Optimization): N suggestions
 
 Total Findings: N (X critical, Y high, Z medium, W low)
+Pattern Learning: P patterns tracked, M promoted, G enforcement gaps
 Phases: 5/5 executed
 ```
 
@@ -867,22 +913,48 @@ After the fix loop completes (Options 1/2), or immediately (Option 4), handle un
 
 **Learning signal detection:**
 
-After completing fixes, check for recurring patterns:
-1. If 3+ findings share the same `category` or `file` → log to `feedback-patterns.md`
-2. Display warning suggesting `/wogi-decide` to create a preventive rule
+After completing fixes, feed ALL findings (not just standards violations) through the pattern promotion pipeline:
 
-**Update `last-review.json`**: Set `"triaged": true` on the review after all findings are addressed (fixed, deferred, or dismissed).
+1. **Cluster all findings by category + type** — group findings that describe the same underlying pattern
+2. **Run promotion pipeline** for each cluster:
+   - Check `decisions.md` for enforcement gaps (rule exists, still violated)
+   - Record/increment in `feedback-patterns.md` via the standards learner
+   - Auto-promote to `decisions.md` when count reaches threshold
+3. **Enforcement gap investigation** — for any `ENFORCEMENT_GAP` patterns, launch an Agent (subagent_type=Explore, model=sonnet) to investigate WHY the rule was violated:
+   - Read the specific rule from `decisions.md`
+   - Read the violating code
+   - Classify root cause: `TOO_VAGUE` | `TOO_LONG` | `OUTDATED` | `NO_ENFORCEMENT` | `CONTRADICTORY` | `PRE_EXISTING`
+   - Recommend action: `REWRITE` | `SPLIT` | `ADD_TO_STANDARDS_GATE` | `BACKFILL` | `NO_ACTION`
+   - Display investigation results with suggested fixes
+
+4. **Display learning summary**:
+```
+━━━ PATTERN LEARNING ━━━
+  Patterns from this review: N
+  - Promoted to rules: M (auto-promoted to decisions.md)
+  - Tracking: K (count below threshold)
+  - Enforcement gaps: G (rule exists, still violated!)
+    [For each gap]:
+    ⚠ "pattern description" — Root cause: TOO_VAGUE
+      Recommendation: REWRITE — [suggested improved rule text]
+```
+
+5. **Offer gap resolution**: If enforcement gaps were found, offer to apply suggested rewrites to `decisions.md` immediately — fixing the rule while the violation is fresh in context.
+
+**Update `last-review.json`**: Set `"triaged": true` on the review after all findings are addressed (fixed, deferred, or dismissed). Include `patterns` and `enforcementGaps` arrays in the saved review (same schema as `last-audit.json`).
 
 **Config toggles** (all in `config.originTaskTracing`):
 - `annotateCompletedTasks: false` → Skip same-session detection, all findings create standalone tasks
 - `traceOrigin: false` → No `originTask` field on fix tasks
-- `learningSignal.enabled: false` → No pattern detection
+- `learningSignal.enabled: false` → No pattern detection or promotion
 - `sameSessionWindow: "2h"` → Time window for same-session detection (default: 2 hours)
 
-**5.4. Learning capture**:
-- Check each finding against `feedback-patterns.md`
-- For preventable patterns, create correction records
-- If a pattern has occurred 3+ times → Suggest promoting to `decisions.md`
+**5.4. Learning capture (ENHANCED — uses audit promotion pipeline)**:
+The learning capture now uses the same infrastructure as `/wogi-audit` Step 4.5:
+- `flow-standards-learner.js`: `recordAuditPattern()`, `checkEnforcementGap()`, `promoteToDecisions()`
+- `flow-audit.js`: `promoteAuditPatterns()` for batch processing
+
+This ensures that patterns discovered during code review feed into the same promotion pipeline as audit findings — a violation found 2x in audits and 1x in review reaches the threshold of 3 and auto-promotes.
 
 **5.5. Archive review report**:
 - Save review report to `.workflow/reviews/YYYY-MM-DD-HHMMSS-review.md`
@@ -902,8 +974,9 @@ Findings: N total
 Fixed: M  |  Tasks Created: Z  |  Annotated: A  |  Dismissed: W
 Saved to: .workflow/state/last-review.json
 
-Same-session annotations: A findings linked to N completed tasks
-Origin tracing: Z fix tasks with origin references
+Pattern Learning:
+  Patterns tracked: N  |  Promoted: M  |  Enforcement gaps: G
+  [If gaps found]: Gap fixes applied to decisions.md
 
 Run /wogi-review-fix --pending to batch-process deferred items.
 

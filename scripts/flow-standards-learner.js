@@ -18,8 +18,10 @@ const {
   readFile,
   writeFile,
   getConfig,
-  color
+  color,
+  escapeRegex
 } = require('./flow-utils');
+const { getTodayDate } = require('./flow-output');
 
 // ============================================================================
 // Constants
@@ -100,6 +102,158 @@ const VIOLATION_LEARNING_MAP = {
     }
   }
 };
+
+// ============================================================================
+// Enforcement Gap Detection
+// ============================================================================
+
+/**
+ * Check if a pattern has an existing rule in decisions.md
+ * @param {string} patternId - kebab-case pattern identifier
+ * @param {string} [description] - description to also search for
+ * @returns {{ exists: boolean, ruleText: string|null, section: string|null }}
+ */
+function checkEnforcementGap(patternId, description) {
+  if (!fileExists(DECISIONS_PATH)) {
+    return { exists: false, ruleText: null, section: null };
+  }
+
+  const content = readFile(DECISIONS_PATH, '');
+
+  // Extract description words for fuzzy matching (separate from patternId)
+  const STOPWORDS = new Set(['code', 'file', 'data', 'type', 'that', 'this', 'with', 'from', 'have', 'been', 'each', 'when', 'should', 'must', 'function', 'class', 'module']);
+  const descriptionWords = description
+    ? description.split(/\s+/)
+        .filter(w => w.length >= 4 && !STOPWORDS.has(w.toLowerCase()))
+        .map(w => w.toLowerCase())
+        .slice(0, 5)
+    : [];
+
+  // Find which section contains the match
+  const sections = content.split(/^## /m).slice(1);
+  for (const section of sections) {
+    const sectionTitle = section.split('\n')[0].trim();
+    const sectionLower = section.toLowerCase();
+
+    // Check if pattern ID appears in this section (exact match — most reliable)
+    if (sectionLower.includes(patternId.toLowerCase())) {
+      // Extract the rule block (from ### to next ### or end of section)
+      // escapeRegex prevents ReDoS from patternId with regex metacharacters
+      const escapedId = escapeRegex(patternId).replace(/-/g, '[\\s-]');
+      const ruleMatch = section.match(new RegExp(
+        `### [^\\n]*${escapedId}[^\\n]*\\n([\\s\\S]*?)(?=###|$)`,
+        'i'
+      ));
+      return {
+        exists: true,
+        ruleText: ruleMatch ? ruleMatch[0].trim().slice(0, 2000) : section.trim().slice(0, 2000),
+        section: `## ${sectionTitle}`
+      };
+    }
+
+    // Fuzzy fallback: check description words ONLY (patternId excluded to avoid weak matches)
+    // Proportional threshold: at least 50% of words must match, minimum 3
+    if (descriptionWords.length >= 3) {
+      const matchCount = descriptionWords.filter(word => sectionLower.includes(word)).length;
+      const threshold = Math.max(3, Math.ceil(descriptionWords.length * 0.5));
+      if (matchCount >= threshold) {
+        return {
+          exists: true,
+          ruleText: section.trim().slice(0, 2000),
+          section: `## ${sectionTitle}`
+        };
+      }
+    }
+  }
+
+  return { exists: false, ruleText: null, section: null };
+}
+
+/**
+ * Record a pattern from an audit finding (wraps recordViolationPattern with audit-specific logic).
+ * Creates a synthetic learning object from audit cluster data.
+ *
+ * @param {Object} cluster - Clustered audit pattern
+ * @param {string} cluster.patternId - kebab-case canonical name
+ * @param {string} cluster.category - architecture, code-style, security, etc.
+ * @param {string} cluster.description - one-sentence description
+ * @param {number} cluster.instanceCount - number of files affected
+ * @param {Object[]} [cluster.instances] - array of { file, detail }
+ * @returns {Object} Result with status, count, shouldPromote
+ */
+function recordAuditPattern(cluster) {
+  const safeDesc = sanitizeForMarkdown(cluster.description, 100);
+  // Build a synthetic learning object compatible with recordViolationPattern
+  const learning = {
+    canLearn: true,
+    violationType: cluster.category,
+    category: mapAuditCategoryToLearnerCategory(cluster.category),
+    subcategory: cluster.patternId,
+    patternName: safeDesc,
+    preventionPrompt: `Avoid: ${safeDesc}`,
+    ruleTemplate: buildAuditRuleTemplate(cluster),
+    message: `${cluster.instanceCount} instances found across project (audit source)`,
+    source: 'audit'
+  };
+
+  return recordViolationPattern(learning);
+}
+
+/**
+ * Map audit category names to learner category names
+ */
+function mapAuditCategoryToLearnerCategory(auditCategory) {
+  const map = {
+    'architecture': 'architecture',
+    'code-style': 'code-style',
+    'security': 'security',
+    'performance': 'code-style',
+    'consistency': 'code-style',
+    'dependencies': 'architecture',
+    'tech-debt': 'architecture',
+    'modernization': 'code-style'
+  };
+  return map[auditCategory] || 'code-style';
+}
+
+/**
+ * Sanitize a value for safe interpolation into markdown state files.
+ * Strips heading markers, pipe chars (break tables), and newlines.
+ * Prevents prompt injection via decisions.md or feedback-patterns.md.
+ *
+ * @param {string} value - Raw string
+ * @param {number} [maxLen=200] - Maximum length
+ * @returns {string} Sanitized string
+ */
+function sanitizeForMarkdown(value, maxLen = 200) {
+  return String(value)
+    .replace(/^#+\s/gm, '')    // strip heading markers
+    .replace(/\|/g, '-')       // replace pipes (break table formatting)
+    .replace(/`{3,}/g, '')     // strip code fence markers (prevent breakout)
+    .replace(/[<>]/g, '')      // strip angle brackets (prevent HTML injection)
+    .replace(/[\r\n]+/g, ' ')  // collapse newlines
+    .slice(0, maxLen)
+    .trim();
+}
+
+/**
+ * Build a rule template from an audit cluster
+ */
+function buildAuditRuleTemplate(cluster) {
+  const safeDesc = sanitizeForMarkdown(cluster.description, 200);
+  const files = (cluster.instances || [])
+    .slice(0, 5)
+    .map(i => `\`${sanitizeForMarkdown(i.file, 100)}\``)
+    .join(', ');
+
+  const moreCount = (cluster.instanceCount || 0) - 5;
+  const filesList = moreCount > 0 ? `${files}, and ${moreCount} more` : files;
+
+  return `### ${safeDesc}
+**Source**: Audit pattern promotion (${cluster.instanceCount} instances)
+**Files**: ${filesList || 'Multiple files'}
+**Rule**: ${safeDesc}`;
+}
 
 // ============================================================================
 // Pattern Analysis
@@ -223,7 +377,10 @@ function recordViolationPattern(learning) {
 
   // Check if pattern already exists in table
   const dateStr = getTodayDate();
-  const patternRegex = new RegExp(`\\|\\s*[\\d-]+\\s*\\|\\s*${patternKey.replace(/[-]/g, '[-]?')}\\s*\\|\\s*(\\d+)\\s*\\|`, 'i');
+  // escapeRegex prevents ReDoS from patternKey with regex metacharacters
+  // Hyphens are required (not optional) — patternKey is kebab-case and must match exactly
+  const escapedKey = escapeRegex(patternKey);
+  const patternRegex = new RegExp(`\\|\\s*[\\d-]+\\s*\\|\\s*${escapedKey}\\s*\\|\\s*(\\d+)\\s*\\|`, 'i');
 
   if (patternRegex.test(content)) {
     // Update existing count
@@ -362,8 +519,10 @@ ${learning.ruleTemplate}
   try {
     let patternsContent = readFile(FEEDBACK_PATTERNS_PATH, '');
     const patternKey = `${learning.violationType}-${learning.patternName}`.replace(/\s+/g, '-').toLowerCase();
+    // escapeRegex prevents ReDoS from patternKey with regex metacharacters
+    const escapedPromoteKey = escapeRegex(patternKey);
     patternsContent = patternsContent.replace(
-      new RegExp(`(\\|\\s*[\\d-]+\\s*\\|\\s*${patternKey}\\s*\\|\\s*\\d+\\s*\\|)\\s*-\\s*\\|\\s*Monitor\\s*\\|`, 'i'),
+      new RegExp(`(\\|\\s*[\\d-]+\\s*\\|\\s*${escapedPromoteKey}\\s*\\|\\s*\\d+\\s*\\|)\\s*-\\s*\\|\\s*Monitor\\s*\\|`, 'i'),
       `$1 decisions.md | **PROMOTED** |`
     );
     fs.writeFileSync(FEEDBACK_PATTERNS_PATH, patternsContent, 'utf-8');
@@ -680,8 +839,13 @@ Examples:
 module.exports = {
   analyzeViolationForLearning,
   recordViolationPattern,
+  recordAuditPattern,
   promoteToDecisions,
   syncToRulesDir,
+  checkEnforcementGap,
+  mapAuditCategoryToLearnerCategory,
+  buildAuditRuleTemplate,
+  sanitizeForMarkdown,
   getPreventionPrompts,
   formatPreventionPrompts,
   learnFromViolations,

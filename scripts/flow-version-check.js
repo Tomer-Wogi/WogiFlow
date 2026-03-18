@@ -124,6 +124,7 @@ function checkClaudeCodeVersionOnce() {
     { version: [2, 1, 50], features: 'worktree hooks, agent isolation' },
     { version: [2, 1, 72], features: 'ConfigChange/InstructionsLoaded hooks, effort levels' },
     { version: [2, 1, 76], features: 'PostCompact hook (state recovery after compaction)' },
+    { version: [2, 1, 77], features: 'Elicitation hooks, worktree sparse checkout, 128k output tokens, compaction circuit breaker' },
   ];
 
   const disabledFeatures = SOFT_GATES

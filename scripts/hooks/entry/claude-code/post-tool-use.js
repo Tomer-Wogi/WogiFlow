@@ -113,6 +113,26 @@ async function main() {
               if (process.env.DEBUG) console.error(`[post-tool-use] setCurrentTask: ${err.message}`);
             }
 
+            // v7.0: Initialize task checkpoint with criteria for PostCompact recovery
+            try {
+              const { saveCheckpoint } = require('../../../flow-task-checkpoint');
+              const criteriaList = (task.acceptanceCriteria || task.scenarios || [])
+                .map((c, i) => ({
+                  id: `ac-${i + 1}`,
+                  text: typeof c === 'string' ? c : (c.description || c.title || `Criterion ${i + 1}`),
+                  done: false
+                }));
+              await saveCheckpoint({
+                taskId,
+                taskTitle,
+                currentPhase: 'coding',
+                criteria: criteriaList,
+                changedFiles: []
+              });
+            } catch (err) {
+              if (process.env.DEBUG) console.error(`[post-tool-use] Checkpoint init: ${err.message}`);
+            }
+
             if (process.env.DEBUG) {
               console.error(`[post-tool-use] Initialized durable session for ${taskId} (prompt-path bridge)`);
             }
@@ -122,6 +142,31 @@ async function main() {
         // Non-blocking — durable session init should never fail the hook
         if (process.env.DEBUG) {
           console.error(`[post-tool-use] Durable session bridge: ${err.message}`);
+        }
+      }
+    }
+
+    // Auto registry scan after successful git commit (fire-and-forget)
+    // v7.0: Mechanical enforcement — AI no longer needs to remember to run registry scan.
+    // Runs after every commit, regardless of task level (L3 included).
+    if (toolName === 'Bash' && toolInput.command && !toolFailed) {
+      const { isGitCommit } = require('../../core/commit-log-gate');
+      if (isGitCommit(toolInput.command)) {
+        try {
+          const { RegistryManager } = require('../../../flow-registry-manager');
+          const manager = new RegistryManager();
+          manager.loadPlugins();
+          manager.activatePlugins();
+          manager.scanAll().catch((err) => {
+            if (process.env.DEBUG) {
+              console.error(`[post-tool-use] Auto registry scan failed: ${err.message}`);
+            }
+          });
+        } catch (err) {
+          // Non-blocking — registry manager may not be available
+          if (process.env.DEBUG) {
+            console.error(`[post-tool-use] Registry manager load error: ${err.message}`);
+          }
         }
       }
     }
@@ -138,6 +183,21 @@ async function main() {
       console.log(JSON.stringify({ continue: true }));
       process.exit(0);
       return;
+    }
+
+    // v7.0: Track changed files in task checkpoint (continuous state persistence)
+    // This ensures the PostCompact hook can restore the changed files list
+    // after auto-compaction, making /wogi-pre-compact redundant for file tracking.
+    if (filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
+      try {
+        const { trackChangedFile } = require('../../../flow-task-checkpoint');
+        trackChangedFile(filePath);
+      } catch (err) {
+        // Non-blocking — checkpoint may not exist yet (no active task)
+        if (process.env.DEBUG) {
+          console.error(`[post-tool-use] File tracking: ${err.message}`);
+        }
+      }
     }
 
     // Run validation

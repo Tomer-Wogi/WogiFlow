@@ -17,6 +17,7 @@ const { checkComponentReuse } = require('../../core/component-check');
 const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../core/routing-gate');
 const { checkPhaseGate } = require('../../core/phase-gate');
+const { checkCommitLogGate } = require('../../core/commit-log-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 const { getConfig } = require('../../../flow-utils');
@@ -239,6 +240,32 @@ async function main() {
         console.log(JSON.stringify(errOutput));
         process.exit(0);
         return;
+      }
+    }
+
+    // Commit log gate check (for Bash git commit commands)
+    // v9.0: Block git commit when active task has no request-log entry staged.
+    // Same mechanical enforcement pattern as routing gate.
+    if (toolName === 'Bash' && toolInput.command) {
+      try {
+        const commitLogResult = checkCommitLogGate(toolInput.command, config);
+        if (commitLogResult.blocked) {
+          coreResult = {
+            allowed: false,
+            blocked: true,
+            reason: `Commit log gate: ${commitLogResult.reason}`,
+            message: commitLogResult.message
+          };
+          const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+          console.log(JSON.stringify(output));
+          process.exit(0);
+          return;
+        }
+      } catch (err) {
+        // Fail-open for commit log gate — don't block work if gate has issues
+        if (process.env.DEBUG) {
+          console.error(`[Hook] Commit log gate error (fail-open): ${err.message}`);
+        }
       }
     }
 

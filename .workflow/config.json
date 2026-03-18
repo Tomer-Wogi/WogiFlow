@@ -12,6 +12,7 @@
     "implementationGate": { "enabled": false },
     "todoWriteGate": { "enabled": false },
     "routingGate": { "enabled": false },
+    "commitLogGate": { "enabled": true },
     "loopEnforcement": { "enabled": false }
   },
   "componentReuse": {

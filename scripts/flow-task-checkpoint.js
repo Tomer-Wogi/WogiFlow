@@ -72,6 +72,7 @@ function getDefaultCheckpoint() {
       currentIndex: -1
     },
     changedFiles: [],
+    criteria: [],
     verificationResults: [],
     explorationSummary: null,
     completedPhases: [],
@@ -129,6 +130,7 @@ async function saveCheckpoint(params) {
         specPath: params.specPath || existing.specPath,
         scenarios: params.scenarios || existing.scenarios,
         changedFiles: params.changedFiles || existing.changedFiles,
+        criteria: params.criteria || existing.criteria,
         verificationResults: params.verificationResults || existing.verificationResults,
         explorationSummary: params.explorationSummary || existing.explorationSummary,
         lastUpdated: new Date().toISOString(),
