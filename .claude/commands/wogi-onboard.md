@@ -842,8 +842,10 @@ Display:
 This replaces the bootstrap CLAUDE.md (created by postinstall) with the complete version rendered from Handlebars templates using the project's actual config values.
 
 ```bash
-npx flow bridge sync
+npx flow bridge sync --force
 ```
+
+**IMPORTANT**: The `--force` flag is required to overwrite the bootstrap CLAUDE.md from postinstall. Without it, bridge sync may skip the file if it doesn't recognize the marker.
 
 This runs the bridge which:
 1. Reads `.workflow/config.json` (just created in Phase 6)
