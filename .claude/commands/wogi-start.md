@@ -67,8 +67,10 @@ When invoked with a **quoted request** instead of a task ID, assess intent and r
 
 ### Request Categories
 
-**Conversational follow-ups** ("yes", "go ahead", "option 2", "no", "skip that"):
+**Conversational follow-ups** ("yes", "go ahead", "continue", "option 2", "no", "skip that"):
 Look back at conversation for the pending question/proposal. Execute the implied action (affirmative) or acknowledge and ask what to do instead (negative).
+
+**"Continue" after task completion**: When the user says "continue" after a task finishes and there are more tasks in `ready.json` → **start the next task immediately**. Do NOT invoke `/wogi-pre-compact`, do NOT output a compaction summary, do NOT ask about context. Just start the next task. Compaction is the system's job — it happens automatically when needed.
 
 **Failed local `/wogi-*` command** (error output containing a `/wogi-*` command name):
 When a local `/wogi-*` CLI command fails (error in output, "Unknown skill", command not found), the AI MUST:
@@ -499,7 +501,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 
 **Quality gate keeps failing**: Report, attempt fix, after 3 failures suggest `/wogi-debug-hypothesis`.
 
-**Context too large**: When `config.autoCompact.betweenTasks` is true (default), compact AUTOMATICALLY between tasks — do NOT ask the user. Just do it. Mid-task: commit progress, invoke `/wogi-pre-compact` directly (don't suggest — execute).
+**Context too large**: When `config.autoCompact.betweenTasks` is true (default), compact AUTOMATICALLY between tasks — do NOT ask the user, do NOT show a summary, do NOT invoke `/wogi-pre-compact`. Just compact silently and continue with the next task. The PostCompact hook restores all state automatically. Mid-task: commit progress, compact silently, resume from checkpoint. The user should never see compaction happen — it's invisible infrastructure.
 
 ## Progress Tracking (MANDATORY for L1+ tasks)
 

@@ -307,7 +307,11 @@ Before closing any task, ensure all required gates pass (per `config.json → qu
 
 ## Context Management
 
-Context compaction happens automatically — WogiFlow persists all critical state to disk continuously, and the PostCompact hook restores it after compaction. You do NOT need to manually run `/wogi-pre-compact` before compaction.
+Context compaction happens **automatically and silently**. The user must NEVER be bothered with compaction. WogiFlow persists all critical state to disk continuously, and the PostCompact hook restores it after compaction.
+
+**NEVER invoke `/wogi-pre-compact` proactively.** Only run it when the user explicitly asks to compact or save context. When the user says "continue", "go ahead", or "keep going" — that means **start the next task**, not compact. Compaction is the SYSTEM's job, not yours.
+
+**Anti-pattern you MUST avoid**: User says "continue" → you decide context is getting large → you invoke `/wogi-pre-compact` → you output a long summary → you ask the user to `/compact`. This is WRONG. The user said "continue" — start the next task immediately.
 
 **What survives compaction automatically** (via PostCompact hook + state files):
 - Active task ID, title, type, and acceptance criteria
@@ -317,9 +321,13 @@ Context compaction happens automatically — WogiFlow persists all critical stat
 - Last request-log entry number
 - Routing enforcement (re-armed automatically)
 
-**`/wogi-pre-compact` is optional** — use it only when you want a detailed summary for a very long session. It is NOT required for state safety.
+**When auto-compaction triggers mid-session**: The system handles it. The PostCompact hook reloads state. You resume working on the next task from `ready.json`. No user interaction needed.
 
-**For L1+ tasks**: The pre-task context estimator (Step 0.25) checks if the task fits in remaining context. If it doesn't → compact BEFORE starting to avoid mid-task compaction.
+**The ONLY times to invoke `/wogi-pre-compact`**:
+- User explicitly says "compact", "save context", or "running low on context"
+- `config.autoCompact.betweenTasks` is true AND you're between tasks AND context is above threshold — but even then, just compact silently and continue, don't ask
+
+**For L1+ tasks**: The pre-task context estimator (Step 0.25) checks if the task fits in remaining context. If it doesn't → compact silently and continue, do NOT ask the user.
 
 ## Compact Instructions
 
