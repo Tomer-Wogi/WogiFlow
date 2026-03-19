@@ -148,6 +148,22 @@ This means after creating an epic with stories, you don't need to manually start
 
 **To disable**: Set `config.bulkOrchestrator.enabled: false`
 
+## Anti-Deferral Rule (MANDATORY)
+
+**When creating an epic from user input, EVERY item the user provided MUST become a tracked story.**
+
+You must NEVER:
+- Create stories for items 1-5 and silently skip items 6-9 because you judged them as "enhancements"
+- Label items as "deferred" or "long-term" and exclude them from the epic
+- Apply your own priority filter to decide which items deserve tasks
+
+You MAY:
+- Assign different priorities (P0/P1/P2/P3) to stories — but ALL items get stories
+- Suggest an execution order — but ALL items are tracked in the epic
+- Ask the user "Should I defer items 6-9?" — explicit user consent is the ONLY valid reason to exclude items
+
+**If the user provides 9 items, the epic MUST contain 9 stories (or items grouped into stories where every item appears as an acceptance criterion). Verify this with a reconciliation count before proceeding.**
+
 ## Tips
 
 - **Start with epics for major features** - Break down into stories before implementation

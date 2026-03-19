@@ -192,6 +192,8 @@ Item Reconciliation:
 
 **Skip when**: Input has only 1-2 items, or is a task ID reference.
 
+**ANTI-DEFERRAL ENFORCEMENT**: After reconciliation, verify ALL items became tasks/criteria. If you find yourself writing "deferred", "skipped", or "not created" for ANY item — STOP. You are violating the anti-deferral rule. The user provided these items for a reason. Create tasks for ALL of them. You may suggest priority ordering (P0-P3), but you must NEVER autonomously filter items out. A large ready queue is correct behavior. A filtered queue is data loss that breaks the user's trust.
+
 ### Step 1.3: Explore Phase (MANDATORY Multi-Agent Research)
 
 **For L2+ tasks. Research is MANDATORY** — do NOT skip even if you think you know the answer.
