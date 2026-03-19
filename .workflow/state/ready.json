@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-17T11:55:54.631Z",
+  "lastUpdated": "2026-03-19T07:00:00.000Z",
   "inProgress": [],
   "ready": [
     {
@@ -16,6 +16,24 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-344ce2fb",
+      "title": "Fix 9 review findings from scanner refactor — regex, DRY, safety, merge logic",
+      "type": "fix",
+      "level": "L2",
+      "status": "completed",
+      "startedAt": "2026-03-19T07:15:00.000Z",
+      "completedAt": "2026-03-19T07:30:00.000Z"
+    },
+    {
+      "id": "wf-9ed7fb16",
+      "title": "Fix registry scanner completeness bugs — two-pass AST, glob discovery, app-map generation",
+      "type": "bugfix",
+      "level": "L1",
+      "status": "completed",
+      "startedAt": "2026-03-19T06:30:00.000Z",
+      "completedAt": "2026-03-19T07:00:00.000Z"
+    },
     {
       "id": "wf-2b3caa34",
       "title": "Seamless auto-compaction — make /wogi-pre-compact redundant",

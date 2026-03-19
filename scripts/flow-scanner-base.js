@@ -36,6 +36,7 @@ class BaseScanner {
 
     this.config = {
       directories: registryConfig.directories || options.directories || [],
+      globPatterns: registryConfig.globPatterns || options.globPatterns || [],
       filePatterns: options.filePatterns || ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'],
       excludePatterns: options.excludePatterns || [
         '**/*.test.*',
@@ -50,11 +51,13 @@ class BaseScanner {
     };
 
     // Pre-compile exclude patterns to avoid per-file RegExp allocation
+    // Use placeholder to prevent ** and * from interfering during replacement
     this._excludeRegexps = this.config.excludePatterns.map(pattern => {
       const regexPattern = pattern
-        .replace(/\*\*/g, '.*')
-        .replace(/\*/g, '[^/]*')
-        .replace(/\./g, '\\.');
+        .replace(/\*\*/g, '\0GLOBSTAR\0')   // Placeholder for **
+        .replace(/\./g, '\\.')              // Escape dots
+        .replace(/\*/g, '[^/]*')            // Single * → non-slash wildcard
+        .replace(/\0GLOBSTAR\0/g, '.*');    // Restore ** → any path
       return new RegExp('^' + regexPattern + '$');
     });
 
@@ -70,18 +73,96 @@ class BaseScanner {
   }
 
   /**
-   * Find existing directories from config
+   * Find existing directories from config (explicit + glob-discovered)
    * @returns {string[]} Array of full paths to existing directories
    */
   findDirectories() {
-    const found = [];
+    const found = new Set();
+
+    // 1. Explicit directories from config
     for (const dir of this.config.directories) {
       const fullPath = path.join(PROJECT_ROOT, dir);
       if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
-        found.push(fullPath);
+        found.add(fullPath);
       }
     }
-    return found;
+
+    // 2. Glob-discovered directories (e.g. "src/**/hooks", "src/**/utils")
+    for (const pattern of this.config.globPatterns) {
+      for (const dir of this._expandGlobPattern(pattern)) {
+        found.add(dir);
+      }
+    }
+
+    return [...found];
+  }
+
+  /**
+   * Expand a glob pattern like "src/** /hooks" into matching directories.
+   * Supports ** (any depth) and * (single segment). No external dependencies.
+   * @param {string} pattern - Glob pattern relative to project root
+   * @returns {string[]} Array of full paths to matching directories
+   */
+  _expandGlobPattern(pattern) {
+    const results = [];
+    const segments = pattern.split('/');
+    const MAX_DEPTH = 20;
+    const MAX_DIRS = 5000;
+    let dirsVisited = 0;
+    const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.cache', '.yarn', '.pnpm']);
+
+    const walk = (currentPath, segIdx, depth) => {
+      if (depth > MAX_DEPTH || dirsVisited > MAX_DIRS) return;
+      dirsVisited++;
+
+      if (segIdx >= segments.length) {
+        if (fs.existsSync(currentPath) && fs.statSync(currentPath).isDirectory()) {
+          results.push(currentPath);
+        }
+        return;
+      }
+
+      const seg = segments[segIdx];
+
+      if (seg === '**') {
+        // Zero levels: skip this segment
+        walk(currentPath, segIdx + 1, depth);
+
+        // One+ levels: recurse into subdirectories
+        if (!fs.existsSync(currentPath) || !fs.statSync(currentPath).isDirectory()) return;
+        try {
+          const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+            if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+            walk(path.join(currentPath, entry.name), segIdx, depth + 1);
+          }
+        } catch (_err) {
+          // Permission error — skip
+        }
+      } else if (seg.includes('*')) {
+        if (!fs.existsSync(currentPath) || !fs.statSync(currentPath).isDirectory()) return;
+        // Escape regex metacharacters except *, then convert * to [^/]*
+        const escaped = seg.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*');
+        const segRegex = new RegExp('^' + escaped + '$');
+        try {
+          const entries = fs.readdirSync(currentPath, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.isDirectory()) continue;
+            if (segRegex.test(entry.name)) {
+              walk(path.join(currentPath, entry.name), segIdx + 1, depth + 1);
+            }
+          }
+        } catch (_err) {
+          // Permission error — skip
+        }
+      } else {
+        walk(path.join(currentPath, seg), segIdx + 1, depth + 1);
+      }
+    };
+
+    walk(PROJECT_ROOT, 0, 0);
+    return results;
   }
 
   /**
@@ -266,6 +347,118 @@ class BaseScanner {
 
       return { name, type };
     });
+  }
+
+  /**
+   * Two-pass AST: collect all top-level declarations and all exported names.
+   * Returns { declarations: Map<name, {node, kind}>, exported: Map<name, {isDefault}> }
+   * Subclasses call this then intersect with their own registration logic.
+   * @param {string} content - File content
+   * @returns {Object|null} { declarations, exported } or null if parse fails
+   */
+  collectExportedDeclarations(content) {
+    if (!this.parser) return null;
+
+    try {
+      const ast = this.parser.parse(content, {
+        sourceType: 'module',
+        plugins: ['typescript', 'jsx', 'decorators-legacy']
+      });
+
+      // Pass 1: Collect all top-level function-like declarations
+      const declarations = new Map();
+
+      this.traverse(ast, {
+        FunctionDeclaration: (nodePath) => {
+          const parent = nodePath.parent.type;
+          if (!nodePath.node.id) return;
+          if (parent === 'Program' || parent === 'ExportNamedDeclaration' || parent === 'ExportDefaultDeclaration') {
+            declarations.set(nodePath.node.id.name, { node: nodePath.node, kind: 'func' });
+          }
+        },
+        VariableDeclaration: (nodePath) => {
+          const parent = nodePath.parent.type;
+          if (parent !== 'Program' && parent !== 'ExportNamedDeclaration') return;
+          for (const decl of nodePath.node.declarations) {
+            if (decl.id?.name && decl.init &&
+                (decl.init.type === 'ArrowFunctionExpression' ||
+                 decl.init.type === 'FunctionExpression')) {
+              declarations.set(decl.id.name, { node: decl, kind: 'var' });
+            }
+          }
+        }
+      });
+
+      // Pass 2: Collect all exported names
+      const exported = new Map();
+
+      this.traverse(ast, {
+        ExportNamedDeclaration: (nodePath) => {
+          const decl = nodePath.node.declaration;
+          if (decl) {
+            if (decl.type === 'FunctionDeclaration' && decl.id) {
+              exported.set(decl.id.name, { isDefault: false });
+            } else if (decl.type === 'VariableDeclaration') {
+              for (const d of decl.declarations) {
+                if (d.id?.name) exported.set(d.id.name, { isDefault: false });
+              }
+            }
+          }
+          for (const spec of nodePath.node.specifiers || []) {
+            if (spec.local?.name) {
+              exported.set(spec.local.name, { isDefault: false });
+            }
+          }
+        },
+        ExportDefaultDeclaration: (nodePath) => {
+          const decl = nodePath.node.declaration;
+          if (decl.type === 'FunctionDeclaration' && decl.id) {
+            exported.set(decl.id.name, { isDefault: true });
+          } else if (decl.type === 'Identifier') {
+            exported.set(decl.name, { isDefault: true });
+          }
+        }
+      });
+
+      return { declarations, exported };
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  /**
+   * Two-pass regex: collect all exported names from file content.
+   * Shared across scanners for consistent export detection.
+   * @param {string} content - File content
+   * @returns {Set<string>} Set of exported names
+   */
+  collectExportedNamesRegex(content) {
+    const exported = new Set();
+    let match;
+
+    // export function / export const / export default function
+    const exportedDeclRegex = /export\s+(?:default\s+)?(?:async\s+)?(?:function|const)\s+(\w+)/g;
+    while ((match = exportedDeclRegex.exec(content)) !== null) {
+      exported.add(match[1]);
+    }
+
+    // export default Name (identifier)
+    const exportDefaultIdRegex = /export\s+default\s+([A-Za-z_$]\w*)\s*;/g;
+    while ((match = exportDefaultIdRegex.exec(content)) !== null) {
+      exported.add(match[1]);
+    }
+
+    // export { Name, Name2 as Alias }
+    const exportSpecRegex = /export\s*\{([^}]+)\}/g;
+    while ((match = exportSpecRegex.exec(content)) !== null) {
+      const specifiers = match[1].split(',');
+      for (const spec of specifiers) {
+        const name = spec.trim().split(/\s+as\s+/)[0].trim();
+        if (name) exported.add(name);
+      }
+    }
+
+    return exported;
   }
 
   /**

@@ -77,7 +77,7 @@ const IGNORE_PATTERNS = [
 ];
 
 // Colors for CLI
-const { colors: c } = require('./flow-output');
+const { colors: c, getTodayDate } = require('./flow-output');
 
 // ============================================================================
 // File Classification

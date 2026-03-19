@@ -45,6 +45,13 @@ const DEFAULT_CONFIG = {
     'src/mutations'
   ],
 
+  // Glob patterns discover co-located API files (any project structure)
+  globPatterns: [
+    'src/**/queries',
+    'src/**/mutations',
+    'src/**/api'
+  ],
+
   filePatterns: ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'],
 
   excludePatterns: [
@@ -75,6 +82,7 @@ class APIScanner extends BaseScanner {
     super({
       configKey: 'apiRegistry',
       directories: DEFAULT_CONFIG.directories,
+      globPatterns: DEFAULT_CONFIG.globPatterns,
       filePatterns: DEFAULT_CONFIG.filePatterns,
       excludePatterns: DEFAULT_CONFIG.excludePatterns,
       ...config
@@ -131,36 +139,27 @@ class APIScanner extends BaseScanner {
   }
 
   /**
-   * Parse file with Babel AST
+   * Parse file with Babel AST using shared two-pass approach from BaseScanner.
+   * Handles every JS/TS export pattern by design.
    */
   parseWithBabel(content, filePath, service) {
-    try {
-      const ast = this.parser.parse(content, {
-        sourceType: 'module',
-        plugins: ['typescript', 'jsx', 'decorators-legacy']
-      });
-
-      this.traverse(ast, {
-        ExportNamedDeclaration: (nodePath) => {
-          const declaration = nodePath.node.declaration;
-          if (!declaration) return;
-
-          if (declaration.type === 'FunctionDeclaration' && declaration.id) {
-            this.extractAPIFunction(declaration, filePath, service, content);
-          } else if (declaration.type === 'VariableDeclaration') {
-            for (const decl of declaration.declarations) {
-              if (decl.init &&
-                  (decl.init.type === 'ArrowFunctionExpression' ||
-                   decl.init.type === 'FunctionExpression')) {
-                this.extractAPIFunctionFromVariable(decl, filePath, service, content);
-              }
-            }
-          }
-        }
-      });
-    } catch (err) {
-      // Fall back to regex if babel fails
+    const result = this.collectExportedDeclarations(content);
+    if (!result) {
       this.parseWithRegex(content, filePath, service);
+      return;
+    }
+
+    const { declarations, exported } = result;
+
+    for (const [name, _exportInfo] of exported) {
+      const declInfo = declarations.get(name);
+      if (!declInfo) continue;
+
+      if (declInfo.kind === 'func') {
+        this.extractAPIFunction(declInfo.node, filePath, service, content);
+      } else {
+        this.extractAPIFunctionFromVariable(declInfo.node, filePath, service, content);
+      }
     }
   }
 
@@ -181,7 +180,7 @@ class APIScanner extends BaseScanner {
       name,
       params,
       method: isAPIFunction.method || this.inferMethodFromName(name),
-      endpoint: isAPIFunction.endpoint,
+      endpoint: isAPIFunction.endpoint || 'dynamic',
       description: jsdoc.description || '',
       file: filePath,
       service,
@@ -210,7 +209,7 @@ class APIScanner extends BaseScanner {
       name,
       params,
       method: isAPIFunction.method || this.inferMethodFromName(name),
-      endpoint: isAPIFunction.endpoint,
+      endpoint: isAPIFunction.endpoint || 'dynamic',
       description: jsdoc.description || '',
       file: filePath,
       service,
@@ -228,13 +227,15 @@ class APIScanner extends BaseScanner {
       /^(post|create|add|save|submit)/i,
       /^(put|update|modify|patch)/i,
       /^(delete|remove|destroy)/i,
+      /^use(Get|Fetch|Load|Create|Update|Delete|Post|Put|Patch|Remove|Query|Mutation)/,
       /(api|endpoint|request|mutation|query)$/i
     ];
 
     const nameMatches = apiNamePatterns.some(p => p.test(name));
 
-    // Check function body for HTTP calls
-    const funcBody = content.substring(startPos, endPos);
+    // Check function body for HTTP calls — use full body including nested scopes
+    // Find the matching closing brace to capture nested arrow functions
+    const funcBody = this._extractFullBody(content, startPos, endPos);
     const httpPatterns = [
       /fetch\s*\(/,
       /axios\./,
@@ -247,7 +248,9 @@ class APIScanner extends BaseScanner {
       /apiClient/i,
       /useSWR/,
       /useQuery/,
-      /useMutation/
+      /useMutation/,
+      /useInfiniteQuery/,
+      /useSuspenseQuery/
     ];
 
     const bodyMatches = httpPatterns.some(p => p.test(funcBody));
@@ -281,6 +284,68 @@ class APIScanner extends BaseScanner {
   }
 
   /**
+   * Extract the full function body content, including nested scopes.
+   * Falls back to substring if brace matching fails.
+   * @param {string} content - Full file content
+   * @param {number} startPos - Start position of the function
+   * @param {number} endPos - End position from AST (may be too narrow)
+   * @returns {string} Function body content
+   */
+  _extractFullBody(content, startPos, endPos) {
+    const MAX_SCAN = 50000; // Cap at 50KB to avoid stalls on large files
+    const braceStart = content.indexOf('{', startPos);
+    if (braceStart === -1 || braceStart > endPos + 100) {
+      return content.substring(startPos, Math.min(endPos + 500, content.length));
+    }
+
+    // Match braces with string/comment awareness
+    let depth = 0;
+    let i = braceStart;
+    const limit = Math.min(content.length, braceStart + MAX_SCAN);
+    while (i < limit) {
+      const ch = content[i];
+
+      // Skip single-line comments
+      if (ch === '/' && content[i + 1] === '/') {
+        i = content.indexOf('\n', i + 2);
+        if (i === -1) break;
+        i++;
+        continue;
+      }
+      // Skip multi-line comments
+      if (ch === '/' && content[i + 1] === '*') {
+        i = content.indexOf('*/', i + 2);
+        if (i === -1) break;
+        i += 2;
+        continue;
+      }
+      // Skip string literals
+      if (ch === "'" || ch === '"' || ch === '`') {
+        i++;
+        while (i < limit) {
+          if (content[i] === '\\') { i += 2; continue; }
+          if (content[i] === ch) break;
+          i++;
+        }
+        i++;
+        continue;
+      }
+
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          return content.substring(startPos, i + 1);
+        }
+      }
+      i++;
+    }
+
+    // Fallback to AST bounds with buffer
+    return content.substring(startPos, Math.min(endPos + 200, content.length));
+  }
+
+  /**
    * Infer HTTP method from function name
    */
   inferMethodFromName(name) {
@@ -294,56 +359,55 @@ class APIScanner extends BaseScanner {
   }
 
   /**
-   * Parse with regex (fallback)
+   * Parse with regex (fallback, two-pass approach)
    */
   parseWithRegex(content, filePath, service) {
-    // Match exported async functions
-    const funcRegex = /export\s+(async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g;
+    // Two-pass regex: find declarations, find exports, intersect
     let match;
 
+    // Pass 1: Find all function-like declarations
+    const declarations = new Map(); // name -> { line, paramsStr }
+
+    const funcRegex = /(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+(\w+)\s*\(([^)]*)\)/g;
     while ((match = funcRegex.exec(content)) !== null) {
-      const [fullMatch, isAsync, name, paramsStr] = match;
-
-      // Check if it looks like an API function
-      if (!this.isLikelyAPIFunctionFromName(name) && !this.hasHTTPCall(content, match.index)) {
-        continue;
-      }
-
-      const jsdoc = this.extractJSDocBefore(content, match.index);
-
-      this.addClientFunction({
-        name,
-        params: this.parseParamsFromString(paramsStr),
-        method: this.inferMethodFromName(name),
-        endpoint: null,
-        description: jsdoc,
-        file: filePath,
-        service,
-        line: this.getLineNumber(content, match.index)
+      declarations.set(match[1], {
+        line: this.getLineNumber(content, match.index),
+        paramsStr: match[2],
+        pos: match.index
       });
     }
 
-    // Match exported const arrow functions
-    const arrowRegex = /export\s+const\s+(\w+)\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::\s*[^=]+)?\s*=>/g;
-
+    const arrowRegex = /(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::\s*[^=]+)?\s*=>/g;
     while ((match = arrowRegex.exec(content)) !== null) {
-      const [fullMatch, name] = match;
+      if (!declarations.has(match[1])) {
+        declarations.set(match[1], {
+          line: this.getLineNumber(content, match.index),
+          paramsStr: '',
+          pos: match.index
+        });
+      }
+    }
 
-      if (!this.isLikelyAPIFunctionFromName(name) && !this.hasHTTPCall(content, match.index)) {
+    // Pass 2: Use shared export-collection from BaseScanner
+    const exported = this.collectExportedNamesRegex(content);
+
+    // Intersect: register exported declarations that look like API functions
+    for (const [name, info] of declarations) {
+      if (!exported.has(name)) continue;
+      if (!this.isLikelyAPIFunctionFromName(name) && !this.hasHTTPCall(content, info.pos)) {
         continue;
       }
 
-      const jsdoc = this.extractJSDocBefore(content, match.index);
-
+      const jsdoc = this.extractJSDocBefore(content, info.pos);
       this.addClientFunction({
         name,
-        params: [],
+        params: info.paramsStr ? this.parseParamsFromString(info.paramsStr) : [],
         method: this.inferMethodFromName(name),
-        endpoint: null,
+        endpoint: 'dynamic',
         description: jsdoc,
         file: filePath,
         service,
-        line: this.getLineNumber(content, match.index)
+        line: info.line
       });
     }
   }
@@ -353,6 +417,7 @@ class APIScanner extends BaseScanner {
    */
   isLikelyAPIFunctionFromName(name) {
     return /^(get|fetch|load|post|create|put|update|patch|delete|remove|query|mutation)/i.test(name) ||
+           /^use(Get|Fetch|Load|Create|Update|Delete|Post|Put|Patch|Remove|Query|Mutation)/i.test(name) ||
            /(api|endpoint|request)$/i.test(name);
   }
 

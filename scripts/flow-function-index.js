@@ -38,11 +38,19 @@ const DEFAULT_CONFIG = {
     'src/utils',
     'src/lib',
     'src/helpers',
+    'src/services',
     'utils',
     'lib',
     'helpers',
     'src/shared',
     'shared'
+  ],
+
+  // Glob patterns discover co-located directories (any project structure)
+  globPatterns: [
+    'src/**/hooks',
+    'src/**/helpers',
+    'src/**/utils'
   ],
 
   filePatterns: ['**/*.ts', '**/*.js', '**/*.tsx', '**/*.jsx'],
@@ -70,6 +78,7 @@ class FunctionScanner extends BaseScanner {
     super({
       configKey: 'functionRegistry',
       directories: DEFAULT_CONFIG.directories,
+      globPatterns: DEFAULT_CONFIG.globPatterns,
       filePatterns: DEFAULT_CONFIG.filePatterns,
       excludePatterns: DEFAULT_CONFIG.excludePatterns,
       ...config
@@ -113,42 +122,27 @@ class FunctionScanner extends BaseScanner {
   }
 
   /**
-   * Parse file with Babel AST
+   * Parse file with Babel AST using shared two-pass approach from BaseScanner.
+   * Handles every JS/TS export pattern by design — no whack-a-mole.
    */
   parseWithBabel(content, filePath, category) {
-    try {
-      const ast = this.parser.parse(content, {
-        sourceType: 'module',
-        plugins: ['typescript', 'jsx', 'decorators-legacy']
-      });
-
-      this.traverse(ast, {
-        ExportNamedDeclaration: (nodePath) => {
-          const declaration = nodePath.node.declaration;
-          if (!declaration) return;
-
-          if (declaration.type === 'FunctionDeclaration' && declaration.id) {
-            this.extractFunction(declaration, filePath, category, content);
-          } else if (declaration.type === 'VariableDeclaration') {
-            for (const decl of declaration.declarations) {
-              if (decl.init &&
-                  (decl.init.type === 'ArrowFunctionExpression' ||
-                   decl.init.type === 'FunctionExpression')) {
-                this.extractFunctionFromVariable(decl, filePath, category, content);
-              }
-            }
-          }
-        },
-        ExportDefaultDeclaration: (nodePath) => {
-          const declaration = nodePath.node.declaration;
-          if (declaration.type === 'FunctionDeclaration' && declaration.id) {
-            this.extractFunction(declaration, filePath, category, content, true);
-          }
-        }
-      });
-    } catch (err) {
-      // Fall back to regex if babel fails
+    const result = this.collectExportedDeclarations(content);
+    if (!result) {
       this.parseWithRegex(content, filePath, category);
+      return;
+    }
+
+    const { declarations, exported } = result;
+
+    for (const [name, exportInfo] of exported) {
+      const declInfo = declarations.get(name);
+      if (!declInfo) continue;
+
+      if (declInfo.kind === 'func') {
+        this.extractFunction(declInfo.node, filePath, category, content, exportInfo.isDefault);
+      } else {
+        this.extractFunctionFromVariable(declInfo.node, filePath, category, content);
+      }
     }
   }
 
@@ -223,44 +217,52 @@ class FunctionScanner extends BaseScanner {
    * Parse file with regex (fallback)
    */
   parseWithRegex(content, filePath, category) {
-    // Match exported function declarations
-    const functionRegex = /export\s+(async\s+)?function\s+(\w+)\s*(<[^>]*>)?\s*\(([^)]*)\)(?:\s*:\s*([^\s{]+))?\s*\{/g;
+    // Pass 1: Find all function-like declarations
+    const declarations = new Map();
     let match;
 
+    const functionRegex = /(?:export\s+(?:default\s+)?)?(?:(async)\s+)?function\s+(\w+)\s*(?:<[^>]*>)?\s*\(([^)]*)\)(?:\s*:\s*([^\s{]+))?\s*\{/g;
     while ((match = functionRegex.exec(content)) !== null) {
-      const [, isAsync, name, generics, paramsStr, returnType] = match;
-      const params = this.parseParamsFromString(paramsStr);
-      const jsdoc = this.extractJSDocBefore(content, match.index);
-
-      this.addFunction({
-        name,
-        params,
+      const [, isAsync, name, paramsStr, returnType] = match;
+      declarations.set(name, {
+        line: this.getLineNumber(content, match.index),
+        params: this.parseParamsFromString(paramsStr),
         returnType: returnType || (isAsync ? 'Promise<any>' : null),
-        description: jsdoc,
-        file: filePath,
-        category,
-        isDefault: false,
-        line: this.getLineNumber(content, match.index)
+        jsdoc: this.extractJSDocBefore(content, match.index)
       });
     }
 
-    // Match exported const arrow functions
-    const arrowRegex = /export\s+const\s+(\w+)\s*(?::\s*[^=]+)?\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::\s*([^\s=>]+))?\s*=>/g;
-
+    // Const arrow functions — capture params group (finding-005 fix)
+    const arrowRegex = /(?:export\s+)?const\s+(\w+)\s*(?::\s*[^=]+)?\s*=\s*(?:async\s*)?\(([^)]*)\)\s*(?::\s*([^\s=>]+))?\s*=>/g;
     while ((match = arrowRegex.exec(content)) !== null) {
-      const [, name, returnType] = match;
-      const jsdoc = this.extractJSDocBefore(content, match.index);
+      const [, name, paramsStr, returnType] = match;
+      if (!declarations.has(name)) {
+        declarations.set(name, {
+          line: this.getLineNumber(content, match.index),
+          params: paramsStr ? this.parseParamsFromString(paramsStr) : [],
+          returnType,
+          jsdoc: this.extractJSDocBefore(content, match.index)
+        });
+      }
+    }
 
-      this.addFunction({
-        name,
-        params: [],
-        returnType,
-        description: jsdoc,
-        file: filePath,
-        category,
-        isDefault: false,
-        line: this.getLineNumber(content, match.index)
-      });
+    // Pass 2: Use shared export-collection from BaseScanner
+    const exported = this.collectExportedNamesRegex(content);
+
+    // Intersect: register all exported declarations
+    for (const [name, info] of declarations) {
+      if (exported.has(name)) {
+        this.addFunction({
+          name,
+          params: info.params,
+          returnType: info.returnType,
+          description: info.jsdoc,
+          file: filePath,
+          category,
+          isDefault: false,
+          line: info.line
+        });
+      }
     }
   }
 

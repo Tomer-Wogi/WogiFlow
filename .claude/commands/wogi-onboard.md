@@ -530,14 +530,36 @@ Display:
 
     Display: `  Data-fetching hooks... ✓ react-query, 80 useGet* hooks`
 
-15. **Populate app-map.md from component data:**
-    From the pattern extraction result, populate app-map.md with:
-    - Detected UI components -> Components table
-    - Detected pages/screens -> Screens table
-    - Detected modals -> Modals table
-    Include paths and patterns where detected.
+15. **Run registry-manager scan (comprehensive registry population):**
 
-    Display: `  app-map.md...         ✓ Found 24 components/modules`
+    **CRITICAL**: This step replaces manual AI-driven app-map population. The registry
+    manager runs ALL active scanners (components, functions, APIs, schemas, services)
+    with recursive directory traversal and glob-based discovery. This ensures no
+    subdirectory components, co-located hooks, or separated-export API functions are missed.
+
+    ```javascript
+    // Run the full registry scan — this handles recursion, glob patterns, and all export patterns
+    const { execSync } = require('child_process');
+    try {
+      execSync('node node_modules/wogiflow/scripts/flow-registry-manager.js scan', {
+        cwd: projectRoot,
+        stdio: 'inherit',
+        timeout: 60000
+      });
+    } catch (err) {
+      console.warn('Registry manager scan failed, falling back to individual scanners:', err.message);
+      // Individual scanners from steps 13-14 already ran as fallback
+    }
+    ```
+
+    The component scanner generates `app-map.md` from scan results (grouped by category/directory).
+    The function scanner discovers co-located hooks via glob patterns (`src/**/hooks`, etc.).
+    The API scanner handles all export patterns including separated `const + export default`.
+
+    Display: `  Registry scan...      ✓ All registries populated (components, functions, APIs)`
+
+    **NOTE**: If the registry manager scan succeeds, it supersedes the individual scanner runs
+    from steps 13-14. The scanners are idempotent — running them twice just refreshes the same data.
 
 16. **Extract file templates:**
     ```javascript
