@@ -4,9 +4,9 @@ effort: medium
 ---
 Save workflow state (task progress, checkpoints, session context) before context compaction.
 
-**Why "pre-compact"**: This skill saves state but cannot trigger `/compact` programmatically — `/compact` is a Claude Code native command that only the user or Claude Code's auto-compaction can invoke. Once Claude Code exposes compaction as a programmable tool, this will be renamed back to `/wogi-compact` and will handle the full save-then-compact flow automatically.
+**CRITICAL — NEVER ASK THE USER TO COMPACT**: After saving state, output the session summary and then run `/compact` yourself immediately. Do NOT say "Now run /compact" or ask the user to do anything. Compaction must be seamless and invisible to the user. The PostCompact hook restores critical state automatically.
 
-**After running this**: Run `/compact` to actually compact the context. The PostCompact hook will restore critical state automatically.
+**NEVER INVOKE THIS PROACTIVELY**: This skill should only run when the user explicitly asks to compact or save context. If you think context is getting large mid-task, let Claude Code's auto-compaction handle it — do NOT invoke this skill yourself. The user said "implement" not "compact".
 
 ## Recursive Context Compaction
 
@@ -206,4 +206,6 @@ node node_modules/wogiflow/scripts/flow-context-compact compact --prune
 node node_modules/wogiflow/scripts/flow-context-compact context "authentication task"
 ```
 
-After providing the summary, proceed directly: run `/compact` immediately. Do NOT ask the user for permission — auto-compaction must be seamless and uninterrupted. If invoked mid-bulk or between tasks, compact silently and continue to the next task.
+After providing the summary, run `/compact` immediately — no confirmation, no "Now run /compact", no waiting. The user must NEVER be asked to compact manually. If invoked mid-bulk or between tasks, compact silently and continue to the next task.
+
+**Anti-pattern (BANNED)**: Outputting "Now run /compact to compact the context" or any variant that asks the user to take action. This has frustrated the user multiple times. YOU run /compact, not the user.
