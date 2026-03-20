@@ -1,5 +1,6 @@
 ---
 description: "Manage skill packages for specialized development workflows"
+effort: low
 ---
 Manage skill packages for specialized development workflows.
 

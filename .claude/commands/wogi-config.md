@@ -1,5 +1,6 @@
 ---
 description: "View or modify workflow configuration with natural language"
+effort: medium
 ---
 Smart configuration management for WogiFlow.
 

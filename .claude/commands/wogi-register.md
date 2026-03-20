@@ -1,5 +1,6 @@
 ---
 description: "Register Claude Code plugins for /wogi-start routing"
+effort: low
 allowed-tools: "Read,Glob,Grep,WebSearch,WebFetch,Edit,Write,Bash,Agent,ToolSearch,ListMcpResourcesTool,ReadMcpResourceTool,AskUserQuestion"
 user-invocable: true
 ---

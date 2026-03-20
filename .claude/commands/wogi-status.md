@@ -1,5 +1,6 @@
 ---
 description: "Show full project overview with task status and health"
+effort: low
 ---
 Show full project overview.
 

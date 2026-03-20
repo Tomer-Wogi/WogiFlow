@@ -1,5 +1,6 @@
 ---
 description: "View and manage technical debt across sessions"
+effort: low
 ---
 View and manage technical debt across sessions.
 

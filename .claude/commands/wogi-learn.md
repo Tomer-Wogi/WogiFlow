@@ -1,5 +1,6 @@
 ---
 description: "Interactive pattern promotion from feedback to decisions"
+effort: medium
 ---
 Interactive pattern promotion from feedback to decisions. Invoke when user says "let's learn from this", "we keep making this mistake", "promote this pattern", or "what have we learned?".
 

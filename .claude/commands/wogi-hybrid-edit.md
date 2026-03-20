@@ -1,5 +1,6 @@
 ---
 description: "View and edit the current hybrid execution plan"
+effort: low
 ---
 
 # Edit Hybrid Execution Plan

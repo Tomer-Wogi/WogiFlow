@@ -1,5 +1,6 @@
 ---
 description: "Parallel hypothesis debugging - spawns agents for competing theories"
+effort: high
 ---
 Parallel hypothesis debugging - spawns multiple agents to investigate competing theories simultaneously.
 

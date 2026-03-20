@@ -1,5 +1,6 @@
 ---
 description: "Execute multiple tasks in sequence following all workflow rules"
+effort: medium
 ---
 Execute multiple tasks in sequence, following all workflow rules.
 

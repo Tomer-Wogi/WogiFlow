@@ -1,5 +1,6 @@
 ---
 description: "Set up hybrid mode - configure executor models for multi-model execution"
+effort: medium
 ---
 
 # Hybrid Mode Setup

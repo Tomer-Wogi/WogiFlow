@@ -1,3 +1,7 @@
+---
+description: "Manage the pending prompts queue — save requests for later while Claude is busy."
+effort: low
+---
 Manage the pending prompts queue — save requests for later while Claude is busy.
 
 **Triggers**: `/wogi-pending`, "save this for later", "add to pending"

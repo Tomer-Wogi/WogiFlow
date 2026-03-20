@@ -1,5 +1,6 @@
 ---
 description: "Scan codebase for unmapped components"
+effort: low
 ---
 Scan codebase for unmapped components.
 

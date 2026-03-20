@@ -1,5 +1,6 @@
 ---
 description: "Generate a CHANGELOG from request-log entries"
+effort: low
 ---
 Generate a CHANGELOG from request-log entries.
 

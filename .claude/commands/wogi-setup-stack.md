@@ -1,5 +1,6 @@
 ---
 description: "Interactive tech stack wizard for project configuration and skills"
+effort: medium
 ---
 Interactive tech stack wizard that configures your project and generates skills.
 

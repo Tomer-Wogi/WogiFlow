@@ -1,5 +1,6 @@
 ---
 description: "Re-scan project after external changes and sync WogiFlow state"
+effort: medium
 ---
 Re-scan the project after external changes and sync WogiFlow state.
 

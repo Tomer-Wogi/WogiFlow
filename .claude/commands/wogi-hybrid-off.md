@@ -1,5 +1,6 @@
 ---
 description: "Disable hybrid mode and return to direct Opus execution"
+effort: low
 ---
 
 # Disable Hybrid Mode

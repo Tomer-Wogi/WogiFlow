@@ -1,5 +1,6 @@
 ---
 description: "Branch finalization workflow - merge, PR, or discard decision"
+effort: medium
 ---
 # /wogi-finalize - Branch Finalization Workflow
 

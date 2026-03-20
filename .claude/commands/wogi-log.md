@@ -1,5 +1,6 @@
 ---
 description: "Add an entry to the request log"
+effort: low
 ---
 Add an entry to the request log.
 

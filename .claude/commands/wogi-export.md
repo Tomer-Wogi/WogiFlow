@@ -1,5 +1,6 @@
 ---
 description: "Export workflow configuration as a shareable profile"
+effort: low
 ---
 Export workflow configuration as a shareable profile.
 

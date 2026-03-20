@@ -1,5 +1,6 @@
 ---
 description: "Show dependency tree for a task"
+effort: low
 ---
 Show dependency tree for a task. Provide task ID: `/wogi-deps wf-015`
 

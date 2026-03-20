@@ -1,5 +1,6 @@
 ---
 description: "Create a detailed correction report for a significant bug fix"
+effort: low
 ---
 Create a detailed correction report for a significant bug fix.
 

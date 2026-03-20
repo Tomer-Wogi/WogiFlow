@@ -1,5 +1,6 @@
 ---
 description: "View and manage the project roadmap for deferred work"
+effort: low
 ---
 # /wogi-roadmap - Roadmap Management
 

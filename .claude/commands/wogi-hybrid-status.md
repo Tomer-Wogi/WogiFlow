@@ -1,5 +1,6 @@
 ---
 description: "Show current hybrid mode configuration and routing table"
+effort: low
 ---
 
 # Hybrid Mode Status

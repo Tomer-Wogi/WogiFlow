@@ -1,5 +1,6 @@
 ---
 description: "Zero-trust research protocol for capability and feasibility questions"
+effort: high
 ---
 # /wogi-research - Zero-Trust Research Protocol
 

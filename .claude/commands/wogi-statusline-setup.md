@@ -1,5 +1,6 @@
 ---
 description: "Configure Claude Code status line for WogiFlow task info"
+effort: low
 ---
 # Status Line Setup
 

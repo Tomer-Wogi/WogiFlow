@@ -1,5 +1,6 @@
 ---
 description: "Generate test files from task spec acceptance criteria"
+effort: low
 ---
 
 Generate executable test files from a task's specification acceptance criteria.

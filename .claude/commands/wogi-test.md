@@ -1,5 +1,6 @@
 ---
 description: "Run auto-tests: UI verification, API testing, data integrity checks"
+effort: medium
 ---
 Run the WogiFlow Auto-Testing Suite — UI verification, API testing, data integrity checks, and generated test execution.
 

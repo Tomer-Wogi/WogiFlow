@@ -1,5 +1,6 @@
 ---
 description: "Manually trigger skill learning extraction from recent changes"
+effort: low
 ---
 
 # Skill Learning

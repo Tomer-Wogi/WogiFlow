@@ -1,5 +1,6 @@
 ---
 description: "Zero-loss extraction from long input with automated pipeline"
+effort: high
 ---
 # /wogi-extract-review - Zero-Loss Extraction with Automated Pipeline
 

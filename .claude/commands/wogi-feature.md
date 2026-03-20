@@ -1,5 +1,6 @@
 ---
 description: "Manage features - coherent product capabilities grouping related stories"
+effort: medium
 ---
 Manage features - coherent product capabilities that group related stories.
 

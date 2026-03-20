@@ -1,5 +1,6 @@
 ---
 description: "Continuous work loop processing captured ideas and tasks automatically"
+effort: medium
 ---
 Continuous work loop - processes captured ideas and tasks automatically.
 

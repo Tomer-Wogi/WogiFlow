@@ -1,5 +1,6 @@
 ---
 description: "Morning briefing with everything needed to start the day"
+effort: medium
 ---
 Show a morning briefing with everything needed to start the day.
 

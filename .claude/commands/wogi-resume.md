@@ -1,5 +1,6 @@
 ---
 description: "Resume a suspended task"
+effort: low
 ---
 Resume a suspended task.
 

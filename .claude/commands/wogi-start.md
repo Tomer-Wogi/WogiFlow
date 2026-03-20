@@ -1,5 +1,6 @@
 ---
 description: "Universal entry point - start a task or route any request"
+effort: medium
 ---
 Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXXXX`
 

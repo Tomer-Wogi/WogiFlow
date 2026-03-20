@@ -1,5 +1,6 @@
 ---
 description: "Display the component registry (app-map)"
+effort: low
 ---
 Display the component registry (app-map).
 

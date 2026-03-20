@@ -1,5 +1,6 @@
 ---
 description: "Check workflow health and report issues"
+effort: low
 ---
 Check workflow health and report issues.
 

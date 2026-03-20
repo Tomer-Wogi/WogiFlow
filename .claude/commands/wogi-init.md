@@ -1,5 +1,6 @@
 ---
 description: "AI-driven project setup for new projects"
+effort: medium
 ---
 # /wogi-init - AI-Driven Project Setup
 

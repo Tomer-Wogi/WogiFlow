@@ -1,5 +1,6 @@
 ---
 description: "Search the request log by tag or keyword"
+effort: low
 ---
 Search the request log by tag or keyword. Provide search term: `/wogi-search #screen:login`
 

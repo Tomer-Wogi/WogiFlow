@@ -1,5 +1,6 @@
 ---
 description: "Analyze an existing project and set up workflow with full context"
+effort: high
 ---
 Analyze an existing project and set up workflow with full context.
 

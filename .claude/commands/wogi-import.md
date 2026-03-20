@@ -1,5 +1,6 @@
 ---
 description: "Import a team workflow profile"
+effort: low
 ---
 Import a team workflow profile.
 

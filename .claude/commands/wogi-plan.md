@@ -1,5 +1,6 @@
 ---
 description: "Manage plans - strategic initiatives coordinating epics and features"
+effort: medium
 ---
 Manage plans - strategic initiatives that coordinate epics and features.
 

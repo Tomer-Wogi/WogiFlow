@@ -1,5 +1,6 @@
 ---
 description: "Submit a suggestion or feature request for WogiFlow"
+effort: low
 ---
 Submit a suggestion, feature request, or improvement idea for WogiFlow.
 

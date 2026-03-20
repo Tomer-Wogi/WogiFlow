@@ -1,5 +1,6 @@
 ---
 description: "Run a multi-model peer review with different AI perspectives"
+effort: high
 ---
 Run a multi-model peer review where different AI models review the same code. This command uses a **different review focus** than `/wogi-review` — it targets **improvement opportunities**, not correctness/bugs.
 

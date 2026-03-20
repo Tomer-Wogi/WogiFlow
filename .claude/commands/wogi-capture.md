@@ -1,5 +1,6 @@
 ---
 description: "Quick-capture an idea or bug without interrupting current work"
+effort: low
 ---
 Quick capture an idea or bug without interrupting your current work. Provide a brief title: `/wogi-capture Add dark mode toggle`
 

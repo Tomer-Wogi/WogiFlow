@@ -1,5 +1,6 @@
 ---
 description: "Show all tasks organized by status from ready.json"
+effort: low
 ---
 Read `.workflow/state/ready.json` and show all tasks organized by status:
 

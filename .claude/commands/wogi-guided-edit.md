@@ -1,5 +1,6 @@
 ---
 description: "Guide through multi-file changes step by step"
+effort: medium
 ---
 Guide through multi-file changes step by step.
 

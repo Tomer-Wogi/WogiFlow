@@ -1,5 +1,6 @@
 ---
 description: "Create a detailed story with acceptance criteria"
+effort: medium
 ---
 Create a detailed story with acceptance criteria. Provide title: `/wogi-story Add login form`
 

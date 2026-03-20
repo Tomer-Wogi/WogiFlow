@@ -1,5 +1,6 @@
 ---
 description: "Comprehensive project-wide deep analysis beyond code review"
+effort: high
 ---
 Comprehensive project-wide deep analysis that goes far beyond code review. While `/wogi-review` asks "did I introduce problems?", `/wogi-audit` asks "how can we make this project better?"
 

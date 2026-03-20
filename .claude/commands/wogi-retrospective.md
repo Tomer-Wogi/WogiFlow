@@ -1,5 +1,6 @@
 ---
 description: "Guided session retrospective that extracts lessons from recent work"
+effort: medium
 ---
 Guided session retrospective that extracts lessons from recent work. Invoke when user says "let's do a retro", "what went well", "what can we improve", or "lessons learned".
 

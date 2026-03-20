@@ -1,5 +1,6 @@
 ---
 description: "Compare auto-generated index with curated app-map and suggest updates"
+effort: low
 ---
 Compare auto-generated index with curated app-map and suggest updates.
 

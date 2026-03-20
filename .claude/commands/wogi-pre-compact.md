@@ -1,5 +1,6 @@
 ---
 description: "Save workflow state before context compaction (pre-compact phase)"
+effort: medium
 ---
 Save workflow state (task progress, checkpoints, session context) before context compaction.
 

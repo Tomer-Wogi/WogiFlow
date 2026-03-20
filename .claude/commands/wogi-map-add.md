@@ -1,5 +1,6 @@
 ---
 description: "Add a component to the app-map"
+effort: low
 ---
 Add a component to the app-map.
 

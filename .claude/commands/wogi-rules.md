@@ -1,5 +1,6 @@
 ---
 description: "View and manage project coding rules"
+effort: low
 ---
 View and manage project coding rules.
 

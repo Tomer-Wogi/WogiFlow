@@ -1,5 +1,6 @@
 ---
 description: "Suspend the current task with a resume condition"
+effort: low
 ---
 Suspend the current task with a resume condition.
 

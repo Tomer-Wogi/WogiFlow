@@ -1,5 +1,6 @@
 ---
 description: "Enable hybrid mode - Claude plans, cheaper/faster models execute"
+effort: medium
 ---
 
 # Enable Multi-Model Hybrid Execution

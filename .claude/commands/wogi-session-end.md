@@ -1,5 +1,6 @@
 ---
 description: "Properly end a work session with state preservation"
+effort: medium
 ---
 Properly end a work session.
 

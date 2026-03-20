@@ -1,5 +1,6 @@
 ---
 description: "Interactive walkthrough of review findings from last review"
+effort: medium
 ---
 Interactive walkthrough of review findings. Loads findings from `.workflow/state/last-review.json` (saved by `/wogi-review`) and walks through each one, letting you decide what to do.
 

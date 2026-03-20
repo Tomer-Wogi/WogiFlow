@@ -1,5 +1,6 @@
 ---
 description: "Generate a daily standup summary"
+effort: low
 ---
 Generate a daily standup summary.
 

@@ -1,5 +1,6 @@
 ---
 description: "Manage epics (large initiatives) with hierarchical progress tracking"
+effort: high
 ---
 Manage epics (large initiatives) with hierarchical progress tracking.
 

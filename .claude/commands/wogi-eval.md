@@ -1,5 +1,6 @@
 ---
 description: "Evaluate WogiFlow task output quality with multi-judge scoring"
+effort: high
 ---
 Evaluate a completed task's output quality using multi-judge scoring (1 Opus + 2 Sonnet).
 

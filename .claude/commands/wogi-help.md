@@ -1,5 +1,6 @@
 ---
 description: "Show all available WogiFlow commands"
+effort: low
 ---
 Show all available Wogi Flow commands.
 

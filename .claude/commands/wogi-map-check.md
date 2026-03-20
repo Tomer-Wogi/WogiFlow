@@ -1,5 +1,6 @@
 ---
 description: "Check for drift between app-map and codebase"
+effort: low
 ---
 Check for drift between app-map and codebase.
 

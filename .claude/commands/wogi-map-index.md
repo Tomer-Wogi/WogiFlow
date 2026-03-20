@@ -1,5 +1,6 @@
 ---
 description: "Show or regenerate the auto-generated component index"
+effort: low
 ---
 Show or regenerate the auto-generated component index.
 
