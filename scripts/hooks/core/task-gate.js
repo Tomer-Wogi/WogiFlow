@@ -296,6 +296,33 @@ function checkTaskGate(options = {}, config) {
     };
   }
 
+  // getActiveTask() returned null — check if a task EXISTS in inProgress
+  // but was rejected for missing routing proof (routedAt + receipt).
+  // This gives the AI an actionable error instead of the misleading "no active task".
+  try {
+    const readyData = getReadyData();
+    if (readyData.inProgress && readyData.inProgress.length > 0) {
+      const task = readyData.inProgress[0];
+      const taskId = typeof task === 'string' ? task : task.id;
+      if (taskId) {
+        trackBypassAttempt({
+          filePath,
+          operation,
+          reason: 'task_missing_routing_proof',
+          taskId
+        });
+        return {
+          allowed: false,
+          blocked: true,
+          message: `Task ${taskId} is in inProgress but has no routing proof (missing routedAt and no routing receipt file).\n\nThis usually means the task was inserted into ready.json manually instead of through /wogi-start.\n\nTo fix:\n1. Use /wogi-start ${taskId} to properly route this task\n2. Or remove it from inProgress and start fresh: /wogi-ready`,
+          reason: 'task_missing_routing_proof'
+        };
+      }
+    }
+  } catch (_err) {
+    // Fall through to normal "no active task" path
+  }
+
   // No active task - should we block?
   const shouldBlock = config.enforcement?.taskGating?.blockWithoutTask !== false;
 

@@ -15,8 +15,10 @@
  * v1.0: Initial implementation — pre-commit blocking gate
  */
 
+const fs = require('node:fs');
+const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getConfig, getReadyData } = require('../../flow-utils');
+const { getConfig, getReadyData, PATHS } = require('../../flow-utils');
 
 /**
  * Check if a Bash command contains a git commit
@@ -120,25 +122,34 @@ function checkCommitLogGate(command, config) {
     return { allowed: true, blocked: false };
   }
 
-  // Check if request-log.md is in staged changes
-  const hasLogEntry = stagedFiles.some(f => f.endsWith('request-log.md'));
+  // Check if request-log.md contains an entry for the active task.
+  // We check file content instead of git staging because .workflow/ may be
+  // in .gitignore (intentional user choice to keep state files out of git).
+  // Checking staged files would silently fail when the directory is gitignored.
+  const task = readyData.inProgress[0];
+  const taskId = (typeof task === 'string' ? task : task.id) || 'unknown';
+
+  const logPath = path.join(PATHS.state, 'request-log.md');
+  let hasLogEntry = false;
+  try {
+    const logContent = fs.readFileSync(logPath, 'utf-8');
+    hasLogEntry = logContent.includes(taskId);
+  } catch (_err) {
+    // File doesn't exist or can't be read — no log entry
+  }
+
   if (hasLogEntry) {
     return { allowed: true, blocked: false };
   }
-
-  // Block: active task + code changes but no log entry
-  const task = readyData.inProgress[0];
-  const taskId = (typeof task === 'string' ? task : task.id) || 'unknown';
 
   return {
     allowed: false,
     blocked: true,
     reason: 'commit_without_log_entry',
     message: [
-      `BLOCKED: Active task ${taskId} but request-log.md is not staged.`,
+      `BLOCKED: Active task ${taskId} but no request-log entry found.`,
       'Add a request-log entry before committing.',
-      'Append a ### R-[N] entry to .workflow/state/request-log.md following the existing format,',
-      'then stage it: git add .workflow/state/request-log.md'
+      `Append a ### R-[N] entry referencing ${taskId} to .workflow/state/request-log.md following the existing format.`
     ].join(' ')
   };
 }

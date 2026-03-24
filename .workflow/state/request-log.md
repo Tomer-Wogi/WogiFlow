@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-260 | 2026-03-24
+**Type**: fix
+**Tags**: #hook:task-gate #hook:commit-log-gate #error-handling
+**Task**: wf-4a4d63f8
+**Request**: "Fix two bugs: task-gate misleading 'no active task' error when task exists without routedAt; commit-log-gate assumes request-log.md is git-trackable but .workflow/ may be gitignored"
+**Result**: Bug 1: Added routing-proof detection in checkTaskGate — when getActiveTask() returns null but a task IS in inProgress, returns specific 'task_missing_routing_proof' error with actionable fix instructions. Bug 2: Changed commit-log-gate from checking git staging (stagedFiles.some) to checking file content (fs.readFileSync + includes(taskId)), respecting .gitignore.
+**Files**: scripts/hooks/core/task-gate.js, scripts/hooks/core/commit-log-gate.js
+
 ### R-259 | 2026-03-18
 **Type**: new
 **Tags**: #compaction #hooks #context-management #post-compact #checkpoint
