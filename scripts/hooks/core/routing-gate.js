@@ -205,6 +205,12 @@ function clearRoutingPending() {
     }
   }
 
+  // Update aggregated hook status
+  try {
+    const { setRouting } = require('../../flow-hook-status');
+    setRouting({ pending: false, cleared: true, clearedAt: new Date().toISOString() });
+  } catch (_err) { /* non-blocking */ }
+
   return { cleared: flagDeleted, reason: flagDeleted ? 'flag_cleared' : 'unlink_error' };
 }
 

@@ -55,6 +55,7 @@ const assessTaskComplexity = complexityModule?.assessTaskComplexity || (() => ({
 const { warnIfContextHigh } = require('./flow-context-monitor');
 const { setCurrentTask } = require('./flow-memory-blocks');
 const { trackTaskStart, checkAndDisplayResumeContext } = require('./flow-session-state');
+const { setActiveTask: setHookActiveTask } = require('./flow-hook-status');
 
 // v2.0 durable session support
 const {
@@ -505,6 +506,7 @@ async function main() {
   try {
     trackTaskStart(taskId, taskTitle);
     setCurrentTask(taskId, taskTitle);
+    setHookActiveTask({ id: taskId, title: taskTitle, routedAt: new Date().toISOString() });
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Task tracking: ${err.message}`);
   }

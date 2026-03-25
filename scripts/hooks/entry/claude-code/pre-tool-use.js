@@ -21,6 +21,7 @@ const { checkCommitLogGate } = require('../../core/commit-log-gate');
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 const { getConfig } = require('../../../flow-utils');
+const { readHookStatus } = require('../../../flow-hook-status');
 const { readHookInput } = require('../shared/read-stdin');
 
 // Lazy-load strict adherence to avoid circular deps and startup cost
@@ -38,6 +39,7 @@ function getStrictAdherence() {
 }
 
 async function main() {
+  const hookStart = process.hrtime.bigint();
   try {
     // Read input from stdin with size limit and parse JSON safely
     const { input } = await readHookInput();
@@ -79,7 +81,30 @@ async function main() {
     const readOnlyAgentTypes = new Set(['Explore', 'Plan', 'code-reviewer', 'bug-analyzer']);
     const subagentReadOnly = isSubagent && agentType ? readOnlyAgentTypes.has(agentType) : false;
 
-    // Load config ONCE and pass to all gate functions (avoids 7-8 redundant reads per tool call)
+    // Fast path: read pre-computed hook status (1 file instead of 6-8).
+    // If all enforcement gates are disabled, skip everything immediately.
+    const hookStatus = readHookStatus();
+    if (hookStatus && hookStatus.enforcement) {
+      const e = hookStatus.enforcement;
+      const allGatesDisabled = !e.taskGating && !e.scopeGating && !e.routingGate
+        && !e.commitLogGate && !e.todoWriteGate && !e.loopEnforcement
+        && !hookStatus.componentReuse && !hookStatus.phaseGate;
+      if (allGatesDisabled) {
+        // No enforcement active — allow immediately (0 additional file reads)
+        if (process.env.DEBUG) {
+          const elapsed = Number(process.hrtime.bigint() - hookStart) / 1e6;
+          console.error(`[Hook] PreToolUse fast-path: ${elapsed.toFixed(1)}ms`);
+        }
+        console.log(JSON.stringify({
+          continue: true,
+          hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' }
+        }));
+        process.exit(0);
+        return;
+      }
+    }
+
+    // Load config ONCE and pass to all gate functions (fallback when hook-status unavailable)
     let config;
     try {
       config = getConfig();
@@ -407,6 +432,12 @@ async function main() {
 
     // Transform to Claude Code format
     const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+
+    // Benchmark: log hook latency when DEBUG is enabled
+    if (process.env.DEBUG) {
+      const elapsed = Number(process.hrtime.bigint() - hookStart) / 1e6;
+      console.error(`[Hook] PreToolUse latency: ${elapsed.toFixed(1)}ms`);
+    }
 
     // Output JSON
     console.log(JSON.stringify(output));

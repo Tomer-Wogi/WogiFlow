@@ -119,6 +119,11 @@ function writePhaseState(state) {
       fs.mkdirSync(dir, { recursive: true });
     }
     fs.writeFileSync(PHASE_FILE, JSON.stringify(state, null, 2) + '\n', 'utf-8');
+    // Update aggregated hook status
+    try {
+      const { setPhase } = require('../../flow-hook-status');
+      setPhase(state.phase);
+    } catch (_err) { /* non-blocking */ }
     return true;
   } catch (err) {
     if (process.env.DEBUG) {

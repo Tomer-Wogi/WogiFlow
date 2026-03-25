@@ -308,17 +308,48 @@ function updateScenarioProgress(scenarioIndex, scenarioTitle, passed) {
  * @param {string} filePath - Path of the changed file
  * @returns {boolean} True if added
  */
-function trackChangedFile(filePath) {
+// In-process batch for trackChangedFile — accumulates changes and flushes once
+let _pendingFiles = [];
+let _flushScheduled = false;
+
+function _flushPendingFiles() {
+  if (_pendingFiles.length === 0) return;
   try {
     const checkpoint = loadCheckpoint();
-    if (!checkpoint) return false;
-
-    if (!checkpoint.changedFiles.includes(filePath)) {
-      checkpoint.changedFiles.push(filePath);
+    if (!checkpoint) { _pendingFiles = []; return; }
+    let changed = false;
+    for (const fp of _pendingFiles) {
+      if (!checkpoint.changedFiles.includes(fp)) {
+        checkpoint.changedFiles.push(fp);
+        changed = true;
+      }
+    }
+    if (changed) {
       checkpoint.lastUpdated = new Date().toISOString();
       writeJson(CHECKPOINT_PATH, checkpoint);
     }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[checkpoint] Batch flush failed: ${err.message}`);
+    }
+  }
+  _pendingFiles = [];
+}
 
+// Flush on process exit to ensure no data loss
+process.on('exit', _flushPendingFiles);
+
+function trackChangedFile(filePath) {
+  try {
+    _pendingFiles.push(filePath);
+    // Schedule a single flush at end of event loop tick (batches multiple calls)
+    if (!_flushScheduled) {
+      _flushScheduled = true;
+      setImmediate(() => {
+        _flushScheduled = false;
+        _flushPendingFiles();
+      });
+    }
     return true;
   } catch (err) {
     if (process.env.DEBUG) {

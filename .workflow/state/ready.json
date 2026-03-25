@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-25T08:42:21.548Z",
+  "lastUpdated": "2026-03-25T08:48:36.538Z",
   "inProgress": [],
   "ready": [
     {
@@ -12,23 +12,6 @@
       "source": "audit-2026-03-13",
       "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
       "createdAt": "2026-03-13T15:00:00.000Z"
-    },
-    {
-      "id": "wf-7e82ca13",
-      "title": "Performance: Aggregate hook state into single pre-computed status file",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P1",
-      "source": "audit-2026-03-24",
-      "criteria": [
-        "Design a single .workflow/state/hook-status.json aggregating config flags, active task, routing state, and phase",
-        "Update flow-start.js and task completion to write this aggregated file",
-        "Modify pre-tool-use.js to read single file instead of 6-8 separate reads",
-        "Make captureCurrentPrompt() fire-and-forget (async, non-blocking)",
-        "Debounce trackChangedFile() writes instead of per-edit sync write",
-        "Move fast-path exits before config loads in observation-capture.js and component-check.js",
-        "Benchmark: measure hook latency before and after (target: <5ms per hook call)"
-      ]
     },
     {
       "id": "wf-9175e882",
@@ -173,6 +156,26 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-7e82ca13",
+      "title": "Performance: Aggregate hook state into single pre-computed status file",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P1",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Design a single .workflow/state/hook-status.json aggregating config flags, active task, routing state, and phase",
+        "Update flow-start.js and task completion to write this aggregated file",
+        "Modify pre-tool-use.js to read single file instead of 6-8 separate reads",
+        "Make captureCurrentPrompt() fire-and-forget (async, non-blocking)",
+        "Debounce trackChangedFile() writes instead of per-edit sync write",
+        "Move fast-path exits before config loads in observation-capture.js and component-check.js",
+        "Benchmark: measure hook latency before and after (target: <5ms per hook call)"
+      ],
+      "status": "completed",
+      "routedAt": "2026-03-25T08:44:11.466Z",
+      "completedAt": "2026-03-25T08:48:36.536Z"
+    },
+    {
       "id": "wf-154d4643",
       "title": "Security: Migrate 49 files from raw JSON.parse to safeJsonParse",
       "type": "refactor",
@@ -281,15 +284,6 @@
       "status": "completed",
       "startedAt": "2026-03-17T11:53:12.441Z",
       "completedAt": "2026-03-17T11:55:54.630Z"
-    },
-    {
-      "id": "wf-892edb00",
-      "title": "Fix 6 review findings — getTodayDate, locking, JSON.parse, aliases",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-17T10:49:09.642Z",
-      "completedAt": "2026-03-17T11:23:49.688Z"
     }
   ],
   "backlog": [

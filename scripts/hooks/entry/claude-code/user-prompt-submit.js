@@ -77,14 +77,16 @@ async function main() {
     // Controlled by hooks.rules.intelligence.promptCapture.enabled
     if (hookConfig.hooks?.rules?.intelligence?.promptCapture?.enabled !== false) {
       if (typeof prompt === 'string' && prompt.trim().length > 0) {
-        try {
-          captureCurrentPrompt(prompt);
-        } catch (err) {
-          // Non-blocking - don't fail the hook if capture fails
-          if (process.env.DEBUG) {
-            console.error(`[Hook] Prompt capture failed: ${err.message}`);
+        // Fire-and-forget: capture prompt after hook output is sent
+        setImmediate(() => {
+          try {
+            captureCurrentPrompt(prompt);
+          } catch (err) {
+            if (process.env.DEBUG) {
+              console.error(`[Hook] Prompt capture failed: ${err.message}`);
+            }
           }
-        }
+        });
       }
     }
 

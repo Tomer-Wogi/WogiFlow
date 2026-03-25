@@ -20,6 +20,7 @@ const fs = require('node:fs');
 // Import from parent scripts directory
 const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId, archiveCompletedTasksToLog } = require('../../flow-utils');
 const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
+const { clearOnTaskComplete } = require('../../flow-hook-status');
 
 /**
  * Check if task completed handling is enabled
@@ -142,6 +143,17 @@ async function handleTaskCompleted(input) {
       } catch (err) {
         if (process.env.DEBUG) {
           console.error(`[Task Completed] Phase reset failed: ${err.message}`);
+        }
+      }
+    }
+
+    // Clear hook status on task completion (single aggregated state file)
+    if (result.completed) {
+      try {
+        clearOnTaskComplete();
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Hook status clear failed: ${err.message}`);
         }
       }
     }

@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-264 | 2026-03-25
+**Type**: refactor
+**Tags**: #performance #hooks #hot-path
+**Task**: wf-7e82ca13
+**Request**: "Aggregate hook state into single pre-computed status file"
+**Result**: Created flow-hook-status.js aggregating all hook state into single file. Pre-tool-use.js now reads 1 file instead of 6-8 per tool call. Fast-path (all gates disabled): 1.9ms. Full path: 3.0ms. Both under 5ms target. Made captureCurrentPrompt() fire-and-forget, debounced trackChangedFile() with setImmediate batching.
+**Files**: scripts/flow-hook-status.js (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/flow-start.js, scripts/hooks/core/task-completed.js, scripts/hooks/core/phase-gate.js, scripts/hooks/core/routing-gate.js, scripts/flow-task-checkpoint.js, scripts/hooks/entry/claude-code/user-prompt-submit.js
+
 ### R-263 | 2026-03-25
 **Type**: refactor
 **Tags**: #security #json-parse #prototype-pollution
