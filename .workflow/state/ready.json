@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-24T20:22:16.461Z",
+  "lastUpdated": "2026-03-25T08:10:04.075Z",
   "inProgress": [],
   "ready": [
     {
@@ -202,6 +202,21 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-8e20990b",
+      "title": "Claude Code 2.1.83 compatibility updates",
+      "type": "chore",
+      "level": "L2",
+      "criteria": [
+        "Add CwdChanged/FileChanged to UNUSED_SUPPORTED_EVENTS in hooks adapter",
+        "Update claude-code-compatibility.md with 2.1.83 features section",
+        "Update MEMORY.md 25KB truncation limit in CLAUDE.md template",
+        "Investigate ENV_SCRUB impact on cloud/hybrid hooks",
+        "Document --channels AskUserQuestion limitation",
+        "Add WebFetch Claude-User awareness note"
+      ],
+      "completedAt": "2026-03-25T08:10:04.074Z"
+    },
     {
       "id": "wf-4a4d63f8",
       "title": "Fix hook error messages — task-gate and commit-log-gate",

@@ -2,36 +2,6 @@
   "version": 2,
   "prompts": [
     {
-      "timestamp": "2026-02-25T08:36:23.201Z",
-      "content": "I also want to know why the last unanswered question was not routed properly because there's a loose end, there's a way for you to skip the wogiflow start which I need to close when I give people wogiflow my promise to them is everything is going to be up to a certain standard and there's a procedure that every task and every request goes through to prevent cloud from making assumptions or from hallucinating or from doing things, being opinionated in code you can't be opinionated especially when you work in teams everyone needs to be aligned, perfectly aligned and once cloud gets opinionated it's not aligned to the rest of the team so I cannot have cloud going rogue, so to speak and doing stuff and skipping the steps that I defined ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
-      "timestamp": "2026-02-25T08:59:14.089Z",
-      "content": "We had a command or a flow for digesting very long prompts. Do we still have it? ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
-      "timestamp": "2026-02-25T09:03:20.837Z",
-      "content": "Is it something that is still operational and Wogistart can use? because I gave wogistart a few long prompts and I did not see it invoke it or use it so what maybe we need to think just about the threshold again, tell me what you think about how many rows is too much and you start missing things ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
       "timestamp": "2026-02-25T09:08:35.043Z",
       "content": "Yes, I want you to make sure it's also enabled as a default so when everyone downloads or installs Wogi Flow this is what is expected. Also if someone updates Wogi Flow it will change the long input gate into enabled. Now you said that in 50 to 150 lines you can see specs may miss edge cases buried in the middle. So for me the threshold should be 50 lines, 60 lines. The idea here is that for Wogi Flow is that there's no compromise. Someone yesterday asked me are you basically competing with Wogi Flow? I said I'm not competing with Wogi Flow because I'm not worried about Claude. Claude will get there. So I told him I'm not worried about Claude doing what we do because they won't. It's like we're Apple. We're developing for one type of user and they're Microsoft. They need to support everything. For 90% of people giving them a system that makes Claude spend two times, three times, four times the tokens that it does now will not make sense. But for companies that needs to keep a certain standard that needs to have 10 developers working with agents and everyone producing the same quality and level of code it makes a lot of sense. ",
       "taskId": "wf-postinstall",
@@ -4925,6 +4895,33 @@
     },
     {
       "timestamp": "2026-03-25T06:35:43.399Z",
+      "content": "/wogi-session-end",
+      "taskId": null,
+      "taskTitle": null,
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-03-25T06:39:21.276Z",
+      "content": "There were a lot of changes to cloud It's not yet available in Brawl but please review all the changes in the latest version which is 2.1.83 I want you to give me a list of anything that we need to do. Like if it's a quick win, I don't need you to mention it. If it's not relevant, I don't need you to mention it. Just give me things that we need to address in Wogi Flow, opportunities to improve Wogi Flow or things that we need to change. \n2.1.83\nAdded managed-settings.d/ drop-in directory alongside managed-settings.json, letting separate teams deploy independent policy fragments that merge alphabetically\nAdded CwdChanged and FileChanged hook events for reactive environment management (e.g., direnv)\nAdded sandbox.failIfUnavailable setting to exit with an error when sandbox is enabled but cannot start, instead of running unsandboxed\nAdded disableDeepLinkRegistration setting to prevent claude-cli:// protocol handler registration\nAdded CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 to strip Anthropic and cloud provider credentials from subprocess environments (Bash tool, hooks, MCP stdio servers)\nAdded transcript search — press / in transcript mode (Ctrl+O) to search, n/N to step through matches\nAdded Ctrl+X Ctrl+E as an alias for opening the external editor (readline-native binding; Ctrl+G still works)\nPasted images now insert an [Image #N] chip at the cursor so you can reference them positionally in your prompt\nAgents can now declare initialPrompt in frontmatter to auto-submit a first turn\nchat:killAgents and chat:fastMode are now rebindable via ~/.claude/keybindings.json\nFixed mouse tracking escape sequences leaking to shell prompt after exit\nFixed Claude Code hanging on exit on macOS\nFixed screen flashing blank after being idle for a few seconds\nFixed a hang when diffing very large files with few common lines — diffs now time out after 5 seconds and fall back gracefully\nFixed a 1–8 second UI freeze on startup when voice input was enabled, caused by eagerly loading the native audio module\nFixed a startup regression where Claude Code would wait ~3s for claude.ai MCP config fetch before proceeding\nFixed --mcp-config CLI flag bypassing allowedMcpServers/deniedMcpServers managed policy enforcement\nFixed claude.ai MCP connectors (Slack, Gmail, etc.) not being available in single-turn --print mode\nFixed caffeinate process not properly terminating when Claude Code exits, preventing Mac from sleeping\nFixed bash mode not activating when tab-accepting !-prefixed command suggestions\nFixed stale slash command selection showing wrong highlighted command after navigating suggestions\nFixed /config menu showing both the search cursor and list selection at the same time\nFixed background subagents becoming invisible after context compaction, which could cause duplicate agents to be spawned\nFixed background agent tasks staying stuck in \"running\" state when git or API calls hang during cleanup\nFixed --channels showing \"Channels are not currently available\" on first launch after upgrade\nFixed uninstalled plugin hooks continuing to fire until the next session\nFixed queued commands flickering during streaming responses\nFixed slash commands being sent to the model as text when submitted while a message is processing\nFixed scrollback jumping when collapsed read/search groups finish after scrolling offscreen\nFixed scrollback jumping to top when the model starts or stops thinking\nFixed SDK session history loss on resume caused by hook progress/attachment messages forking the parentUuid chain\nFixed copy-on-select not firing when you release the mouse outside the terminal window\nFixed ghost characters appearing in height-constrained lists when items overflow\nFixed Ctrl+B interfering with readline backward-char at an idle prompt — it now only fires when a foreground task can be backgrounded\nFixed tool result files never being cleaned up, ignoring the cleanupPeriodDays setting\nFixed space key being swallowed for up to 3 seconds after releasing voice hold-to-talk\nFixed ALSA library errors corrupting the terminal UI when using voice mode on Linux without audio hardware (Docker, headless, WSL1)\nFixed voice mode SoX detection on Termux/Android where spawning which is kernel-restricted\nFixed Remote Control sessions showing as Idle in the web session list while actively running\nFixed footer navigation selecting an invisible Remote Control pill in config-driven mode\nFixed memory leak in remote sessions where tool use IDs accumulate indefinitely\nImproved Bedrock SDK cold-start latency by overlapping profile fetch with other boot work\nImproved --resume memory usage and startup latency on large sessions\nImproved plugin startup — commands, skills, and agents now load from disk cache without re-fetching\nImproved Remote Control session titles: AI-generated titles now appear within seconds of the first message\nImproved WebFetch to identify as Claude-User so site operators can recognize and allowlist Claude Code traffic via robots.txt\nReduced WebFetch peak memory usage for large pages\nReduced scrollback resets in long sessions from once per turn to once per ~50 messages\nFaster claude -p startup with unauthenticated HTTP/SSE MCP servers (~600ms saved)\nBash ghost-text suggestions now include just-submitted commands immediately\nIncreased non-streaming fallback token cap (21k → 64k) and timeout (120s → 300s local) so fallback requests are less likely to be truncated\nInterrupting a prompt before any response now automatically restores your input so you can edit and resubmit\n/status now works while Claude is responding, instead of being queued until the turn finishes\nPlugin MCP servers that duplicate an org-managed connector are now suppressed instead of running a second connection\nLinux: respect XDG_DATA_HOME when registering the claude-cli:// protocol handler\nChanged \"stop all background agents\" keybinding from Ctrl+F to Ctrl+X Ctrl+K to stop shadowing readline forward-char\nDeprecated TaskOutput tool in favor of using Read on the background task's output file path\nAdded CLAUDE_CODE_DISABLE_NONSTREAMING_FALLBACK env var to disable the non-streaming fallback when streaming fails\nPlugin options (manifest.userConfig) now available externally — plugins can prompt for configuration at enable time, with sensitive: true values stored in keychain (macOS) or protected credentials file (other platforms)\nClaude can now reference the on-disk path of clipboard-pasted images for file operations\nCtrl+L now clears the screen and forces a full redraw — use this to recover when Cmd+K leaves the UI partially blank. Use Ctrl+U or double-Esc to clear prompt input.\n--bare -p (SDK pattern) is ~14% faster to the API request\nMemory: MEMORY.md index now truncates at 25KB as well as 200 lines\nDisabled AskUserQuestion and plan-mode tools when --channels is active\nFixed API 400 error when a pasted image was queued during a failing tool call\nFixed MCP tool calls hanging indefinitely when an SSE connection drops mid-call and exhausts its reconnection attempts\nFixed Remote Control session titles showing raw XML when a background agent completed before the first user message\nFixed remote sessions forgetting conversation history after a container restart due to progress-message gaps in the resumed transcript chain\nFixed remote sessions requiring re-login on transient auth errors instead of retrying automatically\nFixed rg ... | wc -l and similar piped commands hanging and returning 0 in sandbox mode on Linux\nFixed voice input hold-to-talk not activating when a CJK IME inserts a full-width space\nFixed --worktree hanging silently when the worktree name contained a forward slash\n[VSCode] Spinner now turns red with \"Not responding\" when the backend hasn't responded for 60 seconds\n[VSCode] Fixed session history not loading correctly when reopening a session via URL or after restart\n[VSCode] Added Esc-twice (or /rewind) to open a keyboard-navigable rewind picker\n[VSCode] Fixed \"Fork conversation from here\" and rewind actions failing silently after the session cache goes stale",
+      "taskId": null,
+      "taskTitle": null,
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-03-25T06:45:27.382Z",
+      "content": "Fix everything you need to be fixed and investigate anything that needs to be investigated. ultrathink",
+      "taskId": null,
+      "taskTitle": null,
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-03-25T08:13:05.758Z",
       "content": "/wogi-session-end",
       "taskId": null,
       "taskTitle": null,

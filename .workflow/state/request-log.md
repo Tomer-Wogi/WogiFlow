@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-261 | 2026-03-25
+**Type**: chore
+**Tags**: #compatibility #claude-code #hooks #providers #env-scrub
+**Request**: "Claude Code 2.1.83 compatibility updates"
+**Result**: Added CwdChanged/FileChanged to UNUSED_SUPPORTED_EVENTS, documented ENV_SCRUB impact on hybrid mode providers and correction detector, added ENV_SCRUB graceful degradation to flow-correction-detector.js, updated claude-code-compatibility.md with full 2.1.83 section covering managed-settings.d, new hook events, ENV_SCRUB, --channels limitations, TaskOutput deprecation, MEMORY.md 25KB cap, plugin userConfig, WebFetch Claude-User agent.
+**Files**: scripts/hooks/adapters/claude-code.js, scripts/flow-correction-detector.js, scripts/flow-providers.js, .claude/docs/claude-code-compatibility.md
+
 ### R-260 | 2026-03-24
 **Type**: fix
 **Tags**: #hook:task-gate #hook:commit-log-gate #error-handling

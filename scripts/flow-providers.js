@@ -918,6 +918,12 @@ async function detectProviders() {
     // Not available
   }
 
+  // NOTE: When CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 (Claude Code 2.1.83+), cloud provider
+  // API keys are stripped from subprocess environments. Since hybrid mode invokes this
+  // script via the Bash tool (a subprocess), no cloud providers will be detected.
+  // Workaround: pass API keys via config.json hybrid.providers[].apiKey instead of env vars.
+  // Local providers (Ollama, LM Studio) are unaffected (they use localhost HTTP, no keys).
+
   // Check Anthropic (cloud - if key present)
   if (process.env.ANTHROPIC_API_KEY) {
     available.push({

@@ -289,6 +289,10 @@ function spawnBackgroundDetection(userMessage, taskId) {
     const { spawn } = require('node:child_process');
     // Pass user message via env var instead of CLI args to prevent argument injection.
     // Only propagate necessary env vars to minimize exposure.
+    // NOTE: When CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1 (Claude Code 2.1.83+), Anthropic/cloud
+    // credentials are stripped from subprocess environments. Since hooks run as subprocesses,
+    // ANTHROPIC_API_KEY may already be scrubbed by the time we reach here. The detector
+    // gracefully degrades (returns isCorrection: false) when no API key is available.
     const child = spawn(process.execPath, [
       __filename, 'detect-and-queue'
     ], {
@@ -298,7 +302,7 @@ function spawnBackgroundDetection(userMessage, taskId) {
         PATH: process.env.PATH,
         HOME: process.env.HOME,
         NODE_PATH: process.env.NODE_PATH || '',
-        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
         DEBUG: process.env.DEBUG || '',
         WOGI_DETECT_MESSAGE: userMessage.trim().slice(0, MAX_PROMPT_LENGTH),
         WOGI_DETECT_TASK_ID: taskId || ''

@@ -67,6 +67,8 @@ const CLAUDE_CODE_EVENTS = [
 //   'Notification',       // Supported but not yet used by WogiFlow
 //   'Elicitation',        // Claude Code 2.1.76+ — intercept MCP elicitation requests before dialog
 //   'ElicitationResult',  // Claude Code 2.1.76+ — intercept/override elicitation responses before sending
+//   'CwdChanged',         // Claude Code 2.1.83+ — fires when working directory changes (e.g., direnv)
+//   'FileChanged',        // Claude Code 2.1.83+ — fires when watched files change on disk
 // ];
 
 /**

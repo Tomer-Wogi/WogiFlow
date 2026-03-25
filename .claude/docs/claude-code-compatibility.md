@@ -70,6 +70,7 @@ flow parallel check  # See available parallel tasks
 | 1.9.5+ | 2.1.74+ | SessionEnd timeout fix, managed policy ask rules, autoMemoryDirectory, Agent tool routing gate fix |
 | 2.0.0+ | 2.1.76+ | PostCompact hook, Elicitation/ElicitationResult events, deferred tool schema fix |
 | 2.1.0+ | 2.1.77+ | PreToolUse allow/deny separation, 128k output tokens, worktree sparse checkout, compaction circuit breaker |
+| 2.4.0+ | 2.1.83+ | managed-settings.d/, CwdChanged/FileChanged hooks, ENV_SCRUB, --channels limitations, MEMORY.md 25KB cap |
 
 ### Environment Variables (2.1.19+)
 
@@ -235,6 +236,32 @@ await cancelTask('wf-123', 'superseded', false);
 - **Stale worktree cleanup race condition fix**: Fixed a race condition where stale-worktree cleanup could delete an agent worktree just resumed from a previous crash. WogiFlow's parallel execution with worktree isolation benefits from improved safety.
 - **Memory growth fix**: Fixed progress messages surviving compaction in long-running sessions. Reduces memory pressure during long WogiFlow bulk-loop sessions.
 - **Faster startup on macOS**: ~60ms faster by reading keychain credentials in parallel. Faster `--resume` on fork-heavy sessions — up to 45% faster loading and ~100-150MB less peak memory. Benefits WogiFlow sessions with heavy hook context.
+
+### Features in 2.1.83+
+
+- **managed-settings.d/ drop-in directory**: A `managed-settings.d/` directory alongside `managed-settings.json` allows separate teams/tools to deploy independent policy fragments that merge alphabetically. WogiFlow currently generates `settings.local.json` — for wogiflow-cloud teams, this opens the door to deploying team policies as individual fragments (e.g., `00-wogiflow-hooks.json`, `50-team-policy.json`). No code change needed yet; tracked as cloud opportunity.
+
+- **CwdChanged and FileChanged hook events**: Two new hook events. `CwdChanged` fires when the working directory changes (useful for direnv-style setups). `FileChanged` fires when watched files change on disk — WogiFlow could use this to detect external changes to `.workflow/state/` files and auto-rescan. Added to `UNUSED_SUPPORTED_EVENTS` in `claude-code.js`. Implementation deferred to a future task.
+
+- **CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1**: Strips Anthropic and cloud provider credentials from subprocess environments (Bash tool, hooks, MCP stdio servers). **Impact on WogiFlow**: Hooks are subprocesses, so any hook that needs API keys (e.g., `flow-correction-detector.js` spawning a child process for async correction detection) will not have credentials available. The correction detector now gracefully degrades (returns `isCorrection: false`) when no API key is available. `flow-providers.js` makes direct `https.request()` calls from the hook process itself (not a subprocess of the subprocess), so it reads `process.env` before scrubbing — but if ENV_SCRUB applies transitively to hook processes, provider calls would also be affected. For wogiflow-cloud: if cloud sync hooks need API keys, they must use an alternative credential mechanism (file-based, keychain, or passed via hook input JSON).
+
+- **Agents can declare initialPrompt in frontmatter**: Agents can now auto-submit a first turn without the AI composing it. WogiFlow's 11 persona agents in `agents/` could use this for standardized opening probes. No code change needed; optimization opportunity.
+
+- **Background subagent fixes**: (1) Fixed subagents becoming invisible after context compaction — this prevented duplicate agent spawns in WogiFlow's parallel explore phase. (2) Fixed agents staying stuck in "running" state when git/API calls hang during cleanup. Both fixes improve reliability of `/wogi-start` explore phase and `/wogi-bulk-loop`.
+
+- **--channels disables AskUserQuestion and plan mode**: When `--channels` is active (remote/SDK), `AskUserQuestion` and plan-mode tools are disabled. **Impact on WogiFlow**: WogiFlow uses `AskUserQuestion` extensively for approval gates, clarifying questions, and interactive decisions. In `--channels` mode, these will silently fail or be unavailable. WogiFlow should detect channels mode and fall back to non-interactive patterns: auto-approve with defaults, skip clarifying questions, use best-effort decisions. Documented in CLAUDE.md template and wogi-start command.
+
+- **TaskOutput deprecated**: `TaskOutput` tool is deprecated in favor of using `Read` on the background task's output file path. WogiFlow does not use `TaskOutput` directly (confirmed by codebase search). No change needed.
+
+- **MEMORY.md index truncation**: Now truncates at **25KB** as well as 200 lines (previously only 200 lines). WogiFlow's MEMORY.md enforcement block at the top consumes space from this budget. Projects with large MEMORY.md files may lose entries silently. The CLAUDE.md template's auto-memory section already mentions 200 lines; the 25KB limit is enforced by Claude Code's system prompt and does not need to be duplicated in the template.
+
+- **Plugin manifest.userConfig**: Plugins can now prompt for configuration at enable time, with `sensitive: true` values stored in keychain (macOS) or protected credentials file. If WogiFlow becomes a Claude Code plugin, this provides native credential storage for cloud API tokens and model API keys — replacing `wogi login`'s file-based token storage. Tracked as cloud opportunity.
+
+- **WebFetch identifies as Claude-User**: `WebFetch` now sends a `Claude-User` user agent so site operators can recognize and allowlist/block Claude Code traffic via `robots.txt`. WogiFlow's explore agents (Agent 2: Best Practices, Agent 3: Version Verifier) use `WebFetch` for research. If sites block `Claude-User`, research agents will get empty results. Agents should treat unexpectedly empty WebFetch results as potentially blocked and log a warning.
+
+- **--mcp-config bypass fix**: Fixed `--mcp-config` CLI flag bypassing `allowedMcpServers`/`deniedMcpServers` managed policy enforcement. Security improvement — no WogiFlow code change needed.
+
+- **Uninstalled plugin hooks fix**: Fixed uninstalled plugin hooks continuing to fire until the next session. Improves hook hygiene for WogiFlow plugin management.
 
 ### Simple Mode Naming Distinction
 
