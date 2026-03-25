@@ -2465,3 +2465,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Re-do login/logout CLI wiring through proper pipeline — fix quality issues from unrouted implementation"
 **Result**: Extracted shared team-connection.js module (DRY fix). Fixed: exec→execFile for URL opening (command injection), added prototype pollution guards on JSON.parse, added request timeouts, file permissions 0600 on token file, fixed escape key vs arrow key ambiguity, fixed logout HTTPS-only mismatch. Extracted ANSI constants.
 **Files**: lib/commands/team-connection.js (new), lib/commands/login.js, lib/commands/logout.js, bin/flow, scripts/flow
+
+### R-236 | 2026-03-25
+**Type**: refactor
+**Tags**: #audit #bulk #modernization #architecture #dependencies #tech-debt
+**Task**: wf-dd90ada4, wf-780e9bcc, wf-23608f2f, wf-e175a561, wf-522109a6, wf-18c2bb6f, wf-14ce6d29, wf-42cc574d, wf-10279963
+**Request**: "Bulk execute all 9 remaining audit tasks"
+**Result**: Completed all 9 tasks in 4 batches (5 parallel + 1 sequential + 2 parallel + 1 final). Key outcomes: || to ?? migration (101 replacements, timeout=0 bug fix), flow-long-input extraction (3677→1103 LOC), eslint 10 + @huggingface/transformers upgrade, Promise wraps modernization (63 files), learning write centralization with dedup/locking, flow-done.js gate extraction (18 handlers), autoCompactPrompt decomposition, shared hook-runner (13 hooks) + BaseWorkflowStep (7 steps), tech-debt metrics update. Net: ~120 files changed, ~3000 LOC removed. All 18 tests pass.
+**Files**: 120+ files across scripts/, .claude/rules/, .workflow/state/

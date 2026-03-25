@@ -1,18 +1,9 @@
 {
-  "lastUpdated": "2026-03-25T15:00:27.334Z",
+  "lastUpdated": "2026-03-25T16:30:00.000Z",
   "inProgress": [],
-  "ready": [
-    {
-      "id": "wf-14ce6d29",
-      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
-      "type": "refactor",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P3",
-      "source": "audit-2026-03-13",
-      "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
-      "createdAt": "2026-03-13T15:00:00.000Z"
-    },
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-dd90ada4",
       "title": "Modernization: Audit || to ?? in config-value default paths",
@@ -20,13 +11,8 @@
       "level": "L1",
       "priority": "P1",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Audit || usage in flow-damage-control.js (32), flow-long-input.js (65), flow-done.js (23), flow-orchestrate.js (24)",
-        "Replace || with ?? where left operand could legitimately be 0, false, or empty string",
-        "Keep || where falsy-default behavior is intentional (e.g., empty string should fall through)",
-        "Add lint rule or code comment documenting which pattern to use when",
-        "Priority files: flow-http-client.js (timeout=0 bug), flow-status.js, flow-session-end.js"
-      ]
+      "status": "completed",
+      "completedAt": "2026-03-25T16:00:00.000Z"
     },
     {
       "id": "wf-780e9bcc",
@@ -35,47 +21,8 @@
       "level": "L1",
       "priority": "P2",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Extract runPass2/runPass3/runPass4/runFullPipeline into flow-long-input-passes.js",
-        "Extract contradiction detection (detectContradictions, resolveOrphan) into flow-long-input-contradictions.js",
-        "Extract statement association into flow-long-input-association.js",
-        "Reduce flow-long-input.js to ~300 LOC orchestrator",
-        "Replace bare require(\"fs\")/require(\"path\") with require(\"node:fs\")/require(\"node:path\")",
-        "Replace .hasOwnProperty() with Object.hasOwn() at line 1506",
-        "All existing tests still pass after extraction"
-      ]
-    },
-    {
-      "id": "wf-18c2bb6f",
-      "title": "Architecture: Split flow-done.js runQualityGates into step-plugin system",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P2",
-      "source": "audit-2026-03-24",
-      "criteria": [
-        "Extract runQualityGates (637 LOC) into flow-done-gates.js with individual gate handlers",
-        "Extract report formatting into flow-done-report.js",
-        "Each gate type becomes a registered step handler (following flow-workflow-steps.js pattern)",
-        "Main flow-done.js reduced to orchestration + step dispatch",
-        "Reduce max nesting depth from 11 to <=4",
-        "All quality gates still function correctly after split"
-      ]
-    },
-    {
-      "id": "wf-42cc574d",
-      "title": "Duplication: Create shared hook-runner.js and BaseWorkflowStep",
-      "type": "refactor",
-      "level": "L2",
-      "priority": "P2",
-      "source": "audit-2026-03-24",
-      "criteria": [
-        "Create scripts/hooks/entry/shared/hook-runner.js with runHook(eventName, handler, {failMode}) wrapper",
-        "Migrate 13 hook entry files to use hook-runner.js instead of duplicated boilerplate",
-        "Create BaseWorkflowStep class for the 11 flow-step-*.js scripts",
-        "Consolidate sanitize(value, maxLen) into flow-io.js or flow-output.js",
-        "Move sanitizeShellArg/escapeShellPath from flow-task-enforcer.js to flow-security.js",
-        "Extract setConfigValue/setConfigValueSync shared body into _applyConfigPath helper"
-      ]
+      "status": "completed",
+      "completedAt": "2026-03-25T16:00:00.000Z"
     },
     {
       "id": "wf-23608f2f",
@@ -84,13 +31,8 @@
       "level": "L2",
       "priority": "P2",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Test eslint v10 upgrade in branch — verify flat config still works",
-        "Upgrade eslint ^9.0.0 → ^10.0.0 if tests pass",
-        "Migrate @xenova/transformers → @huggingface/transformers in flow-memory-db.js",
-        "Update dynamic import path and verify pipeline() API compatibility",
-        "Verify npm audit shows 0 vulnerabilities after both upgrades"
-      ]
+      "status": "completed",
+      "completedAt": "2026-03-25T16:00:00.000Z"
     },
     {
       "id": "wf-e175a561",
@@ -99,13 +41,8 @@
       "level": "L2",
       "priority": "P3",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Replace 5 setTimeout sleep patterns with require(\"node:timers/promises\").setTimeout",
-        "Migrate 11 readline.question Promise wraps to require(\"node:readline/promises\")",
-        "Replace simple http.request wraps with fetch() in flow-model-config.js and flow-links.js",
-        "Route complex streaming cases through HttpClient from flow-http-client.js",
-        "Standardize use strict — either add to all 240 files or remove from 45"
-      ]
+      "status": "completed",
+      "completedAt": "2026-03-25T16:00:00.000Z"
     },
     {
       "id": "wf-522109a6",
@@ -114,13 +51,38 @@
       "level": "L1",
       "priority": "P3",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Expand flow-learning-orchestrator.js (178 LOC) to mediate ALL writes to feedback-patterns.md and decisions.md",
-        "Modify 8 learning modules to route writes through orchestrator instead of direct file access",
-        "Add dedup check — orchestrator rejects writes that duplicate existing entries",
-        "Add write locking to prevent race conditions between concurrent learning paths",
-        "Verify no learning module writes directly to feedback-patterns.md or decisions.md after migration"
-      ]
+      "status": "completed",
+      "completedAt": "2026-03-25T16:00:00.000Z"
+    },
+    {
+      "id": "wf-18c2bb6f",
+      "title": "Architecture: Split flow-done.js runQualityGates into step-plugin system",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "status": "completed",
+      "completedAt": "2026-03-25T16:10:00.000Z"
+    },
+    {
+      "id": "wf-14ce6d29",
+      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P3",
+      "source": "audit-2026-03-13",
+      "status": "completed",
+      "completedAt": "2026-03-25T16:20:00.000Z"
+    },
+    {
+      "id": "wf-42cc574d",
+      "title": "Duplication: Create shared hook-runner.js and BaseWorkflowStep",
+      "type": "refactor",
+      "level": "L2",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "status": "completed",
+      "completedAt": "2026-03-25T16:20:00.000Z"
     },
     {
       "id": "wf-10279963",
@@ -129,17 +91,9 @@
       "level": "L2",
       "priority": "P3",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Update tech-debt.json with correct file sizes (flow-orchestrate.js: 1667, flow-done.js: 1599, etc.)",
-        "Mark TD-008 as resolved (flow-orchestrate.js extraction complete)",
-        "Either implement evaluatePromptWithAI() in flow-damage-control.js or remove the promptHook feature and document pattern-matching-only protection",
-        "Fix flow-audit.js TODO scanner to exclude self-references (94% false positive rate)",
-        "Consolidate 3 DEBUG env vars (DEBUG, WOGIFLOW_DEBUG, DEBUG_LSP) — document relationship or unify"
-      ]
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "status": "completed",
+      "completedAt": "2026-03-25T16:30:00.000Z"
+    },
     {
       "id": "wf-9175e882",
       "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
@@ -147,15 +101,7 @@
       "level": "L1",
       "priority": "P1",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Add any missing subdirectory constants to PATHS in flow-paths.js",
-        "Replace PROJECT_ROOT = getProjectRoot() with direct PATHS import in 74 files",
-        "Replace manual path.join(\".workflow\"...) with PATHS.* in 90 files",
-        "Replace manual STATE_DIR/WORKFLOW_DIR constructions with PATHS.state/PATHS.workflow",
-        "Verify zero manual .workflow path construction remains (excluding templates and test fixtures)"
-      ],
       "status": "completed",
-      "routedAt": "2026-03-25T12:59:14.092Z",
       "completedAt": "2026-03-25T15:00:27.332Z"
     },
     {
@@ -164,8 +110,6 @@
       "type": "fix",
       "level": "L2",
       "status": "completed",
-      "routedAt": "2026-03-25T10:38:28.175Z",
-      "source": "review-2026-03-25",
       "completedAt": "2026-03-25T10:40:20.532Z"
     },
     {
@@ -175,17 +119,7 @@
       "level": "L1",
       "priority": "P1",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Design a single .workflow/state/hook-status.json aggregating config flags, active task, routing state, and phase",
-        "Update flow-start.js and task completion to write this aggregated file",
-        "Modify pre-tool-use.js to read single file instead of 6-8 separate reads",
-        "Make captureCurrentPrompt() fire-and-forget (async, non-blocking)",
-        "Debounce trackChangedFile() writes instead of per-edit sync write",
-        "Move fast-path exits before config loads in observation-capture.js and component-check.js",
-        "Benchmark: measure hook latency before and after (target: <5ms per hook call)"
-      ],
       "status": "completed",
-      "routedAt": "2026-03-25T08:44:11.466Z",
       "completedAt": "2026-03-25T08:48:36.536Z"
     },
     {
@@ -195,15 +129,7 @@
       "level": "L1",
       "priority": "P0",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Replace 6 raw JSON.parse calls in flow-long-input.js with safeJsonParse",
-        "Fix 4 raw JSON.parse calls in flow-io.js (the module that defines safeJsonParse)",
-        "Replace raw JSON.parse in flow-providers.js (7), flow-run-trace.js (5), flow-orchestrate-llm.js (4), flow-response-parser.js (4)",
-        "Audit remaining ~24 files using raw JSON.parse and migrate to safeJsonParse",
-        "Verify zero raw JSON.parse remains in scripts/ (excluding test files and intentional cases)"
-      ],
       "status": "completed",
-      "routedAt": "2026-03-25T08:31:37.381Z",
       "completedAt": "2026-03-25T08:42:21.547Z"
     },
     {
@@ -213,72 +139,8 @@
       "level": "L2",
       "priority": "P0",
       "source": "audit-2026-03-24",
-      "criteria": [
-        "Run npm audit fix to bump flatted 3.4.1 → 3.4.2 (prototype pollution fix)",
-        "Document _err convention in .claude/rules/code-style/naming-conventions.md",
-        "Fix .catch(e =>) to .catch(err =>) in flow-lsp.js, flow-skill-learn.js, flow-prd-manager.js",
-        "Move fast-path fs.existsSync check before getConfig() in observation-capture.js",
-        "Update @babel/parser patch 7.29.0 → 7.29.2"
-      ],
       "status": "completed",
-      "routedAt": "2026-03-25T08:16:05.498Z",
       "completedAt": "2026-03-25T08:17:56.568Z"
-    },
-    {
-      "id": "wf-8e20990b",
-      "title": "Claude Code 2.1.83 compatibility updates",
-      "type": "chore",
-      "level": "L2",
-      "criteria": [
-        "Add CwdChanged/FileChanged to UNUSED_SUPPORTED_EVENTS in hooks adapter",
-        "Update claude-code-compatibility.md with 2.1.83 features section",
-        "Update MEMORY.md 25KB truncation limit in CLAUDE.md template",
-        "Investigate ENV_SCRUB impact on cloud/hybrid hooks",
-        "Document --channels AskUserQuestion limitation",
-        "Add WebFetch Claude-User awareness note"
-      ],
-      "completedAt": "2026-03-25T08:10:04.074Z"
-    },
-    {
-      "id": "wf-4a4d63f8",
-      "title": "Fix hook error messages — task-gate and commit-log-gate",
-      "type": "bugfix",
-      "level": "L2",
-      "priority": "P1",
-      "criteria": [
-        "Bug 1: task-gate returns specific error when task exists in inProgress but lacks routedAt (not generic no_active_task)",
-        "Bug 2: commit-log-gate checks file content for log entry instead of requiring git staging"
-      ],
-      "routedAt": "2026-03-24T15:25:35.663Z",
-      "status": "completed",
-      "completedAt": "2026-03-24T15:26:20.103Z"
-    },
-    {
-      "id": "wf-344ce2fb",
-      "title": "Fix 9 review findings from scanner refactor — regex, DRY, safety, merge logic",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-19T07:15:00.000Z",
-      "completedAt": "2026-03-19T07:30:00.000Z"
-    },
-    {
-      "id": "wf-9ed7fb16",
-      "title": "Fix registry scanner completeness bugs — two-pass AST, glob discovery, app-map generation",
-      "type": "bugfix",
-      "level": "L1",
-      "status": "completed",
-      "startedAt": "2026-03-19T06:30:00.000Z",
-      "completedAt": "2026-03-19T07:00:00.000Z"
-    },
-    {
-      "id": "wf-2b3caa34",
-      "title": "Seamless auto-compaction — make /wogi-pre-compact redundant",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-18T08:15:00.000Z",
-      "completedAt": "2026-03-18T08:30:00.000Z"
     }
   ],
   "backlog": [
