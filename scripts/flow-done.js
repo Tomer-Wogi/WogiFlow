@@ -43,14 +43,6 @@ const { autoArchiveIfNeeded } = require('./flow-log-manager');
 // v1.9.0 regression testing (legacy - now in workflow steps)
 const { runRegressionTests } = require('./flow-regression');
 
-// v1.10 smart test discovery + SWE-bench dual gate
-let testDiscovery;
-try {
-  testDiscovery = require('./flow-test-discovery');
-} catch (err) {
-  testDiscovery = null;
-}
-
 // v2.2 modular workflow steps
 const { runSteps, getAllSteps } = require('./flow-workflow-steps');
 
@@ -59,9 +51,6 @@ const { loadDurableSession, archiveDurableSession } = require('./flow-durable-se
 
 // v5.1 prompt capture and clarification learning
 const { processTaskCompletion } = require('./flow-prompt-capture');
-
-// v2.1 task enforcement as explicit quality gate
-const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
 // v2.5 checkpoint system
 const { Checkpoint } = require('./flow-checkpoint');
@@ -91,56 +80,18 @@ const {
 // v3.1 spec verification gate
 const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
 
-// v1.9.1 quality gate wiring — verifiers that were built but never called
-let wiringVerifier;
-try {
-  wiringVerifier = require('./flow-wiring-verifier');
-} catch (err) {
-  wiringVerifier = null;
-}
-
-let standardsGate;
-try {
-  standardsGate = require('./flow-standards-gate');
-} catch (err) {
-  standardsGate = null;
-}
-
-// v3.1 recursive error recovery (with hypothesis generation)
-let errorRecovery;
-try {
-  errorRecovery = require('./flow-error-recovery');
-} catch (err) {
-  // Module optional - graceful degradation
-  errorRecovery = null;
-}
-
-let hypothesisGenerator;
-try {
-  hypothesisGenerator = require('./flow-hypothesis-generator');
-} catch (err) {
-  hypothesisGenerator = null;
-}
-
 // v5.2 verification profiles
 const { loadProfile: loadVerificationProfile } = require('./flow-verification-profile');
 
-// v1.9.7 registry map update gate — lazy-loaded to avoid startup cost
-// Loaded inside the registryUpdate gate branch only
-let _registryManagerModule = undefined; // undefined = not yet loaded, null = load failed
-function getRegistryManager() {
-  if (_registryManagerModule === undefined) {
-    try {
-      _registryManagerModule = require('./flow-registry-manager');
-    } catch (err) {
-      _registryManagerModule = null;
-    }
-  }
-  return _registryManagerModule;
-}
-
-// Path for last failure artifact
-const LAST_FAILURE_PATH = path.join(PATHS.state, 'last-failure.json');
+// v2.3 extracted gate handlers and report formatting
+const { runGate } = require('./flow-done-gates');
+const {
+  LAST_FAILURE_PATH,
+  printFailureSummary,
+  saveFailureArtifact,
+  printErrorRecoveryAnalysis,
+  printFinalFailureMessage,
+} = require('./flow-done-report');
 
 /**
  * Get files modified in current task (from git)
@@ -221,10 +172,12 @@ function checkOutstandingFindings() {
 }
 
 /**
- * Run quality gates from config
+ * Run quality gates from config.
+ *
+ * Orchestration layer — delegates to individual gate handlers in flow-done-gates.js
+ * and report formatting to flow-done-report.js.
  */
 function runQualityGates(taskId, taskType) {
-  // Validate taskId before using in any path construction
   if (taskId && !validateTaskId(taskId).valid) {
     console.log(color('red', `Invalid task ID format: ${String(taskId).slice(0, 30)}`));
     return { passed: false, failed: ['invalidTaskId'], errors: { invalidTaskId: 'Task ID failed validation' } };
@@ -237,17 +190,12 @@ function runQualityGates(taskId, taskType) {
   console.log(color('yellow', 'Running quality gates...'));
   console.log('');
 
-  // Load verification profile — warn if missing and testing gates are configured
   const verificationProfile = loadVerificationProfile();
-
   const config = getConfig();
-  // Use task-type-specific gates, fall back to feature gates, then empty
   const normalizedType = (taskType ?? 'feature').toLowerCase();
   const gates = config.qualityGates?.[normalizedType]?.require
-    || config.qualityGates?.feature?.require
-    || [];
-  const failed = [];
-  const errors = {}; // Store error output for correction artifact
+    ?? config.qualityGates?.feature?.require
+    ?? [];
 
   // Warn if testing gates are present but no verification profile exists
   if (!verificationProfile) {
@@ -258,7 +206,7 @@ function runQualityGates(taskId, taskType) {
     }
   }
 
-  // Cache outstanding findings result — used by both outstandingFindings and preRelease gates
+  // Cache outstanding findings — shared by outstandingFindings and preRelease gates
   let cachedOutstandingFindings = null;
   function getOutstandingFindings() {
     if (!cachedOutstandingFindings) {
@@ -267,597 +215,57 @@ function runQualityGates(taskId, taskType) {
     return cachedOutstandingFindings;
   }
 
+  // Build shared context for gate handlers
+  const ctx = {
+    taskId,
+    taskType,
+    normalizedType,
+    config,
+    gates,
+    spawnSync,
+    getModifiedFiles,
+    truncateOutput,
+    fileExists,
+    readFile,
+    readJson,
+    safeJsonParse,
+    safeJsonParseString,
+    validateTaskId,
+    color,
+    success,
+    warn,
+    error,
+    verificationProfile,
+    getOutstandingFindings,
+  };
+
+  const failed = [];
+  const errors = {};
+
   for (const gate of gates) {
-    if (gate === 'tests') {
-      if (config.scripts?.test) {
-        console.log('  Running tests...');
-        const result = spawnSync('npm', ['test'], {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
-        if (result.status === 0) {
-          success(`tests passed`);
-        } else {
-          error(`tests failed`);
-          // Capture error output
-          const errorOutput = result.stderr || result.stdout || '';
-          if (errorOutput) {
-            console.log(color('dim', '  Error output:'));
-            const truncated = truncateOutput(errorOutput, 20, 1000);
-            truncated.split('\n').forEach(line => {
-              console.log(color('dim', `    ${line}`));
-            });
-          }
-          errors.tests = errorOutput;
-          failed.push('tests');
-        }
-      } else {
-        console.log(`  ${color('yellow', '○')} tests (not configured to run)`);
-      }
-    } else if (gate === 'lint') {
-      console.log('  Running lint...');
-      let result = spawnSync('npm', ['run', 'lint'], {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+    const result = runGate(gate, ctx);
 
-      if (result.status !== 0) {
-        // Try auto-fix
-        console.log(`  ${color('yellow', '⟳')} lint issues found, attempting auto-fix...`);
-        spawnSync('npm', ['run', 'lint', '--', '--fix'], {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
-
-        // Re-run lint to check if issues are fixed
-        result = spawnSync('npm', ['run', 'lint'], {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe']
-        });
-
-        if (result.status === 0) {
-          success(`lint passed (auto-fixed)`);
-        } else {
-          error(`lint failed (manual fix required)`);
-          const errorOutput = result.stderr || result.stdout || '';
-          if (errorOutput) {
-            console.log(color('dim', '  Remaining issues:'));
-            const truncated = truncateOutput(errorOutput, 15, 800);
-            truncated.split('\n').forEach(line => {
-              console.log(color('dim', `    ${line}`));
-            });
-          }
-          errors.lint = errorOutput;
-          failed.push('lint');
-        }
-      } else {
-        success(`lint passed`);
+    if (!result.passed) {
+      failed.push(gate);
+      if (result.errorOutput) {
+        errors[gate] = result.errorOutput;
       }
-    } else if (gate === 'typecheck') {
-      console.log('  Running typecheck...');
-      const result = spawnSync('npm', ['run', 'typecheck'], {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
-      if (result.status === 0) {
-        success(`typecheck passed`);
-      } else {
-        error(`typecheck failed`);
-        const errorOutput = result.stderr || result.stdout || '';
-        if (errorOutput) {
-          console.log(color('dim', '  Type errors:'));
-          const truncated = truncateOutput(errorOutput, 20, 1000);
-          truncated.split('\n').forEach(line => {
-            console.log(color('dim', `    ${line}`));
-          });
-        }
-        errors.typecheck = errorOutput;
-        failed.push('typecheck');
-      }
-    } else if (gate === 'requestLogEntry') {
-      // Check if request-log has an entry for this task
-      try {
-        const content = readFile(PATHS.requestLog, '');
-        if (content.includes(taskId)) {
-          success(`requestLogEntry (found in request-log)`);
-        } else {
-          console.log(`  ${color('yellow', '○')} requestLogEntry (add entry to request-log.md)`);
-        }
-      } catch (err) {
-        if (process.env.DEBUG) console.error(`[DEBUG] requestLogEntry check: ${err.message}`);
-        console.log(`  ${color('yellow', '○')} requestLogEntry (could not check)`);
-      }
-    } else if (gate === 'appMapUpdate' || gate === 'registryUpdate') {
-      // v1.9.7: Programmatic registry scan — replaces manual "verify manually" no-op.
-      // Runs flow-registry-manager scan on all active registries, comparing modified files
-      // against registry entries to detect missing registrations.
-      // v1.9.8: Deprecation warning for old gate name
-      if (gate === 'appMapUpdate') {
-        warn(`appMapUpdate is deprecated — update config.json qualityGates to use 'registryUpdate'`);
-      }
-      const registryMod = getRegistryManager();
-      if (registryMod) {
-        try {
-          console.log('  Running registry update check...');
-          const modifiedFiles = getModifiedFiles();
+    }
 
-          // Get map file timestamps BEFORE scan (to detect changes)
-          const mapFiles = ['app-map.md', 'function-map.md', 'api-map.md', 'schema-map.md', 'service-map.md'];
-          const beforeHashes = {};
-          for (const mf of mapFiles) {
-            const mapPath = path.join(PATHS.state, mf);
-            try {
-              beforeHashes[mf] = fs.existsSync(mapPath) ? fs.statSync(mapPath).mtimeMs : 0;
-            } catch (err) {
-              beforeHashes[mf] = 0;
-            }
-          }
-
-          // Detect active plugins to check if scan is needed (lightweight, no async)
-          const { RegistryManager } = registryMod;
-          const manager = new RegistryManager();
-          manager.loadPlugins();
-          manager.detectStack();
-          manager.activatePlugins();
-
-          // Only scan if there are active plugins
-          if (manager.activePlugins.length > 0) {
-            // scanAll is async but we need sync behavior in quality gates
-            // Use spawnSync to run the scan as a child process
-            // v1.9.8: Added cwd, write JSON to stderr to avoid stdout pollution from require() side-effects
-            const scanResult = spawnSync('node', [
-              '-e',
-              `const {RegistryManager} = require(${JSON.stringify(path.join(__dirname, 'flow-registry-manager'))});
-              const m = new RegistryManager(); m.loadPlugins(); m.detectStack(); m.activatePlugins();
-              m.scanAll().then(r => { process.stderr.write('SCAN_RESULT:' + JSON.stringify(r)); process.exit(0); })
-              .catch(err => { process.stderr.write('SCAN_RESULT:' + JSON.stringify({error: err.message})); process.exit(1); });`
-            ], {
-              encoding: 'utf-8',
-              stdio: ['pipe', 'pipe', 'pipe'],
-              timeout: 30000,
-              cwd: process.cwd()
-            });
-
-            if (scanResult.status === 0) {
-              // Extract scan result from stderr (after SCAN_RESULT: marker) to avoid stdout pollution
-              const stderrOutput = scanResult.stderr || '';
-              const markerIdx = stderrOutput.indexOf('SCAN_RESULT:');
-              const jsonStr = markerIdx >= 0 ? stderrOutput.slice(markerIdx + 'SCAN_RESULT:'.length) : '{}';
-              const results = safeJsonParseString(jsonStr, {});
-
-              // Check which map files were updated
-              const updatedMaps = [];
-              for (const mf of mapFiles) {
-                const mapPath = path.join(PATHS.state, mf);
-                try {
-                  const afterMtime = fs.existsSync(mapPath) ? fs.statSync(mapPath).mtimeMs : 0;
-                  if (afterMtime > beforeHashes[mf]) {
-                    updatedMaps.push(mf);
-                  }
-                } catch (err) {
-                  // ignore
-                }
-              }
-
-              // Check if modified files include patterns that should be in registries
-              const relevantExtensions = ['.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte'];
-              const codeFiles = modifiedFiles.filter(f => relevantExtensions.some(ext => f.endsWith(ext)));
-              const nonTestFiles = codeFiles.filter(f => !f.includes('test') && !f.includes('spec') && !f.includes('__test'));
-
-              const activeIds = manager.activePlugins.map(p => p.constructor.id);
-              const scanSummary = Object.entries(results)
-                .filter(([id, r]) => r.success && !r.empty)
-                .map(([id]) => id);
-
-              if (updatedMaps.length > 0) {
-                success(`registryUpdate (auto-scanned: ${updatedMaps.join(', ')} updated)`);
-              } else if (scanSummary.length > 0) {
-                success(`registryUpdate (scanned ${activeIds.join(', ')} — maps already current)`);
-              } else if (nonTestFiles.length === 0) {
-                success(`registryUpdate (no registrable code files modified)`);
-              } else {
-                success(`registryUpdate (scanned — no new entries found)`);
-              }
-            } else {
-              warn(`registryUpdate (scan error — degraded to manual check)`);
-              if (process.env.DEBUG) console.error(`[DEBUG] registry scan stderr: ${scanResult.stderr}`);
-            }
-          } else {
-            success(`registryUpdate (no active registry plugins)`);
-          }
-        } catch (err) {
-          // Graceful degradation — don't block task completion on scan errors
-          warn(`registryUpdate (error: ${truncateOutput(err.message, 3, 200)} — verify manually)`);
-        }
-      } else {
-        warn(`registryUpdate (registry manager not available — verify manually)`);
-      }
-    } else if (gate === 'loopComplete') {
-      // v2.1: Explicit loop completion check
-      const activeLoop = getActiveLoop();
-      if (!activeLoop) {
-        // No active loop - either completed or not used
-        success(`loopComplete (no active loop session)`);
-      } else {
-        const exitResult = canExitLoop();
-        if (exitResult.canExit) {
-          success(`loopComplete (${exitResult.reason})`);
-        } else {
-          error(`loopComplete (${exitResult.pending ?? 0} pending, ${exitResult.failed ?? 0} failed)`);
-          errors.loopComplete = exitResult.message || 'Loop not complete';
-          failed.push('loopComplete');
-        }
-      }
-    } else if (gate === 'noNewFeatures') {
-      // Refactor-specific gate - manual check
-      console.log(`  ${color('yellow', '○')} noNewFeatures (verify no behavior changes)`);
-    } else if (gate === 'integrationWiring') {
-      // v1.9.1: Actually call the wiring verifier instead of falling through
-      if (wiringVerifier && typeof wiringVerifier.verifyWiring === 'function') {
-        try {
-          console.log('  Running integration wiring check...');
-          const result = wiringVerifier.verifyWiring(taskId);
-          if (result.passed) {
-            success(`integrationWiring (${result.verified ?? 0} files verified)`);
-          } else {
-            const unwiredCount = result.unwired?.length ?? 0;
-            error(`integrationWiring (${unwiredCount} unwired file${unwiredCount !== 1 ? 's' : ''})`);
-            if (result.unwired) {
-              for (const item of result.unwired.slice(0, 5)) {
-                console.log(color('dim', `    - ${item.file || item}`));
-              }
-            }
-            errors.integrationWiring = `${unwiredCount} files created but not imported/used anywhere`;
-            failed.push('integrationWiring');
-          }
-
-          // v1.9.3: Removal impact check — verify removed exports aren't still referenced
-          if (typeof wiringVerifier.verifyRemovalImpact === 'function') {
-            const modifiedFiles = getModifiedFiles();
-            if (modifiedFiles.length > 0) {
-              console.log('  Running removal impact check...');
-              const removalResult = wiringVerifier.verifyRemovalImpact(modifiedFiles);
-              if (removalResult.identifiersChecked > 0) {
-                if (removalResult.passed) {
-                  success(`removalImpact (${removalResult.identifiersChecked} removed identifiers verified)`);
-                } else {
-                  const orphanCount = removalResult.orphanedRefs.length;
-                  error(`removalImpact (${orphanCount} orphaned reference${orphanCount !== 1 ? 's' : ''} to removed exports)`);
-                  for (const ref of removalResult.orphanedRefs.slice(0, 5)) {
-                    console.log(color('dim', `    - "${ref.identifier}" removed from ${ref.removedFrom}, still used in ${ref.totalRefs} file${ref.totalRefs !== 1 ? 's' : ''}`));
-                    for (const consumer of ref.referencedBy.slice(0, 2)) {
-                      console.log(color('dim', `      → ${consumer.file}`));
-                    }
-                  }
-                  errors.removalImpact = `${orphanCount} removed export${orphanCount !== 1 ? 's' : ''} still referenced by consumers`;
-                  failed.push('removalImpact');
-                }
-              }
-            }
-          }
-        } catch (err) {
-          // Graceful degradation: verifier error is not a hard failure — gate passes with warning
-          warn(`integrationWiring (verifier error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
-        }
-      } else {
-        warn(`integrationWiring (verifier module not available — install flow-wiring-verifier.js)`);
-        if (process.env.DEBUG) console.error('[DEBUG] wiringVerifier module failed to load or missing verifyWiring export');
-      }
-    } else if (gate === 'standardsCompliance') {
-      // v1.9.1: Actually call the standards gate instead of falling through
-      if (standardsGate && typeof standardsGate.runTaskStandardsCheck === 'function') {
-        try {
-          console.log('  Running standards compliance check...');
-          const modifiedFiles = getModifiedFiles();
-          const taskContext = { id: taskId, type: normalizedType };
-          const result = standardsGate.runTaskStandardsCheck(taskContext, modifiedFiles);
-          const mustFixCount = result.violations?.filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').length ?? 0;
-          if (mustFixCount === 0) {
-            success(`standardsCompliance (${result.violations?.length ?? 0} suggestions, 0 must-fix)`);
-          } else {
-            error(`standardsCompliance (${mustFixCount} must-fix violation${mustFixCount !== 1 ? 's' : ''})`);
-            for (const v of (result.violations ?? []).filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').slice(0, 5)) {
-              console.log(color('dim', `    - ${v.file || ''}:${v.line || ''} ${v.issue || v.message || ''}`));
-            }
-            errors.standardsCompliance = `${mustFixCount} standards violations require fixing`;
-            failed.push('standardsCompliance');
-          }
-        } catch (err) {
-          // Graceful degradation: checker error is not a hard failure — gate passes with warning
-          warn(`standardsCompliance (checker error — degraded to manual check: ${truncateOutput(err.message, 3, 200)})`);
-        }
-      } else {
-        warn(`standardsCompliance (checker module not available — install flow-standards-gate.js)`);
-        if (process.env.DEBUG) console.error('[DEBUG] standardsGate module failed to load or missing runTaskStandardsCheck export');
-      }
-    } else if (gate === 'outstandingFindings') {
-      // v1.9.1: Check for unresolved MUST_FIX findings from last review
-      const outstanding = getOutstandingFindings();
-      if (!outstanding.hasOutstanding) {
-        success(`outstandingFindings (no unresolved critical/high findings)`);
-      } else {
-        error(`outstandingFindings (${outstanding.count} unresolved finding${outstanding.count !== 1 ? 's' : ''} from last review)`);
-        for (const f of outstanding.findings.slice(0, 5)) {
-          console.log(color('dim', `    - [${f.severity}] ${f.file || ''}:${f.line || ''} ${f.issue || ''}`));
-        }
-        errors.outstandingFindings = `${outstanding.count} unresolved critical/high findings from last review. Fix them or waive with /wogi-triage.`;
-        failed.push('outstandingFindings');
-      }
-    } else if (gate === 'preRelease') {
-      // v1.9.1: Pre-release gate — verify codebase is in releasable state
-      console.log('  Running pre-release checks...');
-      let preReleaseFailed = false;
-
-      // Check outstanding findings (uses cached result)
-      const outstanding = getOutstandingFindings();
-      if (outstanding.hasOutstanding) {
-        error(`preRelease: ${outstanding.count} unresolved findings from last review`);
-        preReleaseFailed = true;
-      }
-
-      // Check lint if configured
-      if (config.scripts?.lint) {
-        const lintResult = spawnSync('npm', ['run', 'lint'], {
-          encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
-        });
-        if (lintResult.status !== 0) {
-          error(`preRelease: lint failed`);
-          preReleaseFailed = true;
-        }
-      }
-
-      // Check typecheck if configured
-      if (config.scripts?.typecheck) {
-        const tcResult = spawnSync('npm', ['run', 'typecheck'], {
-          encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
-        });
-        if (tcResult.status !== 0) {
-          error(`preRelease: typecheck failed`);
-          preReleaseFailed = true;
-        }
-      }
-
-      if (!preReleaseFailed) {
-        success(`preRelease (codebase is releasable)`);
-      } else {
-        errors.preRelease = 'Codebase is not in a releasable state';
-        failed.push('preRelease');
-      }
-    } else if (gate === 'learningEnforcement') {
-      // v1.9.2: Check that bugfix patterns are recorded in feedback-patterns.md
-      try {
-        const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
-        const content = readFile(feedbackPath, '');
-        if (content.includes(taskId)) {
-          success(`learningEnforcement (pattern recorded in feedback-patterns.md)`);
-        } else {
-          console.log(`  ${color('yellow', '○')} learningEnforcement (add bug pattern to feedback-patterns.md)`);
-        }
-      } catch (err) {
-        console.log(`  ${color('yellow', '○')} learningEnforcement (could not check feedback-patterns.md)`);
-      }
-    } else if (gate === 'resolutionPopulated') {
-      // v1.9.2: Check that the task's change spec has a resolution/fix section
-      try {
-        const changesDir = path.join(PATHS.workflow, 'changes');
-        const specPath = path.join(changesDir, `${taskId}.md`);
-        const content = readFile(specPath, '');
-        if (content) {
-          if (content.toLowerCase().includes('resolution') || content.toLowerCase().includes('root cause') || content.toLowerCase().includes('fix')) {
-            success(`resolutionPopulated (resolution documented in spec)`);
-          } else {
-            console.log(`  ${color('yellow', '○')} resolutionPopulated (add resolution/root cause to spec)`);
-          }
-        } else {
-          console.log(`  ${color('yellow', '○')} resolutionPopulated (no spec file found)`);
-        }
-      } catch (err) {
-        console.log(`  ${color('yellow', '○')} resolutionPopulated (could not check)`);
-      }
-    } else if (gate === 'smokeTest') {
-      // v1.9.2: Run a basic smoke test — syntax check all modified JS files
-      try {
-        const modifiedFiles = getModifiedFiles();
-        const jsFiles = modifiedFiles.filter(f => f.endsWith('.js'));
-        if (jsFiles.length === 0) {
-          console.log(`  ${color('yellow', '○')} smokeTest (no JS files modified — nothing to check)`);
-        } else {
-        let allPassed = true;
-        for (const file of jsFiles) {
-          const result = spawnSync('node', ['--check', file], {
-            encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
-          });
-          if (result.status !== 0) {
-            error(`smokeTest: syntax error in ${file}`);
-            allPassed = false;
-            break;
+    // Handle sub-gates (e.g., removalImpact from integrationWiring)
+    if (result.subGates) {
+      for (const [subName, subResult] of Object.entries(result.subGates)) {
+        if (!subResult.passed) {
+          failed.push(subName);
+          if (subResult.errorOutput) {
+            errors[subName] = subResult.errorOutput;
           }
         }
-        if (allPassed) {
-          success(`smokeTest (${jsFiles.length} file${jsFiles.length !== 1 ? 's' : ''} pass syntax check)`);
-        } else {
-          errors.smokeTest = 'Syntax errors in modified files';
-          failed.push('smokeTest');
-        }
-        } // end jsFiles.length > 0
-      } catch (err) {
-        console.log(`  ${color('yellow', '○')} smokeTest (could not run: ${truncateOutput(err.message, 3, 200)})`);
       }
-    } else if (gate === 'generatedTestsPass') {
-      if (config.testing?.enabled && config.testing?.generation?.autoGenerate) {
-        if (!validateTaskId(taskId).valid) {
-          warn(`generatedTestsPass (invalid task ID)`);
-        } else {
-          const testDir = path.join(PATHS.workflow, 'tests', 'generated', taskId);
-          if (fs.existsSync(testDir)) {
-            console.log('  Running generated tests...');
-            if (config.scripts?.test) {
-              const result = spawnSync('npm', ['test', '--', testDir], {
-                encoding: 'utf-8',
-                stdio: ['pipe', 'pipe', 'pipe'],
-                timeout: 120000
-              });
-              if (result.status === 0) {
-                success(`generatedTestsPass`);
-              } else {
-                error(`generatedTestsPass`);
-                const errorOutput = result.stderr || result.stdout || '';
-                if (errorOutput) {
-                  console.log(color('dim', '  Error output:'));
-                  const truncated = truncateOutput(errorOutput, 15, 800);
-                  truncated.split('\n').forEach(line => {
-                    console.log(color('dim', `    ${line}`));
-                  });
-                }
-                errors.generatedTestsPass = errorOutput;
-                failed.push('generatedTestsPass');
-              }
-            } else {
-              console.log(`  ${color('yellow', '○')} generatedTestsPass (no test command configured)`);
-            }
-          } else {
-            console.log(`  ${color('yellow', '○')} generatedTestsPass (no generated tests found)`);
-          }
-        }
-      } else {
-        console.log(`  ${color('dim', '·')} generatedTestsPass (testing disabled)`);
-      }
-    } else if (gate === 'uiVerification' || gate === 'apiVerification') {
-      const isUI = gate === 'uiVerification';
-
-      // Project-type-aware gating: skip irrelevant gates
-      const detected = config.testing?.detected;
-      if (detected && detected.projectType) {
-        const pt = detected.projectType;
-        if (isUI && (pt === 'backend' || pt === 'library')) {
-          console.log(`  ${color('dim', '·')} ${gate} (not applicable — ${pt} project)`);
-          continue;
-        }
-        if (!isUI && (pt === 'frontend' || pt === 'library')) {
-          console.log(`  ${color('dim', '·')} ${gate} (not applicable — ${pt} project)`);
-          continue;
-        }
-      }
-
-      const gateModes = isUI ? ['ui', 'full', 'auto'] : ['api', 'full', 'auto'];
-      const testingMode = config.testing?.mode ?? 'off';
-      if (config.testing?.enabled && gateModes.includes(testingMode)) {
-        if (!validateTaskId(taskId).valid) {
-          warn(`${gate} (invalid task ID)`);
-        } else {
-          try {
-            const label = isUI ? 'UI' : 'API';
-            console.log(`  Running ${label} verification...`);
-            const scriptPath = isUI
-              ? path.join(__dirname, 'flow-test-ui.js')
-              : path.join(__dirname, 'flow-test-api.js');
-            const fnName = isUI ? 'runUITests' : 'runAPITests';
-            const testResult = spawnSync('node', ['-e', [
-              `const { ${fnName} } = require(${JSON.stringify(scriptPath)});`,
-              `${fnName}(${JSON.stringify(taskId)}).then(r => {`,
-              '  process.stdout.write(JSON.stringify(r));',
-              '  process.exit(r.summary && r.summary.failed > 0 ? 1 : 0);',
-              '}).catch(err => {',
-              '  process.stdout.write(JSON.stringify({ error: err.message, summary: { passed: 0, failed: 0, total: 0 } }));',
-              '  process.exit(2);',
-              '});'
-            ].join('\n')], {
-              encoding: 'utf-8',
-              stdio: ['pipe', 'pipe', 'pipe'],
-              cwd: process.cwd(),
-              timeout: 120000
-            });
-            if (testResult.status === 2) {
-              const parsed = safeJsonParseString(testResult.stdout, {});
-              const errMsg = parsed.error || testResult.stderr?.trim()?.slice(0, 200) || 'Unknown error';
-              warn(`${gate} (error: ${errMsg})`);
-            } else {
-              const report = safeJsonParseString(testResult.stdout ?? '{}', {});
-              const summary = report.summary ?? { passed: 0, failed: 0, total: 0 };
-              if (summary.failed === 0) {
-                success(`${gate} (${summary.passed}/${summary.total} passed)`);
-              } else {
-                error(`${gate} (${summary.failed} failed)`);
-                const failedItems = isUI
-                  ? (report.assertions ?? []).filter(a => a.status === 'failed')
-                  : (report.endpoints ?? []).flatMap(e => (e.tests ?? []).filter(t => t.status === 'failed'));
-                for (const item of failedItems.slice(0, 5)) {
-                  console.log(color('dim', `    - ${item.description || item.name || 'test failed'}`));
-                }
-                errors[gate] = JSON.stringify(failedItems);
-                failed.push(gate);
-              }
-            }
-          } catch (err) {
-            warn(`${gate} (error: ${err.message})`);
-          }
-
-          // Also check scenario verification results if available
-          if (!isUI && validateTaskId(taskId).valid) {
-            const scenarioReportPath = path.join(PATHS.workflow, 'verifications', `${taskId}-scenarios.json`);
-            if (fs.existsSync(scenarioReportPath)) {
-              try {
-                const scenarioReport = safeJsonParse(scenarioReportPath, null);
-                if (scenarioReport && scenarioReport.summary) {
-                  const ss = scenarioReport.summary;
-                  if (ss.failed === 0 && ss.total > 0) {
-                    success(`scenarioVerification (${ss.passed}/${ss.total} scenarios passed)`);
-                  } else if (ss.failed > 0) {
-                    error(`scenarioVerification (${ss.failed} scenarios failed)`);
-                    const failedScenarios = (scenarioReport.scenarios ?? []).filter(s => !s.passed);
-                    for (const sc of failedScenarios.slice(0, 5)) {
-                      console.log(color('dim', `    - ${sc.name || 'unnamed scenario'}: ${sc.error || 'assertions failed'}`));
-                    }
-                  }
-                }
-              } catch (err) {
-                // Non-fatal — scenario report parsing failed
-              }
-            }
-          }
-        }
-      } else {
-        console.log(`  ${color('dim', '·')} ${gate} (testing disabled or mode excludes ${isUI ? 'UI' : 'API'})`);
-      }
-    } else if (gate === 'testDiscovery') {
-      // v1.10: Smart test discovery + SWE-bench dual gate
-      const discoveryConfig = config.testing?.discovery ?? {};
-      if (discoveryConfig.enabled) {
-        if (testDiscovery && typeof testDiscovery.runTestDiscoveryGate === 'function') {
-          try {
-            console.log('  Running test discovery gate...');
-            const discoveryResult = testDiscovery.runTestDiscoveryGate(taskId, PATHS.root);
-            if (discoveryResult.passed) {
-              success(`testDiscovery (${discoveryResult.message})`);
-            } else {
-              error(`testDiscovery (${discoveryResult.message})`);
-              if (discoveryResult.report?.passToPass?.failed) {
-                for (const f of discoveryResult.report.passToPass.failed.slice(0, 5)) {
-                  console.log(color('dim', `    - ${f}`));
-                }
-              }
-              errors.testDiscovery = discoveryResult.message;
-              failed.push('testDiscovery');
-            }
-          } catch (err) {
-            warn(`testDiscovery (error: ${truncateOutput(err.message, 3, 200)})`);
-          }
-        } else {
-          warn(`testDiscovery (module not available — install flow-test-discovery.js)`);
-        }
-      } else {
-        console.log(`  ${color('dim', '·')} testDiscovery (disabled — set testing.discovery.enabled in config)`);
-      }
-    } else {
-      console.log(`  ${color('yellow', '○')} ${gate} (manual check)`);
     }
   }
 
-  if (failed.length > 0) {
-    console.log('');
-    console.log(color('red', `Failed gates: ${failed.join(', ')}`));
-  }
-
+  printFailureSummary(failed);
   return { passed: failed.length === 0, failed, errors };
 }
 
@@ -1143,67 +551,9 @@ async function main() {
   const gateResult = runQualityGates(taskId, taskTypeForGates);
 
   if (!gateResult.passed) {
-    // Create correction artifact for AI self-repair
-    try {
-      writeJson(LAST_FAILURE_PATH, {
-        taskId,
-        timestamp: new Date().toISOString(),
-        failedGates: gateResult.failed,
-        errors: gateResult.errors
-      });
-      console.log('');
-      console.log(color('dim', `Failure details saved to: ${LAST_FAILURE_PATH}`));
-    } catch (err) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Failed to save failure artifact: ${err.message}`);
-    }
-
-    // v3.1: Error recovery analysis with hypotheses
-    if (errorRecovery && doneConfig.errorRecovery?.enabled !== false) {
-      console.log('');
-      console.log(color('cyan', '━'.repeat(50)));
-      console.log(color('cyan', '🔍 Error Recovery Analysis'));
-      console.log(color('cyan', '━'.repeat(50)));
-
-      // Analyze each failed gate
-      for (const gate of gateResult.failed) {
-        const errorText = gateResult.errors[gate] || '';
-        if (errorText) {
-          try {
-            // Classify the error
-            const classified = errorRecovery.classifyError(errorText);
-            const levelName = errorRecovery.getLevelName(classified.level);
-            console.log(`${gate}: ${color('yellow', levelName || 'unknown')} error`);
-
-            // Get fix suggestions
-            const suggestions = errorRecovery.getSuggestedFixes(classified.level, errorText);
-            if (suggestions && suggestions.length > 0) {
-              console.log(`  Suggested fixes:`);
-              suggestions.slice(0, 3).forEach(fix => {
-                console.log(`    → ${fix}`);
-              });
-            }
-
-            // Generate hypotheses if available
-            if (hypothesisGenerator) {
-              const hypotheses = hypothesisGenerator.generateHypotheses(errorText, classified);
-              if (hypotheses && hypotheses.length > 0) {
-                console.log(`  Hypotheses:`);
-                hypotheses.slice(0, 2).forEach(h => {
-                  console.log(`    • ${h.hypothesis} (${Math.round(h.likelihood * 100)}% likelihood)`);
-                });
-              }
-            }
-            console.log('');
-          } catch (analysisErr) {
-            if (process.env.DEBUG) console.error(`[DEBUG] Error analysis: ${analysisErr.message}`);
-          }
-        }
-      }
-    }
-
-    console.log('');
-    error('Quality gates failed. Fix issues before completing.');
-    console.log(color('dim', 'Tip: Review the error output above or check .workflow/state/last-failure.json'));
+    saveFailureArtifact(taskId, gateResult.failed, gateResult.errors);
+    printErrorRecoveryAnalysis(gateResult, doneConfig);
+    printFinalFailureMessage();
     process.exit(1);
   }
 
