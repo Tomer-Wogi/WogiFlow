@@ -22,15 +22,13 @@ const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-u
 const { success, error: errorMsg } = require('./flow-output');
 const { safeGrep, safeFind, escapeRegex } = require('./flow-security');
 
-const PROJECT_ROOT = getProjectRoot();
-
 /**
  * Resolve a path alias (e.g., '@/*') from tsconfig.json compilerOptions.paths.
  * Returns the base directory (e.g., 'src') or null if not found.
  */
 function resolvePathAlias(alias) {
   try {
-    const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+    const tsconfigPath = path.join(PATHS.root, 'tsconfig.json');
     if (!fs.existsSync(tsconfigPath)) return null;
     const content = fs.readFileSync(tsconfigPath, 'utf-8');
     // Strip comments then use safeJsonParseString for prototype-pollution protection
@@ -51,7 +49,7 @@ function resolvePathAlias(alias) {
  */
 function detectSourceRoot() {
   for (const dir of ['src', 'app', 'lib']) {
-    if (fs.existsSync(path.join(PROJECT_ROOT, dir))) return dir;
+    if (fs.existsSync(path.join(PATHS.root, dir))) return dir;
   }
   return '.'; // fallback to project root
 }
@@ -69,14 +67,14 @@ function detectSourceRoot() {
 function analyzeRelationships(filePath) {
   const fullPath = path.isAbsolute(filePath)
     ? filePath
-    : path.join(PROJECT_ROOT, filePath);
+    : path.join(PATHS.root, filePath);
 
   if (!fs.existsSync(fullPath)) {
     return { error: 'File not found' };
   }
 
   const content = fs.readFileSync(fullPath, 'utf-8');
-  const relPath = path.relative(PROJECT_ROOT, fullPath);
+  const relPath = path.relative(PATHS.root, fullPath);
 
   const relationships = {
     file: relPath,
@@ -371,10 +369,10 @@ function resolveImportPath(importSource, fromDir) {
   for (const ext of extensions) {
     const candidate = path.resolve(fromDir, importSource + ext);
     // Path containment check — reject paths that escape project root
-    if (!candidate.startsWith(PROJECT_ROOT + path.sep) && candidate !== PROJECT_ROOT) continue;
-    const relPath = path.relative(PROJECT_ROOT, candidate);
+    if (!candidate.startsWith(PATHS.root + path.sep) && candidate !== PATHS.root) continue;
+    const relPath = path.relative(PATHS.root, candidate);
 
-    if (fs.existsSync(path.join(PROJECT_ROOT, relPath))) {
+    if (fs.existsSync(path.join(PATHS.root, relPath))) {
       return relPath;
     }
   }
@@ -430,7 +428,7 @@ async function findFilesImporting(filePath) {
   // Use safe grep with escaped pattern to prevent injection
   const pattern = `from.*${escapeRegex(basename)}`;
   return safeGrep(pattern, {
-    cwd: PROJECT_ROOT,
+    cwd: PATHS.root,
     searchDir: 'src/',
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     maxResults: 20
@@ -443,7 +441,7 @@ async function findFilesImporting(filePath) {
 async function searchCodebase(keyword, maxResults = 10) {
   // Use safe grep with escaped pattern to prevent injection
   return safeGrep(keyword, {
-    cwd: PROJECT_ROOT,
+    cwd: PATHS.root,
     searchDir: 'src/',
     extensions: ['.ts', '.tsx', '.js', '.jsx'],
     maxResults
@@ -678,7 +676,7 @@ async function main() {
 
       // Use safe find to prevent command injection
       const files = safeFind(dir, {
-        cwd: PROJECT_ROOT,
+        cwd: PATHS.root,
         extensions: ['.ts', '.tsx', '.js', '.jsx'],
         maxResults: 100
       });

@@ -29,7 +29,7 @@ const {
   printHeader,
   printSection,
   isPathWithinProject,
-  estimateTokens
+  estimateTokens, PATHS
 } = require('./flow-utils');
 
 // Smart Context System integration
@@ -49,8 +49,8 @@ try {
 // Constants
 // ============================================================
 
-const FRAGMENTS_DIR = path.join(PROJECT_ROOT, '.workflow', 'prompts', 'fragments');
-const COMPOSED_DIR = path.join(PROJECT_ROOT, '.workflow', 'prompts', 'composed');
+const FRAGMENTS_DIR = path.join(PATHS.workflow, 'prompts', 'fragments');
+const COMPOSED_DIR = path.join(PATHS.workflow, 'prompts', 'composed');
 
 // Model to CLI mapping (Claude Code only)
 const MODEL_CLI_MAP = {

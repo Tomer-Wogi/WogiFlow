@@ -22,14 +22,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors: c, readJson } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
 const { recordCommandResult } = require('./flow-metrics');
 const { detectPackageManager, getExecCommand, getRunPrefix } = require('./flow-script-resolver');
 const { CREDENTIAL_SCAN_PATTERNS } = require('./flow-security');
-
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 
 /**
  * Gate result structure
@@ -197,7 +194,7 @@ const ERROR_PARSERS = {
       if (match) {
         const [, file, lineNum, col, message, rule] = match;
         errors.push({
-          file: path.relative(PROJECT_ROOT, file),
+          file: path.relative(PATHS.root, file),
           line: parseInt(lineNum),
           column: parseInt(col),
           message: message.trim(),
@@ -220,7 +217,7 @@ const ERROR_PARSERS = {
       if (match) {
         const [, file, lineNum, col, severity, code, message] = match;
         errors.push({
-          file: path.relative(PROJECT_ROOT, file),
+          file: path.relative(PATHS.root, file),
           line: parseInt(lineNum),
           column: parseInt(col),
           message,
@@ -250,7 +247,7 @@ const ERROR_PARSERS = {
       const [, file, line, col] = match;
       if (!file.includes('node_modules')) {
         errors.push({
-          file: path.relative(PROJECT_ROOT, file),
+          file: path.relative(PATHS.root, file),
           line: parseInt(line),
           column: parseInt(col),
           message: 'Test assertion failed',
@@ -363,12 +360,11 @@ const ERROR_PARSERS = {
   }
 };
 
-
 /**
  * Detect which command to use based on installed packages
  */
 function detectCommand(gate) {
-  const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
+  const packageJsonPath = path.join(PATHS.root, 'package.json');
   let deps = {};
 
   if (fs.existsSync(packageJsonPath)) {
@@ -405,7 +401,7 @@ function runCommand(cmd, args, timeout = 120000) {
     let stderrTruncated = false;
 
     const proc = spawn(cmd, args, {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       timeout,
       stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -687,7 +683,7 @@ function generateFixSuggestions(gateName, errors) {
 function getStagedFiles() {
   try {
     const output = execSync('git diff --cached --name-only', {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       encoding: 'utf-8'
     });
     return output.split('\n').filter(f => f.trim() && /\.(ts|tsx|js|jsx|json|env)$/i.test(f));
@@ -720,7 +716,7 @@ function findSourceFiles(dir, extensions, limit) {
         if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
 
         const fullPath = path.join(currentDir, entry.name);
-        const relativePath = path.relative(PROJECT_ROOT, fullPath);
+        const relativePath = path.relative(PATHS.root, fullPath);
 
         if (entry.isDirectory()) {
           walk(fullPath, depth + 1);
@@ -756,7 +752,7 @@ function checkForSecrets(files) {
     });
     if (shouldIgnore) continue;
 
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {
@@ -809,7 +805,7 @@ function checkForInjection(files) {
     });
     if (shouldIgnore) continue;
 
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {
@@ -853,7 +849,7 @@ async function runSecurityChecks(gateResult) {
     // Fall back to src directory if no staged files
     // Use fs.readdirSync instead of shell find to prevent command injection
     try {
-      const srcDir = path.join(PROJECT_ROOT, 'src');
+      const srcDir = path.join(PATHS.root, 'src');
       if (fs.existsSync(srcDir)) {
         files = findSourceFiles(srcDir, ['.ts', '.tsx', '.js', '.jsx'], 100);
       }
@@ -1075,7 +1071,7 @@ function formatResults(results, options = {}) {
  * Save results to run artifacts
  */
 function saveResults(runId, results) {
-  const runDir = path.join(WORKFLOW_DIR, 'runs', runId);
+  const runDir = path.join(PATHS.workflow, 'runs', runId);
   if (!fs.existsSync(runDir)) {
     return false;
   }

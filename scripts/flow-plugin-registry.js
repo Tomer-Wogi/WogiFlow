@@ -26,7 +26,7 @@ const {
   fileExists,
   isPathWithinProject,
   color,
-  printHeader
+  printHeader, PATHS
 } = require('./flow-utils');
 
 // Dangerous keys that must never be used as plugin names or metadata keys
@@ -40,8 +40,6 @@ const VALID_FLOW_PHASES = new Set(['exploring', 'coding', 'validating', 'complet
 // ============================================================
 // Configuration
 // ============================================================
-
-const PROJECT_ROOT = getProjectRoot();
 
 /**
  * Get plugin config from workflow config
@@ -68,10 +66,10 @@ function getPluginConfig() {
 function getRegistryPath() {
   const pluginConfig = getPluginConfig();
   const registryRelPath = pluginConfig.registryPath || '.workflow/state/plugin-registry.json';
-  const resolved = path.resolve(PROJECT_ROOT, registryRelPath);
+  const resolved = path.resolve(PATHS.root, registryRelPath);
   if (!isPathWithinProject(resolved)) {
     console.error(`[plugin-registry] Unsafe registryPath in config: ${registryRelPath}`);
-    return path.join(PROJECT_ROOT, '.workflow', 'state', 'plugin-registry.json');
+    return path.join(PATHS.state, 'plugin-registry.json');
   }
   return resolved;
 }
@@ -134,8 +132,8 @@ function discoverMcpTools(pluginName) {
 
   // Strategy 1: Check Claude Code's MCP settings for matching servers
   const settingsLocations = [
-    path.join(PROJECT_ROOT, '.claude', 'settings.local.json'),
-    path.join(PROJECT_ROOT, '.claude', 'settings.json')
+    path.join(PATHS.root, '.claude', 'settings.local.json'),
+    path.join(PATHS.root, '.claude', 'settings.json')
   ];
 
   for (const settingsPath of settingsLocations) {
@@ -163,7 +161,7 @@ function discoverMcpTools(pluginName) {
   }
 
   // Strategy 2: Check cached MCP tools from flow-mcp-docs
-  const mcpCachePath = path.join(PROJECT_ROOT, '.workflow', 'state', 'mcp-tools.json');
+  const mcpCachePath = path.join(PATHS.state, 'mcp-tools.json');
   if (fileExists(mcpCachePath)) {
     try {
       const mcpCache = safeJsonParse(mcpCachePath, { allTools: [] });
@@ -210,8 +208,8 @@ function scanUnregisteredMcpServers() {
   const seen = new Set(); // Dedup across multiple settings files
 
   const settingsLocations = [
-    path.join(PROJECT_ROOT, '.claude', 'settings.local.json'),
-    path.join(PROJECT_ROOT, '.claude', 'settings.json')
+    path.join(PATHS.root, '.claude', 'settings.local.json'),
+    path.join(PATHS.root, '.claude', 'settings.json')
   ];
 
   // Internal/built-in servers that should not be auto-registered as plugins
@@ -263,8 +261,8 @@ function scanUnregisteredMcpServers() {
 function deactivateStaleMcpPlugins() {
   const registry = readRegistry();
   const settingsLocations = [
-    path.join(PROJECT_ROOT, '.claude', 'settings.local.json'),
-    path.join(PROJECT_ROOT, '.claude', 'settings.json')
+    path.join(PATHS.root, '.claude', 'settings.local.json'),
+    path.join(PATHS.root, '.claude', 'settings.json')
   ];
 
   const availableServers = new Set();

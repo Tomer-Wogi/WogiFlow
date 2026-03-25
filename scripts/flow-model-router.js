@@ -29,7 +29,7 @@ const {
   getConfig,
   printHeader,
   printSection,
-  estimateTokens
+  estimateTokens, PATHS
 } = require('./flow-utils');
 
 const { analyzeTask } = require('./flow-task-analyzer');
@@ -61,7 +61,7 @@ try {
 // Constants
 // ============================================================
 
-const CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow', 'config.json');
+const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
 
 const ROUTING_STRATEGIES = {
   'quality-first': 'Select highest-capability model matching requirements',

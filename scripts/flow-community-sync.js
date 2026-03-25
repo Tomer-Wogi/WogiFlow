@@ -31,9 +31,9 @@ const { loadStats } = require('./flow-stats-collector');
 // Constants
 // ============================================================
 
-const COMMUNITY_SCORES_PATH = path.join(PATHS.root, '.workflow', 'models', 'community-scores.json');
-const COMMUNITY_ROUTING_PATH = path.join(PATHS.root, '.workflow', 'models', 'community-routing.json');
-const SYNC_QUEUE_PATH = path.join(PATHS.root, '.workflow', 'state', 'sync-queue.json');
+const COMMUNITY_SCORES_PATH = PATHS.communityScores;
+const COMMUNITY_ROUTING_PATH = PATHS.communityRouting;
+const SYNC_QUEUE_PATH = path.join(PATHS.state, 'sync-queue.json');
 
 const DEFAULT_SYNC_CONFIG = {
   enabled: false,
@@ -78,7 +78,7 @@ function isSyncEnabled() {
   if (!config.enabled) return false;
 
   // Check for auth token (set by `wogi login`)
-  const authPath = path.join(PATHS.root, '.workflow', 'state', 'auth.json');
+  const authPath = path.join(PATHS.state, 'auth.json');
   try {
     if (!fs.existsSync(authPath)) return false;
     const auth = readJson(authPath, {});

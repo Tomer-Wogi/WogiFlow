@@ -36,7 +36,7 @@ const {
   outputJson,
   printHeader,
   printSection,
-  estimateTokens
+  estimateTokens, PATHS
 } = require('./flow-utils');
 
 // ============================================================
@@ -356,7 +356,7 @@ function collectContext({ description, targetFiles = [], additionalContext = [] 
   }
 
   // Add patterns from decisions.md
-  const decisionsPath = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
+  const decisionsPath = PATHS.decisions;
   try {
     if (fs.existsSync(decisionsPath)) {
       const decisions = fs.readFileSync(decisionsPath, 'utf8');

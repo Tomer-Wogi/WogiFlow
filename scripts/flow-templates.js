@@ -13,11 +13,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson, info } = require('./flow-utils');
+const { getProjectRoot, readJson, info, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const TEMPLATES_DIR = path.join(PROJECT_ROOT, 'templates', 'hybrid');
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
+const TEMPLATES_DIR = path.join(PATHS.root, 'templates', 'hybrid');
 
 // ============================================================
 // Project Analyzer
@@ -139,7 +137,7 @@ class ProjectAnalyzer {
 
     const componentDirs = ['src/components', 'components', 'app/components'];
     for (const dir of componentDirs) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) {
+      if (fs.existsSync(path.join(PATHS.root, dir))) {
         this.patterns.components = this.findFilesWithExports(dir, /\.(tsx|jsx)$/);
         console.log(`    Components: ${this.patterns.components.length} found`);
         break;
@@ -148,7 +146,7 @@ class ProjectAnalyzer {
 
     const hookDirs = ['src/hooks', 'hooks', 'app/hooks'];
     for (const dir of hookDirs) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) {
+      if (fs.existsSync(path.join(PATHS.root, dir))) {
         this.patterns.hooks = this.findFilesWithExports(dir, /^use.*\.(ts|tsx)$/);
         console.log(`    Hooks: ${this.patterns.hooks.length} found`);
         break;
@@ -157,7 +155,7 @@ class ProjectAnalyzer {
 
     const serviceDirs = ['src/services', 'services', 'src/api', 'api', 'src/lib'];
     for (const dir of serviceDirs) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) {
+      if (fs.existsSync(path.join(PATHS.root, dir))) {
         this.patterns.services = this.findFilesWithExports(dir, /\.(ts|js)$/);
         console.log(`    Services: ${this.patterns.services.length} found`);
         break;
@@ -166,7 +164,7 @@ class ProjectAnalyzer {
 
     const utilDirs = ['src/utils', 'utils', 'src/lib/utils', 'lib/utils'];
     for (const dir of utilDirs) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) {
+      if (fs.existsSync(path.join(PATHS.root, dir))) {
         this.patterns.utilities = this.findFilesWithExports(dir, /\.(ts|js)$/);
         console.log(`    Utilities: ${this.patterns.utilities.length} found`);
         break;
@@ -176,7 +174,7 @@ class ProjectAnalyzer {
 
   findFilesWithExports(dir, pattern) {
     const results = [];
-    const fullDir = path.join(PROJECT_ROOT, dir);
+    const fullDir = path.join(PATHS.root, dir);
 
     if (!fs.existsSync(fullDir)) return results;
 
@@ -191,7 +189,7 @@ class ProjectAnalyzer {
           walkDir(filePath);
         } else if (stat.isFile() && pattern.test(file)) {
           const content = fs.readFileSync(filePath, 'utf-8');
-          const relativePath = path.relative(PROJECT_ROOT, filePath);
+          const relativePath = path.relative(PATHS.root, filePath);
 
           const exports = this.extractExports(content);
           if (exports.length > 0) {
@@ -242,7 +240,7 @@ class ProjectAnalyzer {
   }
 
   extractImportPatterns() {
-    const tsconfigPath = path.join(PROJECT_ROOT, 'tsconfig.json');
+    const tsconfigPath = path.join(PATHS.root, 'tsconfig.json');
     if (fs.existsSync(tsconfigPath)) {
       const tsconfig = readJson(tsconfigPath, null);
       if (tsconfig) {
@@ -259,7 +257,7 @@ class ProjectAnalyzer {
   }
 
   loadPackageJson() {
-    const pkgPath = path.join(PROJECT_ROOT, 'package.json');
+    const pkgPath = path.join(PATHS.root, 'package.json');
     return readJson(pkgPath, null);
   }
 }
@@ -770,7 +768,7 @@ async function main() {
       const generator = new TemplateGenerator(patterns);
       generator.generateAll();
 
-      const stateDir = path.join(WORKFLOW_DIR, 'state');
+      const stateDir = path.join(PATHS.workflow, 'state');
       if (!fs.existsSync(stateDir)) {
         fs.mkdirSync(stateDir, { recursive: true });
       }

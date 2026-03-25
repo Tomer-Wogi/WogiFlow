@@ -24,18 +24,16 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
 const { detectPackageManager } = require('./flow-script-resolver');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const WORKFLOWS_DIR = path.join(WORKFLOW_DIR, 'workflows');
+const WORKFLOWS_DIR = path.join(PATHS.workflow, 'workflows');
 
 /**
  * Validate that a path is within the project root (prevent path traversal)
  */
-function validatePathWithinProject(targetPath, baseRoot = PROJECT_ROOT) {
+function validatePathWithinProject(targetPath, baseRoot = PATHS.root) {
   const resolvedPath = path.resolve(baseRoot, targetPath);
   const resolvedRoot = path.resolve(baseRoot);
 
@@ -62,11 +60,11 @@ const STEP_TYPES = {
  * Detect project type (language, package manager)
  * Returns { language, packageManager } with defaults to Node.js/npm
  */
-function detectProjectType(projectRoot = PROJECT_ROOT) {
+function detectProjectType(projectRoot = PATHS.root) {
   // Validate projectRoot to prevent path traversal
-  const safeRoot = projectRoot === PROJECT_ROOT
-    ? PROJECT_ROOT
-    : validatePathWithinProject(projectRoot, PROJECT_ROOT);
+  const safeRoot = projectRoot === PATHS.root
+    ? PATHS.root
+    : validatePathWithinProject(projectRoot, PATHS.root);
 
   // Check for Go
   if (fs.existsSync(path.join(safeRoot, 'go.mod'))) {
@@ -95,7 +93,7 @@ function detectProjectType(projectRoot = PROJECT_ROOT) {
  * Get quality gate command for an action (lint, test, build)
  * Adapts to detected package manager and language
  */
-function getQualityCommand(action, projectRoot = PROJECT_ROOT) {
+function getQualityCommand(action, projectRoot = PATHS.root) {
   const { language, packageManager } = detectProjectType(projectRoot);
 
   const commands = {
@@ -312,7 +310,7 @@ function executeCommand(command, options = {}) {
     const startTime = Date.now();
 
     const proc = spawn('sh', ['-c', command], {
-      cwd: options.cwd || PROJECT_ROOT,
+      cwd: options.cwd || PATHS.root,
       env: { ...process.env, ...options.env },
       timeout: options.timeout || 60000
     });

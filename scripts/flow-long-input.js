@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { estimateTokens, generateHashId, getConfig, safeJsonParse } = require('./flow-utils');
+const { estimateTokens, generateHashId, getConfig, safeJsonParse, PATHS } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
 // Import extracted modules (renamed from transcript-* to long-input-*)
@@ -209,7 +209,7 @@ function saveActiveDigest(data) {
  */
 function createSession(transcript, options = {}) {
   const digestId = generateDigestId();
-  const digestPath = path.join(STATE_DIR, digestId);
+  const digestPath = path.join(PATHS.state, digestId);
 
   // Create digest directory
   fs.mkdirSync(digestPath, { recursive: true });

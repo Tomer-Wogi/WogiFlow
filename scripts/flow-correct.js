@@ -44,7 +44,7 @@ function getCorrectionsDir() {
   } catch (err) {
     // Fall back to default if config can't be read
   }
-  return path.join(PROJECT_ROOT, '.workflow', 'corrections');
+  return PATHS.corrections;
 }
 
 const CORRECTIONS_DIR = getCorrectionsDir();

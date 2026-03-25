@@ -11,15 +11,13 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
 const {
   getVerbosityGuidance,
   loadPatterns,
   loadRelevantTypes,
   loadRelatedCode
 } = require('./flow-instruction-richness');
-
-const PROJECT_ROOT = getProjectRoot();
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -30,7 +28,7 @@ class TemplateEngine {
     this.templatesDir = templatesDir;
     this.cache = new Map();
     this.richness = null; // Instruction richness settings
-    this.projectRoot = PROJECT_ROOT;
+    this.projectRoot = PATHS.root;
     this.projectContext = this.loadProjectContext();
   }
 

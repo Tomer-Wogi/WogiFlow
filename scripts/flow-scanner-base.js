@@ -14,9 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, getConfig, color, success, warn, error, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Base Scanner Class
@@ -81,7 +79,7 @@ class BaseScanner {
 
     // 1. Explicit directories from config
     for (const dir of this.config.directories) {
-      const fullPath = path.join(PROJECT_ROOT, dir);
+      const fullPath = path.join(PATHS.root, dir);
       if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
         found.add(fullPath);
       }
@@ -161,7 +159,7 @@ class BaseScanner {
       }
     };
 
-    walk(PROJECT_ROOT, 0, 0);
+    walk(PATHS.root, 0, 0);
     return results;
   }
 
@@ -171,7 +169,7 @@ class BaseScanner {
    * @returns {boolean} True if file should be excluded
    */
   shouldExclude(filePath) {
-    const relativePath = path.relative(PROJECT_ROOT, filePath);
+    const relativePath = path.relative(PATHS.root, filePath);
 
     for (const regex of this._excludeRegexps) {
       if (regex.test(relativePath)) {
@@ -494,5 +492,5 @@ class BaseScanner {
 
 module.exports = {
   BaseScanner,
-  PROJECT_ROOT
+  PROJECT_ROOT: PATHS.root
 };

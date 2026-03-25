@@ -25,14 +25,12 @@ const path = require('node:path');
 const https = require('node:https');
 const http = require('node:http');
 const dns = require('dns');
-const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const LINKS_PATH = path.join(WORKFLOW_DIR, 'links.yaml');
-const LINKS_JSON_PATH = path.join(WORKFLOW_DIR, 'links.json');
-const CACHE_DIR = path.join(WORKFLOW_DIR, 'cache', 'links');
+const LINKS_PATH = path.join(PATHS.workflow, 'links.yaml');
+const LINKS_JSON_PATH = path.join(PATHS.workflow, 'links.json');
+const CACHE_DIR = path.join(PATHS.workflow, 'cache', 'links');
 
 /**
  * Link types
@@ -357,7 +355,7 @@ async function fetchLink(name, links = null) {
       const filePath = url.startsWith('file://') ? url.slice(7) : url;
       const absPath = path.isAbsolute(filePath)
         ? filePath
-        : path.join(PROJECT_ROOT, filePath);
+        : path.join(PATHS.root, filePath);
 
       if (fs.existsSync(absPath)) {
         content = fs.readFileSync(absPath, 'utf-8');

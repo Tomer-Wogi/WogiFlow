@@ -21,7 +21,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { getProjectRoot, safeJsonParseString } = require('./flow-utils');
+const { getProjectRoot, safeJsonParseString, PATHS } = require('./flow-utils');
 
 let verificationProfile;
 try {
@@ -29,8 +29,6 @@ try {
 } catch (err) {
   verificationProfile = null;
 }
-
-const PROJECT_ROOT = getProjectRoot();
 
 // ============================================================
 // Constants

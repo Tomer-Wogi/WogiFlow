@@ -31,11 +31,9 @@ const { ComponentScanner } = require('./flow-figma-index');
 const { FigmaExtractor } = require('./flow-figma-extract');
 const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
 const { CodeGenerator } = require('./flow-figma-generate');
-const { getProjectRoot, readJson } = require('./flow-utils');
+const { getProjectRoot, readJson, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const REGISTRY_PATH = path.join(WORKFLOW_DIR, 'state', 'component-registry.json');
+const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
 
 // ============================================================
 // Tool Definitions

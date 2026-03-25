@@ -35,7 +35,6 @@ const {
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 
-const PROJECT_ROOT = getProjectRoot();
 const SESSION_FILE = path.join(PATHS.state, 'guided-edit-session.json');
 
 // ============================================================
@@ -141,14 +140,14 @@ function findAffectedFiles(search, options = {}) {
 
   // Try options first
   if (options.srcDir) {
-    srcDir = path.isAbsolute(options.srcDir) ? options.srcDir : path.join(PROJECT_ROOT, options.srcDir);
+    srcDir = path.isAbsolute(options.srcDir) ? options.srcDir : path.join(PATHS.root, options.srcDir);
   }
 
   // Try config
   if (!srcDir || !fs.existsSync(srcDir)) {
     const configSrcDir = config.guidedEdit?.srcDir;
     if (configSrcDir) {
-      const resolved = path.isAbsolute(configSrcDir) ? configSrcDir : path.join(PROJECT_ROOT, configSrcDir);
+      const resolved = path.isAbsolute(configSrcDir) ? configSrcDir : path.join(PATHS.root, configSrcDir);
       if (fs.existsSync(resolved)) {
         srcDir = resolved;
       }
@@ -157,8 +156,8 @@ function findAffectedFiles(search, options = {}) {
 
   // Fallback to src/ or project root
   if (!srcDir || !fs.existsSync(srcDir)) {
-    const defaultSrc = path.join(PROJECT_ROOT, 'src');
-    srcDir = fs.existsSync(defaultSrc) ? defaultSrc : PROJECT_ROOT;
+    const defaultSrc = path.join(PATHS.root, 'src');
+    srcDir = fs.existsSync(defaultSrc) ? defaultSrc : PATHS.root;
   }
 
   const extensions = options.extensions || config.guidedEdit?.extensions || ['ts', 'tsx', 'js', 'jsx', 'vue', 'svelte'];
@@ -190,7 +189,7 @@ function findAffectedFiles(search, options = {}) {
         }
 
         results.push({
-          path: path.relative(PROJECT_ROOT, file),
+          path: path.relative(PATHS.root, file),
           absolutePath: file,
           matchCount: matches.length,
           matches: matches.slice(0, 5), // First 5 matches

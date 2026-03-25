@@ -14,12 +14,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
-const { getProjectRoot, colors } = require('./flow-utils');
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 const { success, warn, error: errorMsg, info, print } = require('./flow-output');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
-const PROJECT_ROOT = getProjectRoot();
-const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
+const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
 const TEMPLATE_DIR = path.join(SKILLS_DIR, '_template');
 
 function log(color, ...args) {
@@ -187,7 +186,7 @@ _Add key patterns here._
 }
 
 async function createFromPatterns() {
-  const feedbackPath = path.join(PROJECT_ROOT, '.workflow', 'state', 'feedback-patterns.md');
+  const feedbackPath = PATHS.feedbackPatterns;
 
   if (!fs.existsSync(feedbackPath)) {
     warn('No feedback-patterns.md found');

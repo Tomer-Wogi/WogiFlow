@@ -34,8 +34,6 @@ const { loadProfile } = require('./flow-verification-profile');
 const { parseAPIMap, executeAPITest, startAPIServer, stopAPIServer } = require('./flow-test-api');
 const { startDevServer, stopDevServer, assertDataInTree, flattenTreeToText } = require('./flow-test-ui');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Constants
 // ============================================================
@@ -549,7 +547,7 @@ function generateIntegrityPlan(taskId) {
   }
 
   // Load task spec if available
-  const specPath = path.join(PROJECT_ROOT, '.workflow', 'specs', `${taskId}.json`);
+  const specPath = path.join(PATHS.workflow, 'specs', `${taskId}.json`);
   const spec = safeJsonParse(specPath, null);
 
   const mappings = buildEndpointPageMapping(endpoints, spec);
@@ -575,7 +573,7 @@ function generateIntegrityPlan(taskId) {
  * @returns {string} Path to written report
  */
 function writeIntegrityReport(taskId, results) {
-  const verificationsDir = path.join(PATHS.workflow, 'verifications');
+  const verificationsDir = PATHS.verifications;
   ensureDir(verificationsDir);
 
   const reportPath = path.join(verificationsDir, `${taskId}-integrity.json`);
@@ -765,7 +763,7 @@ async function runIntegrityTests(taskId, options = {}) {
     const endpoints = parseAPIMap(apiMapPath);
 
     let spec = null;
-    const specPath = path.join(PROJECT_ROOT, '.workflow', 'specs', `${taskId}.json`);
+    const specPath = path.join(PATHS.workflow, 'specs', `${taskId}.json`);
     if (fs.existsSync(specPath)) {
       spec = safeJsonParse(specPath, null);
     }

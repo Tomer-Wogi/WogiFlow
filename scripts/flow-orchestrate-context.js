@@ -17,7 +17,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
 const {
   buildExportMap,
   loadCachedExportMap,
@@ -26,17 +26,15 @@ const {
   setProjectRoot: setExportScannerRoot
 } = require('./flow-export-scanner');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // Set export scanner project root to match
-setExportScannerRoot(PROJECT_ROOT);
+setExportScannerRoot(PATHS.root);
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
 }
 
 class ProjectContextGenerator {
-  constructor(projectRoot = PROJECT_ROOT) {
+  constructor(projectRoot = PATHS.root) {
     this.projectRoot = projectRoot;
     this.contextPath = path.join(projectRoot, '.workflow/state/hybrid-context.md');
     this.cacheMaxAge = 60 * 60 * 1000; // 1 hour

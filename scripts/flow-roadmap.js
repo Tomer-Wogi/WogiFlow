@@ -46,7 +46,7 @@ const MIN_ITEM_TITLE_LENGTH = 2;    // Minimum length for a valid item title
 // Paths
 // Note: .workflow/roadmap.md is for USER project roadmaps managed by this module.
 // WogiFlow's own internal roadmap is at .workflow/roadmap/roadmap.md (separate file).
-const ROADMAP_PATH = path.join(PROJECT_ROOT, '.workflow', 'roadmap.md');
+const ROADMAP_PATH = path.join(PATHS.workflow, 'roadmap.md');
 const TEMPLATE_PATH = path.join(__dirname, '..', 'templates', 'roadmap.md');
 
 // ============================================================
@@ -487,7 +487,7 @@ function validateItem(item) {
 
     // Check if dependency is in ready.json as completed
     let inReadyCompleted = false;
-    const readyPath = path.join(PROJECT_ROOT, '.workflow', 'state', 'ready.json');
+    const readyPath = PATHS.ready;
     if (fileExists(readyPath)) {
       const ready = safeJsonParse(readyPath, {});
       const completed = ready.recentlyCompleted || [];

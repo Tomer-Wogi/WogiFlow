@@ -10,9 +10,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, readJson } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, colors, readJson, PATHS } = require('./flow-utils');
 
 /**
  * Run PR test analysis as a workflow step
@@ -98,7 +96,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
   const report = { checked: [], missing: [], below: [] };
 
   // Check if coverage report exists
-  const coveragePath = path.join(PROJECT_ROOT, 'coverage', 'coverage-summary.json');
+  const coveragePath = path.join(PATHS.root, 'coverage', 'coverage-summary.json');
   let coverageData = null;
 
   if (fs.existsSync(coveragePath)) {
@@ -106,7 +104,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
   }
 
   for (const file of sourceFiles) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     // Find corresponding test file
@@ -118,7 +116,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
     ];
 
     const hasTest = testPatterns.some(pattern => {
-      const testPath = path.join(PROJECT_ROOT, pattern);
+      const testPath = path.join(PATHS.root, pattern);
       return fs.existsSync(testPath);
     });
 
@@ -144,7 +142,7 @@ async function analyzeCoverage(sourceFiles, minCoverage) {
 
     // Check coverage if available
     if (coverageData) {
-      const absPath = path.resolve(PROJECT_ROOT, file);
+      const absPath = path.resolve(PATHS.root, file);
       const fileCoverage = coverageData[absPath];
 
       if (fileCoverage) {
@@ -182,7 +180,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
   );
 
   for (const testFile of testFiles) {
-    const testPath = path.join(PROJECT_ROOT, testFile);
+    const testPath = path.join(PATHS.root, testFile);
     if (!fs.existsSync(testPath)) continue;
 
     try {
@@ -203,7 +201,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
 
   // Also check source files for testability concerns
   for (const sourceFile of sourceFiles) {
-    const sourcePath = path.join(PROJECT_ROOT, sourceFile);
+    const sourcePath = path.join(PATHS.root, sourceFile);
     if (!fs.existsSync(sourcePath)) continue;
 
     try {

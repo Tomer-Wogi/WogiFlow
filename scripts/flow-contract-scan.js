@@ -18,10 +18,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig } = require('./flow-utils');
+const { getProjectRoot, getConfig, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const DEFAULT_OUTPUT = path.join(PROJECT_ROOT, '.workflow', 'state', 'contract-surface.json');
+const DEFAULT_OUTPUT = path.join(PATHS.state, 'contract-surface.json');
 
 function parseArgs(args) {
   const options = {
@@ -102,7 +101,7 @@ function main() {
   const { scanContracts } = require('./registries/contract-scanner');
 
   const scanOptions = {
-    projectName: path.basename(PROJECT_ROOT),
+    projectName: path.basename(PATHS.root),
     projectType: options.type || contractConfig.projectType || undefined,
     maxFiles: contractConfig.maxFiles || 500,
     maxDepth: contractConfig.maxDepth || 6,
@@ -110,11 +109,11 @@ function main() {
   };
 
   if (options.verbose) {
-    console.log(`Scanning ${PROJECT_ROOT}...`);
+    console.log(`Scanning ${PATHS.root}...`);
     console.log('');
   }
 
-  const surface = scanContracts(PROJECT_ROOT, scanOptions);
+  const surface = scanContracts(PATHS.root, scanOptions);
 
   if (options.json) {
     console.log(JSON.stringify(surface, null, 2));
@@ -126,7 +125,7 @@ function main() {
   fs.mkdirSync(outputDir, { recursive: true });
   fs.writeFileSync(options.output, JSON.stringify(surface, null, 2));
 
-  const relOutput = path.relative(PROJECT_ROOT, options.output);
+  const relOutput = path.relative(PATHS.root, options.output);
   console.log(`Contract surface saved to ${relOutput}`);
   console.log('');
   console.log('Summary:');

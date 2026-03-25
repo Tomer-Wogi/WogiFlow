@@ -20,12 +20,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { readJson, safeJsonParse, safeJsonParseString } = require('./flow-io');
 const crypto = require('node:crypto');
-const { getProjectRoot, colors: c } = require('./flow-utils');
+const { getProjectRoot, colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const RUNS_DIR = path.join(WORKFLOW_DIR, 'runs');
+const RUNS_DIR = PATHS.runs;
 
 // Event types
 const EVENT_TYPES = {
@@ -422,7 +420,7 @@ function updateIndex(runId, manifest) {
   });
 
   // Load config for retention settings
-  const configPath = path.join(WORKFLOW_DIR, 'config.json');
+  const configPath = path.join(PATHS.workflow, 'config.json');
   const config = readJson(configPath, {});
   const maxRuns = config.traces?.runs?.maxRuns || 100;
 
@@ -480,7 +478,7 @@ function inspectRun(runId) {
  * Cleanup old runs based on retention policy
  */
 function cleanupRuns() {
-  const configPath = path.join(WORKFLOW_DIR, 'config.json');
+  const configPath = path.join(PATHS.workflow, 'config.json');
   const cleanupConfig = readJson(configPath, {});
   const retentionDays = cleanupConfig.traces?.runs?.retentionDays || 30;
   const maxRuns = cleanupConfig.traces?.runs?.maxRuns || 100;

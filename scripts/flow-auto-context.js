@@ -55,8 +55,6 @@ try {
   // Smart context gatherer not available - that's ok
 }
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Index Freshness Check
 // ============================================================
@@ -241,7 +239,7 @@ function inferTaskType(keywords) {
  */
 function searchTraces(keywords) {
   const results = [];
-  const tracesDir = path.join(PATHS.traces || path.join(PATHS.workflow, 'traces'));
+  const tracesDir = path.join(PATHS.traces || PATHS.traces);
 
   if (!fs.existsSync(tracesDir)) return results;
 
@@ -278,7 +276,7 @@ function searchTraces(keywords) {
 
           results.push({
             source: 'trace',
-            path: path.relative(PROJECT_ROOT, tracePath),
+            path: path.relative(PATHS.root, tracePath),
             name: traceName,
             query: queryMatch ? queryMatch[1] : traceName,
             status: statusMatch ? statusMatch[1] : 'unknown',
@@ -415,7 +413,7 @@ function searchComponentIndex(keywords, config = null) {
  */
 function grepCodebase(keywords, maxResults = 10, config = null) {
   const results = [];
-  const srcDir = path.join(PROJECT_ROOT, 'src');
+  const srcDir = path.join(PATHS.root, 'src');
 
   if (!fs.existsSync(srcDir)) return results;
 
@@ -453,7 +451,7 @@ function grepCodebase(keywords, maxResults = 10, config = null) {
       for (const file of files) {
         if (results.length >= effectiveMaxResults) break;
 
-        const relPath = path.relative(PROJECT_ROOT, file);
+        const relPath = path.relative(PATHS.root, file);
         if (!results.some(r => r.path === relPath)) {
           // Optionally read file content with truncation
           let content = null;

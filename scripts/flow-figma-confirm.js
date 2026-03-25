@@ -14,11 +14,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
-const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const DECISIONS_PATH = path.join(WORKFLOW_DIR, 'state', 'figma-decisions.json');
+const DECISIONS_PATH = path.join(PATHS.workflow, 'state', 'figma-decisions.json');
 
 const sym = {
   check: '✅',
@@ -295,7 +293,7 @@ ${c.bold}CONFIRMATION SUMMARY${c.reset}
       decisions: this.decisions
     }, null, 2));
 
-    console.log(`${c.dim}Decisions saved to: ${path.relative(PROJECT_ROOT, DECISIONS_PATH)}${c.reset}`);
+    console.log(`${c.dim}Decisions saved to: ${path.relative(PATHS.root, DECISIONS_PATH)}${c.reset}`);
   }
 }
 

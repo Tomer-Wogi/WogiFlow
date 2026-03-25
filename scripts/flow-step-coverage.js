@@ -13,8 +13,6 @@ const { execSync } = require('node:child_process');
 const { getProjectRoot, colors, getConfig, safeJsonParse, readJson, error } = require('./flow-utils');
 const { getCommand, getExec } = require('./flow-script-resolver');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // Common coverage output locations
 const COVERAGE_PATHS = [
   'coverage/coverage-summary.json',   // Jest/Vitest JSON summary
@@ -116,7 +114,7 @@ async function run(options = {}) {
  */
 function findExistingCoverage() {
   for (const coveragePath of COVERAGE_PATHS) {
-    const fullPath = path.join(PROJECT_ROOT, coveragePath);
+    const fullPath = path.join(PATHS.root, coveragePath);
     if (fs.existsSync(fullPath)) {
       try {
         if (coveragePath.endsWith('.json')) {
@@ -142,7 +140,7 @@ function findExistingCoverage() {
  */
 async function runCoverageTests() {
   // Check package.json for test script
-  const packagePath = path.join(PROJECT_ROOT, 'package.json');
+  const packagePath = path.join(PATHS.root, 'package.json');
   if (!fs.existsSync(packagePath)) return null;
 
   try {
@@ -169,7 +167,7 @@ async function runCoverageTests() {
 
     // Run coverage
     execSync(coverageCmd, {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 300000, // 5 minute timeout
     });

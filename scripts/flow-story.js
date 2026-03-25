@@ -24,7 +24,7 @@ const {
   outputJson,
   withLock,
   safeJsonParse,
-  isPathWithinProject
+  isPathWithinProject, PATHS
 } = require('./flow-utils');
 const { success, warn, error, info, print, printHeader } = require('./flow-output');
 
@@ -39,11 +39,8 @@ try {
 // Import parallel execution detection
 const { findParallelizable, getParallelConfig } = require('./flow-parallel');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CHANGES_DIR = path.join(WORKFLOW_DIR, 'changes');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const READY_PATH = path.join(STATE_DIR, 'ready.json');
+const CHANGES_DIR = PATHS.changes;
+const READY_PATH = PATHS.ready;
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -335,7 +332,7 @@ async function createStory(title, options = {}) {
     targetDir = path.join(CHANGES_DIR, featureFolder);
 
     // Security: Validate path is within project (defense against path traversal)
-    if (!isPathWithinProject(targetDir, PROJECT_ROOT)) {
+    if (!isPathWithinProject(targetDir, PATHS.root)) {
       throw new Error(`Security: Target directory "${targetDir}" is outside project root`);
     }
 

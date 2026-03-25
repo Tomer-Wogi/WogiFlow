@@ -59,7 +59,7 @@ const {
 } = require('./flow-export-scanner');
 
 // Import utilities for consistent project root, colors, and config
-const { getProjectRoot, colors, getConfig, writeJson, estimateTokens, error } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, writeJson, estimateTokens, error, PATHS } = require('./flow-utils');
 const { getPromptAdjustments, recordModelResult } = require('./flow-model-adapter');
 
 // Import provider infrastructure for cloud executors
@@ -121,13 +121,9 @@ const {
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-
 // Set export scanner project root to match orchestrator's
-setExportScannerRoot(PROJECT_ROOT);
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const TEMPLATES_DIR = path.join(PROJECT_ROOT, 'templates', 'hybrid');
+setExportScannerRoot(PATHS.root);
+const TEMPLATES_DIR = path.join(PATHS.root, 'templates', 'hybrid');
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -142,7 +138,7 @@ function log(color, ...args) {
  * This helps the AI understand what failed and how to fix it
  */
 function saveStructuredFailure(step, errorHistory, attempts, config) {
-  const failurePath = path.join(STATE_DIR, 'last-failure.json');
+  const failurePath = path.join(PATHS.state, 'last-failure.json');
 
   const failureInfo = {
     timestamp: new Date().toISOString(),
@@ -430,7 +426,7 @@ function autoCorrectCode(code, filePath, projectConfig = null) {
  * @param {string} projectRoot - Root directory of the project
  * @returns {string} - Framework name: 'styled-components', 'shadcn', 'mui', 'chakra', 'antd', or 'react'
  */
-function detectUIFramework(projectRoot = PROJECT_ROOT) {
+function detectUIFramework(projectRoot = PATHS.root) {
   try {
     const pkgJsonPath = path.join(projectRoot, 'package.json');
     const pkgJson = readJson(pkgJsonPath, null);
@@ -459,7 +455,7 @@ function detectUIFramework(projectRoot = PROJECT_ROOT) {
  * @param {string[]} componentDirs - Directories to scan (relative to projectRoot)
  * @returns {Object} - Mapping of ComponentName → import path
  */
-function scanComponentPaths(projectRoot = PROJECT_ROOT, componentDirs = ['src/components']) {
+function scanComponentPaths(projectRoot = PATHS.root, componentDirs = ['src/components']) {
   const componentPaths = {};
 
   for (const dir of componentDirs) {
@@ -527,7 +523,7 @@ function scanComponentPaths(projectRoot = PROJECT_ROOT, componentDirs = ['src/co
  * @param {string} projectRoot - Root directory of the project
  * @returns {Object} - projectContext configuration
  */
-function generateProjectContext(projectRoot = PROJECT_ROOT) {
+function generateProjectContext(projectRoot = PATHS.root) {
   const uiFramework = detectUIFramework(projectRoot);
 
   // Scan standard component directories
@@ -588,7 +584,7 @@ function logTokenMetrics(plan, executionResult, complexity) {
 
   if (!logMetrics) return;
 
-  const metricsPath = path.join(STATE_DIR, 'hybrid-metrics.json');
+  const metricsPath = path.join(PATHS.state, 'hybrid-metrics.json');
 
   // Load existing metrics or create new array
   const metrics = readJson(metricsPath, []);
@@ -925,7 +921,6 @@ function autoCompactPrompt(prompt, contextWindow, reserveForOutput = 2048) {
   };
 }
 
-
 // TemplateEngine extracted to ./flow-orchestrate-templates.js
 // Validator extracted to ./flow-orchestrate-validator.js
 // RollbackManager extracted to ./flow-orchestrate-rollback.js
@@ -946,7 +941,7 @@ class Orchestrator {
     this.completedSteps = new Set();
 
     // Project context generator - generates once, reuses for all steps
-    this.contextGenerator = new ProjectContextGenerator(PROJECT_ROOT);
+    this.contextGenerator = new ProjectContextGenerator(PATHS.root);
     this.projectContext = null;
 
     // Complexity assessment for the current plan
@@ -1199,7 +1194,7 @@ class Orchestrator {
       file: step.params?.path || step.file || '',
       action: step.action || templateName
     };
-    prompt = injectPatterns(prompt, taskContext, PROJECT_ROOT);
+    prompt = injectPatterns(prompt, taskContext, PATHS.root);
 
     // PREPEND PROJECT CONTEXT - Local LLM tokens are FREE
     // This gives the LLM comprehensive knowledge about types, theme, patterns

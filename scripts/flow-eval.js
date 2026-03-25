@@ -35,7 +35,7 @@ const {
 // Constants
 // ============================================================
 
-const EVALS_DIR = path.join(PATHS.root, '.workflow', 'evals');
+const EVALS_DIR = PATHS.evals;
 
 // ============================================================
 // Core Functions
@@ -171,13 +171,13 @@ function getTaskDiff(taskId, taskRecord) {
 function findSpecFile(taskId) {
   // Check common locations
   const candidates = [
-    path.join(PATHS.root, '.workflow', 'specs', `${taskId}.md`),
-    path.join(PATHS.root, '.workflow', 'changes', `${taskId}.md`)
+    path.join(PATHS.specs, `${taskId}.md`),
+    path.join(PATHS.changes, `${taskId}.md`)
   ];
 
   // Also search subdirectories of changes/
   try {
-    const changesDir = path.join(PATHS.root, '.workflow', 'changes');
+    const changesDir = PATHS.changes;
     if (fs.existsSync(changesDir)) {
       const entries = fs.readdirSync(changesDir, { withFileTypes: true });
       for (const entry of entries) {
@@ -202,7 +202,7 @@ function findSpecFile(taskId) {
 
   // Check ready.json for specPath
   try {
-    const ready = readJson(path.join(PATHS.state, 'ready.json'), {});
+    const ready = readJson(PATHS.ready, {});
     const allTasks = [
       ...(ready.inProgress || []),
       ...(ready.ready || []),

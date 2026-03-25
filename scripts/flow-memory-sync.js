@@ -28,6 +28,7 @@ let _syncDecisionsToRules = null;
 function syncDecisionsToRules() {
   if (!_syncDecisionsToRules) {
     _syncDecisionsToRules = require('./flow-rules-sync').syncDecisionsToRules;
+const { PATHS } = require('./flow-utils');
   }
   return _syncDecisionsToRules();
 }
@@ -36,7 +37,7 @@ function syncDecisionsToRules() {
 // Configuration
 // ============================================================
 
-const DECISIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
+const DECISIONS_PATH = PATHS.decisions;
 
 // loadConfig() removed — getConfig() already handles errors gracefully
 

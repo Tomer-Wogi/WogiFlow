@@ -152,6 +152,29 @@ const PATHS = {
   modelsDir: path.join(WORKFLOW_DIR, 'models'),
   modelRegistry: path.join(WORKFLOW_DIR, 'models', 'registry.json'),
   modelStats: path.join(WORKFLOW_DIR, 'models', 'stats.json'),
+  modelStatsArchive: path.join(WORKFLOW_DIR, 'models', 'stats-archive'),
+  modelCapabilities: path.join(WORKFLOW_DIR, 'models', 'capabilities'),
+  communityScores: path.join(WORKFLOW_DIR, 'models', 'community-scores.json'),
+  communityRouting: path.join(WORKFLOW_DIR, 'models', 'community-routing.json'),
+  // Additional workflow directories (v1.9.8)
+  verifications: path.join(WORKFLOW_DIR, 'verifications'),
+  logs: path.join(WORKFLOW_DIR, 'logs'),
+  bridges: path.join(WORKFLOW_DIR, 'bridges'),
+  evals: path.join(WORKFLOW_DIR, 'evals'),
+  reviews: path.join(WORKFLOW_DIR, 'reviews'),
+  completed: path.join(WORKFLOW_DIR, 'completed'),
+  failureLearnings: path.join(WORKFLOW_DIR, 'failure-learnings'),
+  templates: path.join(WORKFLOW_DIR, 'templates'),
+  templatesExtracted: path.join(WORKFLOW_DIR, 'templates', 'extracted'),
+  templatesPrompts: path.join(WORKFLOW_DIR, 'templates', 'prompts'),
+  promptsFragments: path.join(WORKFLOW_DIR, 'prompts', 'fragments'),
+  promptsComposed: path.join(WORKFLOW_DIR, 'prompts', 'composed'),
+  testsGenerated: path.join(WORKFLOW_DIR, 'tests', 'generated'),
+  testsApiFixtures: path.join(WORKFLOW_DIR, 'tests', 'api-fixtures.json'),
+  longInputTmp: path.join(WORKFLOW_DIR, 'tmp', 'long-input'),
+  // State files (v1.9.8)
+  roadmap: path.join(STATE_DIR, 'roadmap.md'),
+  memoryDb: path.join(WORKFLOW_DIR, 'memory', 'local.db'),
 };
 
 // ============================================================

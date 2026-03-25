@@ -22,11 +22,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const PATTERNS_FILE = path.join(WORKFLOW_DIR, 'damage-control.yaml');
+const PATTERNS_FILE = path.join(PATHS.workflow, 'damage-control.yaml');
 
 // ============================================================
 // Event Types and Actions
@@ -353,7 +351,7 @@ function loadPatterns() {
   const config = getConfig();
   const dcConfig = config.damageControl || {};
   const patternsPath = dcConfig.patternsFile
-    ? path.join(PROJECT_ROOT, dcConfig.patternsFile)
+    ? path.join(PATHS.root, dcConfig.patternsFile)
     : PATTERNS_FILE;
 
   if (!fs.existsSync(patternsPath)) {
@@ -519,7 +517,7 @@ function logDamageControl(eventType, context, result) {
 
   if (!dcConfig.logging) return;
 
-  const logDir = path.join(PROJECT_ROOT, '.workflow', 'logs');
+  const logDir = PATHS.logs;
   const logPath = path.join(logDir, 'damage-control.log');
 
   // Ensure log directory exists

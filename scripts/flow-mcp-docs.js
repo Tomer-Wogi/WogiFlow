@@ -27,9 +27,8 @@ const { color, printHeader, printSection, success } = require('./flow-output');;
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-const MCP_DOCS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'mcp-tools.json');
-const DOCS_OUTPUT_PATH = path.join(PROJECT_ROOT, '.claude', 'docs', 'knowledge-base', '05-development-tools', 'mcp-tools-generated.md');
+const MCP_DOCS_PATH = path.join(PATHS.state, 'mcp-tools.json');
+const DOCS_OUTPUT_PATH = path.join(PATHS.root, '.claude', 'docs', 'knowledge-base', '05-development-tools', 'mcp-tools-generated.md');
 
 // Known MCP server locations in this project
 const MCP_SERVER_PATHS = [
@@ -46,7 +45,7 @@ const MCP_SERVER_PATHS = [
  * @returns {Object[]} Array of tool definitions
  */
 function extractToolsFromFile(filePath) {
-  const fullPath = path.join(PROJECT_ROOT, filePath);
+  const fullPath = path.join(PATHS.root, filePath);
 
   if (!fileExists(fullPath)) {
     return [];

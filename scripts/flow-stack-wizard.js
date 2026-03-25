@@ -852,6 +852,7 @@ class EnhancedStackWizard {
 
     try {
       const generator = require('./flow-skill-generator');
+const { PATHS } = require('./flow-utils');
       await generator.generateSkills(technologies, this.selections);
 
       console.log(c('green', '\n✅ Skills generated successfully!\n'));

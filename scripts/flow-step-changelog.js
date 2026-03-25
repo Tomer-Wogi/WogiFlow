@@ -9,10 +9,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const CHANGELOG_PATH = path.join(PROJECT_ROOT, 'CHANGELOG.md');
+const CHANGELOG_PATH = path.join(PATHS.root, 'CHANGELOG.md');
 
 /**
  * Run update changelog step

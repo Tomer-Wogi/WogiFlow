@@ -15,7 +15,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors } = require('./flow-utils');
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 const { readJson } = require('./flow-io');
 const { storeSingleLearning, getAdapterPath } = require('./flow-model-adapter');
@@ -26,9 +26,8 @@ const {
 } = require('./flow-failure-categories');
 const { validateRepoFormat, safeGitCommand, sanitizeCommitMessage } = require('./flow-security');
 
-const PROJECT_ROOT = getProjectRoot();
-const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptive-learning.json');
-const STRATEGY_STATS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'strategy-effectiveness.json');
+const LEARNING_LOG_PATH = path.join(PATHS.state, 'adaptive-learning.json');
+const STRATEGY_STATS_PATH = path.join(PATHS.state, 'strategy-effectiveness.json');
 
 // ============================================================
 // Failure Analysis
@@ -690,7 +689,7 @@ function exportLearningsForSharing() {
   }
 
   // Load model adapter files and extract learnings sections
-  const adaptersDir = path.join(PROJECT_ROOT, '.workflow', 'model-adapters');
+  const adaptersDir = PATHS.modelAdapters;
   if (fs.existsSync(adaptersDir)) {
     const adapterFiles = fs.readdirSync(adaptersDir).filter(f => f.endsWith('.md') && !f.startsWith('_'));
 
@@ -845,7 +844,7 @@ async function contributeLearnings(upstreamRepo = 'your-org/wogi-flow', options 
 
   try {
     // Create contribution file
-    const contributionDir = path.join(PROJECT_ROOT, '.workflow', 'contributions');
+    const contributionDir = path.join(PATHS.workflow, 'contributions');
     if (!fs.existsSync(contributionDir)) {
       fs.mkdirSync(contributionDir, { recursive: true });
     }
@@ -935,7 +934,7 @@ async function createAutoPR(upstreamRepo, options = {}) {
 
   try {
     // Clone fork, create branch, add files, push, create PR
-    const tempDir = path.join(PROJECT_ROOT, '.workflow', 'temp-pr');
+    const tempDir = path.join(PATHS.workflow, 'temp-pr');
 
     console.log(`${colors.cyan}Creating PR automatically...${colors.reset}`);
 
@@ -1136,12 +1135,12 @@ if (require.main === module) {
       }
 
       // Save export file
-      const exportPath = path.join(PROJECT_ROOT, '.workflow', 'learnings-export.json');
+      const exportPath = path.join(PATHS.workflow, 'learnings-export.json');
       fs.writeFileSync(exportPath, JSON.stringify(data, null, 2));
       console.log(`\n${colors.green}✅ Exported to: ${exportPath}${colors.reset}`);
 
       // Also create PR-ready markdown
-      const prPath = path.join(PROJECT_ROOT, '.workflow', 'learnings-contribution.md');
+      const prPath = path.join(PATHS.workflow, 'learnings-contribution.md');
       fs.writeFileSync(prPath, formatExportForPR(data));
       console.log(`${colors.green}✅ PR-ready format: ${prPath}${colors.reset}`);
 

@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   getProjectRoot,
-  safeJsonParse
+  safeJsonParse, PATHS
 } = require('./flow-utils')
 const { color, printHeader, printSection, success } = require('./flow-output');;
 
@@ -28,8 +28,7 @@ const { color, printHeader, printSection, success } = require('./flow-output');;
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-const PERMISSIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'permissions.json');
+const PERMISSIONS_PATH = path.join(PATHS.state, 'permissions.json');
 
 // In-memory session permissions (cleared on process exit or explicit clear)
 const sessionPermissions = new Map();

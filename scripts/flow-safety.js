@@ -19,11 +19,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
-
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 
 /**
  * Custom error for safety violations
@@ -213,7 +210,7 @@ class SafetyGuard {
 
     // Normalize path
     const normalizedPath = filePath.startsWith('/')
-      ? path.relative(PROJECT_ROOT, filePath)
+      ? path.relative(PATHS.root, filePath)
       : filePath;
 
     // Check deny list first (takes precedence)

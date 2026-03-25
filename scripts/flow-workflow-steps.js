@@ -15,8 +15,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { getProjectRoot, colors, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Step Registry - All available workflow steps
 // ============================================================

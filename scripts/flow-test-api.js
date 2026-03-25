@@ -32,8 +32,6 @@ try {
   scenarioEngine = null;
 }
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Constants
 // ============================================================
@@ -609,7 +607,7 @@ async function startAPIServer(command, baseUrl, timeout = SERVER_READY_TIMEOUT) 
   const args = parts.slice(1);
 
   const serverProcess = spawn(cmd, args, {
-    cwd: PROJECT_ROOT,
+    cwd: PATHS.root,
     stdio: ['ignore', 'pipe', 'pipe'],
     detached: true,
     env: { ...process.env, NODE_ENV: 'test' }
@@ -737,7 +735,7 @@ function loadTestData(taskId) {
   const result = { setup: [], teardown: [], fixtures: {} };
 
   // Check for task-specific fixtures
-  const taskFixturesPath = path.join(PROJECT_ROOT, '.workflow', 'tests', 'generated', taskId, 'api-fixtures.json');
+  const taskFixturesPath = path.join(PATHS.workflow, 'tests', 'generated', taskId, 'api-fixtures.json');
   const taskFixtures = safeJsonParse(taskFixturesPath, null);
   if (taskFixtures) {
     if (taskFixtures.setup) result.setup = taskFixtures.setup;
@@ -746,7 +744,7 @@ function loadTestData(taskId) {
   }
 
   // Check for global fixtures
-  const globalFixturesPath = path.join(PROJECT_ROOT, '.workflow', 'tests', 'api-fixtures.json');
+  const globalFixturesPath = path.join(PATHS.workflow, 'tests', 'api-fixtures.json');
   const globalFixtures = safeJsonParse(globalFixturesPath, null);
   if (globalFixtures) {
     // Merge — task-specific takes precedence
@@ -978,7 +976,7 @@ function generateReport(taskId, testGroups, schemaInfo) {
  * @returns {string} Path to the written report
  */
 function writeReport(taskId, report) {
-  const verificationsDir = path.join(PATHS.workflow, 'verifications');
+  const verificationsDir = PATHS.verifications;
   ensureDir(verificationsDir);
 
   const reportPath = path.join(verificationsDir, `${taskId}-api.json`);
@@ -1018,7 +1016,7 @@ function hasStateDependencies(taskId, endpoints) {
 function loadOrGenerateScenarios(taskId, options = {}) {
   const scenarios = [];
 
-  const scenarioDir = path.join(PROJECT_ROOT, '.workflow', 'tests', 'generated', taskId);
+  const scenarioDir = path.join(PATHS.workflow, 'tests', 'generated', taskId);
   const scenarioFile = path.join(scenarioDir, 'scenarios.json');
   const predefined = safeJsonParse(scenarioFile, null);
   if (predefined && Array.isArray(predefined.scenarios)) {
@@ -1032,7 +1030,7 @@ function loadOrGenerateScenarios(taskId, options = {}) {
     return scenarios;
   }
 
-  const readyPath = path.join(PATHS.state, 'ready.json');
+  const readyPath = PATHS.ready;
   const readyData = safeJsonParse(readyPath, null);
   if (!readyData) return scenarios;
 
@@ -1103,7 +1101,7 @@ async function runScenarioTests(taskId, scenarios, options = {}) {
   };
 
   if (!dryRun) {
-    const verificationsDir = path.join(PATHS.workflow, 'verifications');
+    const verificationsDir = PATHS.verifications;
     ensureDir(verificationsDir);
     const reportPath = path.join(verificationsDir, `${taskId}-scenarios.json`);
     try {
@@ -1170,7 +1168,7 @@ async function runAPITests(taskId, options = {}) {
   // 2. Load OpenAPI spec if available
   let openAPISpec = { endpoints: [], raw: null };
   if (specFile) {
-    const specPath = path.isAbsolute(specFile) ? specFile : path.join(PROJECT_ROOT, specFile);
+    const specPath = path.isAbsolute(specFile) ? specFile : path.join(PATHS.root, specFile);
     openAPISpec = parseOpenAPISpec(specPath);
   }
 

@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-266 | 2026-03-25
+**Type**: refactor
+**Tags**: #consistency #paths #audit
+**Task**: wf-9175e882
+**Request**: "Migrate 90 files from manual path.join to PATHS constants"
+**Result**: Migrated 121 files from manual path.join('.workflow'...) constructions to PATHS constants. Added 22 new PATHS entries to flow-paths.js (verifications, logs, bridges, evals, reviews, etc.). Replaced WORKFLOW_DIR/STATE_DIR/PROJECT_ROOT with PATHS.workflow/PATHS.state/PATHS.root. Simplified path.join(PATHS.workflow, 'X') to PATHS.X where constants exist. Net -57 lines. All 121 files pass syntax check. Preserved parameter-based projectRoot patterns (worktrees, hooks) and excluded npm lifecycle files.
+**Files**: scripts/flow-paths.js + 120 other files (see git diff --stat)
+
 ### R-265 | 2026-03-25
 **Type**: fix
 **Tags**: #security #review-findings #enforcement #null-safety

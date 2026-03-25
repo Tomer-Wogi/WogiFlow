@@ -20,13 +20,12 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, writeJson, readJson } = require('./flow-utils');
+const { getProjectRoot, writeJson, readJson, PATHS } = require('./flow-utils');
 const { FigmaExtractor } = require('./flow-figma-extract');
 const { FigmaComponentRegistry } = require('./flow-figma-registry');
 const { FigmaStateAnalyzer } = require('./flow-figma-state-analyzer');
 
-const PROJECT_ROOT = getProjectRoot();
-const ORCHESTRATOR_STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'figma-orchestrator-state.json');
+const ORCHESTRATOR_STATE_PATH = path.join(PATHS.state, 'figma-orchestrator-state.json');
 
 // ============================================================
 // Orchestrator

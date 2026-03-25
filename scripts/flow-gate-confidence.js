@@ -36,7 +36,7 @@ const {
   outputJson,
   printHeader,
   printSection,
-  safeJsonParse
+  safeJsonParse, PATHS
 } = require('./flow-utils');
 
 // ============================================================
@@ -178,7 +178,7 @@ const DEFAULT_GATE_CONFIG = {
 // State
 // ============================================================
 
-const STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'gate-confidence.json');
+const STATE_PATH = path.join(PATHS.state, 'gate-confidence.json');
 
 /**
  * Get default confidence state.

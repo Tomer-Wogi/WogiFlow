@@ -14,7 +14,7 @@ const readline = require('node:readline');
 const http = require('node:http');
 const { HttpClient } = require('./flow-http-client');
 const { URL, URLSearchParams } = require('node:url');
-const { getProjectRoot, colors, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, colors, safeJsonParse, PATHS } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 
 // Import model registry for smart model selection
@@ -26,9 +26,7 @@ try {
   // Registry not available, will use hardcoded models
 }
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
+const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
 
 const symbols = {
   success: '✅',
@@ -700,7 +698,7 @@ ${colors.cyan}╔═════════════════════
 `);
 
   // Check if workflow dir exists
-  if (!fs.existsSync(WORKFLOW_DIR)) {
+  if (!fs.existsSync(PATHS.workflow)) {
     console.log(`${colors.red}${symbols.error} Wogi Flow not installed in this project.${colors.reset}`);
     console.log(`Run /wogi-onboard first.`);
     process.exit(1);

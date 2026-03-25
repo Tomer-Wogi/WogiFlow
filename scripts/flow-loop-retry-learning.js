@@ -15,11 +15,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getConfig, getProjectRoot, colors, readJson, info, success } = require('./flow-utils');
+const { getConfig, getProjectRoot, colors, readJson, info, success, PATHS } = require('./flow-utils');
 const { FailureCategory, detectCategory } = require('./flow-failure-categories');
 
-const PROJECT_ROOT = getProjectRoot();
-const LEARNING_LOG_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'adaptive-learning.json');
+const LEARNING_LOG_PATH = path.join(PATHS.state, 'adaptive-learning.json');
 
 // ============================================================================
 // Root Cause Categories

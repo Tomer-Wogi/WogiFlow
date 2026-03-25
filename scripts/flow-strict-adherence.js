@@ -27,16 +27,15 @@ const {
   warn,
   error,
   info,
-  success
+  success, PATHS
 } = require('./flow-utils');
 
 // ============================================================
 // Constants
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-const STANDARDS_PATH = path.join(PROJECT_ROOT, '.workflow/state/project-standards.json');
-const OVERRIDES_PATH = path.join(PROJECT_ROOT, '.workflow/state/adherence-overrides.json');
+const STANDARDS_PATH = path.join(PATHS.root, '.workflow/state/project-standards.json');
+const OVERRIDES_PATH = path.join(PATHS.root, '.workflow/state/adherence-overrides.json');
 
 // Escape special regex characters for safe dynamic regex construction
 function escapeRegExp(string) {

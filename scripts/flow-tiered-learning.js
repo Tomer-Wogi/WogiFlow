@@ -29,7 +29,7 @@ const {
   fileExists,
   safeJsonParse,
   printHeader,
-  printSection
+  printSection, PATHS
 } = require('./flow-utils');
 
 // ============================================================
@@ -91,9 +91,9 @@ const DEFAULT_TIERED_LEARNING_CONFIG = {
 // Paths
 // ============================================================
 
-const PATTERNS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'learning-patterns.json');
-const DECISIONS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'decisions.md');
-const FEEDBACK_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'feedback-patterns.md');
+const PATTERNS_PATH = path.join(PATHS.state, 'learning-patterns.json');
+const DECISIONS_PATH = PATHS.decisions;
+const FEEDBACK_PATH = PATHS.feedbackPatterns;
 
 // ============================================================
 // Configuration

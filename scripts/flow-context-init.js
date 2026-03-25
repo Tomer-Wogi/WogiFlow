@@ -19,13 +19,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors: c, readJson } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 const { detectPackageManager } = require('./flow-script-resolver');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CONTEXT_DIR = path.join(WORKFLOW_DIR, 'context');
+const CONTEXT_DIR = path.join(PATHS.workflow, 'context');
 const TEMPLATES_DIR = path.join(__dirname, '..', 'templates', 'context');
 
 /**
@@ -53,7 +51,7 @@ function detectStack() {
   };
 
   // Check package.json for Node.js projects
-  const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
+  const packageJsonPath = path.join(PATHS.root, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     try {
       const pkg = readJson(packageJsonPath, null);
@@ -196,7 +194,7 @@ function detectStack() {
   }
 
   // Detect package manager — uses canonical detectPackageManager() from flow-script-resolver
-  const detectedPm = detectPackageManager(PROJECT_ROOT);
+  const detectedPm = detectPackageManager(PATHS.root);
   stack.packageManager = detectedPm;
   if (detectedPm === 'bun') {
     stack.runtime = 'Bun';
@@ -205,17 +203,17 @@ function detectStack() {
   // Check for Python projects
   // Note: When a non-JS primary language is detected, JS framework fields are cleared
   // to prevent incoherent reports (e.g., "Python + React" from a polyglot repo)
-  const requirementsPath = path.join(PROJECT_ROOT, 'requirements.txt');
-  const pyprojectPath = path.join(PROJECT_ROOT, 'pyproject.toml');
+  const requirementsPath = path.join(PATHS.root, 'requirements.txt');
+  const pyprojectPath = path.join(PATHS.root, 'pyproject.toml');
   if (fs.existsSync(requirementsPath) || fs.existsSync(pyprojectPath)) {
     stack.language = 'Python';
     stack.runtime = 'Python';
     stack.frameworks.frontend = '';
     stack.frameworks.fullStack = '';
 
-    if (fs.existsSync(path.join(PROJECT_ROOT, 'poetry.lock'))) {
+    if (fs.existsSync(path.join(PATHS.root, 'poetry.lock'))) {
       stack.packageManager = 'Poetry';
-    } else if (fs.existsSync(path.join(PROJECT_ROOT, 'Pipfile.lock'))) {
+    } else if (fs.existsSync(path.join(PATHS.root, 'Pipfile.lock'))) {
       stack.packageManager = 'Pipenv';
     } else {
       stack.packageManager = 'pip';
@@ -240,7 +238,7 @@ function detectStack() {
   }
 
   // Check for Rust projects
-  const cargoPath = path.join(PROJECT_ROOT, 'Cargo.toml');
+  const cargoPath = path.join(PATHS.root, 'Cargo.toml');
   if (fs.existsSync(cargoPath)) {
     stack.language = 'Rust';
     stack.runtime = 'Rust';
@@ -257,7 +255,7 @@ function detectStack() {
   }
 
   // Check for Go projects
-  const goModPath = path.join(PROJECT_ROOT, 'go.mod');
+  const goModPath = path.join(PATHS.root, 'go.mod');
   if (fs.existsSync(goModPath)) {
     stack.language = 'Go';
     stack.runtime = 'Go';

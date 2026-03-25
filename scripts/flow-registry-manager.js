@@ -18,12 +18,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, safeJsonParse, color, success, warn, error, info } = require('./flow-utils');
+const { getProjectRoot, getConfig, safeJsonParse, color, success, warn, error, info, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const MANIFEST_PATH = path.join(STATE_DIR, 'registry-manifest.json');
+const MANIFEST_PATH = path.join(PATHS.state, 'registry-manifest.json');
 const REGISTRIES_DIR = path.join(__dirname, 'registries');
 
 // ============================================================
@@ -268,7 +265,7 @@ class RegistryManager {
     // Detect stack
     try {
       const { detectStack } = require('./flow-context-init');
-      this.stack = detectStack(PROJECT_ROOT);
+      this.stack = detectStack(PATHS.root);
     } catch (err) {
       this.stack = null;
     }
@@ -355,7 +352,7 @@ class RegistryManager {
     };
 
     try {
-      fs.mkdirSync(STATE_DIR, { recursive: true });
+      fs.mkdirSync(PATHS.state, { recursive: true });
       fs.writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
     } catch (err) {
       warn(`Failed to write manifest: ${err.message}`);
@@ -440,7 +437,7 @@ function printStatus(manager) {
   if (fs.existsSync(MANIFEST_PATH)) {
     try {
       const manifest = safeJsonParse(MANIFEST_PATH, {});
-      console.log(`  Manifest: ${path.relative(PROJECT_ROOT, MANIFEST_PATH)}`);
+      console.log(`  Manifest: ${path.relative(PATHS.root, MANIFEST_PATH)}`);
       console.log(`  Generated: ${manifest.generatedAt || 'unknown'}`);
       console.log(`  Version: ${manifest.version || 'unknown'}`);
       console.log(`  Registries: ${(manifest.registries || []).length}`);
@@ -482,7 +479,7 @@ async function main() {
       }
 
       console.log('');
-      success(`Manifest saved to ${path.relative(PROJECT_ROOT, MANIFEST_PATH)}`);
+      success(`Manifest saved to ${path.relative(PATHS.root, MANIFEST_PATH)}`);
       console.log('');
       break;
     }
@@ -493,7 +490,7 @@ async function main() {
 
     case 'manifest':
       manager.generateManifest();
-      success(`Manifest saved to ${path.relative(PROJECT_ROOT, MANIFEST_PATH)}`);
+      success(`Manifest saved to ${path.relative(PATHS.root, MANIFEST_PATH)}`);
       break;
 
     case 'status':

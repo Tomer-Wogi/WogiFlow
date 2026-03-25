@@ -23,12 +23,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync, spawnSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors: c } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CHECKPOINTS_DIR = path.join(WORKFLOW_DIR, 'checkpoints');
+const CHECKPOINTS_DIR = PATHS.checkpoints;
 const CHECKPOINT_LOG = path.join(CHECKPOINTS_DIR, 'checkpoint-log.json');
 
 // Alias getConfig as loadConfig for minimal code changes
@@ -182,7 +180,7 @@ class Checkpoint {
     const snapshots = {};
 
     for (const relPath of stateFiles) {
-      const srcPath = path.join(WORKFLOW_DIR, relPath);
+      const srcPath = path.join(PATHS.workflow, relPath);
       try {
         const content = fs.readFileSync(srcPath, 'utf-8');
         const destPath = path.join(snapshotDir, relPath.replace(/\//g, '_'));
@@ -205,7 +203,7 @@ class Checkpoint {
   hasGitChanges() {
     try {
       const result = spawnSync('git', ['status', '--porcelain'], {
-        cwd: PROJECT_ROOT,
+        cwd: PATHS.root,
         encoding: 'utf-8'
       });
       return result.stdout && result.stdout.trim().length > 0;
@@ -220,19 +218,19 @@ class Checkpoint {
   createGitCommit(message) {
     try {
       // Stage all changes
-      spawnSync('git', ['add', '-A'], { cwd: PROJECT_ROOT });
+      spawnSync('git', ['add', '-A'], { cwd: PATHS.root });
 
       // Create commit
       const commitMessage = `${this.config.commitPrefix} ${message}`;
       const result = spawnSync('git', ['commit', '-m', commitMessage], {
-        cwd: PROJECT_ROOT,
+        cwd: PATHS.root,
         encoding: 'utf-8'
       });
 
       if (result.status === 0) {
         // Get commit hash
         const hashResult = spawnSync('git', ['rev-parse', '--short', 'HEAD'], {
-          cwd: PROJECT_ROOT,
+          cwd: PATHS.root,
           encoding: 'utf-8'
         });
         return hashResult.stdout.trim();
@@ -264,7 +262,7 @@ class Checkpoint {
         for (const [relPath, snapshotPath] of Object.entries(checkpoint.stateSnapshot)) {
           try {
             const content = fs.readFileSync(snapshotPath, 'utf-8');
-            const destPath = path.join(WORKFLOW_DIR, relPath);
+            const destPath = path.join(PATHS.workflow, relPath);
             fs.writeFileSync(destPath, content);
           } catch (err) {
             if (err.code !== 'ENOENT') {
@@ -284,14 +282,14 @@ class Checkpoint {
         // Find commits since checkpoint
         const logResult = spawnSync('git', [
           'log', '--oneline', `${checkpoint.gitCommit}..HEAD`
-        ], { cwd: PROJECT_ROOT, encoding: 'utf-8' });
+        ], { cwd: PATHS.root, encoding: 'utf-8' });
 
         const commitsSince = logResult.stdout.trim().split('\n').filter(l => l).length;
 
         if (commitsSince > 0) {
           // Soft reset to checkpoint
           spawnSync('git', ['reset', '--soft', checkpoint.gitCommit], {
-            cwd: PROJECT_ROOT
+            cwd: PATHS.root
           });
           results.gitRestored = true;
         }
@@ -353,7 +351,6 @@ class Checkpoint {
     };
   }
 }
-
 
 /**
  * Format checkpoint list for display

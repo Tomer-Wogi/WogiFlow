@@ -267,9 +267,9 @@ function main() {
   printSection('Checking universal structure...');
 
   const universalDirs = [
-    { path: path.join(PROJECT_ROOT, '.workflow', 'models'), name: '.workflow/models' },
-    { path: path.join(PROJECT_ROOT, '.workflow', 'bridges'), name: '.workflow/bridges' },
-    { path: path.join(PROJECT_ROOT, '.workflow', 'templates'), name: '.workflow/templates' },
+    { path: PATHS.modelsDir, name: '.workflow/models' },
+    { path: PATHS.bridges, name: '.workflow/bridges' },
+    { path: PATHS.templates, name: '.workflow/templates' },
   ];
 
   for (const dir of universalDirs) {
@@ -282,7 +282,7 @@ function main() {
   }
 
   // Check model registry
-  const registryPath = path.join(PROJECT_ROOT, '.workflow', 'models', 'registry.json');
+  const registryPath = path.join(PATHS.workflow, 'models', 'registry.json');
   if (fileExists(registryPath)) {
     const result = validateJson(registryPath);
     if (result.valid) {

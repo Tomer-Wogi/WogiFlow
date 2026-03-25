@@ -14,9 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 
 // High-risk patterns that trigger multi-agent review
 const HIGH_RISK_PATTERNS = [
@@ -164,7 +162,7 @@ async function runMultiAgentReview(files, config) {
   const allIssues = [];
 
   for (const file of files) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {
@@ -198,7 +196,7 @@ async function runSimpleReview(files, config) {
   const allIssues = [];
 
   for (const file of files) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {

@@ -24,11 +24,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
 const http = require('node:http');
-const { getProjectRoot, getConfig, colors: c, estimateTokens } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors: c, estimateTokens, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
-
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
 
 /**
  * Provider types

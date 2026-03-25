@@ -30,8 +30,7 @@ const path = require('node:path');
 const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir, readJson, safeJsonParse } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const APPROACHES_DIR = path.join(PROJECT_ROOT, '.workflow', 'state', 'approaches');
+const APPROACHES_DIR = path.join(PATHS.state, 'approaches');
 
 // ============================================================
 // Configuration

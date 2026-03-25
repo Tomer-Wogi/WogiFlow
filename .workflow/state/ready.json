@@ -1,23 +1,7 @@
 {
-  "lastUpdated": "2026-03-25T12:32:01.221Z",
+  "lastUpdated": "2026-03-25T15:00:27.334Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-9175e882",
-      "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P1",
-      "source": "audit-2026-03-24",
-      "criteria": [
-        "Add any missing subdirectory constants to PATHS in flow-paths.js",
-        "Replace PROJECT_ROOT = getProjectRoot() with direct PATHS import in 74 files",
-        "Replace manual path.join(\".workflow\"...) with PATHS.* in 90 files",
-        "Replace manual STATE_DIR/WORKFLOW_DIR constructions with PATHS.state/PATHS.workflow",
-        "Verify zero manual .workflow path construction remains (excluding templates and test fixtures)"
-      ],
-      "status": "ready"
-    },
     {
       "id": "wf-14ce6d29",
       "title": "God function decomposition — autoCompactPrompt + runQualityGates",
@@ -157,6 +141,24 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-9175e882",
+      "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P1",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Add any missing subdirectory constants to PATHS in flow-paths.js",
+        "Replace PROJECT_ROOT = getProjectRoot() with direct PATHS import in 74 files",
+        "Replace manual path.join(\".workflow\"...) with PATHS.* in 90 files",
+        "Replace manual STATE_DIR/WORKFLOW_DIR constructions with PATHS.state/PATHS.workflow",
+        "Verify zero manual .workflow path construction remains (excluding templates and test fixtures)"
+      ],
+      "status": "completed",
+      "routedAt": "2026-03-25T12:59:14.092Z",
+      "completedAt": "2026-03-25T15:00:27.332Z"
+    },
+    {
       "id": "wf-b8d8d13c",
       "title": "Fix 14 review findings from session commits",
       "type": "fix",
@@ -277,15 +279,6 @@
       "status": "completed",
       "startedAt": "2026-03-18T08:15:00.000Z",
       "completedAt": "2026-03-18T08:30:00.000Z"
-    },
-    {
-      "id": "wf-e9138c5e",
-      "title": "Pre-commit request-log gate + auto registry scan",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-18T07:35:00.000Z",
-      "completedAt": "2026-03-18T07:45:00.000Z"
     }
   ],
   "backlog": [

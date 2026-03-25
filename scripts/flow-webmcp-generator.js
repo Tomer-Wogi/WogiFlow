@@ -16,15 +16,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { getProjectRoot, getConfig, color, success, warn, error } = require('./flow-utils');
+const { getProjectRoot, getConfig, color, success, warn, error, PATHS } = require('./flow-utils');
 const { readJson, writeJson, ensureDir, fileExists } = require('./flow-utils');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');
 
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const WEBMCP_DIR = path.join(WORKFLOW_DIR, 'webmcp');
+const WEBMCP_DIR = path.join(PATHS.workflow, 'webmcp');
 const TOOLS_PATH = path.join(WEBMCP_DIR, 'tools.json');
-const APP_MAP_PATH = path.join(STATE_DIR, 'app-map.md');
+const APP_MAP_PATH = PATHS.appMap;
 
 // ============================================================
 // Configuration

@@ -25,7 +25,7 @@ const {
 // Constants
 // ============================================================
 
-const TEMPLATES_DIR = path.join(PATHS.root, '.workflow', 'templates', 'prompts');
+const TEMPLATES_DIR = PATHS.templatesPrompts;
 
 // Model family to template file mapping
 const MODEL_TEMPLATE_MAP = {
@@ -387,7 +387,7 @@ function getAgentModel(taskType, options = {}) {
  * @returns {number} Score 0-10, or 0 if not found
  */
 function getCapabilityScore(modelFamily, taskType) {
-  const capDir = path.join(PATHS.root, '.workflow', 'models', 'capabilities');
+  const capDir = PATHS.modelCapabilities;
 
   // Map model family to capability file
   const fileMap = {

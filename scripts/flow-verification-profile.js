@@ -28,8 +28,6 @@ const { spawnSync } = require('node:child_process');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Constants
 // ============================================================
@@ -127,7 +125,7 @@ const FRAMEWORK_PORTS = {
  */
 function existsInProject(relativePath) {
   try {
-    return fs.existsSync(path.join(PROJECT_ROOT, relativePath));
+    return fs.existsSync(path.join(PATHS.root, relativePath));
   } catch (err) {
     return false;
   }
@@ -138,7 +136,7 @@ function existsInProject(relativePath) {
  * @returns {object|null}
  */
 function readPackageJson() {
-  const pkgPath = path.join(PROJECT_ROOT, 'package.json');
+  const pkgPath = path.join(PATHS.root, 'package.json');
   return safeJsonParse(pkgPath, null);
 }
 
@@ -149,7 +147,7 @@ function readPackageJson() {
  */
 function readProjectFile(relativePath) {
   try {
-    return fs.readFileSync(path.join(PROJECT_ROOT, relativePath), 'utf-8');
+    return fs.readFileSync(path.join(PATHS.root, relativePath), 'utf-8');
   } catch (err) {
     return null;
   }
@@ -552,7 +550,7 @@ function detectFixtures() {
   };
 
   for (const fixtureDir of FIXTURE_DIRS) {
-    const fullPath = path.join(PROJECT_ROOT, fixtureDir);
+    const fullPath = path.join(PATHS.root, fixtureDir);
 
     // Check if it's a file (e.g., prisma/seed.ts)
     try {
@@ -602,7 +600,7 @@ function detectCI() {
   for (const ci of CI_CONFIGS) {
     if (ci.glob) {
       // Directory-based detection (e.g., .github/workflows)
-      const dirPath = path.join(PROJECT_ROOT, ci.glob);
+      const dirPath = path.join(PATHS.root, ci.glob);
       try {
         const stat = fs.statSync(dirPath);
         if (stat.isDirectory()) {
@@ -779,7 +777,7 @@ function buildVerificationStrategy(profile) {
  * @returns {Promise<object>} The complete verification profile
  */
 async function probeProject(projectRoot) {
-  const root = projectRoot || PROJECT_ROOT;
+  const root = projectRoot || PATHS.root;
   const pkg = readPackageJson();
 
   // Run all detections

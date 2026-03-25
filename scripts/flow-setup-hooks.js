@@ -17,12 +17,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   getProjectRoot,
-  getConfig
+  getConfig, PATHS
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 
-const PROJECT_ROOT = getProjectRoot();
-const GIT_DIR = path.join(PROJECT_ROOT, '.git');
+const GIT_DIR = path.join(PATHS.root, '.git');
 const HOOKS_DIR = path.join(GIT_DIR, 'hooks');
 
 // Hook marker to identify our managed hooks

@@ -18,14 +18,12 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 // Import canonical safeJsonParse from flow-utils (consolidated per code review)
-const { safeJsonParse } = require('./flow-utils');
+const { safeJsonParse, PATHS } = require('./flow-utils');
 
 // Project paths
 const PROJECT_ROOT = path.resolve(__dirname, '..');
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
-const SYNC_STATE_PATH = path.join(STATE_DIR, 'bridge-sync.json');
+const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
+const SYNC_STATE_PATH = path.join(PATHS.state, 'bridge-sync.json');
 
 // CLI type to output file mapping (Claude Code only)
 const CLI_OUTPUT_FILES = {
@@ -60,7 +58,7 @@ function getTemplateChecksum(cliType) {
     const templateName = CLI_TEMPLATES[cliType];
     if (!templateName) return '';
 
-    const templatePath = path.join(WORKFLOW_DIR, 'templates', templateName);
+    const templatePath = path.join(PATHS.workflow, 'templates', templateName);
     const content = fs.readFileSync(templatePath, 'utf-8');
     return crypto.createHash('md5').update(content).digest('hex');
   } catch (_err) {
@@ -94,8 +92,8 @@ function readSyncState() {
 function writeSyncState(state) {
   try {
     // Ensure state directory exists
-    if (!fs.existsSync(STATE_DIR)) {
-      fs.mkdirSync(STATE_DIR, { recursive: true });
+    if (!fs.existsSync(PATHS.state)) {
+      fs.mkdirSync(PATHS.state, { recursive: true });
     }
     fs.writeFileSync(SYNC_STATE_PATH, JSON.stringify(state, null, 2));
   } catch (err) {
@@ -220,7 +218,7 @@ async function autoSyncBridge(cliType = 'claude-code', options = {}) {
   // Load bridges module
   let bridges;
   try {
-    bridges = require(path.join(PROJECT_ROOT, '.workflow', 'bridges'));
+    bridges = require(PATHS.bridges);
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[bridge-state] Failed to load bridges: ${err.message}`);
@@ -294,7 +292,7 @@ function getSyncStatus() {
   const check = needsSync(cliType);
   const outputPath = getOutputFilePath(cliType);
   const templateName = CLI_TEMPLATES[cliType];
-  const templatePath = templateName ? path.join(WORKFLOW_DIR, 'templates', templateName) : null;
+  const templatePath = templateName ? path.join(PATHS.workflow, 'templates', templateName) : null;
 
   return {
     'claude-code': {

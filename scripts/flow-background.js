@@ -23,15 +23,14 @@ const {
   fileExists,
   color,
   printHeader,
-  printSection, success } = require('./flow-utils');
+  printSection, success, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-const BACKGROUND_STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'background-tasks.json');
-const LOGS_DIR = path.join(PROJECT_ROOT, '.workflow', 'logs');
+const BACKGROUND_STATE_PATH = path.join(PATHS.state, 'background-tasks.json');
+const LOGS_DIR = PATHS.logs;
 
 // Available background tasks with their configurations
 const AVAILABLE_TASKS = {
@@ -141,7 +140,7 @@ function runBackgroundTask(taskName, options = {}) {
     throw new Error(`Unknown task: ${taskName}. Use 'flow background list' to see available tasks.`);
   }
 
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', taskConfig.script);
+  const scriptPath = path.join(PATHS.root, 'scripts', taskConfig.script);
 
   if (!fileExists(scriptPath)) {
     throw new Error(`Script not found: ${taskConfig.script}`);
@@ -163,7 +162,7 @@ function runBackgroundTask(taskName, options = {}) {
 
   // Spawn the process
   const child = spawn('node', [scriptPath, ...args], {
-    cwd: PROJECT_ROOT,
+    cwd: PATHS.root,
     detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, BACKGROUND_TASK: 'true', TASK_ID: taskId }

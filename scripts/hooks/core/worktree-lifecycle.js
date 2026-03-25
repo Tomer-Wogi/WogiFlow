@@ -25,7 +25,7 @@ const CORE_STATE_FILES = ['ready.json', 'decisions.md'];
 
 function getEssentialStateFiles() {
   try {
-    const { getRegistryMapFiles } = require('../../flow-utils');
+    const { getRegistryMapFiles, PATHS } = require('../../flow-utils');
     return [...CORE_STATE_FILES, ...getRegistryMapFiles()];
   } catch (_err) {
     return [...CORE_STATE_FILES, 'app-map.md', 'function-map.md', 'api-map.md'];

@@ -9,9 +9,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { getProjectRoot, getConfig, error, success } = require('./flow-utils');
+const { getProjectRoot, getConfig, error, success, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
 const TESTS = [];
 let passed = 0;
 let failed = 0;
@@ -45,7 +44,7 @@ async function run() {
 // Tests
 
 test('Config file exists', () => {
-  const configPath = path.join(PROJECT_ROOT, '.workflow', 'config.json');
+  const configPath = path.join(PATHS.workflow, 'config.json');
   if (!fs.existsSync(configPath)) {
     throw new Error('config.json not found');
   }
@@ -59,7 +58,7 @@ test('Config has hybrid section', () => {
 });
 
 test('Detection script exists and runs', () => {
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-hybrid-detect.js');
+  const scriptPath = path.join(PATHS.root, 'scripts', 'flow-hybrid-detect.js');
   if (!fs.existsSync(scriptPath)) {
     throw new Error('flow-hybrid-detect.js not found');
   }
@@ -77,56 +76,56 @@ test('Detection script exists and runs', () => {
 });
 
 test('Orchestrator script exists', () => {
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-orchestrate.js');
+  const scriptPath = path.join(PATHS.root, 'scripts', 'flow-orchestrate.js');
   if (!fs.existsSync(scriptPath)) {
     throw new Error('flow-orchestrate.js not found');
   }
 });
 
 test('Templates directory exists', () => {
-  const templatesDir = path.join(PROJECT_ROOT, 'templates', 'hybrid');
+  const templatesDir = path.join(PATHS.root, 'templates', 'hybrid');
   if (!fs.existsSync(templatesDir)) {
     throw new Error('templates/hybrid directory not found');
   }
 });
 
 test('Base template exists', () => {
-  const basePath = path.join(PROJECT_ROOT, 'templates', 'hybrid', '_base.md');
+  const basePath = path.join(PATHS.root, 'templates', 'hybrid', '_base.md');
   if (!fs.existsSync(basePath)) {
     throw new Error('_base.md template not found');
   }
 });
 
 test('Component template exists', () => {
-  const templatePath = path.join(PROJECT_ROOT, 'templates', 'hybrid', 'create-component.md');
+  const templatePath = path.join(PATHS.root, 'templates', 'hybrid', 'create-component.md');
   if (!fs.existsSync(templatePath)) {
     throw new Error('create-component.md template not found');
   }
 });
 
 test('State directory exists', () => {
-  const stateDir = path.join(PROJECT_ROOT, '.workflow', 'state');
+  const stateDir = path.join(PATHS.workflow, 'state');
   if (!fs.existsSync(stateDir)) {
     throw new Error('.workflow/state directory not found');
   }
 });
 
 test('Progress module exists', () => {
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-progress.js');
+  const scriptPath = path.join(PATHS.root, 'scripts', 'flow-progress.js');
   if (!fs.existsSync(scriptPath)) {
     throw new Error('flow-progress.js not found');
   }
 });
 
 test('Templates module exists', () => {
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-templates.js');
+  const scriptPath = path.join(PATHS.root, 'scripts', 'flow-templates.js');
   if (!fs.existsSync(scriptPath)) {
     throw new Error('flow-templates.js not found');
   }
 });
 
 test('Interactive setup exists', () => {
-  const scriptPath = path.join(PROJECT_ROOT, 'scripts', 'flow-hybrid-interactive.js');
+  const scriptPath = path.join(PATHS.root, 'scripts', 'flow-hybrid-interactive.js');
   if (!fs.existsSync(scriptPath)) {
     throw new Error('flow-hybrid-interactive.js not found');
   }
@@ -140,7 +139,7 @@ test('Slash command files exist', () => {
   ];
 
   for (const cmd of commands) {
-    const cmdPath = path.join(PROJECT_ROOT, '.claude', 'commands', cmd);
+    const cmdPath = path.join(PATHS.root, '.claude', 'commands', cmd);
     if (!fs.existsSync(cmdPath)) {
       throw new Error(`${cmd} not found`);
     }

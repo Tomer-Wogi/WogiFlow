@@ -10,10 +10,8 @@
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, PATHS } = require('./flow-utils');
 const { CREDENTIAL_SCAN_PATTERNS } = require('./flow-security');
-
-const PROJECT_ROOT = getProjectRoot();
 
 /**
  * Run security scan as a workflow step
@@ -31,7 +29,7 @@ async function run(options = {}) {
 
   // 1. Check for secrets in modified files (using centralized patterns)
   for (const file of files) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     // Skip test files and config examples
@@ -65,7 +63,7 @@ async function run(options = {}) {
   if (packageModified || stepConfig.alwaysAudit) {
     try {
       const auditResult = execSync('npm audit --json 2>/dev/null', {
-        cwd: PROJECT_ROOT,
+        cwd: PATHS.root,
         encoding: 'utf8',
         stdio: ['pipe', 'pipe', 'pipe'],
       });

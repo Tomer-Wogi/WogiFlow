@@ -427,7 +427,7 @@ function loadRelevantTypes(projectRoot, filePath, options = {}) {
  * @returns {Promise<string|null>} Formatted type information
  */
 async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
-  const { getConfig } = require('./flow-utils');
+  const { getConfig, PATHS } = require('./flow-utils');
   const config = getConfig();
 
   // Check if LSP is enabled

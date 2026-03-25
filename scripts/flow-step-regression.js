@@ -9,9 +9,7 @@
 
 const { execSync } = require('node:child_process');
 const path = require('node:path');
-const { getProjectRoot } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, PATHS } = require('./flow-utils');
 
 /**
  * Run regression tests as a workflow step
@@ -28,9 +26,9 @@ async function run(options = {}) {
 
   try {
     // Run regression tests
-    const regressionScript = path.join(PROJECT_ROOT, 'scripts', 'flow-regression.js');
+    const regressionScript = path.join(PATHS.root, 'scripts', 'flow-regression.js');
     const result = execSync(`node "${regressionScript}" --count ${sampleSize} --json`, {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });

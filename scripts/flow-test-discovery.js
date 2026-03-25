@@ -744,7 +744,7 @@ function runFailToPass(beforeResults, afterResults, matchedCriteria) {
  * @returns {string} Path to saved report
  */
 function generateDiscoveryReport(taskId, discoveryResults, gateResults) {
-  const verificationsDir = path.join(PATHS.workflow, 'verifications');
+  const verificationsDir = PATHS.verifications;
 
   // Ensure verifications directory exists
   try {

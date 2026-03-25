@@ -17,12 +17,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors, getConfig, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, safeJsonParse, PATHS } = require('./flow-utils');
 const { getExecParts, getCommand } = require('./flow-script-resolver');
 
-const PROJECT_ROOT = getProjectRoot();
-const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
-const READY_PATH = path.join(STATE_DIR, 'ready.json');
+const READY_PATH = PATHS.ready;
 const SAFE_PATH = /^[a-zA-Z0-9_.\-/]+$/;
 
 function log(color, ...args) {
@@ -56,8 +54,8 @@ function findTestFiles(taskId, taskData) {
   if (taskData?.testFiles) {
     for (const tf of taskData.testFiles) {
       if (typeof tf === 'string' && SAFE_PATH.test(tf) && !tf.includes('..')) {
-        const resolved = path.resolve(PROJECT_ROOT, tf);
-        if (resolved.startsWith(PROJECT_ROOT + path.sep) || resolved === PROJECT_ROOT) {
+        const resolved = path.resolve(PATHS.root, tf);
+        if (resolved.startsWith(PATHS.root + path.sep) || resolved === PATHS.root) {
           testFiles.push(tf);
         }
       }
@@ -80,14 +78,14 @@ function findTestFiles(taskId, taskData) {
     ];
 
     for (const pattern of testPatterns) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, pattern))) {
+      if (fs.existsSync(path.join(PATHS.root, pattern))) {
         testFiles.push(pattern);
       }
     }
   }
 
   // Also look in request-log for files changed
-  const logPath = path.join(STATE_DIR, 'request-log.md');
+  const logPath = PATHS.requestLog;
   if (fs.existsSync(logPath)) {
     let logContent;
     try {
@@ -111,7 +109,7 @@ function findTestFiles(taskId, taskData) {
             `${base}.spec${ext}`,
           ];
           for (const pattern of testPatterns) {
-            if (fs.existsSync(path.join(PROJECT_ROOT, pattern))) {
+            if (fs.existsSync(path.join(PATHS.root, pattern))) {
               testFiles.push(pattern);
             }
           }
@@ -147,7 +145,7 @@ function runTaskTests(taskId, taskData) {
     }
     const { cmd, args } = runner;
     execFileSync(cmd, args, {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       stdio: 'pipe',
       timeout: 60000 // 1 minute timeout per task
     });
@@ -173,7 +171,7 @@ function runTaskTests(taskId, taskData) {
  * @returns {{ cmd: string, args: string[] }}
  */
 function detectTestRunner(testFiles) {
-  const packageJson = path.join(PROJECT_ROOT, 'package.json');
+  const packageJson = path.join(PATHS.root, 'package.json');
 
   if (fs.existsSync(packageJson)) {
     try {

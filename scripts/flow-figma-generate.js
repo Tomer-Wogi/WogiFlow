@@ -25,14 +25,12 @@ const { getProjectRoot,
   getConfig,
   addRequestLogEntry,
   addAppMapComponent,
-  readJson
+  readJson, PATHS
 } = require('./flow-utils')
 const { error, info } = require('./flow-output');;
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const DECISIONS_PATH = path.join(WORKFLOW_DIR, 'state', 'figma-decisions.json');
-const REGISTRY_PATH = path.join(WORKFLOW_DIR, 'state', 'component-registry.json');
+const DECISIONS_PATH = path.join(PATHS.workflow, 'state', 'figma-decisions.json');
+const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
 
 // ============================================================
 // Framework-Specific Templates
@@ -231,7 +229,7 @@ export class {{name}}Component {
 class CodeGenerator {
   constructor(decisions, options = {}) {
     this.decisions = Array.isArray(decisions) ? decisions : decisions.decisions || [];
-    this.framework = options.framework || detectFramework(PROJECT_ROOT);
+    this.framework = options.framework || detectFramework(PATHS.root);
     this.templates = FRAMEWORK_TEMPLATES[this.framework] || FRAMEWORK_TEMPLATES.react;
     this.registry = this.loadRegistry();
 
@@ -497,7 +495,7 @@ ${this.formatCSSPropertiesForPrompt(figma.css)}
 
   _detectSourceRoot() {
     for (const dir of ['src', 'app', 'lib']) {
-      if (fs.existsSync(path.join(PROJECT_ROOT, dir))) return dir;
+      if (fs.existsSync(path.join(PATHS.root, dir))) return dir;
     }
     return '.';
   }
@@ -633,9 +631,9 @@ Framework: ${output.framework}
   }
 
   // Save output
-  const outputPath = path.join(WORKFLOW_DIR, 'state', 'figma-output.json');
+  const outputPath = path.join(PATHS.workflow, 'state', 'figma-output.json');
   fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
-  info(`� Full output saved to: ${path.relative(PROJECT_ROOT, outputPath)}`);
+  info(`� Full output saved to: ${path.relative(PATHS.root, outputPath)}`);
 
   // Print prompts for new components
   if (output.prompts.length > 0) {
@@ -668,7 +666,7 @@ ${'─'.repeat(70)}
       tags: ['#figma', ...componentNames.slice(0, 3).map(n => `#component:${n}`)],
       request: 'Figma design analysis and code generation',
       result: `Generated: ${summary.join(', ')}`,
-      files: [path.relative(PROJECT_ROOT, outputPath)]
+      files: [path.relative(PATHS.root, outputPath)]
     });
 
     console.log('\n📝 Logged to request-log.md');

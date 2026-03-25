@@ -86,8 +86,8 @@ function collectStatus() {
       status.cli.type = config.cli?.type || 'claude-code';
 
       // Check bridge status
-      const bridgesDir = path.join(PROJECT_ROOT, '.workflow', 'bridges');
-      const modelsDir = path.join(PROJECT_ROOT, '.workflow', 'models');
+      const bridgesDir = PATHS.bridges;
+      const modelsDir = PATHS.modelsDir;
 
       if (dirExists(bridgesDir) && dirExists(modelsDir)) {
         status.cli.bridgeStatus = 'configured';

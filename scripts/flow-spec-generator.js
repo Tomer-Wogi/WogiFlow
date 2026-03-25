@@ -20,8 +20,6 @@ const { success, warn, error: errorMsg, info } = require('./flow-output');
 const { matchSkills, loadSkillContext } = require('./flow-skill-matcher');
 const { getCommand } = require('./flow-script-resolver');
 
-const PROJECT_ROOT = getProjectRoot();
-
 // ============================================================
 // Spec Generation
 // ============================================================
@@ -449,7 +447,7 @@ function generateRollbackPlan(taskContext) {
 function saveSpec(taskId, spec) {
   const config = getConfig();
   const specDir = config.specificationMode?.specDirectory || '.workflow/specs';
-  const fullDir = path.join(PROJECT_ROOT, specDir);
+  const fullDir = path.join(PATHS.root, specDir);
 
   // Ensure directory exists
   if (!fs.existsSync(fullDir)) {
@@ -629,7 +627,7 @@ function formatSpecAsMarkdown(spec) {
 function loadSpec(taskId) {
   const config = getConfig();
   const specDir = config.specificationMode?.specDirectory || '.workflow/specs';
-  const jsonPath = path.join(PROJECT_ROOT, specDir, `${taskId}.json`);
+  const jsonPath = path.join(PATHS.root, specDir, `${taskId}.json`);
 
   if (!fs.existsSync(jsonPath)) {
     return null;

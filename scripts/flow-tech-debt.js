@@ -35,7 +35,7 @@ const {
   fileExists,
   getProjectRoot,
   ensureDir,
-  generateTaskId
+  generateTaskId, PATHS
 } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn } = require('./flow-output');
 

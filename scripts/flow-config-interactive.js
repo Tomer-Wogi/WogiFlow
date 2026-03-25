@@ -221,7 +221,7 @@ function exportConfig() {
 }
 
 function resetConfig() {
-  const configPath = path.join(PATHS.root, '.workflow', 'config.json');
+  const configPath = PATHS.config;
   const config = safeJsonParse(configPath, null);
   if (!config) {
     error('Failed to read config.json');

@@ -36,7 +36,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, readJson, info } = require('./flow-utils');
+const { getProjectRoot, getConfig, readJson, info, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Configuration (uses centralized getConfig from flow-utils)

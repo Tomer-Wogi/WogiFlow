@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse } = require('./flow-utils');
+const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse, PATHS } = require('./flow-utils');
 const { getCommand } = require('./flow-script-resolver');
 
 // v2.0: Import durable session for unified tracking

@@ -13,9 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 
 /**
  * Run silent failure detection as a workflow step
@@ -49,7 +47,7 @@ async function run(options = {}) {
   const issues = [];
 
   for (const file of analyzableFiles) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {

@@ -18,28 +18,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   getProjectRoot,
-  getConfig
+  getConfig, PATHS
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 
 const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/adapters');
 const { readJson, safeJsonParse } = require('./flow-io');
 
-const PROJECT_ROOT = getProjectRoot();
-
 /**
  * Get installed WogiFlow version from package.json (canonical source)
  * @returns {string} Version string or 'unknown'
  */
 function getInstalledVersion() {
-  const pkgPath = path.join(PROJECT_ROOT, 'node_modules', 'wogiflow', 'package.json');
+  const pkgPath = path.join(PATHS.root, 'node_modules', 'wogiflow', 'package.json');
   const pkg = readJson(pkgPath, null);
   if (pkg) {
     return pkg.version || 'unknown';
   }
 
   // Fallback: try settings.json (legacy)
-  const settingsPath = path.join(PROJECT_ROOT, '.claude', 'settings.json');
+  const settingsPath = path.join(PATHS.root, '.claude', 'settings.json');
   const settings = readJson(settingsPath, null);
   if (settings) {
     return settings._wogiFlowVersion || 'unknown';
@@ -113,7 +111,7 @@ function installForTarget(targetName) {
     headers: config.httpHeaders || {},
     allowedEnvVars: config.httpAllowedEnvVars || []
   } : undefined;
-  const hooksConfig = adapter.generateConfig(config.rules, PROJECT_ROOT, transportConfig);
+  const hooksConfig = adapter.generateConfig(config.rules, PATHS.root, transportConfig);
 
   // For Claude Code, we need to merge into settings.local.json
   if (targetName === 'claude-code') {
@@ -158,7 +156,7 @@ function installClaudeCodeHooks(adapter, hooksConfig) {
 
   // Write config
   fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
-  success(`Hooks written to ${path.relative(PROJECT_ROOT, configPath)}`);
+  success(`Hooks written to ${path.relative(PATHS.root, configPath)}`);
 
   return true;
 }
@@ -424,7 +422,7 @@ async function testHook(hookName) {
 
   const { spawn } = require('node:child_process');
   const proc = spawn('node', [hookPath], {
-    cwd: PROJECT_ROOT,
+    cwd: PATHS.root,
     stdio: ['pipe', 'pipe', 'pipe']
   });
 

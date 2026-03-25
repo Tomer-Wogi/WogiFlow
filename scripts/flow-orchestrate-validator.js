@@ -11,10 +11,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors } = require('./flow-utils');
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 const { getExecParts } = require('./flow-script-resolver');
-
-const PROJECT_ROOT = getProjectRoot();
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -34,7 +32,7 @@ class Validator {
    * Essential for monorepos where tsconfig is in apps/web/, apps/api/, etc.
    */
   static findTsConfigDir(filePath) {
-    if (!filePath) return PROJECT_ROOT;
+    if (!filePath) return PATHS.root;
 
     let dir = path.dirname(filePath);
     while (dir && dir !== path.dirname(dir)) { // Stop at filesystem root
@@ -52,7 +50,7 @@ class Validator {
       }
       dir = path.dirname(dir);
     }
-    return PROJECT_ROOT;
+    return PATHS.root;
   }
 
   static typescriptCheck(filePath) {
@@ -67,8 +65,8 @@ class Validator {
         return { success: true, message: 'TypeScript check skipped (no tsconfig.json)' };
       }
 
-      if (cwd !== PROJECT_ROOT) {
-        log('dim', `   📁 Running tsc from: ${path.relative(PROJECT_ROOT, cwd) || '.'}`);
+      if (cwd !== PATHS.root) {
+        log('dim', `   📁 Running tsc from: ${path.relative(PATHS.root, cwd) || '.'}`);
       }
 
       // Use execFileSync with array args for safety

@@ -54,10 +54,8 @@ const DEFAULTS = {
 // Configuration
 // ============================================================
 
-const { getProjectRoot } = require('./flow-paths');
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const MEMORY_DIR = path.join(WORKFLOW_DIR, 'memory');
+const { getProjectRoot, PATHS } = require('./flow-paths');
+const MEMORY_DIR = path.join(PATHS.workflow, 'memory');
 const DB_PATH = path.join(MEMORY_DIR, 'local.db');
 
 // ============================================================

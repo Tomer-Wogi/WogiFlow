@@ -111,7 +111,7 @@ function readSpecFile(taskId) {
     return null;
   }
 
-  const specPath = path.join(PATHS.root, '.workflow', 'specs', `${taskId}.md`);
+  const specPath = path.join(PATHS.specs, `${taskId}.md`);
 
   // Use try-catch only, no existsSync (prevents TOCTOU race condition)
   try {
@@ -127,7 +127,7 @@ function readSpecFile(taskId) {
   }
 
   // Also check changes directory
-  const changesDir = path.join(PATHS.root, '.workflow', 'changes');
+  const changesDir = PATHS.changes;
   try {
     const entries = fs.readdirSync(changesDir, { withFileTypes: true });
     for (const entry of entries) {
@@ -499,7 +499,7 @@ if (require.main === module) {
       process.exit(1);
     }
 
-    const readyPath = path.join(PATHS.state, 'ready.json');
+    const readyPath = PATHS.ready;
     const readyData = safeJsonParse(readyPath, { ready: [], inProgress: [] });
 
     const allTasks = [
@@ -546,7 +546,7 @@ if (require.main === module) {
 
     const currentPercent = parseFloat(args[2]) / 100;
 
-    const readyPath = path.join(PATHS.state, 'ready.json');
+    const readyPath = PATHS.ready;
     const readyData = safeJsonParse(readyPath, { ready: [], inProgress: [] });
 
     const allTasks = [

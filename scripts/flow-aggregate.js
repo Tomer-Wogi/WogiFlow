@@ -36,7 +36,7 @@ const { syncDecisionsToRules } = require('./flow-rules-sync');
 // ============================================================
 
 const SKILLS_DIR = PATHS.skills;
-const CORRECTIONS_DIR = path.join(PROJECT_ROOT, '.workflow', 'corrections');
+const CORRECTIONS_DIR = PATHS.corrections;
 
 // ============================================================
 // Data Collection

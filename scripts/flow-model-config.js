@@ -31,13 +31,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, colors: c, error, success } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, colors: c, error, success, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const CONFIG_PATH = path.join(WORKFLOW_DIR, 'config.json');
-const ENV_PATH = path.join(PROJECT_ROOT, '.env');
-const SESSION_STATE_PATH = path.join(WORKFLOW_DIR, 'state', 'session-state.json');
+const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
+const ENV_PATH = path.join(PATHS.root, '.env');
+const SESSION_STATE_PATH = path.join(PATHS.workflow, 'state', 'session-state.json');
 
 /**
  * Known provider configurations
@@ -106,7 +104,7 @@ function readConfig() {
  * @param {Object} config - Config to write
  */
 function writeConfig(config) {
-  fs.mkdirSync(WORKFLOW_DIR, { recursive: true });
+  fs.mkdirSync(PATHS.workflow, { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
 }
 

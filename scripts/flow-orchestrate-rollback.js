@@ -10,11 +10,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors } = require('./flow-utils');
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 const { readJson } = require('./flow-io');
-
-const PROJECT_ROOT = getProjectRoot();
-const STATE_DIR = path.join(PROJECT_ROOT, '.workflow', 'state');
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -24,7 +21,7 @@ class RollbackManager {
   constructor() {
     this.createdFiles = [];
     this.modifiedFiles = [];
-    this.checkpointPath = path.join(STATE_DIR, 'rollback-checkpoint.json');
+    this.checkpointPath = path.join(PATHS.state, 'rollback-checkpoint.json');
   }
 
   trackCreation(filePath) {
@@ -68,7 +65,7 @@ class RollbackManager {
         log('dim', `  🗑️  Deleted: ${filePath}`);
 
         let dir = path.dirname(filePath);
-        while (dir !== PROJECT_ROOT && fs.existsSync(dir)) {
+        while (dir !== PATHS.root && fs.existsSync(dir)) {
           const files = fs.readdirSync(dir);
           if (files.length === 0) {
             fs.rmdirSync(dir);

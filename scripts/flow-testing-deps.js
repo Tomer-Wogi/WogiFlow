@@ -28,7 +28,7 @@
 const { execSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
-const { getProjectRoot } = require('./flow-utils');
+const { getProjectRoot, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Dependency Definitions

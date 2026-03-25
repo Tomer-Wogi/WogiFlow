@@ -31,7 +31,7 @@ const {
   safeJsonParse,
   printHeader,
   printSection,
-  showHelp: showHelpGeneric
+  showHelp: showHelpGeneric, PATHS
 } = require('./flow-utils');
 
 // ============================================================
@@ -93,7 +93,7 @@ const CATEGORY_PATTERNS = [
 // State Management
 // ============================================================
 
-const STATE_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'cascade-state.json');
+const STATE_PATH = path.join(PATHS.state, 'cascade-state.json');
 
 /**
  * In-memory failure tracker.

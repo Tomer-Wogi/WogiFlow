@@ -14,12 +14,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, safeJsonParseString } = require('./flow-utils')
+const { getProjectRoot, safeJsonParse, safeJsonParseString, PATHS } = require('./flow-utils')
 const { error } = require('./flow-output');;
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const REGISTRY_PATH = path.join(WORKFLOW_DIR, 'state', 'component-registry.json');
+const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
 
 // ============================================================
 // Matching Configuration
@@ -553,7 +551,7 @@ async function main() {
 
   if (figmaRegistryIndex !== -1) {
     // Use the Figma-sourced multi-page registry
-    const figmaRegistryPath = path.join(WORKFLOW_DIR, 'state', 'figma-component-registry.json');
+    const figmaRegistryPath = path.join(PATHS.workflow, 'state', 'figma-component-registry.json');
     if (!fs.existsSync(figmaRegistryPath)) {
       error('Figma component registry not found.');
       console.error('   Run the multi-page scan first.');

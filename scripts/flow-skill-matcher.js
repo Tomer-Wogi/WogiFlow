@@ -31,8 +31,7 @@ function getSkillFilePath(dir) {
 const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
+const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
 
 // Maximum nesting depth for skill directories (prevents runaway recursion)
 const MAX_SKILL_NESTING_DEPTH = 3;

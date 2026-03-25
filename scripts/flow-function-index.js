@@ -15,7 +15,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse, PATHS } = require('./flow-utils');
 const {
   findSimilarItems,
   generateAIDecisionPrompt,
@@ -24,10 +24,8 @@ const {
 } = require('./flow-semantic-match');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');
 
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const INDEX_PATH = path.join(STATE_DIR, 'function-index.json');
-const MAP_PATH = path.join(STATE_DIR, 'function-map.md');
+const INDEX_PATH = path.join(PATHS.state, 'function-index.json');
+const MAP_PATH = path.join(PATHS.state, 'function-map.md');
 
 // ============================================================
 // Configuration
@@ -344,7 +342,7 @@ class FunctionScanner extends BaseScanner {
    */
   save() {
     this.prune();
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+    fs.mkdirSync(PATHS.state, { recursive: true });
     fs.writeFileSync(INDEX_PATH, JSON.stringify(this.registry, null, 2));
     success(`Saved to ${path.relative(PROJECT_ROOT, INDEX_PATH)}`);
   }

@@ -20,13 +20,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors, PATHS } = require('./flow-utils');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const SKILLS_DIR = path.join(PROJECT_ROOT, '.claude', 'skills');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
+const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -582,7 +579,7 @@ function getFileSignature(files) {
  * Log unmatched files to feedback-patterns.md with proper count tracking
  */
 function logToFeedbackPatterns(context, unmatchedFiles) {
-  const feedbackPath = path.join(STATE_DIR, 'feedback-patterns.md');
+  const feedbackPath = PATHS.feedbackPatterns;
 
   if (!fs.existsSync(feedbackPath)) return;
 

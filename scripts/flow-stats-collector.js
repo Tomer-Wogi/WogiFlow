@@ -31,8 +31,8 @@ const {
 // Constants
 // ============================================================
 
-const STATS_PATH = path.join(PATHS.root, '.workflow', 'models', 'stats.json');
-const STATS_ARCHIVE_DIR = path.join(PATHS.root, '.workflow', 'models', 'stats-archive');
+const STATS_PATH = PATHS.modelStats;
+const STATS_ARCHIVE_DIR = PATHS.modelStatsArchive;
 const MAX_RECENT_TASKS = 500;
 
 // ============================================================

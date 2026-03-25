@@ -382,6 +382,7 @@ function generateTemplate(file, type) {
 function isStructuralLine(trimmed, type) {
   // Import statements
   if (trimmed.startsWith('import ') || trimmed.startsWith('const ') && trimmed.includes('require(')) return true;
+const { PATHS } = require('./flow-utils');
   if (trimmed.startsWith('from ')) return true;
 
   // Export statements

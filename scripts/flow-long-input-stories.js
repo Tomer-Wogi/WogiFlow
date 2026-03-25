@@ -1916,7 +1916,7 @@ function createFeatureTask(stories, featureName) {
  * Add tasks to ready.json
  */
 async function addTasksToReadyJson(tasks, _options = {}) {
-  const readyPath = path.join(PATHS.state, 'ready.json');
+  const readyPath = PATHS.ready;
 
   const defaultReady = {
     lastUpdated: now(),

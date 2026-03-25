@@ -38,7 +38,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync, execFileSync } = require('node:child_process');
 const { resolvePatterns } = require('./flow-framework-resolver');
-const { getProjectRoot, generateHashId, readJson, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, generateHashId, readJson, safeJsonParse, PATHS } = require('./flow-utils');
 
 // ============================================================================
 // Constants

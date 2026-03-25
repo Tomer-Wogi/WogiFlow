@@ -16,14 +16,12 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn } = require('../flow-utils');
+const { getProjectRoot, getConfig, color, success, warn, PATHS } = require('../flow-utils');
 const { RegistryPlugin } = require('../flow-registry-manager');
 const { BaseScanner, PROJECT_ROOT } = require('../flow-scanner-base');
 const { info } = require('../flow-output');
 
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-const INDEX_PATH = path.join(STATE_DIR, 'component-index.json');
+const INDEX_PATH = path.join(PATHS.state, 'component-index.json');
 
 // ============================================================
 // Component Scanner (extends BaseScanner for directory walking)
@@ -284,13 +282,13 @@ class ComponentScanner extends BaseScanner {
 
   save() {
     this.prune();
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+    fs.mkdirSync(PATHS.state, { recursive: true });
     fs.writeFileSync(INDEX_PATH, JSON.stringify(this.registry, null, 2));
     success(`Saved to ${path.relative(PROJECT_ROOT, INDEX_PATH)}`);
   }
 
   generateMap() {
-    const MAP_PATH = path.join(STATE_DIR, 'app-map.md');
+    const MAP_PATH = PATHS.appMap;
 
     // Check if app-map.md exists and has content
     let existing = '';
@@ -381,7 +379,7 @@ class ComponentScanner extends BaseScanner {
    */
   _mergeIntoAppMap(mapPath, existing) {
     // Path containment check (defense-in-depth)
-    if (!mapPath.startsWith(STATE_DIR)) {
+    if (!mapPath.startsWith(PATHS.state)) {
       warn('Write target outside state directory — skipping merge');
       return;
     }

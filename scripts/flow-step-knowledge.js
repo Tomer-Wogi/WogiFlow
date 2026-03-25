@@ -9,10 +9,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const KNOWLEDGE_DIR = path.join(PROJECT_ROOT, '.claude', 'docs', 'knowledge-base');
+const KNOWLEDGE_DIR = path.join(PATHS.root, '.claude', 'docs', 'knowledge-base');
 
 /**
  * Run update knowledge base step

@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
-const { colors: c, getProjectRoot, readJson } = require('./flow-utils');
+const { colors: c, getProjectRoot, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn, error: printError } = require('./flow-output');
 
 /**

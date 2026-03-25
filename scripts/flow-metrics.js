@@ -21,8 +21,7 @@ const path = require('node:path');
 const { getProjectRoot, getConfig, PATHS, colors, showHelp: showHelpGeneric, readJson } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const METRICS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'command-metrics.json');
+const METRICS_PATH = PATHS.commandMetrics;
 
 // ============================================================
 // Metrics Data Structure

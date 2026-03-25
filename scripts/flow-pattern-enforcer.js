@@ -39,10 +39,6 @@ const {
 // Configuration
 // ============================================================
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
-
 // ============================================================
 // Pattern Extraction
 // ============================================================
@@ -50,7 +46,7 @@ const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 /**
  * Load all patterns from decisions.md
  */
-function loadDecisionPatterns(projectRoot = PROJECT_ROOT) {
+function loadDecisionPatterns(projectRoot = PATHS.root) {
   const decisionsPath = path.join(projectRoot, '.workflow', 'state', 'decisions.md');
 
   // Read file directly in try-catch (no pre-check to avoid TOCTOU race condition)
@@ -93,7 +89,7 @@ function loadDecisionPatterns(projectRoot = PROJECT_ROOT) {
 /**
  * Load components from app-map.md
  */
-function loadAppMapComponents(projectRoot = PROJECT_ROOT) {
+function loadAppMapComponents(projectRoot = PATHS.root) {
   const appMapPath = path.join(projectRoot, '.workflow', 'state', 'app-map.md');
 
   // Read file directly in try-catch (no pre-check to avoid TOCTOU race condition)
@@ -205,7 +201,7 @@ function loadSkillPatterns(projectRoot, fileExtension, taskDescription = '') {
 /**
  * Extract patterns relevant to a specific task
  */
-function extractRelevantPatterns(task, projectRoot = PROJECT_ROOT) {
+function extractRelevantPatterns(task, projectRoot = PATHS.root) {
   const relevant = {
     decisions: [],
     components: [],
@@ -329,7 +325,7 @@ function formatPatternsForPrompt(relevantPatterns, config = {}) {
 /**
  * Inject patterns into a prompt
  */
-function injectPatterns(prompt, task, projectRoot = PROJECT_ROOT) {
+function injectPatterns(prompt, task, projectRoot = PATHS.root) {
   const config = getConfig();
   const enforcement = config.enforcement || {};
 
@@ -483,7 +479,7 @@ function validateCitations(code, patterns) {
 /**
  * Generate session start summary showing loaded patterns
  */
-function generateSessionSummary(projectRoot = PROJECT_ROOT) {
+function generateSessionSummary(projectRoot = PATHS.root) {
   const decisions = loadDecisionPatterns(projectRoot);
   const components = loadAppMapComponents(projectRoot);
   const config = getConfig();
@@ -604,7 +600,7 @@ ${userReason ? `**Reason**: ${userReason}` : ''}
  * Uses file locking to prevent race conditions with concurrent writes
  */
 function addCrossSessionRuleToDecisions(rule, category) {
-  const decisionsPath = path.join(PATHS.state, 'decisions.md');
+  const decisionsPath = PATHS.decisions;
 
   try {
     // Use file locking to prevent race conditions
@@ -662,7 +658,7 @@ This document captures project-level coding rules and patterns.
 
 /**
  * Add a cross-session rule to .claude/rules/ directory
- * Uses PROJECT_ROOT for consistent path resolution
+ * Uses PATHS.root for consistent path resolution
  */
 function addCrossSessionRuleToClaudeRules(pattern, category) {
   try {
@@ -682,14 +678,14 @@ function addCrossSessionRuleToClaudeRules(pattern, category) {
     };
 
     const subdir = categoryToDir[category] || 'general';
-    // Use PROJECT_ROOT instead of process.cwd() for consistent path resolution
-    const rulesDir = path.join(PROJECT_ROOT, '.claude', 'rules', subdir);
+    // Use PATHS.root instead of process.cwd() for consistent path resolution
+    const rulesDir = path.join(PATHS.root, '.claude', 'rules', subdir);
 
     // Validate path is within project (defense in depth)
     // Use path.sep check to prevent prefix-matching attacks (e.g., /project vs /project-evil)
     const resolvedRulesDir = path.resolve(rulesDir);
-    const normalizedRoot = PROJECT_ROOT.endsWith(path.sep) ? PROJECT_ROOT : PROJECT_ROOT + path.sep;
-    if (!resolvedRulesDir.startsWith(normalizedRoot) && resolvedRulesDir !== PROJECT_ROOT) {
+    const normalizedRoot = PATHS.root.endsWith(path.sep) ? PATHS.root : PATHS.root + path.sep;
+    if (!resolvedRulesDir.startsWith(normalizedRoot) && resolvedRulesDir !== PATHS.root) {
       return { success: false, error: 'Invalid rules directory: outside project' };
     }
 

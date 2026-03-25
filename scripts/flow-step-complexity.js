@@ -9,9 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors } = require('./flow-utils');
-
-const PROJECT_ROOT = getProjectRoot();
+const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 
 /**
  * Run code complexity check step
@@ -42,7 +40,7 @@ async function run(options = {}) {
   const complexFunctions = [];
 
   for (const file of analyzableFiles) {
-    const filePath = path.join(PROJECT_ROOT, file);
+    const filePath = path.join(PATHS.root, file);
     if (!fs.existsSync(filePath)) continue;
 
     try {

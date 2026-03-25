@@ -37,12 +37,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const https = require('node:https');
-const { getProjectRoot } = require('./flow-paths');
+const { getProjectRoot, PATHS } = require('./flow-paths');
 const { getConfig } = require('./flow-config-loader');
 const { ensureDir } = require('./flow-io');
 const { loadProfile } = require('./flow-verification-profile');
-
-const PROJECT_ROOT = getProjectRoot();
 
 // ============================================================
 // Constants
@@ -119,7 +117,7 @@ async function startDevServer(command, baseUrl, timeout = DEFAULT_SERVER_TIMEOUT
   let serverProcess;
   try {
     serverProcess = spawn(cmd, args, {
-      cwd: PROJECT_ROOT,
+      cwd: PATHS.root,
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,
       shell: true
@@ -368,7 +366,7 @@ function loadTestFlows(taskId) {
   const config = getConfig();
   const testingConfig = config.testing || {};
   const outputDir = (testingConfig.generation && testingConfig.generation.outputDir) || '.workflow/tests/generated';
-  const testDir = path.join(PROJECT_ROOT, outputDir, taskId);
+  const testDir = path.join(PATHS.root, outputDir, taskId);
 
   if (!fs.existsSync(testDir)) {
     return [];
@@ -510,7 +508,7 @@ function generateReport(taskId, assertions, stateCoverage, accessibility) {
  * @returns {string} Path to the saved report file
  */
 function saveReport(report) {
-  const verificationsDir = path.join(PROJECT_ROOT, '.workflow', 'verifications');
+  const verificationsDir = PATHS.verifications;
   ensureDir(verificationsDir);
 
   const reportPath = path.join(verificationsDir, `${report.taskId}-ui.json`);
@@ -728,7 +726,7 @@ if (require.main === module) {
         console.log(`Accessibility violations: ${report.accessibility.violations.length}`);
       }
 
-      const reportPath = path.join(PROJECT_ROOT, '.workflow', 'verifications', `${taskId}-ui.json`);
+      const reportPath = path.join(PATHS.workflow, 'verifications', `${taskId}-ui.json`);
       console.log(`Report: ${reportPath}`);
 
       process.exit(report.summary.failed > 0 ? 1 : 0);

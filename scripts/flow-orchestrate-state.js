@@ -10,14 +10,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, writeJson } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, writeJson, PATHS } = require('./flow-utils');
 const { readJson } = require('./flow-io');
 const { loadCachedExportMap } = require('./flow-export-scanner');
 const durableSession = require('./flow-durable-session');
-
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const STATE_DIR = path.join(WORKFLOW_DIR, 'state');
 
 function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
@@ -25,7 +21,7 @@ function log(color, ...args) {
 
 class StateManager {
   updateRequestLog(step, status, mode = 'hybrid', executor = '') {
-    const logPath = path.join(STATE_DIR, 'request-log.md');
+    const logPath = PATHS.requestLog;
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
     const entry = `
@@ -49,7 +45,7 @@ ${step.description || ''}
   updateAppMap(update) {
     if (!update) return;
 
-    const mapPath = path.join(STATE_DIR, 'app-map.md');
+    const mapPath = PATHS.appMap;
     if (!fs.existsSync(mapPath)) return;
 
     let content = fs.readFileSync(mapPath, 'utf-8');
@@ -111,7 +107,7 @@ ${step.description || ''}
     // DEPRECATED: This path is kept for backward compatibility but will be removed
     // Enable durableSteps in config.json to use the modern session management
     console.warn('[DEPRECATED] Using legacy hybrid-session.json - enable durableSteps.enabled in config.json');
-    const sessionPath = path.join(STATE_DIR, 'hybrid-session.json');
+    const sessionPath = path.join(PATHS.state, 'hybrid-session.json');
 
     let session = {
       sessionId: `sess-${Date.now()}`,
@@ -150,7 +146,7 @@ ${step.description || ''}
     }
 
     // Legacy fallback - DEPRECATED
-    const sessionPath = path.join(STATE_DIR, 'hybrid-session.json');
+    const sessionPath = path.join(PATHS.state, 'hybrid-session.json');
     const legacySession = readJson(sessionPath, null);
     if (legacySession) {
       console.warn('[DEPRECATED] Reading legacy hybrid-session.json - enable durableSteps.enabled in config.json');
@@ -160,7 +156,7 @@ ${step.description || ''}
   }
 
   saveResults(results) {
-    const resultsPath = path.join(STATE_DIR, 'hybrid-results.json');
+    const resultsPath = path.join(PATHS.state, 'hybrid-results.json');
     fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
   }
 
@@ -192,7 +188,7 @@ ${step.description || ''}
     };
 
     // Try to load from config (primary source)
-    const configPath = path.join(WORKFLOW_DIR, 'config.json');
+    const configPath = path.join(PATHS.workflow, 'config.json');
     const config = readJson(configPath, null);
     if (config) {
       const projectCtx = config.hybrid?.projectContext || {};
@@ -295,7 +291,7 @@ ${step.description || ''}
     }
 
     // Supplement with app-map.md if no exports found
-    const appMapPath = path.join(STATE_DIR, 'app-map.md');
+    const appMapPath = PATHS.appMap;
     if (fs.existsSync(appMapPath) && !context.availableComponents) {
       try {
         const appMap = fs.readFileSync(appMapPath, 'utf-8');

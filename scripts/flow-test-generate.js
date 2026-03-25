@@ -20,10 +20,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, PATHS } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
-
-const PROJECT_ROOT = getProjectRoot();
 
 // ============================================================
 // Criterion Categorisation Keywords
@@ -154,7 +152,7 @@ function parseSpecCriteria(specPath) {
  * @returns {{ framework: string, importStyle: 'esm'|'cjs', fileExtension: string, hasDescribeBlocks: boolean, assertionLib: string }}
  */
 function detectTestConventions(projectRoot) {
-  const root = projectRoot || PROJECT_ROOT;
+  const root = projectRoot || PATHS.root;
   const result = {
     framework: 'vitest',
     importStyle: 'esm',
@@ -403,7 +401,7 @@ function escapeSingleQuotes(str) {
 function ensureTestDir(taskId, outputDir) {
   const config = getConfig();
   const baseDir = outputDir || (config.testing && config.testing.generation && config.testing.generation.outputDir) || '.workflow/tests/generated';
-  const fullDir = path.join(PROJECT_ROOT, baseDir, taskId);
+  const fullDir = path.join(PATHS.root, baseDir, taskId);
 
   if (!fs.existsSync(fullDir)) {
     fs.mkdirSync(fullDir, { recursive: true });
@@ -552,7 +550,7 @@ if (require.main === module) {
   }
 
   // Parse spec
-  const specPath = path.join(PROJECT_ROOT, '.workflow', 'specs', `${taskId}.md`);
+  const specPath = path.join(PATHS.workflow, 'specs', `${taskId}.md`);
 
   if (!fs.existsSync(specPath)) {
     console.error(`Spec not found: ${specPath}`);
@@ -584,7 +582,7 @@ if (require.main === module) {
   console.log('');
   console.log(`Generated ${result.files.length} test file(s) with ${result.totalTests} total test(s):`);
   for (const file of result.files) {
-    console.log(`  ${path.relative(PROJECT_ROOT, file.path)} (${file.category}: ${file.testCount} tests)`);
+    console.log(`  ${path.relative(PATHS.root, file.path)} (${file.category}: ${file.testCount} tests)`);
   }
 }
 

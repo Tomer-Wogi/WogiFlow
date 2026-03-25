@@ -16,12 +16,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson } = require('./flow-utils');
+const { getProjectRoot, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError, info: printInfo } = require('./flow-output');
 
-const PROJECT_ROOT = getProjectRoot();
-const WORKFLOW_DIR = path.join(PROJECT_ROOT, '.workflow');
-const REGISTRY_PATH = path.join(WORKFLOW_DIR, 'state', 'component-registry.json');
+const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
 
 // ============================================================
 // Configuration
@@ -97,11 +95,11 @@ function detectFramework(projectRoot) {
 class ComponentScanner {
   constructor(config = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.framework = detectFramework(PROJECT_ROOT);
+    this.framework = detectFramework(PATHS.root);
     this.registry = {
       version: '1.0.0',
       scannedAt: null,
-      projectRoot: PROJECT_ROOT,
+      projectRoot: PATHS.root,
       framework: this.framework,
       components: [],
       tokens: {
@@ -136,7 +134,7 @@ class ComponentScanner {
       return null;
     }
 
-    console.log(`   Component directory: ${path.relative(PROJECT_ROOT, componentDir)}`);
+    console.log(`   Component directory: ${path.relative(PATHS.root, componentDir)}`);
     console.log(`   Parser: ${this.parser ? 'Babel AST' : 'Regex-based'}`);
 
     // Scan for tokens first
@@ -154,14 +152,14 @@ class ComponentScanner {
     this.saveRegistry();
 
     printSuccess(`Found ${this.registry.components.length} components`);
-    console.log(`📄 Registry saved to: ${path.relative(PROJECT_ROOT, REGISTRY_PATH)}`);
+    console.log(`📄 Registry saved to: ${path.relative(PATHS.root, REGISTRY_PATH)}`);
 
     return this.registry;
   }
 
   findComponentDir() {
     for (const dir of this.config.componentDirs) {
-      const fullPath = path.join(PROJECT_ROOT, dir);
+      const fullPath = path.join(PATHS.root, dir);
       if (fs.existsSync(fullPath)) {
         return fullPath;
       }
@@ -173,7 +171,7 @@ class ComponentScanner {
     console.log('\n📊 Scanning design tokens...');
 
     for (const tokenSource of this.config.tokenSources) {
-      const fullPath = path.join(PROJECT_ROOT, tokenSource);
+      const fullPath = path.join(PATHS.root, tokenSource);
       if (fs.existsSync(fullPath)) {
         console.log(`   Found: ${tokenSource}`);
         await this.parseTokenFile(fullPath);

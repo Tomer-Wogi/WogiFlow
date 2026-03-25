@@ -29,9 +29,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
 
-const PROJECT_ROOT = getProjectRoot();
-const ADAPTERS_DIR = path.join(PROJECT_ROOT, '.workflow', 'model-adapters');
-const MODEL_STATS_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'model-stats.json');
+const ADAPTERS_DIR = PATHS.modelAdapters;
+const MODEL_STATS_PATH = PATHS.modelStatsLegacy;
 
 // ============================================================
 // Model Detection

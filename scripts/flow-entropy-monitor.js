@@ -19,13 +19,11 @@ const path = require('node:path');
 const memoryDb = require('./flow-memory-db');
 const { getConfig } = require('./flow-config-loader');
 const { color } = require('./flow-output');
-const { getProjectRoot } = require('./flow-paths');
+const { getProjectRoot, PATHS } = require('./flow-paths');
 
 // ============================================================
 // Configuration
 // ============================================================
-
-const PROJECT_ROOT = getProjectRoot();
 
 // ============================================================
 // Output Formatting

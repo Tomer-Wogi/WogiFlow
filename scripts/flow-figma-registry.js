@@ -15,11 +15,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson, writeJson } = require('./flow-utils');
+const { getProjectRoot, readJson, writeJson, PATHS } = require('./flow-utils');
 const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
 
-const PROJECT_ROOT = getProjectRoot();
-const REGISTRY_PATH = path.join(PROJECT_ROOT, '.workflow', 'state', 'figma-component-registry.json');
+const REGISTRY_PATH = path.join(PATHS.state, 'figma-component-registry.json');
 
 // ============================================================
 // Registry Data Structure
