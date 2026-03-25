@@ -303,10 +303,16 @@ ${correction}
 `;
 
   content += entry;
-  fs.writeFileSync(decisionsPath, content);
 
-  // Sync to .claude/rules/ for Claude Code integration
-  syncDecisionsToRules();
+  // Route through orchestrator for locking and dedup
+  try {
+    const { writeToDecisions } = require('./flow-learning-orchestrator');
+    await writeToDecisions({ content, entryText: correction.slice(0, 100), caller: 'flow-knowledge-router', skipDedup: false, syncRules: true });
+  } catch (_err) {
+    // Fallback to direct write if orchestrator unavailable
+    fs.writeFileSync(decisionsPath, content);
+    syncDecisionsToRules();
+  }
 
   return {
     success: true,

@@ -88,6 +88,10 @@ async function runHook(eventName, handler, { failMode = 'silent', useStdoutWrite
       };
       write(JSON.stringify(blockOutput));
       process.exit(0);
+    } else {
+      // Unknown failMode — default to silent behavior
+      write(JSON.stringify(errorOutput));
+      process.exit(0);
     }
   }
 }

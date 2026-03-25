@@ -2473,3 +2473,11 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Bulk execute all 9 remaining audit tasks"
 **Result**: Completed all 9 tasks in 4 batches (5 parallel + 1 sequential + 2 parallel + 1 final). Key outcomes: || to ?? migration (101 replacements, timeout=0 bug fix), flow-long-input extraction (3677→1103 LOC), eslint 10 + @huggingface/transformers upgrade, Promise wraps modernization (63 files), learning write centralization with dedup/locking, flow-done.js gate extraction (18 handlers), autoCompactPrompt decomposition, shared hook-runner (13 hooks) + BaseWorkflowStep (7 steps), tech-debt metrics update. Net: ~120 files changed, ~3000 LOC removed. All 18 tests pass.
 **Files**: 120+ files across scripts/, .claude/rules/, .workflow/state/
+
+### R-237 | 2026-03-25
+**Type**: fix
+**Tags**: #review #security #logic #integration
+**Task**: wf-1dd106b5
+**Request**: "Fix 18 review findings from bulk audit session"
+**Result**: Fixed 10 valid findings, dismissed 2 false positives (lock release — finally blocks already present), dismissed 6 low-value documentation items. Key fixes: dead code removal (flow-done-report), failMode fallback (hook-runner), init() guards (flow-long-input-passes), raw JSON.parse→safeJsonParseString (flow-model-config), type guard on file_path (flow-damage-control), defense-in-depth config path validation, orchestrator bypass migration (flow-knowledge-router), duplicate hash ID fix.
+**Files**: scripts/flow-done-report.js, scripts/hooks/entry/shared/hook-runner.js, scripts/flow-long-input-passes.js, scripts/flow-model-config.js, scripts/flow-damage-control.js, scripts/flow-config-loader.js, scripts/flow-knowledge-router.js

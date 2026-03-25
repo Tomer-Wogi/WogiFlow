@@ -420,13 +420,20 @@ function _applyConfigPath(configPath, newValue, config) {
 
   for (let i = 0; i < parts.length - 1; i++) {
     const part = parts[i];
+    if (DANGEROUS_CONFIG_PROPS.has(part)) {
+      throw new Error(`Dangerous config key: ${part}`);
+    }
     if (!Object.hasOwn(obj, part)) {
       obj[part] = {};
     }
     obj = obj[part];
   }
 
-  obj[parts[parts.length - 1]] = newValue;
+  const lastPart = parts[parts.length - 1];
+  if (DANGEROUS_CONFIG_PROPS.has(lastPart)) {
+    throw new Error(`Dangerous config key: ${lastPart}`);
+  }
+  obj[lastPart] = newValue;
   writeJson(PATHS.config, config);
   invalidateConfigCache();
 

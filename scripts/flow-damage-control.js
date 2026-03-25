@@ -493,7 +493,8 @@ function checkEvent(eventType, context = {}) {
 
   // Fall back to legacy path patterns for file events
   if (eventType === 'file') {
-    const filePath = context.file_path ?? context.filePath ?? '';
+    const rawPath = context.file_path ?? context.filePath ?? '';
+    const filePath = typeof rawPath === 'string' ? rawPath : '';
     const operation = context.operation || 'edit';
     const pathResult = checkPath(filePath, operation);
     if (!pathResult.allowed) {

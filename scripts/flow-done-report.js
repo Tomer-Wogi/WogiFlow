@@ -110,7 +110,6 @@ function printErrorRecoveryAnalysis(gateResult, config) {
  */
 function printFinalFailureMessage() {
   console.log('');
-  color('red', 'Quality gates failed. Fix issues before completing.');
   console.log(color('red', 'Quality gates failed. Fix issues before completing.'));
   console.log(color('dim', 'Tip: Review the error output above or check .workflow/state/last-failure.json'));
 }

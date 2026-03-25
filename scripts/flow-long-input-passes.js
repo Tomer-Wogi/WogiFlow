@@ -36,6 +36,12 @@ let _createSession = null;
  * Initialize with core functions from other modules.
  * @param {Object} deps
  */
+function _requireInit(fnName) {
+  if (!_loadActiveDigest) {
+    throw new Error(`flow-long-input-passes: init() must be called before ${fnName}()`);
+  }
+}
+
 function init(deps) {
   _loadActiveDigest = deps.loadActiveDigest;
   _updatePhase = deps.updatePhase;
@@ -84,7 +90,7 @@ function extractKeyPhrase(text) {
 function createTopicFromOrphans(orphans, _existingTopics) {
   // Guard against empty orphans array
   if (!orphans || orphans.length === 0) {
-    const topicId = generateHashId('t-auto', '', '');
+    const topicId = generateHashId('t-auto', 'empty', 'fallback');
     return {
       id: topicId,
       title: 'Miscellaneous',
@@ -194,6 +200,7 @@ function loadOrphans() {
  * Process Pass 2: Statement Association
  */
 function runPass2() {
+  _requireInit('runPass2');
   const activeDigest = _loadActiveDigest();
   if (!activeDigest.session.digest_path) {
     throw new Error('No active digest session');
@@ -242,6 +249,7 @@ function runPass2() {
  * Process Pass 3: Orphan Check
  */
 function runPass3() {
+  _requireInit('runPass3');
   const activeDigest = _loadActiveDigest();
   if (!activeDigest.session.digest_path) {
     throw new Error('No active digest session');
@@ -460,6 +468,7 @@ function runPass3() {
  * Process Pass 4: Contradiction Resolution
  */
 function runPass4() {
+  _requireInit('runPass4');
   const activeDigest = _loadActiveDigest();
   if (!activeDigest.session.digest_path) {
     throw new Error('No active digest session');
@@ -626,6 +635,7 @@ function runPass4() {
  * @returns {Object} Consolidated pipeline result
  */
 function runFullPipeline(options = {}) {
+  _requireInit('runFullPipeline');
   const { transcript, topics, contentType } = options;
 
   if (!transcript) throw new Error('transcript is required');

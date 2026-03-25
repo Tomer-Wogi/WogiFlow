@@ -5,6 +5,15 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-1dd106b5",
+      "title": "Fix 18 review findings from bulk audit session",
+      "type": "fix",
+      "level": "L2",
+      "source": "review-2026-03-25",
+      "status": "completed",
+      "completedAt": "2026-03-25T17:00:00.000Z"
+    },
+    {
       "id": "wf-dd90ada4",
       "title": "Modernization: Audit || to ?? in config-value default paths",
       "type": "refactor",

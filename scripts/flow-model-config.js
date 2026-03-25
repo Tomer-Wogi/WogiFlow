@@ -31,7 +31,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, colors: c, error, success, PATHS } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, safeJsonParseString, colors: c, error, success, PATHS } = require('./flow-utils');
 
 const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
 const ENV_PATH = path.join(PATHS.root, '.env');
@@ -372,8 +372,12 @@ async function testLocalProvider(endpoint) {
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
-          const parsed = JSON.parse(data);
-          const models = parsed.models?.map(m => m.name) || [];
+          const parsed = safeJsonParseString(data, null);
+          if (!parsed) {
+            resolve({ success: false, message: 'Invalid JSON response from Ollama' });
+            return;
+          }
+          const models = parsed.models?.map(m => m.name) ?? [];
           resolve({
             success: true,
             message: `Connected to Ollama. Found ${models.length} models.`,
