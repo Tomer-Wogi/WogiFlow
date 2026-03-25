@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-25T08:48:36.538Z",
+  "lastUpdated": "2026-03-25T10:40:20.535Z",
   "inProgress": [],
   "ready": [
     {
@@ -156,6 +156,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-b8d8d13c",
+      "title": "Fix 14 review findings from session commits",
+      "type": "fix",
+      "level": "L2",
+      "status": "completed",
+      "routedAt": "2026-03-25T10:38:28.175Z",
+      "source": "review-2026-03-25",
+      "completedAt": "2026-03-25T10:40:20.532Z"
+    },
+    {
       "id": "wf-7e82ca13",
       "title": "Performance: Aggregate hook state into single pre-computed status file",
       "type": "refactor",
@@ -275,15 +285,6 @@
       "status": "completed",
       "startedAt": "2026-03-18T07:35:00.000Z",
       "completedAt": "2026-03-18T07:45:00.000Z"
-    },
-    {
-      "id": "wf-ddd498de",
-      "title": "Fix prompt history — flat array architecture (Approach B)",
-      "type": "bugfix",
-      "level": "L1",
-      "status": "completed",
-      "startedAt": "2026-03-17T11:53:12.441Z",
-      "completedAt": "2026-03-17T11:55:54.630Z"
     }
   ],
   "backlog": [

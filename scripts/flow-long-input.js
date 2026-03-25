@@ -187,7 +187,11 @@ function now() {
  * Load active digest session
  */
 function loadActiveDigest() {
-  return safeJsonParse(ACTIVE_DIGEST_FILE, { session: { status: 'inactive' } });
+  const data = safeJsonParse(ACTIVE_DIGEST_FILE, null);
+  if (!data || !data.session) {
+    return { session: { status: 'inactive' } };
+  }
+  return data;
 }
 
 /**
@@ -667,7 +671,9 @@ function loadStatementMap() {
   }
 
   const mapPath = path.join(activeDigest.session.digest_path, 'statement-map.json');
-  return safeJsonParse(mapPath, null);
+  const data = safeJsonParse(mapPath, null);
+  if (!data) return null;
+  return data;
 }
 
 /**
@@ -943,7 +949,9 @@ function loadOrphans() {
   }
 
   const orphansPath = path.join(activeDigest.session.digest_path, 'orphans.json');
-  return safeJsonParse(orphansPath, null);
+  const data = safeJsonParse(orphansPath, null);
+  if (!data) return null;
+  return data;
 }
 
 /**
@@ -1293,7 +1301,7 @@ function loadClarifications() {
   }
 
   const clarPath = path.join(activeDigest.session.digest_path, 'clarifications.json');
-  return safeJsonParse(clarPath, {
+  const defaultClarifications = {
     questions: [],
     contradictions: [],
     metadata: {
@@ -1305,7 +1313,13 @@ function loadClarifications() {
       auto_resolved_count: 0,
       user_resolved_count: 0
     }
-  });
+  };
+  const data = safeJsonParse(clarPath, null);
+  if (!data) return defaultClarifications;
+  if (!data.questions) data.questions = [];
+  if (!data.contradictions) data.contradictions = [];
+  if (!data.metadata) data.metadata = defaultClarifications.metadata;
+  return data;
 }
 
 /**
@@ -2441,7 +2455,9 @@ function loadConversation() {
   }
 
   const convPath = path.join(activeDigest.session.digest_path, 'conversation.json');
-  return safeJsonParse(convPath, null);
+  const data = safeJsonParse(convPath, null);
+  if (!data) return null;
+  return data;
 }
 
 /**
@@ -2904,7 +2920,9 @@ function loadTopics() {
   }
 
   const topicsPath = path.join(activeDigest.session.digest_path, 'topics.json');
-  return safeJsonParse(topicsPath, null);
+  const data = safeJsonParse(topicsPath, null);
+  if (!data) return null;
+  return data;
 }
 
 /**

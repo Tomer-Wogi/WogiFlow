@@ -341,7 +341,7 @@ process.on('exit', _flushPendingFiles);
 
 function trackChangedFile(filePath) {
   try {
-    _pendingFiles.push(filePath);
+    if (!_pendingFiles.includes(filePath)) _pendingFiles.push(filePath);
     // Schedule a single flush at end of event loop tick (batches multiple calls)
     if (!_flushScheduled) {
       _flushScheduled = true;

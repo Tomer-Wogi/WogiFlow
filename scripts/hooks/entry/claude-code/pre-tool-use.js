@@ -85,10 +85,11 @@ async function main() {
     // If all enforcement gates are disabled, skip everything immediately.
     const hookStatus = readHookStatus();
     if (hookStatus && hookStatus.enforcement) {
-      const e = hookStatus.enforcement;
-      const allGatesDisabled = !e.taskGating && !e.scopeGating && !e.routingGate
-        && !e.commitLogGate && !e.todoWriteGate && !e.loopEnforcement
-        && !hookStatus.componentReuse && !hookStatus.phaseGate;
+      const enf = hookStatus.enforcement;
+      const allGatesDisabled = enf.taskGating === false && enf.scopeGating === false
+        && enf.routingGate === false && enf.commitLogGate === false
+        && enf.todoWriteGate === false && enf.loopEnforcement === false
+        && hookStatus.componentReuse === false && hookStatus.phaseGate === false;
       if (allGatesDisabled) {
         // No enforcement active — allow immediately (0 additional file reads)
         if (process.env.DEBUG) {

@@ -242,7 +242,12 @@ function removeClaudeCodeHooks(adapter) {
   }
 
   try {
-    const config = safeJsonParse(configPath, {});
+    const config = safeJsonParse(configPath, null);
+
+    if (!config) {
+      warn(`  Config file is corrupt or unreadable (skipping)`);
+      return false;
+    }
 
     if (!config._wogiFlowManaged) {
       warn(`  Config not managed by Wogi Flow (skipping)`);

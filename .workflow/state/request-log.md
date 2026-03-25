@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-265 | 2026-03-25
+**Type**: fix
+**Tags**: #security #review-findings #enforcement #null-safety
+**Task**: wf-b8d8d13c
+**Request**: "Fix 14 review findings from session commits"
+**Result**: Fixed 2 critical enforcement bypass (raw JSON.parse → safeJsonParseString + truthiness → strict === false), fixed phaseGate config path mismatch (hooks.rules.intelligence → hooks.rules), added config.json mtime staleness check, fixed hooks removal regression (null default), added null guards in flow-long-input.js (6 locations) and flow-run-trace.js (2 locations), PID-scoped tmp files, deep-merge for nested keys, dedup at push, DRY extraction of buildEnforcementFromConfig. 18/18 tests pass, hook latency 3.2ms.
+**Files**: scripts/flow-hook-status.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/flow-hooks.js, scripts/flow-long-input.js, scripts/flow-run-trace.js, scripts/flow-task-checkpoint.js
+
 ### R-264 | 2026-03-25
 **Type**: refactor
 **Tags**: #performance #hooks #hot-path
