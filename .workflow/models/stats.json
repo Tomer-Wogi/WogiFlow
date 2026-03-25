@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-24T15:26:20.160Z",
+  "lastUpdated": "2026-03-25T15:00:27.398Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
   "summary": {
-    "totalTasks": 1,
+    "totalTasks": 6,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
@@ -11,14 +11,35 @@
   },
   "byModel": {
     "unknown": {
-      "taskCount": 1,
-      "totalIterations": 1,
-      "firstAttemptPasses": 1,
+      "taskCount": 6,
+      "totalIterations": 6,
+      "firstAttemptPasses": 6,
       "totalTokens": 0,
       "totalWallClockMs": 0,
       "totalRevisions": 0,
       "byTaskType": {
         "bugfix": {
+          "taskCount": 1,
+          "totalIterations": 1,
+          "firstAttemptPasses": 1,
+          "totalTokens": 0,
+          "totalRevisions": 0
+        },
+        "chore": {
+          "taskCount": 1,
+          "totalIterations": 1,
+          "firstAttemptPasses": 1,
+          "totalTokens": 0,
+          "totalRevisions": 0
+        },
+        "refactor": {
+          "taskCount": 3,
+          "totalIterations": 3,
+          "firstAttemptPasses": 3,
+          "totalTokens": 0,
+          "totalRevisions": 0
+        },
+        "fix": {
           "taskCount": 1,
           "totalIterations": 1,
           "firstAttemptPasses": 1,
@@ -30,6 +51,27 @@
   },
   "byTaskType": {
     "bugfix": {
+      "taskCount": 1,
+      "totalIterations": 1,
+      "firstAttemptPasses": 1,
+      "avgIterations": 1,
+      "firstAttemptRate": 1
+    },
+    "chore": {
+      "taskCount": 1,
+      "totalIterations": 1,
+      "firstAttemptPasses": 1,
+      "avgIterations": 1,
+      "firstAttemptRate": 1
+    },
+    "refactor": {
+      "taskCount": 3,
+      "totalIterations": 3,
+      "firstAttemptPasses": 3,
+      "avgIterations": 1,
+      "firstAttemptRate": 1
+    },
+    "fix": {
       "taskCount": 1,
       "totalIterations": 1,
       "firstAttemptPasses": 1,
@@ -49,6 +91,76 @@
     "primarySuccessRate": 0
   },
   "recentTasks": [
+    {
+      "taskId": "wf-9175e882",
+      "model": "unknown",
+      "taskType": "refactor",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-25T15:00:27.398Z"
+    },
+    {
+      "taskId": "wf-b8d8d13c",
+      "model": "unknown",
+      "taskType": "fix",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-25T10:40:20.597Z"
+    },
+    {
+      "taskId": "wf-7e82ca13",
+      "model": "unknown",
+      "taskType": "refactor",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-25T08:48:36.564Z"
+    },
+    {
+      "taskId": "wf-154d4643",
+      "model": "unknown",
+      "taskType": "refactor",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-25T08:42:21.574Z"
+    },
+    {
+      "taskId": "wf-fbffee09",
+      "model": "unknown",
+      "taskType": "chore",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-25T08:17:56.620Z"
+    },
     {
       "taskId": "wf-4a4d63f8",
       "model": "unknown",

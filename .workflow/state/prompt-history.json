@@ -2,16 +2,6 @@
   "version": 2,
   "prompts": [
     {
-      "timestamp": "2026-02-25T09:08:35.043Z",
-      "content": "Yes, I want you to make sure it's also enabled as a default so when everyone downloads or installs Wogi Flow this is what is expected. Also if someone updates Wogi Flow it will change the long input gate into enabled. Now you said that in 50 to 150 lines you can see specs may miss edge cases buried in the middle. So for me the threshold should be 50 lines, 60 lines. The idea here is that for Wogi Flow is that there's no compromise. Someone yesterday asked me are you basically competing with Wogi Flow? I said I'm not competing with Wogi Flow because I'm not worried about Claude. Claude will get there. So I told him I'm not worried about Claude doing what we do because they won't. It's like we're Apple. We're developing for one type of user and they're Microsoft. They need to support everything. For 90% of people giving them a system that makes Claude spend two times, three times, four times the tokens that it does now will not make sense. But for companies that needs to keep a certain standard that needs to have 10 developers working with agents and everyone producing the same quality and level of code it makes a lot of sense. ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
       "timestamp": "2026-02-25T09:20:04.021Z",
       "content": "I want you to review what we have in Mogi X-Attack review and make sure that nothing is missed and if we can improve it or if it's good enough as is. I'll explain. Now I have meetings with my employees. I can have a meeting with my designer. The meeting will take an hour. It could be 2000 rows of text if we transcript a meeting like that. And I will just go over the design and tell them what to do. And every task that I give, they will edit, edit, edit the comment, create a checklist, create just a list of to-dos. And in the end, if even if in 10 minutes I say like, let's do this button black and 10 minutes later, I'll say, you know what, let's do it red instead. They will know how to update the task. So it will not they will not use the previous statement, which I changed my mind on. And nothing gets missed. Same thing here. Like if I want it, like let's say I created a feature with you and I just want to update it. I just want to record myself reviewing everything. I can riff, I can change my mind, but I can also just give so many small comments. And then when I give it to AI, a lot of things get missed. So I need you to do something smart, like going over it and writing down every task, going over all the tasks and organizing them in a way that makes sense in order, combining tasks into like one story, if it makes sense. Then reviewing it. And then doing everything again, making sure nothing will miss. If we have orphan tasks, if we have anything. And in the end, if anything, something is not clear, ask the customer, like ask the user. But like this is what I expect. I just want to make sure that this is what the Wogextract review does. ",
       "taskId": "wf-postinstall",
@@ -4923,6 +4913,15 @@
     {
       "timestamp": "2026-03-25T08:13:05.758Z",
       "content": "/wogi-session-end",
+      "taskId": null,
+      "taskTitle": null,
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-03-25T08:14:43.638Z",
+      "content": "We have a lot of things pending from the Wogi audit. Let's start working on everything. wogi-bulk it",
       "taskId": null,
       "taskTitle": null,
       "isRefinement": false,
