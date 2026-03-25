@@ -7,7 +7,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { ensureDir, getConfig, invalidateConfigCache, writeJson, PATHS, success } = require('./flow-utils');
+const { ensureDir, getConfig, invalidateConfigCache, writeJson, PATHS, success, safeJsonParse } = require('./flow-utils');
 const { getTodayDate } = require('./flow-output');
 
 // Import helper functions from tech options
@@ -1466,17 +1466,9 @@ For manual use, run the wizard first: node flow-stack-wizard.js
       process.exit(1);
     }
 
-    let selections;
-    try {
-      const content = fs.readFileSync(selectionsPath, 'utf8');
-      const parsed = JSON.parse(content);
-      if (typeof parsed !== 'object' || parsed === null) {
-        console.error('stack-selections.json is not a valid object');
-        process.exit(1);
-      }
-      selections = parsed;
-    } catch (err) {
-      console.error(`Failed to parse stack-selections.json: ${err.message}`);
+    const selections = safeJsonParse(selectionsPath, null);
+    if (!selections) {
+      console.error('stack-selections.json is not a valid object or could not be parsed');
       process.exit(1);
     }
     const { collectTechnologiesFromSelections } = require('./flow-tech-options');

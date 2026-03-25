@@ -28,6 +28,7 @@ const {
   getConfig,
   fileExists,
   writeJson,
+  safeJsonParse,
   printHeader,
   printSection,
   showHelp: showHelpGeneric
@@ -113,8 +114,7 @@ function loadState() {
   }
 
   try {
-    const content = fs.readFileSync(STATE_PATH, 'utf-8');
-    const state = JSON.parse(content);
+    const state = safeJsonParse(STATE_PATH, {});
 
     // Clean up expired entries
     const now = Date.now();

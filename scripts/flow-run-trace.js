@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { readJson } = require('./flow-io');
+const { readJson, safeJsonParse, safeJsonParseString } = require('./flow-io');
 const crypto = require('node:crypto');
 const { getProjectRoot, colors: c } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
@@ -282,16 +282,17 @@ function endRun(runId, status = 'completed') {
  */
 function generateSummary(runId) {
   const runDir = path.join(RUNS_DIR, runId);
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(runDir, 'manifest.json'), 'utf-8')
-  );
+  const manifest = safeJsonParse(path.join(runDir, 'manifest.json'), null);
+  if (!manifest) return;
+
   const tracePath = path.join(runDir, 'trace.jsonl');
 
   const events = fs.existsSync(tracePath)
     ? fs.readFileSync(tracePath, 'utf-8')
         .split('\n')
         .filter(line => line.trim())
-        .map(line => JSON.parse(line))
+        .map(line => safeJsonParseString(line, null))
+        .filter(Boolean)
     : [];
 
   const durationSec = manifest.durationMs
@@ -453,16 +454,18 @@ function inspectRun(runId) {
     throw new Error(`Run not found: ${runId}`);
   }
 
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(runDir, 'manifest.json'), 'utf-8')
-  );
+  const manifest = safeJsonParse(path.join(runDir, 'manifest.json'), null);
+  if (!manifest) {
+    throw new Error(`Could not read manifest for run: ${runId}`);
+  }
 
   const tracePath = path.join(runDir, 'trace.jsonl');
   const events = fs.existsSync(tracePath)
     ? fs.readFileSync(tracePath, 'utf-8')
         .split('\n')
         .filter(line => line.trim())
-        .map(line => JSON.parse(line))
+        .map(line => safeJsonParseString(line, null))
+        .filter(Boolean)
     : [];
 
   const summaryPath = path.join(runDir, 'summary.md');

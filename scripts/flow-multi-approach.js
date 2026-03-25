@@ -27,7 +27,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir, readJson } = require('./flow-utils');
+const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir, readJson, safeJsonParse } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 
 const PROJECT_ROOT = getProjectRoot();
@@ -351,9 +351,8 @@ function listSessions(limit = 10) {
   return fs.readdirSync(APPROACHES_DIR)
     .filter(f => f.endsWith('.json'))
     .map(f => {
-      const session = JSON.parse(
-        fs.readFileSync(path.join(APPROACHES_DIR, f), 'utf-8')
-      );
+      const session = safeJsonParse(path.join(APPROACHES_DIR, f), null);
+      if (!session) return null;
       return {
         id: session.id,
         task: session.task?.description?.slice(0, 50) + '...',
@@ -362,6 +361,7 @@ function listSessions(limit = 10) {
         createdAt: session.createdAt
       };
     })
+    .filter(Boolean)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit);
 }

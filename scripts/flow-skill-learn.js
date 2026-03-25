@@ -814,7 +814,7 @@ module.exports = {
 };
 
 if (require.main === module) {
-  main().catch(e => {
+  main().catch(err => {
     log('red', `Error: ${err.message}`);
     process.exit(1);
   });

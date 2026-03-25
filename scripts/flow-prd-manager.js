@@ -275,7 +275,7 @@ module.exports = {
 };
 
 if (require.main === module) {
-  main().catch(e => {
+  main().catch(err => {
     error(err.message);
     process.exit(1);
   });

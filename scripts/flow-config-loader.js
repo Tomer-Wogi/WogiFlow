@@ -13,7 +13,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { PATHS, PROJECT_ROOT, isPathWithinProject } = require('./flow-paths');
-const { checkForDangerousKeys, readJson, writeJson, acquireLock } = require('./flow-io');
+const { checkForDangerousKeys, readJson, writeJson, acquireLock, safeJsonParse, safeJsonParseString } = require('./flow-io');
 const { warn } = require('./flow-output');
 
 // Late-loaded to avoid circular dependency
@@ -296,21 +296,10 @@ function getConfig() {
     }
 
     const configContent = fs.readFileSync(configPath, 'utf-8');
-    let rawConfig;
-    try {
-      rawConfig = JSON.parse(configContent);
-    } catch (err) {
-      console.warn(`Warning: Invalid JSON in config.json: ${err.message}`);
+    const rawConfig = safeJsonParseString(configContent, null);
+    if (!rawConfig || typeof rawConfig !== 'object') {
+      console.warn('Warning: Invalid or dangerous JSON in config.json');
       return {};
-    }
-
-    // Prototype pollution check on config
-    if (rawConfig && typeof rawConfig === 'object') {
-      const dangerousKeyError = checkForDangerousKeys(rawConfig);
-      if (dangerousKeyError) {
-        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
-        return {};
-      }
     }
 
     // Validate on first load (DEBUG mode or explicit request)
@@ -366,27 +355,7 @@ function getConfig() {
  * Use this when you need to read/modify config without resolving variables
  */
 function getRawConfig() {
-  const configPath = PATHS.config;
-  if (!fs.existsSync(configPath)) return {};
-
-  try {
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const parsed = JSON.parse(content);
-
-    // Prototype pollution check
-    if (parsed && typeof parsed === 'object') {
-      const dangerousKeyError = checkForDangerousKeys(parsed);
-      if (dangerousKeyError) {
-        console.warn(`Warning: Dangerous keys in config.json: ${dangerousKeyError}`);
-        return {};
-      }
-    }
-
-    return parsed;
-  } catch (err) {
-    console.warn(`Warning: Could not parse config.json: ${err.message}`);
-    return {};
-  }
+  return safeJsonParse(PATHS.config, {});
 }
 
 /**

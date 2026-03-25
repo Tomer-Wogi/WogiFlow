@@ -266,6 +266,11 @@ async function captureObservation(options) {
     return { skipped: true, reason: 'missing_tool_name' };
   }
 
+  // Fast path: skip everything if no memory DB file exists (avoids getConfig() + WASM load)
+  if (!fs.existsSync(MEMORY_DB_PATH)) {
+    return { skipped: true, reason: 'no_memory_db' };
+  }
+
   try {
     // Load settings ONCE and use directly (avoids 4x redundant getConfig() calls)
     const settings = getObservationSettings();
@@ -325,11 +330,6 @@ async function captureObservation(options) {
       }
     } catch (err) {
       fullOutput = '[serialization failed]';
-    }
-
-    // Fast path: skip DB init if no database file exists yet (avoids 200-800ms WASM load)
-    if (!fs.existsSync(MEMORY_DB_PATH)) {
-      return { skipped: true, reason: 'no_memory_db' };
     }
 
     // Store observation

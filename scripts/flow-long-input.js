@@ -15,7 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { estimateTokens, generateHashId, getConfig } = require('./flow-utils');
+const { estimateTokens, generateHashId, getConfig, safeJsonParse } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
 // Import extracted modules (renamed from transcript-* to long-input-*)
@@ -187,11 +187,7 @@ function now() {
  * Load active digest session
  */
 function loadActiveDigest() {
-  try {
-    return JSON.parse(fs.readFileSync(ACTIVE_DIGEST_FILE, 'utf8'));
-  } catch (_err) {
-    return { session: { status: 'inactive' } };
-  }
+  return safeJsonParse(ACTIVE_DIGEST_FILE, { session: { status: 'inactive' } });
 }
 
 /**
@@ -671,11 +667,7 @@ function loadStatementMap() {
   }
 
   const mapPath = path.join(activeDigest.session.digest_path, 'statement-map.json');
-  try {
-    return JSON.parse(fs.readFileSync(mapPath, 'utf8'));
-  } catch (_err) {
-    return null;
-  }
+  return safeJsonParse(mapPath, null);
 }
 
 /**
@@ -951,11 +943,7 @@ function loadOrphans() {
   }
 
   const orphansPath = path.join(activeDigest.session.digest_path, 'orphans.json');
-  try {
-    return JSON.parse(fs.readFileSync(orphansPath, 'utf8'));
-  } catch (_err) {
-    return null;
-  }
+  return safeJsonParse(orphansPath, null);
 }
 
 /**
@@ -1305,23 +1293,19 @@ function loadClarifications() {
   }
 
   const clarPath = path.join(activeDigest.session.digest_path, 'clarifications.json');
-  try {
-    return JSON.parse(fs.readFileSync(clarPath, 'utf8'));
-  } catch (_err) {
-    return {
-      questions: [],
-      contradictions: [],
-      metadata: {
-        total_questions: 0,
-        answered_questions: 0,
-        pending_questions: 0,
-        total_contradictions: 0,
-        resolved_contradictions: 0,
-        auto_resolved_count: 0,
-        user_resolved_count: 0
-      }
-    };
-  }
+  return safeJsonParse(clarPath, {
+    questions: [],
+    contradictions: [],
+    metadata: {
+      total_questions: 0,
+      answered_questions: 0,
+      pending_questions: 0,
+      total_contradictions: 0,
+      resolved_contradictions: 0,
+      auto_resolved_count: 0,
+      user_resolved_count: 0
+    }
+  });
 }
 
 /**
@@ -2457,11 +2441,7 @@ function loadConversation() {
   }
 
   const convPath = path.join(activeDigest.session.digest_path, 'conversation.json');
-  if (!fs.existsSync(convPath)) {
-    return null;
-  }
-
-  return JSON.parse(fs.readFileSync(convPath, 'utf8'));
+  return safeJsonParse(convPath, null);
 }
 
 /**
@@ -2924,11 +2904,7 @@ function loadTopics() {
   }
 
   const topicsPath = path.join(activeDigest.session.digest_path, 'topics.json');
-  try {
-    return JSON.parse(fs.readFileSync(topicsPath, 'utf8'));
-  } catch (_err) {
-    return null;
-  }
+  return safeJsonParse(topicsPath, null);
 }
 
 /**

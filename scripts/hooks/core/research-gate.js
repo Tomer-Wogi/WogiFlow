@@ -11,7 +11,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { PATHS } = require('../../flow-utils');
+const { PATHS, safeJsonParse } = require('../../flow-utils');
 const {
   checkResearchGate,
   isResearchEnabled: _isResearchEnabled,
@@ -423,17 +423,7 @@ function getCachePath() {
  */
 function readCache() {
   const cachePath = getCachePath();
-  try {
-    if (fs.existsSync(cachePath)) {
-      const raw = fs.readFileSync(cachePath, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[Research Cache] Read failed: ${err.message}`);
-    }
-  }
-  return { entries: {}, lastCleanup: null };
+  return safeJsonParse(cachePath, { entries: {}, lastCleanup: null });
 }
 
 /**

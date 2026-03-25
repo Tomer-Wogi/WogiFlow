@@ -20,6 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
+const { safeJsonParse } = require('../flow-io');
 
 const CONTRACT_SURFACE_VERSION = '1.0.0';
 
@@ -598,13 +599,7 @@ function detectProjectType(projectRoot) {
   }
 
   // Read package.json for dependency analysis
-  let pkg = {};
-  try {
-    const pkgContent = fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf-8');
-    pkg = JSON.parse(pkgContent);
-  } catch (err) {
-    // No package.json or invalid JSON
-  }
+  const pkg = safeJsonParse(path.join(projectRoot, 'package.json'), {});
 
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 

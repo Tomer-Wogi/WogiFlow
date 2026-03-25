@@ -16,7 +16,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { PATHS, meetsVersion, readJson } = require('./flow-utils');
+const { PATHS, meetsVersion, readJson, safeJsonParse } = require('./flow-utils');
 
 const VERSION_CHECK_PATH = path.join(PATHS.state, '.version-check.json');
 
@@ -46,12 +46,7 @@ function getClaudeCodeVersion() {
  * @returns {{ version: string, checkedAt: string, wogiflowVersion: string } | null}
  */
 function readLastCheck() {
-  try {
-    const content = fs.readFileSync(VERSION_CHECK_PATH, 'utf-8');
-    return JSON.parse(content);
-  } catch (err) {
-    return null;
-  }
+  return safeJsonParse(VERSION_CHECK_PATH, null);
 }
 
 /**
@@ -195,9 +190,8 @@ function checkWogiFlowUpdateOnce() {
   if (localVersion === 'unknown') return null;
 
   // Check cached result
-  try {
-    const cached = fs.readFileSync(UPDATE_CHECK_PATH, 'utf-8');
-    const data = JSON.parse(cached);
+  const data = safeJsonParse(UPDATE_CHECK_PATH, null);
+  if (data) {
     const age = Date.now() - new Date(data.checkedAt).getTime();
     if (age < UPDATE_CHECK_TTL_MS && data.localVersion === localVersion) {
       // Still within TTL and same local version — return cached result
@@ -206,8 +200,6 @@ function checkWogiFlowUpdateOnce() {
       }
       return null;
     }
-  } catch (err) {
-    // No cache or invalid — proceed with fresh check
   }
 
   // Fetch from npm

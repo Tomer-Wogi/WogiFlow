@@ -22,7 +22,8 @@ const {
   readFile,
   writeFile,
   isGitRepo,
-  getGitStatus
+  getGitStatus,
+  safeJsonParse
 } = require('./flow-utils')
 const { color, printSection, success, warn, error } = require('./flow-output');;
 
@@ -752,15 +753,8 @@ async function syncRulesIfChanged() {
 
     // Load last hash from state
     const hashStatePath = path.join(STATE_DIR, 'decisions-hash.json');
-    let lastHash = null;
-    if (fileExists(hashStatePath)) {
-      try {
-        const hashState = JSON.parse(readFile(hashStatePath));
-        lastHash = hashState.hash;
-      } catch (_err) {
-        // Ignore parse errors
-      }
-    }
+    const hashState = safeJsonParse(hashStatePath, null);
+    const lastHash = hashState ? hashState.hash : null;
 
     // Compare hashes
     if (currentHash === lastHash) {

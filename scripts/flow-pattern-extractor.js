@@ -38,7 +38,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync, execFileSync } = require('node:child_process');
 const { resolvePatterns } = require('./flow-framework-resolver');
-const { getProjectRoot, generateHashId, readJson } = require('./flow-utils');
+const { getProjectRoot, generateHashId, readJson, safeJsonParse } = require('./flow-utils');
 
 // ============================================================================
 // Constants
@@ -217,9 +217,8 @@ function detectFramework(projectRoot) {
 
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const raw = fs.readFileSync(packageJsonPath, 'utf-8');
-      const pkg = JSON.parse(raw);
-      if (!pkg || typeof pkg !== 'object' || Array.isArray(pkg)) return null;
+      const pkg = safeJsonParse(packageJsonPath, null);
+      if (!pkg) return null;
       const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
 
       // Check for frameworks

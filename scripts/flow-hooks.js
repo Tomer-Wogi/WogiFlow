@@ -23,7 +23,7 @@ const {
 const { color, success, warn, error } = require('./flow-output');;
 
 const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/adapters');
-const { readJson } = require('./flow-io');
+const { readJson, safeJsonParse } = require('./flow-io');
 
 const PROJECT_ROOT = getProjectRoot();
 
@@ -138,15 +138,7 @@ function installClaudeCodeHooks(adapter, hooksConfig) {
   }
 
   // Read existing config
-  let existingConfig = {};
-  if (fs.existsSync(configPath)) {
-    try {
-      const content = fs.readFileSync(configPath, 'utf-8');
-      existingConfig = JSON.parse(content);
-    } catch (err) {
-      warn(`  Could not parse existing config, will create new`);
-    }
-  }
+  let existingConfig = safeJsonParse(configPath, {});
 
   // Check if we're overwriting non-Wogi hooks
   if (existingConfig.hooks && !existingConfig._wogiFlowManaged) {
@@ -250,8 +242,7 @@ function removeClaudeCodeHooks(adapter) {
   }
 
   try {
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const config = JSON.parse(content);
+    const config = safeJsonParse(configPath, {});
 
     if (!config._wogiFlowManaged) {
       warn(`  Config not managed by Wogi Flow (skipping)`);
@@ -275,8 +266,7 @@ function removeClaudeCodeHooks(adapter) {
     // Restore backup if exists
     const backupPath = configPath + '.backup';
     if (fs.existsSync(backupPath)) {
-      const backupContent = fs.readFileSync(backupPath, 'utf-8');
-      const backupConfig = JSON.parse(backupContent);
+      const backupConfig = safeJsonParse(backupPath, {});
       if (backupConfig.hooks) {
         const finalConfig = { ...config, hooks: backupConfig.hooks };
         fs.writeFileSync(configPath, JSON.stringify(finalConfig, null, 2));
@@ -375,13 +365,8 @@ function checkIfInstalled(adapter) {
     if (!fs.existsSync(configPath)) {
       return false;
     }
-    try {
-      const content = fs.readFileSync(configPath, 'utf-8');
-      const config = JSON.parse(content);
-      return config._wogiFlowManaged === true;
-    } catch (_err) {
-      return false;
-    }
+    const config = safeJsonParse(configPath, {});
+    return config._wogiFlowManaged === true;
   }
   return false;
 }

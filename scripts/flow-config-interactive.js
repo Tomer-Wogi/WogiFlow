@@ -25,7 +25,8 @@ const {
   warn,
   error,
   parseFlags,
-  outputJson
+  outputJson,
+  safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================
@@ -221,10 +222,13 @@ function exportConfig() {
 
 function resetConfig() {
   const configPath = path.join(PATHS.root, '.workflow', 'config.json');
-  try {
-    const content = fs.readFileSync(configPath, 'utf-8');
-    const config = JSON.parse(content);
+  const config = safeJsonParse(configPath, null);
+  if (!config) {
+    error('Failed to read config.json');
+    return;
+  }
 
+  try {
     // Keep only structural keys, remove user overrides
     const minimal = {
       $schema: config.$schema,

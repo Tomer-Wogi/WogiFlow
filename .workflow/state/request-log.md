@@ -11,6 +11,22 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-263 | 2026-03-25
+**Type**: refactor
+**Tags**: #security #json-parse #prototype-pollution
+**Task**: wf-154d4643
+**Request**: "Migrate raw JSON.parse to safeJsonParse across scripts/"
+**Result**: Migrated 22 raw JSON.parse calls across 16 files to safeJsonParse/safeJsonParseString. Fixed 3 P0 crash-risk locations (no try/catch). Removed redundant manual prototype pollution checks (flow-config-loader.js, flow-decisions-merge.js). Zero `JSON.parse(fs.readFileSync(...))` remains in scripts/. All 18 tests pass.
+**Files**: scripts/flow-long-input.js, scripts/flow-run-trace.js, scripts/flow-hooks.js, scripts/flow-version-check.js, scripts/flow-session-end.js, scripts/flow-cascade.js, scripts/flow-multi-approach.js, scripts/flow-config-interactive.js, scripts/flow-health.js, scripts/flow-pattern-extractor.js, scripts/registries/contract-scanner.js, scripts/flow-decisions-merge.js, scripts/flow-skill-generator.js, scripts/hooks/core/research-gate.js, scripts/flow-config-loader.js
+
+### R-262 | 2026-03-25
+**Type**: chore
+**Tags**: #security #naming #performance #dependencies
+**Task**: wf-fbffee09
+**Request**: "Quick wins: npm audit fix + naming docs + catch(e) fixes"
+**Result**: Fixed flatted prototype pollution vulnerability (3.4.1→3.4.2), fixed catch(e) bug in 3 files where param was `e` but body used `err` (flow-lsp.js, flow-skill-learn.js, flow-prd-manager.js), documented `_err` convention in naming-conventions.md, moved fast-path fs.existsSync before getConfig() in observation-capture.js, bumped @babel/parser 7.29.0→7.29.2. 0 npm audit vulnerabilities.
+**Files**: scripts/flow-lsp.js, scripts/flow-skill-learn.js, scripts/flow-prd-manager.js, scripts/hooks/core/observation-capture.js, .claude/rules/code-style/naming-conventions.md, package.json, package-lock.json
+
 ### R-261 | 2026-03-25
 **Type**: chore
 **Tags**: #compatibility #claude-code #hooks #providers #env-scrub

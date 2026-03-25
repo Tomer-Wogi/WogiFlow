@@ -20,6 +20,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { safeJsonParse } = require('./flow-io');
 
 // ============================================================
 // Section Parser
@@ -368,20 +369,9 @@ function main() {
         process.exit(1);
       }
 
-      let resolutions;
-      try {
-        const raw = fs.readFileSync(resolutionsPath, 'utf-8');
-        resolutions = JSON.parse(raw);
-        // Prototype pollution protection (per security-patterns.md #2)
-        if (resolutions && typeof resolutions === 'object') {
-          for (const key of Object.keys(resolutions)) {
-            if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
-              delete resolutions[key];
-            }
-          }
-        }
-      } catch (err) {
-        console.error(`Error reading resolutions file: ${err.message}`);
+      const resolutions = safeJsonParse(resolutionsPath, null);
+      if (!resolutions) {
+        console.error(`Error reading resolutions file: ${resolutionsPath}`);
         process.exit(1);
       }
 

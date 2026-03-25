@@ -376,8 +376,7 @@ function main() {
 
       if (fileExists(tsconfigPath)) {
         try {
-          const tsconfigContent = fs.readFileSync(tsconfigPath, 'utf-8');
-          const tsconfig = JSON.parse(tsconfigContent);
+          const tsconfig = safeJsonParse(tsconfigPath, {});
           const hasProjectRefs = Array.isArray(tsconfig.references) && tsconfig.references.length > 0;
           const hasEmptyFiles = Array.isArray(tsconfig.files) && tsconfig.files.length === 0;
           const isProjectRefsMode = hasProjectRefs && hasEmptyFiles;
