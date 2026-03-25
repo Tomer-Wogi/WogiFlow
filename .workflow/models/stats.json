@@ -1,34 +1,68 @@
 {
-  "$schema": "./stats-schema.json",
   "version": "1.0.0",
-  "lastUpdated": "2026-01-11T07:30:00.000Z",
+  "lastUpdated": "2026-03-24T15:26:20.160Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
-
   "summary": {
-    "totalTasks": 0,
+    "totalTasks": 1,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
     "avgCostPerTask": 0
   },
-
-  "byModel": {},
-
-  "byTaskType": {},
-
+  "byModel": {
+    "unknown": {
+      "taskCount": 1,
+      "totalIterations": 1,
+      "firstAttemptPasses": 1,
+      "totalTokens": 0,
+      "totalWallClockMs": 0,
+      "totalRevisions": 0,
+      "byTaskType": {
+        "bugfix": {
+          "taskCount": 1,
+          "totalIterations": 1,
+          "firstAttemptPasses": 1,
+          "totalTokens": 0,
+          "totalRevisions": 0
+        }
+      }
+    }
+  },
+  "byTaskType": {
+    "bugfix": {
+      "taskCount": 1,
+      "totalIterations": 1,
+      "firstAttemptPasses": 1,
+      "avgIterations": 1,
+      "firstAttemptRate": 1
+    }
+  },
   "byCapability": {},
-
   "failureStats": {
     "totalFailures": 0,
     "byCategory": {},
     "recoveryRate": 0
   },
-
   "routingStats": {
     "escalations": 0,
     "fallbacks": 0,
     "primarySuccessRate": 0
   },
-
-  "recentTasks": []
+  "recentTasks": [
+    {
+      "taskId": "wf-4a4d63f8",
+      "model": "unknown",
+      "taskType": "bugfix",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-03-24T15:26:20.160Z"
+    }
+  ],
+  "$schema": "./stats-schema.json"
 }

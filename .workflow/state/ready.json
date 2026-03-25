@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-03-19T07:00:00.000Z",
+  "lastUpdated": "2026-03-24T20:22:16.461Z",
   "inProgress": [],
   "ready": [
     {
@@ -12,10 +12,210 @@
       "source": "audit-2026-03-13",
       "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
       "createdAt": "2026-03-13T15:00:00.000Z"
+    },
+    {
+      "id": "wf-fbffee09",
+      "title": "Quick wins: npm audit fix + naming docs + catch(e) fixes",
+      "type": "chore",
+      "level": "L2",
+      "priority": "P0",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Run npm audit fix to bump flatted 3.4.1 → 3.4.2 (prototype pollution fix)",
+        "Document _err convention in .claude/rules/code-style/naming-conventions.md",
+        "Fix .catch(e =>) to .catch(err =>) in flow-lsp.js, flow-skill-learn.js, flow-prd-manager.js",
+        "Move fast-path fs.existsSync check before getConfig() in observation-capture.js",
+        "Update @babel/parser patch 7.29.0 → 7.29.2"
+      ]
+    },
+    {
+      "id": "wf-154d4643",
+      "title": "Security: Migrate 49 files from raw JSON.parse to safeJsonParse",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P0",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Replace 6 raw JSON.parse calls in flow-long-input.js with safeJsonParse",
+        "Fix 4 raw JSON.parse calls in flow-io.js (the module that defines safeJsonParse)",
+        "Replace raw JSON.parse in flow-providers.js (7), flow-run-trace.js (5), flow-orchestrate-llm.js (4), flow-response-parser.js (4)",
+        "Audit remaining ~24 files using raw JSON.parse and migrate to safeJsonParse",
+        "Verify zero raw JSON.parse remains in scripts/ (excluding test files and intentional cases)"
+      ]
+    },
+    {
+      "id": "wf-7e82ca13",
+      "title": "Performance: Aggregate hook state into single pre-computed status file",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P1",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Design a single .workflow/state/hook-status.json aggregating config flags, active task, routing state, and phase",
+        "Update flow-start.js and task completion to write this aggregated file",
+        "Modify pre-tool-use.js to read single file instead of 6-8 separate reads",
+        "Make captureCurrentPrompt() fire-and-forget (async, non-blocking)",
+        "Debounce trackChangedFile() writes instead of per-edit sync write",
+        "Move fast-path exits before config loads in observation-capture.js and component-check.js",
+        "Benchmark: measure hook latency before and after (target: <5ms per hook call)"
+      ]
+    },
+    {
+      "id": "wf-9175e882",
+      "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P1",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Add any missing subdirectory constants to PATHS in flow-paths.js",
+        "Replace PROJECT_ROOT = getProjectRoot() with direct PATHS import in 74 files",
+        "Replace manual path.join(\".workflow\"...) with PATHS.* in 90 files",
+        "Replace manual STATE_DIR/WORKFLOW_DIR constructions with PATHS.state/PATHS.workflow",
+        "Verify zero manual .workflow path construction remains (excluding templates and test fixtures)"
+      ]
+    },
+    {
+      "id": "wf-dd90ada4",
+      "title": "Modernization: Audit || to ?? in config-value default paths",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P1",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Audit || usage in flow-damage-control.js (32), flow-long-input.js (65), flow-done.js (23), flow-orchestrate.js (24)",
+        "Replace || with ?? where left operand could legitimately be 0, false, or empty string",
+        "Keep || where falsy-default behavior is intentional (e.g., empty string should fall through)",
+        "Add lint rule or code comment documenting which pattern to use when",
+        "Priority files: flow-http-client.js (timeout=0 bug), flow-status.js, flow-session-end.js"
+      ]
+    },
+    {
+      "id": "wf-780e9bcc",
+      "title": "Architecture: Complete flow-long-input.js extraction",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Extract runPass2/runPass3/runPass4/runFullPipeline into flow-long-input-passes.js",
+        "Extract contradiction detection (detectContradictions, resolveOrphan) into flow-long-input-contradictions.js",
+        "Extract statement association into flow-long-input-association.js",
+        "Reduce flow-long-input.js to ~300 LOC orchestrator",
+        "Replace bare require(\"fs\")/require(\"path\") with require(\"node:fs\")/require(\"node:path\")",
+        "Replace .hasOwnProperty() with Object.hasOwn() at line 1506",
+        "All existing tests still pass after extraction"
+      ]
+    },
+    {
+      "id": "wf-18c2bb6f",
+      "title": "Architecture: Split flow-done.js runQualityGates into step-plugin system",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Extract runQualityGates (637 LOC) into flow-done-gates.js with individual gate handlers",
+        "Extract report formatting into flow-done-report.js",
+        "Each gate type becomes a registered step handler (following flow-workflow-steps.js pattern)",
+        "Main flow-done.js reduced to orchestration + step dispatch",
+        "Reduce max nesting depth from 11 to <=4",
+        "All quality gates still function correctly after split"
+      ]
+    },
+    {
+      "id": "wf-42cc574d",
+      "title": "Duplication: Create shared hook-runner.js and BaseWorkflowStep",
+      "type": "refactor",
+      "level": "L2",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Create scripts/hooks/entry/shared/hook-runner.js with runHook(eventName, handler, {failMode}) wrapper",
+        "Migrate 13 hook entry files to use hook-runner.js instead of duplicated boilerplate",
+        "Create BaseWorkflowStep class for the 11 flow-step-*.js scripts",
+        "Consolidate sanitize(value, maxLen) into flow-io.js or flow-output.js",
+        "Move sanitizeShellArg/escapeShellPath from flow-task-enforcer.js to flow-security.js",
+        "Extract setConfigValue/setConfigValueSync shared body into _applyConfigPath helper"
+      ]
+    },
+    {
+      "id": "wf-23608f2f",
+      "title": "Dependencies: Upgrade eslint v10 + migrate @xenova to @huggingface/transformers",
+      "type": "chore",
+      "level": "L2",
+      "priority": "P2",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Test eslint v10 upgrade in branch — verify flat config still works",
+        "Upgrade eslint ^9.0.0 → ^10.0.0 if tests pass",
+        "Migrate @xenova/transformers → @huggingface/transformers in flow-memory-db.js",
+        "Update dynamic import path and verify pipeline() API compatibility",
+        "Verify npm audit shows 0 vulnerabilities after both upgrades"
+      ]
+    },
+    {
+      "id": "wf-e175a561",
+      "title": "Modernization: Replace Promise wraps with Node 18 built-ins",
+      "type": "refactor",
+      "level": "L2",
+      "priority": "P3",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Replace 5 setTimeout sleep patterns with require(\"node:timers/promises\").setTimeout",
+        "Migrate 11 readline.question Promise wraps to require(\"node:readline/promises\")",
+        "Replace simple http.request wraps with fetch() in flow-model-config.js and flow-links.js",
+        "Route complex streaming cases through HttpClient from flow-http-client.js",
+        "Standardize use strict — either add to all 240 files or remove from 45"
+      ]
+    },
+    {
+      "id": "wf-522109a6",
+      "title": "Architecture: Centralize learning module writes through orchestrator",
+      "type": "refactor",
+      "level": "L1",
+      "priority": "P3",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Expand flow-learning-orchestrator.js (178 LOC) to mediate ALL writes to feedback-patterns.md and decisions.md",
+        "Modify 8 learning modules to route writes through orchestrator instead of direct file access",
+        "Add dedup check — orchestrator rejects writes that duplicate existing entries",
+        "Add write locking to prevent race conditions between concurrent learning paths",
+        "Verify no learning module writes directly to feedback-patterns.md or decisions.md after migration"
+      ]
+    },
+    {
+      "id": "wf-10279963",
+      "title": "Tech debt: Update stale tech-debt.json and fix damage-control stub",
+      "type": "chore",
+      "level": "L2",
+      "priority": "P3",
+      "source": "audit-2026-03-24",
+      "criteria": [
+        "Update tech-debt.json with correct file sizes (flow-orchestrate.js: 1667, flow-done.js: 1599, etc.)",
+        "Mark TD-008 as resolved (flow-orchestrate.js extraction complete)",
+        "Either implement evaluatePromptWithAI() in flow-damage-control.js or remove the promptHook feature and document pattern-matching-only protection",
+        "Fix flow-audit.js TODO scanner to exclude self-references (94% false positive rate)",
+        "Consolidate 3 DEBUG env vars (DEBUG, WOGIFLOW_DEBUG, DEBUG_LSP) — document relationship or unify"
+      ]
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-4a4d63f8",
+      "title": "Fix hook error messages — task-gate and commit-log-gate",
+      "type": "bugfix",
+      "level": "L2",
+      "priority": "P1",
+      "criteria": [
+        "Bug 1: task-gate returns specific error when task exists in inProgress but lacks routedAt (not generic no_active_task)",
+        "Bug 2: commit-log-gate checks file content for log entry instead of requiring git staging"
+      ],
+      "routedAt": "2026-03-24T15:25:35.663Z",
+      "status": "completed",
+      "completedAt": "2026-03-24T15:26:20.103Z"
+    },
     {
       "id": "wf-344ce2fb",
       "title": "Fix 9 review findings from scanner refactor — regex, DRY, safety, merge logic",
@@ -96,417 +296,6 @@
       "status": "completed",
       "startedAt": "2026-03-17T09:40:40.134Z",
       "completedAt": "2026-03-17T09:42:27.316Z"
-    },
-    {
-      "id": "wf-7e0e8785",
-      "title": "Fix 9 review findings — security, logic, DRY, standards",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-17T09:21:22.292Z",
-      "completedAt": "2026-03-17T09:25:19.455Z"
-    },
-    {
-      "id": "wf-6a06eafd",
-      "title": "Audit pattern promotion — AI clustering, enforcement gap investigation, auto-promotion",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "startedAt": "2026-03-17T09:08:40.513Z",
-      "completedAt": "2026-03-17T09:16:53.780Z"
-    },
-    {
-      "id": "wf-cecb7d05",
-      "title": "Claude Code 2.1.77 compatibility — PreToolUse allow fix, Elicitation hooks, token limits, sparse checkout, circuit breaker",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "startedAt": "2026-03-17T08:16:12.026Z",
-      "completedAt": "2026-03-17T08:19:58.759Z"
-    },
-    {
-      "id": "wf-01c7b00d",
-      "title": "Test harness for god function decomposition — 34 smoke tests for autoCompactPrompt + runQualityGates",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T11:00:00.000Z"
-    },
-    {
-      "id": "wf-4309146d",
-      "title": "Claude Code 2.1.76 compatibility — PostCompact hook + new events + version gates",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "completedAt": "2026-03-14T10:15:00.000Z"
-    },
-    {
-      "id": "wf-1febfe66",
-      "title": "Dependency hygiene — prune extraneous packages, fix versions, add missing deps",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:00:00.000Z"
-    },
-    {
-      "id": "wf-cae060ac",
-      "title": "KNOWN_CONFIG_KEYS dedup + redundant loadConfig removal",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:05:00.000Z"
-    },
-    {
-      "id": "wf-c512df88",
-      "title": "Duplication sweep — shared stdin reader, getTodayDate, detectPackageManager",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:10:00.000Z"
-    },
-    {
-      "id": "wf-cf340bfc",
-      "title": "safeJsonParse sweep — covered by tasks 2+3 (config via getConfig, hooks via readHookInput)",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:12:00.000Z"
-    },
-    {
-      "id": "wf-f4ce3cec",
-      "title": "Hook performance — parallelized version checks + collapsed git calls",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:08:00.000Z"
-    },
-    {
-      "id": "wf-9c5e962e",
-      "title": "Modernization — node: prefix on 236 files + Object.hasOwn on 15 call sites",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "source": "audit-2026-03-13",
-      "completedAt": "2026-03-14T00:14:00.000Z"
-    },
-    {
-      "id": "wf-7c9e6eec",
-      "title": "Claude Code 2.1.75 compatibility — token recalibration + version gates",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "completedAt": "2026-03-13T14:45:00.000Z"
-    },
-    {
-      "id": "wf-bda315c0",
-      "title": "Auto-add .gitignore entries when config enables features with runtime artifacts",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "completedAt": "2026-03-13T14:15:00.000Z"
-    },
-    {
-      "id": "wf-d431f2ea",
-      "title": "Dead code and dependency cleanup",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-5dfc8cfd",
-      "title": "Duplication elimination — remove duplicate modules and inline reimplementations",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-661e9242",
-      "title": "Hook performance hardening — shared stdin reader, RegExp cache, reduce file reads",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-684a92d1",
-      "title": "JSON.parse safety sweep — replaced highest-risk raw parses with getConfig/safeJsonParse",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-3fcc5732",
-      "title": "Dead feature and stale stub cleanup",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-e90cf9cf",
-      "title": "Config access standardization — replaced direct config reads with getConfig()",
-      "type": "refactor",
-      "level": "L2",
-      "epicId": "wf-b524b712",
-      "status": "completed",
-      "completedAt": "2026-03-13T12:00:00.000Z"
-    },
-    {
-      "id": "wf-b2c5f11f",
-      "title": "Fix 12 review findings from wf-8f430179 and wf-f96598bc code review",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-12T11:30:00.000Z",
-      "completedAt": "2026-03-12T11:45:00.000Z"
-    },
-    {
-      "id": "wf-f96598bc",
-      "title": "Programmatic registry map update enforcement + routing gate git whitelist",
-      "type": "bugfix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-12T11:00:00.000Z",
-      "completedAt": "2026-03-12T11:15:00.000Z"
-    },
-    {
-      "id": "wf-8f430179",
-      "title": "Fix /wogi-research auto-trigger ignoring config.json settings",
-      "type": "bugfix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-12T10:00:00.000Z",
-      "completedAt": "2026-03-12T10:05:00.000Z"
-    },
-    {
-      "id": "wf-04eb6705",
-      "title": "Interactive npx flow config command",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "description": "Add npx flow config command that shows 10-15 most common options with descriptions. Let users toggle settings interactively. Support wogiflow key in package.json as alternative entry point.",
-      "epicId": "epic-oss-hardening",
-      "createdAt": "2026-03-11T18:41:44.032Z",
-      "completedAt": "2026-03-11T19:02:00.000Z"
-    },
-    {
-      "id": "wf-05828958",
-      "title": "Unified hook error handling system",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "description": "Create centralized error handler for all hooks. Classify errors by type: load failure, timeout, corrupted state file, permission error, critical error. Each type gets clear user-facing message with resolution instructions. Standardize fail-open vs fail-closed policy per hook.",
-      "epicId": "epic-oss-hardening",
-      "createdAt": "2026-03-11T18:41:44.032Z",
-      "completedAt": "2026-03-11T18:56:30.399Z"
-    },
-    {
-      "id": "wf-2920202e",
-      "title": "Version compatibility check at session start",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "description": "Add proactive Claude Code version check. Check once at onboard + first session (store lastVersionCheck). Warn only below hard minimum (2.1.23). Degrade gracefully for soft feature gates (2.1.50+, 2.1.72+).",
-      "epicId": "epic-oss-hardening",
-      "createdAt": "2026-03-11T18:41:44.031Z",
-      "completedAt": "2026-03-11T18:53:35.777Z"
-    },
-    {
-      "id": "wf-a17c1c86",
-      "title": "Manifest-based safe uninstall for skills, rules, docs, hooks",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "description": "Track WogiFlow-owned files in .claude/ via manifest. On uninstall, only delete manifest-tracked files. Preserve user-created skills, rules, docs, hooks. Apply same selective pattern already used for commands (wogi-*.md). Covers recommendations #3 and #4.",
-      "epicId": "epic-oss-hardening",
-      "createdAt": "2026-03-11T18:41:44.032Z",
-      "completedAt": "2026-03-11T18:50:42.838Z"
-    },
-    {
-      "id": "wf-6633986f",
-      "title": "Config inconsistency: communitySync.enabled and community.sync.enabled contradict each other",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "high",
-      "discoveredFrom": null,
-      "status": "completed",
-      "createdAt": "2026-03-11T16:23:31.983Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6633986f.md",
-      "completedAt": "2026-03-11T16:57:47.962Z"
-    },
-    {
-      "id": "wf-76fe56a7",
-      "title": "Fix BUG-005: prompt-history.json captures zero prompts — durable session timing gap",
-      "type": "bugfix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T14:15:00.000Z",
-      "routedAt": "2026-03-11T14:15:00.000Z",
-      "completedAt": "2026-03-11T14:20:00.000Z"
-    },
-    {
-      "id": "wf-5cc1e323",
-      "title": "Investigate and fix routing enforcement — product-level solution",
-      "type": "bugfix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T13:44:50.082Z",
-      "routedAt": "2026-03-11T13:44:50.083Z",
-      "completedAt": "2026-03-11T14:10:00.000Z"
-    },
-    {
-      "id": "wf-420e640e",
-      "title": "Fix 20 review findings from routing bypass + login/logout review",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T13:35:40.898Z",
-      "routedAt": "2026-03-11T13:35:40.898Z",
-      "completedAt": "2026-03-11T13:40:00.316Z"
-    },
-    {
-      "id": "wf-89ac1676",
-      "title": "Fix routing bypass hole - fake task insertion in ready.json",
-      "type": "bugfix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T12:52:43.571Z",
-      "routedAt": "2026-03-11T12:52:43.572Z",
-      "completedAt": "2026-03-11T12:52:47.647Z"
-    },
-    {
-      "id": "wf-f70cb258",
-      "title": "Wire flow login/logout to CLI, interactive project selection, cloud developer prompt",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "startedAt": "2026-03-11T12:38:25.301Z",
-      "completedAt": "2026-03-11T12:41:19.399Z"
-    },
-    {
-      "id": "wf-f3a1ec3d",
-      "title": "Project-Type-Aware Configuration Pipeline",
-      "type": "feature",
-      "level": "L1",
-      "createdAt": "2026-03-11T12:04:13.925Z",
-      "completedAt": "2026-03-11T12:14:26.828Z"
-    },
-    {
-      "id": "wf-c22a8988",
-      "title": "Fix 20 review findings from code review",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T09:43:24.859Z",
-      "completedAt": "2026-03-11T09:47:07.745Z"
-    },
-    {
-      "id": "wf-ee8bae96",
-      "title": "AI semantic matching for test discovery criteria",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T09:24:48.228Z",
-      "completedAt": "2026-03-11T09:28:13.254Z"
-    },
-    {
-      "id": "wf-2d07a19b",
-      "title": "Smart /wogi-config with config-reference.json and natural language matching",
-      "type": "feature",
-      "level": "L2",
-      "status": "completed",
-      "startedAt": "2026-03-11T09:07:43.682Z",
-      "completedAt": "2026-03-11T09:11:38.623Z"
-    },
-    {
-      "id": "wf-03a7da1d",
-      "title": "Smart Test Discovery + SWE-bench Dual Gate",
-      "type": "story",
-      "level": "L1",
-      "epicId": "wf-e90881f4",
-      "description": "Scan project for existing tests, match them to acceptance criteria using keyword + describe/it parsing. Implement SWE-bench dual-gate: PASS_TO_PASS (all existing passing tests must still pass after changes = regression gate) and FAIL_TO_PASS (tests matching new criteria should fail before implementation and pass after). Gap analysis reports criteria without test coverage.",
-      "acceptanceCriteria": [
-        "AC1: flow-test-discovery.js scans project for test files across all supported frameworks (jest/vitest/mocha/playwright/cypress/node:test) and extracts describe/it/test block descriptions",
-        "AC2: matchTestsToCriteria() takes acceptance criteria array and test descriptions, returns matched/unmatched with confidence scores using keyword overlap",
-        "AC3: PASS_TO_PASS gate: before implementation, run full test suite, record passing tests. After implementation, ALL previously-passing tests must still pass. Failures = regression blocked",
-        "AC4: FAIL_TO_PASS gate: for matched criteria tests, verify they fail before implementation and pass after. Report which criteria have test coverage and which dont",
-        "AC5: Gap analysis report saved to .workflow/verifications/<taskId>-discovery.json showing: matched criteria, unmatched criteria, coverage percentage, regression status",
-        "AC6: Integrated into flow-done.js quality gates as testDiscovery gate — runs automatically when testing.discovery.enabled is true in config"
-      ],
-      "files": [
-        "scripts/flow-test-discovery.js",
-        "scripts/flow-done.js"
-      ],
-      "status": "completed",
-      "completedAt": "2026-03-11T08:52:11.653Z"
-    },
-    {
-      "id": "wf-630b5885",
-      "title": "Verification Profiles — Auto-Detect Project Test Infrastructure",
-      "type": "story",
-      "level": "L1",
-      "epicId": "wf-e90881f4",
-      "description": "On first run or /wogi-test --setup, probe the project for all test-related infrastructure: test runner, E2E framework, OpenAPI/Swagger specs, Docker availability, database type, fixture directories, CI config. Save as verification-profile.json. All verification decisions reference this profile — no hardcoded assumptions.",
-      "acceptanceCriteria": [
-        "AC1: flow-verification-profile.js probes project and detects: test runner (jest/vitest/mocha/ava/tap/node:test), E2E framework (playwright/cypress/none), OpenAPI spec (openapi.yaml/.json, swagger.yaml/.json), Docker availability (docker info), DB type (from docker-compose, .env, or ORM config), fixture directories, CI config presence",
-        "AC2: Profile saved to .workflow/state/verification-profile.json with all detected capabilities and recommended verification tiers per task type (unit-only, API, E2E, full)",
-        "AC3: Profile includes tiered verification strategy: Tier 0 (always: lint+typecheck), Tier 1 (run existing tests), Tier 2 (contract testing if OpenAPI exists), Tier 3 (container-based if Docker available), Tier 4 (AI-generated tests for gaps)",
-        "AC4: flow-test-api.js, flow-test-ui.js, flow-test-integrity.js, and flow-done.js all read from verification-profile.json instead of hardcoded defaults — baseUrl, startCommand, framework, paths all come from profile",
-        "AC5: /wogi-test --setup triggers full re-probe and profile regeneration. Profile includes lastProbed timestamp and detectedAt for each capability",
-        "AC6: Legacy project support: when profile detects zero test infrastructure, verification strategy is Tier 0 only (lint+typecheck+smoke) with clear report of whats missing and recommendations"
-      ],
-      "files": [
-        "scripts/flow-verification-profile.js",
-        "scripts/flow-test-api.js",
-        "scripts/flow-test-ui.js",
-        "scripts/flow-test-integrity.js",
-        "scripts/flow-done.js",
-        ".claude/commands/wogi-test.md"
-      ],
-      "status": "completed",
-      "completedAt": "2026-03-11T08:52:11.653Z"
-    },
-    {
-      "id": "wf-25570e33",
-      "title": "Orchestrated Verification Scenarios — Stateful Backend Testing",
-      "type": "story",
-      "level": "L1",
-      "epicId": "wf-e90881f4",
-      "description": "Replace sequential curl chains with declarative scenario JSON. Each scenario defines prerequisites (with variable extraction and chaining), the test action, assertions, and teardown. A deterministic engine executes the entire flow as one atomic operation — zero AI in the loop during execution, zero confirmations, minimal token cost. Tiered environment isolation: Testcontainers (if Docker) > test DB transaction > reverse DELETE cleanup.",
-      "acceptanceCriteria": [
-        "AC1: flow-scenario-engine.js accepts a scenario JSON definition with prerequisites (ordered steps with method/path/body/save for variable extraction), action (the actual test), assertions (status, body field checks with JSONPath), and teardown strategy",
-        "AC2: Variable chaining works: step 1 saves {{userId}} from response, step 2 uses {{userId}} in path/body/headers. Supports JSONPath extraction ($.id, $.data.token, $.items[0].id)",
-        "AC3: Scenario generation: given acceptance criteria text, generateScenario() produces the scenario JSON by inferring prerequisites from the API map and endpoint dependencies",
-        "AC4: Tiered environment isolation: (a) if Docker available + Testcontainers config exists, spin up ephemeral DB container, run migrations, execute scenario, destroy container. (b) if test DB configured in verification profile, wrap in transaction + rollback. (c) fallback: execute against dev server with reverse-order DELETE teardown",
-        "AC5: Execution engine runs deterministically — no AI prompts, no confirmations, no token cost during execution. Input: scenario JSON. Output: structured result with pass/fail per assertion, timing, and full request/response log",
-        "AC6: Integrated into flow-test-api.js as an alternative to single-endpoint testing. When testing.scenarios.enabled, scenario-based verification is preferred for endpoints with state dependencies. Config toggle in verification-profile.json",
-        "AC7: Scenario artifacts saved to .workflow/verifications/<taskId>-scenarios.json with full execution trace for debugging failures"
-      ],
-      "files": [
-        "scripts/flow-scenario-engine.js",
-        "scripts/flow-test-api.js",
-        "scripts/flow-done.js",
-        "scripts/flow-verification-profile.js"
-      ],
-      "dependencies": [
-        "wf-630b5885"
-      ],
-      "status": "completed",
-      "completedAt": "2026-03-11T08:52:11.653Z"
     }
   ],
   "backlog": [

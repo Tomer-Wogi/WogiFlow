@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-03-14T12:06:31.224Z",
+  "markedAt": "2026-03-24T15:25:11.072Z",
   "context": {
-    "args": "Final push to adopt flow-output.js in more WogiFlow scripts. Find all remaining scripts with ANSI escape codes or emoji console output that don't already import flow-output, and convert them to use flow-output helpers. Target: 50+ total importers."
+    "args": "Fix two bugs in WogiFlow hooks: Bug 1 - task-gate.js reports \"no active task\" when task exists but lacks routedAt (misleading error). Bug 2 - commit-log-gate.js assumes request-log.md is git-trackable but .workflow/ may be gitignored. Both confirmed and reproduced."
   },
   "status": "pending"
 }

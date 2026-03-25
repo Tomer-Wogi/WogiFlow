@@ -100,7 +100,7 @@
       "displayName": "Claude Sonnet 4.6",
       "contextWindow": 200000,
       "contextWindowBeta": 1000000,
-      "maxOutputTokens": 64000,
+      "maxOutputTokens": 128000,
       "costTier": "standard",
       "pricing": {
         "inputPer1kTokens": 0.003,

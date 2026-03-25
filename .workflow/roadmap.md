@@ -960,6 +960,51 @@ Analyzes tasks >3 iterations, identifies root causes, suggests pattern updates.
 
 ---
 
+### Claude Code 2.1.81 Compatibility Update
+
+**Status:** Deferred
+**Created:** 2026-03-21
+**Depends On:** None
+
+**Scope:**
+1. Update compatibility table in `claude-code-compatibility.md` for 2.1.78-2.1.81
+2. Add `--bare` mode detection (like existing `CLAUDE_CODE_SIMPLE` detection in `session-context.js:271-279`)
+3. Document `--bare` in compatibility notes — what breaks (hooks, CLAUDE.md, skills, auto-memory), when to use it, and the `ANTHROPIC_API_KEY` requirement
+
+**Template:** Follow the `CLAUDE_CODE_SIMPLE` story (`wf-5ba8e282`) as the exact pattern for `--bare` detection.
+
+---
+
+### Claude Code --channels Integration (Discussion)
+
+**Status:** Deferred — discuss in future session
+**Created:** 2026-03-21
+**Depends On:** wogiflow-cloud maturity
+
+**Scope:**
+1. Document `--channels` setup guide for headless/CI WogiFlow sessions (forwarding tool approval prompts to phone)
+2. Evaluate `--channels` as wogiflow-cloud team approval mechanism — team leads approve tool calls from dashboard/phone. Aligns with teams approval workflow concept.
+
+**Notes:** `--channels` requires channel servers that declare the permission capability. wogiflow-cloud could act as a channel server. WogiFlow's current "channels" references are unrelated (npm release channels, notification channels).
+
+---
+
+### Claude Code --bare for Programmatic Execution (Discussion)
+
+**Status:** Deferred — discuss in future session
+**Created:** 2026-03-21
+**Depends On:** 2.1.81 compatibility update above
+
+**Scope:**
+Explore using `claude --bare -p "..."` for scripted, no-improvisation Claude execution within WogiFlow:
+- CI/CD automated reviews (`flow ci-review`)
+- Hybrid mode enhancement: Opus plans, `--bare` executes atomic edits
+- Batch sub-task execution in `/wogi-bulk-loop`
+
+**Key insight:** `--bare` strips all ambient context (CLAUDE.md, hooks, skills, auto-memory). Claude only knows what's in the prompt — no improvisation beyond the instruction. Requires `ANTHROPIC_API_KEY` (no OAuth).
+
+---
+
 ## How This File Works
 
 ### Adding Items
