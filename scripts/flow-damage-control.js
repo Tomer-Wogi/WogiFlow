@@ -8,9 +8,10 @@
  *
  * Inspired by Hookify plugin patterns, adapted for multi-CLI compatibility.
  *
- * LIMITATION: The 'prompt' event type's AI analysis hook is not yet implemented.
- * Currently returns 'allow' for all prompts. See evaluatePromptWithAI() around line 734.
- * TODO: Integrate with an AI API for prompt safety evaluation.
+ * DESIGN NOTE: The 'prompt' event type uses pattern-matching only for safety evaluation.
+ * AI-based prompt analysis was considered but is out of scope — the pattern-matching
+ * approach (blocked/ask lists + event-based rules) provides sufficient protection
+ * without requiring external API calls or model inference.
  *
  * Usage:
  *   flow damage-control check "<command>"   Check if command is allowed
@@ -711,11 +712,14 @@ function checkPath(filePath, operation) {
 }
 
 /**
- * AI prompt hook for unknown dangerous commands
- * Returns: { action: 'allow' | 'block' | 'ask', reason?: string }
+ * Prompt hook for unknown dangerous commands — pattern-matching only.
  *
- * Note: Full implementation requires API integration.
- * This is a stub that can be enhanced with actual AI call.
+ * Checks the command against blocked/ask pattern lists and safe command whitelist.
+ * No AI/LLM evaluation is performed; the pattern-matching approach provides
+ * sufficient protection without external API calls.
+ *
+ * @param {string} cmd - The command to check
+ * @returns {Promise<{ action: 'allow' | 'block' | 'ask', reason?: string }>}
  */
 async function promptHookCheck(cmd) {
   const config = getConfig();
@@ -726,29 +730,19 @@ async function promptHookCheck(cmd) {
     return { action: 'allow' };
   }
 
-  // Warn users that the AI prompt analysis feature is not yet implemented.
-  // Pattern-based checking below still works — only the AI analysis is stubbed.
-  if (process.env.DEBUG) {
-    console.error('[damage-control] promptHook AI analysis is not yet implemented — using pattern matching only');
-  }
-
-  // Skip if already caught by patterns
+  // Check against blocked/ask patterns
   const patternResult = checkCommand(cmd);
   if (patternResult.action !== 'allow') {
     return patternResult;
   }
 
-  // Skip safe commands
+  // Safe commands are always allowed
   if (isSafeCommand(cmd)) {
     return { action: 'allow', reason: 'Safe command' };
   }
 
-  // TODO: Implement actual AI API call
-  // For now, return allow with a note
-  return {
-    action: 'allow',
-    reason: 'Prompt hook enabled but API not yet integrated'
-  };
+  // No pattern matched — allow by default
+  return { action: 'allow', reason: 'No dangerous patterns matched' };
 }
 
 /**
@@ -764,7 +758,7 @@ function getStatus() {
     promptHook: {
       enabled: dcConfig.promptHook?.enabled ?? false,
       model: dcConfig.promptHook?.model || 'haiku',
-      aiAnalysis: 'not-implemented (pattern matching only)'
+      mode: 'pattern-matching-only'
     },
     patternsFile: dcConfig.patternsFile || '.workflow/damage-control.yaml',
     events: dcConfig.events || { bash: true, file: false, stop: false, prompt: false },

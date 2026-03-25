@@ -153,6 +153,12 @@ function formatHookError(hookName, err, options = {}) {
  */
 function logHookError(hookName, err, options = {}) {
   const formatted = formatHookError(hookName, err, options);
+  // Debug env var hierarchy:
+  //   DEBUG           — General-purpose debug flag (used across ~30 scripts for verbose logging)
+  //   WOGIFLOW_DEBUG  — WogiFlow-specific debug flag (equivalent to DEBUG but namespaced)
+  //   DEBUG_LSP       — LSP-only debug flag (used exclusively in flow-lsp.js for LSP protocol debugging)
+  // DEBUG and WOGIFLOW_DEBUG are interchangeable; either enables verbose error output.
+  // DEBUG_LSP is independent — it controls only LSP stderr/parse-error logging.
   const isDebug = process.env.DEBUG || process.env.WOGIFLOW_DEBUG;
 
   if (isDebug) {

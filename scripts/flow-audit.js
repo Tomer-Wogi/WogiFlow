@@ -95,11 +95,24 @@ function findTodos() {
           if (!line) continue;
           const match = line.match(/^(.+):(\d+):(.+)$/);
           if (match) {
+            const file = match[1];
+            const text = match[3].trim();
+
+            // Exclude self-references: the TODO scanner's own code mentions
+            // TODO/FIXME/HACK as search patterns, not as actual action items.
+            // Also exclude lines that are clearly about scanning for TODOs
+            // (e.g., pattern arrays, grep invocations, variable names).
+            if (file === 'scripts/flow-audit.js') continue;
+
+            // Skip lines where the pattern appears only inside a string literal
+            // used as a search term (e.g., patterns = ['TODO', 'FIXME', ...])
+            if (/\[\s*['"](?:TODO|FIXME|HACK|WORKAROUND|TEMPORARY)['"]/.test(text)) continue;
+
             results.push({
               type: pattern,
-              file: match[1],
+              file,
               line: parseInt(match[2], 10),
-              text: match[3].trim()
+              text
             });
           }
         }

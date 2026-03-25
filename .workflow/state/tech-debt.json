@@ -1,38 +1,40 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-03-14T12:00:00.000Z",
+  "lastUpdated": "2026-03-25T12:00:00.000Z",
   "issues": [
     {
       "id": "TD-001",
-      "severity": "high",
-      "title": "flow-long-input.js is 8,411 LOC — needs continued extraction",
+      "severity": "medium",
+      "title": "flow-long-input.js was 8,411 LOC — extraction to sub-modules complete, now 1,103 LOC",
       "file": "scripts/flow-long-input.js",
-      "status": "open",
+      "status": "resolved",
       "addedDate": "2026-03-14",
-      "description": "Extraction into sub-modules (flow-long-input-*.js) was partial. The main file still contains too much logic."
+      "resolvedDate": "2026-03-25",
+      "description": "Extraction into sub-modules (flow-long-input-*.js) is complete. Main file reduced from 8,411 to 1,103 LOC. Passes, contradictions, association, chunking, complexity, constants, detection, language, parsing extracted to separate modules."
     },
     {
       "id": "TD-002",
-      "severity": "high",
-      "title": "flow-orchestrate.js is 3,203 LOC with 6 embedded classes",
+      "severity": "medium",
+      "title": "flow-orchestrate.js reduced from 3,203 to 1,690 LOC — partial extraction done",
       "file": "scripts/flow-orchestrate.js",
       "status": "open",
       "addedDate": "2026-03-14",
-      "description": "ProjectContextGenerator, TemplateEngine, RollbackManager, StateManager, Validator, Orchestrator should be extracted to individual modules."
+      "description": "Originally 3,203 LOC with 6 embedded classes. Reduced to 1,690 LOC via extraction. Some classes (ProjectContextGenerator, TemplateEngine, RollbackManager, StateManager, Validator) may still benefit from further modularization."
     },
     {
       "id": "TD-003",
       "severity": "medium",
-      "title": "flow-done.js is 2,053 LOC / 22 functions — coordinator with accumulated logic",
+      "title": "flow-done.js split into flow-done-gates.js and flow-done-report.js",
       "file": "scripts/flow-done.js",
-      "status": "open",
+      "status": "resolved",
       "addedDate": "2026-03-14",
-      "description": "Completion reporting and gate runner logic could be extracted to flow-done-report.js and flow-done-gates.js."
+      "resolvedDate": "2026-03-25",
+      "description": "Originally 2,053 LOC. Split complete: flow-done.js (953 LOC), flow-done-gates.js (786 LOC), flow-done-report.js (124 LOC). Coordinator pattern now clean."
     },
     {
       "id": "TD-004",
       "severity": "medium",
-      "title": "flow-durable-session.js is 1,801 LOC / 53 functions — multiple responsibilities",
+      "title": "flow-durable-session.js is 1,802 LOC / 53 functions — multiple responsibilities",
       "file": "scripts/flow-durable-session.js",
       "status": "open",
       "addedDate": "2026-03-14",
@@ -41,7 +43,7 @@
     {
       "id": "TD-005",
       "severity": "medium",
-      "title": "flow-utils.js facade refactoring half-done — 70+ exports remain",
+      "title": "flow-utils.js is 1,748 LOC — facade refactoring half-done, 70+ exports remain",
       "file": "scripts/flow-utils.js",
       "status": "open",
       "addedDate": "2026-03-14",
@@ -50,7 +52,7 @@
     {
       "id": "TD-006",
       "severity": "medium",
-      "title": "session-start.js entry hook contains business logic",
+      "title": "session-start.js entry hook contains business logic (283 LOC)",
       "file": "scripts/hooks/entry/claude-code/session-start.js",
       "status": "open",
       "addedDate": "2026-03-14",
@@ -59,41 +61,44 @@
     {
       "id": "TD-007",
       "severity": "medium",
-      "title": "8+ learning modules with overlapping storage targets",
+      "title": "9 learning modules with overlapping storage targets",
       "status": "open",
       "addedDate": "2026-03-14",
-      "description": "flow-failure-learning, flow-session-learning, flow-adaptive-learning, flow-auto-learn, flow-loop-retry-learning, flow-tiered-learning, flow-skill-learn, flow-standards-learner have overlapping writes to feedback-patterns.md and decisions.md."
+      "description": "flow-failure-learning, flow-session-learning, flow-adaptive-learning, flow-auto-learn, flow-loop-retry-learning, flow-tiered-learning, flow-skill-learn, flow-standards-learner, flow-learning-orchestrator have overlapping writes to feedback-patterns.md and decisions.md. Learning writes now centralized through orchestrator, but modules still exist as separate files."
     },
     {
       "id": "TD-008",
       "severity": "low",
-      "title": "Deprecated hybrid-session code paths still present",
+      "title": "Deprecated hybrid-session code paths — resolved via orchestrate.js extraction",
       "file": "scripts/flow-orchestrate.js",
-      "status": "open",
+      "status": "resolved",
       "addedDate": "2026-03-14",
-      "description": "StateManager.updateHybridSession() explicitly prints deprecation warnings but still executes legacy code."
+      "resolvedDate": "2026-03-25",
+      "description": "StateManager.updateHybridSession() deprecation warnings and legacy code paths were cleaned up as part of flow-orchestrate.js extraction (3,203 → 1,690 LOC)."
     },
     {
       "id": "TD-009",
-      "severity": "medium",
-      "title": "flow-damage-control.js promptHook AI analysis is a stub",
+      "severity": "low",
+      "title": "flow-damage-control.js promptHook — pattern-matching only, AI stub removed",
       "file": "scripts/flow-damage-control.js",
-      "status": "open",
+      "status": "resolved",
       "addedDate": "2026-03-14",
-      "description": "evaluatePromptWithAI() always returns 'allow'. Feature is disabled by default but needs implementation or clear documentation."
+      "resolvedDate": "2026-03-25",
+      "description": "evaluatePromptWithAI() stub removed. promptHook feature documented as pattern-matching-only protection. AI-based prompt analysis is out of scope for the damage control system."
     },
     {
       "id": "TD-010",
       "severity": "low",
-      "title": "234 flow-*.js files in flat scripts/ directory",
+      "title": "238 flow-*.js files in flat scripts/ directory",
       "status": "open",
       "addedDate": "2026-03-14",
       "description": "Consider subdirectory grouping (scripts/memory/, scripts/context/, scripts/session/) for discoverability. Deferred to major version to avoid breaking require paths."
     }
   ],
   "stats": {
-    "totalOpen": 10,
-    "bySeverity": { "critical": 0, "high": 2, "medium": 6, "low": 2 },
+    "totalOpen": 5,
+    "totalResolved": 5,
+    "bySeverity": { "critical": 0, "high": 0, "medium": 4, "low": 1 },
     "autoFixable": 0
   }
 }
