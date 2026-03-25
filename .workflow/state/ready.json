@@ -1,18 +1,7 @@
 {
-  "lastUpdated": "2026-03-25T10:40:20.535Z",
+  "lastUpdated": "2026-03-25T12:32:01.221Z",
   "inProgress": [],
   "ready": [
-    {
-      "id": "wf-14ce6d29",
-      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
-      "type": "refactor",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P3",
-      "source": "audit-2026-03-13",
-      "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
-      "createdAt": "2026-03-13T15:00:00.000Z"
-    },
     {
       "id": "wf-9175e882",
       "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
@@ -26,7 +15,19 @@
         "Replace manual path.join(\".workflow\"...) with PATHS.* in 90 files",
         "Replace manual STATE_DIR/WORKFLOW_DIR constructions with PATHS.state/PATHS.workflow",
         "Verify zero manual .workflow path construction remains (excluding templates and test fixtures)"
-      ]
+      ],
+      "status": "ready"
+    },
+    {
+      "id": "wf-14ce6d29",
+      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
+      "type": "refactor",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P3",
+      "source": "audit-2026-03-13",
+      "description": "Prerequisite met: test harness created (34 smoke tests). Decompose autoCompactPrompt() in flow-orchestrate.js (87 LOC, not 1,529 as audit reported) into strategy-specific functions. Decompose runQualityGates() in flow-done.js (643 LOC, 127 branches) — extract gate logic into per-gate functions. Run npm test after each change to verify no regressions.",
+      "createdAt": "2026-03-13T15:00:00.000Z"
     },
     {
       "id": "wf-dd90ada4",
