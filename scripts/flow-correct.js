@@ -15,7 +15,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -60,33 +60,23 @@ function createInterface() {
   });
 }
 
-function prompt(rl, question, defaultValue = '') {
-  return new Promise((resolve) => {
-    const suffix = defaultValue ? ` (${defaultValue})` : '';
-    rl.question(`${question}${suffix}: `, (answer) => {
-      resolve(answer.trim() || defaultValue);
-    });
-  });
+async function prompt(rl, question, defaultValue = '') {
+  const suffix = defaultValue ? ` (${defaultValue})` : '';
+  const answer = await rl.question(`${question}${suffix}: `);
+  return answer.trim() || defaultValue;
 }
 
-function promptMultiline(rl, question) {
-  return new Promise((resolve) => {
-    console.log(`${question} (end with empty line):`);
-    const lines = [];
+async function promptMultiline(rl, question) {
+  console.log(`${question} (end with empty line):`);
+  const lines = [];
 
-    const readLine = () => {
-      rl.question('  ', (line) => {
-        if (line === '') {
-          resolve(lines.join('\n'));
-        } else {
-          lines.push(line);
-          readLine();
-        }
-      });
-    };
-
-    readLine();
-  });
+  while (true) {
+    const line = await rl.question('  ');
+    if (line === '') {
+      return lines.join('\n');
+    }
+    lines.push(line);
+  }
 }
 
 // ============================================================
@@ -221,7 +211,19 @@ function updateFeedbackPatterns(brief, taskId, skillName) {
     }
   }
 
-  writeFile(PATHS.feedbackPatterns, content);
+  try {
+    const { writeToFeedbackPatterns } = require('./flow-learning-orchestrator');
+    writeToFeedbackPatterns({
+      content,
+      entryText: brief,
+      caller: 'flow-correct/updateFeedbackPatterns',
+      skipDedup: true // We already handle dedup via existing entry check above
+    }).catch(_err => {
+      if (process.env.DEBUG) console.error(`[DEBUG] updateFeedbackPatterns: ${_err.message}`);
+    });
+  } catch (_err) {
+    writeFile(PATHS.feedbackPatterns, content); // Fallback to direct write
+  }
   return existingCount;
 }
 

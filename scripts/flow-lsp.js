@@ -327,7 +327,7 @@ class LSPClient {
     });
 
     // Wait a bit for the server to process
-    await new Promise(r => setTimeout(r, 100));
+    await require('node:timers/promises').setTimeout(100);
 
     return uri;
   }
@@ -419,7 +419,7 @@ class LSPClient {
     const uri = await this.openDocument(filePath);
 
     // Wait for diagnostics to be pushed
-    await new Promise(r => setTimeout(r, 500));
+    await require('node:timers/promises').setTimeout(500);
 
     const diagnostics = this.diagnosticsCache.get(uri) || [];
 

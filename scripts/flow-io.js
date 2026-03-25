@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - File I/O Operations
  *
@@ -510,7 +508,7 @@ async function acquireLock(filePath, options = {}) {
             if (process.env.DEBUG) {
               console.warn(`[DEBUG] Stale lock cleanup failed: ${err.message}`);
             }
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            await require('node:timers/promises').setTimeout(retryDelay);
           }
           // Try again
           continue;
@@ -521,7 +519,7 @@ async function acquireLock(filePath, options = {}) {
           const delay = exponentialBackoff
             ? retryDelay * Math.pow(2, attempt)
             : retryDelay * (attempt + 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await require('node:timers/promises').setTimeout(delay);
           continue;
         }
       }

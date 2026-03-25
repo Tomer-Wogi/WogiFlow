@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * Project Context Generator - Extracted from flow-orchestrate.js
  *

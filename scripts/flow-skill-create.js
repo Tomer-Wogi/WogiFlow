@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const { getProjectRoot, colors, PATHS } = require('./flow-utils');
 const { success, warn, error: errorMsg, info, print } = require('./flow-output');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
@@ -32,13 +32,9 @@ async function prompt(question, defaultValue = '') {
   });
 
   const defaultHint = defaultValue ? ` (${defaultValue})` : '';
-
-  return new Promise(resolve => {
-    rl.question(`${question}${defaultHint}: `, answer => {
-      rl.close();
-      resolve(answer.trim() || defaultValue);
-    });
-  });
+  const answer = await rl.question(`${question}${defaultHint}: `);
+  rl.close();
+  return answer.trim() || defaultValue;
 }
 
 async function confirm(question) {

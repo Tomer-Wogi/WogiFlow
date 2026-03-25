@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * Validator - Extracted from flow-orchestrate.js
  *

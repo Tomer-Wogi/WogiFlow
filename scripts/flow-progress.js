@@ -6,7 +6,7 @@
  * Provides visual feedback during hybrid execution.
  */
 
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const { colors } = require('./flow-utils');
 
 const symbols = {
@@ -230,12 +230,9 @@ async function prompt(question) {
     output: process.stdout
   });
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
+  const answer = await rl.question(question);
+  rl.close();
+  return answer.trim();
 }
 
 function formatResults(results) {
@@ -288,14 +285,15 @@ if (require.main === module) {
 
     const spinner = new Spinner('Detecting providers...');
     spinner.start();
-    await new Promise(r => setTimeout(r, 2000));
+    const { setTimeout: sleep } = require('node:timers/promises');
+    await sleep(2000);
     spinner.stop('Providers detected', true);
 
     console.log('\nProgress bar:');
     const bar = new ProgressBar(10);
     for (let i = 0; i <= 10; i++) {
       bar.update(i, `Step ${i}/10`);
-      await new Promise(r => setTimeout(r, 200));
+      await sleep(200);
     }
     bar.complete('All steps done');
 

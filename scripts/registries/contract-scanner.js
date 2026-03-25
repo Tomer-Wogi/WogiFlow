@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Contract Surface Scanner
  *

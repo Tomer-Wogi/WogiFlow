@@ -1,8 +1,8 @@
 {
-  "skillName": "wogi-start",
-  "markedAt": "2026-03-25T06:45:38.693Z",
+  "skillName": "wogi-bulk",
+  "markedAt": "2026-03-25T15:47:00.062Z",
   "context": {
-    "args": "Fix and investigate Claude Code 2.1.83 compatibility items: (1) --channels breaks AskUserQuestion — add channels mode detection with non-interactive fallbacks, (2) ENV_SCRUB investigation — check if cloud/hybrid hooks pass API keys through subprocess env, (3) Add CwdChanged/FileChanged to UNUSED_SUPPORTED_EVENTS, (4) Update MEMORY.md 25KB limit documentation, (5) Update claude-code-compatibility.md with 2.1.83 features, (6) Add WebFetch resilience for Claude-User agent identification"
+    "prompt": "/wogi-bulk all pending ultrathink"
   },
   "status": "pending"
 }

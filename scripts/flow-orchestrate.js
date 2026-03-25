@@ -179,7 +179,7 @@ function generateFixSuggestion(errorHistory) {
   const errorCounts = {};
 
   for (const e of errorHistory) {
-    errorCounts[e.category] = (errorCounts[e.category] || 0) + 1;
+    errorCounts[e.category] = (errorCounts[e.category] ?? 0) + 1;
   }
 
   const mostCommon = Object.entries(errorCounts)
@@ -202,7 +202,7 @@ function generateFixSuggestion(errorHistory) {
 
 function loadHybridConfig() {
   const config = getConfig();
-  const hybrid = config.hybrid || {};
+  const hybrid = config.hybrid ?? {};
 
   if (!hybrid.enabled) {
     throw new Error('Hybrid mode is not enabled. Run /wogi-hybrid first.');
@@ -213,9 +213,9 @@ function loadHybridConfig() {
   const isLocal = executorConfig.type !== 'cloud';
 
   // Context window: config override > executor config > auto-detect later
-  const contextWindow = hybrid.executor?.contextWindow ||
-                        hybrid.settings?.contextWindow ||
-                        executorConfig.contextWindow ||
+  const contextWindow = hybrid.executor?.contextWindow ??
+                        hybrid.settings?.contextWindow ??
+                        executorConfig.contextWindow ??
                         null;
 
   // For local LLMs: use full context (they're free!)
@@ -268,10 +268,10 @@ function loadHybridConfig() {
     outputReserveMax,
 
     // Instruction richness settings
-    instructionRichness: hybrid.settings?.instructionRichness || {},
+    instructionRichness: hybrid.settings?.instructionRichness ?? {},
 
     // Cloud provider reference (for model selection in setup wizard)
-    cloudProviders: hybrid.cloudProviders || config.hybrid?.cloudProviders || {}
+    cloudProviders: hybrid.cloudProviders ?? config.hybrid?.cloudProviders ?? {}
   };
 }
 
@@ -289,7 +289,7 @@ function loadHybridConfig() {
 function getProjectContext() {
   try {
     const config = getConfig();
-    return config.hybrid?.projectContext || {};
+    return config.hybrid?.projectContext ?? {};
   } catch (err) {
     return {};
   }
@@ -308,7 +308,7 @@ function autoCorrectCode(code, filePath, projectConfig = null) {
   }
 
   // Load project context from config if not provided
-  const ctx = projectConfig?.projectContext || getProjectContext();
+  const ctx = projectConfig?.projectContext ?? getProjectContext();
 
   let corrected = code;
   const corrections = [];
@@ -339,7 +339,7 @@ function autoCorrectCode(code, filePath, projectConfig = null) {
   }
 
   // 2. Fix component paths based on config mappings
-  const componentPaths = ctx.componentPaths || {};
+  const componentPaths = ctx.componentPaths ?? {};
 
   // Build reverse mapping from shadcn-style to project paths
   // @/components/ui/button → project's Button path
@@ -595,16 +595,16 @@ function logTokenMetrics(plan, executionResult, complexity) {
     planId: plan.planId || 'unknown',
     task: plan.task || 'unknown',
     complexity: {
-      level: complexity?.level || 'unknown',
-      estimatedTokens: complexity?.estimatedTokens || 0,
-      reasoning: complexity?.reasoning || ''
+      level: complexity?.level ?? 'unknown',
+      estimatedTokens: complexity?.estimatedTokens ?? 0,
+      reasoning: complexity?.reasoning ?? ''
     },
     execution: {
       success: executionResult.success,
-      stepsCompleted: executionResult.steps?.filter(s => s.success).length || 0,
-      stepsTotal: executionResult.steps?.length || 0,
+      stepsCompleted: executionResult.steps?.filter(s => s.success).length ?? 0,
+      stepsTotal: executionResult.steps?.length ?? 0,
       escalated: executionResult.escalateToCloud?.length > 0,
-      escalatedSteps: executionResult.escalateToCloud?.map(s => s.id) || []
+      escalatedSteps: executionResult.escalateToCloud?.map(s => s.id) ?? []
     }
   };
 
@@ -1156,7 +1156,7 @@ class Orchestrator {
 
     // Load model profile for intelligent context loading
     const modelProfile = getModelProfile(this.config.model, taskType);
-    const profileRichness = getProfileBasedRichness(this.config.model, taskType, this.config.maxTokens || 8192);
+    const profileRichness = getProfileBasedRichness(this.config.model, taskType, this.config.maxTokens ?? 8192);
 
     // Store for use during retries
     result.taskType = taskType;
@@ -1274,10 +1274,10 @@ class Orchestrator {
       try {
         // Auto-compact prompt if needed
         // Use config override, or LLM's detected context window, or conservative fallback
-        const contextWindow = this.config.contextWindow || this.llm.contextWindow || 4096;
+        const contextWindow = this.config.contextWindow ?? this.llm.contextWindow ?? 4096;
         // Reserve configurable % of context for output, with configurable max
-        const reserveRatio = this.config.outputReserveRatio || 0.3;
-        const reserveMax = this.config.outputReserveMax || 4096;
+        const reserveRatio = this.config.outputReserveRatio ?? 0.3;
+        const reserveMax = this.config.outputReserveMax ?? 4096;
         const reserveForOutput = Math.min(reserveMax, Math.floor(contextWindow * reserveRatio));
         const { prompt: compactedPrompt, wasCompacted, usage } = autoCompactPrompt(
           prompt,

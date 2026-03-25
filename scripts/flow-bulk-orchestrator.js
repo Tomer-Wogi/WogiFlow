@@ -430,9 +430,7 @@ async function orchestrateBulk(taskIds, options = {}) {
  * @param {number} ms - Milliseconds to sleep
  * @returns {Promise}
  */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const { setTimeout: sleep } = require('node:timers/promises');
 
 /**
  * Get ready tasks from ready.json

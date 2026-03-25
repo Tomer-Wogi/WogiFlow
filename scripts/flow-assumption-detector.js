@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Assumption Detector Library
  *

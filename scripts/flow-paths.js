@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Path Constants and Utilities
  *

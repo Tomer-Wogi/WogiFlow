@@ -250,12 +250,15 @@ async function promoteFact(factId, dryRun = false) {
     return true;
   }
 
-  // Update decisions.md
+  // Update decisions.md through orchestrator
   const newContent = appendToDecisions(formatted, decisionsContent);
-  fs.writeFileSync(DECISIONS_PATH, newContent);
-
-  // Sync to .claude/rules/ for Claude Code integration
-  syncDecisionsToRules();
+  try {
+    const { writeToDecisions } = require('./flow-learning-orchestrator');
+    await writeToDecisions({ content: newContent, entryText: fact.fact, caller: 'flow-memory-sync/promote', syncRules: true });
+  } catch (_err) {
+    fs.writeFileSync(DECISIONS_PATH, newContent);
+    syncDecisionsToRules();
+  }
 
   // Mark fact as promoted
   await memoryDb.markFactPromoted(factId, 'decisions.md');
@@ -325,15 +328,18 @@ async function autoPromote(config) {
   }
 
   if (promoted > 0) {
-    // Write decisions.md FIRST, then mark as promoted in DB
-    // This prevents data loss if process crashes between the two operations
-    fs.writeFileSync(DECISIONS_PATH, currentContent);
+    // Write decisions.md through orchestrator, then mark as promoted in DB
+    try {
+      const { writeToDecisions } = require('./flow-learning-orchestrator');
+      await writeToDecisions({ content: currentContent, caller: 'flow-memory-sync/autoPromote', skipDedup: true, syncRules: true });
+    } catch (_err) {
+      fs.writeFileSync(DECISIONS_PATH, currentContent);
+      syncDecisionsToRules();
+    }
     // Now safe to mark as promoted in DB
     for (const id of promotedIds) {
       await memoryDb.markFactPromoted(id, 'decisions.md');
     }
-    // Sync to .claude/rules/ for Claude Code integration
-    syncDecisionsToRules();
     await memoryDb.recordMemoryMetric('auto_promote');
   }
 

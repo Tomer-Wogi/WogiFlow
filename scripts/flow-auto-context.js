@@ -635,11 +635,9 @@ async function enrichWithLSP(fileResults, config) {
   if (filesToEnrich.length === 0) return fileResults;
 
   try {
-    // Create timeout with cleanup to prevent resource leak
-    let timeoutId;
-    const timeoutPromise = new Promise(resolve => {
-      timeoutId = setTimeout(() => resolve(filesToEnrich), timeout);
-    });
+    // Create timeout with cleanup using AbortController
+    const ac = new AbortController();
+    const timeoutPromise = require('node:timers/promises').setTimeout(timeout, filesToEnrich, { signal: ac.signal }).catch(() => filesToEnrich);
 
     const enriched = await Promise.race([
       Promise.all(filesToEnrich.map(async (result) => {
@@ -668,7 +666,7 @@ async function enrichWithLSP(fileResults, config) {
     ]);
 
     // Clean up timeout to prevent resource leak
-    clearTimeout(timeoutId);
+    ac.abort();
 
     // Merge enriched results back into full list
     const enrichedMap = new Map(enriched.map(r => [r.path, r]));

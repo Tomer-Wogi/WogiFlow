@@ -24,8 +24,6 @@
  *           buildEndpointPageMapping } = require('./flow-test-integrity');
  */
 
-'use strict';
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');

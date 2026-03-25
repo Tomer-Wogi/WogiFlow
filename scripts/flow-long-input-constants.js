@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Long Input Processing - Constants and Pattern Definitions
  *

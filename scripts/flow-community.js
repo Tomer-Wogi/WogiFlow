@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Community Knowledge Module
  *
@@ -1092,25 +1090,19 @@ function mergePatterns(items) {
   }
 
   if (newRows.length > 0) {
-    // Find the end of the Patterns Log table to insert before pending patterns
-    const tableEnd = content.indexOf('\n\n### ');
-    if (tableEnd !== -1) {
-      const updated = content.slice(0, tableEnd) + '\n' + newRows.join('\n') + content.slice(tableEnd);
-      try {
-        fs.writeFileSync(filePath, updated, 'utf-8');
-      } catch (err) {
-        if (process.env.DEBUG) {
-          console.error(`[flow-community] Failed to write feedback-patterns.md: ${err.message}`);
+    // Route through orchestrator for locking and dedup
+    try {
+      const { modifyFeedbackPatterns } = require('./flow-learning-orchestrator');
+      modifyFeedbackPatterns((curContent) => {
+        const tableEnd = curContent.indexOf('\n\n### ');
+        if (tableEnd !== -1) {
+          return { content: curContent.slice(0, tableEnd) + '\n' + newRows.join('\n') + curContent.slice(tableEnd) };
         }
-      }
-    } else {
-      // Append at end
-      try {
-        fs.writeFileSync(filePath, content.trimEnd() + '\n' + newRows.join('\n') + '\n', 'utf-8');
-      } catch (err) {
-        if (process.env.DEBUG) {
-          console.error(`[flow-community] Failed to write feedback-patterns.md: ${err.message}`);
-        }
+        return { content: curContent.trimEnd() + '\n' + newRows.join('\n') + '\n' };
+      }, { caller: 'flow-community/mergePatterns', skipDedup: true });
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[flow-community] Failed to write feedback-patterns.md: ${err.message}`);
       }
     }
   }

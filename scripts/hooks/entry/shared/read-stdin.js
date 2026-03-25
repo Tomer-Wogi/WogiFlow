@@ -1,5 +1,3 @@
-'use strict';
-
 const { safeJsonParseString } = require('../../../flow-utils');
 
 const MAX_STDIN_SIZE = 100 * 1024;

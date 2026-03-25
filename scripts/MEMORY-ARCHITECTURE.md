@@ -88,7 +88,7 @@ flow knowledge-sync regenerate  # Regenerate stale files
 
 **Features**:
 - SQLite database using sql.js (pure JS)
-- Embedding generation via @xenova/transformers
+- Embedding generation via @huggingface/transformers
 - Semantic similarity search
 - Facts, proposals, and PRD chunk storage
 

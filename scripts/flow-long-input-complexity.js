@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Long Input Processing - Complexity Detection (E3-S1)
  *

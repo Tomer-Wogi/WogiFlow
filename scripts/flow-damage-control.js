@@ -198,7 +198,7 @@ function parseSimpleYaml(content) {
     // Sub-section under paths (indent 2): zeroAccess:, readOnly:, noDelete:
     if (currentSection === 'paths' && indent === 2 && trimmed.endsWith(':')) {
       currentSubSection = trimmed.slice(0, -1);
-      result.paths[currentSubSection] = result.paths[currentSubSection] || [];
+      result.paths[currentSubSection] = result.paths[currentSubSection] ?? [];
       continue;
     }
 
@@ -349,7 +349,7 @@ function parseSimpleYaml(content) {
  */
 function loadPatterns() {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
   const patternsPath = dcConfig.patternsFile
     ? path.join(PATHS.root, dcConfig.patternsFile)
     : PATTERNS_FILE;
@@ -433,7 +433,7 @@ function checkEventRule(rule, eventType, context) {
  */
 function checkEvent(eventType, context = {}) {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
 
   // Check if damage control is enabled
   if (!dcConfig.enabled) {
@@ -441,7 +441,7 @@ function checkEvent(eventType, context = {}) {
   }
 
   // Check if this event type is enabled
-  const events = dcConfig.events || { bash: true };
+  const events = dcConfig.events ?? { bash: true };
   if (events[eventType] === false) {
     return { allowed: true, action: 'allow', message: `Event type '${eventType}' disabled` };
   }
@@ -449,7 +449,7 @@ function checkEvent(eventType, context = {}) {
   const patterns = loadPatterns();
 
   // Check event-based rules first (new format)
-  for (const rule of patterns.rules || []) {
+  for (const rule of patterns.rules ?? []) {
     const action = checkEventRule(rule, eventType, context);
     if (action) {
       const result = {
@@ -479,7 +479,7 @@ function checkEvent(eventType, context = {}) {
 
   // Fall back to legacy patterns for bash events
   if (eventType === 'bash') {
-    const cmd = context.command || '';
+    const cmd = context.command ?? '';
     const legacyResult = checkCommand(cmd);
     if (legacyResult.action !== 'allow') {
       return {
@@ -492,7 +492,7 @@ function checkEvent(eventType, context = {}) {
 
   // Fall back to legacy path patterns for file events
   if (eventType === 'file') {
-    const filePath = context.file_path || context.filePath || '';
+    const filePath = context.file_path ?? context.filePath ?? '';
     const operation = context.operation || 'edit';
     const pathResult = checkPath(filePath, operation);
     if (!pathResult.allowed) {
@@ -513,7 +513,7 @@ function checkEvent(eventType, context = {}) {
  */
 function logDamageControl(eventType, context, result) {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
 
   if (!dcConfig.logging) return;
 
@@ -584,7 +584,7 @@ function isSafeCommand(cmd) {
  */
 function checkCommand(cmd) {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
 
   if (!dcConfig.enabled) {
     return { action: 'allow' };
@@ -598,7 +598,7 @@ function checkCommand(cmd) {
   const patterns = loadPatterns();
 
   // Check blocked patterns
-  for (const pattern of patterns.blocked || []) {
+  for (const pattern of patterns.blocked ?? []) {
     const regex = safeRegExp(pattern, 'i');
     if (!regex) continue; // Skip invalid/unsafe patterns
     if (regex.test(cmd)) {
@@ -611,7 +611,7 @@ function checkCommand(cmd) {
   }
 
   // Check ask patterns
-  for (const item of patterns.ask || []) {
+  for (const item of patterns.ask ?? []) {
     const pattern = typeof item === 'string' ? item : item.pattern;
     const reason = typeof item === 'object' ? item.reason : 'Matches sensitive pattern';
 
@@ -658,20 +658,20 @@ function pathMatchesPattern(normalizedPath, pattern) {
  */
 function checkPath(filePath, operation) {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
 
   if (!dcConfig.enabled) {
     return { allowed: true };
   }
 
   const patterns = loadPatterns();
-  const paths = patterns.paths || {};
+  const paths = patterns.paths ?? {};
 
   // Normalize path (handle both forward and backslashes)
   const normalizedPath = filePath.replace(/\\/g, '/');
 
   // Zero access - block all operations (read, write, delete)
-  for (const p of paths.zeroAccess || []) {
+  for (const p of paths.zeroAccess ?? []) {
     if (pathMatchesPattern(normalizedPath, p)) {
       return {
         allowed: false,
@@ -683,7 +683,7 @@ function checkPath(filePath, operation) {
 
   // Read-only - block write/delete
   if (operation === 'write' || operation === 'delete') {
-    for (const p of paths.readOnly || []) {
+    for (const p of paths.readOnly ?? []) {
       if (pathMatchesPattern(normalizedPath, p)) {
         return {
           allowed: false,
@@ -696,7 +696,7 @@ function checkPath(filePath, operation) {
 
   // No-delete - block delete only
   if (operation === 'delete') {
-    for (const p of paths.noDelete || []) {
+    for (const p of paths.noDelete ?? []) {
       if (pathMatchesPattern(normalizedPath, p)) {
         return {
           allowed: false,
@@ -719,8 +719,8 @@ function checkPath(filePath, operation) {
  */
 async function promptHookCheck(cmd) {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
-  const promptConfig = dcConfig.promptHook || {};
+  const dcConfig = config.damageControl ?? {};
+  const promptConfig = dcConfig.promptHook ?? {};
 
   if (!dcConfig.enabled || !promptConfig.enabled) {
     return { action: 'allow' };
@@ -756,22 +756,22 @@ async function promptHookCheck(cmd) {
  */
 function getStatus() {
   const config = getConfig();
-  const dcConfig = config.damageControl || {};
+  const dcConfig = config.damageControl ?? {};
   const patterns = loadPatterns();
 
   return {
-    enabled: dcConfig.enabled || false,
+    enabled: dcConfig.enabled ?? false,
     promptHook: {
-      enabled: dcConfig.promptHook?.enabled || false,
+      enabled: dcConfig.promptHook?.enabled ?? false,
       model: dcConfig.promptHook?.model || 'haiku',
       aiAnalysis: 'not-implemented (pattern matching only)'
     },
     patternsFile: dcConfig.patternsFile || '.workflow/damage-control.yaml',
     events: dcConfig.events || { bash: true, file: false, stop: false, prompt: false },
     patternsLoaded: {
-      rules: (patterns.rules || []).length,
-      blocked: (patterns.blocked || []).length,
-      ask: (patterns.ask || []).length,
+      rules: (patterns.rules ?? []).length,
+      blocked: (patterns.blocked ?? []).length,
+      ask: (patterns.ask ?? []).length,
       paths: {
         zeroAccess: (patterns.paths?.zeroAccess || []).length,
         readOnly: (patterns.paths?.readOnly || []).length,
@@ -941,10 +941,10 @@ Configuration (config.json):
 
       // Show legacy patterns
       log('cyan', 'Legacy Blocked Patterns:');
-      (patterns.blocked || []).forEach(p => log('red', `  - ${p}`));
+      (patterns.blocked ?? []).forEach(p => log('red', `  - ${p}`));
       console.log('');
       log('cyan', 'Legacy Ask Patterns:');
-      (patterns.ask || []).forEach(p => {
+      (patterns.ask ?? []).forEach(p => {
         if (typeof p === 'object') {
           log('yellow', `  - ${p.pattern}`);
           log('dim', `    Reason: ${p.reason}`);

@@ -22,9 +22,9 @@ const { TIMEOUTS, LIMITS, BACKOFF } = require('./flow-constants');
 class HttpClient {
   constructor(baseUrl, options = {}) {
     this.baseUrl = baseUrl;
-    this.defaultHeaders = options.headers || {};
-    this.timeout = options.timeout || TIMEOUTS.HTTP_DEFAULT;
-    this.maxRetries = options.maxRetries || LIMITS.HTTP_MAX_RETRIES;
+    this.defaultHeaders = options.headers ?? {};
+    this.timeout = options.timeout ?? TIMEOUTS.HTTP_DEFAULT;
+    this.maxRetries = options.maxRetries ?? LIMITS.HTTP_MAX_RETRIES;
   }
 
   /**
@@ -55,10 +55,10 @@ class HttpClient {
       port: url.port || (isHttps ? 443 : 80),
       path: url.pathname + url.search,
       headers,
-      timeout: options.timeout || this.timeout,
+      timeout: options.timeout ?? this.timeout,
     };
 
-    return this._executeWithRetry(lib, requestOptions, body, options.retries || 0);
+    return this._executeWithRetry(lib, requestOptions, body, options.retries ?? 0);
   }
 
   /**
@@ -147,7 +147,8 @@ class HttpClient {
    * Sleep helper
    */
   _sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    const { setTimeout: sleep } = require('node:timers/promises');
+    return sleep(ms);
   }
 
   // Convenience methods
@@ -222,7 +223,7 @@ class HttpClient {
  * Simple fetch JSON helper (for one-off requests)
  */
 async function fetchJson(url, options = {}) {
-  const client = new HttpClient(url, { timeout: options.timeout || TIMEOUTS.HTTP_DEFAULT });
+  const client = new HttpClient(url, { timeout: options.timeout ?? TIMEOUTS.HTTP_DEFAULT });
   const parsedUrl = new URL(url);
   const response = await client.get(parsedUrl.pathname + parsedUrl.search, {
     headers: options.headers,
@@ -234,7 +235,7 @@ async function fetchJson(url, options = {}) {
  * Simple post JSON helper (for one-off requests)
  */
 async function postJson(url, body, options = {}) {
-  const client = new HttpClient(url, { timeout: options.timeout || TIMEOUTS.HTTP_DEFAULT });
+  const client = new HttpClient(url, { timeout: options.timeout ?? TIMEOUTS.HTTP_DEFAULT });
   const parsedUrl = new URL(url);
   const response = await client.post(parsedUrl.pathname + parsedUrl.search, body, {
     headers: options.headers,

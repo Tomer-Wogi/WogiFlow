@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * State Manager - Extracted from flow-orchestrate.js
  *

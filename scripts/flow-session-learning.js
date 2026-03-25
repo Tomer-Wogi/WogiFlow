@@ -586,6 +586,7 @@ function applyLearnings(learnings, options = {}) {
 
 /**
  * Add learning to feedback-patterns.md
+ * Routes through the learning orchestrator for locking and dedup.
  */
 function addToFeedbackPatterns(learning) {
   if (!fileExists(FEEDBACK_PATTERNS_PATH)) {
@@ -594,45 +595,44 @@ function addToFeedbackPatterns(learning) {
   }
 
   try {
-    let content = fs.readFileSync(FEEDBACK_PATTERNS_PATH, 'utf-8');
+    const { modifyFeedbackPatterns } = require('./flow-learning-orchestrator');
     const today = getTodayDateString();
-
-    // Check if pattern already exists
-    if (content.includes(learning.pattern)) {
-      // Update count instead of adding duplicate
-      return true;
-    }
-
-    // Find or create Session Analysis section
-    const sectionHeader = '## Session Analysis Patterns';
-    const tableHeader = '| Date | Pattern | Source | Count | Confidence | Status |';
-    const tableSeparator = '|------|---------|--------|-------|------------|--------|';
 
     const newRow = `| ${today} | ${learning.pattern} | ${learning.source} | ${learning.occurrences} | ${learning.confidence}% | Monitor |`;
 
-    if (content.includes(sectionHeader)) {
-      // Add to existing section
-      const sectionEnd = content.indexOf('\n## ', content.indexOf(sectionHeader) + 1);
-      const insertPos = sectionEnd > 0 ? sectionEnd : content.length;
+    modifyFeedbackPatterns((currentContent) => {
+      let content = currentContent;
 
-      // Find the table and add row
-      const tableEnd = content.lastIndexOf('|', insertPos);
-      if (tableEnd > content.indexOf(sectionHeader)) {
-        const lineEnd = content.indexOf('\n', tableEnd);
-        content = content.slice(0, lineEnd + 1) + newRow + '\n' + content.slice(lineEnd + 1);
+      // Check if pattern already exists
+      if (content.includes(learning.pattern)) {
+        return null; // Signal no write needed (already exists)
       }
-    } else {
-      // Add new section before "## Promotion History" or at end
-      const newSection = `\n---\n\n${sectionHeader}\n\n${tableHeader}\n${tableSeparator}\n${newRow}\n`;
 
-      if (content.includes('## Promotion History')) {
-        content = content.replace('## Promotion History', newSection + '\n## Promotion History');
+      // Find or create Session Analysis section
+      const sectionHeader = '## Session Analysis Patterns';
+      const tableHeader = '| Date | Pattern | Source | Count | Confidence | Status |';
+      const tableSeparator = '|------|---------|--------|-------|------------|--------|';
+
+      if (content.includes(sectionHeader)) {
+        const sectionEnd = content.indexOf('\n## ', content.indexOf(sectionHeader) + 1);
+        const insertPos = sectionEnd > 0 ? sectionEnd : content.length;
+        const tableEnd = content.lastIndexOf('|', insertPos);
+        if (tableEnd > content.indexOf(sectionHeader)) {
+          const lineEnd = content.indexOf('\n', tableEnd);
+          content = content.slice(0, lineEnd + 1) + newRow + '\n' + content.slice(lineEnd + 1);
+        }
       } else {
-        content = content.trimEnd() + newSection;
+        const newSection = `\n---\n\n${sectionHeader}\n\n${tableHeader}\n${tableSeparator}\n${newRow}\n`;
+        if (content.includes('## Promotion History')) {
+          content = content.replace('## Promotion History', newSection + '\n## Promotion History');
+        } else {
+          content = content.trimEnd() + newSection;
+        }
       }
-    }
 
-    fs.writeFileSync(FEEDBACK_PATTERNS_PATH, content, 'utf-8');
+      return { content, entryText: learning.pattern };
+    }, { caller: 'flow-session-learning/addToFeedbackPatterns' });
+
     return true;
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] addToFeedbackPatterns: ${err.message}`);
@@ -642,6 +642,7 @@ function addToFeedbackPatterns(learning) {
 
 /**
  * Add high-confidence learning to decisions.md
+ * Routes through the learning orchestrator for locking and dedup.
  */
 function addToDecisions(learning) {
   if (!fileExists(DECISIONS_PATH)) {
@@ -650,16 +651,19 @@ function addToDecisions(learning) {
   }
 
   try {
-    let content = fs.readFileSync(DECISIONS_PATH, 'utf-8');
+    const { modifyDecisions } = require('./flow-learning-orchestrator');
     const today = getTodayDateString();
 
-    // Check if pattern already exists
-    if (content.includes(learning.pattern)) {
-      return true; // Already exists
-    }
+    modifyDecisions((currentContent) => {
+      let content = currentContent;
 
-    // Create decision entry
-    const decisionEntry = `
+      // Check if pattern already exists
+      if (content.includes(learning.pattern)) {
+        return null; // Already exists, no write needed
+      }
+
+      // Create decision entry
+      const decisionEntry = `
 ### ${learning.pattern} (${today})
 <!-- PIN: ${learning.pattern} -->
 
@@ -670,21 +674,21 @@ ${learning.description}
 **Recommendation**: ${learning.recommendation}
 `;
 
-    // Find Session Learnings section or create one
-    const sectionHeader = '## Session-Learned Patterns';
+      // Find Session Learnings section or create one
+      const sectionHeader = '## Session-Learned Patterns';
 
-    if (content.includes(sectionHeader)) {
-      // Add after section header
-      const sectionIndex = content.indexOf(sectionHeader);
-      const nextSection = content.indexOf('\n## ', sectionIndex + sectionHeader.length);
-      const insertPos = nextSection > 0 ? nextSection : content.length;
-      content = content.slice(0, insertPos) + decisionEntry + content.slice(insertPos);
-    } else {
-      // Add new section at the end
-      content = content.trimEnd() + '\n\n---\n\n' + sectionHeader + '\n' + decisionEntry;
-    }
+      if (content.includes(sectionHeader)) {
+        const sectionIndex = content.indexOf(sectionHeader);
+        const nextSection = content.indexOf('\n## ', sectionIndex + sectionHeader.length);
+        const insertPos = nextSection > 0 ? nextSection : content.length;
+        content = content.slice(0, insertPos) + decisionEntry + content.slice(insertPos);
+      } else {
+        content = content.trimEnd() + '\n\n---\n\n' + sectionHeader + '\n' + decisionEntry;
+      }
 
-    fs.writeFileSync(DECISIONS_PATH, content, 'utf-8');
+      return { content, entryText: learning.pattern };
+    }, { caller: 'flow-session-learning/addToDecisions' });
+
     return true;
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] addToDecisions: ${err.message}`);

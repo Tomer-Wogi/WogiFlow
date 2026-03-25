@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Token Estimation
  *

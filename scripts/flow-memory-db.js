@@ -10,7 +10,7 @@
  *
  * Features:
  * - SQLite database with sql.js
- * - Embeddings via @xenova/transformers
+ * - Embeddings via @huggingface/transformers
  * - Facts, proposals, and PRD storage
  * - Semantic similarity search
  *
@@ -422,21 +422,21 @@ let embeddingsAvailable = null; // null = unknown, true/false after first check
 
 /**
  * Get embedder (lazy load)
- * Returns null if @xenova/transformers is not installed
+ * Returns null if @huggingface/transformers is not installed
  */
 async function getEmbedder() {
   if (embeddingsAvailable === false) return null;
 
   if (!embedder) {
     try {
-      const { pipeline } = await import('@xenova/transformers');
+      const { pipeline } = await import('@huggingface/transformers');
       embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
       embeddingsAvailable = true;
     } catch (err) {
       if (err.code === 'ERR_MODULE_NOT_FOUND' || err.code === 'MODULE_NOT_FOUND') {
         embeddingsAvailable = false;
         if (process.env.DEBUG) {
-          console.warn('[DEBUG] @xenova/transformers not installed - semantic search disabled');
+          console.warn('[DEBUG] @huggingface/transformers not installed - semantic search disabled');
         }
         return null;
       }

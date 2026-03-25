@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
 
 const DECISIONS_PATH = path.join(PATHS.workflow, 'state', 'figma-decisions.json');
@@ -250,9 +250,7 @@ Let's go through each component:
   }
 
   prompt(question) {
-    return new Promise(resolve => {
-      this.rl.question(question, resolve);
-    });
+    return this.rl.question(question);
   }
 
   printSummary() {

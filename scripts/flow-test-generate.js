@@ -16,8 +16,6 @@
  *   const { parseSpecCriteria, detectTestConventions, categoriseCriterion, generateTestScaffold } = require('./flow-test-generate');
  */
 
-'use strict';
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { getProjectRoot, safeJsonParse, PATHS } = require('./flow-utils');

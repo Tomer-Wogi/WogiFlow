@@ -14,8 +14,6 @@
  * - Declarative: RUNTIME_ARTIFACT_MAP defines all mappings
  */
 
-'use strict';
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { getConfig } = require('./flow-config-loader');

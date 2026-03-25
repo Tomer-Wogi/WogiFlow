@@ -202,6 +202,7 @@ function loadAutoPatterns() {
 
 /**
  * Save auto-captured patterns back to feedback-patterns.md
+ * Routes through the learning orchestrator for locking and dedup.
  * @param {Array} patterns - Array of pattern objects
  */
 function saveAutoPatterns(patterns) {
@@ -211,31 +212,35 @@ function saveAutoPatterns(patterns) {
   }
 
   try {
-    let content = fs.readFileSync(FEEDBACK_PATTERNS_PATH, 'utf-8');
+    const { modifyFeedbackPatterns } = require('./flow-learning-orchestrator');
 
-    // Build new table (using DRY constants)
-    const rows = patterns.map(p =>
-      `| ${p.date} | ${p.pattern} | ${p.source} | ${p.count} | ${p.confidence}% | ${p.status} |`
-    );
+    modifyFeedbackPatterns((currentContent) => {
+      let content = currentContent;
 
-    const newSection = `${TABLE_FORMAT.sectionHeader}\n\n${TABLE_FORMAT.header}\n${TABLE_FORMAT.separator}\n${rows.join('\n')}`;
-
-    // Replace or add section
-    if (content.includes('## Auto-Captured Patterns')) {
-      content = content.replace(
-        /## Auto-Captured Patterns[\s\S]*?(?=\n## |\n---\n\n## |$)/,
-        newSection + '\n\n'
+      // Build new table (using DRY constants)
+      const rows = patterns.map(p =>
+        `| ${p.date} | ${p.pattern} | ${p.source} | ${p.count} | ${p.confidence}% | ${p.status} |`
       );
-    } else {
-      // Add before "## Promotion History" or at the end
-      if (content.includes('## Promotion History')) {
-        content = content.replace('## Promotion History', newSection + '\n\n---\n\n## Promotion History');
-      } else {
-        content = content.trimEnd() + '\n\n---\n\n' + newSection + '\n';
-      }
-    }
 
-    fs.writeFileSync(FEEDBACK_PATTERNS_PATH, content, 'utf-8');
+      const newSection = `${TABLE_FORMAT.sectionHeader}\n\n${TABLE_FORMAT.header}\n${TABLE_FORMAT.separator}\n${rows.join('\n')}`;
+
+      // Replace or add section
+      if (content.includes('## Auto-Captured Patterns')) {
+        content = content.replace(
+          /## Auto-Captured Patterns[\s\S]*?(?=\n## |\n---\n\n## |$)/,
+          newSection + '\n\n'
+        );
+      } else {
+        // Add before "## Promotion History" or at the end
+        if (content.includes('## Promotion History')) {
+          content = content.replace('## Promotion History', newSection + '\n\n---\n\n## Promotion History');
+        } else {
+          content = content.trimEnd() + '\n\n---\n\n' + newSection + '\n';
+        }
+      }
+
+      return { content, entryText: null }; // Bulk rewrite, no single entry dedup
+    }, { caller: 'flow-auto-learn/saveAutoPatterns', skipDedup: true });
   } catch (err) {
     warn(`Could not save feedback-patterns.md: ${err.message}`);
   }
@@ -449,6 +454,7 @@ function handlePromotion(pattern, config) {
 
 /**
  * Promote pattern to decisions.md
+ * Routes through the learning orchestrator for locking and dedup.
  * @param {Object} pattern - Pattern to promote
  */
 function promoteToDecisions(pattern) {
@@ -458,37 +464,39 @@ function promoteToDecisions(pattern) {
   }
 
   try {
-    let content = fs.readFileSync(DECISIONS_PATH, 'utf-8');
-
-    // Find Coding Standards section
-    const sectionHeader = '## Coding Standards';
-
-    if (!content.includes(sectionHeader)) {
-      warn(`Could not promote pattern: Coding Standards section not found in decisions.md`);
-      return;
-    }
-
-    // Generate rule entry (escape markdown special characters in pattern name)
+    const { modifyDecisions } = require('./flow-learning-orchestrator');
     const today = getTodayDate();
     const escapedPattern = pattern.pattern.replace(/[#*_\[\]()\\]/g, '\\$&');
-    const ruleEntry = `\n### ${escapedPattern} (${today})
+
+    modifyDecisions((currentContent) => {
+      let content = currentContent;
+
+      // Find Coding Standards section
+      const sectionHeader = '## Coding Standards';
+
+      if (!content.includes(sectionHeader)) {
+        warn(`Could not promote pattern: Coding Standards section not found in decisions.md`);
+        return null;
+      }
+
+      // Generate rule entry
+      const ruleEntry = `\n### ${escapedPattern} (${today})
 **Source**: Auto-learned from ${pattern.count} occurrences (${pattern.source})
 **Rule**: [Describe the pattern rule here]
 `;
 
-    // Insert after Coding Standards header
-    const insertPoint = content.indexOf(sectionHeader) + sectionHeader.length;
-    const nextSection = content.indexOf('\n## ', insertPoint);
+      // Insert after Coding Standards header
+      const insertPoint = content.indexOf(sectionHeader) + sectionHeader.length;
+      const nextSection = content.indexOf('\n## ', insertPoint);
 
-    if (nextSection > insertPoint) {
-      // Insert before next section
-      content = content.slice(0, nextSection) + ruleEntry + content.slice(nextSection);
-    } else {
-      // Append to section
-      content = content.slice(0, insertPoint) + ruleEntry + content.slice(insertPoint);
-    }
+      if (nextSection > insertPoint) {
+        content = content.slice(0, nextSection) + ruleEntry + content.slice(nextSection);
+      } else {
+        content = content.slice(0, insertPoint) + ruleEntry + content.slice(insertPoint);
+      }
 
-    fs.writeFileSync(DECISIONS_PATH, content, 'utf-8');
+      return { content, entryText: pattern.pattern };
+    }, { caller: 'flow-auto-learn/promoteToDecisions', syncRules: true });
 
     // Update pattern status
     const patterns = loadAutoPatterns();
@@ -496,14 +504,6 @@ function promoteToDecisions(pattern) {
     if (updated) {
       updated.status = 'Promoted';
       saveAutoPatterns(patterns);
-    }
-
-    // Sync rules
-    try {
-      require('./flow-rules-sync');
-    } catch (syncErr) {
-      // Log the failure for debugging
-      info(`Note: Rules sync skipped - ${syncErr.code === 'MODULE_NOT_FOUND' ? 'module not found' : syncErr.message}`);
     }
   } catch (err) {
     warn(`Could not promote to decisions.md: ${err.message}`);

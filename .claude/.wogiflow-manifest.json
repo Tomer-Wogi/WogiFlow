@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedBy": "wogiflow@1.9.10",
-  "generatedAt": "2026-03-14T12:43:39.792Z",
+  "generatedBy": "wogiflow@2.4.2",
+  "generatedAt": "2026-03-25T15:50:24.236Z",
   "files": [
     "commands/wogi-audit.md",
     "commands/wogi-bug.md",
@@ -9,7 +9,6 @@
     "commands/wogi-bulk.md",
     "commands/wogi-capture.md",
     "commands/wogi-changelog.md",
-    "commands/wogi-pre-compact.md",
     "commands/wogi-config.md",
     "commands/wogi-context.md",
     "commands/wogi-correction.md",
@@ -46,7 +45,9 @@
     "commands/wogi-morning.md",
     "commands/wogi-onboard.md",
     "commands/wogi-peer-review.md",
+    "commands/wogi-pending.md",
     "commands/wogi-plan.md",
+    "commands/wogi-pre-compact.md",
     "commands/wogi-ready.md",
     "commands/wogi-register.md",
     "commands/wogi-rescan.md",
@@ -147,6 +148,7 @@
     "rules/architecture/component-reuse.md",
     "rules/code-style/naming-conventions.md",
     "rules/operations/git-workflows.md",
+    "rules/operations/scratch-directory.md",
     "rules/security/security-patterns.md",
     "settings.json"
   ],

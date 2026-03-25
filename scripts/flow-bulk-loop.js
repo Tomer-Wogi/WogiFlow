@@ -339,9 +339,7 @@ async function runCompact() {
  * Sleep for specified milliseconds
  * @param {number} ms - Milliseconds to sleep
  */
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+const { setTimeout: sleep } = require('node:timers/promises');
 
 /**
  * Format duration in human-readable form

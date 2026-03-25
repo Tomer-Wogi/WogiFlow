@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * Wogi Flow - Cascade Completion (v3.2)
  *

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Schema/Model Registry Plugin
  *

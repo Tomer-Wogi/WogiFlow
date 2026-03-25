@@ -23,8 +23,6 @@
  *   const ready = await ensureDeps('ui');
  */
 
-'use strict';
-
 const { execSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');

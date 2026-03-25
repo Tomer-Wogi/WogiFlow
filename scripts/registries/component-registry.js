@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Component Registry Plugin
  *

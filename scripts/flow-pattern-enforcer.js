@@ -597,16 +597,18 @@ ${userReason ? `**Reason**: ${userReason}` : ''}
 
 /**
  * Add a cross-session rule to decisions.md
- * Uses file locking to prevent race conditions with concurrent writes
+ * Routes through the learning orchestrator for centralized locking and dedup.
  */
 function addCrossSessionRuleToDecisions(rule, category) {
-  const decisionsPath = PATHS.decisions;
-
   try {
-    // Use file locking to prevent race conditions
-    return withLockSync(decisionsPath, () => {
-      if (!fileExists(decisionsPath)) {
-        const template = `# Project Decisions
+    const { modifyDecisions } = require('./flow-learning-orchestrator');
+
+    // modifyDecisions is async; fire-and-forget for sync callers
+    const result = modifyDecisions((currentContent) => {
+      let content = currentContent;
+
+      if (!content) {
+        content = `# Project Decisions
 
 This document captures project-level coding rules and patterns.
 
@@ -625,16 +627,12 @@ This document captures project-level coding rules and patterns.
 ## General
 
 `;
-        writeFile(decisionsPath, template);
       }
-
-      let content = readFile(decisionsPath, '');
 
       const sectionHeader = `## ${category}`;
       const sectionIndex = content.indexOf(sectionHeader);
 
       if (sectionIndex === -1) {
-        // Category doesn't exist - add it with the rule
         content += `\n${sectionHeader}\n\n${rule}\n`;
       } else {
         const afterSection = content.slice(sectionIndex + sectionHeader.length);
@@ -648,9 +646,17 @@ This document captures project-level coding rules and patterns.
         }
       }
 
-      writeFile(decisionsPath, content);
-      return { success: true };
-    });
+      return { content, entryText: rule.slice(0, 100) };
+    }, { caller: 'flow-pattern-enforcer/addCrossSessionRule' });
+
+    // Handle async result for sync callers
+    if (result && result.then) {
+      result.catch(_err => {
+        if (process.env.DEBUG) console.error(`[DEBUG] addCrossSessionRuleToDecisions: ${_err.message}`);
+      });
+    }
+
+    return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
   }

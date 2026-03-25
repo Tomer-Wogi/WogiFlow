@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Config Substitution
  *

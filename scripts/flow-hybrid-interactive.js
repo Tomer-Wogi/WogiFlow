@@ -10,7 +10,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const http = require('node:http');
 const { HttpClient } = require('./flow-http-client');
 const { URL, URLSearchParams } = require('node:url');
@@ -94,12 +94,9 @@ async function prompt(question) {
     output: process.stdout
   });
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
+  const answer = await rl.question(question);
+  rl.close();
+  return answer.trim();
 }
 
 class Spinner {

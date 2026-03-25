@@ -890,10 +890,14 @@ function updateDecisionsMd(selections, technologies, projectRoot) {
   // Append tech stack section
   content = content.trimEnd() + '\n' + techStackSection;
 
-  fs.writeFileSync(decisionsPath, content, 'utf8');
-
-  // Sync to .claude/rules/ for Claude Code integration
-  syncDecisionsToRules();
+  // Route through orchestrator for locking and dedup
+  try {
+    const { writeToDecisions } = require('./flow-learning-orchestrator');
+    writeToDecisions({ content, entryText: 'Tech Stack (auto-generated)', caller: 'flow-skill-generator/updateDecisions', skipDedup: true, syncRules: true }).catch(() => {});
+  } catch (_err) {
+    fs.writeFileSync(decisionsPath, content, 'utf8');
+    syncDecisionsToRules();
+  }
 }
 
 function updateConfigJson(technologies, _projectRoot) {

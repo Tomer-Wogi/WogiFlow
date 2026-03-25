@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * Rollback Manager - Extracted from flow-orchestrate.js
  *

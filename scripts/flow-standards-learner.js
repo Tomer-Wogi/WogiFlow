@@ -404,9 +404,22 @@ function recordViolationPattern(learning) {
     }
   }
 
-  // Write updated content
+  // Write updated content through orchestrator
   try {
-    fs.writeFileSync(FEEDBACK_PATTERNS_PATH, content, 'utf-8');
+    const { writeToFeedbackPatterns } = require('./flow-learning-orchestrator');
+    const writeResult = writeToFeedbackPatterns({
+      content,
+      entryText: patternKey,
+      caller: 'flow-standards-learner/recordViolationPattern',
+      skipDedup: true // We already handle dedup via patternRegex above
+    });
+    // writeToFeedbackPatterns is async but we handle it fire-and-forget here
+    // since the sync callers can't await. The lock still protects the write.
+    if (writeResult && writeResult.then) {
+      writeResult.catch(err => {
+        if (process.env.DEBUG) console.error(`[DEBUG] recordViolationPattern write: ${err.message}`);
+      });
+    }
   } catch (err) {
     return { recorded: false, reason: err.message };
   }
@@ -508,24 +521,30 @@ ${learning.ruleTemplate}
     content += ruleEntry;
   }
 
-  // Write updated content
+  // Write updated content through orchestrator
   try {
-    fs.writeFileSync(DECISIONS_PATH, content, 'utf-8');
-  } catch (err) {
-    return { promoted: false, reason: err.message };
-  }
+    const { writeToDecisions, modifyFeedbackPatterns } = require('./flow-learning-orchestrator');
+    const writeResult = writeToDecisions({
+      content,
+      entryText: learning.patternName,
+      caller: 'flow-standards-learner/promoteToDecisions'
+    });
+    if (writeResult && writeResult.then) {
+      writeResult.catch(err => {
+        if (process.env.DEBUG) console.error(`[DEBUG] promoteToDecisions write: ${err.message}`);
+      });
+    }
 
-  // Update feedback-patterns.md to mark as promoted
-  try {
-    let patternsContent = readFile(FEEDBACK_PATTERNS_PATH, '');
+    // Update feedback-patterns.md to mark as promoted
     const patternKey = `${learning.violationType}-${learning.patternName}`.replace(/\s+/g, '-').toLowerCase();
-    // escapeRegex prevents ReDoS from patternKey with regex metacharacters
     const escapedPromoteKey = escapeRegex(patternKey);
-    patternsContent = patternsContent.replace(
-      new RegExp(`(\\|\\s*[\\d-]+\\s*\\|\\s*${escapedPromoteKey}\\s*\\|\\s*\\d+\\s*\\|)\\s*-\\s*\\|\\s*Monitor\\s*\\|`, 'i'),
-      `$1 decisions.md | **PROMOTED** |`
-    );
-    fs.writeFileSync(FEEDBACK_PATTERNS_PATH, patternsContent, 'utf-8');
+    modifyFeedbackPatterns((currentContent) => {
+      const updated = currentContent.replace(
+        new RegExp(`(\\|\\s*[\\d-]+\\s*\\|\\s*${escapedPromoteKey}\\s*\\|\\s*\\d+\\s*\\|)\\s*-\\s*\\|\\s*Monitor\\s*\\|`, 'i'),
+        `$1 decisions.md | **PROMOTED** |`
+      );
+      return { content: updated };
+    }, { caller: 'flow-standards-learner/promoteToDecisions-markPromoted', skipDedup: true });
   } catch (err) {
     // Non-fatal, rule was already promoted to decisions
   }

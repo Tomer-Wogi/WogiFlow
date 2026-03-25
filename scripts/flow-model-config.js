@@ -403,115 +403,81 @@ async function testLocalProvider(endpoint) {
  * Test LM Studio provider
  */
 async function testLMStudio(baseEndpoint) {
-  const http = require('node:http');
-
-  return new Promise((resolve) => {
+  try {
     // LM Studio uses OpenAI-compatible endpoint
     const endpoint = baseEndpoint.replace(':11434', ':1234');
     const url = new URL('/v1/models', endpoint);
 
-    const req = http.request(url, { method: 'GET', timeout: 5000 }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          const models = parsed.data?.map(m => m.id) || [];
-          resolve({
-            success: true,
-            message: `Connected to LM Studio. Found ${models.length} models.`,
-            models,
-            provider: 'lmstudio'
-          });
-        } catch (err) {
-          resolve({ success: false, message: 'No local LLM detected' });
-        }
-      });
-    });
-
-    req.on('error', () => {
-      resolve({ success: false, message: 'No local LLM detected at localhost:11434 or :1234' });
-    });
-
-    req.end();
-  });
+    const res = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(5000) });
+    const parsed = await res.json();
+    const models = parsed.data?.map(m => m.id) || [];
+    return {
+      success: true,
+      message: `Connected to LM Studio. Found ${models.length} models.`,
+      models,
+      provider: 'lmstudio'
+    };
+  } catch (_err) {
+    return { success: false, message: 'No local LLM detected at localhost:11434 or :1234' };
+  }
 }
 
 /**
  * Test cloud provider connection
  */
 async function testCloudProvider(providerName, endpoint, apiKey) {
-  const https = require('node:https');
+  let url, headers;
 
-  return new Promise((resolve, reject) => {
-    let url, headers;
+  switch (providerName) {
+    case 'openai':
+      url = new URL('/v1/models', endpoint);
+      headers = { 'Authorization': `Bearer ${apiKey}` };
+      break;
+    case 'google':
+      url = new URL('/v1beta/models', endpoint);
+      headers = { 'x-goog-api-key': apiKey };
+      break;
+    case 'anthropic':
+      // Anthropic doesn't have a models list endpoint, just test with a simple check
+      return { success: true, message: 'API key format valid (Anthropic)' };
+    default:
+      throw new Error(`Unknown cloud provider: ${providerName}`);
+  }
 
-    switch (providerName) {
-      case 'openai':
-        url = new URL('/v1/models', endpoint);
-        headers = { 'Authorization': `Bearer ${apiKey}` };
-        break;
-      case 'google':
-        url = new URL('/v1beta/models', endpoint);
-        headers = { 'x-goog-api-key': apiKey };
-        break;
-      case 'anthropic':
-        // Anthropic doesn't have a models list endpoint, just test with a simple check
-        resolve({ success: true, message: 'API key format valid (Anthropic)' });
-        return;
-      default:
-        reject(new Error(`Unknown cloud provider: ${providerName}`));
-        return;
+  const res = await fetch(url, { method: 'GET', headers, signal: AbortSignal.timeout(10000) });
+
+  if (res.status === 200) {
+    try {
+      const parsed = await res.json();
+
+      // Check for prototype pollution in API response
+      if (hasDangerousKeys(parsed)) {
+        return { success: false, message: 'Invalid API response (security check failed)' };
+      }
+
+      let models = [];
+
+      if (providerName === 'openai') {
+        models = parsed.data?.map(m => m.id).filter(id =>
+          id.startsWith('gpt-4') || id.startsWith('o1')
+        ).slice(0, 10) || [];
+      } else if (providerName === 'google') {
+        models = parsed.models?.map(m => m.name.replace('models/', '')) || [];
+      }
+
+      return {
+        success: true,
+        message: `Connected to ${providerName}. Found ${models.length} models.`,
+        models
+      };
+    } catch (_err) {
+      return { success: true, message: `Connected to ${providerName}` };
     }
-
-    const req = https.request(url, { method: 'GET', headers, timeout: 10000 }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode === 200) {
-          try {
-            const parsed = JSON.parse(data);
-
-            // Check for prototype pollution in API response
-            if (hasDangerousKeys(parsed)) {
-              resolve({ success: false, message: 'Invalid API response (security check failed)' });
-              return;
-            }
-
-            let models = [];
-
-            if (providerName === 'openai') {
-              models = parsed.data?.map(m => m.id).filter(id =>
-                id.startsWith('gpt-4') || id.startsWith('o1')
-              ).slice(0, 10) || [];
-            } else if (providerName === 'google') {
-              models = parsed.models?.map(m => m.name.replace('models/', '')) || [];
-            }
-
-            resolve({
-              success: true,
-              message: `Connected to ${providerName}. Found ${models.length} models.`,
-              models
-            });
-          } catch (err) {
-            resolve({ success: true, message: `Connected to ${providerName}` });
-          }
-        } else if (res.statusCode === 401) {
-          resolve({ success: false, message: 'Invalid API key' });
-        } else {
-          resolve({ success: false, message: `API error: ${res.statusCode}` });
-        }
-      });
-    });
-
-    req.on('error', (err) => reject(err));
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Connection timeout'));
-    });
-
-    req.end();
-  });
+  } else if (res.status === 401) {
+    return { success: false, message: 'Invalid API key' };
+  } else {
+    return { success: false, message: `API error: ${res.status}` };
+  }
 }
 
 /**

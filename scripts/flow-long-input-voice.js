@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Long Input Processing - Voice Answer Integration (E2-S3)
  *

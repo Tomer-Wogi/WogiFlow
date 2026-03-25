@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Output Utilities
  *

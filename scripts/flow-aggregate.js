@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const {
   PATHS,
   PROJECT_ROOT,
@@ -386,7 +386,7 @@ async function runPromotionWizard(data) {
     output: process.stdout
   });
 
-  const prompt = (q) => new Promise(r => rl.question(q, r));
+  const prompt = (q) => rl.question(q);
 
   console.log(color('cyan', 'Pattern Promotion Wizard'));
   console.log('');
@@ -435,10 +435,15 @@ function appendToDecisions(pattern) {
   const entry = `\n## ${date} - Promoted Pattern\n\n**Rule**: ${pattern}\n**Source**: Aggregated from learnings (3+ occurrences)\n\n`;
 
   content += entry;
-  writeFile(decisionsPath, content);
 
-  // Sync to .claude/rules/ for Claude Code integration
-  syncDecisionsToRules();
+  // Route through orchestrator for locking and dedup
+  try {
+    const { writeToDecisions } = require('./flow-learning-orchestrator');
+    writeToDecisions({ content, entryText: pattern, caller: 'flow-aggregate/appendToDecisions', syncRules: true }).catch(() => {});
+  } catch (_err) {
+    writeFile(decisionsPath, content);
+    syncDecisionsToRules();
+  }
 }
 
 /**

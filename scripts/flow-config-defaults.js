@@ -27,8 +27,6 @@
  *   bulkLoop, corrections, agents (top-level list)
  */
 
-'use strict';
-
 // ============================================================
 // Static Data Constants (large objects extracted for readability)
 // ============================================================

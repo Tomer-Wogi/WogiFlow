@@ -17,7 +17,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const { colors: c, getProjectRoot, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn, error: printError } = require('./flow-output');
 
@@ -462,12 +462,9 @@ async function confirmApply(diffs) {
     output: process.stdout
   });
 
-  return new Promise((resolve) => {
-    rl.question(`\nApply these changes? [${c.green}y${c.reset}/${c.red}N${c.reset}]: `, (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-    });
-  });
+  const answer = await rl.question(`\nApply these changes? [${c.green}y${c.reset}/${c.red}N${c.reset}]: `);
+  rl.close();
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }
 
 /**

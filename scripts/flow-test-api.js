@@ -16,8 +16,6 @@
  *   const { runAPITests, parseAPIMap, executeAPITest, validateResponseSchema } = require('./flow-test-api');
  */
 
-'use strict';
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -647,7 +645,7 @@ async function startAPIServer(command, baseUrl, timeout = SERVER_READY_TIMEOUT) 
     // Check if process already exited with error
     const exitResult = await Promise.race([
       processExited,
-      new Promise(resolve => setTimeout(() => resolve(null), SERVER_POLL_INTERVAL))
+      require('node:timers/promises').setTimeout(SERVER_POLL_INTERVAL, null)
     ]);
 
     if (exitResult && exitResult.exitError) {

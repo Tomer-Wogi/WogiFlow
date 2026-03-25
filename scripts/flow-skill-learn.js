@@ -638,7 +638,19 @@ function logToFeedbackPatterns(context, unmatchedFiles) {
     content = content.slice(0, headerEnd) + entry + '\n' + content.slice(headerEnd);
   }
 
-  fs.writeFileSync(feedbackPath, content);
+  try {
+    const { writeToFeedbackPatterns } = require('./flow-learning-orchestrator');
+    writeToFeedbackPatterns({
+      content,
+      entryText: `Files changed with no matching skill: ${filesPreview}`,
+      caller: 'flow-skill-learn/logToFeedbackPatterns',
+      skipDedup: true // We already handle dedup above via foundExisting check
+    }).catch(_err => {
+      if (process.env.DEBUG) console.error(`[DEBUG] logToFeedbackPatterns: ${_err.message}`);
+    });
+  } catch (_err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] logToFeedbackPatterns: ${_err.message}`);
+  }
 }
 
 // ============================================================

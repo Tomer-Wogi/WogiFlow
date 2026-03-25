@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Long Input Processing - Large Input Detection & Content Classification
  *

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Context Manager Facade
  *

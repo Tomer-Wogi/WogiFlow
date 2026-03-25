@@ -6,7 +6,7 @@
  * and "Let AI decide" option for intelligent defaults
  */
 
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const path = require('node:path');
 const fs = require('node:fs');
 
@@ -907,12 +907,9 @@ const { PATHS } = require('./flow-utils');
   // INPUT HELPERS
   // ============================================
 
-  askQuestion(prompt) {
-    return new Promise((resolve) => {
-      this.rl.question(prompt, (answer) => {
-        resolve(answer.trim());
-      });
-    });
+  async askQuestion(prompt) {
+    const answer = await this.rl.question(prompt);
+    return answer.trim();
   }
 
   async askSingleChoice(question, options, defaultValue = null) {

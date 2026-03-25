@@ -63,10 +63,10 @@
   "optionalDependencies": {
     "@babel/parser": "^7.29.2",
     "@babel/traverse": "^7.29.0",
-    "@xenova/transformers": "^2.15.0"
+    "@huggingface/transformers": "^3.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.0.0"
+    "eslint": "^10.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

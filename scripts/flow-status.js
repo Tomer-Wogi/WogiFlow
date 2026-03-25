@@ -105,9 +105,9 @@ function collectStatus() {
   if (fileExists(PATHS.config)) {
     const config = getConfig();
     status.config = {
-      mandatoryAfterTask: config.mandatorySteps?.afterTask || [],
-      strictMode: config.enforcement?.strictMode || false,
-      priorities: config.priorities || {}
+      mandatoryAfterTask: config.mandatorySteps?.afterTask ?? [],
+      strictMode: config.enforcement?.strictMode ?? false,
+      priorities: config.priorities ?? {}
     };
   }
 
@@ -188,7 +188,7 @@ function main() {
   if (status.git.isRepo) {
     printSection('Git');
     console.log(`  Branch: ${status.git.branch || 'unknown'}`);
-    console.log(`  Uncommitted: ${status.git.uncommitted || 0} files`);
+    console.log(`  Uncommitted: ${status.git.uncommitted ?? 0} files`);
     console.log('');
   }
 
@@ -229,7 +229,7 @@ function main() {
     }
 
     // Show recent attempts (last 3)
-    const recentAttempts = (status.bypassTracking.attempts || []).slice(-3);
+    const recentAttempts = (status.bypassTracking.attempts ?? []).slice(-3);
     if (recentAttempts.length > 0) {
       console.log(color('dim', '  Recent attempts:'));
       for (const attempt of recentAttempts) {
@@ -278,7 +278,7 @@ function getRecommendation() {
   const data = getReadyData();
 
   // Check in-progress tasks first
-  const inProgress = data.inProgress || [];
+  const inProgress = data.inProgress ?? [];
   if (inProgress.length > 0) {
     const task = inProgress[0];
     const taskId = typeof task === 'string' ? task : task.id;
@@ -290,7 +290,7 @@ function getRecommendation() {
   }
 
   // Check ready tasks
-  const ready = data.ready || [];
+  const ready = data.ready ?? [];
   if (ready.length > 0) {
     // Find highest priority task (P0=critical, P1=high, P2=medium, P3=low, P4=lowest)
     const priorityOrder = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4 };
@@ -311,7 +311,7 @@ function getRecommendation() {
   }
 
   // Check blocked tasks
-  const blocked = data.blocked || [];
+  const blocked = data.blocked ?? [];
   if (blocked.length > 0) {
     return {
       action: `${blocked.length} task(s) are blocked - resolve dependencies`,

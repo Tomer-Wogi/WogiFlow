@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-'use strict';
-
 /**
  * Template Engine - Extracted from flow-orchestrate.js
  *

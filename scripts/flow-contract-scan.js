@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-'use strict';
-
 /**
  * Wogi Flow - Contract Surface Scanner CLI
  *

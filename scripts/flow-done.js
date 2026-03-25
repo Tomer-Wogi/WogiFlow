@@ -242,7 +242,7 @@ function runQualityGates(taskId, taskType) {
 
   const config = getConfig();
   // Use task-type-specific gates, fall back to feature gates, then empty
-  const normalizedType = (taskType || 'feature').toLowerCase();
+  const normalizedType = (taskType ?? 'feature').toLowerCase();
   const gates = config.qualityGates?.[normalizedType]?.require
     || config.qualityGates?.feature?.require
     || [];
@@ -483,7 +483,7 @@ function runQualityGates(taskId, taskType) {
         if (exitResult.canExit) {
           success(`loopComplete (${exitResult.reason})`);
         } else {
-          error(`loopComplete (${exitResult.pending || 0} pending, ${exitResult.failed || 0} failed)`);
+          error(`loopComplete (${exitResult.pending ?? 0} pending, ${exitResult.failed ?? 0} failed)`);
           errors.loopComplete = exitResult.message || 'Loop not complete';
           failed.push('loopComplete');
         }
@@ -498,9 +498,9 @@ function runQualityGates(taskId, taskType) {
           console.log('  Running integration wiring check...');
           const result = wiringVerifier.verifyWiring(taskId);
           if (result.passed) {
-            success(`integrationWiring (${result.verified || 0} files verified)`);
+            success(`integrationWiring (${result.verified ?? 0} files verified)`);
           } else {
-            const unwiredCount = result.unwired?.length || 0;
+            const unwiredCount = result.unwired?.length ?? 0;
             error(`integrationWiring (${unwiredCount} unwired file${unwiredCount !== 1 ? 's' : ''})`);
             if (result.unwired) {
               for (const item of result.unwired.slice(0, 5)) {
@@ -551,12 +551,12 @@ function runQualityGates(taskId, taskType) {
           const modifiedFiles = getModifiedFiles();
           const taskContext = { id: taskId, type: normalizedType };
           const result = standardsGate.runTaskStandardsCheck(taskContext, modifiedFiles);
-          const mustFixCount = result.violations?.filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').length || 0;
+          const mustFixCount = result.violations?.filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').length ?? 0;
           if (mustFixCount === 0) {
-            success(`standardsCompliance (${result.violations?.length || 0} suggestions, 0 must-fix)`);
+            success(`standardsCompliance (${result.violations?.length ?? 0} suggestions, 0 must-fix)`);
           } else {
             error(`standardsCompliance (${mustFixCount} must-fix violation${mustFixCount !== 1 ? 's' : ''})`);
-            for (const v of (result.violations || []).filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').slice(0, 5)) {
+            for (const v of (result.violations ?? []).filter(v => v.severity === 'MUST_FIX' || v.severity === 'high').slice(0, 5)) {
               console.log(color('dim', `    - ${v.file || ''}:${v.line || ''} ${v.issue || v.message || ''}`));
             }
             errors.standardsCompliance = `${mustFixCount} standards violations require fixing`;
@@ -740,7 +740,7 @@ function runQualityGates(taskId, taskType) {
       }
 
       const gateModes = isUI ? ['ui', 'full', 'auto'] : ['api', 'full', 'auto'];
-      const testingMode = config.testing?.mode || 'off';
+      const testingMode = config.testing?.mode ?? 'off';
       if (config.testing?.enabled && gateModes.includes(testingMode)) {
         if (!validateTaskId(taskId).valid) {
           warn(`${gate} (invalid task ID)`);
@@ -772,15 +772,15 @@ function runQualityGates(taskId, taskType) {
               const errMsg = parsed.error || testResult.stderr?.trim()?.slice(0, 200) || 'Unknown error';
               warn(`${gate} (error: ${errMsg})`);
             } else {
-              const report = safeJsonParseString(testResult.stdout || '{}', {});
-              const summary = report.summary || { passed: 0, failed: 0, total: 0 };
+              const report = safeJsonParseString(testResult.stdout ?? '{}', {});
+              const summary = report.summary ?? { passed: 0, failed: 0, total: 0 };
               if (summary.failed === 0) {
                 success(`${gate} (${summary.passed}/${summary.total} passed)`);
               } else {
                 error(`${gate} (${summary.failed} failed)`);
                 const failedItems = isUI
-                  ? (report.assertions || []).filter(a => a.status === 'failed')
-                  : (report.endpoints || []).flatMap(e => (e.tests || []).filter(t => t.status === 'failed'));
+                  ? (report.assertions ?? []).filter(a => a.status === 'failed')
+                  : (report.endpoints ?? []).flatMap(e => (e.tests ?? []).filter(t => t.status === 'failed'));
                 for (const item of failedItems.slice(0, 5)) {
                   console.log(color('dim', `    - ${item.description || item.name || 'test failed'}`));
                 }
@@ -804,7 +804,7 @@ function runQualityGates(taskId, taskType) {
                     success(`scenarioVerification (${ss.passed}/${ss.total} scenarios passed)`);
                   } else if (ss.failed > 0) {
                     error(`scenarioVerification (${ss.failed} scenarios failed)`);
-                    const failedScenarios = (scenarioReport.scenarios || []).filter(s => !s.passed);
+                    const failedScenarios = (scenarioReport.scenarios ?? []).filter(s => !s.passed);
                     for (const sc of failedScenarios.slice(0, 5)) {
                       console.log(color('dim', `    - ${sc.name || 'unnamed scenario'}: ${sc.error || 'assertions failed'}`));
                     }
@@ -821,7 +821,7 @@ function runQualityGates(taskId, taskType) {
       }
     } else if (gate === 'testDiscovery') {
       // v1.10: Smart test discovery + SWE-bench dual gate
-      const discoveryConfig = config.testing?.discovery || {};
+      const discoveryConfig = config.testing?.discovery ?? {};
       if (discoveryConfig.enabled) {
         if (testDiscovery && typeof testDiscovery.runTestDiscoveryGate === 'function') {
           try {
@@ -1137,7 +1137,7 @@ async function main() {
 
   // Look up task type for type-specific quality gates
   const preGateTask = findTask(taskId);
-  const taskTypeForGates = preGateTask?.task?.type || 'feature';
+  const taskTypeForGates = preGateTask?.task?.type ?? 'feature';
 
   // Run quality gates (type-aware since v1.9.1)
   const gateResult = runQualityGates(taskId, taskTypeForGates);
@@ -1311,7 +1311,11 @@ async function main() {
               if (tableMatch) {
                 const insertPoint = tableMatch.index + tableMatch[0].length;
                 const newContent = content.slice(0, insertPoint) + patternEntry + content.slice(insertPoint);
-                fs.writeFileSync(feedbackPath, newContent);
+                // Route through orchestrator for locking and dedup
+                try {
+                  const { writeToFeedbackPatterns: writeFP } = require('./flow-learning-orchestrator');
+                  writeFP({ content: newContent, entryText: 'high-refinement-request', caller: 'flow-done/highRefinementFlag' }).catch(() => {});
+                } catch (_orcErr) { /* fallback: already computed newContent but orchestrator unavailable */ }
               }
             }
           }
@@ -1375,7 +1379,7 @@ async function main() {
           // Check if task is a child of any story in this epic
           // Use safeJsonParse per security-patterns.md Rule #2
           const readyData = safeJsonParse(PATHS.ready, {});
-          const allTasks = [...(readyData.ready || []), ...(readyData.inProgress || []), ...(readyData.recentlyCompleted || [])];
+          const allTasks = [...(readyData.ready ?? []), ...(readyData.inProgress ?? []), ...(readyData.recentlyCompleted ?? [])];
           return allTasks.some(t => t && typeof t === 'object' && t.parent === s && t.id === taskId);
         })) {
           const progressResult = updateEpicProgress(epic.id);
@@ -1395,7 +1399,7 @@ async function main() {
   // When a feature completes, auto-complete parent epic if all features done
   // When an epic completes, auto-complete parent plan if all epics done
   try {
-    const taskType = result.task?.type || 'story';
+    const taskType = result.task?.type ?? 'story';
     cascadeCompletion(taskId, taskType);
   } catch (err) {
     if (process.env.DEBUG) console.error(`[DEBUG] Cascade completion: ${err.message}`);
@@ -1525,7 +1529,7 @@ async function main() {
   }
 
   // v2.0: Refresh component index after task if configured
-  const scanOn = config.componentIndex?.scanOn || [];
+  const scanOn = config.componentIndex?.scanOn ?? [];
   if (config.componentIndex?.autoScan !== false && scanOn.includes('afterTask')) {
     try {
       console.log(color('dim', '🔄 Refreshing component index...'));
@@ -1543,7 +1547,7 @@ async function main() {
   }
 
   // v2.7: Refresh function registry after task if configured
-  const funcScanOn = config.functionRegistry?.scanOn || [];
+  const funcScanOn = config.functionRegistry?.scanOn ?? [];
   if (config.functionRegistry?.enabled && config.functionRegistry?.autoUpdate !== false &&
       funcScanOn.includes('afterTask')) {
     try {
@@ -1559,7 +1563,7 @@ async function main() {
   }
 
   // v2.7: Refresh API registry after task if configured
-  const apiScanOn = config.apiRegistry?.scanOn || [];
+  const apiScanOn = config.apiRegistry?.scanOn ?? [];
   if (config.apiRegistry?.enabled && config.apiRegistry?.autoUpdate !== false &&
       apiScanOn.includes('afterTask')) {
     try {

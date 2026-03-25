@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Model Types & Shared Registry Access
  *

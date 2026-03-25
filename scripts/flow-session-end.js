@@ -10,7 +10,7 @@ const {
   execSync,
   execFileSync,
   spawnSync } = require('node:child_process');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const path = require('node:path');
 const {
   PATHS,
@@ -110,18 +110,15 @@ try {
 /**
  * Prompt user for input
  */
-function prompt(question) {
+async function prompt(question) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
   });
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close();
-      resolve(answer);
-    });
-  });
+  const answer = await rl.question(question);
+  rl.close();
+  return answer;
 }
 
 /**
@@ -133,7 +130,7 @@ function checkRequirements() {
   console.log(color('yellow', 'Checking session-end requirements...'));
 
   const config = getConfig();
-  const steps = config.mandatorySteps?.onSessionEnd || [];
+  const steps = config.mandatorySteps?.onSessionEnd ?? [];
 
   if (steps.length > 0) {
     console.log('Required:');
@@ -245,7 +242,7 @@ function analyzeSessionForLearnings() {
   if (!sessionLearning) return;
 
   const config = getConfig();
-  const sessionLearningConfig = config.learning?.session || {};
+  const sessionLearningConfig = config.learning?.session ?? {};
 
   // Check if enabled (default: true)
   if (sessionLearningConfig.enabled === false) return;
@@ -351,7 +348,7 @@ function reviewPendingCorrections() {
 
       const truncatedMsg = correction.userMessage?.length > 60
         ? correction.userMessage.slice(0, 60) + '...'
-        : correction.userMessage || '(empty)';
+        : correction.userMessage ?? '(empty)';
 
       console.log(`  ${i + 1}. ${color(confidenceColor, `[${correction.confidence}%]`)} ${correction.correctionType || 'unknown'}`);
       console.log(`     "${truncatedMsg}"`);
@@ -408,7 +405,7 @@ function analyzeCrossSessionPatterns() {
   if (!sessionLearning || !patternEnforcer) return null;
 
   const config = getConfig();
-  const crossSessionConfig = config.learning?.crossSession || {};
+  const crossSessionConfig = config.learning?.crossSession ?? {};
 
   // Check if enabled (default: true)
   if (crossSessionConfig.enabled === false) return null;
@@ -421,8 +418,8 @@ function analyzeCrossSessionPatterns() {
     }
 
     const patterns = sessionLearning.detectCrossSessionPatterns({
-      lookbackDays: crossSessionConfig.lookbackDays || 30,
-      minOccurrences: crossSessionConfig.minOccurrences || 3,
+      lookbackDays: crossSessionConfig.lookbackDays ?? 30,
+      minOccurrences: crossSessionConfig.minOccurrences ?? 3,
       similarityThreshold: threshold
     });
 
@@ -481,9 +478,9 @@ function saveSessionSummaryToState() {
 
     // Build summary from session data
     const summary = {
-      tasksCompleted: sessionState.metrics?.tasksCompleted || 0,
-      filesModified: sessionState.recentFiles?.slice(0, 5) || [],
-      decisions: sessionState.recentDecisions?.map(d => d.decision).slice(0, 3) || [],
+      tasksCompleted: sessionState.metrics?.tasksCompleted ?? 0,
+      filesModified: sessionState.recentFiles?.slice(0, 5) ?? [],
+      decisions: sessionState.recentDecisions?.map(d => d.decision).slice(0, 3) ?? [],
       summary: memoryBlocks?.keyFacts?.slice(-3).join('; ') || 'Session ended'
     };
 
@@ -625,7 +622,7 @@ async function automaticMemoryManagement() {
   if (!memoryDb) return;
 
   const config = getConfig();
-  const memConfig = config.memory?.automatic || {};
+  const memConfig = config.memory?.automatic ?? {};
 
   if (!memConfig.enabled) return;
 
@@ -636,8 +633,8 @@ async function automaticMemoryManagement() {
     // 1. Apply relevance decay
     if (memConfig.relevanceDecay?.enabled !== false) {
       const decayResult = await memoryDb.applyRelevanceDecay({
-        decayRate: memConfig.relevanceDecay?.decayRate || 0.033,
-        neverAccessedPenalty: memConfig.relevanceDecay?.neverAccessedPenalty || 0.1
+        decayRate: memConfig.relevanceDecay?.decayRate ?? 0.033,
+        neverAccessedPenalty: memConfig.relevanceDecay?.neverAccessedPenalty ?? 0.1
       });
       if (decayResult.decayed > 0) {
         console.log(`  Relevance decay: ${decayResult.decayed} facts updated`);
@@ -645,10 +642,10 @@ async function automaticMemoryManagement() {
     }
 
     // 2. Check entropy and compact if needed
-    const memoryConfig = { maxLocalFacts: config.memory?.maxLocalFacts || 1000 };
+    const memoryConfig = { maxLocalFacts: config.memory?.maxLocalFacts ?? 1000 };
     const entropy = await memoryDb.getEntropyStats(memoryConfig);
 
-    const _threshold = memConfig.entropyThreshold || 0.7;  
+    const _threshold = memConfig.entropyThreshold ?? 0.7;
     const statusColor = entropy.status === 'healthy' ? 'green'
       : entropy.status === 'moderate' ? 'yellow' : 'red';
 
@@ -660,7 +657,7 @@ async function automaticMemoryManagement() {
 
       // Demote low-relevance facts
       const demotion = await memoryDb.demoteToColdStorage({
-        relevanceThreshold: memConfig.demotion?.relevanceThreshold || 0.3
+        relevanceThreshold: memConfig.demotion?.relevanceThreshold ?? 0.3
       });
       if (demotion.demoted > 0) {
         console.log(`    Demoted: ${demotion.demoted} facts`);
@@ -674,7 +671,7 @@ async function automaticMemoryManagement() {
 
       // Purge old cold facts
       const purge = await memoryDb.purgeColdFacts({
-        coldRetentionDays: memConfig.demotion?.coldRetentionDays || 90
+        coldRetentionDays: memConfig.demotion?.coldRetentionDays ?? 90
       });
       if (purge.purged > 0) {
         console.log(`    Purged: ${purge.purged} old facts`);
@@ -682,11 +679,11 @@ async function automaticMemoryManagement() {
     }
 
     // 3. Check for promotion candidates and auto-promote if enabled
-    const promoConfig = config.memory?.promotion || {};
+    const promoConfig = config.memory?.promotion ?? {};
     if (promoConfig.enabled) {
       const candidates = await memoryDb.getPromotionCandidates({
-        minRelevance: promoConfig.minRelevance || 0.8,
-        minAccessCount: promoConfig.threshold || 3
+        minRelevance: promoConfig.minRelevance ?? 0.8,
+        minAccessCount: promoConfig.threshold ?? 3
       });
 
       const unpromoted = candidates.filter(c => !c.promoted_to);
@@ -803,7 +800,7 @@ async function syncRulesIfChanged() {
  */
 async function offerKnowledgeSync() {
   const config = getConfig();
-  const morningConfig = config.morningBriefing || {};
+  const morningConfig = config.morningBriefing ?? {};
 
   // Skip if disabled or if auto-regenerate handled it in morning
   if (morningConfig.checkKnowledgeSync === false) {
@@ -867,7 +864,7 @@ async function offerKnowledgeSync() {
  */
 async function offerDebtCleanup() {
   const config = getConfig();
-  const techDebtConfig = config.techDebt || {};
+  const techDebtConfig = config.techDebt ?? {};
 
   if (!techDebtConfig.promptOnSessionEnd) {
     return;
@@ -990,7 +987,7 @@ async function offerDebtCleanup() {
 async function cleanupStaleTasks() {
   try {
     const readyData = getReadyData();
-    const inProgress = readyData.inProgress || [];
+    const inProgress = readyData.inProgress ?? [];
 
     // Find auto-created tasks
     const autoCreatedTasks = inProgress.filter(task =>
@@ -1088,7 +1085,7 @@ async function cleanupStaleTasks() {
           completedBy: 'session-end-cleanup'
         };
 
-        readyData.recentlyCompleted = readyData.recentlyCompleted || [];
+        readyData.recentlyCompleted = readyData.recentlyCompleted ?? [];
         readyData.recentlyCompleted.unshift(completedTask);
         readyData.recentlyCompleted = readyData.recentlyCompleted.slice(0, 10);
       }

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Architecture/Service Registry Plugin
  *

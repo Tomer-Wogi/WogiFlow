@@ -17,7 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const readline = require('node:readline');
+const readline = require('node:readline/promises');
 const { colors, printHeader, safeJsonParse } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 
@@ -105,7 +105,7 @@ async function interactiveSetup() {
     output: process.stdout
   });
 
-  const question = (q) => new Promise(resolve => rl.question(q, resolve));
+  const question = (q) => rl.question(q);
 
   printHeader('Status Line Setup');
   showCurrentConfig();

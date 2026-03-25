@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Wogi Flow - Pending Prompts Queue
  *
