@@ -407,75 +407,14 @@ function getConfigValue(configPath, defaultValue = null) {
 }
 
 /**
- * Update config value (uses locking to prevent race conditions)
- * SECURITY: Always acquires lock before writing to prevent data corruption
+ * Apply a value at a dot-notation path on a config object.
+ * Shared logic between setConfigValue (async, locked) and setConfigValueSync.
+ *
  * @param {string} configPath - Dot-notation path (e.g., 'parallel.enabled')
  * @param {*} newValue - New value to set
- * @returns {Promise<void>}
- * @throws {Error} If lock cannot be acquired after retries
+ * @param {object} config - Config object to mutate
  */
-async function setConfigValue(configPath, newValue) {
-  // Validate path to prevent prototype pollution
-  if (!isValidConfigPath(configPath)) {
-    throw new Error(`Invalid config path: ${configPath}`);
-  }
-
-  // Use file lock to prevent concurrent writes
-  const lockPath = PATHS.config;
-  let release;
-
-  try {
-    // More retries with exponential backoff for better reliability
-    release = await acquireLock(lockPath, { retries: 5, retryDelay: 100, exponentialBackoff: true });
-  } catch (err) {
-    // SECURITY: Don't fall back to non-locked write - throw instead
-    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`, { cause: err });
-  }
-
-  try {
-    // Re-read config after acquiring lock (may have changed)
-    invalidateConfigCache();
-    const config = getConfig();
-    const parts = configPath.split('.');
-    let obj = config;
-
-    for (let i = 0; i < parts.length - 1; i++) {
-      const part = parts[i];
-      if (!Object.hasOwn(obj, part)) {
-        obj[part] = {};
-      }
-      obj = obj[part];
-    }
-
-    obj[parts[parts.length - 1]] = newValue;
-    writeJson(PATHS.config, config);
-    invalidateConfigCache();
-
-    // Auto-sync .gitignore only when config keys affect gitignore mappings
-    if (configPath.startsWith('testing.') || configPath.startsWith('webmcp.')) {
-      try {
-        const { syncGitignore } = require('./flow-gitignore');
-        syncGitignore(config);
-      } catch (err) {
-        // Non-blocking — gitignore sync should never fail config writes
-      }
-    }
-  } finally {
-    if (release) release();
-  }
-}
-
-/**
- * Update config value (synchronous version - no locking)
- * Use setConfigValue for concurrent-safe writes
- */
-function setConfigValueSync(configPath, newValue) {
-  // Validate path to prevent prototype pollution
-  if (!isValidConfigPath(configPath)) {
-    throw new Error(`Invalid config path: ${configPath}`);
-  }
-
-  const config = getConfig();
+function _applyConfigPath(configPath, newValue, config) {
   const parts = configPath.split('.');
   let obj = config;
 
@@ -496,10 +435,54 @@ function setConfigValueSync(configPath, newValue) {
     try {
       const { syncGitignore } = require('./flow-gitignore');
       syncGitignore(config);
-    } catch (err) {
+    } catch (_err) {
       // Non-blocking — gitignore sync should never fail config writes
     }
   }
+}
+
+/**
+ * Update config value (uses locking to prevent race conditions)
+ * SECURITY: Always acquires lock before writing to prevent data corruption
+ * @param {string} configPath - Dot-notation path (e.g., 'parallel.enabled')
+ * @param {*} newValue - New value to set
+ * @returns {Promise<void>}
+ * @throws {Error} If lock cannot be acquired after retries
+ */
+async function setConfigValue(configPath, newValue) {
+  if (!isValidConfigPath(configPath)) {
+    throw new Error(`Invalid config path: ${configPath}`);
+  }
+
+  const lockPath = PATHS.config;
+  let release;
+
+  try {
+    release = await acquireLock(lockPath, { retries: 5, retryDelay: 100, exponentialBackoff: true });
+  } catch (err) {
+    throw new Error(`Could not acquire config lock after retries: ${err.message}. Config not updated.`, { cause: err });
+  }
+
+  try {
+    invalidateConfigCache();
+    const config = getConfig();
+    _applyConfigPath(configPath, newValue, config);
+  } finally {
+    if (release) release();
+  }
+}
+
+/**
+ * Update config value (synchronous version - no locking)
+ * Use setConfigValue for concurrent-safe writes
+ */
+function setConfigValueSync(configPath, newValue) {
+  if (!isValidConfigPath(configPath)) {
+    throw new Error(`Invalid config path: ${configPath}`);
+  }
+
+  const config = getConfig();
+  _applyConfigPath(configPath, newValue, config);
 }
 
 /**

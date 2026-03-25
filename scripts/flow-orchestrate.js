@@ -791,6 +791,45 @@ const compactionStrategies = {
   },
 
   /**
+   * Truncate code blocks (``` markers) to maxLines per block
+   */
+  truncateCodeBlocks(text, maxLines = 100) {
+    const codeBlockRegex = /```[\s\S]*?```/g;
+    return text.replace(codeBlockRegex, (match) => {
+      const content = match.slice(3, -3); // Remove ``` markers
+      if (content.split('\n').length > maxLines) {
+        const truncated = compactionStrategies.truncateFileContent(content, maxLines);
+        return '```' + truncated + '```';
+      }
+      return match;
+    });
+  },
+
+  /**
+   * Truncate {{currentContent}} template blocks exceeding charLimit
+   */
+  truncateCurrentContent(text, charLimit = 5000, maxLines = 150) {
+    const currentContentMatch = text.match(/{{currentContent}}[\s\S]*?(?=##|$)/);
+    if (currentContentMatch && currentContentMatch[0].length > charLimit) {
+      const lines = currentContentMatch[0].split('\n');
+      const truncated = compactionStrategies.truncateFileContent(lines.slice(1).join('\n'), maxLines);
+      return text.replace(currentContentMatch[0], '{{currentContent}}\n' + truncated + '\n\n');
+    }
+    return text;
+  },
+
+  /**
+   * Aggressive last-resort truncation to fit within token budget
+   */
+  aggressiveTruncate(text, availableTokens, estimateTokensFn) {
+    const tokens = estimateTokensFn(text);
+    if (tokens <= availableTokens) return text;
+    const ratio = availableTokens / tokens;
+    const targetLength = Math.floor(text.length * ratio * 0.9); // 10% safety margin
+    return text.slice(0, targetLength) + '\n\n[Content truncated to fit context window]';
+  },
+
+  /**
    * Truncate search results array to prevent context overflow
    * @param {Array} results - Array of search results with optional content
    * @param {number} maxResults - Maximum number of results to keep
@@ -829,96 +868,82 @@ const compactionStrategies = {
 };
 
 /**
- * Auto-compacts a prompt to fit within context window.
- * Returns { prompt, wasCompacted, originalTokens, finalTokens }
+ * Calculates available token budget after reserving output tokens.
+ * Caps reserve at 50% of context window to prevent zero-budget bugs.
  */
-function autoCompactPrompt(prompt, contextWindow, reserveForOutput = 2048) {
-  // Sanity check: never reserve more than 50% of context window
-  // This prevents the bug where maxTokens == contextWindow causing availableTokens = 0
+function calcAvailableTokens(contextWindow, reserveForOutput) {
   const maxReserve = Math.floor(contextWindow / 2);
   if (reserveForOutput > maxReserve) {
     log('dim', `   📊 Capping output reserve from ${reserveForOutput} to ${maxReserve} tokens`);
     reserveForOutput = maxReserve;
   }
-
-  const availableTokens = contextWindow - reserveForOutput;
-
-  // Another sanity check: ensure we have at least 1024 tokens for the prompt
-  if (availableTokens < 1024) {
-    log('yellow', `   ⚠️ Warning: Very low available tokens (${availableTokens}). Context: ${contextWindow}, Reserve: ${reserveForOutput}`);
+  const available = contextWindow - reserveForOutput;
+  if (available < 1024) {
+    log('yellow', `   ⚠️ Warning: Very low available tokens (${available}). Context: ${contextWindow}, Reserve: ${reserveForOutput}`);
   }
+  return available;
+}
 
+/**
+ * Builds a compaction result object.
+ */
+function compactionResult(prompt, wasCompacted, originalTokens, contextWindow) {
+  const finalTokens = estimateTokens(prompt);
+  return {
+    prompt,
+    wasCompacted,
+    originalTokens,
+    finalTokens,
+    usage: getContextUsage(finalTokens, contextWindow)
+  };
+}
+
+/**
+ * Ordered compaction pipeline — each step is tried in sequence.
+ * Each entry: { name, apply(text) → text, logLabel }
+ */
+const COMPACTION_PIPELINE = [
+  { name: 'trimRetryErrors', apply: (t) => compactionStrategies.trimRetryErrors(t), logLabel: 'Trimmed retry errors' },
+  { name: 'trimTemplateVerbosity', apply: (t) => compactionStrategies.trimTemplateVerbosity(t), logLabel: 'Trimmed template verbosity' },
+  { name: 'truncateCodeBlocks', apply: (t) => compactionStrategies.truncateCodeBlocks(t, 100), logLabel: 'Truncated code blocks' },
+  { name: 'truncateCurrentContent', apply: (t) => compactionStrategies.truncateCurrentContent(t), logLabel: 'Truncated currentContent blocks' },
+];
+
+/**
+ * Auto-compacts a prompt to fit within context window.
+ * Applies strategies in order: retry errors, template verbosity,
+ * code block truncation, currentContent truncation, aggressive truncation.
+ * Returns { prompt, wasCompacted, originalTokens, finalTokens, usage }
+ */
+function autoCompactPrompt(prompt, contextWindow, reserveForOutput = 2048) {
+  const availableTokens = calcAvailableTokens(contextWindow, reserveForOutput);
   const originalTokens = estimateTokens(prompt);
 
   if (originalTokens <= availableTokens) {
-    return {
-      prompt,
-      wasCompacted: false,
-      originalTokens,
-      finalTokens: originalTokens,
-      usage: getContextUsage(originalTokens, contextWindow)
-    };
+    return compactionResult(prompt, false, originalTokens, contextWindow);
   }
 
   log('yellow', `   ⚠️ Prompt too large (${originalTokens.toLocaleString()} tokens), compacting...`);
 
   let compacted = prompt;
 
-  // Strategy 1: Trim retry errors
-  compacted = compactionStrategies.trimRetryErrors(compacted);
-  let tokens = estimateTokens(compacted);
-  if (tokens <= availableTokens) {
-    log('dim', `   📦 Trimmed retry errors: ${tokens.toLocaleString()} tokens`);
-    return { prompt: compacted, wasCompacted: true, originalTokens, finalTokens: tokens, usage: getContextUsage(tokens, contextWindow) };
-  }
-
-  // Strategy 2: Trim template verbosity
-  compacted = compactionStrategies.trimTemplateVerbosity(compacted);
-  tokens = estimateTokens(compacted);
-  if (tokens <= availableTokens) {
-    log('dim', `   📦 Trimmed template verbosity: ${tokens.toLocaleString()} tokens`);
-    return { prompt: compacted, wasCompacted: true, originalTokens, finalTokens: tokens, usage: getContextUsage(tokens, contextWindow) };
-  }
-
-  // Strategy 3: Truncate file content in the prompt
-  // Find content between ``` markers and truncate
-  const codeBlockRegex = /```[\s\S]*?```/g;
-  compacted = compacted.replace(codeBlockRegex, (match) => {
-    const content = match.slice(3, -3); // Remove ``` markers
-    if (content.split('\n').length > 100) {
-      const truncated = compactionStrategies.truncateFileContent(content, 100);
-      return '```' + truncated + '```';
+  // Apply pipeline strategies in order, exit early if prompt fits
+  for (const step of COMPACTION_PIPELINE) {
+    compacted = step.apply(compacted);
+    const tokens = estimateTokens(compacted);
+    if (tokens <= availableTokens) {
+      log('dim', `   📦 ${step.logLabel}: ${tokens.toLocaleString()} tokens`);
+      return compactionResult(compacted, true, originalTokens, contextWindow);
     }
-    return match;
-  });
-
-  // Also check for {{currentContent}} style blocks
-  const currentContentMatch = compacted.match(/{{currentContent}}[\s\S]*?(?=##|$)/);
-  if (currentContentMatch && currentContentMatch[0].length > 5000) {
-    const lines = currentContentMatch[0].split('\n');
-    const truncated = compactionStrategies.truncateFileContent(lines.slice(1).join('\n'), 150);
-    compacted = compacted.replace(currentContentMatch[0], '{{currentContent}}\n' + truncated + '\n\n');
   }
 
-  tokens = estimateTokens(compacted);
-  log('dim', `   📦 Truncated file content: ${tokens.toLocaleString()} tokens`);
+  log('dim', `   📦 Truncated file content: ${estimateTokens(compacted).toLocaleString()} tokens`);
 
-  // If still too large, do aggressive truncation
-  if (tokens > availableTokens) {
-    const ratio = availableTokens / tokens;
-    const targetLength = Math.floor(compacted.length * ratio * 0.9); // 10% safety margin
-    compacted = compacted.slice(0, targetLength) + '\n\n[Content truncated to fit context window]';
-    tokens = estimateTokens(compacted);
-    log('yellow', `   ⚠️ Aggressive truncation: ${tokens.toLocaleString()} tokens`);
-  }
+  // Last resort: aggressive truncation
+  compacted = compactionStrategies.aggressiveTruncate(compacted, availableTokens, estimateTokens);
+  log('yellow', `   ⚠️ Aggressive truncation: ${estimateTokens(compacted).toLocaleString()} tokens`);
 
-  return {
-    prompt: compacted,
-    wasCompacted: true,
-    originalTokens,
-    finalTokens: tokens,
-    usage: getContextUsage(tokens, contextWindow)
-  };
+  return compactionResult(compacted, true, originalTokens, contextWindow);
 }
 
 // TemplateEngine extracted to ./flow-orchestrate-templates.js
@@ -1652,7 +1677,10 @@ if (process.env.NODE_ENV === 'test') {
   module.exports._test = {
     autoCompactPrompt,
     getContextUsage,
-    compactionStrategies
+    compactionStrategies,
+    calcAvailableTokens,
+    compactionResult,
+    COMPACTION_PIPELINE
   };
 } else {
   main().catch(err => {

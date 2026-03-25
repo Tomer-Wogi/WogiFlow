@@ -11,35 +11,8 @@
  */
 
 const { handlePostCompact } = require('../../core/post-compact');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-process.stdin.setEncoding('utf8');
-
-async function main() {
-  try {
-    // Consume stdin (required by hook protocol, even if we don't use the input)
-    await readHookInput();
-
-    // Handle post-compaction state recovery
-    const result = handlePostCompact();
-
-    // Transform to Claude Code format via adapter
-    const output = claudeCodeAdapter.transformResult('PostCompact', result);
-
-    process.stdout.write(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Never block on post-compact errors — fail open
-    try {
-      const { logHookError } = require('../../../flow-hook-errors');
-      logHookError('PostCompact', err, { failMode: 'open', operation: 'post-compaction-recovery' });
-    } catch (logErr) {
-      console.error(`[WogiFlow] PostCompact hook error: ${err.message}`);
-    }
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-}
-
-main();
+runHook('PostCompact', async () => {
+  return handlePostCompact();
+}, { failMode: 'warn', useStdoutWrite: true });

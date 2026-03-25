@@ -14,34 +14,9 @@
  */
 
 const { handleInstructionsLoaded } = require('../../core/instructions-loaded');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-process.stdin.setEncoding('utf8');
-
-async function main() {
-  try {
-    const { input: parsedStdin } = await readHookInput();
-    const input = parsedStdin || {};
-    const parsedInput = claudeCodeAdapter.parseInput(input);
-    const projectRoot = parsedInput.cwd || process.cwd();
-
-    // Handle the instructions loaded event
-    const result = handleInstructionsLoaded({ projectRoot });
-
-    // Transform to Claude Code format via adapter
-    const output = claudeCodeAdapter.transformResult('InstructionsLoaded', result);
-
-    process.stdout.write(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Never block on errors
-    if (process.env.DEBUG) {
-      console.error(`[instructions-loaded] Error: ${err.message}`);
-    }
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-}
-
-main();
+runHook('InstructionsLoaded', async ({ parsedInput }) => {
+  const projectRoot = parsedInput.cwd || process.cwd();
+  return handleInstructionsLoaded({ projectRoot });
+}, { failMode: 'silent', useStdoutWrite: true });

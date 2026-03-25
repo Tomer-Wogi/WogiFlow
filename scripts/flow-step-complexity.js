@@ -7,81 +7,62 @@
  * Flags functions that exceed the configured threshold.
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors } = require('./flow-utils');
 
-/**
- * Run code complexity check step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object[] }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {}, mode } = options;
-  const threshold = stepConfig.threshold || 10;
-
-  // Filter to analyzable files
-  const analyzableExtensions = ['.js', '.ts', '.jsx', '.tsx'];
-  const analyzableFiles = files.filter(f =>
-    analyzableExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.test.') &&
-    !f.includes('.spec.') &&
-    !f.includes('.d.ts')
-  );
-
-  if (analyzableFiles.length === 0) {
-    return { passed: true, message: 'No analyzable files modified' };
+class ComplexityStep extends BaseWorkflowStep {
+  constructor() {
+    super('codeComplexityCheck', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  const complexFunctions = [];
+  async execute(files, options) {
+    const { stepConfig = {} } = options;
+    const threshold = stepConfig.threshold || 10;
+    const complexFunctions = [];
 
-  for (const file of analyzableFiles) {
-    const filePath = path.join(PATHS.root, file);
-    if (!fs.existsSync(filePath)) continue;
+    for (const file of files) {
+      const content = this.readFile(file);
+      if (!content) continue;
 
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const functions = analyzeComplexity(content, file);
+      try {
+        const functions = analyzeComplexity(content, file);
 
-      for (const func of functions) {
-        if (func.complexity > threshold) {
-          complexFunctions.push({
-            file,
-            function: func.name,
-            complexity: func.complexity,
-            line: func.line,
-            suggestion: getSuggestion(func.complexity, threshold),
-          });
+        for (const func of functions) {
+          if (func.complexity > threshold) {
+            complexFunctions.push({
+              file,
+              function: func.name,
+              complexity: func.complexity,
+              line: func.line,
+              suggestion: getSuggestion(func.complexity, threshold),
+            });
+          }
         }
+      } catch (_err) {
+        // Skip files that can't be analyzed
       }
-    } catch (err) {
-      // Skip files that can't be analyzed
     }
-  }
 
-  if (complexFunctions.length === 0) {
-    return {
-      passed: true,
-      message: `All functions under complexity threshold (${threshold})`,
-    };
-  }
+    if (complexFunctions.length === 0) {
+      return this.pass(`All functions under complexity threshold (${threshold})`);
+    }
 
-  // Report complex functions
-  console.log(colors.yellow + `\n  Functions exceeding complexity threshold (${threshold}):` + colors.reset);
-  for (const func of complexFunctions) {
-    console.log(`    ${func.file}:${func.line} - ${func.function} (${func.complexity})`);
-    console.log(colors.gray + `      ${func.suggestion}` + colors.reset);
-  }
+    // Report complex functions
+    console.log(colors.yellow + `\n  Functions exceeding complexity threshold (${threshold}):` + colors.reset);
+    for (const func of complexFunctions) {
+      console.log(`    ${func.file}:${func.line} - ${func.function} (${func.complexity})`);
+      console.log(colors.gray + `      ${func.suggestion}` + colors.reset);
+    }
 
-  return {
-    passed: false,
-    message: `${complexFunctions.length} function(s) exceed complexity threshold`,
-    details: complexFunctions,
-  };
+    return this.fail(
+      `${complexFunctions.length} function(s) exceed complexity threshold`,
+      complexFunctions
+    );
+  }
 }
 
 /**
@@ -229,4 +210,5 @@ function getSuggestion(complexity, threshold) {
   return 'Consider simplifying conditional logic';
 }
 
-module.exports = { run, analyzeComplexity, calculateComplexity };
+const step = new ComplexityStep();
+module.exports = { run: (opts) => step.run(opts), analyzeComplexity, calculateComplexity };

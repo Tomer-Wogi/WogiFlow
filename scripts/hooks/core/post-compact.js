@@ -22,18 +22,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { PATHS, safeJsonParse, getReadyData } = require('../../flow-utils');
-
-/**
- * Sanitize a string value before injecting into AI context.
- * Strips markdown heading markers and truncates to prevent prompt manipulation.
- *
- * @param {string} value - Raw string from state files
- * @param {number} [maxLen=200] - Maximum length
- * @returns {string} Sanitized string
- */
-function sanitize(value, maxLen = 200) {
-  return String(value).replace(/^#+\s/gm, '').slice(0, maxLen);
-}
+const { sanitizeForContext: sanitize } = require('../../flow-io');
 
 /**
  * Handle PostCompact event.

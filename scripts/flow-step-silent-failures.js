@@ -11,84 +11,68 @@
  * - try-finally without catch
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors } = require('./flow-utils');
 
-/**
- * Run silent failure detection as a workflow step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object[] }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {} } = options;
-  const checkEmptyCatch = stepConfig.checkEmptyCatch !== false;
-  const checkLogOnlyCatch = stepConfig.checkLogOnlyCatch !== false;
-  const checkUnhandledAsync = stepConfig.checkUnhandledAsync !== false;
-  const checkPromiseChains = stepConfig.checkPromiseChains !== false;
-
-  // Filter to analyzable files
-  const analyzableExtensions = ['.js', '.ts', '.jsx', '.tsx'];
-  const analyzableFiles = files.filter(f =>
-    analyzableExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.test.') &&
-    !f.includes('.spec.') &&
-    !f.includes('.d.ts')
-  );
-
-  if (analyzableFiles.length === 0) {
-    return { passed: true, message: 'No files to analyze' };
+class SilentFailureStep extends BaseWorkflowStep {
+  constructor() {
+    super('silentFailureHunter', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  const issues = [];
+  async execute(files, options) {
+    const { stepConfig = {} } = options;
+    const checkEmptyCatch = stepConfig.checkEmptyCatch !== false;
+    const checkLogOnlyCatch = stepConfig.checkLogOnlyCatch !== false;
+    const checkUnhandledAsync = stepConfig.checkUnhandledAsync !== false;
+    const checkPromiseChains = stepConfig.checkPromiseChains !== false;
 
-  for (const file of analyzableFiles) {
-    const filePath = path.join(PATHS.root, file);
-    if (!fs.existsSync(filePath)) continue;
+    const issues = [];
 
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const fileIssues = analyzeForSilentFailures(content, file, {
-        checkEmptyCatch,
-        checkLogOnlyCatch,
-        checkUnhandledAsync,
-        checkPromiseChains,
-      });
-      issues.push(...fileIssues);
-    } catch (err) {
-      // Skip unreadable files
+    for (const file of files) {
+      const content = this.readFile(file);
+      if (!content) continue;
+
+      try {
+        const fileIssues = analyzeForSilentFailures(content, file, {
+          checkEmptyCatch,
+          checkLogOnlyCatch,
+          checkUnhandledAsync,
+          checkPromiseChains,
+        });
+        issues.push(...fileIssues);
+      } catch (_err) {
+        // Skip unreadable files
+      }
     }
-  }
 
-  if (issues.length === 0) {
-    return {
-      passed: true,
-      message: 'No silent failure patterns detected',
-    };
-  }
-
-  // Report issues
-  console.log(colors.yellow + '\n  Silent Failure Patterns Detected:' + colors.reset);
-  for (const issue of issues) {
-    const icon = issue.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
-    console.log(`    ${icon} ${issue.file}:${issue.line}`);
-    console.log(`       ${issue.type}: ${issue.message}`);
-    if (issue.suggestion) {
-      console.log(colors.dim + `       \u{2192} ${issue.suggestion}` + colors.reset);
+    if (issues.length === 0) {
+      return this.pass('No silent failure patterns detected');
     }
+
+    // Report issues
+    console.log(colors.yellow + '\n  Silent Failure Patterns Detected:' + colors.reset);
+    for (const issue of issues) {
+      const icon = issue.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
+      console.log(`    ${icon} ${issue.file}:${issue.line}`);
+      console.log(`       ${issue.type}: ${issue.message}`);
+      if (issue.suggestion) {
+        console.log(colors.dim + `       \u{2192} ${issue.suggestion}` + colors.reset);
+      }
+    }
+
+    const highSeverity = issues.filter(i => i.severity === 'high');
+
+    return highSeverity.length === 0
+      ? this.pass(`${issues.length} silent failure pattern(s) found (${highSeverity.length} high severity)`)
+      : this.fail(
+          `${issues.length} silent failure pattern(s) found (${highSeverity.length} high severity)`,
+          issues
+        );
   }
-
-  const highSeverity = issues.filter(i => i.severity === 'high');
-
-  return {
-    passed: highSeverity.length === 0,
-    message: `${issues.length} silent failure pattern(s) found (${highSeverity.length} high severity)`,
-    details: issues,
-  };
 }
 
 /**
@@ -157,9 +141,7 @@ function analyzeForSilentFailures(content, fileName, config) {
 
     // Check for unhandled promise chains (config.checkPromiseChains)
     if (config.checkPromiseChains) {
-      // Look for .then() without .catch()
       if (/\.then\s*\(/.test(line) && !line.includes('.catch(') && !line.includes('await')) {
-        // Check if .catch() is on the next few lines
         const nextLines = lines.slice(i, i + 5).join(' ');
         if (!nextLines.includes('.catch(') && !nextLines.includes('.finally(')) {
           issues.push({
@@ -178,7 +160,6 @@ function analyzeForSilentFailures(content, fileName, config) {
     if (config.checkUnhandledAsync) {
       const asyncMatch = line.match(/async\s+(?:function\s+)?(\w+)?/);
       if (asyncMatch && !line.includes('test') && !line.includes('spec')) {
-        // Find the function body
         const funcStart = i;
         let funcBraceDepth = 0;
         let funcStarted = false;
@@ -193,10 +174,8 @@ function analyzeForSilentFailures(content, fileName, config) {
           if (funcStarted && funcBraceDepth === 0) break;
         }
 
-        // Check if function has await but no try-catch
         if (/\bawait\b/.test(funcContent) && !/\btry\s*\{/.test(funcContent)) {
           const funcName = asyncMatch[1] || 'anonymous';
-          // Don't flag if it's a short function (likely a wrapper)
           if (funcContent.split('\n').length > 5) {
             issues.push({
               file: fileName,
@@ -222,10 +201,8 @@ function analyzeCatchBlock(catchLines, startLine, fileName, config) {
   const issues = [];
   const catchBody = catchLines.join('\n').trim();
 
-  // Remove the closing brace if present
   const cleanBody = catchBody.replace(/\}\s*$/, '').trim();
 
-  // Check for empty catch block
   if (config.checkEmptyCatch && cleanBody.length === 0) {
     issues.push({
       file: fileName,
@@ -238,7 +215,6 @@ function analyzeCatchBlock(catchLines, startLine, fileName, config) {
     return issues;
   }
 
-  // Check for catch blocks that only log
   if (config.checkLogOnlyCatch) {
     const onlyLogging = /^(?:console\.(?:log|error|warn)|logger\.(?:log|error|warn|info))\s*\(/i.test(cleanBody);
     const hasOtherStatements = cleanBody.split(';').filter(s => {
@@ -258,7 +234,6 @@ function analyzeCatchBlock(catchLines, startLine, fileName, config) {
     }
   }
 
-  // Check for catch blocks that swallow specific errors
   if (/return\s*(?:null|undefined|false|''|""|``)/.test(cleanBody)) {
     issues.push({
       file: fileName,
@@ -270,7 +245,6 @@ function analyzeCatchBlock(catchLines, startLine, fileName, config) {
     });
   }
 
-  // Check for catch block with only a comment
   if (/^\/[/*]/.test(cleanBody) && cleanBody.split('\n').every(l => l.trim().startsWith('//') || l.trim().startsWith('*') || l.trim() === '')) {
     issues.push({
       file: fileName,
@@ -285,4 +259,5 @@ function analyzeCatchBlock(catchLines, startLine, fileName, config) {
   return issues;
 }
 
-module.exports = { run, analyzeForSilentFailures };
+const step = new SilentFailureStep();
+module.exports = { run: (opts) => step.run(opts), analyzeForSilentFailures };

@@ -11,83 +11,66 @@
  * Both can be enabled together for comprehensive analysis.
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors } = require('./flow-utils');
 
-/**
- * Run code simplifier analysis step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object[] }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {} } = options;
-  const maxFunctionLines = stepConfig.maxFunctionLines || 50;
-  const maxNestingDepth = stepConfig.maxNestingDepth || 3;
-  const suggestExtraction = stepConfig.suggestExtraction !== false;
-
-  // Filter to analyzable files
-  const analyzableExtensions = ['.js', '.ts', '.jsx', '.tsx'];
-  const analyzableFiles = files.filter(f =>
-    analyzableExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.test.') &&
-    !f.includes('.spec.') &&
-    !f.includes('.d.ts')
-  );
-
-  if (analyzableFiles.length === 0) {
-    return { passed: true, message: 'No analyzable files modified' };
+class SimplifierStep extends BaseWorkflowStep {
+  constructor() {
+    super('codeSimplifier', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  const suggestions = [];
+  async execute(files, options) {
+    const { stepConfig = {} } = options;
+    const maxFunctionLines = stepConfig.maxFunctionLines || 50;
+    const maxNestingDepth = stepConfig.maxNestingDepth || 3;
+    const suggestExtraction = stepConfig.suggestExtraction !== false;
 
-  for (const file of analyzableFiles) {
-    const filePath = path.join(PATHS.root, file);
-    if (!fs.existsSync(filePath)) continue;
+    const suggestions = [];
 
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const fileSuggestions = analyzeForSimplification(content, file, {
-        maxFunctionLines,
-        maxNestingDepth,
-        suggestExtraction,
-      });
-      suggestions.push(...fileSuggestions);
-    } catch (err) {
-      // Skip files that can't be analyzed
+    for (const file of files) {
+      const content = this.readFile(file);
+      if (!content) continue;
+
+      try {
+        const fileSuggestions = analyzeForSimplification(content, file, {
+          maxFunctionLines,
+          maxNestingDepth,
+          suggestExtraction,
+        });
+        suggestions.push(...fileSuggestions);
+      } catch (_err) {
+        // Skip files that can't be analyzed
+      }
     }
-  }
 
-  if (suggestions.length === 0) {
-    return {
-      passed: true,
-      message: 'No simplification suggestions',
-    };
-  }
-
-  // Report suggestions
-  console.log(colors.cyan + '\n  Code Simplification Suggestions:' + colors.reset);
-  for (const suggestion of suggestions) {
-    const icon = suggestion.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
-    console.log(`    ${icon} ${suggestion.file}:${suggestion.line}`);
-    console.log(`       ${suggestion.type}: ${suggestion.message}`);
-    if (suggestion.suggestion) {
-      console.log(colors.dim + `       \u{2192} ${suggestion.suggestion}` + colors.reset);
+    if (suggestions.length === 0) {
+      return this.pass('No simplification suggestions');
     }
+
+    // Report suggestions
+    console.log(colors.cyan + '\n  Code Simplification Suggestions:' + colors.reset);
+    for (const suggestion of suggestions) {
+      const icon = suggestion.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
+      console.log(`    ${icon} ${suggestion.file}:${suggestion.line}`);
+      console.log(`       ${suggestion.type}: ${suggestion.message}`);
+      if (suggestion.suggestion) {
+        console.log(colors.dim + `       \u{2192} ${suggestion.suggestion}` + colors.reset);
+      }
+    }
+
+    const highSeverity = suggestions.filter(s => s.severity === 'high');
+
+    return highSeverity.length === 0
+      ? this.pass(`${suggestions.length} simplification suggestion(s) (${highSeverity.length} high severity)`)
+      : this.fail(
+          `${suggestions.length} simplification suggestion(s) (${highSeverity.length} high severity)`,
+          suggestions
+        );
   }
-
-  // Mode determines if this blocks
-  const highSeverity = suggestions.filter(s => s.severity === 'high');
-
-  return {
-    passed: highSeverity.length === 0,
-    message: `${suggestions.length} simplification suggestion(s) (${highSeverity.length} high severity)`,
-    details: suggestions,
-  };
 }
 
 /**
@@ -341,4 +324,5 @@ function findDuplicationPatterns(content, fileName) {
   return suggestions;
 }
 
-module.exports = { run, analyzeForSimplification };
+const step = new SimplifierStep();
+module.exports = { run: (opts) => step.run(opts), analyzeForSimplification };

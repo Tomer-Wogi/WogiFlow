@@ -645,6 +645,22 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
 }
 
 // ============================================================
+// String Sanitization (for AI context injection)
+// ============================================================
+
+/**
+ * Sanitize a string value before injecting into AI context.
+ * Strips markdown heading markers and truncates to prevent prompt manipulation.
+ *
+ * @param {string} value - Raw string from state files
+ * @param {number} [maxLen=200] - Maximum length
+ * @returns {string} Sanitized string
+ */
+function sanitizeForContext(value, maxLen = 200) {
+  return String(value).replace(/^#+\s/gm, '').slice(0, maxLen);
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -687,4 +703,7 @@ module.exports = {
   withLock,
   withLockSync,
   cleanupStaleLocks,
+
+  // String Sanitization
+  sanitizeForContext,
 };

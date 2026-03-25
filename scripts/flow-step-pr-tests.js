@@ -10,82 +10,73 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, readJson, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors, readJson, PATHS } = require('./flow-utils');
 
-/**
- * Run PR test analysis as a workflow step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {} } = options;
-  const checkCoverage = stepConfig.checkCoverage !== false;
-  const checkQuality = stepConfig.checkQuality !== false;
-  const minCoverageForModified = stepConfig.minCoverageForModified || 70;
-
-  // Filter to source files (not test files)
-  const sourceExtensions = ['.js', '.ts', '.jsx', '.tsx'];
-  const sourceFiles = files.filter(f =>
-    sourceExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.test.') &&
-    !f.includes('.spec.') &&
-    !f.includes('.d.ts') &&
-    !f.includes('__tests__') &&
-    !f.includes('__mocks__')
-  );
-
-  if (sourceFiles.length === 0) {
-    return { passed: true, message: 'No source files to analyze' };
+class PrTestStep extends BaseWorkflowStep {
+  constructor() {
+    super('prTestAnalyzer', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  const issues = [];
-  const coverageReport = {};
-  const qualityReport = {};
-
-  // Check coverage for modified files
-  if (checkCoverage) {
-    const coverageIssues = await analyzeCoverage(sourceFiles, minCoverageForModified);
-    issues.push(...coverageIssues.issues);
-    Object.assign(coverageReport, coverageIssues.report);
+  // Override filterFiles for PR-test-specific exclusions
+  filterFiles(files) {
+    return super.filterFiles(files).filter(f =>
+      !f.includes('__tests__') && !f.includes('__mocks__')
+    );
   }
 
-  // Check test quality
-  if (checkQuality) {
-    const qualityIssues = await analyzeTestQuality(sourceFiles, files);
-    issues.push(...qualityIssues.issues);
-    Object.assign(qualityReport, qualityIssues.report);
-  }
+  async execute(sourceFiles, options) {
+    const { stepConfig = {} } = options;
+    const checkCoverage = stepConfig.checkCoverage !== false;
+    const checkQuality = stepConfig.checkQuality !== false;
+    const minCoverageForModified = stepConfig.minCoverageForModified || 70;
 
-  // Report findings
-  if (issues.length > 0) {
-    console.log(colors.yellow + '\n  PR Test Analysis Issues:' + colors.reset);
-    for (const issue of issues) {
-      const icon = issue.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
-      console.log(`    ${icon} ${issue.file}`);
-      console.log(`       ${issue.type}: ${issue.message}`);
-      if (issue.suggestion) {
-        console.log(colors.dim + `       \u{2192} ${issue.suggestion}` + colors.reset);
+    // We need the original unfiltered files for test quality analysis
+    const allFiles = options.files ?? sourceFiles;
+
+    const issues = [];
+    const coverageReport = {};
+    const qualityReport = {};
+
+    if (checkCoverage) {
+      const coverageIssues = await analyzeCoverage(sourceFiles, minCoverageForModified);
+      issues.push(...coverageIssues.issues);
+      Object.assign(coverageReport, coverageIssues.report);
+    }
+
+    if (checkQuality) {
+      const qualityIssues = await analyzeTestQuality(sourceFiles, allFiles);
+      issues.push(...qualityIssues.issues);
+      Object.assign(qualityReport, qualityIssues.report);
+    }
+
+    if (issues.length > 0) {
+      console.log(colors.yellow + '\n  PR Test Analysis Issues:' + colors.reset);
+      for (const issue of issues) {
+        const icon = issue.severity === 'high' ? '\u{1F534}' : '\u{1F7E1}';
+        console.log(`    ${icon} ${issue.file}`);
+        console.log(`       ${issue.type}: ${issue.message}`);
+        if (issue.suggestion) {
+          console.log(colors.dim + `       \u{2192} ${issue.suggestion}` + colors.reset);
+        }
       }
     }
-  }
 
-  const highSeverity = issues.filter(i => i.severity === 'high');
+    const highSeverity = issues.filter(i => i.severity === 'high');
 
-  return {
-    passed: highSeverity.length === 0,
-    message: issues.length === 0
+    const message = issues.length === 0
       ? `Test analysis passed (${sourceFiles.length} files)`
-      : `${issues.length} issue(s) found (${highSeverity.length} high severity)`,
-    details: {
-      issues,
-      coverage: coverageReport,
-      quality: qualityReport,
-    },
-  };
+      : `${issues.length} issue(s) found (${highSeverity.length} high severity)`;
+    const details = { issues, coverage: coverageReport, quality: qualityReport };
+
+    return highSeverity.length === 0
+      ? { passed: true, message, details }
+      : this.fail(message, details);
+  }
 }
 
 /**
@@ -355,4 +346,5 @@ function checkTestability(content, fileName) {
   return issues;
 }
 
-module.exports = { run, analyzeCoverage, analyzeTestQuality };
+const step = new PrTestStep();
+module.exports = { run: (opts) => step.run(opts), analyzeCoverage, analyzeTestQuality };

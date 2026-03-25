@@ -11,94 +11,80 @@
  * - Missing documentation for public APIs
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors } = require('./flow-utils');
 
-/**
- * Run comment analysis as a workflow step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object[] }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {} } = options;
-  const flagTodo = stepConfig.flagTodo !== false;
-  const flagFixme = stepConfig.flagFixme !== false;
-  const checkJsdoc = stepConfig.checkJsdoc !== false;
-  const flagCommentedCode = stepConfig.flagCommentedCode !== false;
-  const flagStale = stepConfig.flagStale !== false;
-
-  // Filter to analyzable files
-  const analyzableExtensions = ['.js', '.ts', '.jsx', '.tsx'];
-  const analyzableFiles = files.filter(f =>
-    analyzableExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.d.ts')
-  );
-
-  if (analyzableFiles.length === 0) {
-    return { passed: true, message: 'No files to analyze' };
+class CommentAnalyzerStep extends BaseWorkflowStep {
+  constructor() {
+    super('commentAnalyzer', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx'],
+      excludeTests: false, // Comments step analyzes test files too
+      excludeDts: true,
+    });
   }
 
-  const issues = [];
+  async execute(files, options) {
+    const { stepConfig = {} } = options;
+    const flagTodo = stepConfig.flagTodo !== false;
+    const flagFixme = stepConfig.flagFixme !== false;
+    const checkJsdoc = stepConfig.checkJsdoc !== false;
+    const flagCommentedCode = stepConfig.flagCommentedCode !== false;
+    const flagStale = stepConfig.flagStale !== false;
 
-  for (const file of analyzableFiles) {
-    const filePath = path.join(PATHS.root, file);
-    if (!fs.existsSync(filePath)) continue;
+    const issues = [];
 
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const fileIssues = analyzeComments(content, file, {
-        flagTodo,
-        flagFixme,
-        checkJsdoc,
-        flagCommentedCode,
-        flagStale,
-      });
-      issues.push(...fileIssues);
-    } catch (err) {
-      // Skip unreadable files
+    for (const file of files) {
+      const content = this.readFile(file);
+      if (!content) continue;
+
+      try {
+        const fileIssues = analyzeComments(content, file, {
+          flagTodo,
+          flagFixme,
+          checkJsdoc,
+          flagCommentedCode,
+          flagStale,
+        });
+        issues.push(...fileIssues);
+      } catch (_err) {
+        // Skip unreadable files
+      }
     }
-  }
 
-  if (issues.length === 0) {
-    return {
-      passed: true,
-      message: 'Comment analysis passed',
-    };
-  }
-
-  // Report issues
-  console.log(colors.yellow + '\n  Comment Analysis Issues:' + colors.reset);
-
-  // Group by type
-  const grouped = {};
-  for (const issue of issues) {
-    if (!grouped[issue.type]) grouped[issue.type] = [];
-    grouped[issue.type].push(issue);
-  }
-
-  for (const [type, typeIssues] of Object.entries(grouped)) {
-    console.log(colors.cyan + `  ${type}:` + colors.reset);
-    for (const issue of typeIssues.slice(0, 5)) { // Limit to 5 per type
-      console.log(`    ${issue.file}:${issue.line}`);
-      console.log(`       ${issue.message}`);
+    if (issues.length === 0) {
+      return this.pass('Comment analysis passed');
     }
-    if (typeIssues.length > 5) {
-      console.log(colors.dim + `    ... and ${typeIssues.length - 5} more` + colors.reset);
+
+    // Report issues
+    console.log(colors.yellow + '\n  Comment Analysis Issues:' + colors.reset);
+
+    // Group by type
+    const grouped = {};
+    for (const issue of issues) {
+      if (!grouped[issue.type]) grouped[issue.type] = [];
+      grouped[issue.type].push(issue);
     }
+
+    for (const [type, typeIssues] of Object.entries(grouped)) {
+      console.log(colors.cyan + `  ${type}:` + colors.reset);
+      for (const issue of typeIssues.slice(0, 5)) {
+        console.log(`    ${issue.file}:${issue.line}`);
+        console.log(`       ${issue.message}`);
+      }
+      if (typeIssues.length > 5) {
+        console.log(colors.dim + `    ... and ${typeIssues.length - 5} more` + colors.reset);
+      }
+    }
+
+    const highSeverity = issues.filter(i => i.severity === 'high');
+
+    return highSeverity.length === 0
+      ? this.pass(`${issues.length} comment issue(s) found (${highSeverity.length} high severity)`)
+      : this.fail(
+          `${issues.length} comment issue(s) found (${highSeverity.length} high severity)`,
+          issues
+        );
   }
-
-  const highSeverity = issues.filter(i => i.severity === 'high');
-
-  return {
-    passed: highSeverity.length === 0,
-    message: `${issues.length} comment issue(s) found (${highSeverity.length} high severity)`,
-    details: issues,
-  };
 }
 
 /**
@@ -301,4 +287,5 @@ function checkJsDocAccuracy(jsDocLines, functionLine, startLine, fileName) {
   return issues;
 }
 
-module.exports = { run, analyzeComments };
+const step = new CommentAnalyzerStep();
+module.exports = { run: (opts) => step.run(opts), analyzeComments };

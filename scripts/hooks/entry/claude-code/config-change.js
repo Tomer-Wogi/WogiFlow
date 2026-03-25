@@ -11,33 +11,10 @@
  */
 
 const { handleConfigChange } = require('../../core/config-change');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-process.stdin.setEncoding('utf8');
-
-async function main() {
-  try {
-    const { input: parsedStdin } = await readHookInput();
-    const input = parsedStdin || {};
-
-    // Extract the changed file path from the hook input
-    const filePath = input.file_path || input.filePath || '';
-    const projectRoot = input.cwd || process.cwd();
-
-    // Handle the config change
-    const result = handleConfigChange({ filePath, projectRoot });
-
-    // Transform to Claude Code format via adapter (consistent with other hooks)
-    const output = claudeCodeAdapter.transformResult('ConfigChange', result);
-
-    process.stdout.write(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Never block on config change errors
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-}
-
-main();
+runHook('ConfigChange', async ({ input }) => {
+  const filePath = input.file_path || input.filePath || '';
+  const projectRoot = input.cwd || process.cwd();
+  return handleConfigChange({ filePath, projectRoot });
+}, { failMode: 'silent', useStdoutWrite: true });

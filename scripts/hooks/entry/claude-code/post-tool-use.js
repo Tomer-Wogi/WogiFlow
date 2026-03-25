@@ -11,10 +11,8 @@
  */
 
 const { runValidation } = require('../../core/validation');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { captureObservation } = require('../../core/observation-capture');
-const { readHookInput } = require('../shared/read-stdin');
-const { logHookError } = require('../../../flow-hook-errors');
+const { runHook } = require('../shared/hook-runner');
 
 function extractErrorMessage(toolResponse) {
   if (!toolResponse) return 'unknown error';
@@ -27,199 +25,150 @@ function extractErrorMessage(toolResponse) {
   return 'tool execution failed';
 }
 
-async function main() {
+runHook('PostToolUse', async ({ parsedInput }) => {
   const startTime = Date.now();
 
+  const toolName = parsedInput.toolName;
+  const toolInput = parsedInput.toolInput || {};
+  const toolResponse = parsedInput.toolResponse;
+  const filePath = toolInput.file_path;
+
+  // Detect tool failure for rejected-approach tagging
+  const toolFailed = !!(
+    toolResponse?.error ||
+    toolResponse?.isError ||
+    (typeof toolResponse === 'string' && toolResponse.toLowerCase().startsWith('error:'))
+  );
+
+  // CAPTURE OBSERVATION FOR ALL TOOLS (non-blocking)
   try {
-    // Read input from stdin
-    const { input: rawInput } = await readHookInput();
-    if (!rawInput) {
-      console.log(JSON.stringify({ continue: true }));
-      process.exit(0);
-      return;
-    }
-
-    const parsedInput = claudeCodeAdapter.parseInput(rawInput);
-
-    const toolName = parsedInput.toolName;
-    const toolInput = parsedInput.toolInput || {};
-    const toolResponse = parsedInput.toolResponse;
-    const filePath = toolInput.file_path;
-
-    // CAPTURE OBSERVATION FOR ALL TOOLS (non-blocking)
-    // This runs before validation so we capture even if validation fails
-    // Detect tool failure for rejected-approach tagging
-    const toolFailed = !!(
-      toolResponse?.error ||
-      toolResponse?.isError ||
-      (typeof toolResponse === 'string' && toolResponse.toLowerCase().startsWith('error:'))
-    );
-
-    try {
-      await captureObservation({
-        sessionId: parsedInput.sessionId,
-        toolName,
-        toolInput,
-        toolResponse,
-        duration: Date.now() - startTime,
-        explorationStatus: toolFailed ? 'rejected' : undefined,
-        rejectionReason: toolFailed ? extractErrorMessage(toolResponse) : undefined
-      });
-    } catch (err) {
-      // Non-blocking - observation capture should never fail the hook
-      if (process.env.DEBUG) {
-        console.error(`[observation-capture] ${err.message}`);
-      }
-    }
-
-    // v6.0: Detect task entering inProgress via ready.json edit
-    // The /wogi-start skill (prompt-level) edits ready.json manually but never
-    // calls flow-start.js, so durable session, session state, and memory blocks
-    // are never initialized. This bridge detects the edit and initializes them.
-    if ((toolName === 'Edit' || toolName === 'Write') && filePath && filePath.endsWith('ready.json') && !toolFailed) {
-      try {
-        const fs = require('node:fs');
-        const { safeJsonParse } = require('../../../flow-utils');
-        const readyData = safeJsonParse(filePath, null);
-        if (readyData && Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {
-          const task = readyData.inProgress[0];
-          const taskId = task && task.id;
-          if (!taskId) throw new Error('inProgress entry missing id');
-          const taskTitle = task.title || taskId;
-
-          // Check if durable session already exists for this task
-          const { loadDurableSession, createDurableSession } = require('../../../flow-durable-session');
-          const existing = loadDurableSession();
-          if (!existing || existing.taskId !== taskId) {
-            // Initialize durable session
-            const criteria = task.acceptanceCriteria || task.scenarios || [];
-            const steps = Array.isArray(criteria) ? criteria : [];
-            const sessionSteps = steps.length > 0 ? steps : [taskTitle];
-            createDurableSession(taskId, 'task', sessionSteps);
-
-            // Initialize session state tracking
-            try {
-              const { trackTaskStart } = require('../../../flow-session-state');
-              trackTaskStart(taskId, taskTitle);
-            } catch (err) {
-              if (process.env.DEBUG) console.error(`[post-tool-use] trackTaskStart: ${err.message}`);
-            }
-
-            // Initialize memory blocks
-            try {
-              const { setCurrentTask } = require('../../../flow-memory-blocks');
-              setCurrentTask(taskId, taskTitle);
-            } catch (err) {
-              if (process.env.DEBUG) console.error(`[post-tool-use] setCurrentTask: ${err.message}`);
-            }
-
-            // v7.0: Initialize task checkpoint with criteria for PostCompact recovery
-            try {
-              const { saveCheckpoint } = require('../../../flow-task-checkpoint');
-              const criteriaList = (task.acceptanceCriteria || task.scenarios || [])
-                .map((c, i) => ({
-                  id: `ac-${i + 1}`,
-                  text: typeof c === 'string' ? c : (c.description || c.title || `Criterion ${i + 1}`),
-                  done: false
-                }));
-              await saveCheckpoint({
-                taskId,
-                taskTitle,
-                currentPhase: 'coding',
-                criteria: criteriaList,
-                changedFiles: []
-              });
-            } catch (err) {
-              if (process.env.DEBUG) console.error(`[post-tool-use] Checkpoint init: ${err.message}`);
-            }
-
-            if (process.env.DEBUG) {
-              console.error(`[post-tool-use] Initialized durable session for ${taskId} (prompt-path bridge)`);
-            }
-          }
-        }
-      } catch (err) {
-        // Non-blocking — durable session init should never fail the hook
-        if (process.env.DEBUG) {
-          console.error(`[post-tool-use] Durable session bridge: ${err.message}`);
-        }
-      }
-    }
-
-    // Auto registry scan after successful git commit (fire-and-forget)
-    // v7.0: Mechanical enforcement — AI no longer needs to remember to run registry scan.
-    // Runs after every commit, regardless of task level (L3 included).
-    if (toolName === 'Bash' && toolInput.command && !toolFailed) {
-      const { isGitCommit } = require('../../core/commit-log-gate');
-      if (isGitCommit(toolInput.command)) {
-        try {
-          const { RegistryManager } = require('../../../flow-registry-manager');
-          const manager = new RegistryManager();
-          manager.loadPlugins();
-          manager.activatePlugins();
-          manager.scanAll().catch((err) => {
-            if (process.env.DEBUG) {
-              console.error(`[post-tool-use] Auto registry scan failed: ${err.message}`);
-            }
-          });
-        } catch (err) {
-          // Non-blocking — registry manager may not be available
-          if (process.env.DEBUG) {
-            console.error(`[post-tool-use] Registry manager load error: ${err.message}`);
-          }
-        }
-      }
-    }
-
-    // Only run validation for Edit/Write
-    if (toolName !== 'Edit' && toolName !== 'Write') {
-      console.log(JSON.stringify({ continue: true }));
-      process.exit(0);
-      return;
-    }
-
-    // Skip if tool failed
-    if (toolResponse && toolResponse.error) {
-      console.log(JSON.stringify({ continue: true }));
-      process.exit(0);
-      return;
-    }
-
-    // v7.0: Track changed files in task checkpoint (continuous state persistence)
-    // This ensures the PostCompact hook can restore the changed files list
-    // after auto-compaction, making /wogi-pre-compact redundant for file tracking.
-    if (filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
-      try {
-        const { trackChangedFile } = require('../../../flow-task-checkpoint');
-        trackChangedFile(filePath);
-      } catch (err) {
-        // Non-blocking — checkpoint may not exist yet (no active task)
-        if (process.env.DEBUG) {
-          console.error(`[post-tool-use] File tracking: ${err.message}`);
-        }
-      }
-    }
-
-    // Run validation
-    const coreResult = await runValidation({
-      filePath,
-      timeout: 30000
+    await captureObservation({
+      sessionId: parsedInput.sessionId,
+      toolName,
+      toolInput,
+      toolResponse,
+      duration: Date.now() - startTime,
+      explorationStatus: toolFailed ? 'rejected' : undefined,
+      rejectionReason: toolFailed ? extractErrorMessage(toolResponse) : undefined
     });
-
-    // Transform to Claude Code format
-    const output = claudeCodeAdapter.transformResult('PostToolUse', coreResult);
-
-    // Output JSON
-    console.log(JSON.stringify(output));
-    process.exit(0);
   } catch (err) {
-    // Non-blocking error — log with unified handler, allow through
-    logHookError('PostToolUse', err, { failMode: 'open', operation: 'post-tool-processing' });
-    console.log(JSON.stringify({ continue: true }));
-    process.exit(0);
+    if (process.env.DEBUG) {
+      console.error(`[observation-capture] ${err.message}`);
+    }
   }
-}
 
-// Handle stdin properly
-process.stdin.setEncoding('utf8');
-main();
+  // v6.0: Detect task entering inProgress via ready.json edit
+  if ((toolName === 'Edit' || toolName === 'Write') && filePath && filePath.endsWith('ready.json') && !toolFailed) {
+    try {
+      const { safeJsonParse } = require('../../../flow-utils');
+      const readyData = safeJsonParse(filePath, null);
+      if (readyData && Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {
+        const task = readyData.inProgress[0];
+        const taskId = task && task.id;
+        if (!taskId) throw new Error('inProgress entry missing id');
+        const taskTitle = task.title || taskId;
+
+        const { loadDurableSession, createDurableSession } = require('../../../flow-durable-session');
+        const existing = loadDurableSession();
+        if (!existing || existing.taskId !== taskId) {
+          const criteria = task.acceptanceCriteria || task.scenarios || [];
+          const steps = Array.isArray(criteria) ? criteria : [];
+          const sessionSteps = steps.length > 0 ? steps : [taskTitle];
+          createDurableSession(taskId, 'task', sessionSteps);
+
+          try {
+            const { trackTaskStart } = require('../../../flow-session-state');
+            trackTaskStart(taskId, taskTitle);
+          } catch (err) {
+            if (process.env.DEBUG) console.error(`[post-tool-use] trackTaskStart: ${err.message}`);
+          }
+
+          try {
+            const { setCurrentTask } = require('../../../flow-memory-blocks');
+            setCurrentTask(taskId, taskTitle);
+          } catch (err) {
+            if (process.env.DEBUG) console.error(`[post-tool-use] setCurrentTask: ${err.message}`);
+          }
+
+          // v7.0: Initialize task checkpoint with criteria for PostCompact recovery
+          try {
+            const { saveCheckpoint } = require('../../../flow-task-checkpoint');
+            const criteriaList = (task.acceptanceCriteria || task.scenarios || [])
+              .map((c, i) => ({
+                id: `ac-${i + 1}`,
+                text: typeof c === 'string' ? c : (c.description || c.title || `Criterion ${i + 1}`),
+                done: false
+              }));
+            await saveCheckpoint({
+              taskId,
+              taskTitle,
+              currentPhase: 'coding',
+              criteria: criteriaList,
+              changedFiles: []
+            });
+          } catch (err) {
+            if (process.env.DEBUG) console.error(`[post-tool-use] Checkpoint init: ${err.message}`);
+          }
+
+          if (process.env.DEBUG) {
+            console.error(`[post-tool-use] Initialized durable session for ${taskId} (prompt-path bridge)`);
+          }
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[post-tool-use] Durable session bridge: ${err.message}`);
+      }
+    }
+  }
+
+  // Auto registry scan after successful git commit (fire-and-forget)
+  if (toolName === 'Bash' && toolInput.command && !toolFailed) {
+    const { isGitCommit } = require('../../core/commit-log-gate');
+    if (isGitCommit(toolInput.command)) {
+      try {
+        const { RegistryManager } = require('../../../flow-registry-manager');
+        const manager = new RegistryManager();
+        manager.loadPlugins();
+        manager.activatePlugins();
+        manager.scanAll().catch((err) => {
+          if (process.env.DEBUG) {
+            console.error(`[post-tool-use] Auto registry scan failed: ${err.message}`);
+          }
+        });
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[post-tool-use] Registry manager load error: ${err.message}`);
+        }
+      }
+    }
+  }
+
+  // Only run validation for Edit/Write
+  if (toolName !== 'Edit' && toolName !== 'Write') {
+    return { __raw: true, continue: true };
+  }
+
+  // Skip if tool failed
+  if (toolResponse && toolResponse.error) {
+    return { __raw: true, continue: true };
+  }
+
+  // v7.0: Track changed files in task checkpoint
+  if (filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
+    try {
+      const { trackChangedFile } = require('../../../flow-task-checkpoint');
+      trackChangedFile(filePath);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[post-tool-use] File tracking: ${err.message}`);
+      }
+    }
+  }
+
+  // Run validation
+  return await runValidation({
+    filePath,
+    timeout: 30000
+  });
+}, { failMode: 'warn' });

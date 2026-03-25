@@ -8,32 +8,8 @@
  */
 
 const { handleTaskCompleted } = require('../../core/task-completed');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-async function main() {
-  try {
-    const { input: parsedStdin } = await readHookInput();
-    const input = parsedStdin || {};
-    const parsedInput = claudeCodeAdapter.parseInput(input);
-
-    // Handle task completion
-    const coreResult = await handleTaskCompleted(parsedInput);
-
-    // Transform to Claude Code format
-    const output = claudeCodeAdapter.transformResult('TaskCompleted', coreResult);
-
-    // Output JSON
-    console.log(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Non-blocking error - don't prevent task completion
-    console.error(`[Wogi Flow Hook Error] ${err.message}`);
-    console.log(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-}
-
-// Handle stdin properly
-process.stdin.setEncoding('utf8');
-main();
+runHook('TaskCompleted', async ({ parsedInput }) => {
+  return await handleTaskCompleted(parsedInput);
+}, { failMode: 'silent' });

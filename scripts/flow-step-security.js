@@ -8,148 +8,140 @@
  */
 
 const { execSync } = require('node:child_process');
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { PATHS } = require('./flow-utils');
 const { CREDENTIAL_SCAN_PATTERNS } = require('./flow-security');
 
-/**
- * Run security scan as a workflow step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @returns {object} - { passed: boolean, message: string, details?: object }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {}, mode } = options;
-  const severity = stepConfig.severity || 'high';
-  const issues = [];
-
-  // 1. Check for secrets in modified files (using centralized patterns)
-  for (const file of files) {
-    const filePath = path.join(PATHS.root, file);
-    if (!fs.existsSync(filePath)) continue;
-
-    // Skip test files and config examples
-    if (file.includes('.test.') || file.includes('.spec.') || file.includes('.example')) {
-      continue;
-    }
-
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      for (const { pattern, name } of CREDENTIAL_SCAN_PATTERNS) {
-        // Reset lastIndex for regex with /g flag
-        pattern.lastIndex = 0;
-        if (pattern.test(content)) {
-          issues.push({
-            type: 'secret',
-            severity: 'high',
-            file,
-            message: name || 'Potential secret or credential detected',
-          });
-          break; // One issue per file is enough
-        }
-      }
-    } catch (err) {
-      // Skip unreadable files
-    }
+class SecurityStep extends BaseWorkflowStep {
+  constructor() {
+    // Security step checks ALL file types (not just code), so use broad extensions
+    super('securityScan', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs', '.json', '.yml', '.yaml', '.env', '.sh'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  // 2. Run npm audit if package.json was modified
-  const packageModified = files.some(f => f.endsWith('package.json') || f.endsWith('package-lock.json'));
+  // Override filterFiles for security-specific exclusions
+  filterFiles(files) {
+    return files.filter(f => !f.includes('.example'));
+  }
 
-  if (packageModified || stepConfig.alwaysAudit) {
-    try {
-      const auditResult = execSync('npm audit --json 2>/dev/null', {
-        cwd: PATHS.root,
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+  async execute(files, options) {
+    const { stepConfig = {} } = options;
+    const severity = stepConfig.severity || 'high';
+    const issues = [];
 
-      const audit = JSON.parse(auditResult);
+    // 1. Check for secrets in modified files (using centralized patterns)
+    for (const file of files) {
+      const content = this.readFile(file);
+      if (!content) continue;
 
-      if (audit.metadata && audit.metadata.vulnerabilities) {
-        const vulns = audit.metadata.vulnerabilities;
-
-        if (severity === 'critical' && vulns.critical > 0) {
-          issues.push({
-            type: 'npm_audit',
-            severity: 'critical',
-            message: `${vulns.critical} critical vulnerabilities found`,
-            count: vulns.critical,
-          });
-        } else if (severity === 'high' && (vulns.critical > 0 || vulns.high > 0)) {
-          const count = vulns.critical + vulns.high;
-          issues.push({
-            type: 'npm_audit',
-            severity: 'high',
-            message: `${count} high/critical vulnerabilities found`,
-            count,
-          });
-        } else if (severity === 'moderate') {
-          const count = vulns.critical + vulns.high + vulns.moderate;
-          if (count > 0) {
+      try {
+        for (const { pattern, name } of CREDENTIAL_SCAN_PATTERNS) {
+          pattern.lastIndex = 0;
+          if (pattern.test(content)) {
             issues.push({
-              type: 'npm_audit',
-              severity: 'moderate',
-              message: `${count} moderate+ vulnerabilities found`,
-              count,
+              type: 'secret',
+              severity: 'high',
+              file,
+              message: name || 'Potential secret or credential detected',
             });
+            break;
           }
         }
+      } catch (_err) {
+        // Skip unreadable files
       }
-    } catch (err) {
-      // npm audit failed or returned non-zero
-      if (e.stdout) {
-        try {
-          const audit = JSON.parse(e.stdout);
-          if (audit.metadata && audit.metadata.vulnerabilities) {
-            const vulns = audit.metadata.vulnerabilities;
+    }
+
+    // 2. Run npm audit if package.json was modified
+    const packageModified = files.some(f => f.endsWith('package.json') || f.endsWith('package-lock.json'));
+
+    if (packageModified || stepConfig.alwaysAudit) {
+      try {
+        const auditResult = execSync('npm audit --json 2>/dev/null', {
+          cwd: PATHS.root,
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        const audit = JSON.parse(auditResult);
+
+        if (audit.metadata && audit.metadata.vulnerabilities) {
+          const vulns = audit.metadata.vulnerabilities;
+
+          if (severity === 'critical' && vulns.critical > 0) {
+            issues.push({
+              type: 'npm_audit',
+              severity: 'critical',
+              message: `${vulns.critical} critical vulnerabilities found`,
+              count: vulns.critical,
+            });
+          } else if (severity === 'high' && (vulns.critical > 0 || vulns.high > 0)) {
             const count = vulns.critical + vulns.high;
-            if (count > 0 && (severity === 'high' || severity === 'critical')) {
+            issues.push({
+              type: 'npm_audit',
+              severity: 'high',
+              message: `${count} high/critical vulnerabilities found`,
+              count,
+            });
+          } else if (severity === 'moderate') {
+            const count = vulns.critical + vulns.high + vulns.moderate;
+            if (count > 0) {
               issues.push({
                 type: 'npm_audit',
-                severity: 'high',
-                message: `${count} high/critical vulnerabilities`,
+                severity: 'moderate',
+                message: `${count} moderate+ vulnerabilities found`,
                 count,
               });
             }
           }
-        } catch (parseError) {
-          // Ignore parse errors
+        }
+      } catch (err) {
+        // npm audit failed or returned non-zero
+        if (err.stdout) {
+          try {
+            const audit = JSON.parse(err.stdout);
+            if (audit.metadata && audit.metadata.vulnerabilities) {
+              const vulns = audit.metadata.vulnerabilities;
+              const count = vulns.critical + vulns.high;
+              if (count > 0 && (severity === 'high' || severity === 'critical')) {
+                issues.push({
+                  type: 'npm_audit',
+                  severity: 'high',
+                  message: `${count} high/critical vulnerabilities`,
+                  count,
+                });
+              }
+            }
+          } catch (_parseError) {
+            // Ignore parse errors
+          }
         }
       }
     }
+
+    // 3. Evaluate results
+    if (issues.length === 0) {
+      return this.pass('Security scan passed');
+    }
+
+    // Filter by severity for blocking
+    const blockingIssues = issues.filter(i => {
+      if (severity === 'critical') return i.severity === 'critical';
+      if (severity === 'high') return i.severity === 'high' || i.severity === 'critical';
+      return true;
+    });
+
+    if (blockingIssues.length > 0) {
+      return this.fail(`${blockingIssues.length} security issue(s) found`, blockingIssues);
+    }
+
+    // Non-blocking issues
+    return this.pass(`${issues.length} low-severity issue(s) found`);
   }
-
-  // 3. Evaluate results
-  if (issues.length === 0) {
-    return { passed: true, message: 'Security scan passed' };
-  }
-
-  // Filter by severity for blocking
-  const blockingIssues = issues.filter(i => {
-    if (severity === 'critical') return i.severity === 'critical';
-    if (severity === 'high') return i.severity === 'high' || i.severity === 'critical';
-    return true;
-  });
-
-  if (blockingIssues.length > 0) {
-    return {
-      passed: false,
-      message: `${blockingIssues.length} security issue(s) found`,
-      details: blockingIssues,
-    };
-  }
-
-  // Non-blocking issues
-  return {
-    passed: true,
-    message: `${issues.length} low-severity issue(s) found`,
-    details: issues,
-  };
 }
 
-module.exports = { run };
+const step = new SecurityStep();
+module.exports = { run: (opts) => step.run(opts) };

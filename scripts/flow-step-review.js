@@ -14,7 +14,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { BaseWorkflowStep } = require('./base-workflow-step');
+const { colors, PATHS } = require('./flow-utils');
 
 // High-risk patterns that trigger multi-agent review
 const HIGH_RISK_PATTERNS = [
@@ -26,120 +27,103 @@ const HIGH_RISK_PATTERNS = [
   'database', 'migration', 'schema',
 ];
 
-/**
- * Run code review as a workflow step
- *
- * @param {object} options
- * @param {string[]} options.files - Files modified
- * @param {object} options.stepConfig - Step configuration
- * @param {string} options.mode - Step mode (block/warn/prompt/auto)
- * @param {string} options.taskType - Type of task (feature/bugfix/refactor)
- * @returns {object} - { passed: boolean, message: string, details?: object[] }
- */
-async function run(options = {}) {
-  const { files = [], stepConfig = {}, taskType } = options;
-  const multiAgentThreshold = stepConfig.multiAgentThreshold || 5;
-  const confidenceThreshold = stepConfig.confidenceThreshold || 80;
-  const highRiskPatterns = stepConfig.highRiskPatterns || HIGH_RISK_PATTERNS;
-
-  // Filter to reviewable files
-  const reviewableExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs'];
-  const reviewableFiles = files.filter(f =>
-    reviewableExtensions.some(ext => f.endsWith(ext)) &&
-    !f.includes('.test.') &&
-    !f.includes('.spec.') &&
-    !f.includes('.d.ts')
-  );
-
-  if (reviewableFiles.length === 0) {
-    return { passed: true, message: 'No reviewable files modified' };
+class ReviewStep extends BaseWorkflowStep {
+  constructor() {
+    super('codeReview', {
+      extensions: ['.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs'],
+      excludeTests: true,
+      excludeDts: true,
+    });
   }
 
-  // Determine if high-risk
-  const isHighRisk = taskType === 'refactor' ||
-    reviewableFiles.some(f => highRiskPatterns.some(p => f.toLowerCase().includes(p)));
+  async execute(files, options) {
+    const { stepConfig = {}, taskType } = options;
+    const multiAgentThreshold = stepConfig.multiAgentThreshold || 5;
+    const confidenceThreshold = stepConfig.confidenceThreshold || 80;
+    const highRiskPatterns = stepConfig.highRiskPatterns || HIGH_RISK_PATTERNS;
 
-  // Choose review mode
-  const useMultiAgent = reviewableFiles.length > multiAgentThreshold || isHighRisk;
+    // Determine if high-risk
+    const isHighRisk = taskType === 'refactor' ||
+      files.some(f => highRiskPatterns.some(p => f.toLowerCase().includes(p)));
 
-  let issues;
-  if (useMultiAgent) {
-    console.log(colors.cyan + '  Running multi-agent code review...' + colors.reset);
-    issues = await runMultiAgentReview(reviewableFiles, stepConfig);
-  } else {
-    console.log(colors.cyan + '  Running simple code review...' + colors.reset);
-    issues = await runSimpleReview(reviewableFiles, stepConfig);
-  }
+    // Choose review mode
+    const useMultiAgent = files.length > multiAgentThreshold || isHighRisk;
 
-  // Filter by confidence threshold
-  const reportableIssues = issues.filter(i => i.confidence >= confidenceThreshold);
-
-  if (reportableIssues.length === 0) {
-    return {
-      passed: true,
-      message: useMultiAgent
-        ? `Multi-agent review passed (${reviewableFiles.length} files)`
-        : `Simple review passed (${reviewableFiles.length} files)`,
-    };
-  }
-
-  // Report issues
-  console.log(colors.yellow + '\n  Code Review Issues:' + colors.reset);
-
-  const criticalIssues = reportableIssues.filter(i => i.severity === 'critical');
-  const importantIssues = reportableIssues.filter(i => i.severity === 'important');
-
-  if (criticalIssues.length > 0) {
-    console.log(colors.red + '  Critical:' + colors.reset);
-    for (const issue of criticalIssues) {
-      printIssue(issue);
-    }
-  }
-
-  if (importantIssues.length > 0) {
-    console.log(colors.yellow + '  Important:' + colors.reset);
-    for (const issue of importantIssues) {
-      printIssue(issue);
-    }
-  }
-
-  // Critical issues block, important issues warn
-  const hasCritical = criticalIssues.length > 0;
-
-  // Auto-capture learnings from issues found
-  if (reportableIssues.length > 0) {
-    try {
-      const { captureFromSessionReview } = require('./flow-auto-learn');
-      captureFromSessionReview(reportableIssues);
-    } catch (err) {
-      // Auto-learn not available or failed - continue silently
+    let issues;
+    if (useMultiAgent) {
+      console.log(colors.cyan + '  Running multi-agent code review...' + colors.reset);
+      issues = await runMultiAgentReview(files, stepConfig);
+    } else {
+      console.log(colors.cyan + '  Running simple code review...' + colors.reset);
+      issues = await runSimpleReview(files, stepConfig);
     }
 
-    // Also capture to tech debt ledger for persistent tracking
-    try {
-      const { TechDebtManager } = require('./flow-tech-debt');
-      const debtManager = new TechDebtManager();
-      const { added, updated } = debtManager.addIssues(reportableIssues.map(issue => ({
-        file: issue.file,
-        line: issue.line,
-        category: issue.perspective || 'code',
-        severity: issue.severity === 'critical' ? 'critical' : (issue.severity === 'important' ? 'high' : 'medium'),
-        description: issue.description,
-        fix: issue.fix || ''
-      })));
-      if (added > 0 || updated > 0) {
-        console.log(colors.dim + `  Tech debt: ${added} new, ${updated} updated` + colors.reset);
+    // Filter by confidence threshold
+    const reportableIssues = issues.filter(i => i.confidence >= confidenceThreshold);
+
+    if (reportableIssues.length === 0) {
+      return this.pass(useMultiAgent
+        ? `Multi-agent review passed (${files.length} files)`
+        : `Simple review passed (${files.length} files)`);
+    }
+
+    // Report issues
+    console.log(colors.yellow + '\n  Code Review Issues:' + colors.reset);
+
+    const criticalIssues = reportableIssues.filter(i => i.severity === 'critical');
+    const importantIssues = reportableIssues.filter(i => i.severity === 'important');
+
+    if (criticalIssues.length > 0) {
+      console.log(colors.red + '  Critical:' + colors.reset);
+      for (const issue of criticalIssues) {
+        printIssue(issue);
       }
-    } catch (err) {
-      // Tech debt manager not available or failed - continue silently
     }
-  }
 
-  return {
-    passed: !hasCritical,
-    message: `${reportableIssues.length} issue(s) found (${criticalIssues.length} critical, ${importantIssues.length} important)`,
-    details: reportableIssues,
-  };
+    if (importantIssues.length > 0) {
+      console.log(colors.yellow + '  Important:' + colors.reset);
+      for (const issue of importantIssues) {
+        printIssue(issue);
+      }
+    }
+
+    // Auto-capture learnings from issues found
+    if (reportableIssues.length > 0) {
+      try {
+        const { captureFromSessionReview } = require('./flow-auto-learn');
+        captureFromSessionReview(reportableIssues);
+      } catch (_err) {
+        // Auto-learn not available or failed - continue silently
+      }
+
+      try {
+        const { TechDebtManager } = require('./flow-tech-debt');
+        const debtManager = new TechDebtManager();
+        const { added, updated } = debtManager.addIssues(reportableIssues.map(issue => ({
+          file: issue.file,
+          line: issue.line,
+          category: issue.perspective || 'code',
+          severity: issue.severity === 'critical' ? 'critical' : (issue.severity === 'important' ? 'high' : 'medium'),
+          description: issue.description,
+          fix: issue.fix || ''
+        })));
+        if (added > 0 || updated > 0) {
+          console.log(colors.dim + `  Tech debt: ${added} new, ${updated} updated` + colors.reset);
+        }
+      } catch (_err) {
+        // Tech debt manager not available or failed - continue silently
+      }
+    }
+
+    const hasCritical = criticalIssues.length > 0;
+
+    return hasCritical
+      ? this.fail(
+          `${reportableIssues.length} issue(s) found (${criticalIssues.length} critical, ${importantIssues.length} important)`,
+          reportableIssues
+        )
+      : this.pass(`${reportableIssues.length} issue(s) found (${criticalIssues.length} critical, ${importantIssues.length} important)`);
+  }
 }
 
 /**
@@ -530,4 +514,5 @@ function mergeIssues(issues) {
   return merged;
 }
 
-module.exports = { run, runMultiAgentReview, runSimpleReview };
+const step = new ReviewStep();
+module.exports = { run: (opts) => step.run(opts), runMultiAgentReview, runSimpleReview };

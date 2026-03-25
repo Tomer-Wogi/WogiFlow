@@ -16,6 +16,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse, PATHS } = require('./flow-utils');
 const { getCommand } = require('./flow-script-resolver');
+const { sanitizeShellArg } = require('./flow-security');
 
 // v2.0: Import durable session for unified tracking
 const durableSession = require('./flow-durable-session');
@@ -28,29 +29,6 @@ function getTaskConfig() {
   const config = getConfig();
   // Prefer tasks section, fallback to loops for backward compatibility
   return config.tasks || config.loops || {};
-}
-
-/**
- * Sanitize a string for safe use in shell commands
- * Only allows alphanumeric, underscore, hyphen, and dot characters
- * @param {string} str - String to sanitize
- * @returns {string} - Sanitized string
- */
-function sanitizeShellArg(str) {
-  if (!str || typeof str !== 'string') return '';
-  // Only allow safe characters: alphanumeric, underscore, hyphen, dot
-  return str.replace(/[^a-zA-Z0-9_.-]/g, '');
-}
-
-/**
- * Escape a path for safe use in shell commands
- * @param {string} p - Path to escape
- * @returns {string} - Escaped path
- */
-function escapeShellPath(p) {
-  if (!p || typeof p !== 'string') return '';
-  // Escape special shell characters in paths
-  return p.replace(/(["\s'$`\\!*?#~<>^()[\]{}|;&])/g, '\\$1');
 }
 
 /**

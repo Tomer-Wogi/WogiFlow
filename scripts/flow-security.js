@@ -579,6 +579,31 @@ const CREDENTIAL_SCAN_PATTERNS = [
 ];
 
 // ============================================================
+// Shell Argument Sanitization
+// ============================================================
+
+/**
+ * Sanitize a string for safe use in shell commands.
+ * Only allows alphanumeric, underscore, hyphen, and dot characters.
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string
+ */
+function sanitizeShellArg(str) {
+  if (!str || typeof str !== 'string') return '';
+  return str.replace(/[^a-zA-Z0-9_.-]/g, '');
+}
+
+/**
+ * Escape a path for safe use in shell commands.
+ * @param {string} p - Path to escape
+ * @returns {string} Escaped path
+ */
+function escapeShellPath(p) {
+  if (!p || typeof p !== 'string') return '';
+  return p.replace(/(["\s'$`\\!*?#~<>^()[\]{}|;&])/g, '\\$1');
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -607,6 +632,10 @@ module.exports = {
 
   // URL/Network safety
   isPrivateIP,
+
+  // Shell argument safety
+  sanitizeShellArg,
+  escapeShellPath,
 
   // Constants
   MAX_REGEX_LENGTH,

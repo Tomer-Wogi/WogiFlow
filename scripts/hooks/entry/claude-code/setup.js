@@ -10,55 +10,14 @@
  */
 
 const { handleSetup, handleMaintenance } = require('../../core/setup-handler');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-async function main() {
-  try {
-    const { input: parsedStdin } = await readHookInput();
-    const input = parsedStdin || {};
-    const parsedInput = claudeCodeAdapter.parseInput(input);
+runHook('Setup', async ({ parsedInput }) => {
+  const trigger = parsedInput.source || 'init';
+  const isMaintenance = trigger === 'maintenance' || trigger === '--maintenance';
 
-    // Determine what type of setup event this is
-    // Claude Code passes the trigger via source or a specific field
-    const trigger = parsedInput.source || 'init';
-    const isMaintenance = trigger === 'maintenance' || trigger === '--maintenance';
-
-    let coreResult;
-
-    if (isMaintenance) {
-      // Run maintenance tasks
-      coreResult = handleMaintenance({
-        cwd: parsedInput.cwd
-      });
-    } else {
-      // Run setup check
-      coreResult = handleSetup({
-        trigger,
-        cwd: parsedInput.cwd
-      });
-    }
-
-    // Transform to Claude Code format
-    const output = claudeCodeAdapter.transformResult('Setup', coreResult);
-
-    // Output JSON
-    console.log(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Non-blocking error - log to stderr, exit with allow
-    console.error(`[Wogi Flow Hook Error] ${err.message}`);
-    // Exit 0 with allow to not block on hook errors (graceful degradation)
-    console.log(JSON.stringify({
-      continue: true,
-      hookSpecificOutput: {
-        hookEventName: 'Setup'
-      }
-    }));
-    process.exit(0);
+  if (isMaintenance) {
+    return handleMaintenance({ cwd: parsedInput.cwd });
   }
-}
-
-// Handle stdin properly
-process.stdin.setEncoding('utf8');
-main();
+  return handleSetup({ trigger, cwd: parsedInput.cwd });
+}, { failMode: 'silent' });

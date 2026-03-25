@@ -11,29 +11,10 @@
  */
 
 const { handleWorktreeCreate } = require('../../core/worktree-lifecycle');
-const { claudeCodeAdapter } = require('../../adapters/claude-code');
-const { readHookInput } = require('../shared/read-stdin');
+const { runHook } = require('../shared/hook-runner');
 
-process.stdin.setEncoding('utf8');
-
-async function main() {
-  try {
-    const { input: parsedStdin } = await readHookInput();
-    const input = parsedStdin || {};
-
-    const worktreePath = input.worktree_path || input.worktreePath || '';
-    const projectRoot = input.cwd || process.cwd();
-
-    const result = handleWorktreeCreate({ worktreePath, projectRoot });
-    const output = claudeCodeAdapter.transformResult('WorktreeCreate', result);
-
-    process.stdout.write(JSON.stringify(output));
-    process.exit(0);
-  } catch (err) {
-    // Never block on worktree lifecycle errors
-    process.stdout.write(JSON.stringify({ continue: true }));
-    process.exit(0);
-  }
-}
-
-main();
+runHook('WorktreeCreate', async ({ input }) => {
+  const worktreePath = input.worktree_path || input.worktreePath || '';
+  const projectRoot = input.cwd || process.cwd();
+  return handleWorktreeCreate({ worktreePath, projectRoot });
+}, { failMode: 'silent', useStdoutWrite: true });
