@@ -111,12 +111,23 @@ Planned files: [FILES_TO_CHANGE]
 4. If a memory database exists (.workflow/memory/local.db or via MCP):
    - Query for rejected approaches from past tasks touching the same files
    - Surface any "approach X was tried and failed" warnings
+5. **Eval trend analysis** (NEW — from Anthropic harness design research):
+   - Read `.workflow/evals/` directory for the last 5-10 eval results
+   - Calculate average score per dimension (completeness, accuracy, workflowCompliance, tokenEfficiency, quality)
+   - If any dimension averages below 6/10 across recent evals:
+     - Flag it as a RECURRING WEAKNESS
+     - Suggest a mitigation for the spec (e.g., "tokenEfficiency averaging 4/10 → add context budgeting hints")
+   - If eval calibration exists (`.workflow/state/eval-calibration.json`):
+     - Compare the current task type against high/low calibration examples
+     - Warn if this task type historically scores low
 
 Return:
 - Known risks for this task type (from feedback-patterns)
 - Past corrections in this area (from corrections/)
 - Promoted rules that apply (from decisions.md, count >= 3)
 - Rejected approaches from similar past work (from memory-db)
+- **Eval trend warnings** (dimensions scoring below 6/10 in recent evals)
+- **Recommended spec hints** (based on eval trends — inject into spec generation)
 - Confidence: HIGH (many data points) / MEDIUM / LOW (no history)
 ```
 

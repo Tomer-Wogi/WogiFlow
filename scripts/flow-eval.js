@@ -248,6 +248,15 @@ function saveEvalResult(evalResult) {
 
   try {
     writeJson(filePath, evalResult);
+
+    // Auto-save as calibration example if scores are extreme (high or low)
+    try {
+      const { autoSaveFromEval } = require('./flow-eval-calibration');
+      autoSaveFromEval(evalResult);
+    } catch (_err) {
+      // Calibration module not available — non-critical
+    }
+
     return filePath;
   } catch (err) {
     if (process.env.DEBUG) {

@@ -305,6 +305,45 @@ Test framework auto-detected from package.json: jest, vitest, mocha, tap, or fal
 4. If failing: debug, fix, retry (max 5 attempts)
 5. Mark completed only when verification passes
 
+### Step 3.05: Sprint-Based Context Reset (L1+ tasks with 5+ criteria)
+
+**Activates when**: `config.sprintReset.enabled` (default: true) AND task has 5+ acceptance criteria AND current criterion index is a multiple of `config.sprintReset.criteriaPerSprint` (default: 3).
+
+**The problem this solves**: For large tasks, context fills with implementation details from early criteria. By criterion 6+, the AI is working with degraded context — old diffs, stale tool results, and exploration artifacts crowd out what matters for the current criterion. The Anthropic harness design research found that full context resets with structured file-based handoffs produce higher quality output than continuous context for long-running tasks.
+
+**Procedure** (runs automatically at sprint boundaries):
+
+1. After completing criterion N (where N % `criteriaPerSprint` === 0 AND remaining criteria > 0):
+2. **Commit progress**: `git add -A && git commit -m "sprint: criteria 1-N of M complete"`
+3. **Save sprint checkpoint** to `.workflow/state/task-checkpoint.json`:
+   - Task ID, spec path, completed criteria indices, changed files, remaining criteria
+4. **Output sprint summary** (visible to user):
+   ```
+   ━━━ SPRINT BOUNDARY ━━━
+   Completed criteria 1-N of M. Committing and resetting context.
+   Remaining: criteria (N+1)-M
+   ```
+5. **Compact context** — this triggers a full compaction. The PostCompact hook restores:
+   - Active task ID and spec reference
+   - Which criteria are done vs pending (from checkpoint)
+   - Changed files list
+6. **Resume from checkpoint** — read the spec fresh, skip completed criteria, continue with criterion N+1
+
+**Why this is different from normal compaction**: Normal compaction summarizes the conversation. Sprint reset goes further — it commits work, saves a structured checkpoint, and compacts. The next sprint starts with a clean slate + the checkpoint file, not a compressed summary of everything that happened. The AI reads the spec fresh rather than relying on a summarized memory of it.
+
+**Configuration**:
+```json
+{
+  "sprintReset": {
+    "enabled": true,
+    "criteriaPerSprint": 3,
+    "minTaskCriteria": 5
+  }
+}
+```
+
+**Skip when**: Task has < 5 criteria, TDD mode is active (TDD has its own rhythm), or `sprintReset.enabled` is false.
+
 ### Step 3.5: Criteria Completion Verification (MANDATORY)
 
 After implementing all scenarios, BEFORE quality gates:
@@ -415,6 +454,91 @@ After implementing all scenarios, BEFORE quality gates:
 **Why this works**: The inventory creates a concrete, numbered checklist BEFORE implementation. The AI cannot claim "done" when the post-inventory shows items still present — the evidence is in the conversation. The pre/post diff is unfakeable.
 
 **Skip conditions**: Tasks that target a specific file or a small known set (e.g., "remove the mock import in Dashboard.tsx") don't need the full inventory — they're scoped enough already. The inventory is for "all X" / "every X" / "clean up X everywhere" tasks.
+
+### Step 3.56: Skeptical Evaluator Gate (L2+ tasks, when `config.skepticalEvaluator.enabled`)
+
+**The problem this solves**: The same agent that wrote the code verifies its own work in Step 3.5. Anthropic's harness design research found that "separating the agent doing the work from the agent judging it proves to be a strong lever" and that "tuning standalone evaluators toward skepticism is far more tractable than making a generator critical of its own work." This is "confident praise bias" — the implementer always thinks it did a good job.
+
+**Activates when**: `config.skepticalEvaluator.enabled` (default: true) AND task level is L2 or higher (not L3 trivial tasks).
+
+**Procedure**:
+
+1. **Spawn a skeptical evaluator sub-agent** (separate from the implementation agent):
+   ```
+   Agent({
+     subagent_type: "code-reviewer",
+     model: "sonnet",  // Use a different model for diversity
+     prompt: <see below>
+   })
+   ```
+
+2. **Evaluator prompt** (tuned toward skepticism):
+   ```
+   You are a SKEPTICAL code evaluator. Your job is to find problems, not praise.
+   Assume the implementation has gaps until proven otherwise.
+
+   ## Task Specification
+   <read and paste the spec from .workflow/specs/wf-XXXXXXXX.md>
+
+   ## Implementation Diff
+   <git diff of all changed files>
+
+   ## Your Job
+
+   For EACH acceptance criterion in the spec:
+   1. Read the criterion carefully
+   2. Find the EXACT code that implements it (cite file:line)
+   3. Grade: PASS (fully works), PARTIAL (code exists but incomplete), FAIL (not implemented)
+   4. If PARTIAL or FAIL: explain exactly what's missing
+
+   IMPORTANT: "Code exists" is NOT the same as "criterion is met."
+   A service that exists but is never called = FAIL.
+   A component that renders but doesn't handle the specified edge case = PARTIAL.
+   Only grade PASS when the criterion is FULLY satisfied end-to-end.
+
+   ## Output Format
+   Return JSON:
+   {
+     "criteria": [
+       { "criterion": "...", "grade": "PASS|PARTIAL|FAIL", "evidence": "file:line", "issue": "..." }
+     ],
+     "overallPass": true/false,
+     "criticalIssues": ["..."]
+   }
+   ```
+
+3. **Process evaluator results**:
+   - If `overallPass: true` → proceed to Step 3.6
+   - If `overallPass: false` → **iteration loop** (see below)
+
+4. **Generator-Evaluator Iteration Loop** (when evaluator finds issues):
+   - Feed the evaluator's `criticalIssues` and failed criteria back to the implementation context
+   - Fix the identified issues (targeted fixes, not re-implementation)
+   - Re-run the evaluator on the updated diff
+   - **Max iterations**: `config.skepticalEvaluator.maxIterations` (default: 3)
+   - If still failing after max iterations → proceed to Step 3.6 anyway but **flag the unresolved issues** in the completion report
+
+5. **Calibration** (when `config.skepticalEvaluator.calibration` is true):
+   - Before spawning the evaluator, check `.workflow/state/eval-calibration.json` for calibration examples
+   - If examples exist, inject 2-3 into the evaluator prompt as few-shot examples:
+     - One high-scoring example (what a PASS looks like)
+     - One low-scoring example (what a FAIL looks like)
+   - This prevents score drift — the evaluator is anchored to concrete examples
+
+**Configuration**:
+```json
+{
+  "skepticalEvaluator": {
+    "enabled": true,
+    "maxIterations": 3,
+    "model": "sonnet",
+    "calibration": true,
+    "skipForL3": true
+  }
+}
+```
+
+**Why this works**: The evaluator has NO emotional investment in the code. It reads the spec and the diff cold. It's explicitly prompted to be skeptical. And because it's a separate sub-agent, it has a fresh context — no accumulated "I already know this works" bias from the implementation phase.
 
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 

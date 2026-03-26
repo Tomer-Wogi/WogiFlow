@@ -573,6 +573,34 @@ const CONFIG_DEFAULTS = {
     failureThresholdForFallback: 3
   },
 
+  // --- Skeptical Evaluator (Anthropic harness design pattern) ---
+  // Spawns a separate sub-agent to evaluate task output before quality gates.
+  // Addresses "confident praise bias" where the implementer always thinks it did well.
+  skepticalEvaluator: {
+    enabled: true,
+    _comment_enabled: 'Spawn a separate evaluator agent between Step 3.5 and Step 4',
+    maxIterations: 3,
+    _comment_maxIterations: 'Max eval→fix cycles before proceeding anyway',
+    model: 'sonnet',
+    _comment_model: 'Use a different model than the implementer for diversity',
+    calibration: true,
+    _comment_calibration: 'Inject few-shot calibration examples into evaluator prompt',
+    skipForL3: true,
+    _comment_skipForL3: 'Skip for trivial L3 subtasks'
+  },
+
+  // --- Sprint-Based Context Reset (Anthropic harness design pattern) ---
+  // For large tasks (5+ criteria), commit and reset context every N criteria.
+  // Fresh context per sprint prevents quality degradation on later criteria.
+  sprintReset: {
+    enabled: true,
+    _comment_enabled: 'Enable sprint-based context resets for large tasks',
+    criteriaPerSprint: 3,
+    _comment_criteriaPerSprint: 'Number of criteria to complete before a context reset',
+    minTaskCriteria: 5,
+    _comment_minTaskCriteria: 'Only activate for tasks with this many or more criteria'
+  },
+
   // --- Session Features ---
   morningBriefing: { enabled: false },
   techDebt: {

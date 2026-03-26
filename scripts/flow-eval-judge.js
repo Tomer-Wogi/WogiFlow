@@ -62,10 +62,19 @@ const DEFAULT_EVAL_CONFIG = {
 function buildJudgePrompt(params) {
   const { taskId, specContent, implementationDiff, iterations, tokenEstimate } = params;
 
+  // Inject calibration examples if available (prevents score drift)
+  let calibrationBlock = '';
+  try {
+    const { getCalibrationPrompt } = require('./flow-eval-calibration');
+    calibrationBlock = getCalibrationPrompt();
+  } catch (_err) {
+    // Calibration module not available — continue without it
+  }
+
   return `You are an expert code reviewer evaluating AI-generated implementation quality.
 
 ## Task: ${taskId}
-
+${calibrationBlock}
 ## Specification
 ${specContent}
 
