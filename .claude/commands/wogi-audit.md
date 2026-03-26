@@ -260,6 +260,32 @@ Return:
 - Score: A through F
 ```
 
+#### Agent 8: Schema Drift Auditor
+
+```
+Audit schema drift across the entire project.
+
+1. Identify all schema source-of-truth files:
+   - Read schema-map.md and schema-index.json for registered schemas
+   - Scan for convention files: *.prisma, *.entity.ts, *.model.ts, *.schema.ts
+2. For each schema file, extract all defined field names
+3. For each field, grep the codebase for references outside the schema file
+4. Cross-reference: are there field names in consumer code that do NOT exist
+   in the current schema? (stale references from past changes)
+5. Check for inconsistencies:
+   - Field name in consumer doesn't match schema casing
+   - Optional field accessed without null check in consumer
+   - Field used in tests but removed from schema
+6. Run automated detection:
+   node scripts/flow-schema-drift.js
+
+Return:
+- Orphaned field references (field in consumer, not in schema)
+- Casing mismatches
+- Coverage: % of schema fields actually used by consumers
+- Score: A through F
+```
+
 ### Step 3: Consolidate Results
 
 After all agents complete, consolidate into a single report.

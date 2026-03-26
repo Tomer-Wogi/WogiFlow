@@ -5,6 +5,16 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-a10fa742",
+      "title": "Schema-drift quality gate — field-level consumer impact detection",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "status": "completed",
+      "createdAt": "2026-03-26T21:40:00.000Z",
+      "completedAt": "2026-03-26T22:00:00.000Z"
+    },
+    {
       "id": "wf-89a47f13",
       "title": "Fix 17 review findings from workspace channel orchestration",
       "type": "fix",

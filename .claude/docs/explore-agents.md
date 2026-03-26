@@ -164,11 +164,12 @@ Return:
 - Security patterns that apply
 ```
 
-## Agent 6: Consumer Impact Analyzer (Refactor/Migration Only)
+## Agent 6: Consumer Impact Analyzer (Refactor/Migration/Schema Changes)
 
-Launch as `Agent(subagent_type=Explore)` (local only). **MANDATORY for refactor, migration, architecture tasks.**
+Launch as `Agent(subagent_type=Explore)` (local only). **MANDATORY for refactor, migration, architecture tasks AND any task that modifies schema/model files.**
 
 Trigger keywords: refactor, replace, rename, restructure, extract, consolidate, deprecate, migrate, move, reorganize.
+Trigger files: *.prisma, *.entity.ts, *.model.ts, *.schema.ts, files listed in schema-map.md.
 
 ```
 Analyze consumer impact for task: "[TASK_TITLE]"
@@ -183,10 +184,15 @@ You MUST map all consumers before changes proceed.
    c. Grep for ALL config files that reference it
    d. Grep for ALL documentation (.md) that reference it
    e. Grep for ALL test files that import or mock it
+   f. For schema/model files: grep for FIELD-LEVEL references — property accesses
+      (obj.fieldName), destructuring ({ fieldName }), object keys (fieldName:),
+      and string literals ('fieldName'). Report which specific fields are referenced
+      by which consumers. This catches drift that module-level import checks miss.
 
 2. For EACH consumer, classify impact:
    - BREAKING (import/API changes) — describe what breaks + migration path
    - NEEDS-UPDATE (behavior change) — describe expected behavioral change
+   - SCHEMA-DRIFT (field removed/renamed but consumer still references old name)
    - SAFE (no change needed)
 
 3. Check indirect consumers (up to 3 levels deep)

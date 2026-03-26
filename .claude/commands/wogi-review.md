@@ -453,6 +453,35 @@ For each issue found, report as JSON:
   "agent": "performance" }
 ```
 
+#### Agent: Schema Drift Review
+
+Enabled when `"schema-drift"` is in `config.review.agents.optional`. **Auto-enabled** when any changed file matches schema conventions (*.prisma, *.entity.ts, *.model.ts, *.schema.ts) or is listed in schema-map.md.
+
+Launch a Task agent with subagent_type=Explore:
+```
+Schema drift review of the following files:
+[FILE_LIST]
+
+Check for:
+1. Read schema-map.md and schema-index.json to identify schema source-of-truth files
+2. For each schema file in the changed set, parse the git diff for removed/renamed fields
+3. For each removed/renamed field, grep the entire codebase for references:
+   - Property access: obj.fieldName
+   - Destructuring: { fieldName }
+   - Object keys: fieldName:
+   - String literals: 'fieldName' or "fieldName"
+4. Report any consumer file that still references a removed/renamed field
+
+For each issue found, report as JSON:
+{ "id": "finding-NNN", "file": "consumer-path", "line": N, "type": "schema-drift",
+  "severity": "high", "category": "schema-drift",
+  "issue": "Consumer references field 'X' which was removed/renamed in schema-file",
+  "recommendation": "Update reference to use new field name / remove reference",
+  "autoFixable": true, "agent": "schema-drift" }
+```
+
+Also run `node scripts/flow-schema-drift.js [changed-files]` for automated detection and include its output.
+
 ### Project-Rules Agents (Auto-Generated from decisions.md)
 
 When `config.review.agents.projectRules` is `true`, additional agents are **automatically generated** from project rules:
