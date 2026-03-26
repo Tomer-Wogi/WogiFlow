@@ -5,6 +5,17 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-94aec353",
+      "title": "Fix 8 critical/high review findings",
+      "type": "fix",
+      "level": "L2",
+      "priority": "P0",
+      "status": "completed",
+      "source": "review-2026-03-26-session",
+      "createdAt": "2026-03-26T22:10:00.000Z",
+      "completedAt": "2026-03-26T22:20:00.000Z"
+    },
+    {
       "id": "wf-a10fa742",
       "title": "Schema-drift quality gate — field-level consumer impact detection",
       "type": "feature",

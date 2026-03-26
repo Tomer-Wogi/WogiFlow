@@ -360,18 +360,51 @@ function detectRename(removedField, addedFields) {
     // Case change: emailVerified → emailverified (same when lowered)
     if (lower === addedLower && removedField !== added) return added;
 
-    // Prefix change: emailVerified → isEmailVerified
-    if (addedLower.includes(lower) || lower.includes(addedLower)) return added;
+    // Prefix/suffix relationship: emailVerified → isEmailVerified
+    if (lower.length >= 4 && addedLower.length >= 4) {
+      if (addedLower.includes(lower) || lower.includes(addedLower)) return added;
+    }
 
-    // Levenshtein-like: similar enough (> 60% shared characters for short names)
+    // Levenshtein distance — strict threshold to avoid false positives
+    // (e.g., createdAt vs updatedAt must NOT match)
     if (removedField.length >= 4 && added.length >= 4) {
-      const shared = [...lower].filter(c => addedLower.includes(c)).length;
-      const similarity = shared / Math.max(lower.length, addedLower.length);
-      if (similarity > 0.7) return added;
+      const lenDiff = Math.abs(removedField.length - added.length);
+      if (lenDiff <= 3) {
+        const dist = levenshtein(lower, addedLower);
+        const maxLen = Math.max(lower.length, addedLower.length);
+        // Require at least 80% similarity AND edit distance ≤ 3
+        if (dist <= 3 && (1 - dist / maxLen) >= 0.8) return added;
+      }
     }
   }
 
   return null;
+}
+
+/**
+ * Simple Levenshtein distance.
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+
+  const dp = Array.from({ length: m + 1 }, (_, i) => i);
+  for (let j = 1; j <= n; j++) {
+    let prev = dp[0];
+    dp[0] = j;
+    for (let i = 1; i <= m; i++) {
+      const temp = dp[i];
+      dp[i] = a[i - 1] === b[j - 1]
+        ? prev
+        : 1 + Math.min(prev, dp[i], dp[i - 1]);
+      prev = temp;
+    }
+  }
+  return dp[m];
 }
 
 // ============================================================
@@ -393,6 +426,9 @@ function findFieldReferences(fieldName, excludeFile, searchRoot) {
   // Skip very short field names that would produce too many false positives
   if (fieldName.length < 3) return refs;
 
+  // Validate fieldName is a valid identifier (prevent grep flag injection)
+  if (!/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(fieldName)) return refs;
+
   try {
     const excludeArgs = EXCLUDE_DIRS.flatMap(d => ['--exclude-dir', d]);
     const result = execFileSync('grep', [
@@ -402,6 +438,7 @@ function findFieldReferences(fieldName, excludeFile, searchRoot) {
       '--include=*.vue', '--include=*.svelte',
       ...excludeArgs,
       '-w',
+      '--',  // End of flags — prevents fieldName from being parsed as a flag
       fieldName,
       '.'
     ], {
