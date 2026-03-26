@@ -71,6 +71,7 @@ flow parallel check  # See available parallel tasks
 | 2.0.0+ | 2.1.76+ | PostCompact hook, Elicitation/ElicitationResult events, deferred tool schema fix |
 | 2.1.0+ | 2.1.77+ | PreToolUse allow/deny separation, 128k output tokens, worktree sparse checkout, compaction circuit breaker |
 | 2.4.0+ | 2.1.83+ | managed-settings.d/, CwdChanged/FileChanged hooks, ENV_SCRUB, --channels limitations, MEMORY.md 25KB cap |
+| 2.5.0+ | 2.1.84+ | TaskCreated hook, YAML glob lists in rules, CLAUDE_STREAM_IDLE_TIMEOUT_MS, WorktreeCreate HTTP transport, idle-return prompt, MCP 2KB cap |
 
 ### Environment Variables (2.1.19+)
 
@@ -163,6 +164,7 @@ await cancelTask('wf-123', 'superseded', false);
 | Stop | stop.js | Session cleanup |
 | SessionEnd | session-end.js | Request logging, progress update |
 | TaskCompleted | task-completed.js | Move task to recentlyCompleted |
+| TaskCreated | task-created.js | Link native tasks to active WogiFlow task (2.1.84+) |
 | ConfigChange | config-change.js | Re-sync bridge on mid-session config changes |
 | InstructionsLoaded | instructions-loaded.js | Package check, rule conflicts, auto-onboard |
 | PostCompact | post-compact.js | Re-inject state after context compaction (2.1.76+) |
@@ -262,6 +264,28 @@ await cancelTask('wf-123', 'superseded', false);
 - **--mcp-config bypass fix**: Fixed `--mcp-config` CLI flag bypassing `allowedMcpServers`/`deniedMcpServers` managed policy enforcement. Security improvement — no WogiFlow code change needed.
 
 - **Uninstalled plugin hooks fix**: Fixed uninstalled plugin hooks continuing to fire until the next session. Improves hook hygiene for WogiFlow plugin management.
+
+### Features in 2.1.84+
+
+- **TaskCreated hook event**: New hook event fired when a task is created via TaskCreate. WogiFlow uses this to link native Claude Code tasks to the active WogiFlow task in `session-state.json`, enabling cross-system task tracking. Implemented in `scripts/hooks/core/task-created.js`.
+
+- **YAML glob lists in rules/skills frontmatter**: Rules and skills `globs:` field now accepts YAML lists in addition to single strings. WogiFlow's `flow-rules-sync.js` currently generates single-string globs with brace expansion (`"**/*.{js,ts}"`). This opens the door to cleaner multi-pattern rules without brace expansion hacks. No immediate code change — tracked as improvement.
+
+- **CLAUDE_STREAM_IDLE_TIMEOUT_MS**: New env var to configure the streaming idle watchdog threshold (default 90s). WogiFlow's explore phase launches 5-6 parallel agents — if an agent takes >90s without streaming output, the watchdog may kill the connection. Users experiencing timeouts during explore should set this higher (e.g., `CLAUDE_STREAM_IDLE_TIMEOUT_MS=180000` for 3 minutes).
+
+- **WorktreeCreate hook HTTP transport**: WorktreeCreate now supports `type: "http"` — return the created worktree path via `hookSpecificOutput.worktreePath`. WogiFlow continues to use command transport locally. HTTP transport enables wogiflow-cloud to receive worktree events server-side for team task tracking. Listed in `UNUSED_SUPPORTED_EVENTS` as a cloud opportunity.
+
+- **Idle-return prompt**: Users returning after 75+ minutes are nudged to `/clear`. WogiFlow's PostCompact hook handles `/clear` correctly — it fires on compaction, re-injects state (active task, workflow phase, durable session progress), and re-arms routing. Session restore tested and working via the same PostCompact pathway.
+
+- **MCP tool descriptions capped at 2KB**: MCP tool descriptions and server instructions now capped at 2KB to prevent OpenAPI-generated servers from bloating context. WogiFlow's plugin system registers MCP servers — plugins with verbose OpenAPI specs may have descriptions silently truncated. Plugin docs should note this limit.
+
+- **System-prompt caching with ToolSearch**: Global system-prompt caching now works when ToolSearch is enabled. WogiFlow sessions use ToolSearch for deferred MCP tools — this reduces input token costs automatically. No code change needed.
+
+- **Subagent JSON-schema fix**: Fixed workflow subagents failing with API 400 when the outer session uses `--json-schema` and the subagent also specifies a schema. Improves reliability of WogiFlow explore agents in structured-output sessions.
+
+- **allowedChannelPlugins managed setting**: Enterprise admins can define a channel plugin allowlist. Relevant for wogiflow-cloud teams product — team admins could control which wogi plugins are allowed across the team. Tracked as cloud opportunity.
+
+- **ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL_SUPPORTS**: New env vars to override effort/thinking capability detection for pinned default models on Bedrock/Vertex/Foundry. WogiFlow's hybrid mode routes to different models — 3P users who pin models can now declare their capabilities properly.
 
 ### Simple Mode Naming Distinction
 

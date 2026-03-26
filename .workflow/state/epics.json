@@ -127,6 +127,29 @@
       "updatedAt": "2026-03-11T19:01:21.302Z"
     }
   },
+  "wf-1fe5cbcb": {
+      "id": "wf-1fe5cbcb",
+      "title": "Wogi Workspace — Multi-Repo Orchestration Layer",
+      "description": "A parent workspace coordinates N member repos through a manager agent that reads WogiFlow state files (not source code) and delegates implementation to repo-scoped sub-agents. Includes contract management, message bus, cross-repo intelligence, and cloud preparation interfaces.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-abd6cea8",
+        "wf-b4f1fec0",
+        "wf-824638e4",
+        "wf-0206b2b5",
+        "wf-bbc47dc1",
+        "wf-a3a13d95",
+        "wf-d2e01566",
+        "wf-868ba5a5"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "updatedAt": "2026-03-26T10:03:57.078Z"
+    }
+  },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-11T19:01:21.302Z"
+  "lastUpdated": "2026-03-26T10:03:57.078Z"
 }

@@ -1,9 +1,147 @@
 {
-  "lastUpdated": "2026-03-25T16:30:00.000Z",
+  "lastUpdated": "2026-03-26T10:03:57.078Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-abd6cea8",
+      "title": "Workspace Foundation",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "description": "CLI init command, workspace config schema, directory structure, manifest generation from member state files, workspace CLAUDE.md, workspace settings.json",
+      "criteria": 6,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-b4f1fec0",
+      "title": "Integration Detection & Contracts",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-abd6cea8"
+      ],
+      "description": "Integration map from api-map cross-referencing, orphan detection, type drift, contract auto-generation, versioning, multi-format support",
+      "criteria": 6,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-0206b2b5",
+      "title": "Agent Communication — Message Bus",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-abd6cea8"
+      ],
+      "description": "JSON message protocol, lifecycle management, change notifications, suggested tasks, session display, agent-to-agent questions",
+      "criteria": 6,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-a3a13d95",
+      "title": "Workspace Sync & Lifecycle",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-abd6cea8"
+      ],
+      "description": "Sync command, auto-sync triggers, hot reload notifications, add/remove members, unified status command",
+      "criteria": 5,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-824638e4",
+      "title": "Task Routing & Sub-Agent Delegation",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-abd6cea8",
+        "wf-b4f1fec0",
+        "wf-0206b2b5"
+      ],
+      "description": "Manager routing logic, single-repo and cross-repo delegation, parallel investigation, task decomposition, dependency-aware ordering",
+      "criteria": 6,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-bbc47dc1",
+      "title": "Cross-Repo Intelligence",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-b4f1fec0",
+        "wf-824638e4",
+        "wf-0206b2b5"
+      ],
+      "description": "Contract drift detection, blame router, shared decisions, API changelog, cross-repo ready queue, integration testing gate",
+      "criteria": 6,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-d2e01566",
+      "title": "N-Repo Scaling",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-b4f1fec0",
+        "wf-bbc47dc1"
+      ],
+      "description": "Graph-based integration map, service mesh awareness, library repo support, cascading change propagation, workspace health check",
+      "criteria": 5,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
+    {
+      "id": "wf-868ba5a5",
+      "title": "Cloud Preparation — Interfaces Only",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "wf-1fe5cbcb",
+      "status": "completed",
+      "dependencies": [
+        "wf-d2e01566"
+      ],
+      "description": "Extension points for cloud sync, message bus abstraction, workspace session API schema, multi-user data model, dashboard export format",
+      "criteria": 5,
+      "specPath": ".workflow/specs/wf-1fe5cbcb.md",
+      "createdAt": "2026-03-26T18:00:00.000Z",
+      "completedAt": "2026-03-26T10:03:57.078Z"
+    },
     {
       "id": "wf-1dd106b5",
       "title": "Fix 18 review findings from bulk audit session",
@@ -72,84 +210,6 @@
       "source": "audit-2026-03-24",
       "status": "completed",
       "completedAt": "2026-03-25T16:10:00.000Z"
-    },
-    {
-      "id": "wf-14ce6d29",
-      "title": "God function decomposition — autoCompactPrompt + runQualityGates",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P3",
-      "source": "audit-2026-03-13",
-      "status": "completed",
-      "completedAt": "2026-03-25T16:20:00.000Z"
-    },
-    {
-      "id": "wf-42cc574d",
-      "title": "Duplication: Create shared hook-runner.js and BaseWorkflowStep",
-      "type": "refactor",
-      "level": "L2",
-      "priority": "P2",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T16:20:00.000Z"
-    },
-    {
-      "id": "wf-10279963",
-      "title": "Tech debt: Update stale tech-debt.json and fix damage-control stub",
-      "type": "chore",
-      "level": "L2",
-      "priority": "P3",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T16:30:00.000Z"
-    },
-    {
-      "id": "wf-9175e882",
-      "title": "Consistency: Migrate 90 files from manual path.join to PATHS constants",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P1",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T15:00:27.332Z"
-    },
-    {
-      "id": "wf-b8d8d13c",
-      "title": "Fix 14 review findings from session commits",
-      "type": "fix",
-      "level": "L2",
-      "status": "completed",
-      "completedAt": "2026-03-25T10:40:20.532Z"
-    },
-    {
-      "id": "wf-7e82ca13",
-      "title": "Performance: Aggregate hook state into single pre-computed status file",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P1",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T08:48:36.536Z"
-    },
-    {
-      "id": "wf-154d4643",
-      "title": "Security: Migrate 49 files from raw JSON.parse to safeJsonParse",
-      "type": "refactor",
-      "level": "L1",
-      "priority": "P0",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T08:42:21.547Z"
-    },
-    {
-      "id": "wf-fbffee09",
-      "title": "Quick wins: npm audit fix + naming docs + catch(e) fixes",
-      "type": "chore",
-      "level": "L2",
-      "priority": "P0",
-      "source": "audit-2026-03-24",
-      "status": "completed",
-      "completedAt": "2026-03-25T08:17:56.568Z"
     }
   ],
   "backlog": [

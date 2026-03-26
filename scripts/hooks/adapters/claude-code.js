@@ -32,6 +32,7 @@ const HOOK_TIMEOUTS = {
   STOP: 5,                // Loop enforcement check
   SESSION_END: 10,        // Session cleanup/logging
   TASK_COMPLETED: 10,     // Post-task cleanup (Claude Code 2.1.33+)
+  TASK_CREATED: 5,        // Task creation tracking (Claude Code 2.1.84+)
   TEAMMATE_IDLE: 5,       // Task dispatch for idle agents (Claude Code 2.1.33+)
   CONFIG_CHANGE: 5,       // Mid-session config change detection (Claude Code latest)
   INSTRUCTIONS_LOADED: 5  // Instructions loaded event (Claude Code latest)
@@ -55,6 +56,7 @@ const CLAUDE_CODE_EVENTS = [
   'ConfigChange',         // Claude Code 2.1.63+ — mid-session config change detection
   'InstructionsLoaded',   // Claude Code latest — fires when CLAUDE.md/.claude/rules loaded
   'PostCompact',          // Claude Code 2.1.76+ — fires after context compaction completes
+  'TaskCreated',          // Claude Code 2.1.84+ — fires when a task is created via TaskCreate
 ];
 
 /**
@@ -69,6 +71,7 @@ const CLAUDE_CODE_EVENTS = [
 //   'ElicitationResult',  // Claude Code 2.1.76+ — intercept/override elicitation responses before sending
 //   'CwdChanged',         // Claude Code 2.1.83+ — fires when working directory changes (e.g., direnv)
 //   'FileChanged',        // Claude Code 2.1.83+ — fires when watched files change on disk
+//   'WorktreeCreate (http)', // Claude Code 2.1.84+ — WorktreeCreate now supports type:"http" transport
 // ];
 
 /**
@@ -204,6 +207,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformInstructionsLoaded(coreResult);
       case 'PostCompact':
         return this.transformPostCompact(coreResult);
+      case 'TaskCreated':
+        return this.transformTaskCreated(coreResult);
       default:
         return { continue: true };
     }
@@ -507,6 +512,23 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform TaskCreated result (Claude Code 2.1.84+)
+   * Fires when a task is created via TaskCreate.
+   * Links native tasks to the active WogiFlow task for tracking.
+   */
+  transformTaskCreated(coreResult) {
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message }),
+      hookSpecificOutput: {
+        hookEventName: 'TaskCreated',
+        linked: coreResult.linked || false,
+        wogiTaskId: coreResult.wogiTaskId || null
+      }
+    };
+  }
+
+  /**
    * Transform InstructionsLoaded result
    * Fires when CLAUDE.md or .claude/rules/*.md files are loaded into context.
    * Used for: package-check suggestions, rule conflict detection, auto-onboard detection.
@@ -638,6 +660,13 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.taskCompleted?.enabled !== false) {
       hooks.TaskCompleted = [{
         hooks: [hookEntry('TaskCompleted', 'task-completed.js', HOOK_TIMEOUTS.TASK_COMPLETED)]
+      }];
+    }
+
+    // TaskCreated hook — link native tasks to WogiFlow task (Claude Code 2.1.84+)
+    if (rules.taskCreated?.enabled !== false) {
+      hooks.TaskCreated = [{
+        hooks: [hookEntry('TaskCreated', 'task-created.js', HOOK_TIMEOUTS.TASK_CREATED)]
       }];
     }
 

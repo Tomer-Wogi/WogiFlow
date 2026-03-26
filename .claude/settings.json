@@ -132,6 +132,17 @@
           }
         ]
       }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/task-created.js",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "_wogiFlowManaged": true,

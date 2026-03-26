@@ -267,6 +267,8 @@ const HOOK_VERSION_MAP = {
   InstructionsLoaded: { major: 2, minor: 1, patch: 72 },
   // Hooks added in 2.1.76+
   PostCompact: { major: 2, minor: 1, patch: 76 },
+  // Hooks added in 2.1.84+
+  TaskCreated: { major: 2, minor: 1, patch: 84 },
 };
 
 /**
