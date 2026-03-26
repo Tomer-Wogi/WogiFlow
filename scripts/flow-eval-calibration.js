@@ -222,12 +222,14 @@ function main() {
       const cal = loadCalibration();
       console.log(`High examples: ${cal.high.length}`);
       for (const ex of cal.high) {
-        const avg = Object.values(ex.scores).filter(v => typeof v === 'number').reduce((s, v) => s + v, 0) / 5;
+        const values = Object.values(ex.scores).filter(v => typeof v === 'number');
+        const avg = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
         console.log(`  ${ex.taskId} — avg ${avg.toFixed(1)} (${ex.savedAt})`);
       }
       console.log(`Low examples: ${cal.low.length}`);
       for (const ex of cal.low) {
-        const avg = Object.values(ex.scores).filter(v => typeof v === 'number').reduce((s, v) => s + v, 0) / 5;
+        const values = Object.values(ex.scores).filter(v => typeof v === 'number');
+        const avg = values.length > 0 ? values.reduce((s, v) => s + v, 0) / values.length : 0;
         console.log(`  ${ex.taskId} — avg ${avg.toFixed(1)} (${ex.savedAt})`);
       }
       break;
