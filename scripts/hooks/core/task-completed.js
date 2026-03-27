@@ -282,6 +282,63 @@ async function handleTaskCompleted(input) {
     } catch (_err) {
       // Non-critical - registry manager may not be available
     }
+    // Write results back to workspace message bus if running as a workspace worker
+    if (result.completed && process.env.WOGI_WORKSPACE_ROOT) {
+      try {
+        const workspaceRoot = process.env.WOGI_WORKSPACE_ROOT;
+        const repoName = process.env.WOGI_REPO_NAME || path.basename(process.cwd());
+        const messagesDir = path.join(workspaceRoot, '.workspace', 'messages');
+        fs.mkdirSync(messagesDir, { recursive: true });
+
+        // Build a summary from available task data
+        const summary = [];
+        if (completedTask.title) summary.push(`**Task**: ${completedTask.title}`);
+        if (completedTask.type) summary.push(`**Type**: ${completedTask.type}`);
+        if (input.changedFiles?.length) summary.push(`**Files changed**: ${input.changedFiles.join(', ')}`);
+        if (input.summary) summary.push(`**Summary**: ${input.summary}`);
+
+        // Read the last request-log entry for richer context
+        try {
+          const logPath = path.join(PATHS.root, 'request-log.md');
+          if (fs.existsSync(logPath)) {
+            const logContent = fs.readFileSync(logPath, 'utf-8');
+            const lastEntry = logContent.split(/^### R-/m).pop();
+            if (lastEntry && lastEntry.length < 2000) {
+              summary.push(`**Log entry**:\n${lastEntry.trim()}`);
+            }
+          }
+        } catch (_err) {
+          // Non-critical
+        }
+
+        const message = {
+          id: 'msg-' + require('node:crypto').randomBytes(4).toString('hex'),
+          from: repoName,
+          to: 'manager',
+          type: 'task-complete',
+          priority: 'medium',
+          timestamp: new Date().toISOString(),
+          subject: `Task completed: ${completedTask.title || completedTask.id}`,
+          body: summary.join('\n') || `Task ${completedTask.id} completed successfully.`,
+          taskId: completedTask.id,
+          actionRequired: false,
+          status: 'pending'
+        };
+
+        const msgPath = path.join(messagesDir, `${message.id}.json`);
+        fs.writeFileSync(msgPath, JSON.stringify(message, null, 2));
+
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Workspace message written: ${msgPath}`);
+        }
+      } catch (err) {
+        // Non-critical — workspace messaging is best-effort
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Workspace message failed: ${err.message}`);
+        }
+      }
+    }
+
     // Check pending queue — notify user if items are waiting
     try {
       const { getPendingCount } = require('../../flow-pending');
