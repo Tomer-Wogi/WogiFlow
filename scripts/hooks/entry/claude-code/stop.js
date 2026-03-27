@@ -134,10 +134,35 @@ runHook('Stop', async ({ parsedInput }) => {
         status: 'pending'
       };
 
+      // Write to file (fallback / persistent record)
       fs.writeFileSync(path.join(messagesDir, `${msgId}.json`), JSON.stringify(message, null, 2));
 
+      // Also HTTP POST to manager's channel port for real-time notification
+      // This makes the message appear as a prompt in the manager's session immediately
+      const managerPort = process.env.WOGI_MANAGER_PORT;
+      if (managerPort && repoName !== 'manager') {
+        try {
+          const http = require('node:http');
+          const body = Buffer.from(message.body, 'utf-8');
+          const req = http.request({
+            hostname: '127.0.0.1',
+            port: parseInt(managerPort, 10),
+            path: '/',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain',
+              'Content-Length': body.byteLength,
+              'X-Wogi-From': repoName
+            }
+          });
+          req.on('error', () => { /* best effort — file is the fallback */ });
+          req.write(body);
+          req.end();
+        } catch (_err) { /* non-critical */ }
+      }
+
       if (process.env.DEBUG) {
-        console.error(`[Stop] Workspace message written: ${msgId}`);
+        console.error(`[Stop] Workspace message written: ${msgId}${managerPort ? ` + HTTP to manager:${managerPort}` : ''}`);
       }
     } catch (err) {
       // Non-critical — best effort
