@@ -62,21 +62,24 @@ runHook('Stop', async ({ parsedInput }) => {
   }
 
   // Workspace worker: send results to manager via HTTP when stopping.
-  // Uses synchronous curl to guarantee delivery before the hook process exits.
-  // The async http.request approach was unreliable — process exited before request completed.
+  // Uses execFileSync with array args to avoid shell injection (finding-001).
   if (process.env.WOGI_MANAGER_PORT && process.env.WOGI_REPO_NAME && process.env.WOGI_REPO_NAME !== 'manager') {
     try {
-      const { execSync } = require('node:child_process');
-      const fs = require('node:fs');
+      const { execFileSync, execSync } = require('node:child_process');
       const path = require('node:path');
+      const VALID_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
       const repoName = process.env.WOGI_REPO_NAME;
-      const managerPort = process.env.WOGI_MANAGER_PORT;
+      const managerPort = parseInt(process.env.WOGI_MANAGER_PORT, 10);
+
+      // Validate inputs before using them (finding-001, finding-002)
+      if (!VALID_NAME.test(repoName) || !Number.isInteger(managerPort) || managerPort < 1024 || managerPort > 65535) {
+        throw new Error(`Invalid WOGI_REPO_NAME or WOGI_MANAGER_PORT`);
+      }
 
       // Build summary from available state
       const summaryParts = [];
       const { PATHS, safeJsonParse } = require('../../flow-utils');
 
-      // Get current/recently completed task info
       const ready = safeJsonParse(path.join(PATHS.state, 'ready.json'), {});
       const recentTask = (ready.recentlyCompleted || [])[0];
       const inProgressTask = (ready.inProgress || [])[0];
@@ -87,7 +90,6 @@ runHook('Stop', async ({ parsedInput }) => {
         if (task.type) summaryParts.push(`**Type**: ${task.type}`);
       }
 
-      // Get changed files
       try {
         const diff = execSync('git diff --name-only HEAD 2>/dev/null || true', { cwd: PATHS.root, encoding: 'utf-8' }).trim();
         const staged = execSync('git diff --name-only --staged 2>/dev/null || true', { cwd: PATHS.root, encoding: 'utf-8' }).trim();
@@ -97,22 +99,19 @@ runHook('Stop', async ({ parsedInput }) => {
         }
       } catch (_err) { /* non-critical */ }
 
-      const body = summaryParts.join('\n') || `${repoName} finished processing.`;
+      const body = summaryParts.join('\n') || `Work completed by ${repoName}.`;
 
-      // PRIMARY: Synchronous curl to manager port — guaranteed to complete before exit
+      // execFileSync with array args — no shell interpretation (finding-001 fix)
       try {
-        execSync(
-          `curl -s -X POST http://127.0.0.1:${managerPort} -H "Content-Type: text/plain" -H "X-Wogi-From: ${repoName}" --data-binary @-`,
-          { input: body, timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
-        );
-        if (process.env.DEBUG) {
-          console.error(`[Stop] Sent results to manager via curl :${managerPort}`);
-        }
+        execFileSync('curl', [
+          '-s', '-X', 'POST',
+          `http://127.0.0.1:${managerPort}`,
+          '-H', 'Content-Type: text/plain',
+          '-H', `X-Wogi-From: ${repoName}`,
+          '--data-binary', '@-'
+        ], { input: body, timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
       } catch (_err) {
         // Manager might be offline — that's OK
-        if (process.env.DEBUG) {
-          console.error(`[Stop] curl to manager:${managerPort} failed: ${_err.message}`);
-        }
       }
     } catch (err) {
       if (process.env.DEBUG) {
