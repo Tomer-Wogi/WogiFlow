@@ -411,30 +411,50 @@ After implementing all scenarios, BEFORE quality gates:
    | Remove deprecated API | "What in this file provides the same FUNCTIONALITY as the deprecated API?" | Wrapper functions, polyfills, compatibility shims, re-implementations |
    | Fix all raw JSON.parse | "What in this file deserializes JSON?" | Utility functions that call JSON.parse internally, library wrappers |
 
-3. **Produce a numbered inventory** and display it to the user:
+3. **Trace data-providing imports one level (MANDATORY)**:
+
+   The semantic scan in step 2 catches inline instances but gives a free pass to imported values. Imported constants, configurations, and helpers can contain the exact thing you're looking for — hidden behind one level of indirection and a legitimate-sounding name (`DEFAULT_*`, `INITIAL_*`, `FALLBACK_*`, `BASE_*`).
+
+   **For every import statement in each scoped file**, classify it:
+
+   | Import Type | Example | Action |
+   |-------------|---------|--------|
+   | **Data-providing** | `import { RATE_OPTIONS } from './constants'` | MUST read the source file and apply the semantic question to its contents |
+   | **Utility/function** | `import { formatDate } from './utils'` | Skip — unless the function wraps or returns the target pattern |
+   | **Type/interface** | `import type { Customer } from './types'` | Skip — types don't contain runtime data |
+   | **Style/asset** | `import styles from './styles.module.css'` | Skip |
+   | **Component** | `import { Button } from './ui'` | Skip — unless it's a wrapper that embeds the target pattern |
+
+   **How to classify**: If the import provides a value that gets **rendered, displayed, logged, passed to an API, or used as configuration** — it's data-providing. Read its source.
+
+   **Anti-pattern — naming convention bias**: Constants named `DEFAULT_*`, `INITIAL_*`, `FALLBACK_*`, `CONFIG_*`, `BASE_*` look legitimate but are often hardcoded placeholders. The name is NOT evidence of legitimacy. Only the source is.
+
+   **Rule**: Any imported value that contributes to **user-visible output** and resolves to a hardcoded literal (not an API call, env var, or database query) is an instance of [X] — regardless of what it's named or which directory it lives in.
+
+4. **Produce a numbered inventory** and display it to the user:
    ```
    ━━━ PRE-IMPLEMENTATION INVENTORY ━━━
    Found N instances of [X] across M files:
 
-     1. [file:lines] — [description] [TYPE: syntactic|semantic]
-     2. [file:lines] — [description] [TYPE: syntactic|semantic]
+     1. [file:lines] — [description] [TYPE: syntactic|semantic|import-traced]
+     2. [file:lines] — [description] [TYPE: syntactic|semantic|import-traced]
      ...
 
    Total: N instances (S syntactic, M semantic)
    Confirm inventory is complete before proceeding? [Y/adjust]
    ```
 
-4. **Wait for user confirmation** that the inventory is complete. If the user identifies missing items, add them. This step is CRITICAL — it commits the AI to a concrete scope that can be verified later.
+5. **Wait for user confirmation** that the inventory is complete. If the user identifies missing items, add them. This step is CRITICAL — it commits the AI to a concrete scope that can be verified later.
 
 #### Phase B: Implementation
 
-5. Implement the removal/fix/replacement for EVERY item in the inventory. Each inventory item becomes a trackable unit of work.
+6. Implement the removal/fix/replacement for EVERY item in the inventory. Each inventory item becomes a trackable unit of work.
 
 #### Phase C: Post-Implementation Re-Inventory (AFTER all changes)
 
-6. **Re-run the SAME semantic scan** from Phase A on the SAME set of files. Use the same questions — do NOT downgrade to pattern-only search.
+7. **Re-run the SAME semantic scan** from Phase A (including import tracing from step 3) on the SAME set of files. Do NOT downgrade to pattern-only search.
 
-7. **Diff the inventories**:
+8. **Diff the inventories**:
    ```
    ━━━ POST-IMPLEMENTATION VERIFICATION ━━━
    Re-scanned M files for [X]:
@@ -447,9 +467,9 @@ After implementing all scenarios, BEFORE quality gates:
    Result: N/N removed (0 remaining)
    ```
 
-8. **If ANY items remain** → task is NOT done. Fix the remaining items and re-verify. Do NOT proceed to quality gates with remaining items.
+9. **If ANY items remain** → task is NOT done. Fix the remaining items and re-verify. Do NOT proceed to quality gates with remaining items.
 
-9. **If new instances are discovered** during re-scan that weren't in the original inventory → add them, fix them, and note them as "discovered during verification."
+10. **If new instances are discovered** during re-scan (including via import tracing) that weren't in the original inventory → add them, fix them, and note them as "discovered during verification."
 
 **Why this works**: The inventory creates a concrete, numbered checklist BEFORE implementation. The AI cannot claim "done" when the post-inventory shows items still present — the evidence is in the conversation. The pre/post diff is unfakeable.
 
