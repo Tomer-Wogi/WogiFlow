@@ -57,6 +57,19 @@ function getRegistryManager() {
   return _registryManagerModule;
 }
 
+// Workspace gates — lazy-loaded (only active when workspace mode is detected)
+let _workspaceGatesModule = undefined;
+function getWorkspaceGates() {
+  if (_workspaceGatesModule === undefined) {
+    try {
+      _workspaceGatesModule = require('../lib/workspace-gates');
+    } catch (_err) {
+      _workspaceGatesModule = null;
+    }
+  }
+  return _workspaceGatesModule;
+}
+
 // ============================================================
 // Gate Handlers
 // ============================================================
@@ -717,6 +730,60 @@ function unknownGate(ctx, gateName) {
 // Gate Registry
 // ============================================================
 
+// ============================================================
+// Workspace Quality Gates (conditional — only when workspace active)
+// ============================================================
+
+/**
+ * Workspace gate handler. Delegates to workspace-gates.js for each
+ * sub-gate (crossRepoImpactCheck, contractCompliance, peerNotification,
+ * cascadeVerification, integrationMapFreshness).
+ *
+ * This is a single gate entry in GATE_REGISTRY that runs all applicable
+ * workspace sub-gates based on task type.
+ */
+function workspaceGate(ctx, gateName) {
+  const wsGates = getWorkspaceGates();
+  if (!wsGates) {
+    return { passed: true, skipped: true };
+  }
+
+  const ws = wsGates.workspaceActive();
+  if (!ws.active) {
+    return { passed: true, skipped: true };
+  }
+
+  const context = wsGates.loadWorkspaceContext(ws.root);
+  const taskMeta = {
+    taskId: ctx.taskId,
+    taskTitle: ctx.taskTitle || '',
+    taskType: ctx.normalizedType || 'feature',
+    impactAssessed: ctx.impactAssessed || false
+  };
+
+  const results = wsGates.runAllWorkspaceGates(ws.root, context, taskMeta);
+
+  // Display results
+  for (const r of results.results) {
+    if (r.passed) {
+      ctx.success(`workspace/${r.gate}: ${r.message}`);
+    } else if (r.severity === 'warning') {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} workspace/${r.gate}: ${r.message}`);
+    } else {
+      ctx.error(`workspace/${r.gate}: ${r.message}`);
+    }
+  }
+
+  if (!results.passed) {
+    return {
+      passed: false,
+      errorOutput: `${results.errors} workspace gate(s) failed, ${results.warnings} warning(s)`
+    };
+  }
+
+  return { passed: true };
+}
+
 const GATE_REGISTRY = {
   tests: testsGate,
   lint: lintGate,
@@ -737,6 +804,8 @@ const GATE_REGISTRY = {
   uiVerification: verificationGate,
   apiVerification: verificationGate,
   testDiscovery: testDiscoveryGate,
+  // Workspace gates (conditional — auto-skip when not in workspace)
+  workspaceCompliance: workspaceGate,
 };
 
 /**
@@ -782,5 +851,6 @@ module.exports = {
   generatedTestsPassGate,
   verificationGate,
   testDiscoveryGate,
+  workspaceGate,
   unknownGate,
 };

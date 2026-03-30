@@ -1,155 +1,35 @@
 {
   "epics": {
-    "epic-teams-t6": {
-      "id": "epic-teams-t6",
-      "title": "T6: Polish & Launch",
-      "description": "Team dashboard (presence, health analytics, activity feed), Project Health Dashboard, cross-project search, anomaly detection, session summaries, onboarding intelligence, review insights, enterprise tier (SSO/SAML, audit logs), and documentation + launch materials. Final Teams phase before GA.",
+    "epic-workspace-comms": {
+      "id": "epic-workspace-comms",
+      "title": "Workspace Active Communication Layer",
+      "description": "Make multi-repo workspaces truly communicate like a real dev team — pre-dev impact checks, peer queries, post-change broadcasts, quality gates, locks, event bus, and more. 15 stories covering the full active communication lifecycle.",
       "level": "L0",
       "type": "epic",
       "stories": [
-        "wf-e6dcbe53",
-        "wf-8882f678",
-        "wf-7136dcd6",
-        "wf-d442d1f1",
-        "wf-2fb327a9",
-        "wf-74ca67ad",
-        "wf-6c2ea871"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 100,
-      "createdAt": "2026-02-26T12:33:56.712Z",
-      "updatedAt": "2026-02-26T12:36:34.430Z"
-    },
-    "wf-ea2c59c1": {
-      "id": "wf-ea2c59c1",
-      "title": "WogiFlow Deep Optimization",
-      "description": "Config consolidation (108→35 keys, 47KB→15KB) + optimized memory system + function dedup + hook performance",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-1d612670",
-        "wf-7db613f7",
-        "wf-67eee59b",
-        "wf-f7d4afeb",
-        "wf-6af71e6d",
-        "wf-1ad065ef",
-        "wf-da0edc4b",
-        "wf-ddedef19",
-        "wf-4ecb1ade",
-        "wf-586ca91c",
-        "wf-ef0fba18",
-        "wf-6935e70c"
-      ],
-      "features": [],
-      "status": "inProgress",
-      "progress": 0.08333333333333333,
-      "createdAt": "2026-03-04T11:37:26.749Z",
-      "updatedAt": "2026-03-04T12:03:32.967Z"
-    },
-    "wf-12cc534a": {
-      "id": "wf-12cc534a",
-      "title": "Fix All Hardcoded Architecture Assumptions",
-      "description": "Fix 30 instances of hardcoded assumptions across 10 stories: validation hook, package manager, source root, ESLint flat config, test runners, CSS frameworks, TypeScript conditional, git guards, browser tests, and framework detection expansion",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-e4154a99",
-        "wf-4fb6bfdd",
-        "wf-c04dd205",
-        "wf-a80bab41",
-        "wf-f4e07b21",
-        "wf-3cbfad41",
-        "wf-2895e99f",
-        "wf-b6bfa58b",
-        "wf-5f12f3d5",
-        "wf-f19b3ccb"
+        "wf-6b10fe5f",
+        "wf-2a214dd1",
+        "wf-68f74dd1",
+        "wf-e66d8d89",
+        "wf-3c977291",
+        "wf-03ca851d",
+        "wf-1e238f5a",
+        "wf-b116ae96",
+        "wf-de1d96c4",
+        "wf-8c8748bf",
+        "wf-8a036de8",
+        "wf-120baa93",
+        "wf-bbc829d5",
+        "wf-eec05b46",
+        "wf-d705ddee"
       ],
       "features": [],
       "status": "completed",
       "progress": 1,
-      "createdAt": "2026-03-04T14:13:04.732Z",
-      "updatedAt": "2026-03-04T14:25:05.699Z"
-    },
-    "wf-eda35519": {
-      "id": "wf-eda35519",
-      "title": "WogiFlow Auto-Testing Suite",
-      "description": "Comprehensive auto-testing system: auto-generates tests from specs, UI testing via Playwright MCP, API testing via direct HTTP, data integrity chain (API↔UI), /wogi-test command, and quality gate integration. Conditional/opt-in — auto-detected during onboarding, zero overhead when disabled.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-a89f4901",
-        "wf-63d980fc",
-        "wf-9024aad9",
-        "wf-8df22d40",
-        "wf-f640ff98",
-        "wf-eb696bab"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 1,
-      "createdAt": "2026-03-10T18:14:05.255Z",
-      "updatedAt": "2026-03-10T18:41:01.415Z"
-    },
-    "wf-e90881f4": {
-      "id": "wf-e90881f4",
-      "title": "Production-Grade Verification System",
-      "description": "Overhaul WogiFlow task completion verification to be dynamic, stack-agnostic, and production-ready. Three pillars: Smart Test Discovery with SWE-bench dual-gate model, auto-detected Verification Profiles per project, and Orchestrated Verification Scenarios replacing curl chains with declarative stateful test flows.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-03a7da1d",
-        "wf-630b5885",
-        "wf-25570e33"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 100,
-      "createdAt": "2026-03-11T08:30:34.240Z",
-      "updatedAt": "2026-03-11T08:52:11.653Z"
-    },
-    "epic-oss-hardening": {
-      "id": "epic-oss-hardening",
-      "title": "OSS Release Hardening",
-      "description": "5 production readiness improvements: version compat check, interactive config command, manifest-based safe uninstall, unified hook error handling",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-2920202e",
-        "wf-04eb6705",
-        "wf-a17c1c86",
-        "wf-05828958"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 1,
-      "createdAt": "2026-03-11T18:41:29.892Z",
-      "updatedAt": "2026-03-11T19:01:21.302Z"
-    }
-  },
-  "wf-1fe5cbcb": {
-      "id": "wf-1fe5cbcb",
-      "title": "Wogi Workspace — Multi-Repo Orchestration Layer",
-      "description": "A parent workspace coordinates N member repos through a manager agent that reads WogiFlow state files (not source code) and delegates implementation to repo-scoped sub-agents. Includes contract management, message bus, cross-repo intelligence, and cloud preparation interfaces.",
-      "level": "L0",
-      "type": "epic",
-      "stories": [
-        "wf-abd6cea8",
-        "wf-b4f1fec0",
-        "wf-824638e4",
-        "wf-0206b2b5",
-        "wf-bbc47dc1",
-        "wf-a3a13d95",
-        "wf-d2e01566",
-        "wf-868ba5a5"
-      ],
-      "features": [],
-      "status": "completed",
-      "progress": 1,
-      "createdAt": "2026-03-26T18:00:00.000Z",
-      "updatedAt": "2026-03-26T10:03:57.078Z"
+      "createdAt": "2026-03-30T07:20:30.378Z",
+      "updatedAt": "2026-03-30T07:50:36.656Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-26T10:03:57.078Z"
+  "lastUpdated": "2026-03-30T07:50:36.656Z"
 }

@@ -1,9 +1,255 @@
 {
-  "lastUpdated": "2026-03-26T21:04:03.095Z",
+  "lastUpdated": "2026-03-30T07:50:36.636Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6b10fe5f",
+      "title": "Conditional gate injection pattern — workspace activation backbone",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [],
+      "description": "Create workspace-gates.js — the technical backbone that detects workspace mode and conditionally injects gates/steps into wogi-start. All other stories depend on this.",
+      "criteria": 5,
+      "createdAt": "2026-03-30T07:21:34.708Z",
+      "completedAt": "2026-03-30T07:50:36.635Z"
+    },
+    {
+      "id": "wf-2a214dd1",
+      "title": "Pre-dev cross-repo impact gate in wogi-start",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "When workspace active, inject mandatory step between Step 1 and Step 1.2 that analyzes task for cross-repo surface area (endpoints, shared types, events), broadcasts heads-up to affected peers, optionally waits for acknowledgment.",
+      "criteria": 5,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-68f74dd1",
+      "title": "Peer query protocol — ask before you code",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "Extend askQuestion/answerQuestion to be a first-class pre-implementation step. Auto-detect when worker is about to change shared interface (via integration-map.md matching), auto-generate structured query to affected peers, wait for impact assessment response.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-e66d8d89",
+      "title": "Post-change broadcast and consumer verification",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "After task completes in any workspace member: auto-run detectContractDrift(), broadcast contract-change messages to all consumers, auto-create verification tasks in consumer repos via processSuggestedTask().",
+      "criteria": 5,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-3c977291",
+      "title": "Workspace-level quality gates",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "Add 5 conditional quality gates: crossRepoImpactCheck, contractCompliance, peerNotification, cascadeVerification, integrationMapFreshness. Only activate when wogi-workspace.json exists. Wire into flow-done.js gate system.",
+      "criteria": 6,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-03ca851d",
+      "title": "Conflict prevention via interface lock mechanism",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f",
+        "wf-2a214dd1"
+      ],
+      "description": "New workspace-locks.js. When worker starts modifying a shared interface, acquire lightweight lock in .workspace/state/locks/. Other workers get warned. Auto-expire on task completion or timeout. Integrate with pre-dev impact gate.",
+      "criteria": 5,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-1e238f5a",
+      "title": "Shared decision propagation",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "When a decision is added via /wogi-decide, check if it should apply workspace-wide. If yes, write to .workspace/state/decisions.md AND broadcast to all members. Each member session-start hook checks for new shared decisions.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-b116ae96",
+      "title": "Cross-repo dependency-aware task ordering",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f",
+        "wf-3c977291"
+      ],
+      "description": "Block consumer-side tasks until provider dependencies complete. Add blockedBy field supporting workspace-level task IDs. Show in /wogi-ready with visual dependency tree. Integrate with existing getExecutionOrder().",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-de1d96c4",
+      "title": "Event bus for real-time coordination",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "Add SSE endpoint to workspace-channel-server.js. Workers subscribe to peer events (task-started, contract-changed, test-failed, lock-acquired). Enable reactive workflows: when backend finishes endpoint, auto-start frontend integration.",
+      "criteria": 5,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-8c8748bf",
+      "title": "Live integration test triggers",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-e66d8d89",
+        "wf-3c977291"
+      ],
+      "description": "When provider changes endpoint: auto-generate integration test spec for consumer, verify consumer API calls match new provider signature via static analysis of fetch/axios calls vs updated contract. New workspace-integration-tests.js.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-8a036de8",
+      "title": "Schema and type sync enforcement",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-e66d8d89",
+        "wf-3c977291"
+      ],
+      "description": "Auto-generate shared TypeScript interfaces from provider actual response types. Place in .workspace/contracts/*.d.ts. Consumer repos import from shared location. When provider changes, contract updates, consumer gets type error at compile time.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-120baa93",
+      "title": "Workspace review mode",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-3c977291",
+        "wf-e66d8d89"
+      ],
+      "description": "Extend /wogi-review for workspace mode. When reviewing changes in one repo, auto-check if those changes affect cross-repo contracts. Include integration-map analysis in review output. Flag endpoint changes without corresponding contract updates.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-bbc829d5",
+      "title": "Workspace-level changelog aggregation",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f"
+      ],
+      "description": "Extend /wogi-changelog to aggregate across repos with unified timeline. Show: Backend added /orders/bulk → Frontend added bulk import page → Shared types updated Order. Read each member request-log.md and merge chronologically.",
+      "criteria": 3,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-eec05b46",
+      "title": "Workspace morning briefing extension",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-6b10fe5f",
+        "wf-03ca851d"
+      ],
+      "description": "Extend /wogi-morning for workspace mode: unread messages from peers, contract changes since last session, tasks blocked on other repos, integration health (orphaned endpoints), active locks.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-d705ddee",
+      "title": "Workspace audit dimension",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "epic": "epic-workspace-comms",
+      "status": "completed",
+      "dependencies": [
+        "wf-3c977291",
+        "wf-e66d8d89",
+        "wf-03ca851d"
+      ],
+      "description": "Add workspace-specific dimension to /wogi-audit: cross-repo type consistency, contract coverage (% integrations with contracts), communication health (message acknowledgment rate), dependency freshness, integration test coverage.",
+      "criteria": 4,
+      "createdAt": "2026-03-30T07:21:34.709Z",
+      "completedAt": "2026-03-30T07:50:36.636Z"
+    },
     {
       "id": "wf-94aec353",
       "title": "Fix 8 critical/high review findings",
