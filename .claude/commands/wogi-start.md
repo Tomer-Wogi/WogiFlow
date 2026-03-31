@@ -560,13 +560,39 @@ After implementing all scenarios, BEFORE quality gates:
 
 **Why this works**: The evaluator has NO emotional investment in the code. It reads the spec and the diff cold. It's explicitly prompted to be skeptical. And because it's a separate sub-agent, it has a fresh context — no accumulated "I already know this works" bias from the implementation phase.
 
-### Step 3.58: Runtime Verification Gate (UI tasks — MANDATORY)
+### Step 3.58: Runtime Verification Gate — Auto-Test Generation (MANDATORY)
 
-**Activates when**: Any changed file matches UI patterns (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.styled.*`).
+**Activates when**: ANY code file is changed. This is the DEFAULT — not optional.
 
-Run detection: `node node_modules/wogiflow/scripts/flow-runtime-verification.js detect [changed-files...]`
+Run detection: `node node_modules/wogiflow/scripts/flow-runtime-verification.js task-type [changed-files...]`
 
-**The problem this solves**: AI workers mark UI tasks as "done" based on static evidence (TypeScript compiles, build succeeds, bundle contains function names) without ever verifying the feature works in a browser. This leads to 3-5 iteration cycles where the same bug survives because no one clicks the feature. (See: Pipeline Rules case study — 5 failed iterations, same bug.)
+This returns the task type: `frontend`, `backend`, `fullstack`, or `other`. For `frontend` and `fullstack`, UI browser tests are generated. For `backend` and `fullstack`, API integration tests are generated. For `other`, standard static verification applies.
+
+**The problem this solves**: AI workers mark tasks as "done" based on static evidence (TypeScript compiles, build succeeds) without verifying the feature actually works end-to-end. This leads to repeated failed iterations. Auto-generated tests catch these failures BEFORE the user does.
+
+**DEFAULT BEHAVIOR**: For every task, WogiFlow auto-generates and runs verification tests as part of the execution loop. Tests are written to `tests/verification/` and persist as regression guards. This is ON by default — disable with `config.runtimeVerification.enabled: false`.
+
+#### Auto-Test Generation Flow
+
+```
+For EACH acceptance criterion in the spec:
+  1. Classify: Is this a UI behavior, API behavior, or internal logic?
+  2. Generate: Write a test that exercises the criterion
+  3. Implement: Write the actual code
+  4. Run: Execute the test — it MUST pass
+  5. If FAIL → debug, fix, re-run (max 5 retries)
+  6. Persist: Test file stays in tests/verification/ as regression guard
+```
+
+**This is NOT TDD** (where tests come first and must fail initially). This is **post-implementation verification** — the test is generated from the criterion, the code is written, then the test validates the code works. The key difference: TDD tests are written before code; verification tests are written alongside code and run after.
+
+---
+
+#### FRONTEND: Browser Test Generation (Playwright + WebMCP)
+
+**Activates when**: Changed files match `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.styled.*`
+
+**The problem this solves**: AI workers mark UI tasks as "done" based on static evidence without ever opening a browser. (See: Pipeline Rules case study — 5 failed iterations, same bug.)
 
 **BANNED verification methods** — these NEVER count as evidence for UI tasks:
 
@@ -694,22 +720,121 @@ Run: `node node_modules/wogiflow/scripts/flow-runtime-verification.js repeat wf-
 
 #### Devil's Advocate Prompt
 
-Before marking a UI task complete, ask yourself:
+Before marking ANY task complete (frontend or backend), ask yourself:
 
 > "Assume this is broken. What are the 3 most likely ways it could fail?"
 
 Then CHECK each one:
-1. Does the API actually accept these fields?
-2. Does the response include the fields I'm reading?
-3. Does the UI update persist after refetch/re-render?
+1. Does the API actually accept these fields? (curl it or check the DTO)
+2. Does the response include the fields I'm reading? (log the response)
+3. Does the UI update persist after refetch/re-render? (wait 3 seconds and look again)
+4. Is the request payload shape what the server expects? (compare DTO with frontend fetch)
 
 If ANY is plausible and not verified → investigate before marking done.
 
+---
+
+#### BACKEND: API Integration Test Generation
+
+**Activates when**: Changed files match `*.controller.*`, `*.service.*`, `*.resolver.*`, `/routes/`, `/api/`, `*.dto.*`, `*.guard.*`, `*.middleware.*`
+
+Run detection: `node node_modules/wogiflow/scripts/flow-runtime-verification.js api-detect [changed-files...]`
+
+**For EACH acceptance criterion that involves an API endpoint**:
+
+1. **Identify the endpoint**: method (GET/POST/PUT/PATCH/DELETE), path, expected request/response shape
+2. **Generate an integration test** that:
+   - Makes the actual HTTP request to the running dev server
+   - Asserts the status code matches expected
+   - Asserts the response body contains expected fields
+   - For mutations (POST/PUT/PATCH/DELETE): re-fetches the resource to verify persistence
+   - For auth-protected endpoints: includes the auth token
+3. **Write the test** to `tests/verification/api-verify-{taskId}.test.js`
+4. **Run the test**: `node --test tests/verification/api-verify-{taskId}.test.js`
+5. **If test fails** → debug, fix the implementation, re-run (max 5 retries)
+6. **Test persists** as a regression guard
+
+**API Test Template** (generated per criterion):
+
+```javascript
+it('POST /api/pipeline-rules — creates a rule with correct fields', async () => {
+  const res = await apiRequest('POST', '/api/pipeline-rules', {
+    tagPattern: 'animation',
+    routeTo: { type: 'department', id: 'dept-123' },
+    mode: 'CLAIMABLE'
+  });
+
+  // Status check
+  assert.equal(res.status, 201);
+
+  // Response shape check
+  assert.ok(res.data.id, 'Response missing field: id');
+  assert.equal(res.data.tagPattern, 'animation');
+  assert.equal(res.data.mode, 'CLAIMABLE');
+
+  // Persistence check: re-fetch and verify stored
+  const verify = await apiRequest('GET', `/api/pipeline-rules/${res.data.id}`);
+  assert.equal(verify.status, 200);
+  assert.equal(verify.data.tagPattern, 'animation');
+});
+```
+
+**Boundary verification** (frontend↔backend):
+When the task is `fullstack` (both UI and API files changed):
+1. Generate BOTH browser tests AND API tests
+2. The API test verifies the server accepts the payload shape the frontend sends
+3. The browser test verifies the UI correctly displays the response shape the server returns
+4. If either fails → the boundary contract is broken
+
+**Quick verification via curl** (for manual checking):
+The AI can also generate and run curl commands directly:
+```bash
+# Create a rule
+curl -s -X POST http://localhost:3000/api/pipeline-rules \
+  -H "Content-Type: application/json" \
+  -d '{"tagPattern":"animation","routeTo":{"type":"department","id":"dept-123"},"mode":"CLAIMABLE"}'
+
+# Verify it was stored
+curl -s http://localhost:3000/api/pipeline-rules | jq '.[-1]'
+```
+
+---
+
+#### Configuration
+
+```json
+{
+  "runtimeVerification": {
+    "enabled": true,
+    "autoGenerateTests": true,
+    "frontend": {
+      "method": "webmcp",
+      "fallback": ["playwright", "checklist"],
+      "devServerUrl": "http://localhost:5173"
+    },
+    "backend": {
+      "method": "api-test",
+      "fallback": ["curl", "checklist"],
+      "baseUrl": "http://localhost:3000"
+    },
+    "testOutput": "tests/verification",
+    "persistTests": true,
+    "blockOnFailure": true
+  }
+}
+```
+
+**`autoGenerateTests: true`** (default) — Tests are generated for EVERY task. This is the core behavioral change: verification is not an afterthought, it's built into the execution loop.
+
+**`persistTests: true`** (default) — Generated tests stay in `tests/verification/` as permanent regression guards. Over time, this builds an automated test suite from the actual use cases that were implemented.
+
+**`blockOnFailure: true`** (default) — If generated tests fail, the task is NOT complete. The agent must fix the implementation until tests pass.
+
 #### Skip Conditions
 
-- Task has NO UI files in changed set → skip entirely
-- Task is L3 trivial (e.g., CSS color change) → Tier 2 observational is sufficient
-- `config.runtimeVerification.enabled: false` → skip (not recommended)
+- `config.runtimeVerification.enabled: false` → skip entirely (not recommended)
+- Task has NO code files in changed set (docs-only, config-only) → skip
+- Task is L3 trivial AND no UI/API files → skip
 
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 

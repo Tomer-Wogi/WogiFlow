@@ -393,6 +393,218 @@ function checkRepeatFailures(taskId) {
 }
 
 // ============================================================
+// Backend Detection and API Test Generation
+// ============================================================
+
+/** File patterns that indicate backend/API work */
+const BACKEND_FILE_PATTERNS = [
+  /\.controller\./,
+  /\.service\./,
+  /\.resolver\./,
+  /\.handler\./,
+  /\/routes?\//,
+  /\/api\//,
+  /\/controllers?\//,
+  /\/endpoints?\//,
+  /\.dto\./,
+  /\.guard\./,
+  /\.middleware\./,
+  /\.interceptor\./
+];
+
+/**
+ * Detect whether a set of changed files requires backend API verification.
+ *
+ * @param {string[]} changedFiles
+ * @returns {{ needsVerification: boolean, apiFiles: string[], reason: string }}
+ */
+function detectAPIVerification(changedFiles) {
+  const apiFiles = changedFiles.filter(f =>
+    BACKEND_FILE_PATTERNS.some(p => p.test(f))
+  );
+
+  if (apiFiles.length === 0) {
+    return { needsVerification: false, apiFiles: [], reason: 'No API/backend files changed' };
+  }
+
+  return {
+    needsVerification: true,
+    apiFiles,
+    reason: `${apiFiles.length} API file(s) changed: ${apiFiles.slice(0, 5).join(', ')}${apiFiles.length > 5 ? '...' : ''}`
+  };
+}
+
+/**
+ * Generate an API integration test script (like Postman but baked in).
+ * Tests request/response shapes, status codes, and data persistence.
+ *
+ * @param {Object} params
+ * @param {Array<Object>} params.endpoints — endpoints to test: { method, path, description, requestBody?, expectedStatus?, expectedFields? }
+ * @param {string[]} params.criteria — acceptance criteria from spec
+ * @param {string} params.taskId
+ * @param {string} params.baseUrl — API base URL (e.g., 'http://localhost:3000')
+ * @returns {{ script: string, filePath: string, fileName: string }}
+ */
+function generateAPITest(params) {
+  const { endpoints = [], criteria = [], taskId = 'unknown', baseUrl = 'http://localhost:3000' } = params;
+
+  const lines = [
+    '// Auto-generated API integration test',
+    `// Task: ${taskId}`,
+    `// Generated: ${new Date().toISOString()}`,
+    '//',
+    '// Run: node --test <this-file>',
+    '// Or:  npx vitest run <this-file>',
+    '',
+    "const { describe, it } = require('node:test');",
+    "const assert = require('node:assert/strict');",
+    '',
+    `const BASE_URL = process.env.API_URL || '${baseUrl}';`,
+    '',
+    '/**',
+    ' * Helper: make HTTP request and parse JSON response',
+    ' */',
+    'async function apiRequest(method, path, body = null, headers = {}) {',
+    '  const url = `${BASE_URL}${path}`;',
+    '  const options = {',
+    '    method,',
+    "    headers: { 'Content-Type': 'application/json', ...headers },",
+    '  };',
+    '  if (body) options.body = JSON.stringify(body);',
+    '',
+    '  const response = await fetch(url, options);',
+    '  const contentType = response.headers.get("content-type") || "";',
+    '  const data = contentType.includes("json") ? await response.json() : await response.text();',
+    '',
+    '  return { status: response.status, data, headers: Object.fromEntries(response.headers) };',
+    '}',
+    '',
+    `describe('API Integration: ${taskId}', () => {`,
+    ''
+  ];
+
+  // Generate tests from endpoints
+  for (let i = 0; i < endpoints.length; i++) {
+    const ep = endpoints[i];
+    const method = (ep.method || 'GET').toUpperCase();
+    const epPath = ep.path || '/';
+    const desc = ep.description || `${method} ${epPath}`;
+    const expectedStatus = ep.expectedStatus || 200;
+
+    lines.push(`  it('${desc.replace(/'/g, "\\'")}', async () => {`);
+
+    if (ep.requestBody) {
+      lines.push(`    const body = ${JSON.stringify(ep.requestBody, null, 4).split('\n').join('\n    ')};`);
+      lines.push(`    const res = await apiRequest('${method}', '${epPath}', body);`);
+    } else {
+      lines.push(`    const res = await apiRequest('${method}', '${epPath}');`);
+    }
+
+    lines.push('');
+    lines.push(`    // Status code check`);
+    lines.push(`    assert.equal(res.status, ${expectedStatus}, \`Expected ${expectedStatus}, got \${res.status}: \${JSON.stringify(res.data)}\`);`);
+
+    if (ep.expectedFields && ep.expectedFields.length > 0) {
+      lines.push('');
+      lines.push('    // Response shape check');
+      for (const field of ep.expectedFields) {
+        lines.push(`    assert.ok(res.data.${field} !== undefined, 'Response missing field: ${field}');`);
+      }
+    }
+
+    if (ep.persistenceCheck) {
+      lines.push('');
+      lines.push('    // Persistence check: re-fetch and verify data was stored');
+      lines.push(`    const verify = await apiRequest('GET', '${ep.persistenceCheck}');`);
+      lines.push(`    assert.equal(verify.status, 200, 'Persistence check: GET failed');`);
+      if (ep.expectedFields && ep.expectedFields.length > 0) {
+        for (const field of ep.expectedFields) {
+          lines.push(`    assert.ok(verify.data.${field} !== undefined, 'Persistence: field ${field} not stored');`);
+        }
+      }
+    }
+
+    lines.push('  });');
+    lines.push('');
+  }
+
+  // Generate tests from criteria (for endpoints not explicitly listed)
+  if (criteria.length > 0 && endpoints.length === 0) {
+    for (let i = 0; i < criteria.length; i++) {
+      lines.push(`  it('Criterion ${i + 1}: ${criteria[i].replace(/'/g, "\\'")}', async () => {`);
+      lines.push(`    // TODO: Implement API test for: ${criteria[i]}`);
+      lines.push('    // 1. Make the API request');
+      lines.push('    // 2. Assert status code');
+      lines.push('    // 3. Assert response shape');
+      lines.push('    // 4. If mutation: re-fetch and verify persistence');
+      lines.push('  });');
+      lines.push('');
+    }
+  }
+
+  lines.push('});');
+
+  const script = lines.join('\n');
+  const fileName = `api-verify-${taskId}.test.js`;
+  const filePath = path.join(PATHS.root, 'tests', 'verification', fileName);
+
+  return { script, filePath, fileName };
+}
+
+/**
+ * Generate curl-based API verification commands (quick manual check).
+ *
+ * @param {Array<Object>} endpoints — { method, path, requestBody?, expectedStatus? }
+ * @param {string} baseUrl
+ * @returns {string} formatted curl commands
+ */
+function generateCurlVerification(endpoints, baseUrl = 'http://localhost:3000') {
+  const lines = ['━━━ API CURL VERIFICATION ━━━', ''];
+
+  for (const ep of endpoints) {
+    const method = (ep.method || 'GET').toUpperCase();
+    const url = `${baseUrl}${ep.path}`;
+
+    let cmd = `curl -s -w "\\n%{http_code}" -X ${method}`;
+    cmd += ` -H "Content-Type: application/json"`;
+    if (ep.requestBody) {
+      cmd += ` -d '${JSON.stringify(ep.requestBody)}'`;
+    }
+    cmd += ` "${url}"`;
+
+    lines.push(`# ${ep.description || `${method} ${ep.path}`}`);
+    lines.push(`# Expected: ${ep.expectedStatus || 200}`);
+    lines.push(cmd);
+    lines.push('');
+  }
+
+  lines.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  return lines.join('\n');
+}
+
+// ============================================================
+// Combined Task Type Detection
+// ============================================================
+
+/**
+ * Detect the task type (frontend, backend, or full-stack) from changed files.
+ *
+ * @param {string[]} changedFiles
+ * @returns {{ type: 'frontend'|'backend'|'fullstack'|'other', frontend: Object, backend: Object }}
+ */
+function detectTaskType(changedFiles) {
+  const frontend = detectUIVerification(changedFiles);
+  const backend = detectAPIVerification(changedFiles);
+
+  let type = 'other';
+  if (frontend.needsVerification && backend.needsVerification) type = 'fullstack';
+  else if (frontend.needsVerification) type = 'frontend';
+  else if (backend.needsVerification) type = 'backend';
+
+  return { type, frontend, backend };
+}
+
+// ============================================================
 // Verification Method Selection
 // ============================================================
 
@@ -483,6 +695,25 @@ function main() {
       break;
     }
 
+    case 'task-type': {
+      const result = detectTaskType(args);
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    }
+
+    case 'api-test': {
+      const criteria = args;
+      const { script } = generateAPITest({ criteria, taskId: 'manual', baseUrl: 'http://localhost:3000' });
+      console.log(script);
+      break;
+    }
+
+    case 'api-detect': {
+      const result = detectAPIVerification(args);
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    }
+
     case 'repeat': {
       const taskId = args[0] || 'unknown';
       const result = checkRepeatFailures(taskId);
@@ -498,10 +729,13 @@ Usage: flow-runtime-verification.js <command> [args...]
 
 Commands:
   detect <files...>     Detect if task needs UI verification
+  api-detect <files...> Detect if task needs API verification
+  task-type <files...>  Detect task type (frontend/backend/fullstack)
   classify <files...>   Classify risk level (high/standard)
   method                Determine best verification method
   checklist <criteria>  Generate user verification checklist
   playwright <criteria> Generate Playwright test script
+  api-test <criteria>   Generate API integration test script
   repeat <taskId>       Check for repeat failures
 `);
   }
@@ -514,20 +748,27 @@ Commands:
 module.exports = {
   // Detection
   detectUIVerification,
+  detectAPIVerification,
+  detectTaskType,
   classifyRisk,
   UI_FILE_PATTERNS,
+  BACKEND_FILE_PATTERNS,
   HIGH_RISK_PATTERNS,
 
   // Evidence
   EVIDENCE_TIERS,
   BANNED_EVIDENCE,
 
-  // Verification methods
+  // Frontend verification
   selectVerificationMethod,
   generateChecklist,
   generatePlaywrightTest,
   generateWebMCPInstructions,
   generateBELTemplate,
+
+  // Backend verification
+  generateAPITest,
+  generateCurlVerification,
 
   // Repeat failure
   checkRepeatFailures
