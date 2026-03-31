@@ -36,6 +36,7 @@
     ],
     "PostToolUse": [
       {
+        "matcher": "Edit|Write|Bash",
         "hooks": [
           {
             "type": "command",
@@ -139,6 +140,17 @@
           {
             "type": "command",
             "command": "node scripts/hooks/entry/claude-code/task-created.js",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionDenied": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/entry/claude-code/permission-denied.js",
             "timeout": 5
           }
         ]

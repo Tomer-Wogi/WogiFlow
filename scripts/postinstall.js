@@ -269,6 +269,8 @@ const HOOK_VERSION_MAP = {
   PostCompact: { major: 2, minor: 1, patch: 76 },
   // Hooks added in 2.1.84+
   TaskCreated: { major: 2, minor: 1, patch: 84 },
+  // Hooks added in 2.1.88+
+  PermissionDenied: { major: 2, minor: 1, patch: 88 },
 };
 
 /**
