@@ -312,7 +312,26 @@ function versionMeetsMinimum(version, minimum) {
  * @returns {string[]} List of removed hook names
  */
 function stripUnsupportedHooks(settings, ccVersion) {
-  if (!settings || !settings.hooks || !ccVersion) return [];
+  if (!settings || !settings.hooks) return [];
+
+  // CRITICAL: When CC version is unknown, strip ALL hooks added after the base set (2.1.23).
+  // CC rejects the ENTIRE settings file if it encounters an unknown hook event name —
+  // this means one unsupported hook kills ALL hooks. Fail-safe: keep only the base set.
+  const BASE_HOOKS = new Set([
+    'SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
+    'Stop', 'SessionEnd', 'TaskCompleted'
+  ]);
+
+  if (!ccVersion) {
+    const removed = [];
+    for (const hookName of Object.keys(settings.hooks)) {
+      if (!BASE_HOOKS.has(hookName)) {
+        delete settings.hooks[hookName];
+        removed.push(`${hookName} (CC version unknown — keeping base hooks only)`);
+      }
+    }
+    return removed;
+  }
 
   const removed = [];
   for (const hookName of Object.keys(settings.hooks)) {
@@ -323,6 +342,39 @@ function stripUnsupportedHooks(settings, ccVersion) {
     }
   }
   return removed;
+}
+
+/**
+ * Dynamically inject hooks that are NOT in the base settings.json but are
+ * supported by the detected Claude Code version. These hooks are intentionally
+ * excluded from the committed settings.json because CC rejects the ENTIRE file
+ * when it encounters an unknown hook event name.
+ *
+ * @param {Object} settings - Parsed settings object (mutated in place)
+ * @param {{ major: number, minor: number, patch: number }} ccVersion
+ */
+function injectDynamicHooks(settings, ccVersion) {
+  if (!settings || !settings.hooks) return;
+
+  // Map of hooks to inject with their minimum version and command
+  const DYNAMIC_HOOKS = [
+    {
+      name: 'TaskCreated',
+      minVersion: { major: 2, minor: 1, patch: 84 },
+      config: [{ hooks: [{ type: 'command', command: 'node scripts/hooks/entry/claude-code/task-created.js', timeout: 5 }] }]
+    },
+    {
+      name: 'PermissionDenied',
+      minVersion: { major: 2, minor: 1, patch: 88 },
+      config: [{ hooks: [{ type: 'command', command: 'node scripts/hooks/entry/claude-code/permission-denied.js', timeout: 5 }] }]
+    }
+  ];
+
+  for (const hook of DYNAMIC_HOOKS) {
+    if (!settings.hooks[hook.name] && versionMeetsMinimum(ccVersion, hook.minVersion)) {
+      settings.hooks[hook.name] = hook.config;
+    }
+  }
 }
 
 /**
@@ -406,12 +458,20 @@ function copyClaudeResources() {
         const ccVersion = detectClaudeCodeVersion();
         const removedHooks = stripUnsupportedHooks(ours, ccVersion);
         if (removedHooks.length > 0) {
-          console.log(`[wogiflow] Claude Code ${ccVersion.major}.${ccVersion.minor}.${ccVersion.patch} detected. Excluded unsupported hooks:`);
+          const versionStr = ccVersion ? `${ccVersion.major}.${ccVersion.minor}.${ccVersion.patch}` : 'unknown';
+          console.log(`[wogiflow] Claude Code ${versionStr} detected. Excluded unsupported hooks:`);
           for (const h of removedHooks) {
             console.log(`  - ${h}`);
           }
           console.log('[wogiflow] Update Claude Code for full functionality: npm i -g @anthropic-ai/claude-code@latest');
         }
+
+        // Dynamically inject hooks supported by this CC version but not in the base settings.json.
+        // These hooks are NOT committed to the repo to avoid breaking older CC versions.
+        if (ccVersion) {
+          injectDynamicHooks(ours, ccVersion);
+        }
+
         // Always update hooks (core WogiFlow functionality)
         existing.hooks = ours.hooks;
         existing._wogiFlowManaged = true;
