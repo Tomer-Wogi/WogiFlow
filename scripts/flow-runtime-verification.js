@@ -224,8 +224,10 @@ function generatePlaywrightTest(params) {
 
   for (let i = 0; i < criteria.length; i++) {
     const criterion = criteria[i];
-    lines.push(`  test('Criterion ${i + 1}: ${criterion.replace(/'/g, "\\'")}', async ({ page }) => {`);
-    lines.push(`    await page.goto('${pagePath}');`);
+    const safeCriterion = criterion.replace(/'/g, "\\'").replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    const safePath = pagePath.replace(/'/g, "\\'").replace(/`/g, '\\`');
+    lines.push(`  test('Criterion ${i + 1}: ${safeCriterion}', async ({ page }) => {`);
+    lines.push(`    await page.goto('${safePath}');`);
     lines.push('');
     lines.push(`    // TODO: Implement verification for: ${criterion}`);
     lines.push('    // 1. Perform the user action');
@@ -360,9 +362,13 @@ function generateBELTemplate(taskId, criteria) {
  * @returns {{ strikeCount: number, previousAttempts: string[], requiresDifferentApproach: boolean }}
  */
 function checkRepeatFailures(taskId) {
+  // Validate taskId format
+  if (!/^wf-[0-9a-f]{8}$/i.test(taskId)) {
+    return { strikeCount: 0, requiresDifferentApproach: false };
+  }
+
   const feedbackPath = path.join(PATHS.state, 'feedback-patterns.md');
   let strikeCount = 0;
-  const previousAttempts = [];
 
   try {
     if (fs.existsSync(feedbackPath)) {
@@ -387,7 +393,6 @@ function checkRepeatFailures(taskId) {
 
   return {
     strikeCount,
-    previousAttempts,
     requiresDifferentApproach: strikeCount >= 2
   };
 }
@@ -568,7 +573,9 @@ function generateCurlVerification(endpoints, baseUrl = 'http://localhost:3000') 
     let cmd = `curl -s -w "\\n%{http_code}" -X ${method}`;
     cmd += ` -H "Content-Type: application/json"`;
     if (ep.requestBody) {
-      cmd += ` -d '${JSON.stringify(ep.requestBody)}'`;
+      // Escape single quotes for shell safety: replace ' with '\''
+      const jsonBody = JSON.stringify(ep.requestBody).replace(/'/g, "'\\''");
+      cmd += ` -d '${jsonBody}'`;
     }
     cmd += ` "${url}"`;
 
@@ -623,19 +630,15 @@ function selectVerificationMethod() {
 
   // Check for .mcp.json with browser-related servers
   const mcpPath = path.join(PATHS.root, '.mcp.json');
-  try {
-    if (fs.existsSync(mcpPath)) {
-      const mcpConfig = JSON.parse(fs.readFileSync(mcpPath, 'utf-8'));
-      const servers = mcpConfig.mcpServers || {};
-      const hasBrowser = Object.keys(servers).some(k =>
-        k.includes('browser') || k.includes('puppeteer') || k.includes('playwright')
-      );
-      if (hasBrowser) {
-        return { method: 'webmcp', available: true, reason: 'Browser MCP server detected in .mcp.json' };
-      }
+  const mcpConfig = safeJsonParse(mcpPath, null);
+  if (mcpConfig) {
+    const servers = mcpConfig.mcpServers || {};
+    const hasBrowser = Object.keys(servers).some(k =>
+      k.includes('browser') || k.includes('puppeteer') || k.includes('playwright')
+    );
+    if (hasBrowser) {
+      return { method: 'webmcp', available: true, reason: 'Browser MCP server detected in .mcp.json' };
     }
-  } catch (_err) {
-    // Non-critical
   }
 
   // 2. Check for Playwright/Puppeteer

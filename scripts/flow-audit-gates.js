@@ -29,7 +29,7 @@
 
 'use strict';
 
-const { execFileSync, execSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -83,7 +83,7 @@ function runProjectScript(scriptName, timeout = 60000) {
   }
 
   try {
-    const output = execSync(`npm run ${scriptName} 2>&1`, {
+    const output = execFileSync('npm', ['run', scriptName], {
       cwd: PATHS.root,
       encoding: 'utf-8',
       timeout,
@@ -220,7 +220,13 @@ function checkLintConfigIntegrity() {
   if (!configPath) return result;
 
   result.exists = true;
-  const content = fs.readFileSync(configPath, 'utf-8');
+  let content;
+  try {
+    content = fs.readFileSync(configPath, 'utf-8');
+  } catch (_err) {
+    result.message = 'Lint config found but unreadable';
+    return result;
+  }
 
   // Rules that should be 'error' per recommended presets
   const SHOULD_BE_ERROR = [
@@ -306,10 +312,11 @@ function checkScriptCompleteness() {
  */
 function countEslintDisables() {
   try {
-    const output = execSync(
-      'grep -r "eslint-disable" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" -c 2>/dev/null || true',
-      { cwd: PATHS.root, encoding: 'utf-8', timeout: 15000 }
-    );
+    const output = execFileSync('grep', [
+      '-r', 'eslint-disable',
+      '--include=*.ts', '--include=*.tsx', '--include=*.js', '--include=*.jsx',
+      '-c', '.'
+    ], { cwd: PATHS.root, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
     const lines = output.trim().split('\n').filter(Boolean);
     let total = 0;
     const byFile = [];
@@ -432,7 +439,12 @@ function checkEnvHygiene() {
 
   // .env in .gitignore?
   if (hasGitignore && hasEnv) {
-    const gitignore = fs.readFileSync(path.join(PATHS.root, '.gitignore'), 'utf-8');
+    let gitignore = '';
+    try {
+      gitignore = fs.readFileSync(path.join(PATHS.root, '.gitignore'), 'utf-8');
+    } catch (_err) {
+      // Unreadable — skip this check
+    }
     const envIgnored = gitignore.split('\n').some(l => l.trim() === '.env' || l.trim() === '.env*');
     checks.push({
       check: '.env in .gitignore',
@@ -661,11 +673,11 @@ function main() {
       const pkgPath = path.join(PATHS.root, 'package.json');
       const pkg = safeJsonParse(pkgPath, {});
       const scripts = pkg.scripts || {};
-      const coverageScript = scripts['test:coverage'] || scripts['coverage'];
-      if (coverageScript) {
+      const scriptName = scripts['test:coverage'] ? 'test:coverage' : (scripts['coverage'] ? 'coverage' : null);
+      if (scriptName) {
         try {
-          const output = execSync(`npm run ${scripts['test:coverage'] ? 'test:coverage' : 'coverage'} 2>&1`, {
-            cwd: PATHS.root, encoding: 'utf-8', timeout: 120000
+          const output = execFileSync('npm', ['run', scriptName], {
+            cwd: PATHS.root, encoding: 'utf-8', timeout: 120000, stdio: ['pipe', 'pipe', 'pipe']
           });
           console.log(JSON.stringify({ available: true, output: output.substring(0, 3000) }, null, 2));
         } catch (err) {
@@ -674,10 +686,10 @@ function main() {
       } else {
         // Check test file ratio
         try {
-          const testFiles = execSync('find . -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | grep -v node_modules | wc -l', {
+          const testFiles = execFileSync('sh', ['-c', 'find . -name "*.test.*" -o -name "*.spec.*" 2>/dev/null | grep -v node_modules | wc -l'], {
             cwd: PATHS.root, encoding: 'utf-8', timeout: 5000
           }).trim();
-          const srcFiles = execSync('find . -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" 2>/dev/null | grep -v node_modules | grep -v "*.test.*" | grep -v "*.spec.*" | wc -l', {
+          const srcFiles = execFileSync('sh', ['-c', 'find . \\( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" \\) 2>/dev/null | grep -v node_modules | grep -vE "\\.(test|spec)\\." | wc -l'], {
             cwd: PATHS.root, encoding: 'utf-8', timeout: 5000
           }).trim();
           console.log(JSON.stringify({
