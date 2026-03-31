@@ -560,6 +560,157 @@ After implementing all scenarios, BEFORE quality gates:
 
 **Why this works**: The evaluator has NO emotional investment in the code. It reads the spec and the diff cold. It's explicitly prompted to be skeptical. And because it's a separate sub-agent, it has a fresh context — no accumulated "I already know this works" bias from the implementation phase.
 
+### Step 3.58: Runtime Verification Gate (UI tasks — MANDATORY)
+
+**Activates when**: Any changed file matches UI patterns (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`, `*.styled.*`).
+
+Run detection: `node node_modules/wogiflow/scripts/flow-runtime-verification.js detect [changed-files...]`
+
+**The problem this solves**: AI workers mark UI tasks as "done" based on static evidence (TypeScript compiles, build succeeds, bundle contains function names) without ever verifying the feature works in a browser. This leads to 3-5 iteration cycles where the same bug survives because no one clicks the feature. (See: Pipeline Rules case study — 5 failed iterations, same bug.)
+
+**BANNED verification methods** — these NEVER count as evidence for UI tasks:
+
+| Banned Method | What it proves | Why it's insufficient |
+|---|---|---|
+| `grep` deployed bundle for function names | Code included in build | Function may never execute or render wrong |
+| `tsc --noEmit` passes | Types are correct | Type-correct code can have wrong runtime behavior |
+| `vite build` succeeds | Modules resolve | Build success says nothing about UX |
+| "I read the code and it's logically correct" | Nothing | Author is worst possible judge of own work |
+| `aws s3 sync` completes | Files hosted | Hosting ≠ functioning |
+
+**Evidence Tiers** — every verification claim must be classified:
+
+| Tier | Name | Sufficient alone? |
+|---|---|---|
+| 0 | STATIC (compile, build, lint) | NEVER |
+| 1 | STRUCTURAL (file exists, imported, route registered) | NEVER |
+| 2 | OBSERVATIONAL (page loads, feature renders) | Yes (display-only) |
+| 3 | INTERACTIVE (click/type/submit → observed result persists) | Yes (behavioral) |
+| 4 | AUTOMATED (Playwright/WebMCP test passes) | Yes (strongest) |
+
+**Minimum: Tier 2 for display criteria, Tier 3 for behavioral criteria.**
+
+#### Verification Method Selection
+
+Run: `node node_modules/wogiflow/scripts/flow-runtime-verification.js method`
+
+**Priority order** (use the first available):
+
+**1. WebMCP Browser Verification (DEFAULT — preferred)**
+
+When `config.webmcp.enabled` or a browser MCP server is detected in `.mcp.json`:
+
+For EACH acceptance criterion:
+1. Navigate to the affected page via `mcp_browser_navigate`
+2. Screenshot BEFORE: `mcp_browser_screenshot()`
+3. Perform the user action (click, type, select, submit)
+4. Wait 2-3 seconds for async updates
+5. Screenshot AFTER: `mcp_browser_screenshot()`
+6. Assert DOM state: `mcp_browser_evaluate("document.querySelector(...)")`
+7. Record in Behavioral Evidence Log
+
+**High-risk tasks** (state mutation detected — useMutation, invalidateQueries, onMutate):
+- After all criteria verified, wait 3 seconds
+- Screenshot again — check state persisted after refetch
+- Reload page: `mcp_browser_navigate` to same URL
+- Wait for networkidle
+- Screenshot — check state survived page reload
+- If state reverted → the server didn't persist, or refetch overwrote it → FAIL
+
+**2. Playwright Test Generation (secondary)**
+
+When Playwright/Puppeteer is in dependencies but no WebMCP:
+
+1. Auto-generate a Playwright test from acceptance criteria
+2. Write test to `tests/verification/verify-{taskId}.spec.ts`
+3. Instruct the user: "Run `npx playwright test tests/verification/verify-{taskId}.spec.ts --headed` to verify"
+4. If the project has CI, the test persists as a regression guard
+
+**3. User Verification Checklist (fallback — always available)**
+
+When neither WebMCP nor Playwright is available:
+
+Present a checklist to the user:
+```
+━━━ USER VERIFICATION CHECKLIST ━━━
+I cannot verify UI behavior from the CLI. Please check:
+
+□ 1. Navigate to [page]
+□ 2. [criterion 1 — specific action + expected result]
+□ 3. [criterion 2 — specific action + expected result]
+□ Wait 3 seconds after each action
+□ Refresh the page and verify changes persisted
+
+Reply "verified" when all checks pass, or describe what's broken.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**CRITICAL**: The agent MUST wait for the user's "verified" response before marking the task complete. Do NOT proceed to quality gates without verification.
+
+#### Behavioral Evidence Log (BEL)
+
+Before marking ANY UI task complete, produce a BEL:
+
+```
+━━━ BEHAVIORAL EVIDENCE LOG ━━━
+Task: wf-XXXXXXXX
+Method: WEBMCP / PLAYWRIGHT / USER_CHECKLIST
+Verified on: localhost:5173
+
+CRITERION: "[text]"
+  ACTION: Clicked "Route To" cell, selected "Design Department"
+  EXPECTED: Cell updates to show "Design DEPARTMENT"
+  OBSERVED: Cell shows "Design DEPARTMENT" with blue icon
+  WAIT: 3 seconds — state persisted after refetch
+  VERDICT: PASS
+  EVIDENCE: Tier 3 (INTERACTIVE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+The OBSERVED field MUST describe what was SEEN, not what the code theoretically produces.
+
+#### Pre-Implementation "See Before You Touch" (modification tasks)
+
+For tasks modifying existing UI (not greenfield):
+1. Start dev server if not running
+2. Navigate to the affected page
+3. Screenshot/observe current state (BEFORE)
+4. Document the baseline
+5. Then implement changes
+6. After implementation, compare BEFORE vs AFTER
+
+#### Repeat Failure Protocol (Groundhog Day Detector)
+
+When the SAME issue is reported in 2+ consecutive dispatches:
+
+| Strike | Action |
+|--------|--------|
+| 1 | Normal fix + BEL |
+| 2 | MANDATORY root cause analysis BEFORE coding. Change approach. Add console.log tracing. Tier 3+ evidence required. |
+| 3 | HARD BLOCK: Cannot mark done without screenshot/console evidence. Must state what's DIFFERENT this time. |
+| 4+ | ESCALATION: Acknowledge inability, suggest pair debugging with user. |
+
+Run: `node node_modules/wogiflow/scripts/flow-runtime-verification.js repeat wf-XXXXXXXX`
+
+#### Devil's Advocate Prompt
+
+Before marking a UI task complete, ask yourself:
+
+> "Assume this is broken. What are the 3 most likely ways it could fail?"
+
+Then CHECK each one:
+1. Does the API actually accept these fields?
+2. Does the response include the fields I'm reading?
+3. Does the UI update persist after refetch/re-render?
+
+If ANY is plausible and not verified → investigate before marking done.
+
+#### Skip Conditions
+
+- Task has NO UI files in changed set → skip entirely
+- Task is L3 trivial (e.g., CSS color change) → Tier 2 observational is sufficient
+- `config.runtimeVerification.enabled: false` → skip (not recommended)
+
 ### Step 3.6: Integration Wiring Validation (MANDATORY)
 
 Run `node node_modules/wogiflow/scripts/flow-wiring-verifier.js wf-XXXXXXXX`
