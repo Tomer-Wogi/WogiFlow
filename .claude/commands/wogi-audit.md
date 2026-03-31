@@ -44,11 +44,12 @@ node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"a
 | Phase | phaseNum | Description |
 |-------|----------|-------------|
 | 1 | Gather Files | Scan project files |
+| 1.5 | Gate 0 | Pre-agent baseline checks (build, typecheck, lint, config integrity) |
 | 2 | Agents | 7 parallel agents (sub-steps = agents) |
-| 3 | Consolidate | Score calculation |
+| 3 | Consolidate | Score calculation + Gate 0 cap |
 | 4 | Pattern Promotion | AI clustering + cross-reference + gaps |
-| 5 | Report | Display formatted report |
-| 6 | Persist | Save to last-audit.json |
+| 5 | Report | Display formatted report with Gate 0 baseline |
+| 6 | Persist | Save to last-audit.json (includes Gate 0 data + trend) |
 
 **Display at each agent completion:**
 ```
@@ -67,6 +68,68 @@ node node_modules/wogiflow/scripts/flow-audit.js files
 ```
 
 This returns all tracked project files (excluding node_modules, dist, .workflow/state/, etc.). Use this as the base file set for all agents.
+
+### Step 1.5: Gate 0 — Pre-Agent Baseline Checks (MANDATORY)
+
+**Run BEFORE launching any analysis agents.** These are hard, verifiable checks — not AI judgment. They produce quantitative metrics that cap the final audit score.
+
+**Principle**: If the project doesn't build, doesn't pass typecheck, or has hundreds of linter errors — the score CANNOT be higher than D+, regardless of how elegant the architecture is. The foundation is broken.
+
+```bash
+node node_modules/wogiflow/scripts/flow-audit-gates.js run
+```
+
+This returns JSON with all gate results. Parse and display:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GATE 0: PROJECT HEALTH BASELINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BUILD:       ✓ passes  |  ✗ FAILS (cap: D)
+TYPECHECK:   ✓ 0 errors  |  ✗ N errors (cap: C/D+/D)
+LINT:        ✓ 0 errors, M warnings  |  ✗ N errors (cap: C)
+LINT CONFIG: ✓ no downgraded rules  |  ✗ N rules downgraded (-N pts)
+TESTS:       ✓ pass  |  ✗ FAIL  |  ○ no test script
+SCRIPTS:     ✓ all present  |  ✗ missing: build, test
+
+Extended:
+  eslint-disable comments: N (across M files)
+  Framework: React 18.x + TypeScript (monorepo)
+  Git health: 45 commits/30d, conventional commits: yes
+  Env hygiene: .env.example ✓, CI ✓
+
+Score cap: [GRADE] (reasons: ...)
+Trend: typecheck errors 939 → 412 (-527) ↑
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Gate results feed into scoring (Step 3)**:
+- `gate0.cap.scoreCap` — maximum score the project can achieve
+- `gate0.cap.penalties` — points deducted from the agent-derived score
+- `gate0.eslintDisables` — passed to Consistency agent as context
+- `gate0.framework` — used to load framework-specific agent prompts
+- `gate0.trend` — shown in the final report for improvement tracking
+
+**If Gate 0 reveals critical issues** (build fails, >500 type errors), display a prominent warning before proceeding to agents:
+```
+⚠ CRITICAL BASELINE ISSUES DETECTED
+  The project has fundamental health problems. Agent analysis will proceed
+  but the overall score is capped at [GRADE] due to Gate 0 failures.
+```
+
+**Framework-specific agent prompts**: When `gate0.framework` detects a known framework, inject framework-specific checks into the relevant agents:
+
+| Framework | Agent | Additional Checks |
+|-----------|-------|-------------------|
+| **React** | Performance | useState count per component (>5 = re-render risk), React.memo usage ratio, inline objects in JSX .map(), useEffect without cleanup |
+| **React** | Architecture | God components (>1000 LOC), prop drilling depth, context provider nesting |
+| **Next.js** | Performance | Page bundle sizes, dynamic imports usage, ISR/SSR appropriate usage |
+| **Next.js** | Architecture | API route structure, middleware usage, server/client boundary |
+| **NestJS** | Architecture | Module structure, circular module deps, guard/interceptor coverage |
+| **NestJS** | Performance | Eager-loaded modules, missing caching decorators |
+
+The framework checks are appended to the existing agent prompts — they don't replace the universal checks.
 
 ### Step 2: Launch 7 Parallel Agents
 
@@ -91,8 +154,13 @@ Analyze the architecture of this project.
    - Route handlers containing business logic (>50 LOC)
    - Utility files importing domain-specific modules
 4. Find god files (files with >300 LOC or >10 exported functions)
-5. Check for circular dependencies between modules
+5. Check for circular dependencies between modules (import cycles)
 6. Identify missing abstractions (repeated patterns that could be extracted)
+7. **Dead export scan**: For every exported function/component/type, grep for importers.
+   Report exports with ZERO importers — these are dead code at the module boundary.
+   Count total dead exports and list the top 10 by file.
+8. **If React detected** (from Gate 0 framework): Flag components with >5 useState as
+   re-render risks, check React.memo usage ratio, identify prop drilling depth >3
 
 Return a structured report with:
 - Strengths (good patterns found)
@@ -117,9 +185,14 @@ Audit the project's dependencies.
 4. Check for known security vulnerabilities:
    - Run: node node_modules/wogiflow/scripts/flow-audit.js audit
    → This runs npm audit and returns structured results
+5. **Dependency health** (enhanced):
+   - Major versions behind: packages that are 2+ majors behind (HIGH)
+   - License risk: GPL/AGPL in commercial projects, or UNLICENSED packages
+   - Bundle size outliers: dependencies >500KB that could be replaced with lighter alternatives
+   - Duplicate packages: same package at multiple versions in the tree
 
 Return:
-- Dependencies summary (total, outdated, vulnerable)
+- Dependencies summary (total, outdated, vulnerable, deprecated, license issues)
 - Each finding tagged [HIGH/MED/LOW]
 - Score: A through F
 ```
@@ -201,10 +274,20 @@ Audit consistency of patterns across the project.
 5. Configuration patterns:
    - Are config values accessed consistently?
    - Any hardcoded values that should be configurable?
+6. **eslint-disable comment census** (from Gate 0 data):
+   - Gate 0 provides the total count and top files
+   - Each eslint-disable is a suppressed violation — a high count (>50) indicates
+     hidden technical debt through suppression
+   - Flag files with >5 eslint-disable comments as consistency violations
+7. **Lint config integrity** (from Gate 0 data):
+   - If Gate 0 detected downgraded rules, include them as [HIGH] consistency findings
+   - This is "configuration-level debt masking" — making the project appear clean
+     by lowering standards instead of fixing code
 
 Return:
 - Consistency findings, each tagged [HIGH/MED/LOW]
 - Dominant patterns vs outliers
+- eslint-disable count and top offenders
 - Score: A through F
 ```
 
@@ -252,11 +335,26 @@ Catalog technical debt in this project.
 5. Cross-reference with existing tech debt:
    - Read .workflow/state/tech-debt.json if it exists
    - Identify new debt vs already-tracked debt
+6. **Test coverage reality check** (from Gate 0 data):
+   - Test file ratio: N test files / M source files (ideal: >30%)
+   - If coverage report is available: line/branch coverage %
+   - 0% test coverage + complex business logic = [HIGH] tech debt
+7. **Git health indicators** (from Gate 0 data):
+   - Commit frequency: active/inactive
+   - Stale branches (unmerged >30 days)
+   - Commit message quality (conventional commits?)
+   - Large uncommitted changes count
+8. **Environment/config hygiene** (from Gate 0 data):
+   - .env.example missing when .env exists
+   - No CI configuration = no automated quality enforcement
+   - Secrets patterns in tracked files
 
 Return:
 - Tech debt items, each tagged [HIGH/MED/LOW]
 - Summary: TODOs count, FIXMEs count, HACKs count
 - Commented-out code blocks count
+- Test coverage metrics
+- Git health summary
 - Score: A through F
 ```
 
@@ -286,11 +384,39 @@ Return:
 - Score: A through F
 ```
 
-### Step 3: Consolidate Results
+### Step 3: Consolidate Results + Apply Score Cap
 
 After all agents complete, consolidate into a single report.
 
-**Use `node node_modules/wogiflow/scripts/flow-audit.js score` with the agent scores to calculate a weighted overall score.**
+**3.1. Calculate weighted agent score:**
+```bash
+node node_modules/wogiflow/scripts/flow-audit.js score '{"architecture":"B+","dependencies":"A-",...}'
+```
+
+**3.2. Apply Gate 0 score cap:**
+```
+Final score = min(gate0_cap, weighted_agent_score - gate0_penalties)
+```
+
+| Gate 0 Result | Score Cap |
+|--------------|-----------|
+| Build fails | max D (63) |
+| Typecheck >500 errors | max D+ (67) |
+| Typecheck >100 errors | max C (73) |
+| Typecheck >50 errors | max C+ (77) |
+| Lint >50 errors | max C (73) |
+| Lint config manipulation | -3 pts per downgraded rule (max -15) |
+
+**Example**: Agents score B (83), but build fails → capped at D (63). Agents score B+ (87), but lint config has 4 downgraded rules → 87 - 12 = 75 → C+.
+
+**3.3. Include extended metrics in the report:**
+- eslint-disable comment count (from Gate 0)
+- Dead export count (from agent scan)
+- Test file ratio (from Gate 0)
+- Git health indicators (from Gate 0)
+
+**3.4. Trend delta (if previous audit exists):**
+Compare current metrics with `last-audit.json`. Show improvement/regression arrows.
 
 ### Step 4: Display Report
 
@@ -301,7 +427,11 @@ PROJECT AUDIT REPORT
 
 Project: [name] | Files scanned: N | Date: YYYY-MM-DD
 
-HEALTH SCORE: [A/B/C/D/F] (weighted across all dimensions)
+GATE 0 BASELINE:
+  Build: ✓/✗ | Typecheck: N errors | Lint: N errors, M warnings
+  Score cap: [GRADE] | Penalties: -N pts | Framework: [detected]
+
+HEALTH SCORE: [A/B/C/D/F] (capped by Gate 0 from agent score of [X])
 
 ━━━ ARCHITECTURE (score: X) ━━━
   Strengths:
@@ -493,6 +623,24 @@ Regardless of user choice, always save the audit results to `.workflow/state/las
 {
   "date": "YYYY-MM-DD",
   "overallScore": "B+",
+  "gate0": {
+    "buildPasses": true,
+    "typecheckErrors": 0,
+    "lintErrors": 0,
+    "lintWarnings": 12,
+    "downgradedRules": [],
+    "testsPassing": true,
+    "missingScripts": [],
+    "eslintDisableCount": 23,
+    "scoreCap": 100,
+    "penalties": 0,
+    "framework": { "name": "react", "version": "18.2.0" },
+    "gitHealth": { "recentCommits": 45, "staleBranches": 2, "conventionalCommits": true },
+    "envHygiene": { "envExample": true, "ciConfigured": true },
+    "testCoverage": { "testFiles": 34, "sourceFiles": 120, "ratio": "28.3%" }
+  },
+  "agentScore": "B+",
+  "scoreCappedBy": null,
   "scores": {
     "architecture": "B+",
     "dependencies": "A-",
