@@ -721,6 +721,80 @@ function testDiscoveryGate(ctx) {
   }
 }
 
+/**
+ * Verification proof gate — checks that completed acceptance criteria
+ * have verification evidence recorded in the durable session.
+ *
+ * Without this, agents can mark criteria as "completed" without any
+ * behavioral evidence that the feature actually works.
+ *
+ * Checks durable-session.json for verificationProof on each completed step.
+ * Steps without proof are flagged. If ALL steps lack proof, gate blocks.
+ * If SOME steps have proof, gate warns (partial evidence).
+ */
+function verificationProofGate(ctx) {
+  let loadDurableSession;
+  try {
+    ({ loadDurableSession } = require('./flow-durable-session'));
+  } catch (_err) {
+    ctx.warn('verificationProof (durable session module not available)');
+    return { passed: true };
+  }
+
+  try {
+    const session = loadDurableSession();
+    if (!session || !session.taskId) {
+      // No durable session — graceful fallback for tasks created before this gate existed
+      console.log(`  ${ctx.color('yellow', '\u25CB')} verificationProof (no durable session — skipping)`);
+      return { passed: true };
+    }
+
+    // Only check acceptance criteria steps, not system steps.
+    // Normalize step type to handle both kebab-case and snake_case variants.
+    const normalizeStepType = (type) => (type || '').toLowerCase().replace(/_/g, '-');
+    const criteriaSteps = (session.steps || []).filter(s =>
+      s.status === 'completed' && normalizeStepType(s.type) === 'acceptance-criteria'
+    );
+
+    if (criteriaSteps.length === 0) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} verificationProof (no completed criteria — skipping)`);
+      return { passed: true };
+    }
+
+    const unverified = criteriaSteps.filter(s => !s.verificationProof);
+    const verified = criteriaSteps.length - unverified.length;
+
+    if (unverified.length === 0) {
+      ctx.success(`verificationProof (${verified}/${criteriaSteps.length} criteria have evidence)`);
+      return { passed: true };
+    }
+
+    // If ALL criteria lack proof → hard block
+    if (verified === 0) {
+      ctx.error(`verificationProof (0/${criteriaSteps.length} criteria have verification evidence)`);
+      for (const s of unverified.slice(0, 5)) {
+        console.log(ctx.color('dim', `    - ${(s.description || s.title || s.id || '').substring(0, 100)}`));
+      }
+      console.log(ctx.color('dim', '    Run runtime verification or provide behavioral evidence for each criterion.'));
+      return {
+        passed: false,
+        errorOutput: `${unverified.length} acceptance criteria completed without verification proof. ` +
+          'Each criterion needs behavioral evidence (WebMCP, Playwright, curl, or manual checklist).'
+      };
+    }
+
+    // Partial proof — warn but allow (transitional)
+    console.log(`  ${ctx.color('yellow', '\u25CB')} verificationProof (${verified}/${criteriaSteps.length} verified — ${unverified.length} missing proof)`);
+    for (const s of unverified.slice(0, 3)) {
+      console.log(ctx.color('dim', `    - Missing: ${(s.description || s.title || s.id || '').substring(0, 80)}`));
+    }
+    return { passed: true };
+  } catch (err) {
+    ctx.warn(`verificationProof (error: ${ctx.truncateOutput(err.message, 3, 200)})`);
+    return { passed: true };
+  }
+}
+
 function unknownGate(ctx, gateName) {
   console.log(`  ${ctx.color('yellow', '\u25CB')} ${gateName} (manual check)`);
   return { passed: true };
@@ -804,6 +878,7 @@ const GATE_REGISTRY = {
   uiVerification: verificationGate,
   apiVerification: verificationGate,
   testDiscovery: testDiscoveryGate,
+  verificationProof: verificationProofGate,
   // Workspace gates (conditional — auto-skip when not in workspace)
   workspaceCompliance: workspaceGate,
 };
@@ -851,6 +926,7 @@ module.exports = {
   generatedTestsPassGate,
   verificationGate,
   testDiscoveryGate,
+  verificationProofGate,
   workspaceGate,
   unknownGate,
 };

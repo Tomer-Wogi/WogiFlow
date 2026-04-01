@@ -928,6 +928,26 @@ function main() {
   // so the correct hooks are already in place when stale ones are removed.
   migrateStaleLocalHooks();
 
+  // Migrate config.json defaults when they change between versions.
+  // Without this, existing users keep stale defaults forever because
+  // deepMerge(defaults, userConfig) lets user values win.
+  // Only upgrades keys that still match the OLD default — user-customized values are preserved.
+  try {
+    const configPath = path.join(WORKFLOW_DIR, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const { migrateConfigFile } = require('./flow-config-migrate');
+      const migrationResult = migrateConfigFile(configPath);
+      if (migrationResult.migrated && !shouldBeSilent()) {
+        process.stderr.write(`\x1b[36mWogiFlow:\x1b[0m Migrated config (v${migrationResult.fromVersion} → v${migrationResult.toVersion}): ${migrationResult.applied.length} change(s).\n`);
+      }
+    }
+  } catch (err) {
+    // Non-fatal — config migration should never fail installation
+    if (process.env.DEBUG) {
+      console.error(`[postinstall] Config migration failed: ${err.message}`);
+    }
+  }
+
   // NOTE: Scripts and .workflow/ managed dirs (bridges, templates, agents, lib) are
   // NO LONGER copied to the project. They live exclusively in the wogiflow package
   // under node_modules/wogiflow/. This keeps user projects clean.

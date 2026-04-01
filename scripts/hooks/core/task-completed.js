@@ -21,6 +21,7 @@ const fs = require('node:fs');
 const { getConfig, PATHS, safeJsonParse, writeJson, withLock, validateTaskId, archiveCompletedTasksToLog } = require('../../flow-utils');
 const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
 const { clearOnTaskComplete } = require('../../flow-hook-status');
+const { checkGateLatch, clearGateLatch } = require('../../flow-gate-latch');
 
 /**
  * Check if task completed handling is enabled
@@ -90,6 +91,22 @@ async function handleTaskCompleted(input) {
       }
       result.taskId = completedTask.id;
 
+      // Gate latch check — verify quality gates have passed before allowing completion.
+      // Without this, agents can call TaskUpdate and bypass all quality gates.
+      // The latch is written by flow-done.js after gates pass.
+      const config = getConfig();
+      const requireGateLatch = config.enforcement?.requireGateLatch !== false;
+      if (requireGateLatch) {
+        const latchResult = checkGateLatch(completedTask.id);
+        if (!latchResult.valid) {
+          result.message = `BLOCKED: ${latchResult.reason} ` +
+            'Quality gates must pass before a task can be completed. ' +
+            'Run the full /wogi-start pipeline (Step 4: Quality Gates) or `flow done` first.';
+          result.gateBlocked = true;
+          return;
+        }
+      }
+
       // Move task to recentlyCompleted
       completedTask.status = 'completed';
       completedTask.completedAt = new Date().toISOString();
@@ -155,6 +172,15 @@ async function handleTaskCompleted(input) {
         if (process.env.DEBUG) {
           console.error(`[Task Completed] Hook status clear failed: ${err.message}`);
         }
+      }
+    }
+
+    // Clear gate latch after successful completion
+    if (result.completed) {
+      try {
+        clearGateLatch();
+      } catch (_err) {
+        // Non-critical
       }
     }
 

@@ -161,6 +161,7 @@ const RESEARCH_TRIGGERS = {
 const CONFIG_DEFAULTS = {
   // --- Core ---
   version: '2.0.0',
+  _configVersion: 2, // Tracks config schema version for migrations (see flow-config-migrate.js)
   projectName: '',
   cli: {
     type: 'claude-code',
@@ -172,6 +173,7 @@ const CONFIG_DEFAULTS = {
   enforcement: {
     strictMode: true,
     requireTaskForImplementation: true,
+    requireGateLatch: true, // Gate latch: quality gates must pass before TaskCompleted allows completion
     requirePatternCitation: false,
     citationFormat: '// Pattern: {pattern}',
     blockAutoTask: true,
@@ -300,11 +302,11 @@ const CONFIG_DEFAULTS = {
   qualityGates: {
     preTaskBaseline: { enabled: false },
     feature: {
-      require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'registryUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
+      require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'verificationProof', 'registryUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
       optional: ['review', 'docs', 'webmcpVerification']
     },
     bugfix: {
-      require: ['loopComplete', 'tests', 'generatedTestsPass', 'requestLogEntry', 'standardsCompliance'],
+      require: ['loopComplete', 'tests', 'generatedTestsPass', 'verificationProof', 'requestLogEntry', 'standardsCompliance'],
       optional: ['learningEnforcement', 'resolutionPopulated', 'review', 'webmcpVerification']
     },
     refactor: {
@@ -327,7 +329,7 @@ const CONFIG_DEFAULTS = {
 
   // --- Standards & Compliance ---
   standardsCompliance: {
-    enabled: false,
+    enabled: true,
     mode: 'block',
     scopeByTaskType: true,
     alwaysCheck: ['naming', 'security'],
@@ -336,6 +338,27 @@ const CONFIG_DEFAULTS = {
   },
   checkpoint: { enabled: false },
   regressionTesting: { enabled: false },
+
+  // --- Runtime Verification (CC 2.1.89+ enforcement) ---
+  // Ensures agents actually test their work before marking done.
+  // Without this, agents claim "done" based on static evidence only.
+  runtimeVerification: {
+    enabled: true,
+    autoGenerateTests: true,
+    blockOnFailure: true,
+    frontend: {
+      method: 'webmcp',
+      fallback: ['playwright', 'checklist'],
+      devServerUrl: 'http://localhost:5173'
+    },
+    backend: {
+      method: 'api-test',
+      fallback: ['curl', 'checklist'],
+      baseUrl: 'http://localhost:3000'
+    },
+    testOutput: 'tests/verification',
+    persistTests: true
+  },
 
   // --- Detection (Project Type Awareness) ---
   detection: {
@@ -402,7 +425,7 @@ const CONFIG_DEFAULTS = {
     threshold: 30,
     allRegistries: true,
     aiAsJudge: true,
-    blockOnSimilar: false,
+    blockOnSimilar: true,
     injectContext: true,
     preferVariants: true,
     requireAppMapEntry: true,

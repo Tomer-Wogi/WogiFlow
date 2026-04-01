@@ -18,6 +18,7 @@ const setupCheck = require('./setup-check');
 const { findParallelizable, getParallelConfig } = require('../../flow-parallel');
 const { getBypassTracking } = require('../../flow-session-state');
 const { loadCheckpoint, clearCheckpoint } = require('../../flow-task-checkpoint');
+const { generateManifest, formatManifestForInjection, hasContent } = require('../../flow-context-manifest');
 
 // ============================================================
 // State Folder Hygiene — Whitelist + Age-Based Cleanup
@@ -119,6 +120,9 @@ const KNOWN_STATE_FILES = new Set([
   'pending-skill.json',
   'pending-setup.json',
 
+  // Context manifest (tiered context T2)
+  'session-manifest.md',
+
   // Archive
   'completed-archive.json',
 
@@ -132,6 +136,7 @@ const KNOWN_STATE_FILES = new Set([
   '.claude-md-regen-version',
   '.routing-pending',
   '.routing-cleared',
+  '.gates-passed.json',
 ]);
 
 /** Known directory names within state/ (not files) */
@@ -668,6 +673,7 @@ async function gatherSessionContext(options = {}) {
   }
 
   // Memory pipeline recall (surface relevant memories for current task)
+  // Capped at 2KB to prevent unbounded growth (CC 2.1.89 saves >50K hook output to disk)
   try {
     const currentTask = context.currentTask;
     if (currentTask) {
@@ -677,7 +683,10 @@ async function gatherSessionContext(options = {}) {
         currentTask.type || ''
       );
       if (memories) {
-        context.relevantMemories = memories;
+        const MAX_MEMORY_CHARS = 2048;
+        context.relevantMemories = typeof memories === 'string' && memories.length > MAX_MEMORY_CHARS
+          ? memories.substring(0, MAX_MEMORY_CHARS) + '\n... (truncated — load full via memory DB)'
+          : memories;
       }
     }
   } catch (err) {
@@ -732,11 +741,12 @@ async function gatherSessionContext(options = {}) {
   // v7.0: Real-time correction surfacing
   // When 2+ corrections of the same type are detected in the same session,
   // surface a hint telling Claude to consider recording the pattern.
+  // Capped at 5 types to prevent unbounded growth (CC 2.1.89 >50K disk save)
   try {
     const { getRepeatedCorrectionTypes } = require('../../flow-correction-detector');
     const repeatedTypes = getRepeatedCorrectionTypes();
     if (repeatedTypes.length > 0) {
-      context.correctionSurfacing = repeatedTypes;
+      context.correctionSurfacing = repeatedTypes.slice(0, 5);
     }
   } catch (_err) {
     // Non-critical
@@ -766,6 +776,20 @@ async function gatherSessionContext(options = {}) {
     });
   } catch (err) {
     // Non-critical — community sync module may not be available
+  }
+
+  // T2: Context manifest — compact inventory of all registries
+  // Lets Claude know what coding rules, components, utilities, and APIs exist
+  // without injecting full content (loaded on-demand via Read)
+  try {
+    const manifest = generateManifest();
+    if (hasContent(manifest)) {
+      context.contextManifest = manifest;
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-context] Manifest generation failed: ${err.message}`);
+    }
   }
 
   return {
@@ -897,8 +921,16 @@ function formatContextForInjection(context) {
     output += `\nConsider running these tasks in parallel for faster completion.\n\n`;
   }
 
-  // Key decisions
-  if (ctx.keyDecisions && ctx.keyDecisions.length > 0) {
+  // T2: Context manifest — replaces key decisions with full registry inventory
+  // Provides one-line summaries so Claude knows WHAT EXISTS without full injection
+  if (ctx.contextManifest) {
+    const manifestText = formatManifestForInjection(ctx.contextManifest);
+    if (manifestText) {
+      output += `### Available Context (load on demand)\n`;
+      output += manifestText + '\n\n';
+    }
+  } else if (ctx.keyDecisions && ctx.keyDecisions.length > 0) {
+    // Fallback: legacy key decisions format (manifest generation failed or unavailable)
     output += `### Key Decisions\n`;
     for (const decision of ctx.keyDecisions) {
       output += `- **${decision.title}**: ${decision.summary}\n`;
@@ -984,13 +1016,14 @@ function formatContextForInjection(context) {
   }
 
   // Community knowledge (pulled from server)
+  // Capped: 3 model intelligence + 2 error strategies + 2 patterns (CC 2.1.89 >50K disk save)
   if (ctx.communityKnowledge && typeof ctx.communityKnowledge === 'object') {
     const ck = ctx.communityKnowledge;
     const items = [];
 
     // Model intelligence
     if (Array.isArray(ck.modelIntelligence)) {
-      for (const item of ck.modelIntelligence.slice(0, 5)) {
+      for (const item of ck.modelIntelligence.slice(0, 3)) {
         if (item.model && (item.strengths || item.adjustments)) {
           const detail = item.adjustments || item.strengths;
           items.push(`Community: ${item.model} — ${detail}`);
@@ -1000,7 +1033,7 @@ function formatContextForInjection(context) {
 
     // Error strategies
     if (Array.isArray(ck.errorStrategies)) {
-      for (const item of ck.errorStrategies.slice(0, 3)) {
+      for (const item of ck.errorStrategies.slice(0, 2)) {
         if (item.category && item.strategy) {
           items.push(`Community: ${item.category} — ${item.strategy}`);
         }
@@ -1009,7 +1042,7 @@ function formatContextForInjection(context) {
 
     // Patterns
     if (Array.isArray(ck.patterns)) {
-      for (const item of ck.patterns.slice(0, 3)) {
+      for (const item of ck.patterns.slice(0, 2)) {
         if (item.description) {
           items.push(`Community: ${item.description}`);
         }
@@ -1023,6 +1056,17 @@ function formatContextForInjection(context) {
       }
       output += '\n';
     }
+  }
+
+  // CC 2.1.89: Hook output >50K chars gets saved to disk with file path + preview.
+  // Cap total output to stay under threshold and keep full context in-session.
+  // If we exceed this, the most important context (T1: task state, routing) is at
+  // the top and will appear in the preview. T2 (manifest) and lower-priority sections
+  // are trimmed first.
+  const MAX_OUTPUT_CHARS = 45000; // Stay safely under 50K
+  if (output.length > MAX_OUTPUT_CHARS) {
+    output = output.substring(0, MAX_OUTPUT_CHARS) +
+      '\n\n*[Context truncated to stay within injection limit. Load full context via `/wogi-context` or Read registry files directly.]*\n';
   }
 
   return output;

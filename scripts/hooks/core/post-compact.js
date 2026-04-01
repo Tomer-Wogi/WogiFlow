@@ -198,7 +198,17 @@ function handlePostCompact() {
     fs.writeFileSync(compactStatePath, JSON.stringify(tracker, null, 2));
 
     if (tracker.count >= 3) {
-      contextParts.push('**WARNING**: Multiple compactions detected in quick succession. Claude Code 2.1.76+ stops auto-compaction after 3 consecutive failures. If context keeps growing, consider starting a new session.');
+      contextParts.push('**WARNING**: Multiple compactions detected in quick succession. Claude Code 2.1.89+ stops auto-compaction after 3 consecutive thrash cycles. If context keeps growing, consider starting a new session.');
+    }
+
+    // CC 2.1.89 context-budget awareness: when 2+ compactions happened in quick succession,
+    // instruct Claude to load context incrementally to avoid the thrash loop.
+    if (tracker.count >= 2) {
+      contextParts.push('**Context budget: LOW** — 2+ compactions in quick succession. To avoid a thrash loop:\n' +
+        '- Load context ON DEMAND only (Read specific files when needed, not bulk)\n' +
+        '- Use the manifest in SessionStart context to know what exists\n' +
+        '- Prefer targeted `Read` of specific sections over loading entire registry files\n' +
+        '- Skip non-essential context (community knowledge, memory recall)');
     }
   } catch (err) {
     if (process.env.DEBUG) {

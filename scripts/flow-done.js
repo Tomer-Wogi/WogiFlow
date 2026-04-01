@@ -557,6 +557,20 @@ async function main() {
     process.exit(1);
   }
 
+  // Write gate latch — proves quality gates passed for this task.
+  // The TaskCompleted hook checks this latch before allowing completion.
+  // Without it, agents can call TaskUpdate and bypass all gates.
+  try {
+    const { setGateLatch } = require('./flow-gate-latch');
+    const gates = getConfig().qualityGates?.[taskTypeForGates]?.require
+      ?? getConfig().qualityGates?.feature?.require ?? [];
+    setGateLatch(taskId, gates);
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-done] Gate latch write failed: ${err.message}`);
+    }
+  }
+
   console.log('');
 
   // Check if task exists
