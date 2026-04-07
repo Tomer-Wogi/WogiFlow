@@ -428,6 +428,51 @@ async function main() {
       console.log(JSON.stringify(stats, null, 2));
       break;
 
+    case 'browse': {
+      // Human-readable knowledge index — outputs a browsable catalog of all indexed sections
+      await ensureIndex();
+
+      const indexData = readIndex();
+      if (!indexData) {
+        console.log('No section index found. Run: node scripts/flow-section-index.js --force');
+        break;
+      }
+
+      // Index stores sections per source: { sources: { "file.md": { sections: [...] } } }
+      const bySource = {};
+      let totalSections = 0;
+      const sources = indexData.sources || {};
+      for (const [sourceName, sourceData] of Object.entries(sources)) {
+        const sects = sourceData.sections || [];
+        if (sects.length > 0) {
+          bySource[sourceName] = sects;
+          totalSections += sects.length;
+        }
+      }
+
+      console.log('╔══════════════════════════════════════════════════╗');
+      console.log('║         KNOWLEDGE INDEX (browsable)             ║');
+      console.log('╚══════════════════════════════════════════════════╝');
+      console.log(`  ${totalSections} sections indexed from ${Object.keys(bySource).length} sources\n`);
+
+      for (const [source, sects] of Object.entries(bySource)) {
+        const shortSource = source.replace(/.*\/state\//, '').replace(/.*\/specs\//, 'specs/');
+        console.log(`  ── ${shortSource} (${sects.length} sections) ──`);
+        for (const s of sects.slice(0, 20)) {
+          const pins = (s.pins || []).slice(0, 3).join(', ');
+          const title = s.title || s.id || '(untitled)';
+          console.log(`    • ${title}${pins ? ` [${pins}]` : ''}`);
+        }
+        if (sects.length > 20) {
+          console.log(`    ... and ${sects.length - 20} more`);
+        }
+        console.log('');
+      }
+
+      console.log(`Use 'find <pin>' to drill into a specific topic.`);
+      break;
+    }
+
     default:
       console.log(`
 Usage: node scripts/flow-section-resolver.js <command> [args]
@@ -437,12 +482,14 @@ Commands:
   get <section-id>     Get a section by ID
   find <pins...>       Find sections matching pins
   task "<description>" Find sections relevant to a task
+  browse               Human-readable knowledge index catalog
   stats                Show section statistics
 
 Examples:
   node scripts/flow-section-resolver.js get coding-standards:security-patterns-2026-01-11
   node scripts/flow-section-resolver.js find security error-handling
   node scripts/flow-section-resolver.js task "Add user authentication"
+  node scripts/flow-section-resolver.js browse
 `);
   }
 }

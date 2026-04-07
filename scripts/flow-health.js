@@ -714,6 +714,186 @@ function main() {
     }
   }
 
+  // Knowledge linting
+  console.log('');
+  printSection('Knowledge linting...');
+
+  // 1. Check section-index freshness
+  if (fileExists(PATHS.sectionIndex)) {
+    try {
+      const indexStat = fs.statSync(PATHS.sectionIndex);
+      const indexAge = Date.now() - indexStat.mtimeMs;
+      const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+      if (indexAge > maxAge) {
+        const days = Math.round(indexAge / (24 * 60 * 60 * 1000));
+        warn(`section-index.json is ${days} days old — may be stale`);
+        console.log(`    ${color('dim', "→ Run 'node scripts/flow-section-index.js --force' to regenerate")}`);
+        warnings++;
+      } else {
+        success(`section-index.json is fresh`);
+      }
+    } catch (_err) {
+      warn(`Could not check section-index.json age`);
+      warnings++;
+    }
+  } else {
+    warn(`section-index.json not found — knowledge navigation unavailable`);
+    console.log(`    ${color('dim', "→ Run 'node scripts/flow-section-index.js --force' to generate")}`);
+    warnings++;
+  }
+
+  // 2. Check feedback-patterns.md for stale/duplicate entries
+  if (fileExists(PATHS.feedbackPatterns)) {
+    try {
+      const fpContent = fs.readFileSync(PATHS.feedbackPatterns, 'utf-8');
+      const fpLines = fpContent.split('\n').filter(l => l.startsWith('|') && !l.includes('---') && !l.includes('Date'));
+      const totalPatterns = fpLines.length;
+      const needsSkill = fpLines.filter(l => l.includes('#needs-skill')).length;
+      const promoted = fpLines.filter(l => l.includes('Fixed') || l.includes('Promoted')).length;
+      const stale = fpLines.filter(l => {
+        const dateMatch = l.match(/\d{4}-\d{2}-\d{2}/);
+        if (!dateMatch) return false;
+        const entryDate = new Date(dateMatch[0]);
+        const age = Date.now() - entryDate.getTime();
+        return age > 90 * 24 * 60 * 60 * 1000; // older than 90 days
+      }).length;
+
+      if (totalPatterns > 0) {
+        success(`feedback-patterns.md: ${totalPatterns} entries`);
+        if (needsSkill > totalPatterns * 0.7) {
+          warn(`${needsSkill}/${totalPatterns} entries are #needs-skill — skill gap detected`);
+          console.log(`    ${color('dim', '→ Consider creating skills for common file patterns')}`);
+          warnings++;
+        }
+        if (stale > 0) {
+          warn(`${stale} entries older than 90 days — consider archiving`);
+          warnings++;
+        }
+        if (promoted > 0) {
+          console.log(`  ${color('dim', 'ℹ')} ${promoted} patterns promoted/fixed`);
+        }
+      }
+    } catch (_err) {
+      warn(`Could not parse feedback-patterns.md`);
+      warnings++;
+    }
+  }
+
+  // 3. Check decisions.md references are still valid
+  if (fileExists(PATHS.decisions)) {
+    try {
+      const decContent = fs.readFileSync(PATHS.decisions, 'utf-8');
+      const fileRefs = decContent.match(/`[^`]*\.(js|ts|md|json)`/g) || [];
+      let orphanedRefs = 0;
+      const checkedRefs = new Set();
+
+      for (const ref of fileRefs) {
+        const filePath = ref.replace(/`/g, '');
+        if (checkedRefs.has(filePath)) continue;
+        checkedRefs.add(filePath);
+
+        // Resolve relative to project root, trying common prefixes
+        const candidates = [
+          path.join(PROJECT_ROOT, filePath),
+          path.join(PROJECT_ROOT, '.workflow', filePath),
+          path.join(PROJECT_ROOT, '.claude', filePath),
+        ];
+
+        const exists = candidates.some(c => fileExists(c));
+        if (!exists && !filePath.includes('*') && !filePath.includes('{')) {
+          orphanedRefs++;
+        }
+      }
+
+      if (orphanedRefs > 0) {
+        warn(`decisions.md has ${orphanedRefs} reference(s) to files that may no longer exist`);
+        warnings++;
+      } else if (fileRefs.length > 0) {
+        success(`decisions.md file references verified (${checkedRefs.size} checked)`);
+      }
+    } catch (_err) {
+      warn(`Could not lint decisions.md references`);
+      warnings++;
+    }
+  }
+
+  // 4. Check skill feedback loop — verify skills with learnings get loaded
+  try {
+    const skillsDir = path.join(PROJECT_ROOT, '.claude', 'skills');
+    if (dirExists(skillsDir)) {
+      const skillDirs = fs.readdirSync(skillsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory() && d.name !== '_template' && d.name !== 'README.md');
+
+      let skillsWithLearnings = 0;
+      for (const dir of skillDirs) {
+        const learningsPath = path.join(skillsDir, dir.name, 'knowledge', 'learnings.md');
+        if (fileExists(learningsPath)) {
+          try {
+            const content = fs.readFileSync(learningsPath, 'utf-8').trim();
+            if (content.length > 50) { // Non-empty learnings
+              skillsWithLearnings++;
+            }
+          } catch (_err) {}
+        }
+      }
+
+      const config = getConfig();
+      const loadLearnings = config.skills?.loadLearnings !== false;
+
+      if (skillsWithLearnings > 0 && !loadLearnings) {
+        warn(`${skillsWithLearnings} skill(s) have learnings but skills.loadLearnings is disabled`);
+        console.log(`    ${color('dim', '→ Set skills.loadLearnings: true in config.json to use accumulated learnings')}`);
+        warnings++;
+      } else if (skillsWithLearnings > 0) {
+        success(`${skillsWithLearnings} skill(s) with learnings — feedback loop active`);
+      } else if (skillDirs.length > 0) {
+        console.log(`  ${color('dim', 'ℹ')} ${skillDirs.length} skill(s) installed — no learnings yet`);
+      }
+    }
+  } catch (_err) {
+    // Skills directory check is non-critical
+  }
+
+  // 5. Check registry maps for orphaned file references
+  try {
+    const { getActiveRegistries, STATE_DIR: stateDir } = require('./flow-utils');
+    const registries = getActiveRegistries();
+    let totalOrphans = 0;
+    let totalChecked = 0;
+
+    for (const reg of registries) {
+      const mapPath = path.join(stateDir, reg.mapFile);
+      if (!fileExists(mapPath)) continue;
+
+      try {
+        const mapContent = fs.readFileSync(mapPath, 'utf-8');
+        // Extract file paths from markdown table rows (typically in a "File" or "Path" column)
+        const pathRefs = mapContent.match(/(?:src|lib|scripts|components|pages|app)\/[\w/.-]+\.\w+/g) || [];
+        const unique = [...new Set(pathRefs)];
+
+        for (const ref of unique) {
+          totalChecked++;
+          const fullPath = path.join(PROJECT_ROOT, ref);
+          if (!fileExists(fullPath)) {
+            totalOrphans++;
+          }
+        }
+      } catch (_err) {
+        // Skip unreadable maps
+      }
+    }
+
+    if (totalOrphans > 0) {
+      warn(`Registry maps have ${totalOrphans} orphaned file reference(s) (${totalChecked} checked)`);
+      console.log(`    ${color('dim', "→ Run 'flow registry-manager scan' to update maps")}`);
+      warnings++;
+    } else if (totalChecked > 0) {
+      success(`Registry map file references verified (${totalChecked} checked)`);
+    }
+  } catch (_err) {
+    // Registry system unavailable — skip silently
+  }
+
   // Check agents
   console.log('');
   printSection('Checking agents...');

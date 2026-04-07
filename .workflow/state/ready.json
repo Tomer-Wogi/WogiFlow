@@ -1,9 +1,156 @@
 {
-  "lastUpdated": "2026-03-30T07:50:36.636Z",
+  "lastUpdated": "2026-03-31T14:36:10.997Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-21592e86",
+      "title": "Knowledge linting in /wogi-health",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P0",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-ba0698bd",
+      "title": "Activate and improve skill-learn system",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P0",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-0f8b800f",
+      "title": "Compound from success — positive pattern capture",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-b1b6ef53",
+      "title": "FTS over request-log",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-914443cf",
+      "title": "Expose section-index and wire knowledge router",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-76e59f8b",
+      "title": "Close skill feedback loop",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "epic": "wf-5018769e",
+      "status": "completed",
+      "createdAt": "2026-04-07T10:00:00.000Z",
+      "completedAt": "2026-04-07T11:00:00.000Z"
+    },
+    {
+      "id": "wf-0e2de560",
+      "title": "Workspace manager session-end handoff",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "status": "completed",
+      "createdAt": "2026-03-31T14:33:20.435Z",
+      "completedAt": "2026-03-31T14:36:10.997Z"
+    },
+    {
+      "id": "wf-b88497ca",
+      "title": "Fix 19 review findings from audit + runtime verification code",
+      "type": "fix",
+      "level": "L2",
+      "priority": "P0",
+      "status": "completed",
+      "createdAt": "2026-03-31T13:32:28.080Z",
+      "completedAt": "2026-03-31T13:43:36.987Z"
+    },
+    {
+      "id": "wf-006aafc1",
+      "title": "Auto-test generation as default — frontend Playwright + backend API tests",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "status": "completed",
+      "createdAt": "2026-03-31T12:18:30.973Z",
+      "completedAt": "2026-03-31T12:21:56.226Z"
+    },
+    {
+      "id": "wf-c28a8715",
+      "title": "Runtime verification gate + workspace effort propagation",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "status": "completed",
+      "createdAt": "2026-03-31T11:41:52.470Z",
+      "completedAt": "2026-03-31T11:46:34.534Z"
+    },
+    {
+      "id": "wf-54aa5ddb",
+      "title": "Audit overhaul — Gate 0 baseline checks + score capping + 16 new checks",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P0",
+      "status": "completed",
+      "createdAt": "2026-03-31T10:40:06.403Z",
+      "completedAt": "2026-03-31T10:46:54.085Z"
+    },
+    {
+      "id": "wf-37ec9f72",
+      "title": "Fix TaskCreated invalid key — settings.json breaks all hooks",
+      "type": "fix",
+      "level": "L2",
+      "priority": "P0",
+      "status": "completed",
+      "createdAt": "2026-03-31T08:46:40.553Z",
+      "completedAt": "2026-03-31T08:50:35.362Z"
+    },
+    {
+      "id": "wf-ffec807f",
+      "title": "PermissionDenied hook + named workspace subagents (2.1.88)",
+      "type": "feature",
+      "level": "L2",
+      "priority": "P1",
+      "status": "completed",
+      "createdAt": "2026-03-31T06:54:36.563Z",
+      "completedAt": "2026-03-31T07:07:50.468Z"
+    },
+    {
+      "id": "wf-404b9c46",
+      "title": "Fix 22 review findings from workspace active communication layer",
+      "type": "fix",
+      "level": "L2",
+      "priority": "P0",
+      "status": "completed",
+      "source": "review-2026-03-30",
+      "createdAt": "2026-03-30T08:44:38.546Z",
+      "completedAt": "2026-03-30T08:49:18.577Z"
+    },
     {
       "id": "wf-6b10fe5f",
       "title": "Conditional gate injection pattern — workspace activation backbone",

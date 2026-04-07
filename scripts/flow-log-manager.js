@@ -658,12 +658,14 @@ Commands:
   archive             Force archive old entries
   search <query>      Search entries (current + archives)
   list-archives       List archive files
+  rebuild-fts         Rebuild FTS5 full-text search index from current log
   --help              Show this help
 
 Examples:
   node scripts/flow-log-manager.js status
   node scripts/flow-log-manager.js search "#component:Button"
   node scripts/flow-log-manager.js archive
+  node scripts/flow-log-manager.js rebuild-fts
 `);
 }
 
@@ -754,6 +756,42 @@ if (require.main === module) {
           console.log(`  ${file} (${size}KB)`);
         }
       }
+      break;
+    }
+
+    case 'rebuild-fts': {
+      if (!memoryDb) {
+        error('Memory DB not available — FTS rebuild requires flow-memory-db');
+        process.exit(1);
+      }
+
+      printHeader('Rebuilding FTS Index');
+      const rebuildContent = fileExists(LOG_PATH) ? readFile(LOG_PATH, '') : '';
+      const allEntries = parseEntries(rebuildContent);
+      let indexed = 0;
+
+      (async () => {
+        for (const entry of allEntries) {
+          try {
+            await memoryDb.addRequestLogEntry({
+              id: entry.id,
+              type: entry.type || 'other',
+              tags: entry.tags ? entry.tags.split(/\s+/) : [],
+              request: entry.request || '',
+              result: entry.result || '',
+              files: entry.files ? entry.files.split(/,\s*/) : [],
+              taskId: null
+            });
+            indexed++;
+          } catch (_err) {
+            // Skip duplicates
+          }
+        }
+        success(`Indexed ${indexed}/${allEntries.length} entries into FTS`);
+      })().catch(err => {
+        error(`FTS rebuild failed: ${err.message}`);
+        process.exit(1);
+      });
       break;
     }
 

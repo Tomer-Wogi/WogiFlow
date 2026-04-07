@@ -1,286 +1,62 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-01-30T17:38:18.628Z",
+  "generatedAt": "2026-04-07T08:17:57.291Z",
   "sources": {
     "decisions.md": {
       "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/decisions.md",
-      "lastModified": "2026-01-30T12:14:40.000Z",
-      "contentHash": "a7c7c995",
+      "lastModified": "2026-03-10T17:39:51.781Z",
+      "contentHash": "fb747fdd",
       "sections": [
         {
-          "id": "component-architecture:component-reuse-policy",
-          "title": "Component Reuse Policy",
-          "category": "Component Architecture",
+          "id": "architecture-decisions:dual-repo-architecture-2026-02-28",
+          "title": "Dual-Repo Architecture (2026-02-28)",
+          "category": "Architecture Decisions",
           "pins": [
-            "component-creation",
-            "component-reuse",
-            "task-create",
-            "component",
-            "reuse",
-            "policy",
-            "component-reuse-policy"
-          ],
-          "lineStart": 10,
-          "lineEnd": 12,
-          "content": "**Added**: Project initialization\n**Rule**: Always check `app-map.md` before creating any component. Prefer adding variants over creating new components.",
-          "contentHash": "ed86242f"
-        },
-        {
-          "id": "component-architecture:variant-naming-convention",
-          "title": "Variant Naming Convention",
-          "category": "Component Architecture",
-          "pins": [
-            "component-naming",
-            "naming-convention",
-            "file-naming",
-            "variant-naming",
-            "variant",
-            "naming",
-            "convention",
-            "variant-naming-convention"
-          ],
-          "lineStart": 14,
-          "lineEnd": 20,
-          "content": "**Rule**: Use consistent variant names:\n- Size: `sm`, `md`, `lg`, `xl`\n- Intent: `primary`, `secondary`, `danger`, `success`, `warning`\n- State: `default`, `hover`, `active`, `disabled`",
-          "contentHash": "38bc3aca"
-        },
-        {
-          "id": "coding-standards:security-patterns-2026-01-11",
-          "title": "Security Patterns (2026-01-11)",
-          "category": "Coding Standards",
-          "pins": [
-            "try-catch",
-            "error-handling",
-            "fs-read",
-            "fs-write",
             "file-safety",
-            "json-parse",
-            "json-safety",
-            "prototype-pollution",
-            "path-traversal",
-            "input-validation",
-            "project-exports",
-            "code-patterns",
-            "project-context",
-            "security",
-            "patterns",
-            "2026-01-11",
-            "security-patterns-2026-01-11"
+            "task-modify",
+            "dual-repo",
+            "architecture",
+            "2026-02-28",
+            "dual-repo-architecture-2026-02-28"
           ],
-          "lineStart": 24,
-          "lineEnd": 48,
-          "content": "**Source**: Session review findings\n\n1. **File Read Safety**\n   - Always wrap `fs.readFileSync()` in try-catch, even after `fileExists()` check\n   - Reason: Race conditions, permission changes, symlink issues can still cause failures\n\n2. **JSON Parsing Safety**\n   - Use `safeJsonParse()` from flow-utils.js instead of raw `JSON.parse()`\n   - Validate parsed structure has expected fields before use\n   - Check for `__proto__`, `constructor`, `prototype` injection\n\n3. **Template Substitution Safety**\n   - Block access to `__proto__`, `constructor`, `prototype` keys\n   - Use `Object.prototype.hasOwnProperty.call()` for property access\n   - Example: See `applyTemplate()` in flow-prompt-composer.js\n\n4. **Path Safety**\n   - Validate patterns before `path.join()` with user/config data\n   - Use `isPathWithinProject()` for defense-in-depth\n   - Glob-to-regex: Use `[^/]*` not `.*` to prevent path separator matching\n\n5. **Module Dependencies**\n   - Check for circular dependencies when refactoring shared functions\n   - Node.js handles circular deps but can cause undefined exports during load",
-          "contentHash": "85da639f"
+          "lineStart": 13,
+          "lineEnd": 26,
+          "content": "**Source**: User directive — formalize dual-repo management for wogi-flow + wogiflow-cloud\n**Rule**: Two repos, independent versions, mutual version awareness. OSS (`wogi-flow` / npm `wogiflow`) and Cloud (`wogiflow-cloud` / `@wogiflow/teams`) are separate packages with separate release cycles.\n\n**Key constraints:**\n1. **No teams code in the free repo** — all team logic lives in `wogiflow-cloud`. The free repo provides extension points only.\n2. **Independent semver** — each repo versions independently. The client declares compatibility via peerDependencies (`wogiflow >= X.Y.Z`).\n3. **Cross-repo version file** — each repo maintains `.workflow/state/partner-versions.json` recording the other's last-known version. Updated on every release.\n4. **OSS releases first** — if cloud needs a new OSS feature/export, release OSS first, then cloud.\n5. **Interface contract** — exported functions, hook interfaces, state file formats, and config keys used by cloud are documented in `.claude/rules/_internal/dual-repo-management.md`. Changes to these require updating the cloud client.\n\n**Verification**: Before releasing either repo, check `partner-versions.json` and grep the other repo for consumers of changed interfaces.",
+          "contentHash": "0a48c169"
         },
         {
           "id": "coding-standards:code-quality-patterns-2026-01-12",
           "title": "Code Quality Patterns (2026-01-12)",
           "category": "Coding Standards",
           "pins": [
-            "try-catch",
-            "error-handling",
-            "component-naming",
             "file-naming",
             "code-patterns",
-            "project-context",
             "code",
             "quality",
             "patterns",
             "2026-01-12",
             "code-quality-patterns-2026-01-12"
           ],
-          "lineStart": 50,
-          "lineEnd": 71,
-          "content": "**Source**: Session review findings\n\n1. **Catch Block Variable Naming**\n   - **Standard**: Use `err` for all catch blocks in this codebase\n   - Avoid: `e`, `error`, `ex`, `exception` - these cause confusion with loop variables\n   - Example: `catch (err) { console.error(err.message); }`\n   - Bad: `arr.map(e => e.value)` inside a `catch (err)` block using `e.message` (typo!)\n   - Reason: Standardizing on `err` prevents mix-ups with iterator variables like `e`\n\n2. **Single Source of Truth for Constants**\n   - Avoid duplicating model/configuration objects across files\n   - Import from one canonical location instead\n   - Example: `getModelContextPreferences()` in flow-instruction-richness.js\n   - Reason: Prevents drift and makes updates simpler\n\n3. **Named Constants for Magic Numbers**\n   - Define constants for threshold values, percentages, limits\n   - Example: `COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85, concise: 0.5 }`\n   - Reason: Self-documenting code, easier maintenance",
-          "contentHash": "74f49e9e"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:continuous-learning-protocol-2026-01-30",
-          "title": "Continuous Learning Protocol (2026-01-30)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "continuous",
-            "learning",
-            "protocol",
-            "2026-01-30",
-            "continuous-learning-protocol-2026-01-30"
-          ],
-          "lineStart": 92,
-          "lineEnd": 98,
-          "content": "**Source**: User feedback - the learning system exists but wasn't being used\n**Priority**: CRITICAL - This is the core purpose of WogiFlow\n\nThe user installed WogiFlow so the AI learns from mistakes and improves over time. This requires THREE mandatory behaviors:",
-          "contentHash": "cd971d89"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:part-1-pre-task-pattern-check-before-starting-any-",
-          "title": "Part 1: Pre-Task Pattern Check (BEFORE starting any work)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "model-learning",
-            "code-patterns",
-            "part",
-            "pre-task",
-            "pattern",
-            "check",
-            "before",
-            "starting",
-            "any",
-            "work",
-            "part-1-pre-task-pattern-check-before-starting-any-"
-          ],
-          "lineStart": 100,
-          "lineEnd": 125,
-          "content": "**Before starting ANY task**, check for known issues:\n\n```\n1. Read feedback-patterns.md\n   → Look for patterns related to this type of task\n   → Check \"Pending Patterns\" section for recent issues\n\n2. Read relevant sections of decisions.md\n   → Search for rules related to this task type\n   → Check if there are documented procedures to follow\n\n3. Check corrections/ directory\n   → Look for recent corrections in this area\n   → Learn from past mistakes before repeating them\n```\n\n**Example**: Before doing a release:\n- Check feedback-patterns.md for \"release\" patterns → Found: \"Release Process Failure\"\n- Check decisions.md for release procedures → Found: \"GitHub Release Workflow\"\n- Follow the documented procedure instead of improvising\n\n**If you skip this check and make a preventable mistake, that's a learning system failure.**",
-          "contentHash": "c17d15f8"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:part-2-post-failure-capture-after-any-failure-occu",
-          "title": "Part 2: Post-Failure Capture (AFTER any failure occurs)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "error-handling",
-            "file-safety",
-            "component-creation",
-            "component-naming",
-            "component-reuse",
-            "file-naming",
-            "model-learning",
-            "task-create",
-            "task-fix",
-            "code-patterns",
-            "part",
-            "post-failure",
-            "capture",
-            "after",
-            "any",
-            "failure",
-            "occurs",
-            "part-2-post-failure-capture-after-any-failure-occu"
-          ],
-          "lineStart": 127,
-          "lineEnd": 171,
-          "content": "**When ANY of these happen, you MUST capture the learning:**\n\n| Failure Type | Examples |\n|--------------|----------|\n| **Code error** | Bug introduced, tests fail, lint errors |\n| **Process error** | Skipped step, wrong order, forgot requirement |\n| **Judgment error** | Wrong assumption, misunderstood requirement |\n| **Tool error** | Used wrong command, wrong flags, race condition |\n| **Knowledge gap** | Didn't know about existing component/pattern |\n| **Verification skip** | Claimed done without checking |\n\n**Capture process:**\n\n```\n1. STOP - Don't just fix it and move on\n\n2. DIAGNOSE - Ask yourself:\n   - What exactly went wrong?\n   - What did I do (or not do) that caused this?\n   - What should I have done instead?\n   - Was there a learning file I should have checked first?\n   - Is this the first time, or has this happened before?\n\n3. RECORD - Add to feedback-patterns.md:\n   | Date | Pattern | Description | Count | Action |\n   |------|---------|-------------|-------|--------|\n   | [today] | [short-name] | [what went wrong and why] | 1 | Monitor |\n\n4. If this is a REPEATED issue (count >= 3):\n   → Create a rule in decisions.md\n   → Mark pattern as PROMOTED in feedback-patterns.md\n   → The rule must include VERIFICATION STEPS\n```\n\n**Self-diagnosis questions to ask after every failure:**\n\n1. \"Did I check feedback-patterns.md before starting?\" → If no, that's the root cause\n2. \"Did I check decisions.md for existing rules?\" → If no, that's the root cause\n3. \"Did I follow the documented procedure?\" → If no, why not?\n4. \"Did I verify my work before claiming done?\" → If no, add verification\n5. \"Is there a pattern here I've seen before?\" → If yes, it needs a rule",
-          "contentHash": "508d9c73"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:part-3-pattern-promotion-learning-loop",
-          "title": "Part 3: Pattern Promotion (Learning Loop)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "model-learning",
-            "code-patterns",
-            "part",
-            "pattern",
-            "promotion",
-            "learning",
-            "loop",
-            "part-3-pattern-promotion-learning-loop"
-          ],
-          "lineStart": 173,
-          "lineEnd": 191,
-          "content": "**When the same failure happens 3+ times:**\n\n```\nPattern Count Reaches 3\n    ↓\nCreate Rule in decisions.md:\n    - Clear description of what to do/not do\n    - WHY this matters (the failures it prevents)\n    - VERIFICATION steps to confirm compliance\n    - Examples of correct vs incorrect behavior\n    ↓\nMark as PROMOTED in feedback-patterns.md\n    ↓\nFuture sessions will see the rule and follow it\n```\n\n**Rule template:**\n```markdown",
-          "contentHash": "51f9874e"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:rule-name-yyyy-mm-dd",
-          "title": "[Rule Name] (YYYY-MM-DD)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "code-patterns",
-            "rule",
-            "name",
-            "yyyy-mm-dd",
-            "rule-name-yyyy-mm-dd"
-          ],
-          "lineStart": 193,
-          "lineEnd": 203,
-          "content": "**Source**: [X] failures recorded in feedback-patterns.md\n**Problem**: [What kept going wrong]\n**Rule**: [What to do instead]\n**Verification**: [How to check you followed the rule]\n**Example**:\n  - WRONG: [what was happening]\n  - RIGHT: [what should happen]\n```",
-          "contentHash": "5e929b8d"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:part-4-user-frustration-detection-escalation",
-          "title": "Part 4: User Frustration Detection (Escalation)",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "file-safety",
-            "task-fix",
-            "part",
-            "user",
-            "frustration",
-            "detection",
-            "escalation",
-            "part-4-user-frustration-detection-escalation"
-          ],
-          "lineStart": 205,
-          "lineEnd": 227,
-          "content": "**When the user expresses frustration about repeated issues:**\n\nPhrases that indicate this:\n- \"This keeps happening\"\n- \"I told you this before\"\n- \"You keep forgetting X\"\n- \"How many times...\"\n- \"This failed again\"\n- Any tone of frustration about repetition\n\n**Required response:**\n\n1. **Acknowledge** - Don't be defensive\n2. **Investigate** - Check learning files for what should have been known\n3. **Diagnose** - Why wasn't the learning system used?\n4. **Fix** - Create/strengthen the rule\n5. **Verify** - Test that the fix works\n\n**This is an escalation** - it means Parts 1-3 failed. Treat it seriously.",
-          "contentHash": "5d970ff6"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:types-of-failures-to-track",
-          "title": "Types of Failures to Track",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "error-handling",
-            "component-reuse",
-            "model-learning",
-            "task-fix",
-            "types",
-            "failures",
-            "track",
-            "types-of-failures-to-track"
-          ],
-          "lineStart": 229,
-          "lineEnd": 242,
-          "content": "| Category | Examples | Capture? |\n|----------|----------|----------|\n| **Process failures** | Skipped steps, wrong order, forgot verification | YES |\n| **Code bugs** | Logic errors, missing error handling, race conditions | YES |\n| **Knowledge gaps** | Didn't know about existing component, pattern, or rule | YES |\n| **Assumption errors** | Made assumption without verifying | YES |\n| **Tool misuse** | Wrong command, wrong flags, wrong sequence | YES |\n| **Scope creep** | Did more than asked, changed unrelated code | YES |\n| **Communication** | Misunderstood requirement, didn't ask clarifying question | YES |\n| **Verification skips** | Claimed done without testing, didn't check output | YES |",
-          "contentHash": "a617bbe1"
-        },
-        {
-          "id": "continuous-learning-protocol-2026-01-30:why-this-matters",
-          "title": "Why This Matters",
-          "category": "Continuous Learning Protocol (2026-01-30)",
-          "pins": [
-            "error-handling",
-            "fs-read",
-            "why",
-            "this",
-            "matters",
-            "why-this-matters"
-          ],
-          "lineStart": 244,
-          "lineEnd": 260,
-          "content": "The user installed WogiFlow specifically for these benefits:\n- **Accountability**: Every mistake is tracked and learned from\n- **Improvement**: The AI gets better over time, not worse\n- **Trust**: The user can rely on the AI to not repeat mistakes\n- **Efficiency**: Less time spent on preventable errors\n\n**When you skip the learning system:**\n- You repeat mistakes that were already solved\n- The user loses trust\n- The learning files become useless\n- WogiFlow's core value proposition fails\n\n**The learning system only works if you USE it.**",
-          "contentHash": "10100b78"
+          "lineStart": 30,
+          "lineEnd": 43,
+          "content": "**Source**: Session review findings\n\n1. **Single Source of Truth for Constants**\n   - Avoid duplicating model/configuration objects across files\n   - Import from one canonical location instead\n   - Reason: Prevents drift and makes updates simpler\n\n2. **Named Constants for Magic Numbers**\n   - Define constants for threshold values, percentages, limits\n   - Example: `COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85, concise: 0.5 }`\n   - Reason: Self-documenting code, easier maintenance",
+          "contentHash": "dec220d2"
         },
         {
           "id": "operational-procedures:github-release-workflow-2026-01-30",
           "title": "GitHub Release Workflow (2026-01-30)",
           "category": "Operational Procedures",
           "pins": [
-            "file-safety",
             "github",
             "release",
             "workflow",
             "2026-01-30",
             "github-release-workflow-2026-01-30"
           ],
-          "lineStart": 264,
-          "lineEnd": 299,
-          "content": "**Source**: Repeated failures (10+ times) in npm publish automation\n**Priority**: Critical - prevents wasted releases and broken npm versions\n\n**Problem**: Running `git push` followed immediately by `gh release create` causes a race condition. The release tag gets created on the remote's HEAD before the push fully propagates, pointing to an old commit.\n\n**Correct Procedure**:\n```bash\n# 1. Push commits first\ngit push origin master\n\n# 2. Create tag LOCALLY on the correct commit\ngit tag vX.Y.Z HEAD\n\n# 3. Push the tag explicitly\ngit push origin vX.Y.Z\n\n# 4. THEN create the release (it will use the existing tag)\ngh release create vX.Y.Z --title \"vX.Y.Z\" --notes \"...\"\n```\n\n**NEVER do this**:\n```bash\n# BAD - race condition, tag may point to wrong commit\ngit push origin master && gh release create vX.Y.Z ...\n```\n\n**If a release fails**:\n1. Delete the bad release: `gh release delete vX.Y.Z --yes`\n2. Delete the bad remote tag: `git push origin --delete vX.Y.Z`\n3. Delete local tag if exists: `git tag -d vX.Y.Z`\n4. Follow the correct procedure above\n\n**Verification**: Check that `git show vX.Y.Z` shows the expected commit with the correct package.json version.",
-          "contentHash": "d5d66531"
-        },
-        {
-          "id": "review-cleanup-procedures:2026-01-02",
-          "title": "2026-01-02",
-          "category": "Review & Cleanup Procedures",
-          "pins": [
-            "naming-convention",
-            "file-naming",
-            "2026-01-02"
-          ],
-          "lineStart": 307,
-          "lineEnd": 310,
-          "content": "Use kebab-case for all file names in this project",
-          "contentHash": "7d8867df"
+          "lineStart": 59,
+          "lineEnd": 70,
+          "content": "**Source**: Repeated failures (10+ times) in npm publish automation\n**Details**: See `.claude/rules/_internal/github-releases.md` for full procedure.\n\n**Quick reference**:\n1. `git push origin master`\n2. `git tag vX.Y.Z HEAD`\n3. `git push origin vX.Y.Z`\n4. `gh release create vX.Y.Z --title \"vX.Y.Z\" --notes \"...\"`\n5. `npm publish`",
+          "contentHash": "d9d45f9e"
         }
       ]
     },
@@ -288,6 +64,18 @@
       "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/app-map.md",
       "lastModified": "2025-12-22T16:30:52.000Z",
       "contentHash": "71a9204e",
+      "rows": []
+    },
+    "function-map.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/function-map.md",
+      "lastModified": "2026-03-04T20:21:08.303Z",
+      "contentHash": "ada76483",
+      "rows": []
+    },
+    "api-map.md": {
+      "path": "/Users/tomergilboa/Developer/wogi-flow/.workflow/state/api-map.md",
+      "lastModified": "2026-02-19T19:45:12.714Z",
+      "contentHash": "b33ef9d6",
       "rows": []
     },
     "model-profiles/qwen3-coder.md": {
@@ -1237,12 +1025,12 @@
     }
   },
   "stats": {
-    "totalSections": 61,
+    "totalSections": 50,
     "totalRows": 0,
     "specsFiles": 0,
     "modelProfiles": 1,
     "taskTypes": 5,
     "contextFiles": 0,
-    "totalPins": 167
+    "totalPins": 114
   }
 }

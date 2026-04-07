@@ -19,7 +19,10 @@
     "enabled": false
   },
   "skills": {
-    "installed": ["figma-analyzer"]
+    "installed": ["figma-analyzer"],
+    "loadLearnings": true,
+    "loadConventions": true,
+    "loadAntiPatterns": true
   },
   "hooks": {
     "enabled": false,
@@ -39,6 +42,16 @@
     "discovery": { "enabled": false },
     "_comment_scenarios": "Declarative scenario-based API testing engine",
     "scenarios": { "enabled": false }
+  },
+  "skillLearning": {
+    "_comment_enabled": "When true, skill learning extracts patterns from completed work",
+    "enabled": true,
+    "autoExtract": true,
+    "triggers": {
+      "onCommit": false,
+      "onTaskComplete": true,
+      "onCompact": false
+    }
   },
   "plugins": {
     "_comment_phaseInjection": "When true, the UserPromptSubmit hook appends available flow-integrated plugin hints to the phase context prompt",

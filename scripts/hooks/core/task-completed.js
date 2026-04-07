@@ -311,6 +311,83 @@ async function handleTaskCompleted(input) {
     // Workspace notifications are handled by the Stop hook (via HTTP to manager port).
     // Removed duplicate file-based notification here to prevent double messages (finding-004).
 
+    // Compound from success — capture positive patterns (fire-and-forget)
+    if (result.completed) {
+      try {
+        const config = getConfig();
+        if (config.skillLearning?.enabled) {
+          const { writeToFeedbackPatterns } = require('../../flow-learning-orchestrator');
+          const taskType = completedTask.type || 'unknown';
+          const changedFiles = input.changedFiles || [];
+          const criteriaCount = input.scenarioCount || completedTask.criteria || 0;
+          const firstPass = input.firstAttemptPass !== false;
+
+          // Only record success patterns for non-trivial tasks that passed on first attempt
+          if (firstPass && changedFiles.length >= 2 && criteriaCount >= 2) {
+            const today = new Date().toISOString().split('T')[0];
+            const filesSummary = changedFiles.slice(0, 5).map(f => path.basename(f)).join(', ');
+            const entryText = `success-pattern: ${taskType} task (${criteriaCount} criteria, ${changedFiles.length} files) completed first-pass. Files: ${filesSummary}`;
+            const tableRow = `| ${today} | ${entryText} | 1 | - | #success |`;
+
+            writeToFeedbackPatterns({
+              content: tableRow,
+              entryText,
+              caller: 'task-completed-success',
+            }).catch(() => {
+              // Non-critical
+            });
+          }
+        }
+      } catch (_err) {
+        // Non-critical — success pattern capture may not be available
+      }
+    }
+
+    // Skill learning extraction (fire-and-forget)
+    if (result.completed) {
+      try {
+        const { isLearningEnabled, extractLearningContext, matchFilesToSkills, appendLearning, discoverSkills, ensureKnowledgeDir, formatSemanticChanges } = require('../../flow-skill-learn');
+        const config = getConfig();
+        if (isLearningEnabled(config, 'task')) {
+          const changedFiles = input.changedFiles || [];
+          if (changedFiles.length > 0) {
+            const skills = discoverSkills();
+            const { matches: skillMap } = matchFilesToSkills(changedFiles, skills);
+            const context = extractLearningContext(changedFiles, 'task');
+
+            // Enrich context with task info
+            context.summary = `Task ${completedTask.id}: ${completedTask.title || ''}`;
+            context.taskType = completedTask.type || 'unknown';
+
+            for (const [skillName, matchedFiles] of skillMap) {
+              if (matchedFiles.length > 0) {
+                const skill = skills.find(s => s.name === skillName);
+                const skillDir = skill?.path;
+                if (skillDir) {
+                  ensureKnowledgeDir(skillDir);
+                  const entry = [
+                    `### ${context.summary}`,
+                    `**Type**: ${context.type} | **Trigger**: task-complete`,
+                    `**Files**: ${matchedFiles.join(', ')}`,
+                  ];
+                  if (context.semanticChanges.length > 0) {
+                    entry.push(`**Changes**: ${formatSemanticChanges(context.semanticChanges).slice(0, 200)}`);
+                  }
+                  entry.push('');
+                  appendLearning(skillDir, entry.join('\n'));
+                }
+              }
+            }
+          }
+        }
+      } catch (_err) {
+        // Non-critical — skill learning may not be available
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Skill learning failed: ${_err.message}`);
+        }
+      }
+    }
+
     // Check pending queue — notify user if items are waiting
     try {
       const { getPendingCount } = require('../../flow-pending');

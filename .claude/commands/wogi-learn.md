@@ -105,7 +105,10 @@ Use `AskUserQuestion` to let user select.
    - What was the root cause?
    - What should have been done differently?
 
-4. Propose a rule:
+4. **Auto-route via knowledge router** (NEW):
+   Run `node -e "const kr = require('wogiflow/scripts/flow-knowledge-router'); const routes = kr.detectKnowledgeRoute('[correction text]', { currentModel: process.env.CLAUDE_MODEL }); console.log(JSON.stringify(routes))"` to get routing suggestions. Use the highest-confidence route as the default option.
+
+5. Propose a rule with routing recommendation:
 
 ```
 Based on recent work, here's what I found:
@@ -114,19 +117,23 @@ Incident: [description from request-log/corrections]
 Root Cause: [analysis]
 Proposed Rule: "[rule statement]"
 
+Knowledge Router suggests: [route type] (confidence: XX%)
+
 What should we do with this learning?
 1. Create a project rule (routes to /wogi-decide flow)
 2. Fix WogiFlow product behavior (edit command/script/template)
-3. Add to feedback-patterns for monitoring first
-4. Skip — not a recurring issue
+3. Store as skill learning (auto-routes to matching skill)
+4. Add to feedback-patterns for monitoring first
+5. Skip — not a recurring issue
 ```
 
 Use `AskUserQuestion` to present options.
 
 If option 1: Invoke `/wogi-decide --from-pattern` with the proposed rule (uses streamlined path, writes to project `decisions.md`). If user cancels within the /wogi-decide sub-flow, return to wogi-learn and display "Rule creation cancelled. Pattern not promoted."
 If option 2: Apply the product-level fix directly — edit the relevant command `.md` file, script, or template. If the fix needs investigation, add to `.workflow/state/product-feedback.md`. Do NOT write to `decisions.md` (product fixes don't belong in per-project state).
-If option 3: Add to `feedback-patterns.md` Pending Patterns section with count 1.
-If option 4: No action taken.
+If option 3: Route via knowledge router: `node -e "const kr = require('wogiflow/scripts/flow-knowledge-router'); kr.storeByRoute(correction, route, context)"` — stores to the matching skill's `knowledge/learnings.md`.
+If option 4: Add to `feedback-patterns.md` Pending Patterns section with count 1.
+If option 5: No action taken.
 
 ### Mode C: Bulk Promotion
 

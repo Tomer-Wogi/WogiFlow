@@ -137,6 +137,7 @@ function safeParseArray(json) {
 
 let SQL = null;
 let db = null;
+let ftsAvailable = false;
 let embedder = null;
 let initPromise = null;
 
@@ -293,6 +294,24 @@ async function initDatabase() {
         task_id TEXT
       )
     `);
+
+    // FTS5 virtual table for full-text search over request log
+    // sql.js may not include FTS5 — silently skip if unavailable
+    try {
+      db.run(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS request_log_fts USING fts5(
+          request, result, tags, files,
+          content='request_log',
+          content_rowid='rowid'
+        )
+      `);
+      ftsAvailable = true;
+    } catch (_err) {
+      // FTS5 not available in this sql.js build — fall back to LIKE queries
+      if (process.env.DEBUG) {
+        console.error('[memory-db] FTS5 not available — using LIKE fallback for search');
+      }
+    }
 
     // v10.0: Observations table for automatic tool use capture
     db.run(`
@@ -1307,6 +1326,18 @@ async function addRequestLogEntry(entry) {
     entry.taskId || null
   ]);
 
+  // Populate FTS index (skip if FTS5 not available to avoid exception overhead)
+  if (ftsAvailable) {
+    try {
+      db.run(`
+        INSERT INTO request_log_fts (rowid, request, result, tags, files)
+        SELECT rowid, request, result, tags, files FROM request_log WHERE id = ?
+      `, [id]);
+    } catch (_err) {
+      // FTS insert failure is non-critical
+    }
+  }
+
   saveDatabase();
   return { id, stored: true };
 }
@@ -1345,8 +1376,28 @@ async function searchRequestLog(options = {}) {
   }
 
   if (query) {
-    sql += ' AND (request LIKE ? OR result LIKE ?)';
-    params.push(`%${query}%`, `%${query}%`);
+    // Try FTS5 first for better ranking, fall back to LIKE
+    try {
+      const ftsCheck = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='request_log_fts'");
+      if (ftsCheck.length > 0 && ftsCheck[0].values.length > 0) {
+        // Escape FTS special characters for safety
+        const ftsQuery = query.replace(/['"]/g, '').replace(/[^\w\s#:-]/g, '').trim();
+        if (ftsQuery) {
+          sql += ' AND rowid IN (SELECT rowid FROM request_log_fts WHERE request_log_fts MATCH ?)';
+          params.push(ftsQuery);
+        } else {
+          // Sanitized query is empty — fall back to LIKE
+          sql += ' AND (request LIKE ? OR result LIKE ?)';
+          params.push(`%${query}%`, `%${query}%`);
+        }
+      } else {
+        sql += ' AND (request LIKE ? OR result LIKE ?)';
+        params.push(`%${query}%`, `%${query}%`);
+      }
+    } catch (_err) {
+      sql += ' AND (request LIKE ? OR result LIKE ?)';
+      params.push(`%${query}%`, `%${query}%`);
+    }
   }
 
   sql += ' ORDER BY timestamp DESC LIMIT ?';
