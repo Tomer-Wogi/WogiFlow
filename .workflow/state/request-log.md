@@ -2576,3 +2576,48 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Fix 13 review findings from bulk session"
 **Result**: Fixed all 13 findings: (1) sessionTasksStarted now resets in SessionStart hook via resetSessionTaskCounter(), (2) removed redundant toLowerCase() — patterns use /i flag, added array validation to batch CLI, tightened regex patterns to use compound terms, (3) specPath now validated with isPathWithinProject(), (6) blast-radius path now validates taskId before construction, (7) added 3 missing gates to continuation prompt (Inventory, Item Reconciliation, Scope-Confidence), (9) dispatchVerification gate degrades gracefully when toolCalls not tracked, (10) ReDoS-safe GWT counting via individual keyword minimum, (11) renamed duplicate "Step 0" to "Step 0a", (12) single source of truth for blocked flag, (13) removed TOCTOU fileExists guard. Finding 5 (raw JSON.parse in workspace-gates) is pre-existing and outside this diff scope.
 **Files**: scripts/flow-session-state.js, scripts/flow-decision-authority.js, scripts/flow-context-estimator.js, scripts/flow-standards-gate.js, lib/workspace-gates.js, .claude/commands/wogi-start.md, .claude/commands/wogi-start-continuation.md, scripts/hooks/entry/claude-code/session-start.js
+
+### R-246 | 2026-04-10
+**Type**: new
+**Tags**: #enforcement #deploy-gate #hooks #verification #mechanical-gates
+**Task**: wf-584a91cf
+**Epic**: epic-enforcement-gates
+**Request**: "Implement Verification-Required Gate — mechanical enforcement that blocks deploys without verification"
+**Result**: Created deploy-gate.js (core module) with: (1) PreToolUse hook blocks configurable deploy commands without HMAC-signed verification artifact, (2) anti-forgery via HMAC-SHA256 session key — direct Write of fake artifacts rejected, (3) source-file content hash (not git HEAD) so non-code changes don't invalidate artifacts, (4) high-water-mark route inventory (auto-add, never auto-remove), (5) P0/P1 task completion blocked without verification, (6) setup wizard via `flow deploy-gate init` that detects framework + deploy scripts, (7) all configurable via config.enforcement.deployGate. Also added defaults for all 4 enforcement gates (strikeEscalation, bugfixScope, revertFirst) to config-defaults.js.
+**Files**: scripts/hooks/core/deploy-gate.js (new), scripts/flow-deploy-gate.js (new), .workflow/state/deploy-routes.json.template (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/core/index.js, scripts/hooks/core/task-completed.js, scripts/flow-config-defaults.js
+
+### R-247 | 2026-04-10
+**Type**: new
+**Tags**: #enforcement #strike-gate #hooks #mechanical-gates
+**Task**: wf-71c0b857
+**Epic**: epic-enforcement-gates
+**Request**: "Implement Strike Escalation Gate — mechanical strike counter with blocking enforcement"
+**Result**: Created strike-gate.js with: task-ID-grouped strike counter, strike 2 blocks Edit/Write until hypothesis documented, strike 3 auto-escalates L3→L2 requiring mini-spec, strike 4+ hard blocks with actionable escape options. Increments only on verification failure/task bounce/evaluator FAIL. Cross-gate integration: bugfix scope inventory satisfies hypothesis requirement. Production crash flag lowers thresholds.
+**Files**: scripts/hooks/core/strike-gate.js (new), .workflow/state/strike-tracker.json.template (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/core/index.js
+
+### R-248 | 2026-04-10
+**Type**: new
+**Tags**: #enforcement #bugfix-scope #hooks #mechanical-gates
+**Task**: wf-dee7022d
+**Epic**: epic-enforcement-gates
+**Request**: "Implement Bugfix Scope Gate — two-phase pre-classification and runtime scope monitoring"
+**Result**: Created bugfix-scope-gate.js with: Phase 1 keyword extraction + feedback-patterns matching for pre-classification. Phase 2 PostToolUse file counter (excludes test/type files) triggers scope inventory requirement at threshold. Warn mode default, configurable to block. PostToolUse hook wired for L3 bugfix file tracking.
+**Files**: scripts/hooks/core/bugfix-scope-gate.js (new), .workflow/state/bugfix-scope.json.template (new), scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/post-tool-use.js, scripts/hooks/core/index.js
+
+### R-249 | 2026-04-10
+**Type**: new
+**Tags**: #enforcement #revert-first #deploy-history #mechanical-gates
+**Task**: wf-f8e420e9
+**Epic**: epic-enforcement-gates
+**Request**: "Implement Revert-First Protocol — deploy history tracking and production crash workflow"
+**Result**: Created flow-deploy-history.js with: production crash keyword detection + confidence scoring, revert recommendation generator with last-good commit info, crash decision recording, deploy history CLI (add/show/last-good/detect). Integrates with strike-gate via markProductionCrash() for threshold reduction. Deploy history populated by Gate 1. Off by default.
+**Files**: scripts/flow-deploy-history.js (new), .workflow/state/deploy-history.json.template (new)
+
+### R-250 | 2026-04-10
+**Type**: new
+**Tags**: #enforcement #scope-mutation #git-safety #fan-out #workspace #mechanical-gates
+**Task**: wf-896fe249, wf-3b874a27, wf-ac7ea4e4
+**Epic**: epic-enforcement-gates
+**Request**: "Add scope mutation guard, destructive git safety net, fan-out escalation, verification breadth, workspace sovereignty"
+**Result**: Gate 5: Scope Mutation Guard — agnostic, counts new files during fix tasks (threshold 2), detects deletion of pre-existing files, "broken ≠ remove" principle. Gate 6: Git Safety Net — auto-backup branch before git reset (>3 commits or >24h), auto-stash before checkout/restore, blocks git clean. Gate 3 Enhancement: fan-out escalation counts importers (258 for flow-utils.js) instead of pattern matching — fully agnostic. Gate 1 Enhancement: rejects verification artifacts that only cover login page, requires 3+ routes. Workspace sovereignty: workerGatesSovereign=true, managerCanSkipGates=false.
+**Files**: scripts/hooks/core/scope-mutation-gate.js (new), scripts/hooks/core/git-safety-gate.js (new), scripts/hooks/core/bugfix-scope-gate.js, scripts/hooks/core/deploy-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/hooks/entry/claude-code/post-tool-use.js, scripts/hooks/core/index.js, scripts/flow-config-defaults.js

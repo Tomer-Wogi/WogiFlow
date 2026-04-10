@@ -30,6 +30,52 @@ try {
   }
 }
 
+// Mechanical Enforcement Gates v3.0
+let deployGate = null;
+try {
+  deployGate = require('./deploy-gate');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[Core] Deploy gate not loaded: ${err.message}`);
+  }
+}
+
+let strikeGate = null;
+try {
+  strikeGate = require('./strike-gate');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[Core] Strike gate not loaded: ${err.message}`);
+  }
+}
+
+let bugfixScopeGate = null;
+try {
+  bugfixScopeGate = require('./bugfix-scope-gate');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[Core] Bugfix scope gate not loaded: ${err.message}`);
+  }
+}
+
+let scopeMutationGate = null;
+try {
+  scopeMutationGate = require('./scope-mutation-gate');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[Core] Scope mutation gate not loaded: ${err.message}`);
+  }
+}
+
+let gitSafetyGate = null;
+try {
+  gitSafetyGate = require('./git-safety-gate');
+} catch (err) {
+  if (process.env.DEBUG) {
+    console.error(`[Core] Git safety gate not loaded: ${err.message}`);
+  }
+}
+
 // Extension registry - allows third-party packages to register hooks
 const extensionRegistry = require('./extension-registry');
 
@@ -85,6 +131,22 @@ module.exports = {
   // Research Gate (detects questions requiring verification)
   ...(researchGate || {}),
   researchGate,
+
+  // Mechanical Enforcement Gates v3.0
+  ...(deployGate || {}),
+  deployGate,
+
+  ...(strikeGate || {}),
+  strikeGate,
+
+  ...(bugfixScopeGate || {}),
+  bugfixScopeGate,
+
+  ...(scopeMutationGate || {}),
+  scopeMutationGate,
+
+  ...(gitSafetyGate || {}),
+  gitSafetyGate,
 
   // Extension Registry (allows @wogiflow/teams and other packages to register hooks)
   extensionRegistry

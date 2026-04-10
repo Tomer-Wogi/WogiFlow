@@ -187,12 +187,61 @@ const CONFIG_DEFAULTS = {
     implementationGate: { enabled: true },
     todoWriteGate: { enabled: true, blockImplementationWithoutTask: true },
     routingGate: { enabled: true },
+    commitLogGate: { enabled: true },
     loopEnforcement: { enabled: true },
     hypothesisGate: {
       enabled: true,
       _comment_hypothesisGate: 'Blocks premature "fixed"/"should work" claims during bug investigation until hypothesis is verified. Pattern: hypothesis → verify → confirm → communicate.',
       blockedPhrases: ['fixed', 'should work', 'go try', 'go refresh'],
       requireExplicitVerification: true
+    },
+    deployGate: {
+      _comment_deployGate: 'Blocks deploy commands unless a valid HMAC-signed verification artifact exists. Off by default — opt in via `flow deploy-gate init`.',
+      enabled: false,
+      commands: [],
+      sourcePatterns: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.vue', '**/*.svelte', '**/*.css'],
+      requireForPriorities: ['P0', 'P1'],
+      blockWriteToVerifications: true,
+      minVerifiedRoutes: 3,
+      rejectLoginOnly: true
+    },
+    strikeEscalation: {
+      _comment_strikeEscalation: 'Mechanical strike counter. Blocks Edit/Write after repeated verification failures on the same task.',
+      enabled: true,
+      blockThreshold: 2,
+      escalateThreshold: 3,
+      hardBlockThreshold: 4,
+      productionCrashThreshold: 2
+    },
+    bugfixScope: {
+      _comment_bugfixScope: 'Pauses L3 bugfixes after N unique non-test files edited, requiring a scope inventory.',
+      enabled: true,
+      mode: 'warn',
+      fileThreshold: 3,
+      excludePatterns: ['*.test.*', '*.spec.*', '*.d.ts', '__tests__/**', '__mocks__/**'],
+      keywordMatchThreshold: 2,
+      fanOutThreshold: 10
+    },
+    revertFirst: {
+      _comment_revertFirst: 'For production crashes: recommends reverting before forward-fixing. Off by default.',
+      enabled: false,
+      keywords: ['production', 'crash', 'down', 'outage', '500 errors', 'users can\u0027t', 'site is broken', 'live issue'],
+      deployHistoryRetention: 50,
+      oldDeployWarningDays: 7
+    },
+    scopeMutation: {
+      _comment_scopeMutation: 'Agnostic gate: fix tasks creating 2+ new files → warn. Deleting pre-existing files → warn. No framework pattern matching.',
+      enabled: true,
+      newFileThreshold: 2,
+      mode: 'warn'
+    },
+    gitSafety: {
+      _comment_gitSafety: 'Auto-backup before destructive git operations. Prevents accidental loss of work from prior sessions.',
+      enabled: true,
+      maxBackwardCommits: 3,
+      ageThresholdHours: 24,
+      autoBackup: true,
+      maxBackupBranches: 3
     }
   },
 
@@ -341,6 +390,13 @@ const CONFIG_DEFAULTS = {
     alwaysCheck: ['naming', 'security'],
     similarityThreshold: 0.8,
     similarityWarningThreshold: 0.6
+  },
+  // --- Workspace Sovereignty ---
+  workspace: {
+    _comment_workerGatesSovereign: 'When true, workers cannot skip their own quality gates even if the manager instructs them to',
+    workerGatesSovereign: true,
+    managerCanOverrideLevel: false,
+    managerCanSkipGates: false
   },
   checkpoint: { enabled: false },
   regressionTesting: { enabled: false },

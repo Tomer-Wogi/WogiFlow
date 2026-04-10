@@ -154,6 +154,39 @@ runHook('PostToolUse', async ({ parsedInput }) => {
     return { __raw: true, continue: true };
   }
 
+  // v3.0: Scope mutation guard — track new file creations for fix tasks
+  if (toolName === 'Write' && filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
+    try {
+      const { recordNewFile } = require('../../core/scope-mutation-gate');
+      const { safeJsonParse: readJsonSm, PATHS: pathsSm } = require('../../../flow-utils');
+      const readySm = readJsonSm(require('path').join(pathsSm.state, 'ready.json'), { inProgress: [] });
+      const activeSm = readySm.inProgress?.[0];
+      if (activeSm?.id) {
+        recordNewFile(activeSm.id, filePath);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[post-tool-use] Scope mutation tracking: ${err.message}`);
+    }
+  }
+
+  // v3.0: Bugfix scope gate — track file edits for L3 bugfix tasks
+  if (filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
+    try {
+      const { recordFileEdit } = require('../../core/bugfix-scope-gate');
+      const { safeJsonParse: readJson, PATHS: utilPaths } = require('../../../flow-utils');
+      const readyData = readJson(require('path').join(utilPaths.state, 'ready.json'), { inProgress: [] });
+      const activeTask = readyData.inProgress?.[0];
+      if (activeTask?.id && (activeTask.level === 'L3') &&
+          (activeTask.type === 'bugfix' || activeTask.type === 'fix' || activeTask.type === 'bug')) {
+        recordFileEdit(activeTask.id, filePath);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[post-tool-use] Bugfix scope tracking: ${err.message}`);
+      }
+    }
+  }
+
   // v7.0: Track changed files in task checkpoint
   if (filePath && !filePath.includes('.workflow/') && !filePath.includes('.claude/')) {
     try {

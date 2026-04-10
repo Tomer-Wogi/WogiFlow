@@ -23,6 +23,14 @@ const { resetPhase, isPhaseGateEnabled } = require('./phase-gate');
 const { clearOnTaskComplete } = require('../../flow-hook-status');
 const { checkGateLatch, clearGateLatch } = require('../../flow-gate-latch');
 
+// Deploy gate (v3.0 — mechanical enforcement gates)
+let deployGateModule = null;
+try {
+  deployGateModule = require('./deploy-gate');
+} catch (_err) {
+  // Deploy gate not available — skip
+}
+
 /**
  * Check if task completed handling is enabled
  * @returns {boolean}
@@ -107,6 +115,23 @@ async function handleTaskCompleted(input) {
         }
       }
 
+      // Deploy gate: P0/P1 verification check (v3.0)
+      if (deployGateModule) {
+        try {
+          const deployCheck = deployGateModule.checkCompletionGate(completedTask, config);
+          if (deployCheck.blocked) {
+            result.message = `BLOCKED: ${deployCheck.reason}`;
+            result.gateBlocked = true;
+            return;
+          }
+        } catch (err) {
+          // Fail-open: deploy gate errors should not block completion
+          if (process.env.DEBUG) {
+            console.error(`[Task Completed] Deploy gate error (fail-open): ${err.message}`);
+          }
+        }
+      }
+
       // Move task to recentlyCompleted
       completedTask.status = 'completed';
       completedTask.completedAt = new Date().toISOString();
@@ -182,6 +207,22 @@ async function handleTaskCompleted(input) {
       } catch (_err) {
         // Non-critical
       }
+    }
+
+    // F6: Clear enforcement gate state on task completion
+    if (result.completed && completedTask?.id) {
+      try {
+        const { clearStrikes } = require('./strike-gate');
+        clearStrikes(completedTask.id);
+      } catch (_err) { /* Non-critical */ }
+      try {
+        const { clearScopeState } = require('./bugfix-scope-gate');
+        clearScopeState(completedTask.id);
+      } catch (_err) { /* Non-critical */ }
+      try {
+        const { clearState } = require('./scope-mutation-gate');
+        clearState();
+      } catch (_err) { /* Non-critical */ }
     }
 
     // Clear progress tracker state on task completion

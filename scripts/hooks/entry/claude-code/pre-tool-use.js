@@ -18,6 +18,18 @@ const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../core/routing-gate');
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { checkCommitLogGate } = require('../../core/commit-log-gate');
+// F19: Lazy-load enforcement gates with try/catch to prevent one broken gate from crashing all hooks
+const _noop = () => ({ allowed: true, blocked: false });
+let checkDeployGate = _noop, checkWriteBlock = _noop;
+try { const dg = require('../../core/deploy-gate'); checkDeployGate = dg.checkDeployGate; checkWriteBlock = dg.checkWriteBlock; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Deploy gate not loaded: ${_err.message}`); }
+let checkStrikeGate = _noop;
+try { checkStrikeGate = require('../../core/strike-gate').checkStrikeGate; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Strike gate not loaded: ${_err.message}`); }
+let checkBugfixScope = _noop;
+try { checkBugfixScope = require('../../core/bugfix-scope-gate').checkBugfixScope; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Bugfix scope gate not loaded: ${_err.message}`); }
+let checkScopeMutation = _noop;
+try { checkScopeMutation = require('../../core/scope-mutation-gate').checkScopeMutation; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Scope mutation gate not loaded: ${_err.message}`); }
+let checkGitSafety = _noop;
+try { checkGitSafety = require('../../core/git-safety-gate').checkGitSafety; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Git safety gate not loaded: ${_err.message}`); }
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 const { getConfig } = require('../../../flow-utils');
@@ -71,6 +83,9 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     const allGatesDisabled = enf.taskGating === false && enf.scopeGating === false
       && enf.routingGate === false && enf.commitLogGate === false
       && enf.todoWriteGate === false && enf.loopEnforcement === false
+      && enf.deployGate === false && enf.strikeEscalation === false
+      && enf.bugfixScope === false && enf.scopeMutation === false
+      && enf.gitSafety === false
       && hookStatus.componentReuse === false && hookStatus.phaseGate === false;
     if (allGatesDisabled) {
       if (process.env.DEBUG) {
@@ -226,6 +241,128 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     } catch (err) {
       if (process.env.DEBUG) {
         console.error(`[Hook] Commit log gate error (fail-open): ${err.message}`);
+      }
+    }
+  }
+
+  // Deploy gate check (for Bash commands — blocks deploy without verification artifact)
+  if (toolName === 'Bash' && toolInput.command) {
+    try {
+      const deployResult = checkDeployGate(toolInput.command, config);
+      if (deployResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Deploy gate: ${deployResult.reason}`,
+          message: deployResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      // Fail-open: deploy gate errors should not block normal work
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Deploy gate error (fail-open): ${err.message}`);
+      }
+    }
+  }
+
+  // Deploy gate: block Write to verification artifacts (anti-forgery)
+  if ((toolName === 'Write' || toolName === 'Edit') && filePath) {
+    try {
+      const writeBlockResult = checkWriteBlock(filePath, config);
+      if (writeBlockResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Deploy gate: ${writeBlockResult.reason}`,
+          message: writeBlockResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Deploy gate write-block error (fail-open): ${err.message}`);
+      }
+    }
+  }
+
+  // Scope mutation guard (fix tasks creating files, deleting pre-existing files)
+  if (toolName === 'Write' || toolName === 'Bash') {
+    try {
+      const scopeMutResult = checkScopeMutation(toolName, toolInput, config);
+      if (scopeMutResult.blocked) {
+        coreResult = {
+          allowed: false, blocked: true,
+          reason: `Scope mutation: ${scopeMutResult.reason}`,
+          message: scopeMutResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Scope mutation gate error (fail-open): ${err.message}`);
+    }
+  }
+
+  // Git safety net (auto-backup before destructive git operations)
+  if (toolName === 'Bash' && toolInput.command && /git\s+(reset|checkout\s+(--\s+)?[\.\-]|restore\s+.*\.|clean\s+.*-f)/.test(toolInput.command)) {
+    try {
+      const gitResult = checkGitSafety(toolInput.command, config);
+      if (gitResult.blocked) {
+        coreResult = {
+          allowed: false, blocked: true,
+          reason: `Git safety: ${gitResult.reason}`,
+          message: gitResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Git safety gate error (fail-open): ${err.message}`);
+    }
+  }
+
+  // Bugfix scope gate (warns/blocks L3 bugfixes after 3+ unique file edits)
+  if (toolName === 'Edit' || toolName === 'Write') {
+    try {
+      const scopeResult = checkBugfixScope(toolName, config);
+      if (scopeResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Bugfix scope: ${scopeResult.reason}`,
+          message: scopeResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Bugfix scope gate error (fail-open): ${err.message}`);
+      }
+    }
+  }
+
+  // Strike escalation gate (blocks Edit/Write/Bash after repeated verification failures)
+  if (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash') {
+    try {
+      const strikeResult = checkStrikeGate(toolName, config);
+      if (strikeResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Strike gate: ${strikeResult.reason}`,
+          message: strikeResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      // Fail-open: strike gate errors should not block normal work
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Strike gate error (fail-open): ${err.message}`);
       }
     }
   }

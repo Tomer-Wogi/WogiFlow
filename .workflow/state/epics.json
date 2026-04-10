@@ -28,8 +28,29 @@
       "progress": 1,
       "createdAt": "2026-03-30T07:20:30.378Z",
       "updatedAt": "2026-03-30T07:50:36.656Z"
+    },
+    "epic-enforcement-gates": {
+      "id": "epic-enforcement-gates",
+      "title": "Mechanical Enforcement Gates v3.0",
+      "description": "Replace prompt-only safeguards with hook-level mechanical enforcement that blocks tool execution. 4 gates: Verification-Required, Strike Escalation, Bugfix Scope, Revert-First Protocol.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-584a91cf",
+        "wf-71c0b857",
+        "wf-dee7022d",
+        "wf-f8e420e9",
+        "wf-896fe249",
+        "wf-3b874a27",
+        "wf-ac7ea4e4"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-04-10T18:25:36.077Z",
+      "updatedAt": "2026-04-10T20:16:52.798Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-03-30T07:50:36.656Z"
+  "lastUpdated": "2026-04-10T20:16:52.798Z"
 }

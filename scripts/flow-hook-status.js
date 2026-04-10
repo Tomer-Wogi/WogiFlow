@@ -99,7 +99,13 @@ function buildEnforcementFromConfig(config) {
       routingGate: config.enforcement?.routingGate?.enabled === true,
       commitLogGate: config.enforcement?.commitLogGate?.enabled === true,
       todoWriteGate: config.enforcement?.todoWriteGate?.enabled === true,
-      loopEnforcement: config.enforcement?.loopEnforcement?.enabled === true
+      loopEnforcement: config.enforcement?.loopEnforcement?.enabled === true,
+      // F5: Include v3.0 enforcement gates in hook status
+      deployGate: config.enforcement?.deployGate?.enabled === true,
+      strikeEscalation: config.enforcement?.strikeEscalation?.enabled !== false,
+      bugfixScope: config.enforcement?.bugfixScope?.enabled !== false,
+      scopeMutation: config.enforcement?.scopeMutation?.enabled !== false,
+      gitSafety: config.enforcement?.gitSafety?.enabled !== false
     },
     componentReuse: config.componentReuse?.enabled === true,
     // Correct path: hooks.rules.phaseGate.enabled (matches phase-gate.js:84)
