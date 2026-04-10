@@ -72,6 +72,8 @@ flow parallel check  # See available parallel tasks
 | 2.1.0+ | 2.1.77+ | PreToolUse allow/deny separation, 128k output tokens, worktree sparse checkout, compaction circuit breaker |
 | 2.4.0+ | 2.1.83+ | managed-settings.d/, CwdChanged/FileChanged hooks, ENV_SCRUB, --channels limitations, MEMORY.md 25KB cap |
 | 2.5.0+ | 2.1.84+ | TaskCreated hook, YAML glob lists in rules, CLAUDE_STREAM_IDLE_TIMEOUT_MS, WorktreeCreate HTTP transport, idle-return prompt, MCP 2KB cap |
+| 2.9.0+ | 2.1.90+ | --resume deferred-tool cache fix, MCP schema perf, PostToolUse format-on-save fix, PreToolUse exit-code-2 fix, .husky protected |
+| 2.9.2+ | 2.1.97+ | Stop/SubagentStop long-session fix, subagent worktree cwd leak fix, refreshInterval status line, workspace.git_worktree, MCP HTTP/SSE leak fix, 429 backoff, compaction transcript dedup |
 
 ### Environment Variables (2.1.19+)
 
@@ -287,6 +289,80 @@ await cancelTask('wf-123', 'superseded', false);
 
 - **ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL_SUPPORTS**: New env vars to override effort/thinking capability detection for pinned default models on Bedrock/Vertex/Foundry. WogiFlow's hybrid mode routes to different models — 3P users who pin models can now declare their capabilities properly.
 
+### Features in 2.1.90+
+
+- **--resume deferred-tool prompt-cache fix**: Fixed `--resume` causing a full prompt-cache miss on the first request for sessions with deferred tools, MCP servers, or custom agents (regression since v2.1.69). WogiFlow sessions using deferred MCP tools (Atlassian, Figma, Gmail, Google Calendar) now resume with cache preserved — faster first-turn response after `--resume` or `/wogi-suspend` + resume.
+
+- **MCP schema cache-key performance**: Eliminated per-turn `JSON.stringify` of MCP tool schemas on cache-key lookup. WogiFlow sessions with MCP servers benefit automatically — reduced CPU overhead on every turn. Combined with the SSE linear-time fix (large streamed frames were previously quadratic) and SDK transcript write fix (long conversations no longer slow down quadratically), this significantly improves performance for long WogiFlow sessions.
+
+- **PostToolUse format-on-save fix**: Fixed `Edit`/`Write` failing with "File content has changed" when a PostToolUse format-on-save hook rewrites the file between consecutive edits. WogiFlow's PostToolUse validation is read-only (`tsc --noEmit`, `eslint`) and does NOT rewrite files, so this was never triggered. However, users who configure custom validation commands with formatters (e.g., `prettier --write`) in `config.validation.afterFileEdit.commands` would have hit this bug on older CC versions.
+
+- **PreToolUse exit-code-2 blocking fix**: Fixed PreToolUse hooks that emit JSON to stdout and exit with code 2 not correctly blocking the tool call. WogiFlow hooks always `exit(0)` and use `permissionDecision: 'deny'` in the JSON payload for blocking — the correct pattern. Not affected, but good to know the exit-code-2 pattern now also works for other tools.
+
+- **Auto mode boundary enforcement**: Fixed auto mode not respecting explicit user boundaries ("don't push", "wait for X before Y") even when the action would otherwise be allowed. Improves safety when users set boundaries during WogiFlow task execution.
+
+- **PowerShell hardening**: Hardened PowerShell tool permission checks — fixed trailing `&` background job bypass, `-ErrorAction Break` debugger hang, archive-extraction TOCTOU, and parse-fail fallback deny-rule degradation. Also removed `Get-DnsClientCache` and `ipconfig /displaydns` from auto-allow (DNS cache privacy). WogiFlow has no PowerShell commands — not affected. Windows users benefit from improved security.
+
+- **Added /powerup**: Interactive lessons teaching Claude Code features with animated demos. Available to WogiFlow users alongside `/wogi-help`.
+
+- **Added .husky to protected directories**: `.husky/` directory now protected in `acceptEdits` mode, preventing accidental modification of git hooks. WogiFlow projects using Husky for pre-commit hooks benefit from this protection.
+
+- **CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE env var**: Keeps the existing marketplace cache when git pull fails. Useful in offline environments where WogiFlow sessions need marketplace plugins.
+
+- **--resume picker changes**: `--resume` picker no longer shows sessions created by `claude -p` or SDK invocations. WogiFlow sessions are interactive, so they remain visible in the picker. SDK-spawned sessions (e.g., from wogiflow-cloud's remote agents) are now correctly hidden from manual resume.
+
+### Features in 2.1.97+
+
+- **Stop/SubagentStop hooks no longer fail on long sessions**: Fixed prompt-type Stop/SubagentStop hooks failing after extended session activity, and hook evaluator API errors now display the actual error message instead of a generic "JSON validation failed". **Impact on WogiFlow**: CRITICAL reliability fix. WogiFlow's `scripts/hooks/entry/claude-code/stop.js` enforces routing-pending detection (blocks stop until `/wogi-start` is invoked) and runs loop-exit checks — on long sessions this hook was silently failing, meaning routing enforcement degraded and loop gating could skip. After upgrading to 2.1.97+, routing enforcement is reliable for the full session lifetime. No WogiFlow code change needed; the fix is purely in Claude Code's hook evaluator.
+
+- **Subagent worktree cwd leak fix**: Fixed subagents using `isolation: "worktree"` or a `cwd:` override leaking their working directory back into the parent session's Bash tool. **Impact on WogiFlow**: HIGH severity fix. WogiFlow's parallel explore phase (`flow-parallel.js`) and `/wogi-bulk` spawn multiple worktree-isolated sub-agents. Prior to 2.1.97, the parent session's subsequent `Bash` calls could inherit a stale worktree path — causing file edits, git commands, or validation to run in the wrong directory. This was silent and hard to debug. After upgrading, parallel execution with worktree isolation is safe again.
+
+- **`refreshInterval` status line setting**: New top-level field on `statusLine` in `settings.json` that re-runs the status line every N seconds so live values (task ID, context %, active skill, worktree branch) stay current between prompts. **WogiFlow adoption**: `flow-statusline-setup.js` now prompts for and writes `refreshInterval` during interactive setup (default **5 seconds**), and exposes a `--refresh-interval N` CLI flag that can be used standalone or combined with `--format`. Setting to 0 disables auto-refresh. The `buildStatusLine()` helper preserves any existing statusLine fields, so `--format X` no longer wipes a user's previously-configured refresh interval (and vice versa).
+
+- **`workspace.git_worktree` in status line JSON input**: New variable set when the current directory is inside a linked git worktree (independent of Claude Code's `--worktree` flag). **WogiFlow adoption**: The `detailed` preset in `flow-statusline-setup.js` now includes `{{#if workspace.git_worktree}}[WT] {{/if}}` so users see a clear worktree indicator even when they entered a worktree via `git worktree add` outside a `--worktree` session. `wogi-statusline-setup.md` documents the distinction between `workspace.git_worktree` (any linked worktree) and the existing `worktree.*` variables (only when Claude Code created the worktree).
+
+- **Compaction transcript dedup**: Fixed compaction writing duplicate multi-MB subagent transcript files on prompt-too-long retries. **Impact on WogiFlow**: WogiFlow's explore phase launches 5-6 parallel agents per L2+ task. Previously, compaction was writing duplicate transcripts for each agent, bloating session state and slowing `--resume`. Automatic improvement after upgrade.
+
+- **MCP HTTP/SSE memory leak fix**: Fixed MCP HTTP/SSE connections accumulating ~50 MB/hr of unreleased buffers when servers reconnect. **Impact on WogiFlow**: WogiFlow configures MCP servers (memory server, Figma MCP, and optional cloud Atlassian/Gmail/Calendar via deferred tools). Long WogiFlow sessions — especially `/wogi-bulk-loop` continuous runs — were accumulating hidden memory. Automatic improvement after upgrade.
+
+- **429 retry exponential backoff**: Fixed 429 retries burning all attempts in ~13 seconds when the server returned a small `Retry-After` — exponential backoff now applies as a minimum. **Impact on WogiFlow**: WogiFlow's heavy context loading (CLAUDE.md + state files + specs + explore agents) can trigger rate limits on burst workloads. Prior to 2.1.97, all retry attempts were consumed in seconds. Now retries are properly spaced and recoverable.
+
+- **Rate-limit upgrade options preserved across compaction**: Fixed rate-limit upgrade options disappearing after context compaction. **Impact on WogiFlow**: WogiFlow's sprint-based context reset (Step 3.05) triggers compaction mid-task. Users hitting rate limits during long tasks no longer lose their upgrade path after compaction.
+
+- **Slash command picker YAML boolean keyword fix**: Fixed slash command picker breaking when a plugin's frontmatter `name:` is a YAML boolean keyword (`true`, `false`, `yes`, `no`, `on`, `off`). **Impact on WogiFlow**: WogiFlow's `flow-workflow.js` has a YAML parser that coerces bare `true`/`false` strings to JS booleans — if any WogiFlow skill or plugin accidentally used one of these as a `name`, the picker would break. All current WogiFlow skills use descriptive kebab-case names (e.g., `wogi-start`, `wogi-review`) so none are affected. Plugin authors publishing to WogiFlow should continue to quote any YAML boolean keywords in frontmatter as a defensive measure.
+
+- **`permissions.additionalDirectories` mid-session changes apply**: Fixed `permissions.additionalDirectories` changes in `settings.json` not applying mid-session, and fixed removing a directory from `settings.permissions.additionalDirectories` revoking access to the same directory passed via `--add-dir`. **Impact on WogiFlow**: WogiFlow can emit `additionalDirectories` changes during installation, worktree creation, or team sync. Prior to 2.1.97, these changes required a session restart. Now they apply immediately — `/wogi-rescan` and `/wogi-onboard` flows that touch permissions no longer need a manual restart.
+
+- **Permission rules matching JS prototype property names**: Fixed permission rules with names matching JavaScript prototype properties (e.g., `toString`, `constructor`, `hasOwnProperty`) causing `settings.json` to be silently ignored. **Impact on WogiFlow**: Defensive improvement. WogiFlow's `generateSettings()` in `.workflow/bridges/claude-bridge.js` uses `PERM_SAFE_RE` regex validation and never emits prototype names, but this fix protects any user who adds custom permission rules.
+
+- **Managed-settings allow rules cleanup**: Fixed managed-settings `allow` rules remaining active after an admin removed them until process restart. **Impact on wogiflow-cloud**: Relevant for teams using managed settings for policy enforcement. Admins can now dynamically grant/revoke permissions without requiring end-user session restarts.
+
+- **`--dangerously-skip-permissions` downgrade fix**: Fixed bypass mode being silently downgraded to `accept-edits` after approving a write to a protected path. Security improvement — WogiFlow does not rely on bypass mode but users running `/wogi-bulk --continuous` with `--dangerously-skip-permissions` benefit.
+
+- **Bash permission hardening**: Hardened Bash tool permissions, tightening checks around env-var prefixes and network redirects, and reducing false prompts on common commands. Also improved Accept Edits mode to auto-approve filesystem commands prefixed with safe env vars or process wrappers (e.g. `LANG=C rm foo`, `timeout 5 mkdir out`). **Impact on WogiFlow**: Reduces interruptions during validation (`tsc`, `eslint`, `node --test`) that pass through env-var wrappers. WogiFlow's `generatePermissions()` was designed for literal command prefixes — users no longer need to enumerate every env-var-prefixed variant.
+
+- **Focus view toggle (Ctrl+O) in NO_FLICKER mode**: New toggle shows just the prompt, a one-line tool summary with edit diffstats, and the final response. Useful during long WogiFlow task execution to see high-level progress without the full tool call stream. Documentation-only for WogiFlow — no code change. Worth mentioning in `/wogi-help`.
+
+- **Running indicator in `/agents`**: `● N running` indicator now appears in `/agents` next to agent types with live subagent instances. WogiFlow's explore phase agents (5-6 per task) and worktree-isolated sub-agents are now visible at a glance. Free UX improvement.
+
+- **`workspace.git_worktree` on status line JSON input** (see refreshInterval entry above for WogiFlow adoption).
+
+- **Image compression alignment**: Pasted and attached images are now compressed to the same token budget as images read via the Read tool. **Impact on WogiFlow**: The Figma analyzer skill and `/wogi-debug-browser` screenshots benefit automatically — token cost is now predictable regardless of how the image entered the session.
+
+- **Session transcript size improvements**: Empty hook entries are skipped and stored pre-edit file copies are capped. **Impact on WogiFlow**: WogiFlow registers 12+ hooks — many of which return empty `hookSpecificOutput` for fast-path exits. These were bloating the transcript. Automatic improvement after upgrade, with meaningful reduction in session file size for long runs.
+
+- **Per-block token usage accuracy**: Per-block transcript entries now carry the final token usage instead of the streaming placeholder. **Impact on WogiFlow**: `/wogi-status`, cost tracking, and retrospective analysis that reads token usage from transcripts now report accurate numbers.
+
+- **Bash OTEL TRACEPARENT inheritance**: Bash subprocesses now inherit a W3C `TRACEPARENT` env var when OTEL tracing is enabled. **Impact on wogiflow-cloud**: Teams product opportunity — WogiFlow hook subprocesses can propagate trace context to the cloud observability backend for end-to-end request tracing. Tracked as cloud opportunity; no OSS code change needed.
+
+- **Improved context-low warning**: Now shows as a transient footer notification instead of a persistent row. **Impact on WogiFlow**: WogiFlow's proactive compaction triggers at 75% threshold. The transient warning matches WogiFlow's "compaction is invisible infrastructure" principle — less visual noise during task execution.
+
+- **Bedrock SigV4 empty-string fix**: Fixed Bedrock SigV4 authentication failing when `AWS_BEARER_TOKEN_BEDROCK` or `ANTHROPIC_BEDROCK_BASE_URL` are set to empty strings (as GitHub Actions does for unset inputs). **Impact on wogiflow-cloud CI**: Relevant for teams running WogiFlow tasks from GitHub Actions with Bedrock backends. No OSS code change needed.
+
+- **MCP OAuth refresh fix**: Fixed MCP OAuth `oauth.authServerMetadataUrl` not being honored on token refresh after restart, fixing ADFS and similar IdPs. **Impact on WogiFlow**: Enterprise users with ADFS-backed MCP servers benefit automatically.
+
+- **`/claude-api` skill updated for Managed Agents**: The `/claude-api` skill now covers Managed Agents (`/v1/agents`, `/v1/sessions`) alongside the Claude API. **Impact on WogiFlow**: Informational — WogiFlow's `claude-api` skill reference remains accurate.
+
 ### Simple Mode Naming Distinction
 
 Claude Code's `CLAUDE_CODE_SIMPLE` environment variable (which enables a simplified tool set) is **unrelated** to WogiFlow's `loops.simpleMode` (a lightweight task completion loop using string detection). They are separate features that happen to share the word "simple":
@@ -421,4 +497,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-03-11*
+*Last updated: 2026-04-09*

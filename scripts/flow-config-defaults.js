@@ -187,7 +187,13 @@ const CONFIG_DEFAULTS = {
     implementationGate: { enabled: true },
     todoWriteGate: { enabled: true, blockImplementationWithoutTask: true },
     routingGate: { enabled: true },
-    loopEnforcement: { enabled: true }
+    loopEnforcement: { enabled: true },
+    hypothesisGate: {
+      enabled: true,
+      _comment_hypothesisGate: 'Blocks premature "fixed"/"should work" claims during bug investigation until hypothesis is verified. Pattern: hypothesis → verify → confirm → communicate.',
+      blockedPhrases: ['fixed', 'should work', 'go try', 'go refresh'],
+      requireExplicitVerification: true
+    }
   },
 
   // --- Execution ---

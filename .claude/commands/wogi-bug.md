@@ -131,6 +131,45 @@ Return:
 
 **If investigation fails to identify a clear root cause**, consider escalating to `/wogi-debug-hypothesis` which spawns parallel agents to investigate competing theories about the root cause.
 
+### Phase 2.5: Hypothesis Verification Gate (MANDATORY)
+<!-- PIN: hypothesis-verification-gate -->
+
+**After forming a root cause hypothesis, you MUST verify it before proceeding to Phase 3 or communicating ANY confidence to the user.**
+
+This gate prevents the #1 bug-investigation failure: the AI forms a hypothesis, tells the user "should work" or "go try it," and the user discovers it's wrong. Premature confidence erodes trust and wastes 25K+ tokens per incident on rework.
+
+**The rule**: `hypothesis → verify → confirm → THEN communicate`
+
+**Procedure**:
+
+1. **State the hypothesis explicitly**: Write it as a testable claim: "The root cause is X because Y, which means Z should reproduce it."
+
+2. **Dispatch verification** (at least ONE of these must confirm the hypothesis):
+   - **Code trace**: Read the code path and confirm the hypothesis explains the behavior
+   - **Test execution**: Run a test or command that would fail if the hypothesis is correct
+   - **Data verification**: Query the actual data/state that the hypothesis predicts is wrong
+   - **Reproduction**: Reproduce the bug by following the hypothesized trigger path
+
+3. **Record the evidence**: Before proceeding, state what you verified and what the result was:
+   ```
+   HYPOTHESIS: [the claim]
+   VERIFICATION: [what you tested]
+   RESULT: [confirmed / refuted / inconclusive]
+   ```
+
+4. **If CONFIRMED** → proceed to Phase 3 with the verified root cause
+5. **If REFUTED** → form a new hypothesis and repeat Phase 2.5
+6. **If INCONCLUSIVE** → escalate to `/wogi-debug-hypothesis` for parallel investigation
+
+**BLOCKED phrases until verification passes**: The following phrases are GATED behind hypothesis verification. Do NOT use them in any communication to the user until you have verification evidence:
+- "fixed", "should work", "go try", "go refresh"
+- "I believe the issue is", "the problem was" (past tense implies fixed)
+- "this should resolve", "that should take care of"
+
+**Permitted before verification**: "I'm investigating X as a possible cause", "my working hypothesis is", "I need to verify whether..."
+
+**Config**: `config.enforcement.hypothesisGate.enabled` (default: true)
+
 ### Phase 3: Populate Bug Report
 <!-- PIN: bug-population -->
 
@@ -239,14 +278,20 @@ The bug report IS the specification. `/wogi-start` uses the acceptance criteria 
 
 When `/wogi-start` runs on a bug task, these additional steps apply:
 
-### Explore Phase: Verify Root Cause
+### Explore Phase: Verify Root Cause (Hypothesis Gate Re-Check)
 
-Before implementing the fix, verify the root cause hypothesis:
+Before implementing the fix, RE-VERIFY the root cause hypothesis from the bug report:
 
 1. Read the bug file's Root Cause Analysis section
 2. Trace the code path described in the analysis
-3. Confirm or update the hypothesis
-4. If hypothesis is wrong, update the bug file and re-analyze
+3. Confirm or update the hypothesis using at least ONE verification method (code trace, test, data query, reproduction)
+4. If hypothesis is WRONG → update the bug file, re-analyze, and repeat Phase 2.5's verification gate
+5. If hypothesis is CONFIRMED → record the evidence in the bug file's Root Cause section and proceed
+
+**Anti-premature-confidence rule**: During bug-fix implementation, do NOT tell the user "fixed" or "should work" until ALL acceptance criteria pass in Step 3.5. The correct communication pattern is:
+- DURING fix: "Implementing the fix for [root cause]..."
+- AFTER Step 3.5 passes: "Fix verified — all acceptance criteria pass. [evidence]"
+- NEVER: "Go refresh, it should work now" (this is gated behind verification)
 
 ### Implementation: Fix + Prevent
 

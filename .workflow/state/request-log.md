@@ -11,6 +11,37 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-270 | 2026-04-10
+**Type**: new
+**Tags**: #verification #hypothesis #bug-investigation #enforcement
+**Task**: wf-b3b54c62
+**Request**: "Hypothesis verification gate — block premature 'fixed' claims"
+**Result**: Added Phase 2.5 (Hypothesis Verification Gate) to wogi-bug.md between Phase 2 (investigation) and Phase 3 (populate report). Gate mandates hypothesis → verify → confirm → THEN communicate pattern. Blocked phrases ("fixed", "should work", "go refresh") are gated behind verification evidence. Strengthened Bug-Specific Execution section with anti-premature-confidence rule and re-verification requirement. Added config.enforcement.hypothesisGate toggle to flow-config-defaults.js (enabled by default). Added recordHypothesisVerification() and isHypothesisVerified() functions to flow-hypothesis-generator.js for tracking verification state. Source: Wogi Hub manager retrospective mistakes #2, #3 (~35K tokens wasted on premature "fixed" claims).
+**Files**: .claude/commands/wogi-bug.md, scripts/flow-config-defaults.js, scripts/flow-hypothesis-generator.js
+
+### R-269 | 2026-04-10
+**Type**: new
+**Tags**: #epic #retrospective #verification-gates #workspace #token-efficiency
+**Request**: "Create implementation tasks for 8 WogiFlow improvements from Wogi Hub retrospectives"
+**Result**: Created epic-retro-improvements with 8 stories in ready.json. Priorities: P0 — hypothesis verification gate (wf-b3b54c62), blast-radius for all L1+ (wf-ddf13cf4), scope-confidence gate (wf-6fd43d0f). P1 — decision-authority framework (wf-b35f14e8), skill prompt compression (wf-c65b2ef5), cross-repo enum verification (wf-b3d01071), dispatch verification (wf-60b96ed4). P2 — constructor-mock drift detection (wf-f3f84c4d). Total: 34 acceptance criteria across 8 stories derived from 3 retrospective documents (manager, backend worker, frontend worker) covering a 30-hour Wogi Hub session.
+**Files**: .workflow/state/ready.json, .workflow/state/request-log.md
+
+### R-268 | 2026-04-10
+**Type**: fix
+**Tags**: #statusline #docs #review-fix #cli-parsing
+**Task**: wf-426b6e05
+**Request**: "Fix 5 review findings in statusline setup"
+**Result**: Fixed 5 review findings: (1) Updated Detailed format example in wogi-statusline-setup.md to match actual output — now shows `[WT]` indicator, `task.title`, and `% used` instead of stale `Ctx: 45% (85k remaining)`. (2) Aligned "Full Context" recommended format to match actual `detailed` preset including worktree conditional, task conditional, and task.title. (3) Removed implicit reference to non-existent `remaining_tokens` variable (was in the example from finding 1). (4) Added missing-value and flag-eating detection for `--refresh-interval` CLI arg — now errors early if followed by another flag or missing entirely. (5) Success message for `--format` now mentions preserved refreshInterval when one exists.
+**Files**: .claude/commands/wogi-statusline-setup.md, scripts/flow-statusline-setup.js
+
+### R-267 | 2026-04-09
+**Type**: feature
+**Tags**: #claude-code #statusline #compatibility #refreshInterval #2.1.97
+**Task**: wf-d0c2ea2b
+**Request**: "Update claude-code-compatibility.md for 2.1.97 and add refreshInterval support to flow-statusline-setup.js"
+**Result**: Added refreshInterval support to flow-statusline-setup.js: new `--refresh-interval N` CLI flag (standalone or combined with --format), interactive setup prompt (default 5s), parseRefreshInterval validator (0–3600), buildStatusLine helper that preserves existing fields so --format no longer wipes refresh interval (and vice versa), refresh status displayed in --show, updated --help with new flag and examples, detailed preset now uses `workspace.git_worktree` indicator. Added 2.1.97 section to claude-code-compatibility.md documenting 21 changes with WogiFlow impact analysis: Stop hook long-session fix (CRITICAL — routing enforcement was degrading), subagent worktree cwd leak fix (HIGH — parallel execution bug), refreshInterval adoption, workspace.git_worktree variable, compaction transcript dedup, MCP HTTP/SSE 50MB/hr leak fix, 429 backoff, rate-limit upgrade options, YAML boolean slash command fix, additionalDirectories mid-session, permission rules proto names, Bash hardening, focus view, running indicator, image compression alignment, transcript size improvements, per-block token accuracy, OTEL TRACEPARENT, context-low transient warning, Bedrock SigV4, MCP OAuth ADFS. Added version row `2.9.2+ | 2.1.97+` to compatibility table. Updated wogi-statusline-setup.md with refreshInterval docs and workspace.git_worktree vs worktree.* distinction. Last-updated bumped to 2026-04-09.
+**Files**: scripts/flow-statusline-setup.js, .claude/docs/claude-code-compatibility.md, .claude/commands/wogi-statusline-setup.md
+
 ### R-266 | 2026-03-25
 **Type**: refactor
 **Tags**: #consistency #paths #audit

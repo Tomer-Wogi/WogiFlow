@@ -552,6 +552,64 @@ function formatHypothesisTree(tree) {
 }
 
 // ============================================================
+// Hypothesis Verification Gate (v2.10)
+// ============================================================
+
+const VERIFICATION_STATE_PATH = path.join(PATHS.state, 'hypothesis-verification.json');
+
+/**
+ * Record a hypothesis verification attempt.
+ * Called by the AI during bug investigation to track the
+ * hypothesis → verify → confirm cycle.
+ *
+ * @param {object} params
+ * @param {string} params.taskId - Bug task ID
+ * @param {string} params.hypothesis - The root cause claim
+ * @param {string} params.method - Verification method: 'code-trace' | 'test' | 'data-query' | 'reproduction'
+ * @param {string} params.result - 'confirmed' | 'refuted' | 'inconclusive'
+ * @param {string} params.evidence - What was observed
+ */
+function recordHypothesisVerification({ taskId, hypothesis, method, result, evidence }) {
+  const state = readJson(VERIFICATION_STATE_PATH, { verifications: [] });
+  state.verifications.push({
+    taskId,
+    hypothesis,
+    method,
+    result,
+    evidence,
+    timestamp: new Date().toISOString()
+  });
+  writeJson(VERIFICATION_STATE_PATH, state);
+  if (result === 'confirmed') {
+    success(`Hypothesis verified (${method}): ${hypothesis}`);
+  } else if (result === 'refuted') {
+    warn(`Hypothesis refuted (${method}): ${hypothesis}`);
+  } else {
+    info(`Hypothesis inconclusive (${method}): ${hypothesis}`);
+  }
+  return state;
+}
+
+/**
+ * Check whether a hypothesis has been verified for a given task.
+ * Used by the gate to determine if "fixed" claims are allowed.
+ *
+ * @param {string} taskId
+ * @returns {{ verified: boolean, hypothesis: string|null, evidence: string|null }}
+ */
+function isHypothesisVerified(taskId) {
+  const state = readJson(VERIFICATION_STATE_PATH, { verifications: [] });
+  const confirmed = state.verifications.find(
+    v => v.taskId === taskId && v.result === 'confirmed'
+  );
+  return {
+    verified: !!confirmed,
+    hypothesis: confirmed?.hypothesis ?? null,
+    evidence: confirmed?.evidence ?? null
+  };
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -573,6 +631,11 @@ module.exports = {
   // State management
   saveHypothesisTree,
   loadHypothesisTree,
+
+  // Hypothesis verification gate (v2.10)
+  VERIFICATION_STATE_PATH,
+  recordHypothesisVerification,
+  isHypothesisVerified,
 
   // Formatting
   formatHypotheses,

@@ -15,8 +15,8 @@ This command helps you configure Claude Code's status line (shown at the bottom 
 
 ## Prerequisites
 
-- Claude Code v1.0.52+ (January 2026 or later)
-- The `context_window.used_percentage` field is available in status line input
+- Claude Code v1.0.52+ (January 2026 or later) — `context_window.used_percentage` field
+- Claude Code v2.1.97+ (optional) — `refreshInterval` setting and `workspace.git_worktree` variable
 
 ## Setup Instructions
 
@@ -38,10 +38,15 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 {
   "statusLine": {
     "enabled": true,
-    "format": "{{#if task}}[{{task.id}}] {{/if}}{{model}} | Ctx: {{context_window.used_percentage}}%{{#if skill}} | Skill: {{skill}}{{/if}}"
+    "format": "{{#if task}}[{{task.id}}] {{/if}}{{model}} | Ctx: {{context_window.used_percentage}}%{{#if skill}} | Skill: {{skill}}{{/if}}",
+    "refreshInterval": 5
   }
 }
 ```
+
+`refreshInterval` re-runs the status line every N seconds so live values (task ID,
+context %, active skill, worktree branch) stay current between prompts. Requires
+Claude Code 2.1.97+. Omit the field or set it to 0 to disable auto-refresh.
 
 ### Format Options
 
@@ -49,7 +54,7 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 |--------|-----------------|
 | **Compact** | `opus | 45%` |
 | **Standard** | `[wf-123] opus | Ctx: 45%` |
-| **Detailed** | `[wf-123] My Task | opus | Ctx: 45% (85k remaining) | Skill: nestjs` |
+| **Detailed** | `[WT] [wf-123] My Task | opus | 45% used | nestjs` |
 
 ### Available Variables
 
@@ -61,10 +66,18 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 | `{{task.id}}` | Current WogiFlow task ID (if any) |
 | `{{task.title}}` | Current task title |
 | `{{skill}}` | Currently active skill |
+| `{{workspace.git_worktree}}` | Truthy when cwd is inside a linked git worktree (2.1.97+) |
 | `{{worktree.name}}` | Worktree name (if running in --worktree session) |
 | `{{worktree.branch}}` | Worktree branch name |
 | `{{worktree.path}}` | Worktree directory path |
 | `{{worktree.original}}` | Original repo directory |
+
+**`workspace.git_worktree` vs `worktree.*`**: `workspace.git_worktree` is set
+whenever the cwd is in any linked git worktree (even outside a Claude Code
+`--worktree` session). The `worktree.*` variables are populated only when Claude
+Code itself created the worktree via `--worktree`. Use `workspace.git_worktree`
+for a simple "am I in a worktree?" indicator; use `worktree.branch` for the full
+branch label.
 
 ### Recommended Formats
 
@@ -80,7 +93,7 @@ Add or update the `statusLine` section in `~/.claude/settings.json`:
 
 **Full Context** (detailed):
 ```json
-"format": "[{{task.id}}] {{model}} | {{context_window.used_percentage}}% used | {{#if skill}}{{skill}}{{/if}}"
+"format": "{{#if workspace.git_worktree}}[WT] {{/if}}{{#if task}}[{{task.id}}] {{task.title}} | {{/if}}{{model}} | {{context_window.used_percentage}}% used{{#if skill}} | {{skill}}{{/if}}"
 ```
 
 **With Worktree** (for parallel task execution):
