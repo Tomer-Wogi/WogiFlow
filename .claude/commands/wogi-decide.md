@@ -22,8 +22,33 @@ Auto-routed from `/wogi-start` when user says:
 - "we should standardize on..."
 - "update our rules to..."
 - "add a rule for..."
+- "just fix those yourself" / "handle that yourself" / "don't ask me about X" (→ authority delegation)
 
 ## How It Works
+
+### Step 0: Authority Delegation Detection
+
+**Before all other steps**, check if the user's request is an authority delegation rather than a coding rule:
+
+**Delegation phrases**: "just fix those yourself", "handle that yourself", "don't ask me about [X]", "you decide on [X]", "stop asking about [X]", "from now on just fix [category]".
+
+**If detected**:
+1. Identify the decision category from the user's message (engineering, infrastructure, productBehavior, security, ux, naming, performance)
+2. Run: `node node_modules/wogiflow/scripts/flow-decision-authority.js update-category <category> <new-authority>`
+   - "fix it yourself" / "handle it" → `agent-decides`
+   - "just report after" → `agent-decides-report-after`
+   - "always ask me" → `owner-decides`
+   - "auto-fix" → `auto-fix-report-after`
+3. Confirm: "Updated decision authority: [category] → [authority]. I'll [description] from now on."
+4. **STOP** — do not proceed to the coding rule flow (Steps 1-6). Authority delegation is not a coding rule.
+
+**Example**:
+```
+User: "from now on just fix security issues yourself, don't ask me"
+→ Detected: authority delegation for 'security' → 'agent-decides'
+→ Run: flow-decision-authority.js update-category security agent-decides
+→ "Updated: security decisions → agent-decides. I'll handle security fixes autonomously from now on."
+```
 
 ### Step 0.5: Product vs Project Classification (MANDATORY)
 

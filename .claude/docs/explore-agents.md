@@ -164,12 +164,15 @@ Return:
 - Security patterns that apply
 ```
 
-## Agent 6: Consumer Impact Analyzer (Refactor/Migration/Schema Changes)
+## Agent 6: Consumer Impact Analyzer (ALL L1+ Tasks)
 
-Launch as `Agent(subagent_type=Explore)` (local only). **MANDATORY for refactor, migration, architecture tasks AND any task that modifies schema/model files.**
+Launch as `Agent(subagent_type=Explore)` (local only). **MANDATORY for ALL L1+ tasks (stories, epics, features).** Also triggered for any L2 task that modifies schema/model files.
 
-Trigger keywords: refactor, replace, rename, restructure, extract, consolidate, deprecate, migrate, move, reorganize.
-Trigger files: *.prisma, *.entity.ts, *.model.ts, *.schema.ts, files listed in schema-map.md.
+Previously limited to refactor/migration only, but blast-radius analysis has proven valuable for ALL task types — a feature task's consumer grep collapsed a 3-day estimate to 0.5 days (18:1 ROI).
+
+Trigger: ALL tasks at level L1 or L0. L2 tasks when keywords or trigger files match.
+Trigger keywords (L2 only): refactor, replace, rename, restructure, extract, consolidate, deprecate, migrate, move, reorganize.
+Trigger files (L2 only): *.prisma, *.entity.ts, *.model.ts, *.schema.ts, files listed in schema-map.md.
 
 ```
 Analyze consumer impact for task: "[TASK_TITLE]"
@@ -206,9 +209,22 @@ Return:
 - Indirect consumer chains
 - Risk: HIGH (10+), MEDIUM (3-9), LOW (0-2) breaking consumers
 - If HIGH: recommend phased migration (create new → migrate consumers → remove old)
+
+5. Write results to `.workflow/state/blast-radius-{taskId}.json`:
+   {
+     "taskId": "[TASK_ID]",
+     "taskTitle": "[TASK_TITLE]",
+     "timestamp": "[ISO_DATE]",
+     "consumers": { "breaking": [...], "needsUpdate": [...], "safe": [...] },
+     "risk": "HIGH|MEDIUM|LOW",
+     "breakingCount": N,
+     "totalConsumers": N
+   }
 ```
 
 **CRITICAL**: If 5+ BREAKING consumers found, spec MUST include migration plan. Implementation is BLOCKED without it.
+
+**Blast-radius artifact**: Results are persisted to `.workflow/state/blast-radius-{taskId}.json` for use by downstream gates (context estimator, standards compliance, workspace dispatch).
 
 ## Launching
 
@@ -226,7 +242,7 @@ The `model` parameter was restored in Claude Code 2.1.72 for per-invocation over
 - If any agent fails, log warning and proceed with remaining agents
 - Agents 1, 4, 5, 6 are local-only (should rarely fail)
 - Agents 2, 3 use web search (may fail on network issues)
-- If Consumer Impact fails AND task is refactor: **HARD BLOCK** — require user confirmation
+- If Consumer Impact fails AND task is L1+: **HARD BLOCK** — require user confirmation
 - If ALL agents fail: proceed with codebase analysis only (minimal mode)
 
 ## Constraints

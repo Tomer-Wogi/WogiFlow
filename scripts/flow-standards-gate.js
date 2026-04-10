@@ -15,7 +15,8 @@ const {
   readFile,
   safeJsonParse,
   getConfig,
-  color
+  color,
+  isPathWithinProject
 } = require('./flow-utils');
 
 const {
@@ -56,9 +57,9 @@ function loadTaskContext(taskId) {
     return null;
   }
 
-  // Load spec if available
+  // Load spec if available (validate path is within project for defense-in-depth)
   let spec = null;
-  if (task.specPath && fileExists(task.specPath)) {
+  if (task.specPath && isPathWithinProject(path.resolve(task.specPath)) && fileExists(task.specPath)) {
     spec = readFile(task.specPath, '');
   }
 
@@ -245,9 +246,33 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     preventionPrompts = standardsLearner.getPreventionPrompts(taskType, files.map(f => f.path));
   }
 
+  // Constructor-to-test-mock drift detection
+  // Runs on any task that changes service/controller files
+  let constructorMockDrift = null;
+  const changedFilePaths = files.map(f => f.path);
+  const hasServiceFiles = changedFilePaths.some(f =>
+    /\.(service|controller|guard|interceptor|resolver|middleware|provider)\./i.test(f)
+  );
+
+  if (hasServiceFiles) {
+    constructorMockDrift = checkConstructorMockDrift(changedFilePaths);
+    if (constructorMockDrift.driftDetected) {
+      // Add drift violations to the main violations list
+      for (const drift of constructorMockDrift.drifts) {
+        results.violations.push({
+          type: 'constructor-mock-drift',
+          file: drift.sourceFile,
+          message: `Constructor changed but test mock not updated: ${drift.testFile} missing mocks for [${drift.missingInTest.join(', ')}]`,
+          severity: drift.severity,
+          suggestion: `Update the test file's mock providers to include: ${drift.missingInTest.join(', ')}`
+        });
+      }
+    }
+  }
+
   return {
     ...results,
-    blocked: shouldBlock,
+    blocked: mode === 'block' && (shouldBlock || (constructorMockDrift?.driftDetected ?? false)),
     mode,
     taskType,
     taskId: taskContext?.id,
@@ -257,7 +282,8 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     reuseCandidateContext,
     aiAsJudge,
     learningResults,
-    preventionPrompts
+    preventionPrompts,
+    constructorMockDrift
   };
 }
 
@@ -505,6 +531,112 @@ Examples:
 }
 
 // ============================================================================
+// Constructor-to-Test-Mock Drift Detection
+// ============================================================================
+
+/**
+ * Detect constructor signature changes in diff and verify corresponding test
+ * mock/provider setups match the new signature.
+ *
+ * When a constructor adds/removes dependency injection parameters, the test
+ * mock providers must be updated too. This check identifies the drift.
+ *
+ * Source: Backend mistake #4 — constructor changes forgotten in tests 6 times.
+ *
+ * @param {string[]} changedFiles - List of changed file paths
+ * @returns {{ driftDetected: boolean, drifts: Object[], message: string }}
+ */
+function checkConstructorMockDrift(changedFiles) {
+  const drifts = [];
+
+  for (const filePath of changedFiles) {
+    // Only check TypeScript service/controller files (not test files themselves)
+    if (!/\.(ts|tsx)$/.test(filePath)) continue;
+    if (/\.spec\.|\.test\.|__tests__/.test(filePath)) continue;
+    if (!/\.(service|controller|guard|interceptor|resolver|middleware|provider)\./i.test(filePath)) continue;
+
+    // Read the file to find constructor parameters
+    let content;
+    try {
+      content = fs.readFileSync(filePath, 'utf-8');
+    } catch (_err) {
+      continue;
+    }
+
+    // Extract constructor parameters
+    const constructorMatch = content.match(/constructor\s*\(([\s\S]*?)\)\s*\{/);
+    if (!constructorMatch) continue;
+
+    const params = constructorMatch[1]
+      .split(',')
+      .map(p => p.trim())
+      .filter(p => p.length > 0)
+      .map(p => {
+        // Extract parameter name and type: "private readonly userService: UserService"
+        const parts = p.replace(/^(private|protected|public|readonly)\s+/g, '').trim();
+        const nameMatch = parts.match(/(\w+)\s*:/);
+        return nameMatch ? nameMatch[1] : parts.split(/\s/)[0];
+      })
+      .filter(Boolean);
+
+    if (params.length === 0) continue;
+
+    // Find corresponding test file(s)
+    const dir = path.dirname(filePath);
+    const baseName = path.basename(filePath, path.extname(filePath));
+    const possibleTestFiles = [
+      path.join(dir, `${baseName}.spec.ts`),
+      path.join(dir, `${baseName}.test.ts`),
+      path.join(dir, '__tests__', `${baseName}.spec.ts`),
+      path.join(dir, '__tests__', `${baseName}.test.ts`)
+    ];
+
+    for (const testPath of possibleTestFiles) {
+      let testContent;
+      try {
+        testContent = fs.readFileSync(testPath, 'utf-8');
+      } catch (_err) {
+        continue; // Test file doesn't exist — separate concern
+      }
+
+      // Check if test has providers/mocks for each constructor param
+      const missingMocks = [];
+      for (const param of params) {
+        // Look for the parameter name in providers array or mock setup
+        // Common patterns: { provide: ParamType, useValue: ... }
+        //                   ParamType as jest.Mocked<ParamType>
+        //                   mock(ParamType)
+        const paramPattern = new RegExp(param, 'i');
+        if (!paramPattern.test(testContent)) {
+          missingMocks.push(param);
+        }
+      }
+
+      if (missingMocks.length > 0) {
+        drifts.push({
+          sourceFile: filePath,
+          testFile: testPath,
+          constructorParams: params,
+          missingInTest: missingMocks,
+          severity: 'must-fix'
+        });
+      }
+    }
+  }
+
+  return {
+    driftDetected: drifts.length > 0,
+    drifts,
+    message: drifts.length > 0
+      ? `Constructor-to-test-mock drift detected in ${drifts.length} file(s). ` +
+        drifts.map(d =>
+          `${d.sourceFile} → ${d.testFile}: missing mocks for [${d.missingInTest.join(', ')}]`
+        ).join('; ')
+      : 'No constructor-mock drift detected'
+  };
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -513,6 +645,7 @@ module.exports = {
   extractFilesToChange,
   inferTaskType,
   runTaskStandardsCheck,
+  checkConstructorMockDrift,
   formatViolationsForRetry,
   formatReuseCandidatesForAI,
   hasPassedStandards,

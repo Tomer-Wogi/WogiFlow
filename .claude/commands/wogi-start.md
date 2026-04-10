@@ -10,6 +10,18 @@ Start working on a task. Provide the task ID as argument: `/wogi-start wf-XXXXXX
 
 When invoked with a **quoted request** instead of a task ID, assess intent and route.
 
+### Step 0a: Continuation Mode Check
+
+For the 2nd+ task in a session, use the compressed prompt to save ~94% tokens:
+
+```bash
+node -e "const {isContinuationTask}=require('wogiflow/scripts/flow-session-state');console.log(isContinuationTask())"
+```
+
+If `true` AND the input is a task ID (not natural language) → invoke `/wogi-start-continuation` instead. The compressed prompt contains all mandatory gates but skips routing logic, triage tables, examples, and edge case documentation that are already in context from the first task.
+
+If `false` OR the input is natural language → continue with the full prompt below.
+
 ### Step 0: Detect Request Type
 
 - Task ID format: `wf-XXXXXXXX` → Skip triage, go to Structured Execution
@@ -159,6 +171,29 @@ Check `ready.json` for 2+ tasks. If parallelizable (no dependencies), offer para
 3. Check `app-map.md`, `function-map.md`, `api-map.md`, `decisions.md`
 4. Auto-invoke matched skills based on task context
 
+### Decision Authority Framework (Cross-Cutting — applies to ALL steps)
+
+**Before presenting ANY decision to the user**, classify it using `flow-decision-authority.js`:
+
+```bash
+node node_modules/wogiflow/scripts/flow-decision-authority.js classify "<decision text>"
+```
+
+| Authority Level | Action |
+|-----------------|--------|
+| `agent-decides` | Decide autonomously. Report in completion summary only. |
+| `agent-decides-report-after` | Decide autonomously. Explicitly state the decision after implementing. |
+| `owner-decides` | Present to user. Wait for answer before proceeding. |
+| `auto-fix-report-after` | Fix automatically. Report what was fixed after. |
+
+**Batch enforcement**: When multiple decisions arise in a single task, use `batchClassify()`. If owner-decides questions exceed `maxOwnerQuestionsPerBatch` (default: 5), overflow is automatically downgraded to `agent-decides-report-after`. This prevents question flooding (12+ questions in one batch).
+
+**Default categories**: engineering → agent-decides, infrastructure → agent-decides-report-after, productBehavior → owner-decides, security → auto-fix-report-after, ux → owner-decides, naming → agent-decides, performance → agent-decides-report-after.
+
+**User can update**: Via `/wogi-decide "from now on, just fix [category] yourself"` which calls `updateCategoryAuthority()` to change the config.
+
+**Low-confidence classification**: When the classifier cannot confidently categorize a decision, it defaults to `owner-decides` (safest fallback).
+
 ### Step 1.2: Clarifying Questions
 
 Before generating specs (skip for small tasks ≤2 files, bugfixes, explicit specs):
@@ -219,7 +254,7 @@ Before launching: check `.workflow/state/research-cache.json` for cached results
 | 3. Version Verifier | API compatibility, deprecated APIs, version gotchas | Web |
 | 4. Risk & History | feedback-patterns, corrections, promoted rules, rejected approaches | Local |
 | 5. Standards Preview | Applicable rules, reuse candidates across ALL registries, security patterns | Local |
-| 6. Consumer Impact | **Refactor/migration only.** Map ALL consumers, classify BREAKING/NEEDS-UPDATE/SAFE | Local |
+| 6. Consumer Impact | **ALL L1+ tasks.** Map ALL consumers, classify BREAKING/NEEDS-UPDATE/SAFE. Write results to `.workflow/state/blast-radius-{taskId}.json` | Local |
 
 Launch all in parallel. When `config.hybrid.enabled`, route via `model` parameter (explore → sonnet, search → haiku, judging → opus).
 
@@ -236,9 +271,65 @@ Launch all in parallel. When `config.hybrid.enabled`, route via `model` paramete
 
 **For L1/L0 tasks**: Offer to deepen research (exhaustive search, load all skills, full dependency tree).
 
-**Fallback**: If agents fail, log warning and proceed with remaining. Consumer Impact failure on refactor tasks = HARD BLOCK (require user confirmation). See `.claude/docs/explore-agents.md` for details.
+**Fallback**: If agents fail, log warning and proceed with remaining. Consumer Impact failure on L1+ tasks = HARD BLOCK (require user confirmation). See `.claude/docs/explore-agents.md` for details.
 
 **Constraints**: READ-ONLY phase. No Edit/Write. Agents use only Glob, Grep, Read, WebSearch, WebFetch.
+
+### Step 1.45: Scope-Confidence Gate (L0/L1 tasks only)
+
+**Activates when**: Task level is L0 or L1. Skip for L2/L3 tasks.
+
+**The problem this solves**: Multi-day plans often depend on assumptions about what exists (new tables, new models, new APIs, new services). Without verification, a 7-10 day plan can collapse to 1 day when a single question reveals the assumption was wrong. This gate audits scope-inflating assumptions BEFORE the spec is generated — not the same as clarifying questions (Step 1.2) which target user intent.
+
+**Procedure**:
+
+1. **Extract assumptions**: From the explore phase results and task description, list every assumption the plan depends on:
+   - New database tables/schemas needed
+   - New API endpoints or services to create
+   - New models or data structures
+   - External integrations assumed not to exist
+   - Infrastructure components (queues, caches, workers)
+
+2. **Verify each assumption against the codebase**:
+   - For each assumption, grep/glob for existing implementations
+   - Check schema files, migration files, service directories, API routes
+   - Check `app-map.md`, `function-map.md`, `api-map.md`, `schema-map.md` for registered components
+
+3. **Classify results**:
+   | Status | Meaning | Action |
+   |--------|---------|--------|
+   | VERIFIED | Assumption confirmed by codebase evidence | Proceed — scope is accurate |
+   | EXISTS | Assumed-new thing already exists | **Scope reduction** — remove from plan |
+   | UNVERIFIABLE | Cannot confirm or deny from codebase | **Ask user** before proceeding |
+   | CONTRADICTED | Codebase shows opposite of assumption | **Scope change** — replan required |
+
+4. **Present findings to user** (MANDATORY when any UNVERIFIABLE or CONTRADICTED found):
+   ```
+   ━━━ SCOPE-CONFIDENCE AUDIT ━━━
+   Task: [title]
+
+   Assumptions verified:
+     ✓ [assumption] — found at [file:line]
+
+   Scope reductions (already exists):
+     ↓ [assumption] — exists at [file:line], removing from plan
+
+   Needs confirmation:
+     ? [assumption] — does [X] already exist? Could not find in codebase.
+
+   Contradictions:
+     ✗ [assumption] — codebase shows [opposite evidence]
+
+   Revised estimate: [original] → [adjusted based on findings]
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+5. **Wait for user response** on UNVERIFIABLE items before proceeding to spec generation. Spec MUST reflect verified scope, not assumed scope.
+
+**This is NOT the same as Step 1.2 (Clarifying Questions)**:
+- Step 1.2 targets **user intent** ("what do you want?")
+- Step 1.45 targets **scope assumptions** ("what does the codebase already have?")
+- Step 1.2 runs before explore; Step 1.45 runs after explore (uses explore results)
 
 ### Step 1.5: Generate Specification
 
@@ -857,7 +948,7 @@ Run `node node_modules/wogiflow/scripts/flow-standards-gate.js wf-XXXXXXXX [chan
 
 Checks scoped by task type: component → naming/components/security. Utility → naming/functions/security. API → naming/api/security. Bugfix → naming/security. Feature → all. Refactor/migration → all + consumer-impact verification.
 
-**Consumer impact check** (refactor/migration): For each BREAKING consumer from explore phase, verify it was updated. If any NOT migrated → BLOCK task completion.
+**Consumer impact check** (ALL L1+ tasks): For each BREAKING consumer from explore phase (blast-radius analysis), verify it was updated. If any NOT migrated → BLOCK task completion. Results are persisted in `.workflow/state/blast-radius-{taskId}.json`.
 
 **Reuse candidate check** (AI-as-Judge): Standards gate returns similar items from all registries. AI reasons about PURPOSE overlap (not just name). If purpose overlaps → ask user (use existing / extend / create new). If purpose clearly differs → proceed silently.
 

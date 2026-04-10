@@ -8,7 +8,7 @@
  */
 
 const { gatherSessionContext } = require('../../core/session-context');
-const { setCliSessionId, clearStaleCurrentTaskAsync } = require('../../../flow-session-state');
+const { setCliSessionId, clearStaleCurrentTaskAsync, resetSessionTaskCounter } = require('../../../flow-session-state');
 const { checkAndResetStalePhase } = require('../../core/phase-gate');
 const { setRoutingPending } = require('../../core/routing-gate');
 const { getConfig } = require('../../../flow-utils');
@@ -95,6 +95,13 @@ runHook('SessionStart', async ({ parsedInput }) => {
     if (process.env.DEBUG) {
       console.error(`[session-start] Failed to check stale phase: ${err.message}`);
     }
+  }
+
+  // Reset session task counter so first task uses full prompt
+  try {
+    resetSessionTaskCounter();
+  } catch (_err) {
+    // Non-blocking
   }
 
   try {

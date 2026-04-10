@@ -2512,3 +2512,67 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Fix 18 review findings from bulk audit session"
 **Result**: Fixed 10 valid findings, dismissed 2 false positives (lock release — finally blocks already present), dismissed 6 low-value documentation items. Key fixes: dead code removal (flow-done-report), failMode fallback (hook-runner), init() guards (flow-long-input-passes), raw JSON.parse→safeJsonParseString (flow-model-config), type guard on file_path (flow-damage-control), defense-in-depth config path validation, orchestrator bypass migration (flow-knowledge-router), duplicate hash ID fix.
 **Files**: scripts/flow-done-report.js, scripts/hooks/entry/shared/hook-runner.js, scripts/flow-long-input-passes.js, scripts/flow-model-config.js, scripts/flow-damage-control.js, scripts/flow-config-loader.js, scripts/flow-knowledge-router.js
+
+### R-238 | 2026-04-10
+**Type**: feature
+**Tags**: #blast-radius #explore #consumer-impact #context-estimator
+**Task**: wf-ddf13cf4
+**Request**: "Mandatory blast-radius analysis for ALL L1+ tasks"
+**Result**: Widened Agent 6 (Consumer Impact) trigger from refactor/migration-only to ALL L1+ tasks. Updated wogi-start.md agent table, explore-agents.md trigger conditions and fallback rules, and flow-context-estimator.js to factor in blast-radius results (breakingCount * 1% + HIGH risk buffer). Results now persisted to `.workflow/state/blast-radius-{taskId}.json`.
+**Files**: .claude/commands/wogi-start.md, .claude/docs/explore-agents.md, scripts/flow-context-estimator.js
+
+### R-239 | 2026-04-10
+**Type**: feature
+**Tags**: #scope-gate #assumptions #explore #wogi-start
+**Task**: wf-6fd43d0f
+**Request**: "Scope-confidence gate — audit assumptions before multi-day plans"
+**Result**: Added Step 1.45 to wogi-start.md between explore phase and spec generation. For L0/L1 tasks, extracts every scope assumption (new tables, APIs, services), verifies each against the codebase, classifies as VERIFIED/EXISTS/UNVERIFIABLE/CONTRADICTED, and presents findings to user before spec generation proceeds. Prevents scope inflation where plans assume things need to be built that already exist.
+**Files**: .claude/commands/wogi-start.md
+
+### R-240 | 2026-04-10
+**Type**: feature
+**Tags**: #decision-authority #config #wogi-start #wogi-decide
+**Task**: wf-b35f14e8
+**Request**: "Decision-authority framework — config-driven engineering vs product decisions"
+**Result**: Created flow-decision-authority.js with classifyDecision(), batchClassify(), updateCategoryAuthority(). 7 decision categories (engineering, infrastructure, productBehavior, security, ux, naming, performance) with 4 authority levels (agent-decides, agent-decides-report-after, owner-decides, auto-fix-report-after). Added cross-cutting Decision Authority Framework to wogi-start.md. Wired /wogi-decide Step 0 for authority delegation ("fix those yourself"). Added decisionAuthority schema to config.schema.json. maxOwnerQuestionsPerBatch (default 5) prevents question flooding.
+**Files**: scripts/flow-decision-authority.js (new), .claude/commands/wogi-start.md, .claude/commands/wogi-decide.md, .workflow/config.schema.json
+
+### R-241 | 2026-04-10
+**Type**: feature
+**Tags**: #prompt-compression #continuation #session #context-optimization
+**Task**: wf-c65b2ef5
+**Request**: "Skill prompt compression — continuation mode for sequential tasks"
+**Result**: Created wogi-start-continuation.md (3.4KB compressed prompt vs 59.7KB full — 94.4% reduction). Added sessionTasksStarted tracking and isContinuationTask() to flow-session-state.js. Added Step 0 continuation mode check to wogi-start.md that routes to compressed prompt for 2nd+ task in session. Compressed prompt retains ALL mandatory gates (explore, scope-confidence, decision authority, criteria check, skeptical evaluator, runtime verification, wiring, standards, quality gates, sprint reset).
+**Files**: .claude/commands/wogi-start-continuation.md (new), scripts/flow-session-state.js, .claude/commands/wogi-start.md
+
+### R-242 | 2026-04-10
+**Type**: feature
+**Tags**: #workspace #enum-verification #cross-repo #quality-gates
+**Task**: wf-b3d01071
+**Request**: "Cross-repo enum verification in workspace mode"
+**Result**: Added crossRepoEnumVerification quality gate to workspace-gates.js. Gate detects cross-repo type/enum mapping keywords ('maps to', 'rename to', 'corresponds to', 'enum mapping', 'type mapping') in task text and decisions. When detected, blocks until both repos are grepped for actual enum values and displayed side-by-side. Prevents axis mismatch errors (e.g., payment cadence vs compensation model). Gate registered in WORKSPACE_GATES array and runWorkspaceGate switch.
+**Files**: lib/workspace-gates.js
+
+### R-243 | 2026-04-10
+**Type**: feature
+**Tags**: #workspace #dispatch-verification #quality-gates #narrate-without-execute
+**Task**: wf-60b96ed4
+**Request**: "Dispatch verification enforcement in workspace manager mode"
+**Result**: Added dispatchVerification quality gate to workspace-gates.js. In manager mode, scans task output for dispatch-claim keywords ('dispatched', 'sent to worker', 'forwarded to', 'delegated to', 'spawned agent'). When claims detected, verifies corresponding Bash/Agent tool calls exist. Blocks completion if dispatch was narrated but never executed. Gate registered in WORKSPACE_GATES array and runWorkspaceGate switch.
+**Files**: lib/workspace-gates.js
+
+### R-244 | 2026-04-10
+**Type**: feature
+**Tags**: #standards-gate #constructor #test-mock #drift-detection
+**Task**: wf-f3f84c4d
+**Request**: "Constructor-to-test-mock drift detection in standards gate"
+**Result**: Added checkConstructorMockDrift() to flow-standards-gate.js. When changed files include *.service.ts, *.controller.ts, etc., extracts constructor parameters, finds corresponding *.spec.ts files, verifies mock/provider setup includes all constructor params. Missing mocks flagged as must-fix violations. Integrated into runTaskStandardsCheck() — runs automatically alongside existing standards checks.
+**Files**: scripts/flow-standards-gate.js
+
+### R-245 | 2026-04-10
+**Type**: fix
+**Tags**: #review #security #architecture #logic #session
+**Task**: wf-cfff76db
+**Request**: "Fix 13 review findings from bulk session"
+**Result**: Fixed all 13 findings: (1) sessionTasksStarted now resets in SessionStart hook via resetSessionTaskCounter(), (2) removed redundant toLowerCase() — patterns use /i flag, added array validation to batch CLI, tightened regex patterns to use compound terms, (3) specPath now validated with isPathWithinProject(), (6) blast-radius path now validates taskId before construction, (7) added 3 missing gates to continuation prompt (Inventory, Item Reconciliation, Scope-Confidence), (9) dispatchVerification gate degrades gracefully when toolCalls not tracked, (10) ReDoS-safe GWT counting via individual keyword minimum, (11) renamed duplicate "Step 0" to "Step 0a", (12) single source of truth for blocked flag, (13) removed TOCTOU fileExists guard. Finding 5 (raw JSON.parse in workspace-gates) is pre-existing and outside this diff scope.
+**Files**: scripts/flow-session-state.js, scripts/flow-decision-authority.js, scripts/flow-context-estimator.js, scripts/flow-standards-gate.js, lib/workspace-gates.js, .claude/commands/wogi-start.md, .claude/commands/wogi-start-continuation.md, scripts/hooks/entry/claude-code/session-start.js

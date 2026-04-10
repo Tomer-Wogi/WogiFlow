@@ -85,7 +85,8 @@ function getDefaultState() {
       tasksCompleted: 0,
       filesModified: 0,
       errorsEncountered: 0,
-      sessionCount: 0
+      sessionCount: 0,
+      sessionTasksStarted: 0  // Tasks started in THIS session (resets on new session)
     },
     lastSessionSummary: null,
     // Bypass tracking for enforcement
@@ -106,10 +107,7 @@ function getDefaultState() {
  * Returns default state if file doesn't exist or is invalid
  */
 function loadSessionState() {
-  if (!fileExists(SESSION_PATH)) {
-    return getDefaultState();
-  }
-
+  // Use try-catch only, no fileExists (prevents TOCTOU race condition)
   try {
     const state = readJson(SESSION_PATH, null);
     if (!state) return getDefaultState();
@@ -245,13 +243,44 @@ function getCliSessionId() {
  * Track task start
  */
 function trackTaskStart(taskId, taskTitle, metadata = {}) {
-  // saveSessionState already loads current state and merges
+  const current = loadSessionState();
+  const metrics = current.metrics || {};
   return saveSessionState({
     currentTask: {
       id: taskId,
       title: taskTitle,
       startedAt: new Date().toISOString(),
       ...metadata
+    },
+    metrics: {
+      ...metrics,
+      sessionTasksStarted: (metrics.sessionTasksStarted || 0) + 1
+    }
+  });
+}
+
+/**
+ * Check if this is a continuation task (2nd+ in session)
+ * Used by /wogi-start to select compressed vs full prompt.
+ * MUST be called BEFORE trackTaskStart() for the current task.
+ * @returns {boolean}
+ */
+function isContinuationTask() {
+  const state = loadSessionState();
+  return (state.metrics?.sessionTasksStarted ?? 0) >= 1;
+}
+
+/**
+ * Reset session task counter. Called by SessionStart hook
+ * to ensure the first task of a new session uses the full prompt.
+ */
+function resetSessionTaskCounter() {
+  const current = loadSessionState();
+  const metrics = current.metrics || {};
+  return saveSessionState({
+    metrics: {
+      ...metrics,
+      sessionTasksStarted: 0
     }
   });
 }
@@ -912,6 +941,8 @@ module.exports = {
 
   // Task tracking
   trackTaskStart,
+  isContinuationTask,
+  resetSessionTaskCounter,
   trackTaskComplete,
   trackTaskCompleteAsync,
   getCurrentTask,

@@ -167,10 +167,12 @@ function extractCriteriaCount(specContent) {
 
   let count = 0;
 
-  // Count Given/When/Then patterns (use [\s\S] to match across newlines)
-  const gwtMatches = specContent.match(/\bGiven\b[\s\S]*?\bWhen\b[\s\S]*?\bThen\b/gi);
-  if (gwtMatches) {
-    count += gwtMatches.length;
+  // Count Given/When/Then by individual keyword minimum (avoids ReDoS from nested [\s\S]*?)
+  const givenCount = (specContent.match(/\bGiven\b/gi) || []).length;
+  const whenCount = (specContent.match(/\bWhen\b/gi) || []).length;
+  const thenCount = (specContent.match(/\bThen\b/gi) || []).length;
+  if (givenCount > 0 && whenCount > 0 && thenCount > 0) {
+    count += Math.min(givenCount, whenCount, thenCount);
   }
 
   // Count numbered acceptance criteria
@@ -282,6 +284,26 @@ function estimateTaskContextNeeds(task, configOverride = null) {
   if (config.refactorKeywords.some(kw => combinedText.includes(kw))) {
     factors.refactorBuffer = true;
     estimate += est.refactorBuffer;
+  }
+
+  // Blast-radius buffer — factor in consumer impact from explore phase
+  // Validate task ID before path construction (security rule #4)
+  if (task.id && validateTaskId(task.id).valid) {
+    const blastRadiusPath = path.join(PATHS.state, `blast-radius-${task.id}.json`);
+    try {
+      const blastRadius = safeJsonParse(blastRadiusPath, null);
+      if (blastRadius && blastRadius.breakingCount > 0) {
+        factors.blastRadius = blastRadius.breakingCount;
+        // Each breaking consumer adds ~1% context (for reading + updating)
+        estimate += blastRadius.breakingCount * 0.01;
+        if (blastRadius.risk === 'HIGH') {
+          // HIGH risk (10+ breaking) adds extra buffer for phased migration planning
+          estimate += 0.05;
+        }
+      }
+    } catch (_err) {
+      // No blast-radius file — that's fine, proceed without it
+    }
   }
 
   // Parent task: scale by subtask count

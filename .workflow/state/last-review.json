@@ -1,32 +1,129 @@
 {
-  "reviewDate": "2026-03-25T16:45:00.000Z",
-  "mode": "multi-pass",
-  "passesExecuted": 4,
-  "filesReviewed": 119,
-  "scope": "HEAD~5..HEAD (bulk audit session)",
-  "findingsTotal": 18,
-  "falsePositives": 2,
-  "dismissed": 6,
-  "fixed": 10,
+  "reviewDate": "2026-04-10T09:45:56.658Z",
+  "mode": "parallel",
+  "agentsLaunched": 3,
+  "agentBreakdown": {
+    "core": 3,
+    "optional": 0,
+    "projectRules": 0
+  },
+  "filesReviewed": [
+    "scripts/flow-decision-authority.js",
+    "scripts/flow-context-estimator.js",
+    "scripts/flow-session-state.js",
+    "scripts/flow-standards-gate.js",
+    "lib/workspace-gates.js",
+    ".claude/commands/wogi-start.md",
+    ".claude/commands/wogi-start-continuation.md",
+    ".claude/commands/wogi-decide.md",
+    ".claude/docs/explore-agents.md",
+    ".workflow/config.schema.json"
+  ],
   "findings": [
-    { "id": "finding-001", "severity": "critical", "status": "dismissed", "reason": "FALSE POSITIVE — finally { release() } already handles all return paths" },
-    { "id": "finding-002", "severity": "high", "status": "fixed", "file": "scripts/flow-done-report.js" },
-    { "id": "finding-003", "severity": "high", "status": "fixed", "file": "scripts/hooks/entry/shared/hook-runner.js" },
-    { "id": "finding-004", "severity": "high", "status": "fixed", "file": "scripts/flow-long-input-passes.js" },
-    { "id": "finding-005", "severity": "high", "status": "dismissed", "reason": "FALSE POSITIVE — finally block handles lock release" },
-    { "id": "finding-006", "severity": "high", "status": "fixed", "file": "scripts/flow-model-config.js" },
-    { "id": "finding-007", "severity": "high", "status": "fixed", "file": "scripts/flow-knowledge-router.js" },
-    { "id": "finding-008", "severity": "high", "status": "dismissed", "reason": "Already uses orchestrator as primary path, direct write is catch fallback" },
-    { "id": "finding-009", "severity": "medium", "status": "dismissed", "reason": "Low-value documentation" },
-    { "id": "finding-010", "severity": "medium", "status": "fixed", "file": "scripts/flow-long-input-passes.js" },
-    { "id": "finding-011", "severity": "medium", "status": "fixed", "file": "scripts/flow-damage-control.js" },
-    { "id": "finding-012", "severity": "medium", "status": "fixed", "file": "scripts/flow-config-loader.js" },
-    { "id": "finding-013", "severity": "medium", "status": "dismissed", "reason": "acquireLock already capped at 5 retries by callers" },
-    { "id": "finding-014", "severity": "medium", "status": "dismissed", "reason": "Fallback is intentional graceful degradation" },
-    { "id": "finding-015", "severity": "medium", "status": "dismissed", "reason": "null return is standard for not-applicable" },
-    { "id": "finding-016", "severity": "low", "status": "dismissed", "reason": "Underscore-prefixed unused param is per convention" },
-    { "id": "finding-017", "severity": "low", "status": "dismissed", "reason": "Low-value — content comes from internal callers only" },
-    { "id": "finding-018", "severity": "medium", "status": "dismissed", "reason": "Low-value documentation" }
+    {
+      "id": "f-001",
+      "severity": "high",
+      "category": "architecture",
+      "file": "scripts/flow-session-state.js",
+      "issue": "sessionTasksStarted never resets between sessions",
+      "status": "fixed"
+    },
+    {
+      "id": "f-002",
+      "severity": "high",
+      "category": "code-logic",
+      "file": "scripts/flow-decision-authority.js",
+      "issue": "batchClassify mutates shared references",
+      "status": "noted"
+    },
+    {
+      "id": "f-003",
+      "severity": "high",
+      "category": "security",
+      "file": "scripts/flow-standards-gate.js",
+      "issue": "Unvalidated specPath path traversal",
+      "status": "fixed"
+    },
+    {
+      "id": "f-004",
+      "severity": "medium",
+      "category": "security",
+      "file": "scripts/flow-decision-authority.js",
+      "issue": "Raw JSON.parse on CLI input",
+      "status": "fixed"
+    },
+    {
+      "id": "f-005",
+      "severity": "medium",
+      "category": "security",
+      "file": "lib/workspace-gates.js",
+      "issue": "Raw JSON.parse in workspace config (pre-existing)",
+      "status": "deferred"
+    },
+    {
+      "id": "f-006",
+      "severity": "medium",
+      "category": "security",
+      "file": "scripts/flow-context-estimator.js",
+      "issue": "Missing validateTaskId on blast-radius path",
+      "status": "fixed"
+    },
+    {
+      "id": "f-007",
+      "severity": "medium",
+      "category": "architecture",
+      "file": ".claude/commands/wogi-start-continuation.md",
+      "issue": "3 mandatory gates missing",
+      "status": "fixed"
+    },
+    {
+      "id": "f-008",
+      "severity": "medium",
+      "category": "code-logic",
+      "file": "scripts/flow-decision-authority.js",
+      "issue": "Overly broad regex patterns",
+      "status": "fixed"
+    },
+    {
+      "id": "f-009",
+      "severity": "medium",
+      "category": "architecture",
+      "file": "lib/workspace-gates.js",
+      "issue": "dispatchVerification gate dead code",
+      "status": "fixed"
+    },
+    {
+      "id": "f-010",
+      "severity": "medium",
+      "category": "security",
+      "file": "scripts/flow-context-estimator.js",
+      "issue": "ReDoS risk in GWT regex",
+      "status": "fixed"
+    },
+    {
+      "id": "f-011",
+      "severity": "low",
+      "category": "code-logic",
+      "file": ".claude/commands/wogi-start.md",
+      "issue": "Duplicate Step 0 headers",
+      "status": "fixed"
+    },
+    {
+      "id": "f-012",
+      "severity": "low",
+      "category": "code-logic",
+      "file": "scripts/flow-standards-gate.js",
+      "issue": "Redundant blocked double-evaluation",
+      "status": "fixed"
+    },
+    {
+      "id": "f-013",
+      "severity": "low",
+      "category": "security",
+      "file": "scripts/flow-session-state.js",
+      "issue": "TOCTOU fileExists before readJson",
+      "status": "fixed"
+    }
   ],
   "triaged": true
 }

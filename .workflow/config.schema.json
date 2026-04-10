@@ -47,6 +47,61 @@
         }
       }
     },
+    "decisionAuthority": {
+      "type": "object",
+      "description": "Config-driven decision authority framework. Classifies engineering vs product decisions to prevent question flooding.",
+      "properties": {
+        "engineering": {
+          "type": "string",
+          "description": "Authority for engineering decisions (refactoring, code style, module structure)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "agent-decides"
+        },
+        "infrastructure": {
+          "type": "string",
+          "description": "Authority for infrastructure decisions (CI/CD, database, cloud, monitoring)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "agent-decides-report-after"
+        },
+        "productBehavior": {
+          "type": "string",
+          "description": "Authority for product behavior decisions (user-facing features, business logic, permissions)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "owner-decides"
+        },
+        "security": {
+          "type": "string",
+          "description": "Authority for security decisions (vulnerabilities, auth, input validation)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "auto-fix-report-after"
+        },
+        "ux": {
+          "type": "string",
+          "description": "Authority for UX decisions (layout, design, copy, accessibility)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "owner-decides"
+        },
+        "naming": {
+          "type": "string",
+          "description": "Authority for naming decisions (variable, file, function naming conventions)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "agent-decides"
+        },
+        "performance": {
+          "type": "string",
+          "description": "Authority for performance decisions (optimization, caching, memory)",
+          "enum": ["agent-decides", "agent-decides-report-after", "owner-decides", "auto-fix-report-after"],
+          "default": "agent-decides-report-after"
+        },
+        "maxOwnerQuestionsPerBatch": {
+          "type": "integer",
+          "description": "Maximum number of owner-decides questions per task batch. Overflow is downgraded to agent-decides-report-after.",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5
+        }
+      }
+    },
     "autoLog": {
       "type": "boolean",
       "description": "Automatically update request-log.md after changes",
