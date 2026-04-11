@@ -30,6 +30,8 @@ let checkScopeMutation = _noop;
 try { checkScopeMutation = require('../../core/scope-mutation-gate').checkScopeMutation; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Scope mutation gate not loaded: ${_err.message}`); }
 let checkGitSafety = _noop;
 try { checkGitSafety = require('../../core/git-safety-gate').checkGitSafety; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Git safety gate not loaded: ${_err.message}`); }
+let checkManagerBoundary = _noop;
+try { checkManagerBoundary = require('../../core/manager-boundary-gate').checkManagerBoundary; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Manager boundary gate not loaded: ${_err.message}`); }
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
 const { getConfig } = require('../../../flow-utils');
@@ -221,6 +223,29 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
       };
       const errOutput = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
       return { __raw: true, ...errOutput };
+    }
+  }
+
+  // Manager role boundary gate — blocks modifications in worker repos
+  // Runs early: role boundaries should be enforced before other gates
+  if (process.env.WOGI_REPO_NAME === 'manager') {
+    try {
+      const boundaryResult = checkManagerBoundary(toolName, toolInput);
+      if (boundaryResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: boundaryResult.reason,
+          message: boundaryResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (err) {
+      // Fail-open: manager boundary errors should not block normal work
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Manager boundary gate error (fail-open): ${err.message}`);
+      }
     }
   }
 

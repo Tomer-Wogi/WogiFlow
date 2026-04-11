@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-274 | 2026-04-11
+**Type**: new
+**Tags**: #workspace #manager #enforcement #role-boundary
+**Task**: wf-e7bc0176
+**Request**: "Manager role boundary gate — mechanical enforcement"
+**Result**: Created manager-boundary-gate.js — a PreToolUse gate that mechanically enforces the manager's role boundaries in workspace mode. Uses allowlist approach: only explicitly whitelisted read operations are permitted in member repos. Edit/Write on member files → blocked (100% reliable, path-based). Read/Glob/Grep → allowed for .workflow/state/, blocked for source code. Bash → if command contains member repo path, must match read-only allowlist (cat .workflow/, git log/status/diff, curl); everything else blocked. Integrated into pre-tool-use.js alongside other enforcement gates. Handles macOS symlinks (/tmp → /private/tmp). Denial messages redirect to dispatch pattern. 14/14 test cases passing.
+**Files**: scripts/hooks/core/manager-boundary-gate.js (new), scripts/hooks/entry/claude-code/pre-tool-use.js
+
 ### R-273 | 2026-04-11
 **Type**: fix
 **Tags**: #security #code-quality #review-findings

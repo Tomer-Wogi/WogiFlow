@@ -1,9 +1,19 @@
 {
-  "lastUpdated": "2026-04-11T07:15:59.766Z",
+  "lastUpdated": "2026-04-11T08:24:11.497Z",
   "inProgress": [],
   "ready": [],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e7bc0176",
+      "title": "Manager role boundary gate — mechanical enforcement",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-11T08:18:42.881Z",
+      "completedAt": "2026-04-11T08:24:11.497Z"
+    },
     {
       "id": "wf-1f7dc11e",
       "title": "Fix 7 review findings from session review",
