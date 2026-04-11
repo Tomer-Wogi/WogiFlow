@@ -1,127 +1,103 @@
 {
-  "reviewDate": "2026-04-10T09:45:56.658Z",
+  "reviewDate": "2026-04-11T07:10:00.000Z",
   "mode": "parallel",
-  "agentsLaunched": 3,
+  "agentsLaunched": 2,
   "agentBreakdown": {
-    "core": 3,
+    "core": 2,
     "optional": 0,
     "projectRules": 0
   },
   "filesReviewed": [
-    "scripts/flow-decision-authority.js",
-    "scripts/flow-context-estimator.js",
-    "scripts/flow-session-state.js",
-    "scripts/flow-standards-gate.js",
-    "lib/workspace-gates.js",
-    ".claude/commands/wogi-start.md",
-    ".claude/commands/wogi-start-continuation.md",
-    ".claude/commands/wogi-decide.md",
+    "scripts/postinstall.js",
+    "lib/workspace.js",
+    "scripts/hooks/core/task-completed.js",
+    "scripts/flow-mcp-capabilities.js",
     ".claude/docs/explore-agents.md",
-    ".workflow/config.schema.json"
+    ".workflow/config.json"
   ],
   "findings": [
     {
-      "id": "f-001",
-      "severity": "high",
-      "category": "architecture",
-      "file": "scripts/flow-session-state.js",
-      "issue": "sessionTasksStarted never resets between sessions",
-      "status": "fixed"
-    },
-    {
-      "id": "f-002",
-      "severity": "high",
-      "category": "code-logic",
-      "file": "scripts/flow-decision-authority.js",
-      "issue": "batchClassify mutates shared references",
-      "status": "noted"
-    },
-    {
-      "id": "f-003",
+      "id": "finding-001",
       "severity": "high",
       "category": "security",
-      "file": "scripts/flow-standards-gate.js",
-      "issue": "Unvalidated specPath path traversal",
+      "file": "scripts/postinstall.js",
+      "line": 407,
+      "issue": "rewriteHookPaths() uses fragile regex-based quoting that can break with edge-case command patterns. The opening/closing quote logic is split across two separate operations.",
+      "recommendation": "Simplify: extract relative path via match(), join with absoluteScriptsDir, wrap entire path in quotes in one operation.",
+      "autoFixable": true,
+      "agent": "code-security",
       "status": "fixed"
     },
     {
-      "id": "f-004",
-      "severity": "medium",
+      "id": "finding-002",
+      "severity": "high",
       "category": "security",
-      "file": "scripts/flow-decision-authority.js",
-      "issue": "Raw JSON.parse on CLI input",
+      "file": "scripts/flow-mcp-capabilities.js",
+      "line": 508,
+      "issue": "CLI cache command uses bare JSON.parse() on AI-provided input instead of safeJsonParse pattern used everywhere else in the codebase.",
+      "recommendation": "Validate parsed JSON with hasDangerousKeys() or use safeJsonParse equivalent.",
+      "autoFixable": true,
+      "agent": "code-security",
       "status": "fixed"
     },
     {
-      "id": "f-005",
-      "severity": "medium",
+      "id": "finding-003",
+      "severity": "high",
       "category": "security",
-      "file": "lib/workspace-gates.js",
-      "issue": "Raw JSON.parse in workspace config (pre-existing)",
-      "status": "deferred"
-    },
-    {
-      "id": "f-006",
-      "severity": "medium",
-      "category": "security",
-      "file": "scripts/flow-context-estimator.js",
-      "issue": "Missing validateTaskId on blast-radius path",
+      "file": "scripts/hooks/core/task-completed.js",
+      "line": 358,
+      "issue": "WOGI_WORKSPACE_ROOT env var used as filesystem write path without any validation (path.isAbsolute, existence check). The stop.js hook validates its env vars but this code does not.",
+      "recommendation": "Add validation: path.isAbsolute(workspaceRoot) && fs.existsSync(workspaceRoot) before using as base dir.",
+      "autoFixable": true,
+      "agent": "code-security",
       "status": "fixed"
     },
     {
-      "id": "f-007",
+      "id": "finding-004",
+      "severity": "high",
+      "category": "architecture",
+      "file": "lib/workspace.js",
+      "line": 722,
+      "issue": "Schema drift: task-complete message format documented in workspace.js (lines 722-731) does not include verified, evidenceTier, and timestamp fields that task-completed.js actually writes. Manager agent reads docs as authoritative.",
+      "recommendation": "Update the documented message format in workspace.js to include the new fields.",
+      "autoFixable": true,
+      "agent": "architecture",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-005",
       "severity": "medium",
       "category": "architecture",
-      "file": ".claude/commands/wogi-start-continuation.md",
-      "issue": "3 mandatory gates missing",
+      "file": "scripts/flow-mcp-capabilities.js",
+      "line": 179,
+      "issue": "discoverMcpServers() duplicates MCP settings-reading logic from flow-plugin-registry.js with a behavioral divergence (also reads ~/.claude/settings.json which the registry doesn't).",
+      "recommendation": "Extract shared MCP server discovery into a utility function. Not urgent — design divergence is intentional (capabilities needs user-level, registry doesn't).",
+      "autoFixable": false,
+      "agent": "architecture",
       "status": "fixed"
     },
     {
-      "id": "f-008",
-      "severity": "medium",
-      "category": "code-logic",
-      "file": "scripts/flow-decision-authority.js",
-      "issue": "Overly broad regex patterns",
-      "status": "fixed"
-    },
-    {
-      "id": "f-009",
-      "severity": "medium",
-      "category": "architecture",
-      "file": "lib/workspace-gates.js",
-      "issue": "dispatchVerification gate dead code",
-      "status": "fixed"
-    },
-    {
-      "id": "f-010",
-      "severity": "medium",
-      "category": "security",
-      "file": "scripts/flow-context-estimator.js",
-      "issue": "ReDoS risk in GWT regex",
-      "status": "fixed"
-    },
-    {
-      "id": "f-011",
-      "severity": "low",
-      "category": "code-logic",
-      "file": ".claude/commands/wogi-start.md",
-      "issue": "Duplicate Step 0 headers",
-      "status": "fixed"
-    },
-    {
-      "id": "f-012",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "scripts/flow-standards-gate.js",
-      "issue": "Redundant blocked double-evaluation",
-      "status": "fixed"
-    },
-    {
-      "id": "f-013",
+      "id": "finding-006",
       "severity": "low",
       "category": "security",
-      "file": "scripts/flow-session-state.js",
-      "issue": "TOCTOU fileExists before readJson",
+      "file": "scripts/flow-mcp-capabilities.js",
+      "line": 351,
+      "issue": "tool.name and tool.description from cached data are embedded in prompt fragments without length limits or content sanitization.",
+      "recommendation": "Add length limits (name: 100, description: 200) when caching, strip backticks before prompt embedding.",
+      "autoFixable": true,
+      "agent": "code-security",
+      "status": "fixed"
+    },
+    {
+      "id": "finding-007",
+      "severity": "low",
+      "category": "code-logic",
+      "file": "scripts/hooks/core/task-completed.js",
+      "line": 377,
+      "issue": "changedFiles paths from input are embedded in message body without sanitization or length limiting.",
+      "recommendation": "Limit to first 20 files, cap path length to 200 chars, strip newlines.",
+      "autoFixable": true,
+      "agent": "code-security",
       "status": "fixed"
     }
   ],

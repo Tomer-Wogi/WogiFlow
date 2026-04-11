@@ -56,5 +56,9 @@
   "plugins": {
     "_comment_phaseInjection": "When true, the UserPromptSubmit hook appends available flow-integrated plugin hints to the phase context prompt",
     "_comment_standaloneBypassTask": "When true, standalone-mode plugin matches in /wogi-start skip task creation and invoke the plugin directly"
+  },
+  "mcpCapabilities": {
+    "_comment_enabled": "When true, sub-agents receive MCP capability hints based on their role. Requires CC 2.1.101+ (sub-agent MCP inheritance)",
+    "enabled": true
   }
 }

@@ -389,16 +389,27 @@ function rewriteHookPaths(settings) {
   // In self-development, hooks should use local paths (node scripts/hooks/...)
   // not package paths (node node_modules/wogiflow/scripts/hooks/...) which don't exist.
   if (path.resolve(PROJECT_ROOT) === path.resolve(PACKAGE_ROOT)) return;
+
+  // Use absolute path to PACKAGE_ROOT/scripts/ instead of relative node_modules/ path.
+  // This fixes monorepo setups where npm hoists wogiflow to the workspace root
+  // node_modules/ but Claude Code runs hooks from a package subdirectory (e.g.,
+  // packages/portal/). Relative paths like 'node node_modules/wogiflow/scripts/...'
+  // fail because the package doesn't exist at the subdirectory level.
+  // Absolute paths work regardless of where Claude Code's cwd is.
+  const absoluteScriptsDir = path.resolve(PACKAGE_ROOT, 'scripts');
+
   for (const hookList of Object.values(settings.hooks)) {
     if (!Array.isArray(hookList)) continue;
     for (const entry of hookList) {
       if (!entry.hooks || !Array.isArray(entry.hooks)) continue;
       for (const hook of entry.hooks) {
         if (hook.command && typeof hook.command === 'string') {
-          hook.command = hook.command.replace(
-            /^node scripts\//,
-            'node node_modules/wogiflow/scripts/'
-          );
+          // Extract the relative script path, join with absolute base, wrap in quotes.
+          // Simpler and more robust than regex-based open/close quoting.
+          const match = hook.command.match(/^node scripts\/(.+)$/);
+          if (match) {
+            hook.command = `node "${path.join(absoluteScriptsDir, match[1])}"`;
+          }
         }
       }
     }

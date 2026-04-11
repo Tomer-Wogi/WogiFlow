@@ -11,6 +11,30 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-273 | 2026-04-11
+**Type**: fix
+**Tags**: #security #code-quality #review-findings
+**Task**: wf-1f7dc11e
+**Request**: "Fix 7 review findings from session review"
+**Result**: Fixed all 7 findings: (1) postinstall.js rewriteHookPaths simplified from fragile regex open/close quoting to clean extract-join-wrap pattern. (2) flow-mcp-capabilities.js CLI cache command now validates input with prototype pollution protection + length limits (name: 120, description: 200 chars). (3) task-completed.js validates WOGI_WORKSPACE_ROOT with isAbsolute + existsSync before using as write path. (4) workspace.js documented message format updated to include verified, evidenceTier, timestamp fields + trust model explanation. (5) flow-mcp-capabilities.js discovery function has documented intentional divergence from plugin-registry. (6) Cache sanitization enforces length limits and strips backticks from descriptions. (7) changedFiles in workspace messages limited to 20 files, 200 char paths, newlines stripped.
+**Files**: scripts/postinstall.js, scripts/flow-mcp-capabilities.js, scripts/hooks/core/task-completed.js, lib/workspace.js
+
+### R-272 | 2026-04-11
+**Type**: fix
+**Tags**: #workspace #monorepo #hooks #quality-enforcement #worker-protocol
+**Task**: wf-ad948a4b
+**Request**: "Workspace failure prevention: monorepo hooks, worker protocols, quality enforcement"
+**Result**: Four fixes from real workspace failure analysis: (1) Monorepo hook path fix — rewriteHookPaths() now uses absolute quoted paths via PACKAGE_ROOT instead of relative node_modules/ paths, fixing MODULE_NOT_FOUND in monorepo setups where npm hoists packages. (2) Worker-rules restructuring — escalation section restructured with Step 1-2-3 protocol (check .workspace/state/ → ask peers → only then escalate). Peer-first section expanded to include resource requests (credentials, test accounts). (3) Stop-don't-degrade rule — autonomous mode now explicitly forbids marking tasks done without required verification evidence. Workers must report BLOCKED, not DONE, when verification is impossible. (4) Structured task-complete workspace message — task-completed hook now writes verified JSON completion messages to .workspace/messages/ when in workspace mode, fulfilling the promised "automatic return path."
+**Files**: scripts/postinstall.js, lib/workspace.js, scripts/hooks/core/task-completed.js
+
+### R-271 | 2026-04-11
+**Type**: new
+**Tags**: #mcp #sub-agents #orchestration #explore-phase
+**Task**: wf-1b508dba
+**Request**: "MCP capability discovery system for sub-agents"
+**Result**: Created flow-mcp-capabilities.js — a discovery/classification/caching system that enables sub-agents to leverage available MCP tools. Capability categories are generic (documentation-lookup, browser-interaction, design-files, etc.) and matched by tool signatures, not hardcoded server names. Role-to-capability mapping ensures each agent role only sees relevant tools. The AI orchestrator classifies tools at first use (only it can inspect the tool catalog), caches results for the session, and generates role-specific prompt fragments. Integrated into explore-agents.md as a pre-launch step. Added mcpCapabilities config section. Source: CC 2.1.101 sub-agent MCP inheritance fix.
+**Files**: scripts/flow-mcp-capabilities.js (new), .claude/docs/explore-agents.md, .workflow/config.json
+
 ### R-270 | 2026-04-10
 **Type**: new
 **Tags**: #verification #hypothesis #bug-investigation #enforcement

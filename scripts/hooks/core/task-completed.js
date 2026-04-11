@@ -349,8 +349,66 @@ async function handleTaskCompleted(input) {
     } catch (_err) {
       // Non-critical - registry manager may not be available
     }
-    // Workspace notifications are handled by the Stop hook (via HTTP to manager port).
-    // Removed duplicate file-based notification here to prevent double messages (finding-004).
+    // Workspace: write structured task-complete message to .workspace/messages/
+    // The Stop hook sends a freeform curl to the manager as a fallback, but this
+    // structured message is the VERIFIED completion signal — it went through quality
+    // gates (gate latch check above). The manager should trust these over freeform reports.
+    if (result.completed && process.env.WOGI_WORKSPACE_ROOT) {
+      try {
+        const workspaceRoot = process.env.WOGI_WORKSPACE_ROOT;
+
+        // Validate workspace root — must be absolute and exist (mirrors stop.js pattern)
+        if (!path.isAbsolute(workspaceRoot) || !fs.existsSync(workspaceRoot)) {
+          throw new Error(`Invalid WOGI_WORKSPACE_ROOT: ${workspaceRoot}`);
+        }
+
+        const messagesDir = path.join(workspaceRoot, '.workspace', 'messages');
+        const repoName = process.env.WOGI_REPO_NAME || 'unknown';
+
+        if (fs.existsSync(messagesDir)) {
+          const msgId = `msg-${completedTask.id}-${Date.now()}`;
+          // Sanitize changedFiles: limit count and path length, strip newlines
+          const rawFiles = input.changedFiles || [];
+          const changedFiles = rawFiles.slice(0, 20).map(f =>
+            String(f).replace(/[\n\r]/g, '').slice(0, 200)
+          );
+          const qualityGates = input.qualityGateResults || [];
+          const evidenceTier = input.evidenceTier || 'unknown';
+
+          const message = {
+            id: msgId,
+            from: repoName,
+            to: 'manager',
+            type: 'task-complete',
+            subject: `Task completed: ${completedTask.title || completedTask.id}`,
+            body: [
+              `**Task**: ${completedTask.id} — ${completedTask.title || ''}`,
+              `**Type**: ${completedTask.type || 'unknown'}`,
+              changedFiles.length > 0 ? `**Files changed**: ${changedFiles.join(', ')}` : null,
+              qualityGates.length > 0 ? `**Quality gates**: ${qualityGates.map(g => `${g.name}: ${g.passed ? 'PASS' : 'FAIL'}`).join(', ')}` : null,
+              `**Verification evidence**: ${evidenceTier}`,
+            ].filter(Boolean).join('\n'),
+            taskId: completedTask.id,
+            status: 'pending',
+            verified: true,
+            evidenceTier,
+            timestamp: new Date().toISOString()
+          };
+
+          fs.writeFileSync(
+            path.join(messagesDir, `${msgId}.json`),
+            JSON.stringify(message, null, 2),
+            { mode: 0o644 }
+          );
+        }
+      } catch (_err) {
+        // Non-critical — workspace message is defense-in-depth.
+        // The Stop hook curl remains as fallback.
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Workspace message write failed: ${_err.message}`);
+        }
+      }
+    }
 
     // Compound from success — capture positive patterns (fire-and-forget)
     if (result.completed) {

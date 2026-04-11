@@ -226,6 +226,41 @@ Return:
 
 **Blast-radius artifact**: Results are persisted to `.workflow/state/blast-radius-{taskId}.json` for use by downstream gates (context estimator, standards compliance, workspace dispatch).
 
+## MCP Capability Injection (Pre-Launch)
+
+Before launching agents, inject MCP capability hints so agents can leverage available MCP tools (CC 2.1.101+ — sub-agents inherit MCP tools from parent session).
+
+**Step 1**: Check if capabilities are classified:
+```bash
+node scripts/flow-mcp-capabilities.js check-cache
+```
+
+**Step 2**: If `cache-miss` AND you have MCP tools available (tools starting with `mcp__` in your tool catalog):
+1. Inspect your available `mcp__*` tools
+2. For each tool, classify it into a capability category using the category definitions:
+   ```bash
+   node scripts/flow-mcp-capabilities.js categories
+   ```
+3. Cache the classifications:
+   ```bash
+   node scripts/flow-mcp-capabilities.js cache '<json>'
+   ```
+   Format: `{ "server-name": { "tools": [{ "name": "mcp__server__tool", "description": "...", "category": "category-id" }] } }`
+
+**Step 3**: For each agent, get its role-specific hint and append to the agent prompt:
+```bash
+node scripts/flow-mcp-capabilities.js hint explore-codebase    # Agent 1
+node scripts/flow-mcp-capabilities.js hint explore-practices   # Agent 2
+node scripts/flow-mcp-capabilities.js hint explore-versions    # Agent 3
+node scripts/flow-mcp-capabilities.js hint explore-risk        # Agent 4
+node scripts/flow-mcp-capabilities.js hint explore-standards   # Agent 5
+node scripts/flow-mcp-capabilities.js hint explore-impact      # Agent 6
+```
+
+If the hint is non-empty, append it to the agent's prompt. If empty (no relevant MCP tools for that role), skip — the agent works fine without them.
+
+**Skip when**: No MCP servers configured (`node scripts/flow-mcp-capabilities.js discover` returns empty), or `config.mcpCapabilities.enabled` is false.
+
 ## Launching
 
 All agents launch in parallel as `Agent(subagent_type=Explore)` calls in a single message. When `config.hybrid.enabled`, use the `model` parameter on each Agent call to route by task type:
