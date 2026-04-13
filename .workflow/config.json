@@ -7,19 +7,35 @@
   },
   "enforcement": {
     "strictMode": true,
-    "taskGating": { "enabled": false },
-    "scopeGating": { "enabled": false },
-    "implementationGate": { "enabled": false },
-    "todoWriteGate": { "enabled": false },
-    "routingGate": { "enabled": false },
-    "commitLogGate": { "enabled": true },
-    "loopEnforcement": { "enabled": false }
+    "taskGating": {
+      "enabled": false
+    },
+    "scopeGating": {
+      "enabled": false
+    },
+    "implementationGate": {
+      "enabled": false
+    },
+    "todoWriteGate": {
+      "enabled": false
+    },
+    "routingGate": {
+      "enabled": false
+    },
+    "commitLogGate": {
+      "enabled": true
+    },
+    "loopEnforcement": {
+      "enabled": false
+    }
   },
   "componentReuse": {
     "enabled": false
   },
   "skills": {
-    "installed": ["figma-analyzer"],
+    "installed": [
+      "figma-analyzer"
+    ],
     "loadLearnings": true,
     "loadConventions": true,
     "loadAntiPatterns": true
@@ -28,20 +44,32 @@
     "enabled": false,
     "rules": {
       "intelligence": {
-        "sessionContext": { "enabled": false },
-        "validation": { "enabled": false }
+        "sessionContext": {
+          "enabled": false
+        },
+        "validation": {
+          "enabled": false
+        }
       },
       "lifecycle": {
-        "taskCompleted": { "enabled": false },
-        "setup": { "enabled": false }
+        "taskCompleted": {
+          "enabled": false
+        },
+        "setup": {
+          "enabled": false
+        }
       }
     }
   },
   "testing": {
     "_comment_discovery": "Smart test discovery + SWE-bench dual gate for existing project tests",
-    "discovery": { "enabled": false },
+    "discovery": {
+      "enabled": false
+    },
     "_comment_scenarios": "Declarative scenario-based API testing engine",
-    "scenarios": { "enabled": false }
+    "scenarios": {
+      "enabled": false
+    }
   },
   "skillLearning": {
     "_comment_enabled": "When true, skill learning extracts patterns from completed work",
@@ -60,5 +88,22 @@
   "mcpCapabilities": {
     "_comment_enabled": "When true, sub-agents receive MCP capability hints based on their role. Requires CC 2.1.101+ (sub-agent MCP inheritance)",
     "enabled": true
+  },
+  "gateTelemetry": {
+    "_comment": "Per-gate self-assessment log. Every quality/verification/logic gate appends a structured event to .workflow/state/gate-telemetry.jsonl. See .claude/docs/gate-telemetry.md.",
+    "enabled": true,
+    "rotateSizeBytes": 10485760,
+    "_comment_rotateSizeBytes": "Rotate to archive when the active log exceeds this size (default 10 MB)",
+    "crossReferenceOnCorrection": true,
+    "_comment_crossReferenceOnCorrection": "When the session-correction detector (Story wf-cc4eb238) flags a user correction, mark prior PASS events from IGR gates on the same task as misses."
+  },
+  "intentGroundedReasoning": {
+    "_comment": "Intent-Grounded Reasoning (IGR). Default ON 2026-04-13. See .claude/docs/intent-grounded-reasoning.md. To disable: set enabled=false.",
+    "enabled": true,
+    "completionTruthGate": {
+      "enabled": true,
+      "minTierForDone": 3,
+      "blockFalseCompletion": true
+    }
   }
 }

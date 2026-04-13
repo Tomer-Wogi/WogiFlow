@@ -745,6 +745,42 @@ Commands:
 }
 
 // ============================================================
+// IGR bridge — pipe runtime-verification observations into Truth Gate's evidence store
+// (Story 7 fast-follow: closes the loop so Tier 3 observations from Step 3.58 automatically
+// inform the Step 3.9 Truth Gate without manual recordEvidence calls.)
+// ============================================================
+
+/**
+ * Record a runtime-verification observation as tier-classified evidence on the
+ * Truth Gate's durable-session storage. Thin bridge — no parallel storage.
+ *
+ * @param {Object} opts
+ * @param {string} opts.taskId
+ * @param {string} opts.criterionId - durable-session step id
+ * @param {string} opts.tierName - one of EVIDENCE_TIERS keys (STATIC|STRUCTURAL|OBSERVATIONAL|INTERACTIVE|AUTOMATED)
+ * @param {string} opts.observation - short human description (≤200 chars)
+ * @returns {{ ok:boolean, reason?:string }}
+ */
+function recordVerificationEvidence({ taskId, criterionId, tierName, observation }) {
+  const tierEntry = EVIDENCE_TIERS[String(tierName || '').toUpperCase()];
+  if (!tierEntry) {
+    return { ok: false, reason: `unknown tier name: ${tierName}` };
+  }
+  let truthGate;
+  try {
+    truthGate = require('./flow-completion-truth-gate');
+  } catch (_err) {
+    return { ok: false, reason: 'truth-gate module unavailable' };
+  }
+  return truthGate.recordEvidence({
+    taskId,
+    criterionId,
+    tier: tierEntry.level,
+    observation,
+  });
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -761,6 +797,7 @@ module.exports = {
   // Evidence
   EVIDENCE_TIERS,
   BANNED_EVIDENCE,
+  recordVerificationEvidence,  // IGR Story 7 fast-follow — bridge to Truth Gate
 
   // Frontend verification
   selectVerificationMethod,

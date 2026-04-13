@@ -28,12 +28,25 @@ const {
 // ============================================================================
 
 const PENDING_CORRECTIONS_FILE = 'pending-corrections.json';
+const SESSION_VIEW_FILE = 'session-corrections.json';  // IGR Stage 5 — session-scoped view
 const MAX_PENDING_CORRECTIONS = 20;
 const MIN_CONFIDENCE_THRESHOLD = 70;
 
 // Pre-filter: skip prompts too short or too long to be corrections
 const MIN_PROMPT_LENGTH = 8;
 const MAX_PROMPT_LENGTH = 1000;
+
+// IGR gate IDs that participate in missRate cross-reference (Story 0 telemetry)
+const CORRELATABLE_GATE_IDS = [
+  'logic-adversary',
+  'intent-framing',
+  'architect-pass',
+  'skeptical-evaluator',
+  'scope-confidence',
+  'standards-gate',
+  'runtime-verification',
+  'criteria-verification',
+];
 
 // ============================================================================
 // Path Helpers
@@ -132,7 +145,7 @@ Respond with JSON only (no markdown, no explanation):
     let result;
     try {
       result = JSON.parse(jsonMatch[0]);
-    } catch (_parseErr) {
+    } catch (_err) {
       return { isCorrection: false, confidence: 0, method: 'ai', reason: 'json-parse-error' };
     }
 
@@ -237,7 +250,7 @@ Only JSON, no explanation.`;
     let results;
     try {
       results = JSON.parse(jsonMatch[0]);
-    } catch (_parseErr) {
+    } catch (_err) {
       return [];
     }
 
@@ -326,8 +339,45 @@ function spawnBackgroundDetection(userMessage, taskId) {
  * @returns {Array} Array of pending corrections
  */
 function loadPendingCorrections() {
+  // NOTE: pending-corrections.json is an array at root, but flow-io's safeJsonParse
+  // only validates object-shaped payloads. We read directly with try/catch to avoid
+  // the "expected object, got array" rejection. (Fixed by Story wf-cc4eb238.)
+  //
+  // SEC-005 fix (2026-04-13): add explicit prototype-pollution guard since we
+  // bypass safeJsonParse. Reject the whole file if any item or nested object
+  // contains __proto__/constructor/prototype keys per security-patterns.md §2.
   const correctionsPath = getPendingCorrectionsPath();
-  return safeJsonParse(correctionsPath, []);
+  try {
+    const fs = require('node:fs');
+    if (!fs.existsSync(correctionsPath)) return [];
+    const raw = fs.readFileSync(correctionsPath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    if (hasDangerousKeys(parsed)) {
+      if (process.env.DEBUG) {
+        console.error('[DEBUG] pending-corrections contains dangerous keys, returning empty');
+      }
+      return [];
+    }
+    return parsed;
+  } catch (_err) {
+    return [];
+  }
+}
+
+// SEC-005 fix (2026-04-13): recursive prototype-pollution check for
+// array-rooted JSON. Returns true if __proto__/constructor/prototype found.
+function hasDangerousKeys(value) {
+  const dangerous = new Set(['__proto__', 'constructor', 'prototype']);
+  const visit = (node, depth) => {
+    if (depth > 8 || node === null || typeof node !== 'object') return false;
+    for (const key of Object.getOwnPropertyNames(node)) {
+      if (dangerous.has(key)) return true;
+      if (visit(node[key], depth + 1)) return true;
+    }
+    return false;
+  };
+  return visit(value, 0);
 }
 
 /**
@@ -349,11 +399,16 @@ function queuePendingCorrection(correction) {
   try {
     const corrections = loadPendingCorrections();
 
-    corrections.push({
+    // IGR Stage 5 (wf-cc4eb238): enrich entry with sessionId + durableRule
+    const enriched = {
       id: `CORR-${Date.now().toString(36)}`,
       timestamp: new Date().toISOString(),
-      ...correction
-    });
+      sessionId: deriveSessionId(),
+      ...correction,
+    };
+    enriched.durableRule = composeDurableRule(enriched);
+
+    corrections.push(enriched);
 
     // Limit queue size
     while (corrections.length > MAX_PENDING_CORRECTIONS) {
@@ -361,6 +416,27 @@ function queuePendingCorrection(correction) {
     }
 
     savePendingCorrections(corrections);
+
+    // IGR Stage 5: materialize the session-scoped view file
+    // so the Logic Adversary (Story 1) and Intent Framing (Story 4) can
+    // read session-corrections.json without any code changes.
+    try {
+      writeSessionCorrectionsView(enriched.sessionId);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] writeSessionCorrectionsView: ${err.message}`);
+      }
+    }
+
+    // IGR Stage 5: cross-reference with prior gate PASS events (produces missRate signal)
+    try {
+      correlateWithPriorGates(enriched);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] correlateWithPriorGates: ${err.message}`);
+      }
+    }
+
     return true;
   } catch (err) {
     if (process.env.DEBUG) {
@@ -698,6 +774,195 @@ Commands:
 }
 
 // ============================================================================
+// IGR Stage 5 extensions (Story wf-cc4eb238) — session scoping, durable rules,
+// gate-telemetry cross-reference, and materialized view for Adversary consumption.
+// ============================================================================
+
+/**
+ * Derive the current Claude Code session identifier. Non-throwing; returns null
+ * when no session context is available (graceful degradation).
+ *
+ * Resolution order:
+ *   1. WOGI_SESSION_ID env var (if harness sets it)
+ *   2. CLAUDE_CODE_SESSION_ID env var
+ *   3. session-state.json's active session
+ *   4. null (entries still persist but aren't session-scoped)
+ */
+function deriveSessionId() {
+  if (process.env.WOGI_SESSION_ID) return process.env.WOGI_SESSION_ID;
+  if (process.env.CLAUDE_CODE_SESSION_ID) return process.env.CLAUDE_CODE_SESSION_ID;
+  try {
+    const sessionState = safeJsonParse(path.join(PATHS.state, 'session-state.json'), {});
+    if (sessionState && sessionState.sessionId) return String(sessionState.sessionId);
+  } catch (_err) {
+    /* no-op */
+  }
+  return null;
+}
+
+/**
+ * Compose a durable rule string from the existing AI-detected correction fields.
+ * Template-based; no LLM dependency. Uses whatWasWrong + whatUserWants when present.
+ *
+ * Falls back gracefully: if only one of the two fields exists, we use it alone.
+ * Never returns empty string — last resort returns "Correction recorded — review at session end."
+ *
+ * @param {Object} correction - The enriched correction entry.
+ * @returns {string} A one-sentence durable fact.
+ */
+function composeDurableRule(correction) {
+  const what = String(correction.whatUserWants || '').trim();
+  const wrong = String(correction.whatWasWrong || '').trim();
+  const type = String(correction.correctionType || 'correction').trim();
+
+  if (what && wrong) {
+    return `Do not: ${wrong}. Do instead: ${what}. (type: ${type})`;
+  }
+  if (what) return `Do: ${what}. (type: ${type})`;
+  if (wrong) return `Do not: ${wrong}. (type: ${type})`;
+  return 'Correction recorded — review at session end.';
+}
+
+/**
+ * Return corrections filtered to a given session. Never throws — returns [] on error.
+ * Pass null to retrieve pre-session entries (rare but possible after legacy data).
+ *
+ * @param {string|null} sessionId
+ * @returns {Array}
+ */
+function getSessionCorrections(sessionId) {
+  try {
+    const all = loadPendingCorrections();
+    return all.filter((c) => (sessionId === null ? !c.sessionId : c.sessionId === sessionId));
+  } catch (_err) {
+    return [];
+  }
+}
+
+/**
+ * Write a session-scoped view to `.workflow/state/session-corrections.json`.
+ * This file is a DERIVATIVE cache — the source of truth remains pending-corrections.json.
+ *
+ * Consumers: Logic Adversary (Story 1) and Intent Framing (Story 4) read this path
+ * without knowing about the derivation.
+ *
+ * @param {string|null} sessionId - If null, the view file is cleared.
+ */
+function writeSessionCorrectionsView(sessionId) {
+  const viewPath = path.join(PATHS.state, SESSION_VIEW_FILE);
+  const entries = sessionId ? getSessionCorrections(sessionId) : [];
+  const view = {
+    sessionId: sessionId,
+    generatedAt: new Date().toISOString(),
+    count: entries.length,
+    corrections: entries,
+  };
+  ensureDir(PATHS.state);
+  writeJson(viewPath, view);
+  return view;
+}
+
+/**
+ * Cross-reference a newly-detected correction with gate-telemetry events.
+ * For each gate in CORRELATABLE_GATE_IDS that has a PASS event on the same taskId,
+ * invoke `correlateMiss(gateId, taskId, correction)` from the telemetry module.
+ *
+ * Critical: only correlates with gates that ACTUALLY PASSED this task. Does not
+ * blindly mark all known gates as misses (the Adversary R1 scope-invention finding).
+ *
+ * Emits one telemetry event summarizing the correlation work.
+ *
+ * @param {Object} correction - Enriched correction entry with taskId + sessionId + durableRule.
+ * @returns {{ correlatedGates: string[], skippedGates: string[] }}
+ */
+function correlateWithPriorGates(correction) {
+  const taskId = correction.taskId;
+  const correlated = [];
+  const skipped = [];
+
+  if (!taskId) {
+    return { correlatedGates: [], skippedGates: CORRELATABLE_GATE_IDS.slice() };
+  }
+
+  let gateTelemetry;
+  try {
+    gateTelemetry = require('./flow-gate-telemetry');
+  } catch (_err) {
+    return { correlatedGates: [], skippedGates: CORRELATABLE_GATE_IDS.slice() };
+  }
+
+  const start = Date.now();
+
+  // Read telemetry log once and filter in memory — cheap and avoids repeated IO.
+  let events = [];
+  try {
+    const fs = require('node:fs');
+    if (fs.existsSync(gateTelemetry.TELEMETRY_LOG)) {
+      const raw = fs.readFileSync(gateTelemetry.TELEMETRY_LOG, 'utf-8');
+      events = raw
+        .split('\n')
+        .filter((l) => l.trim().length > 0)
+        .map((l) => {
+          try {
+            return JSON.parse(l);
+          } catch (_err) {
+            return null;
+          }
+        })
+        .filter(Boolean);
+    }
+  } catch (_err) {
+    /* fall through — we'll just skip all */
+  }
+
+  for (const gateId of CORRELATABLE_GATE_IDS) {
+    const hasPriorPass = events.some(
+      (e) => e.gateId === gateId && e.taskId === taskId && e.verdict === 'PASS'
+    );
+    if (!hasPriorPass) {
+      skipped.push(gateId);
+      continue;
+    }
+    try {
+      gateTelemetry.correlateMiss(gateId, taskId, {
+        at: correction.timestamp || new Date().toISOString(),
+        durableRule: correction.durableRule,
+      });
+      correlated.push(gateId);
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[DEBUG] correlateMiss failed for ${gateId}: ${err.message}`);
+      }
+      skipped.push(gateId);
+    }
+  }
+
+  // Emit a summary telemetry event for this correlation run
+  try {
+    gateTelemetry.recordGateEvent({
+      gateId: 'session-corrections',
+      gateVersion: '1.0',
+      taskId,
+      verdict: 'PASS',
+      findingCount: correlated.length,
+      findingSummary: correlated.map((g) => `correlated-miss:${g}`),
+      durationMs: Date.now() - start,
+      metadata: {
+        correctionType: correction.correctionType,
+        sessionId: correction.sessionId || null,
+        durableRulePreview: (correction.durableRule || '').slice(0, 120),
+        correlatedGateIds: correlated,
+        skippedGateIds: skipped,
+      },
+    });
+  } catch (_err) {
+    /* never let telemetry break correlation */
+  }
+
+  return { correlatedGates: correlated, skippedGates: skipped };
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
@@ -723,6 +988,14 @@ module.exports = {
 
   // High-level API
   processMessageForCorrection,
+
+  // IGR Stage 5 extensions
+  deriveSessionId,
+  composeDurableRule,
+  getSessionCorrections,
+  writeSessionCorrectionsView,
+  correlateWithPriorGates,
+  CORRELATABLE_GATE_IDS,
 
   // Paths
   getPendingCorrectionsPath,

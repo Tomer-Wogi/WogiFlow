@@ -1,0 +1,477 @@
+#!/usr/bin/env node
+
+/**
+ * Wogi Flow - Completion Truth Gate
+ *
+ * IGR Stage 6. The most-impactful gate in the IGR layer.
+ *
+ * Per Agent A's session-history mining: false completion is the #1 failure mode
+ * (31 incidents — more than every other category combined). This gate prevents
+ * the orchestrator from saying "done" when the evidence does not support it.
+ *
+ * Story: wf-76312197 (IGR Stage 6)
+ * Epic: wf-b00262b1 (IGR)
+ *
+ * Design (R2):
+ *   - Reuses EVIDENCE_TIERS from flow-runtime-verification.js (single source of truth)
+ *   - Extends EXISTING durable-session step.verificationProof storage
+ *     (boolean → optional { tier, observation, at } object)
+ *   - Coexists with verificationProofGate (richer auditor; coarser baseline)
+ *   - No new state file (.workflow/state/evidence-records/ was rejected in R2)
+ *
+ * Reuses (no parallel implementations):
+ *   - flow-runtime-verification.js → EVIDENCE_TIERS constant
+ *   - flow-durable-session.js     → loadDurableSession, saveDurableSession
+ *   - flow-gate-telemetry.js      → recordGateEvent
+ *
+ * Usage (programmatic):
+ *   const { recordEvidence, auditCompletionClaim, downgradeClaim,
+ *           completionTruthGate, getStepEvidence } =
+ *     require('./flow-completion-truth-gate');
+ *
+ *   // 1. Record evidence as a criterion is verified
+ *   recordEvidence({ taskId, criterionId: 'ac-1', tier: 3,
+ *                    observation: 'Clicked Submit, refreshed, persists' });
+ *
+ *   // 2. Audit at completion time
+ *   const audit = auditCompletionClaim(taskId, claimedCriteria);
+ *
+ *   // 3. Downgrade the claim language if blocked
+ *   const safeText = downgradeClaim('Task is done.', audit);
+ */
+
+const fs = require('node:fs');
+const path = require('node:path');
+
+const { PATHS } = require('./flow-paths');
+const { fileExists } = require('./flow-io');
+const { getConfig } = require('./flow-config-loader');
+const { color, info, warn, error } = require('./flow-output');
+
+const gateTelemetry = require('./flow-gate-telemetry');
+
+// Lazy-loaded to keep Story 6 independently testable
+let _evidenceTiers;
+function getEvidenceTiers() {
+  if (_evidenceTiers) return _evidenceTiers;
+  try {
+    _evidenceTiers = require('./flow-runtime-verification').EVIDENCE_TIERS;
+  } catch (_err) {
+    // Fallback definition — same shape as canonical, used only when runtime-verification module unavailable
+    _evidenceTiers = {
+      STATIC: { level: 0, name: 'Static', sufficient: false },
+      STRUCTURAL: { level: 1, name: 'Structural', sufficient: false },
+      OBSERVATIONAL: { level: 2, name: 'Observational', sufficient: true },
+      INTERACTIVE: { level: 3, name: 'Interactive', sufficient: true },
+      AUTOMATED: { level: 4, name: 'Automated', sufficient: true },
+    };
+  }
+  return _evidenceTiers;
+}
+
+const TIER_NAMES = ['STATIC', 'STRUCTURAL', 'OBSERVATIONAL', 'INTERACTIVE', 'AUTOMATED'];
+
+// Words that, in a completion claim, must be backed by Tier ≥ minTierForDone
+const DONE_WORDS = ['done', 'completed', 'complete', 'deployed', 'shipped', 'finished'];
+
+// ============================================================
+// Disabled-mode short-circuit
+// ============================================================
+
+function isTruthGateDisabled() {
+  const cfg = getConfig();
+  const igr = cfg.intentGroundedReasoning || {};
+  if (igr.enabled === false) return { disabled: true, reason: 'igr-disabled' };
+  const tg = igr.completionTruthGate || {};
+  if (tg.enabled === false) return { disabled: true, reason: 'truth-gate-disabled' };
+  return { disabled: false };
+}
+
+function getMinTierForDone() {
+  const cfg = getConfig();
+  return cfg.intentGroundedReasoning?.completionTruthGate?.minTierForDone ?? 3;
+}
+
+function shouldBlockOnFalseCompletion() {
+  const cfg = getConfig();
+  return cfg.intentGroundedReasoning?.completionTruthGate?.blockFalseCompletion !== false;
+}
+
+// ============================================================
+// Evidence shape normalization (handles legacy + new shapes)
+// ============================================================
+
+/**
+ * Given a durable-session step, return uniform evidence shape:
+ *   { highestTier: 0..4, observations: [{tier, observation, at}, ...] }
+ *
+ * Handles three shapes:
+ *   1. step.verificationProof === true  (legacy)  → highestTier=3, generic observation
+ *   2. step.verificationProof === false/null      → highestTier=-1 (no evidence)
+ *   3. step.verificationProof === { tier, observation, at }    → highestTier=tier
+ *   4. step.verificationProof === { tiers: [...], highestTier } → as given
+ */
+function getStepEvidence(step) {
+  if (!step) return { highestTier: -1, observations: [] };
+  const vp = step.verificationProof;
+  if (vp === undefined || vp === null || vp === false) {
+    return { highestTier: -1, observations: [] };
+  }
+  if (vp === true) {
+    // Legacy: assume Tier 3 (behaviorally verified — the historical implicit assumption)
+    return {
+      highestTier: 3,
+      observations: [
+        {
+          tier: 3,
+          observation: '(legacy boolean proof — assumed Tier 3)',
+          at: step.completedAt || null,
+        },
+      ],
+    };
+  }
+  if (typeof vp === 'object') {
+    if (Array.isArray(vp.tiers)) {
+      const tiers = vp.tiers.filter((t) => typeof t.tier === 'number');
+      const highest = tiers.length ? Math.max(...tiers.map((t) => t.tier)) : -1;
+      return {
+        highestTier: typeof vp.highestTier === 'number' ? vp.highestTier : highest,
+        observations: tiers,
+      };
+    }
+    if (typeof vp.tier === 'number') {
+      return {
+        highestTier: vp.tier,
+        observations: [{ tier: vp.tier, observation: vp.observation || '', at: vp.at || null }],
+      };
+    }
+  }
+  return { highestTier: -1, observations: [] };
+}
+
+// ============================================================
+// Evidence recording
+// ============================================================
+
+/**
+ * Record a tier-classified observation against a criterion's durable-session step.
+ * Idempotent on identical (tier, observation) pairs.
+ *
+ * @param {Object} opts
+ * @param {string} opts.taskId
+ * @param {string} opts.criterionId - Step ID in the durable session.
+ * @param {number} opts.tier - 0..4
+ * @param {string} opts.observation - Short description (≤200 chars).
+ * @returns {{ ok:boolean, reason?:string, highestTier?:number }}
+ */
+function recordEvidence({ taskId, criterionId, tier, observation }) {
+  if (typeof tier !== 'number' || tier < 0 || tier > 4) {
+    return { ok: false, reason: 'tier must be 0..4' };
+  }
+  if (!criterionId) {
+    return { ok: false, reason: 'criterionId required' };
+  }
+
+  let durable;
+  try {
+    durable = require('./flow-durable-session');
+  } catch (_err) {
+    return { ok: false, reason: 'durable-session module unavailable' };
+  }
+
+  const session = durable.loadDurableSession();
+  if (!session || !session.steps) {
+    return { ok: false, reason: 'no durable session' };
+  }
+  if (taskId && session.taskId !== taskId) {
+    return { ok: false, reason: `taskId mismatch: session=${session.taskId} requested=${taskId}` };
+  }
+
+  const step = session.steps.find((s) => s.id === criterionId);
+  if (!step) {
+    return { ok: false, reason: `criterion ${criterionId} not found in durable session` };
+  }
+
+  const obs = String(observation || '').slice(0, 200);
+  const at = new Date().toISOString();
+
+  // Normalize current state then merge new observation
+  const current = getStepEvidence(step);
+  const observations = [...current.observations];
+
+  // Idempotency: skip if identical (tier, observation) pair already present
+  const exists = observations.some(
+    (o) => o.tier === tier && o.observation === obs
+  );
+  if (!exists) {
+    observations.push({ tier, observation: obs, at });
+  }
+
+  // CL-003 fix (2026-04-13): cap observations + use reduce instead of spread
+  // to avoid RangeError on large arrays (Math.max(...array) exceeds call-stack
+  // limit ~100k args). Also caps per-step observation log to 50 entries.
+  const MAX_OBSERVATIONS_PER_STEP = 50;
+  if (observations.length > MAX_OBSERVATIONS_PER_STEP) {
+    observations.splice(0, observations.length - MAX_OBSERVATIONS_PER_STEP);
+  }
+  const highestTier = observations.reduce((max, o) => (o.tier > max ? o.tier : max), tier);
+
+  step.verificationProof = {
+    highestTier,
+    tiers: observations,
+  };
+
+  durable.saveDurableSession(session);
+  return { ok: true, highestTier };
+}
+
+// ============================================================
+// Audit
+// ============================================================
+
+/**
+ * Audit a list of claimed-completed criteria against their evidence.
+ *
+ * @param {string} taskId
+ * @param {Array<{id:string, text?:string, claimed:string}>} claimedCriteria
+ *   - id: durable-session step id
+ *   - text: human-readable description (used for display)
+ *   - claimed: the word the orchestrator used ('done', 'completed', 'implemented', etc.)
+ * @returns {{ perCriterion:Array, blocked:boolean, minTier:number,
+ *             sufficientCount:number, insufficientCount:number,
+ *             evidenceRecordsExisted:boolean }}
+ */
+function auditCompletionClaim(taskId, claimedCriteria) {
+  const minTier = getMinTierForDone();
+
+  let session = null;
+  try {
+    const durable = require('./flow-durable-session');
+    session = durable.loadDurableSession();
+  } catch (_err) {
+    /* fall through — no session */
+  }
+
+  const evidenceRecordsExisted = !!(session && session.steps && session.steps.length > 0);
+
+  const perCriterion = (claimedCriteria || []).map((c) => {
+    const step = session?.steps?.find(
+      (s) => s.id === c.id || (c.text && s.description && normalizeText(s.description) === normalizeText(c.text))
+    );
+    const evidence = getStepEvidence(step);
+    const claimedDone = !!c.claimed && DONE_WORDS.includes(String(c.claimed).toLowerCase());
+    const sufficient = evidence.highestTier >= minTier;
+    let verdict;
+    if (!claimedDone) verdict = 'NOT_CLAIMED_DONE';
+    else if (sufficient) verdict = 'DONE';
+    else if (evidence.highestTier >= 0) verdict = 'IMPLEMENTED_UNVERIFIED';
+    else verdict = 'INSUFFICIENT';
+
+    return {
+      id: c.id,
+      text: c.text || step?.description || c.id,
+      claimedDone,
+      highestTier: evidence.highestTier,
+      tierName: evidence.highestTier >= 0 ? TIER_NAMES[evidence.highestTier] : 'NONE',
+      sufficient,
+      verdict,
+      observationCount: evidence.observations.length,
+    };
+  });
+
+  const insufficient = perCriterion.filter((p) => p.claimedDone && !p.sufficient);
+  const sufficient = perCriterion.filter((p) => p.claimedDone && p.sufficient);
+
+  return {
+    perCriterion,
+    blocked: insufficient.length > 0 && shouldBlockOnFalseCompletion(),
+    softModeWarn: insufficient.length > 0 && !shouldBlockOnFalseCompletion(),
+    minTier,
+    sufficientCount: sufficient.length,
+    insufficientCount: insufficient.length,
+    totalClaimed: perCriterion.filter((p) => p.claimedDone).length,
+    evidenceRecordsExisted,
+  };
+}
+
+function normalizeText(s) {
+  return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// ============================================================
+// Language downgrade
+// ============================================================
+
+/**
+ * Given an original completion text and an audit result, return the rewritten text.
+ * Replaces "done"/"completed"/"deployed" with safer language when audit.blocked.
+ *
+ * Pure function — no I/O, no telemetry.
+ *
+ * @param {string} originalText
+ * @param {Object} audit - From auditCompletionClaim
+ * @returns {{ text:string, replaced:boolean, summary:string }}
+ */
+function downgradeClaim(originalText, audit) {
+  if (!audit || (!audit.blocked && !audit.softModeWarn)) {
+    return { text: originalText, replaced: false, summary: 'no downgrade needed' };
+  }
+
+  const { sufficientCount, insufficientCount, totalClaimed, minTier } = audit;
+  const tierName = TIER_NAMES[minTier] || `Tier ${minTier}`;
+
+  // Replace done-words with the safer "implemented (unverified)" formula
+  const downgradedWord = 'implemented (unverified)';
+  const re = new RegExp(`\\b(${DONE_WORDS.join('|')})\\b`, 'gi');
+  const rewritten = String(originalText || '').replace(re, downgradedWord);
+
+  const banner =
+    `\n\n⚠ Completion Truth Gate: ${sufficientCount}/${totalClaimed} criteria reach the required ${tierName} (≥ Tier ${minTier}) evidence threshold. ` +
+    `${insufficientCount} criteria are implemented but unverified — recommend manual verification before announcing completion.`;
+
+  return {
+    text: rewritten + banner,
+    replaced: rewritten !== originalText,
+    summary: `${insufficientCount} insufficient of ${totalClaimed} claimed`,
+  };
+}
+
+// ============================================================
+// Quality-gate handler (matches flow-done-gates.js interface)
+// ============================================================
+
+/**
+ * Handler conforming to flow-done-gates.js interface.
+ * Reads claimed criteria from the durable session (steps marked acceptance-criteria,
+ * status completed) and audits each against tier evidence.
+ */
+function completionTruthGate(ctx) {
+  const dis = isTruthGateDisabled();
+  if (dis.disabled) {
+    if (ctx?.color) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} completionTruth (${dis.reason})`);
+    }
+    return { passed: true, skipped: true };
+  }
+
+  const start = Date.now();
+  let session = null;
+  try {
+    session = require('./flow-durable-session').loadDurableSession();
+  } catch (_err) {
+    /* no-op */
+  }
+
+  if (!session || !session.taskId) {
+    if (ctx?.color) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} completionTruth (no durable session — skipping)`);
+    }
+    recordTelemetry('SKIP', { reason: 'no-session', durationMs: Date.now() - start });
+    return { passed: true };
+  }
+
+  // Build claimed-criteria list from completed acceptance-criteria steps
+  const normalizeStepType = (t) => (t || '').toLowerCase().replace(/_/g, '-');
+  const claimedCriteria = (session.steps || [])
+    .filter((s) => s.status === 'completed' && normalizeStepType(s.type) === 'acceptance-criteria')
+    .map((s) => ({ id: s.id, text: s.description || s.title || s.id, claimed: 'done' }));
+
+  if (claimedCriteria.length === 0) {
+    if (ctx?.color) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} completionTruth (no completed criteria — skipping)`);
+    }
+    recordTelemetry('SKIP', { reason: 'no-criteria', durationMs: Date.now() - start });
+    return { passed: true };
+  }
+
+  const audit = auditCompletionClaim(session.taskId, claimedCriteria);
+  const downgrade = downgradeClaim('Task is done.', audit);
+  const verdict = audit.blocked ? 'FAIL' : audit.softModeWarn ? 'CONCERN' : 'PASS';
+
+  recordTelemetry(verdict, {
+    durationMs: Date.now() - start,
+    minTier: audit.minTier,
+    totalClaimed: audit.totalClaimed,
+    sufficientCount: audit.sufficientCount,
+    insufficientCount: audit.insufficientCount,
+    evidenceRecordsExisted: audit.evidenceRecordsExisted,
+    softModeActive: !shouldBlockOnFalseCompletion(),
+    taskId: session.taskId,
+  });
+
+  if (verdict === 'PASS') {
+    if (ctx?.success) {
+      ctx.success(
+        `completionTruth (${audit.sufficientCount}/${audit.totalClaimed} criteria at Tier ${audit.minTier}+)`
+      );
+    }
+    return { passed: true, details: { audit } };
+  }
+
+  if (verdict === 'CONCERN') {
+    if (ctx?.warn) {
+      ctx.warn(
+        `completionTruth — soft mode (${audit.insufficientCount}/${audit.totalClaimed} criteria below Tier ${audit.minTier})`
+      );
+    }
+    return { passed: true, details: { audit, downgradedClaim: downgrade.text } };
+  }
+
+  // FAIL
+  if (ctx?.error) {
+    ctx.error(
+      `completionTruth (${audit.insufficientCount}/${audit.totalClaimed} criteria claimed done but evidence below Tier ${audit.minTier})`
+    );
+    for (const c of audit.perCriterion.filter((p) => p.claimedDone && !p.sufficient).slice(0, 5)) {
+      console.log(
+        ctx.color('dim', `    - tier=${c.highestTier} (${c.tierName}): ${(c.text || '').slice(0, 100)}`)
+      );
+    }
+  }
+  return {
+    passed: false,
+    errorOutput: downgrade.text,
+    details: { audit, downgradedClaim: downgrade.text },
+  };
+}
+
+// ============================================================
+// Telemetry helper
+// ============================================================
+
+function recordTelemetry(verdict, runCtx = {}) {
+  gateTelemetry.recordGateEvent({
+    gateId: 'completion-truth-gate',
+    gateVersion: '1.0',
+    taskId: runCtx.taskId || null,
+    verdict,
+    findingCount: runCtx.insufficientCount ?? 0,
+    findingSummary: runCtx.insufficientSummary || [],
+    durationMs: runCtx.durationMs,
+    metadata: {
+      minTier: runCtx.minTier ?? null,
+      totalClaimed: runCtx.totalClaimed ?? null,
+      sufficientCount: runCtx.sufficientCount ?? null,
+      insufficientCount: runCtx.insufficientCount ?? null,
+      evidenceRecordsExisted: runCtx.evidenceRecordsExisted ?? null,
+      softModeActive: runCtx.softModeActive ?? null,
+      reason: runCtx.reason || null,
+    },
+  });
+}
+
+// ============================================================
+// Exports
+// ============================================================
+
+module.exports = {
+  recordEvidence,
+  auditCompletionClaim,
+  downgradeClaim,
+  completionTruthGate,
+  getStepEvidence,
+  isTruthGateDisabled,
+  getMinTierForDone,
+  TIER_NAMES,
+  DONE_WORDS,
+};

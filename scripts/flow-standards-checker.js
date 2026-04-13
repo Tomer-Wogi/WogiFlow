@@ -445,24 +445,80 @@ function checkSecurityPatterns(file, securityRules) {
 
   // Hard-coded security checks from security-patterns.md
 
-  // 1. Raw JSON.parse without try-catch or safeJsonParse
+  // 1. Raw JSON.parse — strengthened by Track B (2026-04-13).
+  // Original heuristic only flagged JSON.parse OUTSIDE try blocks. This missed
+  // SEC-001 (raw JSON.parse on user-config inside a try block — which loses the
+  // prototype-pollution guard that safeJsonParse provides).
+  // New rule: if `safeJsonParse` is importable (any `require('./flow-utils')`,
+  // `require('./flow-io')`, or explicit `safeJsonParse` import in the same module),
+  // raw JSON.parse on file contents is a violation regardless of try-catch.
+  const fileImportsSafeJsonParse =
+    /require\(['"]\.\/flow-(utils|io|config-loader)['"]\)/.test(content) ||
+    /\bsafeJsonParse\b/.test(content);
   const jsonParseMatches = content.matchAll(/JSON\s*\.\s*parse\s*\(/g);
   for (const match of jsonParseMatches) {
     const beforeMatch = content.substring(0, match.index);
     const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
-
-    // Check if inside try block (simple heuristic)
     const lineStart = content.lastIndexOf('\n', match.index) + 1;
     const linesBefore = content.substring(Math.max(0, match.index - 200), match.index);
+    const onSameLineAlready = content.substring(lineStart, match.index).includes('safeJsonParse');
 
-    if (!linesBefore.includes('try') && !content.substring(lineStart, match.index).includes('safeJsonParse')) {
+    if (onSameLineAlready) continue;
+
+    if (fileImportsSafeJsonParse) {
       violations.push({
         type: 'security',
         severity: 'must-fix',
         file: file.path,
         line: lineNumber,
-        message: 'Raw JSON.parse without try-catch - use safeJsonParse from flow-utils.js',
-        rule: 'security-patterns.md #2'
+        message: 'Raw JSON.parse — use safeJsonParse instead (file already imports flow-utils/flow-io)',
+        rule: 'security-patterns.md §2 (strengthened by Track B 2026-04-13)',
+      });
+    } else if (!linesBefore.includes('try')) {
+      violations.push({
+        type: 'security',
+        severity: 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message: 'Raw JSON.parse without try-catch — use safeJsonParse from flow-utils.js',
+        rule: 'security-patterns.md §2',
+      });
+    }
+  }
+
+  // 1b. Catch variable convention (Track B 2026-04-13).
+  // naming-conventions.md mandates `_err` for unused catch variables.
+  // Patterns like `catch (_parseErr)`, `catch (_e)`, `catch (_someError)` slip
+  // past visual review because they look "underscore-prefixed correct."
+  const catchMatches = content.matchAll(/\bcatch\s*\(\s*([A-Za-z_][\w$]*)\s*\)/g);
+  for (const match of catchMatches) {
+    const varName = match[1];
+    // Allowed: 'err' (used inside) or '_err' (intentionally ignored).
+    if (varName === 'err' || varName === '_err') continue;
+    // Flag underscore-prefixed non-_err variants as MUST_FIX (intentionally ignored
+    // but uses non-canonical name — naming-conventions.md violation).
+    if (varName.startsWith('_')) {
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+      violations.push({
+        type: 'naming',
+        severity: 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message: `catch variable "${varName}" — naming-conventions.md mandates "_err" for unused catch (not descriptive _ variants)`,
+        rule: 'naming-conventions.md §"Unused Catch Variables"',
+      });
+    } else if (varName === 'e' || varName === 'error' || varName === 'ex' || varName === 'exception') {
+      // Pre-existing rule: avoid 'e' / 'error' / 'ex' / 'exception' — use 'err'.
+      const beforeMatch = content.substring(0, match.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+      violations.push({
+        type: 'naming',
+        severity: 'warning',
+        file: file.path,
+        line: lineNumber,
+        message: `catch variable "${varName}" — use "err" per naming-conventions.md`,
+        rule: 'naming-conventions.md §"Catch Block Variables"',
       });
     }
   }

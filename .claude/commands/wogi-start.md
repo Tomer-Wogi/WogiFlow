@@ -160,6 +160,19 @@ Estimate if task fits in remaining context using `flow-context-estimator.js`:
 - Count criteria (~3% each), files (~2% each), refactor buffer (+10%)
 - If `projected_total > 95%` → compact first. If `current >= 90%` → emergency compact.
 
+### Step 0.3: Intent Bootstrap (when `config.intentGroundedReasoning.enabled`)
+
+**Conditional** — runs only when the IGR master flag is on AND no intent artifacts exist yet in `.workflow/state/`.
+
+First run per project with IGR enabled, present the Option C three-choice prompt (see `.claude/docs/intent-grounded-reasoning.md` for the exact UX):
+- `[1]` Bootstrap now (blocks ~5-10 min)
+- `[2]` Bootstrap in background, review at `/wogi-session-end` (default)
+- `[3]` Skip for now (3 consecutive skips silences the prompt)
+
+Run via `node scripts/flow-intent-bootstrap.js bootstrap [--auto-confirm]`. Scaffolds 4 artifacts (`product.md`, `domain-model.md`, `user-journeys.md`, `glossary.md`) with `reviewStatus: draft`. The trap-zone detector runs agnostic structural-ambiguity scanning.
+
+When IGR flag is OFF: this step is SKIPPED entirely. Pipeline proceeds to Step 0.5 with no overhead.
+
 ### Step 0.5: Parallel Execution Check
 
 Check `ready.json` for 2+ tasks. If parallelizable (no dependencies), offer parallel execution with worktree isolation.
@@ -193,6 +206,18 @@ node node_modules/wogiflow/scripts/flow-decision-authority.js classify "<decisio
 **User can update**: Via `/wogi-decide "from now on, just fix [category] yourself"` which calls `updateCategoryAuthority()` to change the config.
 
 **Low-confidence classification**: When the classifier cannot confidently categorize a decision, it defaults to `owner-decides` (safest fallback).
+
+### Step 1.15: Intent Framing Pass (when `config.intentGroundedReasoning.enabled`)
+
+**Conditional** — runs for L1+ tasks when IGR is on. L3 skip. L2 runs only when user's message contains `ultrathink` (per IGR's auto-bump rule).
+
+Self-reflective reasoning pass (NOT a sub-agent — same context, structured prompt). Produces a Framing Artifact at `.workflow/state/framing/{taskId}.md` with 9 PIN-structured sections: Ask, Interpretation, Concepts touched, Ambiguities resolved, Remaining ambiguities, Journeys affected, Prior-session corrections, Scope, Questions.
+
+Run via `node scripts/flow-intent-framing.js prompt <task-input> --task=<taskId>` to build the prompt; reflect against it; save the artifact via `saveFramingArtifact()`; evaluate the gate via `evaluateFramingGate()`. CONCERN when `remainingAmbiguities` is non-empty — surface to user at approval gate. FAIL when interpretation is missing or trivially short.
+
+Consumed downstream by Architect Pass (Step 1.55) and Logic Adversary (Step 1.57).
+
+When IGR flag is OFF: SKIPPED entirely. Pipeline proceeds to Step 1.2 unchanged.
 
 ### Step 1.2: Clarifying Questions
 
@@ -330,6 +355,35 @@ Launch all in parallel. When `config.hybrid.enabled`, route via `model` paramete
 - Step 1.2 targets **user intent** ("what do you want?")
 - Step 1.45 targets **scope assumptions** ("what does the codebase already have?")
 - Step 1.2 runs before explore; Step 1.45 runs after explore (uses explore results)
+
+### Step 1.55: Architect Pass (when `config.intentGroundedReasoning.enabled`)
+
+**Conditional** — runs for L1+ tasks when IGR on. L3 skip. L2 runs only on ultrathink auto-bump.
+
+Spawn a **read-only sub-agent** (Explore subagent_type, with Read/Grep/Glob only — no Edit/Write/Bash) on a model chosen per `config.intentGroundedReasoning.architectPass.modelOverride`. Input: Framing Artifact from Step 1.15 + explore findings from Step 1.3 + scope-confidence audit from Step 1.45 + the Logic Constitution v1 rubric (so the Architect anticipates the Adversary's checks).
+
+Build the prompt via `node scripts/flow-architect-pass.js prompt <task>`. Invoke via Agent tool. Output: an 8-section plan at `.workflow/plans/{taskId}.md` (PINs: approach, data-model, journey-impact, net-new, alternatives, risks, reversibility, dependencies). Parse via `parsePlanArtifact()`; if structural FAIL, re-prompt.
+
+Consumed by Step 1.57 (Adversary) and Step 1.5 (Spec Generator uses the plan as input).
+
+When IGR flag is OFF: SKIPPED. Pipeline proceeds from Step 1.45 directly to Step 1.5.
+
+### Step 1.57: Logic Adversary Pass (when `config.intentGroundedReasoning.enabled`)
+
+**Conditional** — runs for L0/L1 tasks by default when IGR on. Also fires for L2 when ultrathink auto-bump applies.
+
+Spawn a **separate sub-agent on a different model** than the Architect (Sonnet when Architect is Opus; Opus when Architect is Sonnet — per `modelSeparation: different-from-architect`). Per Anthropic harness research, same-model self-critique is a known rubber-stamp failure mode.
+
+Build the prompt via `node scripts/flow-logic-adversary.js prompt .workflow/plans/{taskId}.md`. The Adversary critiques the plan against the 10-principle Logic Constitution v1 with few-shot calibration examples from `.workflow/state/adversary-calibration.json`.
+
+Iteration loop (max 3 rounds by default):
+- `overallVerdict: PASS` or `PASS_WITH_CONCERNS` → proceed to Step 1.5. Concerns surface at approval gate (Step 1.6).
+- `overallVerdict: NEEDS_REVISION` → feed `criticalIssues` back to Architect (Step 1.55 re-run); Adversary re-evaluates.
+- `overallVerdict: FAIL` after max rounds → block, move task to `blocked` in ready.json with `blockReason: "adversary-max-rounds-fail"`, surface to user.
+
+Record telemetry (`gateId: logic-adversary`) on every round.
+
+When IGR flag is OFF: SKIPPED. Pipeline proceeds from Step 1.55 (or 1.45 if 1.55 also off) to Step 1.5.
 
 ### Step 1.5: Generate Specification
 
@@ -953,6 +1007,21 @@ Checks scoped by task type: component → naming/components/security. Utility �
 **Reuse candidate check** (AI-as-Judge): Standards gate returns similar items from all registries. AI reasons about PURPOSE overlap (not just name). If purpose overlaps → ask user (use existing / extend / create new). If purpose clearly differs → proceed silently.
 
 If violations found: fix, re-run, only proceed when all pass. Violations auto-recorded to `feedback-patterns.md`; 3+ occurrences → promoted to `decisions.md` (project-level) or fixed in WogiFlow base code (product-level). See `/wogi-decide` Step 0.5 for product vs project classification.
+
+### Step 3.9: Completion Truth Gate (when `config.intentGroundedReasoning.enabled` and gate listed in `qualityGates`)
+
+**Conditional** — runs when `completionTruth` appears in `config.qualityGates.<taskType>.require`. The gate is registered in `GATE_REGISTRY` as part of IGR Story 6; adding it to the task-type gate list is the enable switch per task type.
+
+Audits every claimed-done acceptance criterion against tier-classified evidence stored on durable-session steps (`step.verificationProof`). When evidence is below `config.intentGroundedReasoning.completionTruthGate.minTierForDone` (default Tier 3 — INTERACTIVE), the gate:
+- Returns `passed: false` (unless `blockFalseCompletion: false` soft mode)
+- Emits a language-downgraded claim replacing "done/completed/deployed" with "implemented (unverified)"
+- Records telemetry (`gateId: completion-truth-gate`) with per-criterion tier distribution
+
+Coexists with the existing `verificationProof` gate (coarser boolean predecessor). Both fire; Truth Gate's message supersedes when both produce non-PASS.
+
+See `scripts/flow-completion-truth-gate.js` and `.claude/docs/intent-grounded-reasoning.md`.
+
+When IGR flag is OFF OR `completionTruth` is not in the gate list: SKIPPED. Existing quality-gate behavior preserved exactly.
 
 ### Step 4: Quality Gates + Final Verification
 

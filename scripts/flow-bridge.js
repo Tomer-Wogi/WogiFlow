@@ -149,6 +149,12 @@ async function syncBridge(options = {}) {
       console.log(`  Folder:   ${result.cliFolder}`);
       console.log(`  Synced:   ${result.synced.join(', ')}`);
       console.log(`  Duration: ${result.duration}ms`);
+
+      // Track B B3 (2026-04-13): clear the template-change-pending marker
+      // since CLAUDE.md is now in sync with templates.
+      try {
+        require('./hooks/core/template-change-detector').clearPending();
+      } catch (_err) { /* best-effort */ }
     } else {
       warn('Bridge sync completed with issues');
       console.log('');

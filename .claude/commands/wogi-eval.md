@@ -127,10 +127,23 @@ In `config.json`:
 {
   "eval": {
     "judges": { "opus": 1, "sonnet": 2 },
-    "scoringDimensions": ["completeness", "accuracy", "workflowCompliance", "tokenEfficiency", "quality"],
+    "scoringDimensions": ["completeness", "accuracy", "workflowCompliance", "tokenEfficiency", "quality", "productCoherence"],
     "passingThreshold": 6
   }
 }
 ```
+
+## Dimension reference
+
+| Dimension | What the judge scores |
+|-----------|----------------------|
+| `completeness` | Were all acceptance criteria implemented? |
+| `accuracy` | Does the implementation match the spec exactly? |
+| `workflowCompliance` | Did the work follow WogiFlow rules (request log, registry update, etc.)? |
+| `tokenEfficiency` | Were tokens used efficiently — minimal redundancy, focused output? |
+| `quality` | Is the code well-structured, readable, maintainable? |
+| **`productCoherence`** (IGR) | Does this implementation make sense for the product's stated users and domain? Does it reuse existing concepts or introduce duplicates? Does it integrate with existing user journeys, or create orphans? Would a product manager look at this and say "yes, this fits"? — **Score 1–10. 10 = textbook product fit; 1 = solves wrong problem entirely.** Requires `intentGroundedReasoning.productFitEval.enabled` and product.md to be confirmed (not draft) for full-strength scoring. |
+
+When IGR is disabled, `productCoherence` is omitted from the scoring rubric and the judge falls back to the 5 pre-IGR dimensions.
 
 ARGUMENTS: $ARGUMENTS

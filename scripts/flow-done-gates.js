@@ -18,6 +18,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { PATHS } = require('./flow-utils');
 
+// IGR Stage 6 — completion truth gate (Story wf-76312197).
+// Registered below in GATE_REGISTRY; only runs when listed in config.qualityGates for a task type.
+// Fails safely if the module is missing (returns passed: true with a skip note).
+let completionTruthGate;
+try {
+  completionTruthGate = require('./flow-completion-truth-gate').completionTruthGate;
+} catch (_err) {
+  completionTruthGate = (ctx) => {
+    if (ctx?.color) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} completionTruth (module unavailable — skipping)`);
+    }
+    return { passed: true };
+  };
+}
+
 // v2.1 task enforcement
 const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
@@ -761,7 +776,17 @@ function verificationProofGate(ctx) {
       return { passed: true };
     }
 
-    const unverified = criteriaSteps.filter(s => !s.verificationProof);
+    // ARCH-005 fix (2026-04-13): use the same evidence normalizer as Truth Gate
+    // so verificationProofGate and completionTruthGate agree on what counts as
+    // "evidence present". The new tier-classified shape would otherwise be
+    // truthy-without-evidence on certain edge cases.
+    let getStepEvidence;
+    try {
+      ({ getStepEvidence } = require('./flow-completion-truth-gate'));
+    } catch (_err) {
+      getStepEvidence = (step) => ({ highestTier: step?.verificationProof ? 3 : -1 });
+    }
+    const unverified = criteriaSteps.filter((s) => getStepEvidence(s).highestTier < 0);
     const verified = criteriaSteps.length - unverified.length;
 
     if (unverified.length === 0) {
@@ -879,6 +904,8 @@ const GATE_REGISTRY = {
   apiVerification: verificationGate,
   testDiscovery: testDiscoveryGate,
   verificationProof: verificationProofGate,
+  // IGR Stage 6 — richer tier-aware successor to verificationProof; coexists.
+  completionTruth: completionTruthGate,
   // Workspace gates (conditional — auto-skip when not in workspace)
   workspaceCompliance: workspaceGate,
 };
@@ -895,11 +922,52 @@ function runGate(gateName, ctx) {
     return unknownGate(ctx, gateName);
   }
 
+  const start = Date.now();
   const result = handler(ctx, gateName);
 
   // Post-gate hooks (e.g., scenario verification after apiVerification)
   if (gateName === 'uiVerification' || gateName === 'apiVerification') {
     uiVerificationGateAfter(ctx, gateName);
+  }
+
+  // IGR Story 0 + 7 (ARCH-001 fix 2026-04-13): central telemetry for gates
+  // that do NOT emit their own. Gates with internal telemetry are listed in
+  // SELF_INSTRUMENTED_GATES below — skip dispatch-level emit for those to
+  // prevent double-counting in stats aggregation.
+  const SELF_INSTRUMENTED_GATES = new Set([
+    'standardsCompliance', // flow-standards-gate.js emits gateId: standards-gate
+    'completionTruth',      // flow-completion-truth-gate.js emits gateId: completion-truth-gate
+  ]);
+  if (!SELF_INSTRUMENTED_GATES.has(gateName)) {
+    try {
+      const gateTelemetry = require('./flow-gate-telemetry');
+      const verdict = result?.skipped
+        ? 'SKIP'
+        : result?.passed === false
+          ? 'FAIL'
+          : result?.subGates && Object.values(result.subGates).some((sg) => !sg.passed)
+            ? 'FAIL'
+            : 'PASS';
+      const findingSummary = [];
+      if (result?.errorOutput) findingSummary.push(String(result.errorOutput).slice(0, 200));
+      if (result?.subGates) {
+        for (const [name, sg] of Object.entries(result.subGates)) {
+          if (!sg.passed && sg.errorOutput) findingSummary.push(`${name}: ${String(sg.errorOutput).slice(0, 100)}`);
+        }
+      }
+      gateTelemetry.recordGateEvent({
+        gateId: 'dispatch:' + gateName,
+        gateVersion: '1.0',
+        taskId: ctx?.taskId || null,
+        verdict,
+        findingCount: findingSummary.length,
+        findingSummary,
+        durationMs: Date.now() - start,
+        metadata: { taskType: ctx?.normalizedType, dispatched: true },
+      });
+    } catch (_err) {
+      // Telemetry failure must never break a gate
+    }
   }
 
   return result;

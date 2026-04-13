@@ -2096,6 +2096,92 @@
         "orgId": { "type": ["string", "null"], "default": null }
       },
       "additionalProperties": true
+    },
+    "gateTelemetry": {
+      "type": "object",
+      "description": "IGR Story 0 — per-gate self-assessment log. See .claude/docs/gate-telemetry.md.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "rotateSizeBytes": { "type": "number", "default": 10485760 },
+        "crossReferenceOnCorrection": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": true
+    },
+    "intentGroundedReasoning": {
+      "type": "object",
+      "description": "IGR — Intent-Grounded Reasoning layer (epic wf-b00262b1). Master switch plus per-stage enable flags. Default ON (2026-04-13). Disable by setting enabled: false in config.json.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "intentBootstrap": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "autoRunOnFirstTask": { "type": "boolean", "default": true },
+            "confirmArtifacts": { "type": "string", "enum": ["prompt", "auto-confirm", "block-until-reviewed"], "default": "prompt" }
+          },
+          "additionalProperties": true
+        },
+        "intentFraming": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L2" }
+          },
+          "additionalProperties": true
+        },
+        "architectPass": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L1" },
+            "modelOverride": { "type": ["string", "null"], "default": null },
+            "readOnly": { "type": "boolean", "default": true }
+          },
+          "additionalProperties": true
+        },
+        "logicAdversary": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L1" },
+            "maxRounds": { "type": "number", "default": 3 },
+            "modelSeparation": { "type": "string", "default": "different-from-architect" },
+            "rubric": { "type": "string", "default": "logic-constitution-v1" },
+            "calibration": { "type": "boolean", "default": true },
+            "blockOnFail": { "type": "boolean", "default": true },
+            "concernHandling": { "type": "string", "enum": ["surface-at-approval", "silent-log"], "default": "surface-at-approval" },
+            "ultrathinkAutoBump": { "type": "boolean", "default": true }
+          },
+          "additionalProperties": true
+        },
+        "sessionCorrections": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "autoDetect": { "type": "boolean", "default": true },
+            "promoteOnSessionEnd": { "type": "string", "default": "prompt-consolidated" }
+          },
+          "additionalProperties": true
+        },
+        "completionTruthGate": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "minTierForDone": { "type": "number", "minimum": 0, "maximum": 4, "default": 3 },
+            "blockFalseCompletion": { "type": "boolean", "default": true }
+          },
+          "additionalProperties": true
+        },
+        "productFitEval": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "weight": { "type": "number", "default": 0.2 }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

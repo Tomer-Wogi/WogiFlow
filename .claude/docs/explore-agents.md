@@ -224,6 +224,55 @@ Return:
 
 **CRITICAL**: If 5+ BREAKING consumers found, spec MUST include migration plan. Implementation is BLOCKED without it.
 
+## Agent 7: Intent & Domain Analyst (IGR — CONDITIONAL)
+
+**Conditional**: Launched ONLY when `config.intentGroundedReasoning.enabled === true`. When IGR is disabled, this agent is not spawned — the explore phase runs with 6 agents as before.
+
+**Story**: wf-b00262b1 (IGR) — per approved spec §2.2 Stage 7.
+
+Launch as `Agent(subagent_type=Explore)` (local only). Addresses the research finding that zero of the six original explore agents reason about **product intent** — they cover code structure, best practices, risks, standards, and blast radius, but not "does this task make sense for this product's users?"
+
+Trigger: L1+ tasks when IGR is enabled. L2+ tasks with `ultrathink` keyword (Adversary auto-bump rule) also invoke this agent.
+
+```
+Analyze intent & domain fit for task: "[TASK_TITLE]"
+Task description: [TASK_DESCRIPTION]
+
+Inputs available to you (read these if they exist):
+- .workflow/state/product.md (product vision, target users, non-goals)
+- .workflow/state/domain-model.md (entities, relationships, lifecycle states)
+- .workflow/state/glossary.md (terms of art + Trap Zone for ambiguous terms)
+- .workflow/state/user-journeys.md (top user flows)
+- .workflow/state/session-corrections.json (corrections the user made earlier in this session)
+- .workflow/state/framing/{taskId}.md (Framing Artifact from Stage 2, if present)
+
+You MUST answer these questions before implementation proceeds:
+
+1. Which product concepts does this task touch? Name them.
+2. Which user journeys does this task affect? If none, why?
+3. Are any Trap-Zone terms from glossary.md present in the task description? For each, resolve which meaning applies in THIS context.
+4. Does this task align with product.md's non-goals? If it violates one, FLAG it.
+5. Does this task duplicate or extend existing functionality? List reuse candidates from app-map/function-map/api-map.
+6. Are there any prior-session corrections from session-corrections.json that apply to this task?
+7. Is the task's scope consistent with the product's current phase (MVP vs post-MVP)?
+
+Return a structured report:
+- **Intent-fit verdict**: ALIGNED | PARTIAL | MISALIGNED | UNCERTAIN (with reason)
+- **Concepts touched**: [list]
+- **Journeys affected**: [list]
+- **Trap-zone resolutions**: [term → resolved meaning]
+- **Non-goal violations**: [list or "none"]
+- **Reuse candidates**: [name + path]
+- **Applicable session corrections**: [list]
+- **Degraded-mode notes**: which artifacts were missing (affects confidence)
+
+Do NOT propose code. Do NOT list file paths for implementation. Your job is product-intent analysis only. The Architect Pass (Stage 3) will consume your report along with the Framing Artifact to produce the plan.
+```
+
+**Graceful fallback**: If ALL 4 intent artifacts are missing (unbootstrapped project), Agent 7 still runs but operates in degraded mode — reports "intent artifacts unavailable, analyzing from task description + decisions.md alone" and recommends running `flow intent bootstrap`.
+
+**Constraint**: READ-ONLY. Same as Agents 1–6. Tools: Glob, Grep, Read, WebSearch, WebFetch. NO Edit, Write, or code-producing tools.
+
 **Blast-radius artifact**: Results are persisted to `.workflow/state/blast-radius-{taskId}.json` for use by downstream gates (context estimator, standards compliance, workspace dispatch).
 
 ## MCP Capability Injection (Pre-Launch)

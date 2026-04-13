@@ -57,6 +57,18 @@ runHook('PostToolUse', async ({ parsedInput }) => {
     }
   }
 
+  // Track B B3 fix (2026-04-13): mark when templates are edited, so
+  // session-end and the next /wogi-start can remind to run flow bridge sync.
+  // Mechanical enforcement of self-maintenance.md §1.
+  try {
+    const { maybeMarkTemplateChange } = require('../../core/template-change-detector');
+    maybeMarkTemplateChange({ toolName, toolInput, toolResponse, filePath });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[template-change-detector] ${err.message}`);
+    }
+  }
+
   // v6.0: Detect task entering inProgress via ready.json edit
   if ((toolName === 'Edit' || toolName === 'Write') && filePath && filePath.endsWith('ready.json') && !toolFailed) {
     try {

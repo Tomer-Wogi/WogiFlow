@@ -26,6 +26,15 @@ const {
   TASK_CHECK_MAP
 } = require('./flow-standards-checker');
 
+// Gate telemetry — records every invocation for self-assessment.
+// Fire-and-forget; never throws. See scripts/flow-gate-telemetry.js.
+let gateTelemetry;
+try {
+  gateTelemetry = require('./flow-gate-telemetry');
+} catch (_err) {
+  gateTelemetry = { recordGateEvent: () => {} };
+}
+
 // Learning integration
 let standardsLearner;
 try {
@@ -162,9 +171,17 @@ function inferTaskType(taskType, changedFiles) {
 function runTaskStandardsCheck(taskContext, files, options = {}) {
   const config = getConfig();
   const standardsConfig = config.standardsCompliance || {};
+  const gateStartMs = Date.now();
 
   // Check if standards compliance is enabled
   if (standardsConfig.enabled === false) {
+    gateTelemetry.recordGateEvent({
+      gateId: 'standards-gate',
+      verdict: 'SKIP',
+      taskId: taskContext?.id,
+      metadata: { reason: 'disabled-in-config' },
+      durationMs: Date.now() - gateStartMs
+    });
     return {
       passed: true,
       blocked: false,
@@ -270,7 +287,7 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     }
   }
 
-  return {
+  const gateResult = {
     ...results,
     blocked: mode === 'block' && (shouldBlock || (constructorMockDrift?.driftDetected ?? false)),
     mode,
@@ -285,6 +302,33 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
     preventionPrompts,
     constructorMockDrift
   };
+
+  // Telemetry: record this gate invocation for self-assessment
+  // (recordGateEvent never throws; safe in any path)
+  const verdict = gateResult.blocked
+    ? 'FAIL'
+    : gateResult.violations.length > 0
+      ? 'CONCERN'
+      : 'PASS';
+  gateTelemetry.recordGateEvent({
+    gateId: 'standards-gate',
+    verdict,
+    taskId: taskContext?.id,
+    findingCount: gateResult.violations.length,
+    findingSummary: gateResult.violations
+      .slice(0, 10)
+      .map(v => `${v.type || 'violation'}: ${String(v.message || '').slice(0, 120)}`),
+    durationMs: Date.now() - gateStartMs,
+    metadata: {
+      taskType,
+      checksRun: gateResult.checksRun,
+      mode,
+      reuseCandidateCount: reuseCandidates.length,
+      constructorMockDrift: constructorMockDrift?.driftDetected ?? false
+    }
+  });
+
+  return gateResult;
 }
 
 /**
