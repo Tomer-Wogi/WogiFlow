@@ -2,46 +2,6 @@
   "version": 2,
   "prompts": [
     {
-      "timestamp": "2026-02-25T09:20:04.021Z",
-      "content": "I want you to review what we have in Mogi X-Attack review and make sure that nothing is missed and if we can improve it or if it's good enough as is. I'll explain. Now I have meetings with my employees. I can have a meeting with my designer. The meeting will take an hour. It could be 2000 rows of text if we transcript a meeting like that. And I will just go over the design and tell them what to do. And every task that I give, they will edit, edit, edit the comment, create a checklist, create just a list of to-dos. And in the end, if even if in 10 minutes I say like, let's do this button black and 10 minutes later, I'll say, you know what, let's do it red instead. They will know how to update the task. So it will not they will not use the previous statement, which I changed my mind on. And nothing gets missed. Same thing here. Like if I want it, like let's say I created a feature with you and I just want to update it. I just want to record myself reviewing everything. I can riff, I can change my mind, but I can also just give so many small comments. And then when I give it to AI, a lot of things get missed. So I need you to do something smart, like going over it and writing down every task, going over all the tasks and organizing them in a way that makes sense in order, combining tasks into like one story, if it makes sense. Then reviewing it. And then doing everything again, making sure nothing will miss. If we have orphan tasks, if we have anything. And in the end, if anything, something is not clear, ask the customer, like ask the user. But like this is what I expect. I just want to make sure that this is what the Wogextract review does. ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
-      "timestamp": "2026-02-25T09:30:49.919Z",
-      "content": "Yes, definitely. Everything needs to be done at one go without user intervention. The only thing that the user needs to do is clarify a question if the agent has any. We need to combine all of it to one flow that runs from start to finish. ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
-      "timestamp": "2026-02-25T09:34:29.473Z",
-      "content": "approved",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
-      "timestamp": "2026-02-25T09:46:24.431Z",
-      "content": "Sometimes I want to discuss ideas with you and I don't mind running it directly. Do you think it would be a benefit to add something like \"wogi brainstorm\" as a command that once you run you go into like a conversation plan mode where we can discuss everything and once we finish that discussion it sends it to \"wogi start\"? Do you think it's needed? ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
       "timestamp": "2026-02-25T09:49:15.281Z",
       "content": "So let's skip it \nWhat else do we have on the roadmap? ",
       "taskId": "wf-postinstall",
@@ -4924,6 +4884,42 @@
       "content": "We have a lot of things pending from the Wogi audit. Let's start working on everything. wogi-bulk it",
       "taskId": null,
       "taskTitle": null,
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-04-13T16:33:06.407Z",
+      "content": "Add a way for users to filter the customer list by status (active/inactive).\n",
+      "taskId": "wf-smoke-framing",
+      "taskTitle": "framing-pass:wf-smoke-framing",
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-04-13T16:34:15.517Z",
+      "content": "Add a way for users to filter the customer list by status.\n",
+      "taskId": "wf-smoke-framing",
+      "taskTitle": "framing-pass:wf-smoke-framing",
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-04-13T16:34:46.905Z",
+      "content": "Add a way for users to filter the customer list by status.\n",
+      "taskId": "wf-smoke",
+      "taskTitle": "framing-pass:wf-smoke",
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-04-13T16:35:14.920Z",
+      "content": "Add a way for users to filter the customer list by status.\n",
+      "taskId": "wf-smoke",
+      "taskTitle": "framing-pass:wf-smoke",
       "isRefinement": false,
       "sessionId": null,
       "source": "hook"
