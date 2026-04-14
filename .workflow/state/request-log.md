@@ -11,6 +11,14 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-275 | 2026-04-14
+**Type**: refactor
+**Tags**: #component:wogi-start #component:pre-tool-use #component:phase-read-gate
+**Task**: wf-4375a420
+**Request**: "Split wogi-start into phase-loaded router with hook enforcement"
+**Result**: Split 16,500-token wogi-start.md into ~3,400-token router + 5 phase files loaded on-demand. Created phase-read-gate.js that blocks Edit/Write/Bash until the phase instruction file is read. Wired into PreToolUse hook. Updated continuation prompt and CLAUDE.md template.
+**Files**: .claude/commands/wogi-start.md, .claude/commands/wogi-start-continuation.md, .claude/docs/phases/01-explore.md, .claude/docs/phases/02-spec.md, .claude/docs/phases/03-implement.md, .claude/docs/phases/04-verify.md, .claude/docs/phases/05-complete.md, scripts/hooks/core/phase-read-gate.js, scripts/hooks/entry/claude-code/pre-tool-use.js, .workflow/templates/partials/auto-features.hbs, CLAUDE.md
+
 ### R-274 | 2026-04-11
 **Type**: new
 **Tags**: #workspace #manager #enforcement #role-boundary

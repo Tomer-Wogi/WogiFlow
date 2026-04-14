@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+
+/**
+ * Wogi Flow - Phase-Read Gate (Core Module)
+ *
+ * Enforces that the AI reads the correct phase instruction file before
+ * using Edit/Write/Bash in that phase. This enables on-demand loading
+ * of phase instructions instead of loading the full wogi-start.md upfront.
+ *
+ * State file: .workflow/state/phase-reads.json
+ * Fail-open: If state file is missing/corrupt, allow the tool call.
+ *
+ * Two entry points:
+ *   recordPhaseRead(filePath)    — called when Read targets a phase file
+ *   checkPhaseReadGate(toolName) — called before Edit/Write/Bash
+ */
+
+const path = require('node:path');
+const fs = require('node:fs');
+const { PATHS, safeJsonParse } = require('../../flow-utils');
+
+const PHASE_READS_FILE = path.join(PATHS.state, 'phase-reads.json');
+const WORKFLOW_PHASE_FILE = path.join(PATHS.state, 'workflow-phase.json');
+
+// Maps workflow phases to required instruction files
+const PHASE_FILE_REGISTRY = {
+  exploring: '.claude/docs/phases/01-explore.md',
+  spec_review: '.claude/docs/phases/02-spec.md',
+  coding: '.claude/docs/phases/03-implement.md',
+  validating: '.claude/docs/phases/04-verify.md',
+  completing: '.claude/docs/phases/05-complete.md'
+};
+
+// Phases that don't require a phase file read
+const EXEMPT_PHASES = new Set(['idle', 'routing']);
+
+/**
+ * Record that a phase instruction file was read.
+ * Called from PreToolUse when toolName === 'Read'.
+ */
+function recordPhaseRead(filePath) {
+  if (!filePath || typeof filePath !== 'string') return;
+
+  // Normalize to relative path for matching
+  const relative = filePath.replace(/^.*?\.claude\//, '.claude/');
+
+  // Check if this file is a phase instruction file
+  let matchedPhase = null;
+  for (const [phase, requiredFile] of Object.entries(PHASE_FILE_REGISTRY)) {
+    if (relative === requiredFile || filePath.endsWith(requiredFile)) {
+      matchedPhase = phase;
+      break;
+    }
+  }
+
+  if (!matchedPhase) return;
+
+  try {
+    const existing = safeJsonParse(PHASE_READS_FILE, {});
+    if (!existing.reads) existing.reads = {};
+
+    existing.reads[matchedPhase] = {
+      file: PHASE_FILE_REGISTRY[matchedPhase],
+      at: new Date().toISOString()
+    };
+
+    fs.writeFileSync(PHASE_READS_FILE, JSON.stringify(existing, null, 2));
+
+    if (process.env.DEBUG) {
+      console.error(`[PhaseReadGate] Recorded read of ${PHASE_FILE_REGISTRY[matchedPhase]} for phase ${matchedPhase}`);
+    }
+  } catch (_err) {
+    // Fail-open: recording failure should not block anything
+    if (process.env.DEBUG) {
+      console.error(`[PhaseReadGate] Failed to record phase read: ${_err.message}`);
+    }
+  }
+}
+
+/**
+ * Check if the required phase file has been read before allowing Edit/Write/Bash.
+ * Returns { blocked: true/false, message?: string }
+ * @param {string} toolName
+ * @param {Object} [config] - Optional config object; if phase gate is disabled, skip
+ */
+function checkPhaseReadGate(toolName, config) {
+  try {
+    // Respect phase gate config — if phase gate is disabled, skip phase-read gate too
+    if (config?.hooks?.rules?.phaseGate?.enabled === false) {
+      return { blocked: false };
+    }
+
+    // Read current phase
+    const phaseData = safeJsonParse(WORKFLOW_PHASE_FILE, null);
+    if (!phaseData || !phaseData.phase) {
+      return { blocked: false }; // No phase data = fail-open
+    }
+
+    const currentPhase = phaseData.phase;
+
+    // Exempt phases don't need a file read
+    if (EXEMPT_PHASES.has(currentPhase)) {
+      return { blocked: false };
+    }
+
+    // Check if phase has a required file
+    const requiredFile = PHASE_FILE_REGISTRY[currentPhase];
+    if (!requiredFile) {
+      return { blocked: false }; // Unknown phase = fail-open
+    }
+
+    // Check if that file has been read
+    const readData = safeJsonParse(PHASE_READS_FILE, {});
+    const reads = readData.reads || {};
+
+    if (reads[currentPhase]) {
+      return { blocked: false }; // Phase file was read
+    }
+
+    // Phase file not read — block the tool
+    return {
+      blocked: true,
+      message: `Phase "${currentPhase}" requires reading the phase instruction file first.\n\n` +
+        `Please read: ${requiredFile}\n\n` +
+        `Phase files contain the step-by-step instructions for this phase of task execution. ` +
+        `The PreToolUse hook blocks ${toolName} until the phase file is loaded.`
+    };
+  } catch (_err) {
+    // Fail-open on any error
+    if (process.env.DEBUG) {
+      console.error(`[PhaseReadGate] Gate check error (fail-open): ${_err.message}`);
+    }
+    return { blocked: false };
+  }
+}
+
+/**
+ * Clear phase reads state (called when a new task starts).
+ */
+function clearPhaseReads() {
+  try {
+    fs.writeFileSync(PHASE_READS_FILE, JSON.stringify({ reads: {} }, null, 2));
+  } catch (_err) {
+    if (process.env.DEBUG) {
+      console.error(`[PhaseReadGate] Failed to clear phase reads: ${_err.message}`);
+    }
+  }
+}
+
+module.exports = {
+  recordPhaseRead,
+  checkPhaseReadGate,
+  clearPhaseReads,
+  PHASE_FILE_REGISTRY,
+  PHASE_READS_FILE
+};

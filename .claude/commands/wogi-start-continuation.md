@@ -74,6 +74,18 @@ Run `flow-spec-verifier.js verify`. Check `config.qualityGates` for task type:
 ## Sprint Reset (5+ criteria)
 At every 3rd criterion: commit progress, save checkpoint to `task-checkpoint.json`, compact context, resume from checkpoint.
 
+## Phase Execution (MANDATORY)
+
+Before executing ANY phase, you MUST Read the phase instruction file. The PreToolUse hook BLOCKS Edit/Write/Bash until the phase file is read.
+
+| Phase | File to Read |
+|-------|-------------|
+| exploring | `.claude/docs/phases/01-explore.md` |
+| spec_review | `.claude/docs/phases/02-spec.md` |
+| coding | `.claude/docs/phases/03-implement.md` |
+| validating | `.claude/docs/phases/04-verify.md` |
+| completing | `.claude/docs/phases/05-complete.md` |
+
 ## Rules
 - Validate after EVERY file edit
 - Re-read ALL criteria before marking done

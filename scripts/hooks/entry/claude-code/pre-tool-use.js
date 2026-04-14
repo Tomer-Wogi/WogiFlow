@@ -18,6 +18,13 @@ const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../core/routing-gate');
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { checkCommitLogGate } = require('../../core/commit-log-gate');
+// Phase-read gate: enforce reading phase instruction files before mutation tools
+let recordPhaseRead = () => {}, checkPhaseReadGate = () => ({ blocked: false });
+try {
+  const prg = require('../../core/phase-read-gate');
+  recordPhaseRead = prg.recordPhaseRead;
+  checkPhaseReadGate = prg.checkPhaseReadGate;
+} catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Phase-read gate not loaded: ${_err.message}`); }
 // F19: Lazy-load enforcement gates with try/catch to prevent one broken gate from crashing all hooks
 const _noop = () => ({ allowed: true, blocked: false });
 let checkDeployGate = _noop, checkWriteBlock = _noop;
@@ -109,6 +116,13 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
 
   let coreResult = { allowed: true, blocked: false };
 
+  // Point A: Phase-read recording — track when AI reads a phase instruction file
+  if (toolName === 'Read' && filePath) {
+    try {
+      recordPhaseRead(filePath);
+    } catch (_err) { /* fail-open */ }
+  }
+
   // Phase gate check
   const isReadTool = ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'].includes(toolName);
   const skipPhaseGateForSubagent = isSubagent && subagentReadOnly && isReadTool;
@@ -123,6 +137,28 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[Hook] Phase gate error (fail-open): ${err.message}`);
+    }
+  }
+
+  // Point B: Phase-read gate — block Edit/Write/Bash until phase file is read
+  if (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash') {
+    try {
+      const readGateResult = checkPhaseReadGate(toolName, config);
+      if (readGateResult.blocked) {
+        coreResult = {
+          allowed: false,
+          blocked: true,
+          reason: `Phase-read gate: phase file not read`,
+          message: readGateResult.message
+        };
+        const output = claudeCodeAdapter.transformResult('PreToolUse', coreResult);
+        return { __raw: true, ...output };
+      }
+    } catch (_err) {
+      // Fail-open: phase-read gate errors should not block normal work
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Phase-read gate error (fail-open): ${_err.message}`);
+      }
     }
   }
 
@@ -155,6 +191,8 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     const skillName = toolInput.skill;
     if (typeof skillName === 'string' && /^wogi-(bulk|start)$/i.test(skillName)) {
       markSkillPending(skillName.toLowerCase(), { args: toolInput.args });
+      // Clear phase reads on new task start (fresh slate for phase-read gate)
+      try { require('../../core/phase-read-gate').clearPhaseReads(); } catch (_err) { /* fail-open */ }
       if (process.env.DEBUG) {
         console.error(`[Hook] Marked skill ${skillName} as pending (via Skill tool)`);
       }

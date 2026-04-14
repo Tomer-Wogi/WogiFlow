@@ -4,4 +4,6 @@ These features run automatically during `/wogi-start`. Pipeline: Request Triage 
 
 Auto-features include: component/function/API reuse check, scope validation, post-edit validation (lint/typecheck), criteria completion check, integration wiring check, consumer impact analysis, and standards compliance check.
 
+Pipeline instructions are loaded per-phase from `.claude/docs/phases/`. The PreToolUse hook enforces that phase files are read before work begins in each phase.
+
 Full pipeline details and configuration options are in `.claude/commands/wogi-start.md`. Hook toggles are in `config.json → hooks.rules` (taskGating, scopeGating, validation, componentReuse).
