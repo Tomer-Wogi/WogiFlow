@@ -376,7 +376,18 @@
       "notes": "EPIC FULLY COMPLETE 2026-04-13. All 8 stories + fast-follows shipped. IGR is now ON BY DEFAULT (intentGroundedReasoning.enabled=true in config.schema.json). Disable via config.json. 100% Adversary R1 catch rate. Fast-follow items shipped: default-on flag, central gate-dispatch telemetry instrumentation, /wogi-gate-stats slash command, recordVerificationEvidence bridge (Step 3.58 → Truth Gate), CLAUDE.md template partial via flow bridge sync, productCoherence eval dimension + docs, flow-migrate-igr.js upgrade CLI. Items intentionally NOT shipped (release-time or out-of-scope): partner-versions.json sync (release-time per dual-repo rule), contract-check script (CI integration), Jaro-Winkler fuzzy match (exact match sufficient), test-mock noise filter, semantic discriminator-overload detection (structural detection works; documented as known limitation), formal unit test infrastructure (no test runner in project)."
     }
   ],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-6dbc0b2a",
+      "title": "Research Reasoning Gate — lightweight IGR for conversation/research mode",
+      "type": "feature",
+      "level": "L2",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-14T17:50:33.542Z",
+      "specPath": ".workflow/specs/wf-6dbc0b2a.md"
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
     {
