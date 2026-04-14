@@ -152,6 +152,84 @@ This is based on Anthropic's own harness design research: _"Separating the agent
 
 ---
 
+## Enforced Testing: Auto-Generated Verification Tests
+
+WogiFlow doesn't trust "it compiles" as proof that a feature works. For every task that changes code, the Runtime Verification Gate automatically generates and runs tests — frontend and backend — as part of the execution loop. This is ON by default, not opt-in.
+
+### How It Works
+
+For each acceptance criterion in the task spec:
+1. **Classify**: Is this a UI behavior, API behavior, or internal logic?
+2. **Generate**: Write a test that exercises the specific criterion
+3. **Implement**: Write the actual code
+4. **Run**: Execute the test — it must pass
+5. **If fail** → debug, fix, re-run (max 5 retries)
+6. **Persist**: Test stays in `tests/verification/` as a permanent regression guard
+
+Over time, this builds an automated test suite from the actual use cases that were implemented — not hypothetical test cases, but tests that directly verify the features your team shipped.
+
+### Frontend: Browser Verification
+
+When changed files include UI code (`.tsx`, `.jsx`, `.vue`, `.svelte`, `.css`), WogiFlow generates browser-level tests:
+
+**Method 1 — WebMCP (preferred)**: If a browser MCP server is connected, WogiFlow drives the actual browser:
+1. Navigate to the affected page
+2. Screenshot BEFORE the change
+3. Perform the user action (click, type, submit)
+4. Wait for async updates
+5. Screenshot AFTER
+6. Assert DOM state matches expected behavior
+7. For state mutations: reload the page and verify changes persisted
+
+**Method 2 — Playwright**: Auto-generates a Playwright test to `tests/verification/verify-{taskId}.spec.ts`. Persists as a CI-ready regression guard.
+
+**Method 3 — User Checklist (fallback)**: When no browser automation is available, generates a specific checklist and blocks task completion until the user replies "verified."
+
+**High-risk mutation detection**: When code contains `useMutation`, `invalidateQueries`, or `onMutate`, WogiFlow adds extra verification — wait 3 seconds after all criteria pass, reload the page, and confirm state survived the refetch cycle. This catches the #1 frontend false-completion: "it looked right but the server didn't persist it."
+
+### Backend: API Integration Tests
+
+When changed files include API code (`.controller.*`, `.service.*`, `.resolver.*`, `/routes/`, `/api/`, `.dto.*`, `.guard.*`, `.middleware.*`), WogiFlow generates integration tests:
+
+- Makes actual HTTP requests to the running dev server
+- Asserts status codes, response shapes, and field values
+- For mutations (POST/PUT/PATCH/DELETE): re-fetches the resource to verify persistence
+- Auth-protected endpoints get the auth token included automatically
+- Tests persist in `tests/verification/api-verify-{taskId}.test.js`
+
+### Fullstack: Boundary Verification
+
+When both UI and API files change, WogiFlow generates BOTH browser and API tests and validates the boundary:
+- The API test verifies the server accepts the payload shape the frontend sends
+- The browser test verifies the UI correctly displays the response shape the server returns
+- If either side fails → the frontend/backend contract is broken
+
+### Banned Verification Methods
+
+WogiFlow explicitly bans methods that give false confidence for UI tasks:
+
+| Banned Method | Why It's Insufficient |
+|---|---|
+| `tsc --noEmit` passes | Type-correct code can have wrong runtime behavior |
+| `vite build` succeeds | Build success says nothing about UX |
+| `grep` deployed bundle | Function may exist but never execute |
+| "I read the code and it's correct" | Author is the worst judge of own work |
+
+### The Repeat Failure Protocol
+
+When the same issue appears in 2+ consecutive attempts:
+
+| Strike | What Happens |
+|--------|-------------|
+| 1 | Normal fix + evidence log |
+| 2 | Mandatory root cause analysis BEFORE coding. Must change approach. Tier 3+ evidence required. |
+| 3 | Hard block: Cannot mark done without screenshot/console evidence. Must explain what's different this time. |
+| 4+ | Escalation: Acknowledge inability, suggest pair debugging with the developer. |
+
+This prevents the AI from trying the same broken approach in a loop — a pattern that wastes hours on real projects.
+
+---
+
 ## Hybrid Mode: Smart Model Routing
 
 Not every task needs the most expensive model. WogiFlow's hybrid mode lets Opus plan while cheaper models execute:
