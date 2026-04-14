@@ -175,6 +175,46 @@ Before running `/compact`:
 
 ---
 
+## Phase-Loaded Architecture (v2.15+)
+
+The `/wogi-start` pipeline instructions are split into 5 phase files loaded on-demand. This reduces prompt token consumption by ~79% for conversations and small tasks that never reach later phases.
+
+| Phase | File | Loaded when |
+|-------|------|-------------|
+| exploring | `.claude/docs/phases/01-explore.md` | Phase transitions to exploring |
+| spec_review | `.claude/docs/phases/02-spec.md` | Phase transitions to spec_review |
+| coding | `.claude/docs/phases/03-implement.md` | Phase transitions to coding |
+| validating | `.claude/docs/phases/04-verify.md` | Phase transitions to validating |
+| completing | `.claude/docs/phases/05-complete.md` | Phase transitions to completing |
+
+The phase-read gate (PreToolUse hook) blocks Edit/Write/Bash until the current phase's file is read.
+
+---
+
+## Sprint-Based Context Reset (v2.12+)
+
+For large tasks (5+ acceptance criteria), context degrades as implementation details from early criteria crowd out what matters for the current one.
+
+**How it works**: At every Nth criterion (default: 3):
+1. Commit progress: `git add -A && git commit -m "sprint: criteria 1-N of M complete"`
+2. Save checkpoint to `.workflow/state/task-checkpoint.json` (task ID, completed criteria, changed files)
+3. Compact context — the PostCompact hook restores task state automatically
+4. Resume from checkpoint with fresh context, reading the spec anew
+
+**Key difference from normal compaction**: Normal compaction summarizes the conversation. Sprint reset commits work, saves a structured checkpoint, and provides a clean slate. The next sprint reads the spec fresh rather than relying on a compressed summary.
+
+```json
+{
+  "sprintReset": {
+    "enabled": true,
+    "criteriaPerSprint": 3,
+    "minTaskCriteria": 5
+  }
+}
+```
+
+---
+
 ## Compaction Strategy
 
 ### Default Strategy

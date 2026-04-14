@@ -18,6 +18,7 @@ Safety features prevent:
 
 | Feature | Purpose |
 |---------|---------|
+| [Mechanical Gates](./mechanical-gates.md) | 12+ PreToolUse hook gates that physically block violations |
 | [Damage Control](./damage-control.md) | Pattern-based protection |
 | [Security Scanning](./security-scanning.md) | Pre-commit security checks |
 | [Checkpoint/Rollback](./checkpoint-rollback.md) | Recovery system |

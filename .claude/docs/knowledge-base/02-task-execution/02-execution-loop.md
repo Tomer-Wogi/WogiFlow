@@ -4,6 +4,14 @@ The execution loop is the core mechanism that ensures task completion. When enab
 
 ---
 
+## Phase-Loaded Architecture (v2.15+)
+
+The pipeline instructions are split into 5 phase files (`.claude/docs/phases/01-05`) loaded on-demand. The phase-read gate (PreToolUse hook) blocks Edit/Write/Bash until the current phase's instruction file is read. This saves ~79% of prompt tokens for conversations and small tasks.
+
+See [Context Management](../04-memory-context/context-management.md) for details on the phase architecture and sprint-based context reset.
+
+---
+
 ## Self-Completing Loops
 
 **The Problem**: Without enforcement, AI often stops when code "looks done" but hasn't been verified against all acceptance criteria.

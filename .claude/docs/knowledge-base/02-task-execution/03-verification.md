@@ -446,6 +446,101 @@ Cross-references spec deliverables against actual `git diff` to catch false "don
 
 ---
 
+## Skeptical Evaluator (v2.13+)
+
+After implementation, a separate sub-agent independently grades every acceptance criterion.
+
+**Why**: The same agent that wrote the code verifies its own work — this is "confident praise bias." Anthropic's harness research found that separating the implementer from the evaluator is a strong lever for quality.
+
+**How it works**:
+1. Spawn a code-reviewer sub-agent on a **different model** (e.g., Sonnet evaluates Opus's work)
+2. Feed it the spec + git diff — it reads the code cold with no implementation context
+3. For each criterion: grade PASS / PARTIAL / FAIL with file:line evidence
+4. If issues found → feed back to implementer → fix → re-evaluate (max 3 rounds)
+5. Calibrated with few-shot examples from `.workflow/state/eval-calibration.json`
+
+**Configuration**:
+```json
+{
+  "skepticalEvaluator": {
+    "enabled": true,
+    "maxIterations": 3,
+    "model": "sonnet",
+    "calibration": true,
+    "skipForL3": true
+  }
+}
+```
+
+---
+
+## Runtime Verification Gate (v2.13+)
+
+Auto-generates and runs tests for every task that changes code. ON by default.
+
+### Evidence Tiers
+
+| Tier | Name | Counts as Done? |
+|------|------|----------------|
+| 0 | STATIC (compiles, lints) | Never |
+| 1 | STRUCTURAL (file exists, imported) | Never |
+| 2 | OBSERVATIONAL (page loads, renders) | Display-only criteria |
+| 3 | INTERACTIVE (click → result persists) | Yes |
+| 4 | AUTOMATED (test passes) | Yes (strongest) |
+
+### Frontend: Browser tests generated when UI files change
+- **WebMCP** (preferred): Drives actual browser — screenshot before/after, assert DOM, verify persistence after reload
+- **Playwright**: Auto-generates test to `tests/verification/verify-{taskId}.spec.ts`
+- **User Checklist** (fallback): Blocks completion until user replies "verified"
+
+### Backend: API tests generated when API files change
+- HTTP integration tests with status, response shape, and persistence assertions
+- Tests persist in `tests/verification/api-verify-{taskId}.test.js`
+
+### Fullstack: Boundary verification
+- API test verifies server accepts the frontend's payload shape
+- Browser test verifies UI displays the server's response shape
+
+### Repeat Failure Protocol
+
+| Strike | Action |
+|--------|--------|
+| 1 | Normal fix |
+| 2 | Mandatory root cause analysis. Must change approach. |
+| 3 | Hard block: evidence required. Must explain what's different. |
+| 4+ | Escalation: suggest pair debugging with developer. |
+
+```json
+{
+  "runtimeVerification": {
+    "enabled": true,
+    "autoGenerateTests": true,
+    "persistTests": true,
+    "blockOnFailure": true
+  }
+}
+```
+
+---
+
+## Sprint-Based Context Reset (v2.12+)
+
+For large tasks (5+ criteria), every 3 criteria: commit progress, save checkpoint, compact context, resume with fresh context reading the spec anew.
+
+```json
+{
+  "sprintReset": { "enabled": true, "criteriaPerSprint": 3, "minTaskCriteria": 5 }
+}
+```
+
+---
+
+## Completion Truth Gate (IGR, v2.13+)
+
+When IGR is enabled, audits every "done" claim against evidence tiers. Claims with only Tier 0-1 evidence are downgraded to "implemented (unverified)" and task completion is blocked.
+
+---
+
 ## Verification Flow Summary
 
 ```
@@ -461,23 +556,28 @@ Task Completion Attempt
 │ 2.5 Git-Verified Claim Check               │
 │    - Spec promises match git diff?         │
 ├────────────────────────────────────────────┤
-│ 3. Integration Wiring Check                │
+│ 3. Skeptical Evaluator (L2+)               │
+│    - Separate agent grades each criterion  │
+├────────────────────────────────────────────┤
+│ 3.5 Runtime Verification Gate              │
+│    - Auto-generated frontend/backend tests │
+├────────────────────────────────────────────┤
+│ 4. Integration Wiring Check                │
 │    - Created files imported somewhere?     │
-│    - Components wired to parents?          │
 ├────────────────────────────────────────────┤
-│ 3.5 Cross-Artifact Consistency             │
-│    - Maps match codebase?                  │
+│ 4.5 Standards Compliance                   │
+│    - Naming, security, decisions.md rules  │
 ├────────────────────────────────────────────┤
-│ 4. Run Quality Gates                       │
+│ 5. Run Quality Gates                       │
 │    - tests, lint, typecheck               │
 ├────────────────────────────────────────────┤
-│ 5. Smoke Test (for refactors)              │
+│ 6. Completion Truth Gate (IGR)             │
+│    - Evidence tier >= 3 for "done" claims  │
+├────────────────────────────────────────────┤
+│ 7. Smoke Test (for refactors)              │
 │    - App starts without errors             │
 ├────────────────────────────────────────────┤
-│ 6. Run Regression Tests (if enabled)       │
-│    - Sample completed tasks               │
-├────────────────────────────────────────────┤
-│ 7. Security Scan (if enabled)              │
+│ 8. Security Scan (if enabled)              │
 └────────────────────────────────────────────┘
          ↓
     All passed? → Complete task

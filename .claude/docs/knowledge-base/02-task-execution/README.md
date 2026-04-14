@@ -182,6 +182,16 @@ Merge, PR, or discard decision workflow for branches.
 
 [Read more: Branch Finalization](./branch-finalization.md)
 
+### Workspace Mode
+Multi-repo orchestration with manager-worker architecture, boundary enforcement, and agent-to-agent communication.
+
+[Read more: Workspace Mode](./workspace-mode.md)
+
+### Decision Authority
+Automatic classification of which decisions the AI makes autonomously vs which need human approval.
+
+[Read more: Decision Authority](./decision-authority.md)
+
 ### External Integrations (Archived)
 Task import from Jira and Linear — currently archived, may return via WogiFlow Teams.
 

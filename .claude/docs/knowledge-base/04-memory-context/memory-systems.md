@@ -44,11 +44,22 @@ WogiFlow has multiple memory systems:
 
 ## Local Facts
 
-Stored in SQLite database:
+Stored in SQLite database with semantic search capabilities:
 
 ```
 .workflow/memory/local.db
 ```
+
+### Semantic Search (Embeddings)
+
+The memory database supports vector-based semantic search using HuggingFace Transformers:
+
+- **Embedding model**: `Xenova/all-MiniLM-L6-v2` (runs locally, no API calls)
+- **Similarity**: Cosine similarity between query embedding and stored fact embeddings
+- **Fallback**: When `@huggingface/transformers` is not installed, falls back to text-based search
+- **Threshold**: Results below `0.1` similarity are filtered out
+
+This enables queries like "find decisions related to authentication" to match facts that don't contain the exact word "authentication" but are semantically related (e.g., "JWT tokens expire after 1 hour", "Use bcrypt for password hashing").
 
 ### Fact Structure
 
