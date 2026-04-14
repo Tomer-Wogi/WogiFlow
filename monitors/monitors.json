@@ -1,0 +1,10 @@
+{
+  "_comment": "WogiFlow background monitors manifest. Compatible with Claude Code 2.1.105+ plugin monitors API. These monitors auto-arm at session start when WogiFlow is installed as a plugin.",
+  "monitors": [
+    {
+      "name": "state-drift",
+      "command": "node scripts/flow-state-drift-detector.js watch --interval=30",
+      "description": "Monitors .workflow/state/ files for external modifications and reports drift"
+    }
+  ]
+}

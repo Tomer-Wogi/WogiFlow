@@ -28,6 +28,7 @@ const HOOK_TIMEOUTS = {
   USER_PROMPT_SUBMIT: 5,  // Implementation gate check
   PRE_TOOL_USE: 5,        // Pre-edit checks (task gate, component check)
   POST_TOOL_USE: 60,      // Validation (linting, type checking)
+  PRE_COMPACT: 5,         // Pre-compaction state save + block decision (Claude Code 2.1.105+)
   POST_COMPACT: 5,        // Post-compaction state recovery (Claude Code 2.1.76+)
   STOP: 5,                // Loop enforcement check
   SESSION_END: 10,        // Session cleanup/logging
@@ -57,6 +58,7 @@ const CLAUDE_CODE_EVENTS = [
   'InstructionsLoaded',   // Claude Code latest — fires when CLAUDE.md/.claude/rules loaded
   'PostCompact',          // Claude Code 2.1.76+ — fires after context compaction completes
   'TaskCreated',          // Claude Code 2.1.84+ — fires when a task is created via TaskCreate
+  'PreCompact',           // Claude Code 2.1.105+ — fires before context compaction, can block
 ];
 
 /**
@@ -205,6 +207,8 @@ class ClaudeCodeAdapter extends BaseAdapter {
         return this.transformWorktreeRemove(coreResult);
       case 'InstructionsLoaded':
         return this.transformInstructionsLoaded(coreResult);
+      case 'PreCompact':
+        return this.transformPreCompact(coreResult);
       case 'PostCompact':
         return this.transformPostCompact(coreResult);
       case 'TaskCreated':
@@ -558,6 +562,23 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
   }
 
   /**
+   * Transform PreCompact result (Claude Code 2.1.105+)
+   * Saves state before compaction and optionally blocks it.
+   *
+   * PreCompact hooks can block compaction by returning { decision: "block" }.
+   * The entry point handles __raw output for block decisions.
+   * This transform handles the allow case.
+   */
+  transformPreCompact(coreResult) {
+    // Block decisions are handled as __raw in the entry point
+    // This handles the allow path
+    return {
+      continue: true,
+      ...(coreResult.message && { systemMessage: coreResult.message })
+    };
+  }
+
+  /**
    * Transform PostCompact result (Claude Code 2.1.76+)
    * Re-injects critical state after context compaction.
    * Always non-blocking — informational only.
@@ -634,10 +655,14 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       hooks.PreToolUse = preToolUseMatchers;
     }
 
-    // PostToolUse hooks for validation + observation capture (all tools)
+    // PostToolUse hooks for validation (Edit/Write/Bash only)
+    // IMPORTANT: matcher MUST be present. Without it, PostToolUse fires on ALL tools
+    // (Read, Glob, Grep, WebSearch, etc.), adding hook overhead to every read operation
+    // with zero validation benefit. This was causing unnecessary token consumption
+    // in target projects where generateConfig() produces the settings.
     if (rules.validation?.enabled !== false) {
       hooks.PostToolUse = [{
-        // No matcher - fires for ALL tools so observation capture works universally
+        matcher: 'Edit|Write|Bash',
         hooks: [hookEntry('PostToolUse', 'post-tool-use.js', HOOK_TIMEOUTS.POST_TOOL_USE)]
       }];
     }
@@ -688,6 +713,13 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     if (rules.configChange?.enabled !== false) {
       hooks.ConfigChange = [{
         hooks: [hookEntry('ConfigChange', 'config-change.js', HOOK_TIMEOUTS.CONFIG_CHANGE)]
+      }];
+    }
+
+    // PreCompact hook — save state + block during critical phases (Claude Code 2.1.105+)
+    if (rules.preCompact?.enabled !== false) {
+      hooks.PreCompact = [{
+        hooks: [hookEntry('PreCompact', 'pre-compact.js', HOOK_TIMEOUTS.PRE_COMPACT)]
       }];
     }
 

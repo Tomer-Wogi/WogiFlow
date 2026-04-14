@@ -158,6 +158,40 @@ function detectNativeWorktree(cwd = process.cwd()) {
   return { isNative: false, path: null };
 }
 
+/**
+ * Find an existing WogiFlow worktree for a task.
+ * Used for task resumption — if a worktree from a previous session still exists,
+ * we can re-enter it instead of creating a new one.
+ *
+ * Claude Code 2.1.105+: EnterWorktree tool now accepts a `path` parameter
+ * to switch into an existing worktree. This function finds the worktree
+ * so the AI can use EnterWorktree({ path }) to re-enter it.
+ *
+ * @param {string} taskId - Task identifier to find worktree for
+ * @param {string} [repoRoot] - Repository root
+ * @returns {{ found: boolean, worktree: Object|null, enterPath: string|null }}
+ */
+function findExistingWorktree(taskId, repoRoot = process.cwd()) {
+  const worktrees = listWorktrees(repoRoot);
+  const sanitizedTaskId = taskId.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+
+  // Find worktree matching this task (branch name contains the sanitized task ID)
+  const match = worktrees.find(wt =>
+    wt.branchName && wt.branchName.includes(sanitizedTaskId)
+  );
+
+  if (match && match.path && fs.existsSync(match.path)) {
+    return {
+      found: true,
+      worktree: match,
+      // The path to pass to EnterWorktree tool (Claude Code 2.1.105+)
+      enterPath: match.path
+    };
+  }
+
+  return { found: false, worktree: null, enterPath: null };
+}
+
 async function createWorktree(options = {}) {
   const {
     taskId = 'unnamed-task',
@@ -430,6 +464,7 @@ module.exports = {
   listWorktrees,
   cleanupStaleWorktrees,
   runInWorktree,
+  findExistingWorktree,
 
   // Helpers
   isGitRepo,
@@ -490,6 +525,27 @@ if (require.main === module) {
         break;
       }
 
+      case 'find': {
+        const findTaskId = args[1];
+        if (!findTaskId) {
+          console.error('Usage: flow-worktree.js find <taskId>');
+          process.exit(1);
+        }
+        const findResult = findExistingWorktree(findTaskId);
+        if (findResult.found) {
+          console.log(JSON.stringify({
+            found: true,
+            path: findResult.enterPath,
+            branch: findResult.worktree.branchName,
+            taskId: findResult.worktree.taskId,
+            createdAt: findResult.worktree.createdAt
+          }, null, 2));
+        } else {
+          console.log(JSON.stringify({ found: false }));
+        }
+        break;
+      }
+
       case 'discard': {
         const branchName = args[1];
         if (!branchName) {
@@ -516,12 +572,14 @@ Usage:
 
 Commands:
   list              List all active wogi worktrees
+  find <taskId>     Find existing worktree for a task (for EnterWorktree path resume)
   cleanup           Remove stale worktrees (>24h old)
   create [taskId]   Create a new worktree for testing
   discard <branch>  Discard a specific worktree
 
 Examples:
   node flow-worktree.js list
+  node flow-worktree.js find wf-bc5b7480
   node flow-worktree.js create TASK-123
   node flow-worktree.js cleanup
 `);

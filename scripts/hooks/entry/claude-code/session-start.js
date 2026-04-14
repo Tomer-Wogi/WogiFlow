@@ -286,5 +286,22 @@ runHook('SessionStart', async ({ parsedInput }) => {
     }
   }
 
+  // State file drift detection (Claude Code 2.1.105+ — also works on older versions)
+  // Detects when .workflow/state/ files were modified externally between sessions
+  try {
+    const { detectDrift, saveSnapshot, formatDriftReport } = require('../../../flow-state-drift-detector');
+    const driftResult = detectDrift();
+    if (driftResult.hasDrift && coreResult && coreResult.context) {
+      coreResult.context.stateDriftWarning = formatDriftReport(driftResult);
+    }
+    // Always save a fresh snapshot at session start for next comparison
+    saveSnapshot();
+  } catch (_err) {
+    // State drift detection failure is non-fatal
+    if (process.env.DEBUG) {
+      console.error(`[session-start] State drift detection failed: ${_err.message}`);
+    }
+  }
+
   return coreResult;
 }, { failMode: 'warn' });

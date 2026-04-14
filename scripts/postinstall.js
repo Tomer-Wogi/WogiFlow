@@ -271,6 +271,8 @@ const HOOK_VERSION_MAP = {
   TaskCreated: { major: 2, minor: 1, patch: 84 },
   // Hooks added in 2.1.88+
   PermissionDenied: { major: 2, minor: 1, patch: 88 },
+  // Hooks added in 2.1.105+
+  PreCompact: { major: 2, minor: 1, patch: 105 },
 };
 
 /**
@@ -367,6 +369,11 @@ function injectDynamicHooks(settings, ccVersion) {
       name: 'PermissionDenied',
       minVersion: { major: 2, minor: 1, patch: 88 },
       config: [{ hooks: [{ type: 'command', command: 'node scripts/hooks/entry/claude-code/permission-denied.js', timeout: 5 }] }]
+    },
+    {
+      name: 'PreCompact',
+      minVersion: { major: 2, minor: 1, patch: 105 },
+      config: [{ hooks: [{ type: 'command', command: 'node scripts/hooks/entry/claude-code/pre-compact.js', timeout: 5 }] }]
     }
   ];
 

@@ -1,6 +1,7 @@
 ---
-alwaysApply: true
-description: "Security patterns for file operations, JSON parsing, and path handling"
+alwaysApply: false
+description: "Security patterns for file operations, JSON parsing, template safety, and path handling. Load when editing JS/TS files, scripts, or reviewing security."
+globs: "**/*.{js,ts,mjs,cjs,jsx,tsx}"
 ---
 
 # Security Patterns
