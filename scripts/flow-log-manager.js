@@ -30,7 +30,8 @@ const {
   fileExists,
   dirExists,
   countRequestLogEntries,
-  printHeader
+  printHeader,
+  getTodayDate
 } = require('./flow-utils');
 
 // v9.0: Memory database for queryable log storage

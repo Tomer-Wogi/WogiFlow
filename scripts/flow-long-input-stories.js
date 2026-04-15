@@ -2150,7 +2150,7 @@ function cleanupTempFiles(digestId) {
       if (active && active.session?.digest_id === digestId) {
         try {
           fs.unlinkSync(activeFile);
-        } catch (_unlinkErr) {
+        } catch (_err) {
           // Ignore errors unlinking active file - main cleanup succeeded
         }
       }

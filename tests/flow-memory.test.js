@@ -33,7 +33,7 @@ function backupTagsFile() {
 
 function restoreTagsFile(contents) {
   if (contents === null) {
-    try { fs.unlinkSync(TAGS_FILE); } catch (_e) {}
+    try { fs.unlinkSync(TAGS_FILE); } catch (_err) {}
   } else {
     fs.writeFileSync(TAGS_FILE, contents);
   }

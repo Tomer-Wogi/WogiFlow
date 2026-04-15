@@ -29,7 +29,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { PATHS } = require('./flow-utils');
+const { PATHS, getTodayDate } = require('./flow-utils');
 
 class BaseWorkflowStep {
   /**

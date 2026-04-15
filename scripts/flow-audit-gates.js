@@ -29,7 +29,7 @@
 
 'use strict';
 
-const { execFileSync } = require('node:child_process');
+const { execFileSync, execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 

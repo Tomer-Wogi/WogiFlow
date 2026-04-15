@@ -170,7 +170,7 @@ function computeSourceHash(changedFiles) {
     // Fallback: use git HEAD (less precise but functional)
     try {
       return execSync('git rev-parse HEAD', { encoding: 'utf-8', cwd: PATHS.root }).trim();
-    } catch (_err2) {
+    } catch (_err) {
       return 'unknown';
     }
   }

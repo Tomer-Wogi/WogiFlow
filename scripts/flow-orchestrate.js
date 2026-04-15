@@ -587,7 +587,7 @@ function logTokenMetrics(plan, executionResult, complexity) {
   const metricsPath = path.join(PATHS.state, 'hybrid-metrics.json');
 
   // Load existing metrics or create new array
-  const metrics = readJson(metricsPath, []);
+  let metrics = readJson(metricsPath, []);
 
   // Add new metric entry
   const entry = {
@@ -1436,7 +1436,7 @@ class Orchestrator {
               taskType: result.taskType || taskType,
               success: true
             });
-          } catch (profileErr) {
+          } catch (_err) {
             // Non-critical, continue
           }
 
@@ -1510,7 +1510,7 @@ class Orchestrator {
               log('dim', `   📚 Applied learning from failure: ${failureLearning.learning?.category || 'unknown'}`);
               continue; // Skip default refinement, use learning-based enhancement
             }
-          } catch (learnErr) {
+          } catch (_err) {
             // Non-critical, fall back to standard refinement
           }
 

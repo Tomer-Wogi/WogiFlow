@@ -16,15 +16,6 @@ const {
   THRESHOLDS,
   BACKOFF,
   KNOWN_CONFIG_KEYS,
-  // Legacy exports
-  DEFAULT_COMMAND_TIMEOUT_MS,
-  QUICK_COMMAND_TIMEOUT_MS,
-  LOCK_STALE_THRESHOLD_MS,
-  CLEANUP_LOCK_STALE_MS,
-  LOCK_RETRY_DELAY_MS,
-  LOCK_MAX_RETRIES,
-  MAX_SESSION_HISTORY,
-  MAX_WORKFLOW_ITERATIONS,
 } = require('../scripts/flow-constants');
 
 // ============================================================
@@ -208,40 +199,6 @@ describe('KNOWN_CONFIG_KEYS', () => {
   });
 });
 
-// ============================================================
-// Legacy exports (backward compatibility)
-// ============================================================
-
-describe('Legacy exports', () => {
-  it('DEFAULT_COMMAND_TIMEOUT_MS matches TIMEOUTS.DEFAULT_COMMAND', () => {
-    assert.equal(DEFAULT_COMMAND_TIMEOUT_MS, TIMEOUTS.DEFAULT_COMMAND);
-  });
-
-  it('QUICK_COMMAND_TIMEOUT_MS matches TIMEOUTS.QUICK_COMMAND', () => {
-    assert.equal(QUICK_COMMAND_TIMEOUT_MS, TIMEOUTS.QUICK_COMMAND);
-  });
-
-  it('LOCK_STALE_THRESHOLD_MS matches TIMEOUTS.LOCK_STALE', () => {
-    assert.equal(LOCK_STALE_THRESHOLD_MS, TIMEOUTS.LOCK_STALE);
-  });
-
-  it('CLEANUP_LOCK_STALE_MS matches TIMEOUTS.LOCK_CLEANUP_STALE', () => {
-    assert.equal(CLEANUP_LOCK_STALE_MS, TIMEOUTS.LOCK_CLEANUP_STALE);
-  });
-
-  it('LOCK_RETRY_DELAY_MS matches TIMEOUTS.LOCK_RETRY_DELAY', () => {
-    assert.equal(LOCK_RETRY_DELAY_MS, TIMEOUTS.LOCK_RETRY_DELAY);
-  });
-
-  it('LOCK_MAX_RETRIES matches LIMITS.LOCK_MAX_RETRIES', () => {
-    assert.equal(LOCK_MAX_RETRIES, LIMITS.LOCK_MAX_RETRIES);
-  });
-
-  it('MAX_SESSION_HISTORY matches LIMITS.MAX_SESSION_HISTORY', () => {
-    assert.equal(MAX_SESSION_HISTORY, LIMITS.MAX_SESSION_HISTORY);
-  });
-
-  it('MAX_WORKFLOW_ITERATIONS matches LIMITS.MAX_WORKFLOW_ITERATIONS', () => {
-    assert.equal(MAX_WORKFLOW_ITERATIONS, LIMITS.MAX_WORKFLOW_ITERATIONS);
-  });
-});
+// Legacy flat-name aliases (DEFAULT_COMMAND_TIMEOUT_MS, etc.) were removed
+// 2026-04-15 per audit finding arch-010. Their 8 tests here were removed with
+// the exports — callers use TIMEOUTS.X / LIMITS.X directly.

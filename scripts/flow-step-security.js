@@ -115,7 +115,7 @@ class SecurityStep extends BaseWorkflowStep {
                 });
               }
             }
-          } catch (_parseError) {
+          } catch (_err) {
             // Ignore parse errors
           }
         }

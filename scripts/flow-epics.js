@@ -28,7 +28,8 @@ const {
   info,
   findAllWithParent,
   normalizeTask,
-  generateEpicId
+  generateEpicId,
+  getReadyData,
 } = require('./flow-utils');
 
 // ============================================================
@@ -78,16 +79,9 @@ function saveEpicsState(state) {
  * Load ready.json for task data
  * @returns {Object} Ready data
  */
-function loadReadyData() {
-  if (!fs.existsSync(PATHS.ready)) {
-    return { ready: [], inProgress: [], recentlyCompleted: [] };
-  }
-  try {
-    return readJson(PATHS.ready) || { ready: [], inProgress: [], recentlyCompleted: [] };
-  } catch (_err) {
-    return { ready: [], inProgress: [], recentlyCompleted: [] };
-  }
-}
+// loadReadyData replaced by canonical getReadyData from flow-utils (wf-7072d3ac / dup-007).
+// Kept as a thin shim for backward-compat of the module export at L812.
+function loadReadyData() { return getReadyData(); }
 
 // ============================================================
 // Epic File Operations

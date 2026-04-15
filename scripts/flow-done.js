@@ -15,7 +15,7 @@ const execSync = (...args) => _cp.execSync(...args);
 const fs = require('node:fs');
 const path = require('node:path');
 const _flowUtils = require('./flow-utils');
-const { PATHS, moveTaskAsync, findTask, writeJson, color, success, warn, error } = _flowUtils;
+const { PATHS, moveTaskAsync, findTask, writeJson, color, success, warn, error, getTodayDate } = _flowUtils;
 // Indirect access for testable functions — tests can swap _io members
 const _io = {
   getConfig: _flowUtils.getConfig,
@@ -695,15 +695,15 @@ async function main() {
                 try {
                   const { writeToFeedbackPatterns: writeFP } = require('./flow-learning-orchestrator');
                   writeFP({ content: newContent, entryText: 'high-refinement-request', caller: 'flow-done/highRefinementFlag' }).catch(() => {});
-                } catch (_orcErr) { /* fallback: already computed newContent but orchestrator unavailable */ }
+                } catch (_err) { /* fallback: already computed newContent but orchestrator unavailable */ }
               }
             }
           }
 
           warn(`High-refinement pattern flagged (${learningResult.refinementCount} clarifications needed)`);
           console.log(color('dim', 'Consider adding clearer guidance to decisions.md'));
-        } catch (flagErr) {
-          if (process.env.DEBUG) console.error(`[DEBUG] High-refinement flagging: ${flagErr.message}`);
+        } catch (err) {
+          if (process.env.DEBUG) console.error(`[DEBUG] High-refinement flagging: ${err.message}`);
         }
       }
 

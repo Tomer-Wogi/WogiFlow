@@ -25,7 +25,8 @@ const {
   parseFlags,
   getConfig,
   isPathWithinProject,
-  escapeRegex
+  escapeRegex,
+  getTodayDate
 } = require('./flow-utils');
 const { success, warn, error, info, printHeader } = require('./flow-output');
 

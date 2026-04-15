@@ -113,7 +113,11 @@ function writeConfig(config) {
  * @returns {Object} Models config or empty structure
  */
 function getModelsConfig() {
-  const config = readConfig();
+  // Use canonical getConfig() for reads — readConfig() is kept only for
+  // read-modify-write paths (updateModelsConfig, migrateOldConfig) where a
+  // cached reference would cause mutation bugs. (wf-7072d3ac / dup-006)
+  const { getConfig } = require('./flow-config-loader');
+  const config = getConfig();
   return config.models || { providers: {}, defaults: {} };
 }
 

@@ -42,16 +42,16 @@ function writeRun(name, payload) {
 
 function clearTestRuns(files) {
   for (const f of files) {
-    try { fs.unlinkSync(f); } catch (_e) {}
+    try { fs.unlinkSync(f); } catch (_err) {}
   }
 }
 
 function clearPatterns() {
-  try { fs.unlinkSync(PATTERNS_FILE); } catch (_e) {}
+  try { fs.unlinkSync(PATTERNS_FILE); } catch (_err) {}
 }
 
 function clearPending() {
-  try { fs.unlinkSync(PENDING_FILE); } catch (_e) {}
+  try { fs.unlinkSync(PENDING_FILE); } catch (_err) {}
 }
 
 describe('getPromotionConfig — defaults', () => {

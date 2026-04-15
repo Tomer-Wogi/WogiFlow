@@ -39,7 +39,8 @@ const {
   error,
   parseFlags,
   outputJson,
-  safeJsonParse
+  safeJsonParse,
+  getTodayDate
 } = require('./flow-utils');
 
 const { getSectionsByPins, readIndex } = require('./flow-section-index');

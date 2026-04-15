@@ -141,13 +141,9 @@ function parseMarkdownSections(content) {
  * @param {string} title - Section title
  * @returns {string} - Slugified filename
  */
-function slugify(title) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .substring(0, 50); // Limit length
-}
+// Local slugify removed in favor of canonical flow-output slugify (wf-7072d3ac).
+const { slugify: _slugify } = require('./flow-output');
+const slugify = (title) => _slugify(title, { maxLength: 50 });
 
 /**
  * Determine path scope for a section based on title keywords

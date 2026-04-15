@@ -80,6 +80,13 @@ WogiFlow accumulates valuable learnings locally (model adapter profiles, error r
 
 **Relation to Teams:** This system is distinct from Teams (which adds team-level sync, dashboards, paid features). Community Knowledge benefits all free users. The server infrastructure (API, DB, AI pipeline) becomes the foundation Teams Phase T1+ builds on.
 
+### Expand hook coverage (wf-e9e31c7c follow-up) — starter tests shipped for pre-tool-helpers + bugfix-scope-gate (31 tests). Remaining gates with 0 coverage: routing-gate, phase-read-gate, component-check, deploy-gate, strike-gate, scope-mutation-gate, git-safety-gate, manager-boundary-gate, todowrite-gate, implementation-gate, loop-check, observation-capture, research-gate. Unblocks wf-255e541a, wf-c1e892fa, wf-0f2e0f16, wf-c0d6b0c5, wf-33a0aa88, wf-d0937c83.
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+---
+
 ---
 
 #### Phase C1: Community Knowledge Foundation (2 sprints)
@@ -507,6 +514,47 @@ These are backwards-compatible. Free users see no change. `flow login` is the on
 **Status:** Absorbed into WogiFlow for Teams → Phase T5
 **Created:** 2026-01-13
 **Notes:** Marketplace functionality is now part of the Teams product (Phase T5: Marketplace & Global Knowledge). Includes verified publisher program, ratings, version pinning, and revenue share model.
+
+### Branch review — 3 stale remote branches (td-f09 from 2026-04-15 audit)
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+**Assumes:**
+- origin/team-features-backup is already merged (confirmed safe to delete); origin/feature/community-knowledge + origin/teams-removal need product decisions
+
+**Key Files:**
+- git branch -r
+
+### mkdirSync → ensureDir migration (remaining ~95 sites across 19 files; dup-011, P2 follow-up from wf-ea121852 partial completion)
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+### 30000ms magic-number → QUICK_COMMAND_TIMEOUT_MS migration (dup-009, P2 follow-up from wf-ea121852 partial completion; ~15 sites)
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+### Wire phase-read-gate + routing-gate through hook-status aggregator cache (perf-003, perf-007) — requires verified sync between flag writes and aggregator updates; wf-7c36aaed partial left this as follow-up
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+### Full pre-tool-use.js decomposition (arch-001) — extract 480-line gate-orchestration body to scripts/hooks/core/pre-tool-orchestrator.js; blocked on wf-e9e31c7c (hook coverage) to de-risk. Partial done in wf-93b48ca1 (subagent-context + fast-path helpers extracted).
+
+**Status:** Deferred
+**Created:** 2026-04-15
+
+---
+
+---
+
+---
+
+---
+
+---
 
 ---
 

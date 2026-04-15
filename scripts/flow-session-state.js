@@ -117,10 +117,10 @@ function loadSessionState() {
       ...getDefaultState(),
       ...state
     };
-  } catch (parseError) {
+  } catch (err) {
     // Log in debug mode to help diagnose issues
     if (process.env.DEBUG) {
-      console.warn(`[DEBUG] Could not parse session state: ${parseError.message}`);
+      console.warn(`[DEBUG] Could not parse session state: ${err.message}`);
     }
     return getDefaultState();
   }

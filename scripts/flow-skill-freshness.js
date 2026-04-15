@@ -8,6 +8,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { getConfig } = require('./flow-config-loader');
+const { getTodayDate } = require('./flow-output');
 
 // ============================================
 // CONFIGURATION
@@ -15,8 +16,8 @@ const { getConfig } = require('./flow-config-loader');
 
 const DEFAULT_FRESHNESS_THRESHOLD_DAYS = 90;
 
-// Dangerous keys that could cause prototype pollution
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// Local DANGEROUS_KEYS consolidated to flow-io canonical (wf-2f6fbb12 / dup-002).
+const { DANGEROUS_KEYS } = require('./flow-io');
 
 // ============================================
 // FRESHNESS CHECKING
@@ -51,7 +52,7 @@ function parseFrontmatter(content) {
  * @returns {Array<{name: string, source: string, lastDocCheck: string|null, daysSinceCheck: number|null, isStale: boolean, prebuiltVersion: string|null}>}
  */
 function getSkillFreshnessReport(projectRoot) {
-  const config = loadConfig(projectRoot);
+  const config = getConfig();
   const threshold = config?.skills?.freshnessThreshold || DEFAULT_FRESHNESS_THRESHOLD_DAYS;
   const skillsDir = path.join(projectRoot, '.claude', 'skills');
 
@@ -160,9 +161,7 @@ function updateLastDocCheck(skillDir, date) {
 // CONFIG LOADING
 // ============================================
 
-function loadConfig(_projectRoot) {
-  return getConfig();
-}
+// loadConfig(_projectRoot) trivial wrapper removed — callers now use getConfig() directly (wf-7072d3ac / dup-001).
 
 // ============================================
 // CLI
@@ -197,7 +196,7 @@ function printFreshnessReport(report, threshold) {
 
 if (require.main === module) {
   const projectRoot = process.cwd();
-  const config = loadConfig(projectRoot);
+  const config = getConfig();
   const threshold = config?.skills?.freshnessThreshold || DEFAULT_FRESHNESS_THRESHOLD_DAYS;
 
   const args = process.argv.slice(2);

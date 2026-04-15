@@ -23,7 +23,8 @@ const {
   outputJson,
   success,
   error,
-  getConfig
+  getConfig,
+  getTodayDate
 } = require('./flow-utils');
 
 // Try to load session state for auto-detecting current task
@@ -31,9 +32,9 @@ let loadSessionState;
 try {
   const sessionModule = require('./flow-session-state');
   loadSessionState = sessionModule.loadSessionState;
-} catch (importError) {
+} catch (err) {
   if (process.env.DEBUG) {
-    console.warn(`[DEBUG] Could not load flow-session-state: ${importError.message}`);
+    console.warn(`[DEBUG] Could not load flow-session-state: ${err.message}`);
   }
   loadSessionState = () => ({});
 }

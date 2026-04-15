@@ -61,7 +61,8 @@ const CONCLUSION_KINDS = Object.freeze({
   },
 });
 
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// Local DANGEROUS_KEYS consolidated to flow-io canonical (wf-2f6fbb12 / dup-002).
+const { DANGEROUS_KEYS } = require('./flow-io');
 
 // Process-scoped cache — keyed by SHA-256 of normalized input.
 // Cleared on process exit; classification for a single `flow done` run hits this once.

@@ -38,6 +38,7 @@ const {
   printSection,
   estimateTokens, PATHS
 } = require('./flow-utils');
+const { TOKEN_ESTIMATION: { TOKENS_PER_LINE } } = require('./flow-tokens');
 
 // ============================================================
 // Constants

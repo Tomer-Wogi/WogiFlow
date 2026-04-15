@@ -7,7 +7,11 @@
  */
 
 const readline = require('node:readline/promises');
-const { colors } = require('./flow-utils');
+const { colors, getTodayDate } = require('./flow-utils');
+
+// ANSI escape prefix (was referenced as ESC without definition — latent
+// no-undef bug caught by eslint upgrade; wf-5a6df88a)
+const ESC = '\x1b';
 
 const symbols = {
   success: '✅',

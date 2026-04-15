@@ -66,7 +66,7 @@ async function runHook(eventName, handler, { failMode = 'silent', useStdoutWrite
       try {
         const { logHookError } = require('../../../flow-hook-errors');
         logHookError(eventName, err, { failMode: 'open', operation: eventName.toLowerCase() });
-      } catch (_logErr) {
+      } catch (_err) {
         console.error(`[WogiFlow] ${eventName} hook error: ${err.message}`);
       }
       write(JSON.stringify(errorOutput));

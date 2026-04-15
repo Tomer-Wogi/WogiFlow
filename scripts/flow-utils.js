@@ -21,8 +21,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const { execSync } = require('node:child_process');
 
 // ============================================================
 // Import from focused modules
@@ -34,12 +32,11 @@ const flowConfigLoader = require('./flow-config-loader');
 const flowTokens = require('./flow-tokens');
 const flowOutput = require('./flow-output');
 
-// Destructure commonly used imports for internal use in this file
-const { PATHS, PROJECT_ROOT, STATE_DIR } = flowPaths;
-const { readJson, writeJson, readFile, writeFile, fileExists, dirExists, safeJsonParse, acquireLock } = flowIO;
-const { getConfig, invalidateConfigCache } = flowConfigLoader;
-const { success, warn, error, info, color } = flowOutput;
-const { estimateComplexity } = flowTokens;
+// Destructure imports still used inside this file (ready.json ops only).
+// After wf-94cc3b72 decomposition, most helpers moved to focused modules.
+const { PATHS, STATE_DIR } = flowPaths;
+const { readJson, writeJson, dirExists } = flowIO;
+const { warn } = flowOutput;
 
 // ============================================================
 // Constants - Named values for magic numbers
@@ -111,242 +108,34 @@ function syncTaskStatusOnMove(task, toList) {
 }
 
 // ============================================================
-// Registry Discovery (v1.5.1 -- wf-927db36d)
+// Registry Discovery (extracted to flow-registries.js)
 // ============================================================
 
-const MANIFEST_PATH = path.join(STATE_DIR, 'registry-manifest.json');
-
-const DEFAULT_REGISTRIES = [
-  { id: 'components', name: 'Component Registry', mapFile: 'app-map.md', indexFile: 'component-index.json', category: 'code', type: 'components', active: true },
-  { id: 'functions', name: 'Function Registry', mapFile: 'function-map.md', indexFile: 'function-index.json', category: 'code', type: 'functions', active: true },
-  { id: 'apis', name: 'API Registry', mapFile: 'api-map.md', indexFile: 'api-index.json', category: 'code', type: 'apis', active: true }
-];
-
-/**
- * Get all active registries from the manifest (with fallback to defaults).
- * Lightweight -- reads the manifest file directly without requiring flow-registry-manager.
- * @returns {Array<{id, name, mapFile, indexFile, category, type, active}>}
- */
-function getActiveRegistries() {
-  if (fs.existsSync(MANIFEST_PATH)) {
-    try {
-      const manifest = safeJsonParse(MANIFEST_PATH, null);
-      if (manifest) {
-        const active = (manifest.registries || []).filter(r => r.active);
-        if (active.length > 0) return active;
-      }
-    } catch (err) {
-      // Fall through to defaults
-    }
-  }
-  return DEFAULT_REGISTRIES;
-}
-
-/**
- * Get paths for all active registry map and index files.
- * @returns {{ maps: string[], indexes: string[], mapsByCategory: Object }}
- */
-function getRegistryPaths() {
-  const registries = getActiveRegistries();
-  const maps = registries.map(r => path.join(STATE_DIR, r.mapFile));
-  const indexes = registries.map(r => path.join(STATE_DIR, r.indexFile));
-
-  const mapsByCategory = {};
-  for (const r of registries) {
-    if (!mapsByCategory[r.category]) mapsByCategory[r.category] = [];
-    mapsByCategory[r.category].push({
-      id: r.id,
-      mapPath: path.join(STATE_DIR, r.mapFile),
-      indexPath: path.join(STATE_DIR, r.indexFile)
-    });
-  }
-
-  return { maps, indexes, mapsByCategory, registries };
-}
-
-/**
- * Get map file names only (for copying to worktrees, etc.).
- * @returns {string[]} e.g. ['app-map.md', 'function-map.md', 'api-map.md', 'schema-map.md']
- */
-function getRegistryMapFiles() {
-  return getActiveRegistries().map(r => r.mapFile);
-}
+const {
+  getActiveRegistries,
+  getRegistryPaths,
+  getRegistryMapFiles,
+} = require('./flow-registries');
 
 // ============================================================
-// Task ID Generation (hash-based IDs)
+// Task ID Generation (extracted to flow-id.js)
 // ============================================================
 
-/**
- * Generate a hash-based ID with a given prefix
- * Uses SHA256 hash of seed + title + timestamp for collision resistance.
- *
- * @param {string} prefix - ID prefix (e.g., 'wf', 'ep', 'ft', 'pl')
- * @param {string} seed - Seed string for the hash (e.g., '', 'epic-', 'feature-')
- * @param {string} title - Title to include in hash input
- * @returns {string} ID in format prefix-XXXXXXXX
- */
-function generateHashId(prefix, seed, title) {
-  const randomHex = crypto.randomBytes(8).toString('hex');
-  const input = `${seed}${title}${Date.now()}${randomHex}`;
-  const hash = crypto.createHash('sha256').update(input).digest('hex').slice(0, 8);
-  return `${prefix}-${hash}`;
-}
-
-/**
- * Generate a hash-based task ID
- * Format: wf-XXXXXXXX (8-char hex hash)
- *
- * @param {string} title - Task title
- * @returns {string} Task ID in format wf-XXXXXXXX
- *
- * @example
- * generateTaskId('Fix login bug') // => 'wf-a1b2c3d4'
- */
-function generateTaskId(title) {
-  return generateHashId('wf', '', title);
-}
-
-/**
- * Generate a hash-based epic ID
- * Format: ep-XXXXXXXX (8-char hex hash)
- *
- * @param {string} title - Epic title
- * @returns {string} Epic ID in format ep-XXXXXXXX
- */
-function generateEpicId(title) {
-  return generateHashId('ep', 'epic-', title);
-}
-
-/**
- * Generate a hash-based feature ID
- * Format: ft-XXXXXXXX (8-char hex hash)
- *
- * @param {string} title - Feature title
- * @returns {string} Feature ID in format ft-XXXXXXXX
- */
-function generateFeatureId(title) {
-  return generateHashId('ft', 'feature-', title);
-}
-
-/**
- * Generate a hash-based plan ID
- * Format: pl-XXXXXXXX (8-char hex hash)
- *
- * @param {string} title - Plan title
- * @returns {string} Plan ID in format pl-XXXXXXXX
- */
-function generatePlanId(title) {
-  return generateHashId('pl', 'plan-', title);
-}
-
-/**
- * Check if a string is a valid task ID (old or new format)
- * @param {string} id - ID to validate
- * @returns {{ valid: boolean, format: 'hash' | 'legacy' | null }}
- */
-function validateTaskId(id) {
-  if (!id || typeof id !== 'string') {
-    return { valid: false, format: null };
-  }
-
-  // New hash-based format: wf-XXXXXXXX
-  if (/^wf-[a-f0-9]{8}$/i.test(id)) {
-    return { valid: true, format: 'hash' };
-  }
-
-  // Legacy formats: TASK-XXX, BUG-XXX
-  if (/^(TASK|BUG)-\d{3,}$/i.test(id)) {
-    return { valid: true, format: 'legacy' };
-  }
-
-  return { valid: false, format: null };
-}
-
-/**
- * Check if ID is in legacy format (for migration warnings)
- * @param {string} id - ID to check
- * @returns {boolean}
- */
-function isLegacyTaskId(id) {
-  return /^(TASK|BUG)-\d{3,}$/i.test(id);
-}
+const {
+  generateHashId,
+  generateTaskId,
+  generateEpicId,
+  generateFeatureId,
+  generatePlanId,
+  validateTaskId,
+  isLegacyTaskId,
+} = require('./flow-id');
 
 // ============================================================
-// CLI Flag Parsing
+// CLI Flag Parsing (extracted to flow-cli-flags.js)
 // ============================================================
 
-/**
- * Parse common CLI flags from arguments
- * Standardizes flag handling across all flow commands
- *
- * @param {string[]} args - Command line arguments (process.argv.slice(2))
- * @returns {{ flags: Object, positional: string[] }}
- *
- * @example
- * const { flags, positional } = parseFlags(process.argv.slice(2));
- * if (flags.json) outputJson(result);
- * if (flags.help) showHelp();
- */
-function parseFlags(args) {
-  const flags = {
-    json: false,
-    quiet: false,
-    verbose: false,
-    help: false,
-    dryRun: false,
-    deep: false
-  };
-
-  const positional = [];
-  const namedFlags = {};
-
-  // Known flags that take values (--flag value style)
-  const valuedFlags = ['priority', 'from', 'severity', 'limit', 'format', 'output', 'strategy', 'type', 'file', 'analysis', 'model', 'domain', 'task-type'];
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-
-    if (arg === '--json') {
-      flags.json = true;
-    } else if (arg === '--quiet' || arg === '-q') {
-      flags.quiet = true;
-    } else if (arg === '--verbose' || arg === '-v') {
-      flags.verbose = true;
-    } else if (arg === '--help' || arg === '-h') {
-      flags.help = true;
-    } else if (arg === '--dry-run') {
-      flags.dryRun = true;
-    } else if (arg === '--deep') {
-      flags.deep = true;
-    } else if (arg.startsWith('--')) {
-      // Handle --key=value style flags
-      const match = arg.match(/^--([^=]+)(?:=(.*))?$/);
-      if (match) {
-        const [, key, value] = match;
-        if (value !== undefined) {
-          // Has explicit value: --key=value
-          namedFlags[key] = value;
-        } else if (valuedFlags.includes(key) && i + 1 < args.length && !args[i + 1].startsWith('-')) {
-          // Known valued flag: --key value (consume next arg)
-          namedFlags[key] = args[++i];
-        } else if (valuedFlags.includes(key)) {
-          // Valued flag without value - warn in debug mode, treat as boolean
-          if (process.env.DEBUG) {
-            console.warn(`[DEBUG] Flag --${key} expects a value but none provided`);
-          }
-          namedFlags[key] = true;
-        } else {
-          // Boolean flag: --flag
-          namedFlags[key] = true;
-        }
-      }
-    } else if (!arg.startsWith('-')) {
-      positional.push(arg);
-    }
-  }
-
-  return { flags: { ...flags, ...namedFlags }, positional };
-}
+const { parseFlags } = require('./flow-cli-flags');
 
 // ============================================================
 // Ready.json Operations
@@ -888,680 +677,59 @@ function getTaskCounts() {
 }
 
 // ============================================================
-// Request Log Operations
+// Request Log Operations (extracted to flow-request-log.js)
 // ============================================================
 
-/**
- * Count entries in request-log.md
- */
-function countRequestLogEntries() {
-  try {
-    const content = readFile(PATHS.requestLog, '');
-    const matches = content.match(/^### R-/gm);
-    return matches ? matches.length : 0;
-  } catch (_err) {
-    return 0;
-  }
-}
-
-/**
- * Get the last request log entry
- */
-function getLastRequestLogEntry() {
-  try {
-    const content = readFile(PATHS.requestLog, '');
-    const matches = content.match(/^### R-.*$/gm);
-    return matches ? matches[matches.length - 1] : null;
-  } catch (_err) {
-    return null;
-  }
-}
-
-/**
- * Get the highest request ID number from request-log.md
- * More robust than counting - handles gaps and deleted entries
- */
-function getHighestRequestId() {
-  try {
-    const content = readFile(PATHS.requestLog, '');
-    // Match all R-XXX patterns (3+ digits)
-    const matches = content.match(/### R-(\d{3,})/g);
-    if (!matches || matches.length === 0) return 0;
-
-    // Extract numbers and find the max
-    const numbers = matches.map(m => {
-      const num = m.match(/R-(\d+)/);
-      return num ? parseInt(num[1], 10) : 0;
-    });
-    return Math.max(...numbers);
-  } catch (_err) {
-    return 0;
-  }
-}
-
-/**
- * Get next request ID
- * Uses highest existing ID + 1 to avoid duplicates even with gaps
- */
-function getNextRequestId() {
-  const highestId = getHighestRequestId();
-  return `R-${String(highestId + 1).padStart(3, '0')}`;
-}
-
-/**
- * Add an entry to request-log.md
- * @param {Object} entry - Entry details
- * @param {string} entry.type - new | fix | change | refactor
- * @param {string[]} entry.tags - Array of tags (e.g., ['#figma', '#component:Button'])
- * @param {string} entry.request - What was requested
- * @param {string} entry.result - What was done
- * @param {string[]} [entry.files] - Files changed
- * @param {string} [entry.sessionId] - CLI session ID (auto-detected if not provided)
- */
-function addRequestLogEntry(entry) {
-  const { type, tags, request, result, files = [], sessionId } = entry;
-  const id = getNextRequestId();
-  const now = new Date();
-  const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
-
-  // Get session ID from entry or auto-detect from environment
-  const session = sessionId || getSessionId();
-  const sessionLine = session ? `\n**Session**: ${session}` : '';
-
-  const filesLine = files.length > 0 ? `\n**Files**: ${files.join(', ')}` : '';
-  const tagsStr = tags.join(' ');
-
-  const logEntry = `
-### ${id} | ${timestamp}
-**Type**: ${type}
-**Tags**: ${tagsStr}${sessionLine}
-**Request**: "${request}"
-**Result**: ${result}${filesLine}
-`;
-
-  try {
-    // Use appendFileSync for atomic append (avoids read-modify-write race)
-    fs.appendFileSync(PATHS.requestLog, logEntry);
-    return id;
-  } catch (err) {
-    error(`Failed to add request log entry: ${err.message}`);
-    return null;
-  }
-}
+const {
+  countRequestLogEntries,
+  getLastRequestLogEntry,
+  getHighestRequestId,
+  getNextRequestId,
+  addRequestLogEntry,
+} = require('./flow-request-log');
 
 // ============================================================
-// App Map Operations
+// App Map + CLI Tool + Git (extracted to flow-sys.js)
 // ============================================================
 
-/**
- * Count components in app-map.md
- * Counts actual data rows (excludes headers and separator rows)
- */
-function countAppMapComponents() {
-  try {
-    const content = readFile(PATHS.appMap, '');
-    // Match data rows: start with | followed by non-dash content (excludes |---|---|)
-    const dataRows = content.match(/^\|[^-|][^|]*\|/gm);
-    // Each table has 1 header row per section, estimate ~2-3 sections
-    const headerCount = (content.match(/^## /gm) || []).length * 1;
-    const count = dataRows ? Math.max(0, dataRows.length - headerCount) : 0;
-    return count;
-  } catch (_err) {
-    return 0;
-  }
-}
-
-/**
- * Add a component to app-map.md
- * @param {Object} component - Component details
- * @param {string} component.name - Component name
- * @param {string} component.type - Component type (component, screen, modal, etc.)
- * @param {string} component.path - Path to component file
- * @param {string[]} [component.variants] - Available variants
- * @param {string} [component.description] - Component description
- * @returns {boolean} - Success status
- */
-function addAppMapComponent(component) {
-  const { name, type, path: filePath, variants = [], description = '' } = component;
-
-  try {
-    let content = readFile(PATHS.appMap, '');
-
-    // Find the appropriate section based on type
-    const sectionMap = {
-      screen: '## Screens',
-      modal: '## Modals',
-      component: '## Components',
-      layout: '## Layouts'
-    };
-
-    const section = sectionMap[type] || '## Components';
-    const variantsStr = variants.length > 0 ? variants.join(', ') : '-';
-    const descStr = description || '-';
-
-    // Create new row
-    const newRow = `| ${name} | ${filePath} | ${variantsStr} | ${descStr} |`;
-
-    // Find section and add row
-    const sectionIndex = content.indexOf(section);
-    if (sectionIndex === -1) {
-      warn(`Section "${section}" not found in app-map.md`);
-      return false;
-    }
-
-    // Find the end of the table in this section (next section or end of file)
-    const nextSectionMatch = content.substring(sectionIndex + section.length).match(/\n## /);
-    const endIndex = nextSectionMatch
-      ? sectionIndex + section.length + nextSectionMatch.index
-      : content.length;
-
-    // Find last table row in section
-    const sectionContent = content.substring(sectionIndex, endIndex);
-    const lastPipeIndex = sectionContent.lastIndexOf('\n|');
-
-    if (lastPipeIndex !== -1) {
-      // Find the end of the last row (next newline after the pipe)
-      const afterPipe = sectionContent.substring(lastPipeIndex);
-      const newlineOffset = afterPipe.indexOf('\n', 1);
-      // If no newline found, insert at end of section content
-      const insertOffset = newlineOffset !== -1 ? newlineOffset : afterPipe.length;
-      const insertIndex = sectionIndex + lastPipeIndex + insertOffset;
-      content = content.substring(0, insertIndex) + '\n' + newRow + content.substring(insertIndex);
-    } else {
-      // No table rows yet, add after header
-      const headerEnd = sectionContent.indexOf('\n\n');
-      if (headerEnd !== -1) {
-        const insertIndex = sectionIndex + headerEnd;
-        content = content.substring(0, insertIndex) + '\n' + newRow + content.substring(insertIndex);
-      } else {
-        // Malformed section - no header end found
-        warn(`Could not find proper insertion point in section "${section}"`);
-        return false;
-      }
-    }
-
-    writeFile(PATHS.appMap, content);
-    return true;
-  } catch (err) {
-    error(`Failed to add component to app-map: ${err.message}`);
-    return false;
-  }
-}
+const {
+  meetsVersion,
+  getFdCommand,
+  isGitRepo,
+  getGitStatus,
+  countAppMapComponents,
+  addAppMapComponent,
+} = require('./flow-sys');
 
 // ============================================================
-// CLI Tool Detection (Claude Code 2.1.72+ compatibility)
+// Permission Validation (extracted to flow-permissions-audit.js)
 // ============================================================
 
-const { execFileSync } = require('node:child_process');
-
-/**
- * Compare a parsed semver against a required minimum.
- * Eliminates repeated inline version comparison logic.
- *
- * @param {number} major - Parsed major version
- * @param {number} minor - Parsed minor version
- * @param {number} patch - Parsed patch version
- * @param {number} rMajor - Required major
- * @param {number} rMinor - Required minor
- * @param {number} rPatch - Required patch
- * @returns {boolean}
- */
-function meetsVersion(major, minor, patch, rMajor, rMinor, rPatch) {
-  return major > rMajor ||
-    (major === rMajor && minor > rMinor) ||
-    (major === rMajor && minor === rMinor && patch >= rPatch);
-}
-
-/**
- * Detect if fd or fdfind is available on the system.
- * fd/fdfind is auto-approved in Claude Code 2.1.72+ bash allowlist,
- * making it a better choice than find for reduced permission prompts.
- *
- * Uses execFileSync (not execSync) per security rule 8.
- * Result is memoized for the process lifetime.
- *
- * @returns {string|false} The fd command name ('fd' or 'fdfind'), or false if unavailable
- */
-let _fdCommand = null;
-function getFdCommand() {
-  if (_fdCommand !== null) return _fdCommand;
-  for (const cmd of ['fd', 'fdfind']) {
-    try {
-      execFileSync(cmd, ['--version'], { stdio: 'pipe', timeout: 3000 });
-      _fdCommand = cmd;
-      return cmd;
-    } catch (_err) {
-      // Not available
-    }
-  }
-  _fdCommand = false;
-  return false;
-}
+const { analyzePermissions, validatePermissions } = require('./flow-permissions-audit');
 
 // ============================================================
-// Git Operations
+// AST-Grep Integration (extracted to flow-ast-grep.js)
 // ============================================================
 
-/**
- * Check if current directory is a git repo
- * Note: .git can be a directory (normal repo) or file (worktree)
- */
-function isGitRepo() {
-  const gitPath = path.join(PROJECT_ROOT, '.git');
-  return fs.existsSync(gitPath);
-}
-
-/**
- * Get git status info (requires child_process)
- */
-function getGitStatus() {
-  if (!isGitRepo()) {
-    return { isRepo: false };
-  }
-
-  try {
-    const branch = execSync('git branch --show-current', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim();
-
-    const status = execSync('git status --porcelain', {
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
-
-    const uncommitted = status.split('\n').filter(Boolean).length;
-
-    return {
-      isRepo: true,
-      branch,
-      uncommitted,
-      clean: uncommitted === 0
-    };
-  } catch (err) {
-    return { isRepo: true, error: err.message };
-  }
-}
+const flowAstGrep = require('./flow-ast-grep');
+const {
+  AST_PATTERNS,
+  isAstGrepAvailable,
+  astGrepSearch,
+  findReactComponents,
+  findCustomHooks,
+  findTypeDefinitions,
+} = flowAstGrep;
 
 // ============================================================
-// Permission Validation (Claude Code settings.local.json)
+// Hierarchical Task Utilities (extracted to flow-task-hierarchy.js)
 // ============================================================
 
-/**
- * Analyze permission rules for issues
- * @param {string[]} permissions - Array of permission rules
- * @returns {Object} Analysis result with duplicates, overbroad, shadowed
- */
-function analyzePermissions(permissions) {
-  const result = {
-    duplicates: [],
-    overbroad: [],
-    shadowed: [],
-    total: permissions.length
-  };
-
-  // Check for duplicates
-  const seen = new Set();
-  for (const perm of permissions) {
-    if (seen.has(perm)) {
-      result.duplicates.push(perm);
-    }
-    seen.add(perm);
-  }
-
-  // Check for overly broad patterns
-  const overbroadPatterns = ['Bash(*)', 'Edit(*)', 'Write(*)', 'Read(*)'];
-  for (const perm of permissions) {
-    if (overbroadPatterns.includes(perm)) {
-      result.overbroad.push(perm);
-    }
-  }
-
-  // Check for shadowed rules (specific rules covered by wildcards)
-  const wildcards = permissions.filter(p => p.includes('*'));
-  const specific = permissions.filter(p => !p.includes('*'));
-
-  for (const spec of specific) {
-    // Extract tool type and pattern
-    const match = spec.match(/^(\w+)\((.+)\)$/);
-    if (match) {
-      const [, tool, pattern] = match;
-      // Check if a wildcard covers this
-      for (const wild of wildcards) {
-        const wildMatch = wild.match(/^(\w+)\((.+)\)$/);
-        if (wildMatch && wildMatch[1] === tool) {
-          const wildPattern = wildMatch[2].replace(/\*/g, '.*');
-          try {
-            const regex = new RegExp(`^${wildPattern}$`);
-            if (regex.test(pattern)) {
-              result.shadowed.push({ specific: spec, wildcard: wild });
-              break;
-            }
-          } catch (_err) {
-            // Invalid regex, skip
-          }
-        }
-      }
-    }
-  }
-
-  return result;
-}
-
-/**
- * Validate permission rules and return issues
- * @param {string[]} permissions - Array of permission rules
- * @returns {Object} Validation result with issues and warnings
- */
-function validatePermissions(permissions) {
-  const analysis = analyzePermissions(permissions);
-
-  const issues = [];
-  const warnings = [];
-
-  // Critical: duplicates waste space
-  if (analysis.duplicates.length > 0) {
-    warnings.push({
-      type: 'duplicate',
-      message: `${analysis.duplicates.length} duplicate rule(s) found`,
-      items: analysis.duplicates
-    });
-  }
-
-  // Critical: overly broad rules are security risks
-  if (analysis.overbroad.length > 0) {
-    issues.push({
-      type: 'overbroad',
-      severity: 'critical',
-      message: `${analysis.overbroad.length} overly broad rule(s) found`,
-      items: analysis.overbroad
-    });
-  }
-
-  // Info: shadowed rules are redundant but not harmful
-  if (analysis.shadowed.length > 0) {
-    warnings.push({
-      type: 'shadowed',
-      message: `${analysis.shadowed.length} rule(s) shadowed by wildcards (redundant)`,
-      items: analysis.shadowed.map(s => s.specific)
-    });
-  }
-
-  return {
-    valid: issues.length === 0,
-    issues,
-    warnings,
-    analysis
-  };
-}
-
-// ============================================================
-// AST-Grep Integration
-// ============================================================
-
-/**
- * Common AST patterns for code discovery
- */
-const AST_PATTERNS = {
-  // React patterns
-  reactComponent: 'function $NAME($PROPS) { return <$_>$$$</$_> }',
-  reactArrowComponent: 'const $NAME = ($PROPS) => { return <$_>$$$</$_> }',
-  useStateHook: 'const [$STATE, $SETTER] = useState($INIT)',
-  useEffectHook: 'useEffect($FN, [$$$DEPS])',
-  useCustomHook: 'const $RESULT = use$NAME($$$ARGS)',
-
-  // TypeScript patterns
-  interfaceDefinition: 'interface $NAME { $$$ }',
-  typeDefinition: 'type $NAME = $$$',
-  exportedFunction: 'export function $NAME($$$PARAMS) { $$$ }',
-  exportedConst: 'export const $NAME = $$$',
-
-  // Import patterns
-  namedImport: 'import { $$$IMPORTS } from "$PATH"',
-  defaultImport: 'import $NAME from "$PATH"',
-
-  // Class patterns
-  classDefinition: 'class $NAME { $$$ }',
-  classExtends: 'class $NAME extends $BASE { $$$ }'
-};
-
-/**
- * Check if ast-grep CLI (sg) is available
- */
-function isAstGrepAvailable() {
-  try {
-    execSync('which sg', { stdio: 'ignore' });
-    return true;
-  } catch (_err) {
-    return false;
-  }
-}
-
-// Allowed languages for ast-grep to prevent command injection (Security Rule 8)
-const ALLOWED_AST_GREP_LANGUAGES = new Set([
-  'typescript', 'javascript', 'tsx', 'jsx', 'python', 'go', 'rust',
-  'java', 'c', 'cpp', 'csharp', 'ruby', 'swift', 'kotlin', 'html', 'css'
-]);
-
-/**
- * Search codebase using ast-grep for structural patterns
- * @param {string} pattern - AST pattern (e.g., "useState($INIT)")
- * @param {object} options - { lang, cwd, maxResults }
- * @returns {Array|null} Array of matches or null if ast-grep unavailable
- */
-function astGrepSearch(pattern, options = {}) {
-  const {
-    lang = 'typescript',
-    cwd = PROJECT_ROOT,
-    maxResults = 20,
-    searchDir = 'src'
-  } = options;
-
-  // Validate lang parameter to prevent command injection (Security Rule 8)
-  if (!ALLOWED_AST_GREP_LANGUAGES.has(lang)) {
-    if (process.env.DEBUG) {
-      console.error(`[ast-grep] Invalid language: ${lang}. Allowed: ${[...ALLOWED_AST_GREP_LANGUAGES].join(', ')}`);
-    }
-    return null;
-  }
-
-  // Check if ast-grep is available
-  if (!isAstGrepAvailable()) {
-    return null;
-  }
-
-  const searchPath = path.join(cwd, searchDir);
-  if (!dirExists(searchPath)) {
-    return [];
-  }
-
-  try {
-    // Use execFileSync with array args to prevent shell injection (Security Rule 8)
-    const { execFileSync } = require('node:child_process');
-    const result = execFileSync('sg', [
-      '--pattern', pattern,
-      '--lang', lang,
-      '--json', searchPath
-    ], {
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024,
-      timeout: 30000
-    });
-
-    const matches = JSON.parse(result || '[]');
-    return matches.slice(0, maxResults).map(m => ({
-      file: path.relative(cwd, m.file || m.path),
-      line: m.range?.start?.line ?? m.startLine ?? 0,
-      endLine: m.range?.end?.line ?? m.endLine ?? 0,
-      content: m.text || m.match,
-      meta: m.metaVariables || {}  // Captured $VARS
-    }));
-  } catch (err) {
-    // Parse error, timeout, or no matches
-    if (err.stdout) {
-      try {
-        const matches = JSON.parse(err.stdout);
-        return matches.slice(0, maxResults).map(m => ({
-          file: path.relative(cwd, m.file || m.path),
-          line: m.range?.start?.line ?? 0,
-          content: m.text || m.match,
-          meta: m.metaVariables || {}
-        }));
-      } catch (_err) {
-        // Ignore parse errors
-      }
-    }
-    return [];
-  }
-}
-
-/**
- * Search for React components in the codebase
- * @param {object} options - Search options
- */
-function findReactComponents(options = {}) {
-  const { maxResults = 10 } = options;
-
-  // Try function components first
-  let results = astGrepSearch(AST_PATTERNS.reactComponent, { ...options, maxResults });
-
-  // If ast-grep not available, return null
-  if (results === null) return null;
-
-  // Also search arrow function components
-  const arrowResults = astGrepSearch(AST_PATTERNS.reactArrowComponent, { ...options, maxResults });
-  if (arrowResults) {
-    results = [...results, ...arrowResults];
-  }
-
-  // Dedupe by file
-  const seen = new Set();
-  return results.filter(r => {
-    if (seen.has(r.file)) return false;
-    seen.add(r.file);
-    return true;
-  }).slice(0, maxResults);
-}
-
-/**
- * Search for custom hooks in the codebase
- * @param {object} options - Search options
- */
-function findCustomHooks(options = {}) {
-  const { maxResults = 10 } = options;
-
-  // Search for function use* pattern
-  const results = astGrepSearch('function use$NAME($$$) { $$$ }', { ...options, maxResults });
-
-  if (results === null) return null;
-
-  return results.filter(r => {
-    // Filter to only actual hook files
-    const fileName = path.basename(r.file).toLowerCase();
-    return fileName.startsWith('use') || fileName.includes('hook');
-  });
-}
-
-/**
- * Search for TypeScript interfaces/types
- * @param {string} namePattern - Optional name pattern to filter by
- * @param {object} options - Search options
- */
-function findTypeDefinitions(namePattern = null, options = {}) {
-  const { maxResults = 10 } = options;
-
-  // Search interfaces
-  let results = astGrepSearch(AST_PATTERNS.interfaceDefinition, { ...options, maxResults });
-
-  if (results === null) return null;
-
-  // Also search type aliases
-  const typeResults = astGrepSearch(AST_PATTERNS.typeDefinition, { ...options, maxResults });
-  if (typeResults) {
-    results = [...results, ...typeResults];
-  }
-
-  // Filter by name pattern if provided
-  if (namePattern) {
-    const regex = new RegExp(namePattern, 'i');
-    results = results.filter(r => regex.test(r.content));
-  }
-
-  return results.slice(0, maxResults);
-}
-
-// ============================================================
-// Hierarchical Task Utilities
-// ============================================================
-
-
-/**
- * Normalize a task object to include optional hierarchical fields
- * Ensures backward compatibility with existing tasks
- * @param {Object} task - Task object from ready.json
- * @returns {Object} Normalized task with all optional fields
- */
-function normalizeTask(task) {
-  if (!task || typeof task === 'string') {
-    return task; // Can't normalize string IDs (legacy format)
-  }
-
-  return {
-    ...task,
-    // Default level based on type if not set
-    level: task.level || (task.type === 'epic' ? 'L0' : task.type === 'story' ? 'L1' : 'L2'),
-    // Use existing parent field (backward compatible)
-    parent: task.parent || null,
-    // NEW: child task IDs
-    children: task.children || [],
-    // NEW: progress tracking for hierarchical items
-    progress: task.progress || null
-  };
-}
-
-/**
- * Find all tasks with a given parent ID
- * @param {Object} readyData - Ready.json data
- * @param {string} parentId - Parent task ID
- * @returns {Object[]} Array of child tasks
- */
-function findAllWithParent(readyData, parentId) {
-  const children = [];
-  const lists = ['ready', 'inProgress', 'blocked', 'recentlyCompleted'];
-
-  for (const listName of lists) {
-    const list = readyData[listName] || [];
-    for (const task of list) {
-      if (task && typeof task !== 'string' && task.parent === parentId) {
-        children.push(task);
-      }
-    }
-  }
-
-  return children;
-}
-
-/**
- * Find a task in all lists by ID
- * @param {Object} readyData - Ready.json data
- * @param {string} taskId - Task ID to find
- * @returns {Object|null} Task object or null
- */
-function findTaskInAllLists(readyData, taskId) {
-  const lists = ['ready', 'inProgress', 'blocked', 'recentlyCompleted'];
-
-  for (const listName of lists) {
-    const list = readyData[listName] || [];
-    for (const task of list) {
-      const id = typeof task === 'string' ? task : task.id;
-      if (id === taskId) {
-        return typeof task === 'string' ? { id: task } : task;
-      }
-    }
-  }
-
-  return null;
-}
+const {
+  normalizeTask,
+  findAllWithParent,
+  findTaskInAllLists,
+} = require('./flow-task-hierarchy');
 
 // ============================================================
 // Exports
@@ -1587,6 +755,7 @@ module.exports = {
   CLEANUP_LOCK_STALE_MS: flowIO.CLEANUP_LOCK_STALE_MS,
   LOCK_RETRY_DELAY_MS: flowIO.LOCK_RETRY_DELAY_MS,
   LOCK_MAX_RETRIES: flowIO.LOCK_MAX_RETRIES,
+  DANGEROUS_KEYS: flowIO.DANGEROUS_KEYS,
   fileExists: flowIO.fileExists,
   dirExists: flowIO.dirExists,
   ensureDir: flowIO.ensureDir,
@@ -1639,6 +808,7 @@ module.exports = {
   showHelp: flowOutput.showHelp,
   escapeRegex: flowOutput.escapeRegex,
   getTodayDate: flowOutput.getTodayDate,
+  slugify: flowOutput.slugify,
 
   // Constants (defined in this file)
   DEFAULT_COMMAND_TIMEOUT_MS,

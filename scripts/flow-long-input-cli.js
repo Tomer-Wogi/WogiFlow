@@ -20,6 +20,12 @@ const c = {
   red: '\x1b[31m'
 };
 
+// Local helper — 5 call sites referenced printWarn without defining it
+// (latent no-undef bug caught by eslint upgrade; wf-5a6df88a).
+function printWarn(msg) {
+  console.warn(`${c.yellow}⚠ ${msg}${c.reset}`);
+}
+
 /**
  * CLI handler
  */

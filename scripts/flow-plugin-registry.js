@@ -29,8 +29,8 @@ const {
   printHeader, PATHS
 } = require('./flow-utils');
 
-// Dangerous keys that must never be used as plugin names or metadata keys
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// Local DANGEROUS_KEYS consolidated to flow-io canonical (wf-2f6fbb12 / dup-002).
+const { DANGEROUS_KEYS } = require('./flow-io');
 
 // Allowlists for capability fields
 const VALID_MODES = new Set(['standalone', 'flow-integrated', 'trigger']);

@@ -27,7 +27,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
+const { getProjectRoot, getConfig, PATHS, colors, readJson, getTodayDate } = require('./flow-utils');
 
 const ADAPTERS_DIR = PATHS.modelAdapters;
 const MODEL_STATS_PATH = PATHS.modelStatsLegacy;

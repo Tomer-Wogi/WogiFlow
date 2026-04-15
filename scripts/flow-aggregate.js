@@ -27,7 +27,8 @@ const {
   listDirs,
   color,
   success,
-  warn
+  warn,
+  getTodayDate
 } = require('./flow-utils');
 const { syncDecisionsToRules } = require('./flow-rules-sync');
 

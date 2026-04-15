@@ -38,7 +38,7 @@ function writeOldRun(name, payload, ageDays) {
 
 function clearTestRuns(files) {
   for (const f of files) {
-    try { fs.unlinkSync(f); } catch (_e) {}
+    try { fs.unlinkSync(f); } catch (_err) {}
   }
 }
 
@@ -76,7 +76,7 @@ describe('countLines', () => {
   const tmpFile = path.join(PATHS.state, `_test_count_${process.pid}.tmp`);
 
   afterEach(() => {
-    try { fs.unlinkSync(tmpFile); } catch (_e) {}
+    try { fs.unlinkSync(tmpFile); } catch (_err) {}
   });
 
   it('returns 0 for absent file', async () => {
@@ -142,7 +142,7 @@ describe('archiveAdversaryRuns — dry-run + idempotency', () => {
           if (k.startsWith(TEST_PREFIX)) { delete idx[k]; changed = true; }
         }
         if (changed) fs.writeFileSync(idxPath, JSON.stringify(idx, null, 2));
-      } catch (_e) {}
+      } catch (_err) {}
     }
   });
 

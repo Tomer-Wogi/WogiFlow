@@ -151,6 +151,14 @@ function setRoutingPending() {
       pid: process.pid
     }), 'utf-8');
 
+    // Keep hook-status aggregator in sync with the flag file (wf-7c36aaed prep
+    // for future perf-003 — once synced, routing-gate reads can come from
+    // hook-status cache instead of direct file reads).
+    try {
+      const { setRouting } = require('../../flow-hook-status');
+      setRouting({ pending: true, cleared: false });
+    } catch (_err) { /* non-critical */ }
+
     if (process.env.DEBUG) {
       console.error('[routing-gate] Set routing-pending flag');
     }

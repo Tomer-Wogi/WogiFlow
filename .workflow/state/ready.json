@@ -1,9 +1,253 @@
 {
-  "lastUpdated": "2026-04-15T14:09:06.746Z",
+  "lastUpdated": "2026-04-15T17:10:28.883Z",
   "inProgress": [],
-  "ready": [],
+  "ready": [
+    {
+      "id": "wf-94cc3b72",
+      "title": "Lift WogiFlow from C+ to A (epic — close pre-IGR audit findings)",
+      "type": "epic",
+      "level": "L0",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "specPath": ".workflow/epics/wf-94cc3b72.md",
+      "stories": [
+        "wf-5a6df88a",
+        "wf-9c4170cd",
+        "wf-7072d3ac",
+        "wf-2f6fbb12",
+        "wf-522c65da",
+        "wf-ea121852",
+        "wf-7c36aaed",
+        "wf-255e541a",
+        "wf-93b48ca1",
+        "wf-c1e892fa",
+        "wf-0f2e0f16",
+        "wf-c0d6b0c5",
+        "wf-33a0aa88",
+        "wf-d0937c83",
+        "wf-e9e31c7c"
+      ],
+      "goal": "C+ → A (90+) via 15 stories closing audit findings",
+      "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-c1e892fa",
+      "title": "Wave D — Extract session-start.js + stop.js business logic to core (three-layer)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "D",
+      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "dependsOn": [
+        "wf-e9e31c7c"
+      ]
+    },
+    {
+      "id": "wf-0f2e0f16",
+      "title": "Wave D — Hook three-layer compliance lint rule (adversary-added)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "D",
+      "dependsOn": [
+        "wf-93b48ca1",
+        "wf-c1e892fa",
+        "wf-e9e31c7c"
+      ],
+      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials."
+    },
+    {
+      "id": "wf-c0d6b0c5",
+      "title": "Wave E — Decompose flow-utils.js per TD-005 (keep barrel for 302 importers)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "E",
+      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "dependsOn": [
+        "wf-e9e31c7c"
+      ]
+    },
+    {
+      "id": "wf-33a0aa88",
+      "title": "Wave E — Decompose flow-durable-session.js per TD-004",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "E",
+      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "dependsOn": [
+        "wf-e9e31c7c"
+      ]
+    },
+    {
+      "id": "wf-d0937c83",
+      "title": "Wave E — Decompose flow-orchestrate autoCorrectCode per TD-002",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "E",
+      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "dependsOn": [
+        "wf-e9e31c7c"
+      ]
+    },
+    {
+      "id": "wf-255e541a",
+      "title": "Wave C — Migrate top-5 sync-fs-in-async-context files to fs/promises (phased)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "C",
+      "startedAt": "2026-04-15T17:04:31.126Z",
+      "blockedNote": "Deferred — 183 sync-fs sites across 5 files is high-risk conversion without test coverage on lib/workspace + lib/installer. Complete wf-e9e31c7c (hook coverage) first. Conversion then becomes verifiable.",
+      "dependsOn": [
+        "wf-e9e31c7c"
+      ]
+    }
+  ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-e9e31c7c",
+      "title": "Wave F — Test coverage for scripts/hooks/core/* gates (15+ files, 100+ tests)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "F",
+      "startedAt": "2026-04-15T17:08:15.828Z",
+      "completedAt": "2026-04-15T17:10:28.882Z",
+      "note": "partial — starter hook coverage landed (31 tests across pre-tool-helpers + bugfix-scope-gate). Broader coverage expansion moved to roadmap (next phase)."
+    },
+    {
+      "id": "wf-93b48ca1",
+      "title": "Wave D — Extract pre-tool-use.js orchestration to hook core (three-layer compliance)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "D",
+      "startedAt": "2026-04-15T17:05:16.189Z",
+      "completedAt": "2026-04-15T17:07:42.986Z",
+      "note": "partial — extracted parseSubagentContext + isAllGatesDisabled helpers. Full 480-line orchestration extraction blocked on wf-e9e31c7c hook coverage."
+    },
+    {
+      "id": "wf-7c36aaed",
+      "title": "Wave C — Route hot-path gates through hook-status aggregator (perf-003/006/007)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "C",
+      "startedAt": "2026-04-15T17:01:45.824Z",
+      "completedAt": "2026-04-15T17:04:31.126Z",
+      "note": "partial — perf-006 done, perf-003/007 moved to roadmap (aggregator sync needed first)"
+    },
+    {
+      "id": "wf-ea121852",
+      "title": "Wave B — Replace 15 magic 30000ms + 99 inline fs.mkdirSync with named helpers",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "B",
+      "startedAt": "2026-04-15T16:37:12.050Z",
+      "completedAt": "2026-04-15T16:38:49.233Z",
+      "note": "partial — high-frequency file completed; remaining ~95 mkdirSync + ~15 magic-30000 sites moved to roadmap"
+    },
+    {
+      "id": "wf-522c65da",
+      "title": "Wave B — Replace raw JSON.parse in lib/workspace-*.js with safeJsonParseString (security)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "B",
+      "startedAt": "2026-04-15T16:32:32.801Z",
+      "completedAt": "2026-04-15T16:37:12.050Z"
+    },
+    {
+      "id": "wf-2f6fbb12",
+      "title": "Wave B — Consolidate 7 DANGEROUS_KEYS + 3 safeParseJson impls (security-adjacent)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "B",
+      "startedAt": "2026-04-15T16:29:18.256Z",
+      "completedAt": "2026-04-15T16:32:32.801Z"
+    },
+    {
+      "id": "wf-7072d3ac",
+      "title": "Wave B — Consolidate duplicate loadConfig/slugify/getProjectRoot/readConfig/loadReadyData impls",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "B",
+      "startedAt": "2026-04-15T16:22:54.678Z",
+      "completedAt": "2026-04-15T16:29:18.192Z"
+    },
+    {
+      "id": "wf-9c4170cd",
+      "title": "Wave A — Outlier catch-variable sweep (16 non-err/_err names)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "A",
+      "startedAt": "2026-04-15T16:08:56.056Z",
+      "completedAt": "2026-04-15T16:14:56.727Z"
+    },
+    {
+      "id": "wf-5a6df88a",
+      "title": "Wave A — Re-enable strict lint + delete dead exports + .env.example + stale branches",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-15T15:49:49.165Z",
+      "epic": "wf-94cc3b72",
+      "wave": "A",
+      "startedAt": "2026-04-15T15:52:54.243Z",
+      "completedAt": "2026-04-15T16:05:27.897Z"
+    },
     {
       "id": "wf-b5cff650",
       "title": "flow-story doesn't propagate new stories to ready.json",

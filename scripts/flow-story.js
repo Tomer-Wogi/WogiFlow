@@ -283,16 +283,10 @@ function analyzeForDecomposition(title) {
  * @param {string} title - Title to slugify
  * @returns {string} Slugified title
  */
-function slugify(title) {
-  return title
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')     // Remove non-word chars (except spaces and hyphens)
-    .replace(/[\s_]+/g, '-')       // Replace spaces and underscores with hyphens
-    .replace(/-+/g, '-')           // Replace multiple hyphens with single
-    .replace(/^-+|-+$/g, '')       // Trim hyphens from start/end
-    .substring(0, 50);             // Limit length
-}
+// Local slugify removed in favor of canonical flow-output slugify (wf-7072d3ac).
+// 'word' mode preserves underscores (old behavior).
+const { slugify: _slugify } = require('./flow-output');
+const slugify = (title) => _slugify(title, { mode: 'word', maxLength: 50 });
 
 /**
  * Create story with optional deep decomposition

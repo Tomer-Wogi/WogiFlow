@@ -15,7 +15,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getConfig, getProjectRoot, colors, readJson, info, success, PATHS } = require('./flow-utils');
+const { getConfig, getProjectRoot, colors, readJson, info, success, PATHS, getTodayDate } = require('./flow-utils');
 const { FailureCategory, detectCategory } = require('./flow-failure-categories');
 
 const LEARNING_LOG_PATH = path.join(PATHS.state, 'adaptive-learning.json');

@@ -42,10 +42,10 @@ let loadSessionState;
 try {
   const sessionModule = require('./flow-session-state');
   loadSessionState = sessionModule.loadSessionState;
-} catch (importError) {
+} catch (err) {
   // Log in debug mode - don't silently hide potential syntax errors
   if (process.env.DEBUG) {
-    console.warn(`[DEBUG] Could not load flow-session-state: ${importError.message}`);
+    console.warn(`[DEBUG] Could not load flow-session-state: ${err.message}`);
   }
   loadSessionState = () => ({});
 }

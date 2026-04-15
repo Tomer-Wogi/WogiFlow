@@ -14,7 +14,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline/promises');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { getProjectRoot, colors, PATHS, getTodayDate } = require('./flow-utils');
 const { success, warn, error: errorMsg, info, print } = require('./flow-output');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 

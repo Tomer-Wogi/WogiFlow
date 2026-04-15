@@ -149,7 +149,6 @@ function getResearchConfig() {
       [DEPTHS.DEEP]: 50000,
       [DEPTHS.EXHAUSTIVE]: 100000
     },
-    requireCitations: research.requireCitations !== false,
     cacheVerifications: research.cacheVerifications !== false,
     cacheExpiryHours: research.cacheExpiryHours || 24,
     triggers: research.triggers || {

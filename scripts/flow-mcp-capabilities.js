@@ -32,10 +32,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { PATHS, getConfig, safeJsonParse, readJson, writeJson, fileExists } = require('./flow-utils');
+const { PATHS, getConfig, safeJsonParse, readJson, writeJson, fileExists, DANGEROUS_KEYS } = require('./flow-utils');
 
-// Prototype pollution protection — same pattern as flow-plugin-registry.js
-const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// Local DANGEROUS_KEYS consolidated to flow-io canonical (wf-2f6fbb12 / dup-002).
 
 // ============================================================
 // Constants

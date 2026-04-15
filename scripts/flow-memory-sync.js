@@ -22,6 +22,7 @@ const path = require('node:path');
 const memoryDb = require('./flow-memory-db');
 const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
 const { color } = require('./flow-output');
+const { PATHS } = require('./flow-utils');
 
 // Lazy-load to avoid circular dependency
 let _syncDecisionsToRules = null;
@@ -469,7 +470,6 @@ module.exports = {
   listCandidates,
   promoteFact,
   showStatus,
-  loadConfig
 };
 
 // Run CLI if executed directly

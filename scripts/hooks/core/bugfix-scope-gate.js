@@ -21,7 +21,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getConfig, PATHS, safeJsonParse, writeJson } = require('../../flow-utils');
+const { getConfig, PATHS, safeJsonParse, writeJson, getReadyData } = require('../../flow-utils');
 
 // ============================================================
 // Constants
@@ -331,9 +331,10 @@ function checkBugfixScope(toolName, config) {
     return { allowed: true, blocked: false };
   }
 
-  // Get active task from ready.json
-  const readyPath = path.join(PATHS.state, 'ready.json');
-  const ready = safeJsonParse(readyPath, { inProgress: [] });
+  // Get active task from ready.json — use getReadyData for 200ms TTL cache
+  // instead of direct safeJsonParse (perf-006 fix, wf-7c36aaed). On L3 bugfix
+  // tasks during Edit/Write this avoids a 2nd disk read per hook invocation.
+  const ready = getReadyData();
   if (!ready.inProgress || ready.inProgress.length === 0) {
     return { allowed: true, blocked: false };
   }

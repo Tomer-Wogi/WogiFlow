@@ -19,7 +19,8 @@ const path = require('node:path');
 const {
   getProjectRoot,
   safeJsonParse,
-  fileExists
+  fileExists,
+  PATHS
 } = require('./flow-utils')
 const { color, printHeader, printSection, success } = require('./flow-output');;
 

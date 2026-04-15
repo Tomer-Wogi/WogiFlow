@@ -99,8 +99,8 @@ function printErrorRecoveryAnalysis(gateResult, config) {
         }
       }
       console.log('');
-    } catch (analysisErr) {
-      if (process.env.DEBUG) console.error(`[DEBUG] Error analysis: ${analysisErr.message}`);
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[DEBUG] Error analysis: ${err.message}`);
     }
   }
 }

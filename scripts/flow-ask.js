@@ -80,7 +80,7 @@ function clearPendingQuestion() {
  * @returns {boolean}
  */
 function hasPendingQuestion() {
-  try { return fs.existsSync(getPendingQuestionPath()); } catch (_e) { return false; }
+  try { return fs.existsSync(getPendingQuestionPath()); } catch (_err) { return false; }
 }
 
 module.exports = {

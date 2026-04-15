@@ -281,9 +281,9 @@ async function executeParallel(tasks, executor, options = {}) {
       try {
         if (tracker) tracker.start(task.id);
         if (onStart) onStart(task);
-      } catch (callbackError) {
+      } catch (err) {
         // Don't let callback errors prevent task execution
-        console.warn(`Callback error for ${task.id}: ${callbackError.message}`);
+        console.warn(`Callback error for ${task.id}: ${err.message}`);
       }
 
       try {
@@ -294,22 +294,23 @@ async function executeParallel(tasks, executor, options = {}) {
         try {
           if (tracker) tracker.complete(task.id, result);
           if (onComplete) onComplete(task, result);
-        } catch (callbackError) {
-          console.warn(`Completion callback error for ${task.id}: ${callbackError.message}`);
+        } catch (err) {
+          console.warn(`Completion callback error for ${task.id}: ${err.message}`);
         }
 
         return { taskId: task.id, success: true, result };
       } catch (err) {
         finished.add(task.id); // Mark as finished but NOT succeeded
 
+        const outerErr = err;
         try {
-          if (tracker) tracker.fail(task.id, err);
-          if (onError) onError(task, err);
-        } catch (callbackError) {
-          console.warn(`Error callback error for ${task.id}: ${callbackError.message}`);
+          if (tracker) tracker.fail(task.id, outerErr);
+          if (onError) onError(task, outerErr);
+        } catch (err) {
+          console.warn(`Error callback error for ${task.id}: ${err.message}`);
         }
 
-        return { taskId: task.id, success: false, error: err.message };
+        return { taskId: task.id, success: false, error: outerErr.message };
       }
     });
 

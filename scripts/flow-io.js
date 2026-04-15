@@ -16,6 +16,15 @@ const { PROJECT_ROOT } = require('./flow-paths');
 // Constants - Named values for magic numbers
 // ============================================================
 
+/**
+ * Canonical DANGEROUS_KEYS — prototype-pollution guard constant used by
+ * JSON parse safety checks, plugin-name validation, frontmatter parsers.
+ * Consolidated 2026-04-15 per audit dup-002 (wf-2f6fbb12). All scripts/
+ * consumers should import from here; lib/ has its own local copy to avoid
+ * lib→scripts dependency per dual-repo-management.md.
+ */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /** Default lock stale threshold (60 seconds) */
 const LOCK_STALE_THRESHOLD_MS = 60000;
 
@@ -607,9 +616,9 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
               try {
                 fs.rmSync(lockDir, { recursive: true, force: true });
                 cleaned++;
-              } catch (err2) {
+              } catch (err) {
                 if (process.env.DEBUG) {
-                  console.warn(`[DEBUG] cleanupStaleLocks: Could not force delete ${lockDir}: ${err2.message}`);
+                  console.warn(`[DEBUG] cleanupStaleLocks: Could not force delete ${lockDir}: ${err.message}`);
                 }
               }
             }
@@ -626,10 +635,10 @@ function cleanupStaleLocks(dirPath, staleMs = CLEANUP_LOCK_STALE_MS) {
             fs.rmSync(lockDir, { recursive: true, force: true });
             cleaned++;
           }
-        } catch (err2) {
+        } catch (err) {
           // Directory gone or inaccessible - skip
-          if (err2.code !== 'ENOENT' && process.env.DEBUG) {
-            console.warn(`[DEBUG] cleanupStaleLocks: Could not stat ${lockDir}: ${err2.message}`);
+          if (err.code !== 'ENOENT' && process.env.DEBUG) {
+            console.warn(`[DEBUG] cleanupStaleLocks: Could not stat ${lockDir}: ${err.message}`);
           }
         }
       }
@@ -666,6 +675,7 @@ function sanitizeForContext(value, maxLen = 200) {
 
 module.exports = {
   // Constants
+  DANGEROUS_KEYS,
   LOCK_STALE_THRESHOLD_MS,
   CLEANUP_LOCK_STALE_MS,
   LOCK_RETRY_DELAY_MS,

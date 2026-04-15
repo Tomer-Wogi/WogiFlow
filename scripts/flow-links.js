@@ -25,7 +25,7 @@ const path = require('node:path');
 const https = require('node:https');
 const http = require('node:http');
 const dns = require('dns');
-const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
+const { getProjectRoot, colors: c, readJson, PATHS, getTodayDate } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 
 const LINKS_PATH = path.join(PATHS.workflow, 'links.yaml');

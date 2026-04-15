@@ -22,7 +22,8 @@ const {
   PATHS,
   readJson,
   writeJson,
-  fileExists
+  fileExists,
+  getTodayDate
 } = require('./flow-utils');
 const { anonymizeBatch, createUploadPayload } = require('./flow-sync-anonymizer');
 const { loadStats } = require('./flow-stats-collector');

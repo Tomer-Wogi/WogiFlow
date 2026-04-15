@@ -21,6 +21,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { safeJsonParse } = require('./flow-io');
+const { getTodayDate } = require('./flow-output');
 
 // ============================================================
 // Section Parser

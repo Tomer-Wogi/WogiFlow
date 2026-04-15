@@ -14,6 +14,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { slugify: _slugify } = require('./flow-output');
+const slugify = (s) => _slugify(s, { maxLength: 40 });
 const {
   PATHS,
   fileExists,
@@ -23,7 +25,8 @@ const {
   success,
   info,
   warn,
-  safeJsonParse
+  safeJsonParse,
+  getTodayDate
 } = require('./flow-utils');
 
 // Import shared parsing functions from log manager (DRY - avoid duplication)
@@ -700,18 +703,8 @@ ${learning.description}
 // Utility Functions
 // ============================================================
 
-/**
- * Convert string to kebab-case slug
- */
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 40);
-}
+// Local slugify removed in favor of canonical flow-output slugify (wf-7072d3ac).
+// Callers below now use `slugify(str, { maxLength: 40 })` imported at top.
 
 /**
  * Calculate confidence based on occurrences

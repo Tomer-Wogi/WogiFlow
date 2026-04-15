@@ -20,7 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors, PATHS } = require('./flow-utils');
+const { getProjectRoot, getConfig, colors, PATHS, getTodayDate } = require('./flow-utils');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');

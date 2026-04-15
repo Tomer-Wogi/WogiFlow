@@ -182,6 +182,34 @@ function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Canonical slugify — consolidates 4 duplicate impls across scripts/ per audit
+ * dup-003 (wf-7072d3ac, 2026-04-15).
+ *
+ * @param {string} str
+ * @param {Object} [opts]
+ * @param {'alnum'|'word'} [opts.mode='alnum']
+ *   'alnum' — strips everything except [a-z0-9]+ (2026 matches old auto-learn/session-learning/rules-sync behavior).
+ *   'word'  — preserves word chars incl. underscores (old flow-story behavior).
+ * @param {number} [opts.maxLength] — truncate to this many chars (unset = unbounded).
+ * @returns {string}
+ */
+function slugify(str, opts = {}) {
+  const { mode = 'alnum', maxLength } = opts;
+  if (!str || typeof str !== 'string') return '';
+  let s = str.toLowerCase().trim();
+  if (mode === 'word') {
+    s = s
+      .replace(/[^\w\s-]/g, '')       // strip non-word chars except space/hyphen
+      .replace(/[\s_]+/g, '-');        // space/underscore → hyphen
+  } else {
+    s = s.replace(/[^a-z0-9]+/g, '-'); // single pass: anything non-alnum → hyphen
+  }
+  s = s.replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  if (Number.isFinite(maxLength) && maxLength > 0) s = s.slice(0, maxLength);
+  return s;
+}
+
 module.exports = {
   colors,
   color,
@@ -195,4 +223,5 @@ module.exports = {
   showHelp,
   escapeRegex,
   getTodayDate,
+  slugify,
 };

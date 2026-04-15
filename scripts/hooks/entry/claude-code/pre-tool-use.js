@@ -48,6 +48,7 @@ const { markSkillPending } = require('../../../flow-durable-session');
 const { getConfig } = require('../../../flow-utils');
 const { readHookStatus } = require('../../../flow-hook-status');
 const { runHook } = require('../shared/hook-runner');
+const { parseSubagentContext, isAllGatesDisabled } = require('../../core/pre-tool-helpers');
 
 // Lazy-load strict adherence to avoid circular deps and startup cost
 let _strictAdherence = null;
@@ -74,40 +75,17 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
   const toolInput = parsedInput.toolInput || {};
   const filePath = toolInput.file_path;
 
-  // Agent-aware gating: detect subagent context from hook event fields
-  const rawAgentId = input.agent_id || null;
-  const rawAgentType = input.agent_type || null;
+  // Agent-aware gating: delegated to core helper (wf-93b48ca1 / arch-001 partial).
+  const { isSubagent, subagentReadOnly } = parseSubagentContext(input);
 
-  const VALID_AGENT_TYPES = new Set([
-    'general-purpose', 'Explore', 'Plan', 'code-reviewer', 'bug-analyzer',
-    'statusline-setup', 'claude-code-guide', 'ui-sketcher'
-  ]);
-  const agentId = (typeof rawAgentId === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(rawAgentId)) ? rawAgentId : null;
-  const agentType = (typeof rawAgentType === 'string' && VALID_AGENT_TYPES.has(rawAgentType)) ? rawAgentType : null;
-  const isSubagent = !!agentId;
-
-  const readOnlyAgentTypes = new Set(['Explore', 'Plan', 'code-reviewer', 'bug-analyzer']);
-  const subagentReadOnly = isSubagent && agentType ? readOnlyAgentTypes.has(agentType) : false;
-
-  // Fast path: read pre-computed hook status
+  // Fast path: read pre-computed hook status, skip full orchestration when all gates off.
   const hookStatus = readHookStatus();
-  if (hookStatus && hookStatus.enforcement) {
-    const enf = hookStatus.enforcement;
-    const allGatesDisabled = enf.taskGating === false && enf.scopeGating === false
-      && enf.routingGate === false && enf.commitLogGate === false
-      && enf.todoWriteGate === false && enf.loopEnforcement === false
-      && enf.deployGate === false && enf.strikeEscalation === false
-      && enf.bugfixScope === false && enf.scopeMutation === false
-      && enf.gitSafety === false
-      && hookStatus.componentReuse === false && hookStatus.phaseGate === false
-      && hookStatus.phaseReadGate === false;
-    if (allGatesDisabled) {
-      if (process.env.DEBUG) {
-        const elapsed = Number(process.hrtime.bigint() - hookStart) / 1e6;
-        console.error(`[Hook] PreToolUse fast-path: ${elapsed.toFixed(1)}ms`);
-      }
-      return { __raw: true, continue: true, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } };
+  if (isAllGatesDisabled(hookStatus)) {
+    if (process.env.DEBUG) {
+      const elapsed = Number(process.hrtime.bigint() - hookStart) / 1e6;
+      console.error(`[Hook] PreToolUse fast-path: ${elapsed.toFixed(1)}ms`);
     }
+    return { __raw: true, continue: true, hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'allow' } };
   }
 
   // Load config ONCE

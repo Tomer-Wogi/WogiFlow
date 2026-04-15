@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { RegistryPlugin } = require('../flow-registry-manager');
-const { getProjectRoot, safeJsonParse: safeJsonParseFile, PATHS } = require('../flow-utils');
+const { getProjectRoot, safeJsonParse: safeJsonParseFile, PATHS, getTodayDate } = require('../flow-utils');
 
 const INDEX_PATH = path.join(PATHS.state, 'schema-index.json');
 const MAP_PATH = path.join(PATHS.state, 'schema-map.md');

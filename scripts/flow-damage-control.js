@@ -23,7 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
+const { getProjectRoot, colors, getConfig, PATHS, getTodayDate } = require('./flow-utils');
 
 const PATTERNS_FILE = path.join(PATHS.workflow, 'damage-control.yaml');
 

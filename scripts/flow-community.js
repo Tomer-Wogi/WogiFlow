@@ -15,7 +15,7 @@ const crypto = require('node:crypto');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 
-const { PATHS, safeJsonParse, safeJsonParseString, escapeRegex } = require('./flow-utils');
+const { PATHS, safeJsonParse, safeJsonParseString, escapeRegex, getTodayDate, ensureDir } = require('./flow-utils');
 
 // ~/.wogiflow/ directory for user-level state (persists across projects)
 const WOGIFLOW_HOME = path.join(os.homedir(), '.wogiflow');
@@ -42,7 +42,7 @@ function getOrCreateAnonId() {
   try {
     // Ensure ~/.wogiflow/ exists
     if (!fs.existsSync(WOGIFLOW_HOME)) {
-      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+      ensureDir(WOGIFLOW_HOME);
     }
 
     // Reuse existing ID
@@ -84,7 +84,7 @@ function isConsentAcknowledged() {
 function acknowledgeConsent() {
   try {
     if (!fs.existsSync(WOGIFLOW_HOME)) {
-      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+      ensureDir(WOGIFLOW_HOME);
     }
     fs.writeFileSync(CONSENT_PATH, new Date().toISOString(), 'utf-8');
   } catch (err) {
@@ -635,7 +635,7 @@ async function pushToServer(payload, config) {
       // Update last push timestamp
       try {
         if (!fs.existsSync(WOGIFLOW_HOME)) {
-          fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+          ensureDir(WOGIFLOW_HOME);
         }
         fs.writeFileSync(LAST_PUSH_PATH, new Date().toISOString(), 'utf-8');
       } catch (_err) {
@@ -760,7 +760,7 @@ async function submitSuggestion(text, type, config) {
 function queuePendingSuggestion(suggestion) {
   try {
     if (!fs.existsSync(WOGIFLOW_HOME)) {
-      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+      ensureDir(WOGIFLOW_HOME);
     }
 
     let pending = [];
@@ -864,7 +864,7 @@ function loadCommunityCache() {
 function saveCommunityCache(data) {
   try {
     if (!fs.existsSync(WOGIFLOW_HOME)) {
-      fs.mkdirSync(WOGIFLOW_HOME, { recursive: true });
+      ensureDir(WOGIFLOW_HOME);
     }
     fs.writeFileSync(COMMUNITY_CACHE_PATH, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {

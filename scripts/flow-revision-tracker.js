@@ -18,7 +18,8 @@ const {
   getConfig,
   PATHS,
   readJson,
-  fileExists
+  fileExists,
+  getTodayDate
 } = require('./flow-utils');
 const { recordRevision, loadStats } = require('./flow-stats-collector');
 

@@ -12,7 +12,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, getConfig } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse, getConfig, getTodayDate } = require('./flow-utils');
 
 const PROJECT_ROOT = process.argv[2] || getProjectRoot();
 

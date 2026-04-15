@@ -142,15 +142,9 @@ function normalizeIssueToPattern(issue) {
  * @param {string} str - Input string
  * @returns {string} Kebab-case string
  */
-function slugify(str) {
-  return str
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50);
-}
+// Local slugify removed in favor of canonical flow-output slugify (wf-7072d3ac).
+const { slugify: _slugify } = require('./flow-output');
+const slugify = (str) => _slugify(str, { maxLength: 50 });
 
 // ============================================================
 // Feedback Patterns File Management

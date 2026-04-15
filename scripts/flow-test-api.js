@@ -697,7 +697,7 @@ function stopAPIServer(serverProcess) {
         // Process group kill failed — try direct kill
         try {
           serverProcess.kill('SIGTERM');
-        } catch (err2) {
+        } catch (_err) {
           // Already dead
         }
       }
