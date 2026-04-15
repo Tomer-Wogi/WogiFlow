@@ -850,6 +850,25 @@ const CONFIG_DEFAULTS = {
     respectDependencies: true
   },
 
+  // --- Task-Boundary Session Restart (wf-39e9dc09) ---
+  // EXPERIMENTAL, OPT-IN. When enabled AND the `wogi-claude` wrapper is running,
+  // TaskCompleted triggers a clean restart of the Claude Code process so each
+  // new task starts with a fresh context. State files persist; the wrapper
+  // detects the restart flag and relaunches claude. See lib/wogi-claude for
+  // the wrapper. See scripts/hooks/core/task-boundary-reset.js for the trigger.
+  //
+  // REQUIRES verification against real Claude Code before enabling broadly —
+  // the SIGTERM-to-parent pattern must be confirmed to exit Claude Code
+  // gracefully. Keep disabled until integration test in a throwaway session
+  // confirms clean exit + flag consumption + fresh restart.
+  taskBoundaryReset: {
+    _comment: 'Opt-in per-task context reset via wogi-claude wrapper. See lib/wogi-claude.',
+    enabled: false,
+    _comment_enabled: 'Set true ONLY after verifying SIGTERM behavior with real Claude Code in a throwaway session.',
+    maxRestartsPerSession: 50,
+    _comment_maxRestartsPerSession: 'Safety cap. The wrapper also has WOGI_MAX_RESTARTS env override.'
+  },
+
   // --- Contract Surface (Teams-only — activated on wogi login) ---
   contractSurface: {
     enabled: false,
@@ -1024,6 +1043,38 @@ const CONFIG_DEFAULTS = {
     trackPluginActions: true,
     phaseInjection: true,
     standaloneBypassTask: true
+  },
+
+  // --- Externalized Episodic Memory (epic-episodic-memory) ---
+  // Default OFF until Wave E regression tests validate ≥30% token savings.
+  // See .workflow/audits/state-coverage-2026-04-15.md for design rationale.
+  externalMemory: {
+    enabled: false,
+    thresholds: {
+      agentTokens: 2000,
+      readLines: 200,
+      bashLines: 100
+    },
+    retention: {
+      compressDays: 7,
+      evictDays: 30
+    },
+    exemptions: {
+      pathGlobs: [
+        '.claude/docs/phases/**',
+        '.workflow/state/workflow-phase.json',
+        '.workflow/state/task-checkpoint.json'
+      ],
+      tools: ['TodoWrite', 'Glob', 'Grep']
+    },
+    capture: {
+      enabled: false,
+      blockOnMiss: true,
+      minLevel: 'L2'
+    },
+    telemetry: {
+      enabled: true
+    }
   },
 
   // --- Workflow Steps ---

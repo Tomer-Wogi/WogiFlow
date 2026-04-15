@@ -500,6 +500,41 @@ async function handleTaskCompleted(input) {
     } catch (_err) {
       // Non-critical — pending module may not be available
     }
+
+    // Task-boundary session restart (wf-39e9dc09) — experimental, opt-in.
+    // MUST run AFTER all state-write cleanup above. No-ops unless:
+    //   1. config.taskBoundaryReset.enabled === true
+    //   2. WOGI_WRAPPER_PID env var is set (proves wogi-claude wrapper is running us)
+    //   3. WOGI_RESTART_FLAG env var is set
+    //   4. Task completed cleanly (result.completed === true)
+    //
+    // When triggered, writes a restart-flag file and sends SIGTERM to our parent
+    // (Claude Code). The wrapper sees the flag on claude's clean exit and
+    // restarts with a fresh context. State files are already flushed to disk.
+    if (result.completed && completedTask?.id) {
+      try {
+        const { maybeTriggerRestart } = require('./task-boundary-reset');
+        const restartResult = maybeTriggerRestart({
+          taskId: completedTask.id,
+          taskTitle: completedTask.title
+        });
+        if (restartResult.triggered) {
+          result.taskBoundaryRestart = {
+            triggered: true,
+            flagPath: restartResult.flagPath
+          };
+          result.message = (result.message || '') +
+            ' [Task-boundary restart triggered — session will restart on clean exit]';
+        } else if (process.env.DEBUG) {
+          console.error(`[Task Completed] Restart skipped: ${restartResult.reason}`);
+        }
+      } catch (err) {
+        // Fail-open — restart failure must not block task completion
+        if (process.env.DEBUG) {
+          console.error(`[Task Completed] Restart module error: ${err.message}`);
+        }
+      }
+    }
   } catch (err) {
     result.message = `Task completed handler error: ${err.message}`;
   }

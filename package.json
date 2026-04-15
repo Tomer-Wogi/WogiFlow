@@ -1,11 +1,12 @@
 {
   "name": "wogiflow",
-  "version": "2.15.1",
+  "version": "2.16.0",
   "description": "AI-powered development workflow management system with multi-model support",
   "main": "lib/index.js",
   "bin": {
     "flow": "bin/flow",
-    "wogi-flow": "bin/flow"
+    "wogi-flow": "bin/flow",
+    "wogi-claude": "lib/wogi-claude"
   },
   "scripts": {
     "flow": "./scripts/flow",

@@ -596,6 +596,22 @@ async function main() {
 
   success(`Completed: ${taskId}`);
 
+  // wf-39e9dc09 Phase 1 — mark task-just-completed so the next Stop-hook
+  // invocation can trigger a session restart when taskBoundaryReset is on
+  // and the wogi-claude wrapper is running. Safe no-op otherwise (the marker
+  // is cheap; Phase 2 checks preconditions before acting on it).
+  try {
+    const { markRestartPending } = require('./hooks/core/task-boundary-reset');
+    markRestartPending({
+      taskId,
+      source: 'flow-done'
+    });
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[flow-done] markRestartPending failed (non-fatal): ${err.message}`);
+    }
+  }
+
   // v5.0: Show TodoWrite completion stats if available
   if (todoWriteSync) {
     try {

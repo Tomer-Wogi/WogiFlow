@@ -2182,6 +2182,74 @@
         }
       },
       "additionalProperties": true
+    },
+    "externalMemory": {
+      "type": "object",
+      "description": "Externalized episodic memory (epic epic-episodic-memory). Routes noisy tool outputs to disk with breadcrumbs; enforces that durable conclusions land in state files. Default OFF until Wave E measurement. See .workflow/audits/state-coverage-2026-04-15.md for design rationale.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Master switch. When false, all externalMemory hooks fail-open (no behavioral change). Flip to true after Wave E regression tests confirm >=30% token savings and zero functional regression."
+        },
+        "thresholds": {
+          "type": "object",
+          "description": "Size thresholds above which tool outputs are externalized to .workflow/memory/ instead of staying in-conversation.",
+          "properties": {
+            "agentTokens": { "type": "number", "default": 2000, "description": "Agent (sub-agent) outputs above this token estimate are externalized." },
+            "readLines": { "type": "number", "default": 200, "description": "Read results above this line count are externalized (unless file is in current task changedFiles)." },
+            "bashLines": { "type": "number", "default": 100, "description": "Bash stdout/stderr combined above this line count is externalized." }
+          },
+          "additionalProperties": true
+        },
+        "retention": {
+          "type": "object",
+          "description": "Lifecycle policy for .workflow/memory/ files. Compression is a transparent operation; eviction runs the promotion pipeline first (nothing worth keeping is lost).",
+          "properties": {
+            "compressDays": { "type": "number", "default": 7, "description": "Memory files older than N days are gzipped in place." },
+            "evictDays": { "type": "number", "default": 30, "description": "Memory files older than N days are evicted after the promotion pipeline extracts worth-keeping content to state files." }
+          },
+          "additionalProperties": true
+        },
+        "exemptions": {
+          "type": "object",
+          "description": "Paths and tools that should never be externalized regardless of threshold.",
+          "properties": {
+            "pathGlobs": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": [".claude/docs/phases/**", ".workflow/state/workflow-phase.json", ".workflow/state/task-checkpoint.json"],
+              "description": "Reads of files matching these globs bypass externalization (phase files, task-state files — needed resident for hook gates)."
+            },
+            "tools": {
+              "type": "array",
+              "items": { "type": "string" },
+              "default": ["TodoWrite", "Glob", "Grep"],
+              "description": "Tool results from these tools are never externalized (lightweight by nature)."
+            }
+          },
+          "additionalProperties": true
+        },
+        "capture": {
+          "type": "object",
+          "description": "Capture-at-task-boundary enforcement. Controls whether task close is blocked when durable conclusions are claimed in the task summary but not written to state files.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": false, "description": "Master switch for the capture gate (wf-a3cc5f2a). Enable after classifier (G4 in audit) is built." },
+            "blockOnMiss": { "type": "boolean", "default": true, "description": "When true, task close is blocked on capture miss. When false, warn only." },
+            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L2", "description": "Minimum task level at which capture gate activates. L3 subtasks skip." }
+          },
+          "additionalProperties": true
+        },
+        "telemetry": {
+          "type": "object",
+          "description": "Measurement surface for validating the 30%+ token savings claim. See wf-1cde48ad (Telemetry dashboard).",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, per-session metrics are recorded to .workflow/state/memory-telemetry.json." }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true

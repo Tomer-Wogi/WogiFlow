@@ -24,6 +24,7 @@ const {
   readFile,
   writeFile,
   getConfig,
+  getTodayDate,
   color,
   success,
   warn,

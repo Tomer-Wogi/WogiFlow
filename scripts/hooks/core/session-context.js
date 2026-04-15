@@ -812,6 +812,31 @@ function formatContextForInjection(context) {
   const ctx = context.context;
   let output = '## Wogi Flow Session Context\n\n';
 
+  // Post-restart continuity note (wf-39e9dc09 — Stop-hook triggered restart)
+  // If the most recent session in session-history.json was ended by
+  // task-boundary-restart and happened very recently, surface the resume
+  // token so the user/AI knows prior context is recoverable.
+  try {
+    const { getMostRecentPriorSession } = require('./session-history');
+    const prior = getMostRecentPriorSession(ctx?.cliSessionId);
+    if (prior && prior.endReason === 'task-boundary-restart') {
+      const endedAt = new Date(prior.endedAt).getTime();
+      const ageMinutes = (Date.now() - endedAt) / 60000;
+      // Only surface if the prior session ended in the last 24 hours —
+      // older entries are history, not active continuity signals.
+      if (ageMinutes < 60 * 24) {
+        output += `### Continuing from prior session (task-boundary restart)\n`;
+        output += `Prior Claude Code session ended ${ageMinutes < 1 ? 'just now' : `${ageMinutes.toFixed(1)}m ago`} after completing task **${prior.lastActiveTaskTitle || prior.tasksCompletedInSession?.[0] || 'unknown'}**.\n`;
+        output += `\n**Durable state survived.** Read \`.workflow/state/ready.json\`, \`decisions.md\`, \`feedback-patterns.md\`, \`request-log.md\` for canonical task/decision/activity history.\n`;
+        output += `\n**Prior conversation transcript is archived but not loaded.** To recover it if needed:\n`;
+        output += `\`\`\`bash\n${prior.resumeCommand}\n\`\`\`\n`;
+        output += `\nThis restart is normal — WogiFlow's task-boundary reset (\`config.taskBoundaryReset.enabled: true\`) recovered session-token budget by resetting context at the task boundary. Proceed with the user's next instruction; if they reference prior conversation you don't have, use the resume command above.\n\n`;
+      }
+    }
+  } catch (_err) {
+    // Non-critical — history file may not exist; continue with normal context
+  }
+
   // CRITICAL: CLAUDE_CODE_SIMPLE mode warning (highest priority)
   if (ctx.simpleModeWarning && ctx.simpleModeWarning.active) {
     output += `### CLAUDE_CODE_SIMPLE Mode Detected\n`;

@@ -2685,3 +2685,17 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Pre-release tree-clean: commit runtime state churn so the v2.13.0 tag has no uncommitted state"
 **Result**: Committed runtime state mutations (model stats, pending-skill, prompt-history, registry-manifest, deleted pending-corrections) before tagging v2.13.0.
 **Files**: .workflow/state/{pending-corrections,pending-skill,prompt-history,registry-manifest}.json, .workflow/models/stats.json, .workflow/models/stats.json.lock/info.json
+
+### R-277 | 2026-04-15
+**Type**: new
+**Tags**: #audit #epic:epic-episodic-memory #task:wf-0059082d
+**Request**: "State-file coverage audit + gap report (Wave A, story 1/2)"
+**Result**: Produced comprehensive gap report at .workflow/audits/state-coverage-2026-04-15.md. Identified 10 gaps (G1-G10) across intent artifacts, decision capture, reasoning preservation, and operational bugs. G4 (conclusion classifier) flagged as prerequisite for capture gate (wf-a3cc5f2a). G9 operational bug: flow-story does not propagate to ready.json.
+**Files**: .workflow/audits/state-coverage-2026-04-15.md (new)
+
+### R-278 | 2026-04-15
+**Type**: new
+**Tags**: #config #epic:epic-episodic-memory #task:wf-546e96bc
+**Request**: "Config schema + migration for externalMemory (Wave A, story 2/2)"
+**Result**: Added externalMemory section to config.json, config.schema.json, and scripts/flow-config-defaults.js. Master switch defaults to false (opt-in). Schema documents all knobs: thresholds (agentTokens=2000, readLines=200, bashLines=100), retention (compressDays=7, evictDays=30), exemptions (pathGlobs for phase/state files, tools for lightweight tools), capture gate (disabled pending classifier), telemetry (enabled). Verified mergeWithDefaults correctly fills defaults for fresh installs and preserves user overrides. Flag-off is a true no-op — no code reads externalMemory yet, so existing flows are unaffected.
+**Files**: .workflow/config.json, .workflow/config.schema.json, scripts/flow-config-defaults.js

@@ -603,9 +603,9 @@ None
 ```json
 {
   "currentTask": {
-    "id": "wf-7104abc4",
-    "title": "IGR review fixes + WogiFlow enforcement hardening (L0 epic) — COMPLETE",
-    "startedAt": "2026-04-13T18:29:43.799Z"
+    "id": "wf-00000001",
+    "title": "TEST: trigger restart via subagent completion",
+    "startedAt": "2026-04-15T09:24:55.744Z"
   },
   "sessionContext": {
     "filesModified": [
@@ -635,7 +635,7 @@ None
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending"
   ],
-  "lastUpdated": "2026-04-13T18:29:43.800Z",
+  "lastUpdated": "2026-04-15T09:24:55.745Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

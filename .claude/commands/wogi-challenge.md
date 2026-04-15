@@ -1,5 +1,5 @@
 ---
-description: "Manual trigger of the IGR Logic Adversary — critique a plan against the Logic Constitution v1 rubric."
+description: "Manual trigger of the IGR Logic Adversary — critique a plan against the Logic Constitution v2 rubric (11 principles, including Platform Capability Grounding)."
 effort: medium
 ---
 
@@ -17,13 +17,13 @@ Story: `wf-b00262b1` (IGR)
 /wogi-challenge wf-XXXXXXXX
 
 # Critique with an explicit rubric version
-/wogi-challenge path/to/plan.md --rubric=logic-constitution-v1
+/wogi-challenge path/to/plan.md --rubric=logic-constitution-v2
 ```
 
 ## What it does
 
 1. Loads the plan (either from a file path or from `.workflow/plans/{taskId}.md`).
-2. Calls `scripts/flow-logic-adversary.js buildAdversaryPrompt` to assemble the critique prompt — includes the 10-principle Logic Constitution, few-shot calibration examples, and all available intent artifacts.
+2. Calls `scripts/flow-logic-adversary.js buildAdversaryPrompt` to assemble the critique prompt — includes the 11-principle Logic Constitution v2 (Principle 11 is Platform Capability Grounding), few-shot calibration examples, and all available intent artifacts.
 3. Spawns a sub-agent via the Agent tool on a different model than this session when possible (Sonnet when you're on Opus; Opus when you're on Sonnet) — the model-separation rule per the approved spec.
 4. Parses the returned JSON verdict against the rubric schema.
 5. Records a telemetry event (`gateId: logic-adversary`) with the verdict.
@@ -46,7 +46,7 @@ Story: `wf-b00262b1` (IGR)
 ## Under the hood
 
 - Script: `scripts/flow-logic-adversary.js`
-- Rubric: `.workflow/rubrics/logic-constitution-v1.md`
+- Rubric: `.workflow/rubrics/logic-constitution-v2.md` (v1 retained for historical telemetry)
 - Persona: `.workflow/agents/logic-adversary.md`
 - Calibration: `.workflow/state/adversary-calibration.json`
 - Telemetry: `gateId: logic-adversary` in `.workflow/state/gate-telemetry.jsonl`

@@ -106,7 +106,7 @@ function isArchitectDisabled() {
  * @param {string} [opts.framing] - Framing artifact content. If absent, attempts to load via loadFramingArtifact.
  * @param {string} [opts.exploreFindings] - Consolidated explore-phase findings.
  * @param {string} [opts.scopeConfidenceAudit] - Optional per spec §2.2; degraded mode if absent.
- * @param {string} [opts.constitutionVersion='logic-constitution-v1']
+ * @param {string} [opts.constitutionVersion='logic-constitution-v2']
  * @returns {Promise<{ systemPrompt:string, userPrompt:string, metadata:Object }>}
  */
 async function buildArchitectPrompt(opts) {
@@ -114,7 +114,7 @@ async function buildArchitectPrompt(opts) {
     throw new TypeError('buildArchitectPrompt: opts.taskId required');
   }
   const taskId = opts.taskId;
-  const constitutionVersion = opts.constitutionVersion || 'logic-constitution-v1';
+  const constitutionVersion = opts.constitutionVersion || 'logic-constitution-v2';
 
   const dis = isArchitectDisabled();
   if (dis.disabled) {
@@ -537,7 +537,7 @@ async function cliPrompt(argv) {
   const built = await buildArchitectPrompt({
     taskId: args.task || path.basename(inputFile, path.extname(inputFile)),
     taskInput,
-    constitutionVersion: args.rubric || 'logic-constitution-v1',
+    constitutionVersion: args.rubric || 'logic-constitution-v2',
   });
   console.log('===== SYSTEM PROMPT =====');
   console.log(built.systemPrompt);

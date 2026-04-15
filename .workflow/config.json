@@ -109,5 +109,43 @@
       "minTierForDone": 3,
       "blockFalseCompletion": true
     }
+  },
+  "externalMemory": {
+    "_comment": "Externalized episodic memory (epic-episodic-memory). Routes noisy tool outputs to disk with breadcrumbs; enforces conclusion capture to state files. Default OFF until Wave E measurement. See .workflow/audits/state-coverage-2026-04-15.md.",
+    "enabled": false,
+    "thresholds": {
+      "_comment": "Size thresholds above which tool outputs are externalized to .workflow/memory/.",
+      "agentTokens": 2000,
+      "readLines": 200,
+      "bashLines": 100
+    },
+    "retention": {
+      "_comment": "Lifecycle policy for .workflow/memory/ files. Eviction runs the promotion pipeline first.",
+      "compressDays": 7,
+      "evictDays": 30
+    },
+    "exemptions": {
+      "_comment": "Paths and tools that should never be externalized regardless of threshold.",
+      "pathGlobs": [
+        ".claude/docs/phases/**",
+        ".workflow/state/workflow-phase.json",
+        ".workflow/state/task-checkpoint.json"
+      ],
+      "tools": [
+        "TodoWrite",
+        "Glob",
+        "Grep"
+      ]
+    },
+    "capture": {
+      "_comment": "Capture-at-task-boundary enforcement. Disabled until conclusion classifier (G4) is built (wf-a3cc5f2a).",
+      "enabled": false,
+      "blockOnMiss": true,
+      "minLevel": "L2"
+    },
+    "telemetry": {
+      "_comment": "Per-session token-savings measurement. Needed to validate Wave E flag flip.",
+      "enabled": true
+    }
   }
 }

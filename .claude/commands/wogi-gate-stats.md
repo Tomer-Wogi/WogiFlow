@@ -43,7 +43,7 @@ Story: `wf-faf340cf` (IGR Story 0 — Gate Telemetry & Self-Assessment Framework
 A gate with `pass% = 100%` and `miss% > 10%` is **rubber-stamping**. It's letting things through that you then have to correct. This is the failure mode the owner's QA-98%-parable warned against: 100% coverage that creates false confidence is more dangerous than 70% coverage that triggers a second review.
 
 When you see high miss rates:
-1. Tune the rubric (for `logic-adversary`: edit `.workflow/rubrics/logic-constitution-v1.md`)
+1. Tune the rubric (for `logic-adversary`: edit `.workflow/rubrics/logic-constitution-v2.md`)
 2. Add calibration examples (for `logic-adversary`: append to `.workflow/state/adversary-calibration.json`)
 3. Strengthen the gate's blocking behavior (for `completion-truth-gate`: raise `minTierForDone` or set `blockFalseCompletion: true`)
 

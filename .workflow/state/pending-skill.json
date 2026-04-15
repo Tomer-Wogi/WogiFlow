@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-14T11:19:59.874Z",
+  "markedAt": "2026-04-15T06:58:54.768Z",
   "context": {
-    "args": "commit, push, and create a GitHub release for the wogi-start phase split"
+    "args": "Resuming wf-7104abc4 Wave A review. User confirmed nothing was lost. Decisions for Wave B prep:\n1. G4 conclusion classifier — create as SEPARATE STORY (not inline to wf-a3cc5f2a) AND challenge whether this is the best approach/solution\n2. G9 flow-story doesn't propagate to ready.json — create a BUG (loggy bug, no side effects)\n3. G2 intent artifacts draft — create a task AND verify everything works\n4. Wave B priorities — my call\n\nCRITICAL: User flagged that the self-improvement loop (feedback → patterns → rules) is effectively dormant (265 request-log entries, 1 correction record). Make sure it works, is connected well and properly — this is important."
   },
   "status": "pending"
 }

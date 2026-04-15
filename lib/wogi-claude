@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# wogi-claude — Task-boundary session restart wrapper for Claude Code.
+#
+# When the WogiFlow TaskCompleted hook (with taskBoundaryReset.enabled: true)
+# finishes a task, it writes a restart flag to $WOGI_RESTART_FLAG and sends
+# SIGTERM to its parent Claude Code process. Claude Code exits cleanly; this
+# wrapper detects the flag and restarts claude in a fresh context. All WogiFlow
+# state is preserved on disk and re-hydrated via SessionStart hook.
+#
+# Why this exists: Claude Code has no programmatic /clear or in-session reset.
+# Prior-conversation tokens accumulate across tasks, burning 10-20% of context
+# budget before new work begins. This wrapper recovers that budget cleanly.
+#
+# Usage:
+#   Direct:  wogi-claude [claude args...]
+#   PATH:    ensure ~/.wogiflow/bin is on PATH, then run `wogi-claude` instead of `claude`
+#   Opt-out: pass --no-wogi-restart to run claude once without the restart loop
+#
+# Environment:
+#   WOGI_RESTART_FLAG  — path to restart-flag file (default: <cwd>/.workflow/state/restart-requested)
+#   WOGI_MAX_RESTARTS  — safety cap, default 50 (prevents runaway restart storms)
+#   WOGI_WRAPPER_PID   — exported to child; hook checks this to confirm wrapper is present
+#   WOGI_CLAUDE_BIN    — override path to claude binary (default: found via PATH)
+
+set -u
+
+# --- Opt-out path: no restart loop, just exec claude once ---
+for arg in "$@"; do
+  if [ "$arg" = "--no-wogi-restart" ]; then
+    # strip the flag from args and exec
+    filtered=()
+    for a in "$@"; do [ "$a" = "--no-wogi-restart" ] || filtered+=("$a"); done
+    CLAUDE_BIN="${WOGI_CLAUDE_BIN:-claude}"
+    exec "$CLAUDE_BIN" "${filtered[@]}"
+  fi
+done
+
+# --- Resolve paths and config ---
+CLAUDE_BIN="${WOGI_CLAUDE_BIN:-claude}"
+PROJECT_ROOT="$(pwd)"
+FLAG_FILE="${WOGI_RESTART_FLAG:-$PROJECT_ROOT/.workflow/state/restart-requested}"
+MAX_RESTARTS="${WOGI_MAX_RESTARTS:-50}"
+export WOGI_RESTART_FLAG="$FLAG_FILE"
+export WOGI_WRAPPER_PID=$$
+
+# --- Handle Ctrl+C / signals gracefully: propagate to child, don't restart on user-initiated exit ---
+INTERRUPTED=0
+on_interrupt() {
+  INTERRUPTED=1
+  # Let the child process receive the signal naturally; don't kill ourselves yet.
+}
+trap on_interrupt INT TERM
+
+# --- Main loop ---
+count=0
+while true; do
+  count=$((count + 1))
+  if [ "$count" -gt "$MAX_RESTARTS" ]; then
+    echo "[wogi-claude] max restarts ($MAX_RESTARTS) reached — exiting" >&2
+    exit 1
+  fi
+
+  # Clear any stale flag from a prior run before starting a new claude
+  # (defensive — hook should clean up after itself but if a crash left it, remove it)
+  if [ "$count" -eq 1 ] && [ -f "$FLAG_FILE" ]; then
+    rm -f "$FLAG_FILE"
+  fi
+
+  "$CLAUDE_BIN" "$@"
+  inner_exit=$?
+
+  # If the user hit Ctrl+C (INT/TERM reached us), don't restart
+  if [ "$INTERRUPTED" -eq 1 ]; then
+    exit "$inner_exit"
+  fi
+
+  # If the restart flag was written, consume it and loop
+  if [ -f "$FLAG_FILE" ]; then
+    rm -f "$FLAG_FILE"
+    # Brief informational line so user knows what just happened
+    echo "[wogi-claude] task boundary — restarting with fresh context (iteration $((count + 1)))" >&2
+    continue
+  fi
+
+  # No flag — claude exited for its own reasons; propagate exit code
+  exit "$inner_exit"
+done

@@ -6,7 +6,7 @@ Instructions for the spec/approval phase. Loaded on-demand when phase transition
 
 **Conditional** — runs for L1+ tasks when IGR on. L3 skip. L2 runs only on ultrathink auto-bump.
 
-Spawn a **read-only sub-agent** (Explore subagent_type, with Read/Grep/Glob only — no Edit/Write/Bash) on a model chosen per `config.intentGroundedReasoning.architectPass.modelOverride`. Input: Framing Artifact from Step 1.15 + explore findings from Step 1.3 + scope-confidence audit from Step 1.45 + the Logic Constitution v1 rubric (so the Architect anticipates the Adversary's checks).
+Spawn a **read-only sub-agent** (Explore subagent_type, with Read/Grep/Glob only — no Edit/Write/Bash) on a model chosen per `config.intentGroundedReasoning.architectPass.modelOverride`. Input: Framing Artifact from Step 1.15 + explore findings from Step 1.3 + scope-confidence audit from Step 1.45 + the Logic Constitution v2 rubric (so the Architect anticipates the Adversary's checks, including Principle 11 — Platform Capability Grounding, which demands citation + enforcement-preservation + alternative-ruled-out + fallback for every platform-capability claim).
 
 Build the prompt via `node scripts/flow-architect-pass.js prompt <task>`. Invoke via Agent tool. Output: an 8-section plan at `.workflow/plans/{taskId}.md` (PINs: approach, data-model, journey-impact, net-new, alternatives, risks, reversibility, dependencies). Parse via `parsePlanArtifact()`; if structural FAIL, re-prompt.
 
@@ -20,7 +20,7 @@ When IGR flag is OFF: SKIPPED. Pipeline proceeds from Step 1.45 directly to Step
 
 Spawn a **separate sub-agent on a different model** than the Architect (Sonnet when Architect is Opus; Opus when Architect is Sonnet — per `modelSeparation: different-from-architect`). Per Anthropic harness research, same-model self-critique is a known rubber-stamp failure mode.
 
-Build the prompt via `node scripts/flow-logic-adversary.js prompt .workflow/plans/{taskId}.md`. The Adversary critiques the plan against the 10-principle Logic Constitution v1 with few-shot calibration examples from `.workflow/state/adversary-calibration.json`.
+Build the prompt via `node scripts/flow-logic-adversary.js prompt .workflow/plans/{taskId}.md`. The Adversary critiques the plan against the 11-principle Logic Constitution v2 with few-shot calibration examples from `.workflow/state/adversary-calibration.json`. Principle 11 (Platform Capability Grounding) always runs — every claim about hook/tool/API/platform behavior must be cited, enforcement must be preserved, an alternative must be named, and a fallback must be specified.
 
 Iteration loop (max 3 rounds by default):
 - `overallVerdict: PASS` or `PASS_WITH_CONCERNS` → proceed to Step 1.5. Concerns surface at approval gate (Step 1.6).

@@ -142,7 +142,9 @@ const KNOWN_CONFIG_KEYS = [
   'security', 'storyDecomposition', 'techDebt', 'traces',
   'webmcp', 'workflowSteps',
   // v2.0.0+ compat shim output keys
-  'proactiveCompaction', 'communitySync'
+  'proactiveCompaction', 'communitySync',
+  // Task-boundary session restart (wf-39e9dc09) — opt-in, experimental
+  'taskBoundaryReset'
 ];
 
 module.exports = {

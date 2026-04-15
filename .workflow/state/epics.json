@@ -24,10 +24,10 @@
         "wf-d705ddee"
       ],
       "features": [],
-      "status": "completed",
-      "progress": 1,
+      "status": "inProgress",
+      "progress": 0.3333333333333333,
       "createdAt": "2026-03-30T07:20:30.378Z",
-      "updatedAt": "2026-03-30T07:50:36.656Z"
+      "updatedAt": "2026-04-15T06:28:34.903Z"
     },
     "epic-enforcement-gates": {
       "id": "epic-enforcement-gates",
@@ -48,9 +48,44 @@
       "status": "completed",
       "progress": 1,
       "createdAt": "2026-04-10T18:25:36.077Z",
-      "updatedAt": "2026-04-10T20:16:52.798Z"
+      "updatedAt": "2026-04-15T06:28:34.904Z"
+    },
+    "epic-episodic-memory": {
+      "id": "epic-episodic-memory",
+      "title": "Externalized Episodic Memory + State Capture Enforcement",
+      "description": "Eliminate conversational context bloat: route curated conclusions to state files (mechanically enforced), externalize noisy tool outputs to disk with breadcrumbs, promote worth-keeping content before cleanup. Target: 30%+ token recovery on continuation turns, 3-5x more tasks per session in bulk mode. Architecture: Layer 1 state capture (primary), Layer 2 tool-output externalization (safety net), Layer 3 promotion pipeline (preservation).",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-0059082d",
+        "wf-a3cc5f2a",
+        "wf-96bd6dbb",
+        "wf-e64cacd0",
+        "wf-2be323f6",
+        "wf-f6c88240",
+        "wf-6a352aae",
+        "wf-9541ad78",
+        "wf-1976a301",
+        "wf-eb2590f4",
+        "wf-546e96bc",
+        "wf-234d2069",
+        "wf-1cde48ad",
+        "wf-7e814fb0",
+        "wf-e6d65edf",
+        "wf-942ad14f",
+        "wf-643304c0",
+        "wf-60ac175d",
+        "wf-39e9dc09",
+        "wf-729ab5c0",
+        "wf-f747f993"
+      ],
+      "features": [],
+      "status": "inProgress",
+      "progress": 0.38095238095238093,
+      "createdAt": "2026-04-15T06:31:14.234Z",
+      "updatedAt": "2026-04-15T10:26:30.130Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-04-10T20:16:52.798Z"
+  "lastUpdated": "2026-04-15T10:26:30.130Z"
 }

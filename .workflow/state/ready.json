@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-14T10:38:25.731Z",
+  "lastUpdated": "2026-04-15T06:50:46.090Z",
   "inProgress": [
     {
       "id": "wf-7104abc4",
@@ -386,10 +386,155 @@
       "priority": "P1",
       "created": "2026-04-14T17:50:33.542Z",
       "specPath": ".workflow/specs/wf-6dbc0b2a.md"
+    },
+    {
+      "id": "wf-b5cff650",
+      "title": "flow-story doesn't propagate new stories to ready.json",
+      "type": "bug",
+      "priority": "P3",
+      "severity": "medium",
+      "discoveredFrom": "wf-0059082d",
+      "status": "ready",
+      "createdAt": "2026-04-15T07:08:50.688Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-b5cff650.md"
+    },
+    {
+      "id": "wf-e6d65edf",
+      "title": "Extend flow-correction-detector with hybrid keyword-first classifier and self-learning pattern back-propagation (G4)",
+      "type": "feature",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T07:09:28.771Z",
+      "specPath": ".workflow/changes/wf-e6d65edf.md",
+      "epic": "epic-episodic-memory"
+    },
+    {
+      "id": "wf-942ad14f",
+      "title": "Confirm intent artifacts (product/domain-model/glossary/user-journeys) and verify IGR consumption (G2)",
+      "type": "feature",
+      "level": "L2",
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-04-15T07:09:28.771Z",
+      "specPath": ".workflow/changes/wf-942ad14f.md",
+      "epic": "epic-episodic-memory"
+    },
+    {
+      "id": "wf-729ab5c0",
+      "title": "Timestamp-scoped session-episodic hydration (rules always load, session context by recency)",
+      "type": "feature",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P0",
+      "created": "2026-04-15T08:59:46.142Z",
+      "specPath": ".workflow/changes/wf-729ab5c0.md",
+      "epic": "epic-episodic-memory"
+    },
+    {
+      "id": "wf-f747f993",
+      "title": "wogi-claude wrapper compatibility with workspace mode (multi-repo workers)",
+      "type": "feature",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T10:26:30.130Z",
+      "specPath": ".workflow/changes/wf-f747f993.md",
+      "epic": "epic-episodic-memory"
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-eb2590f4",
+      "title": "(cancelled) wf-eb2590f4",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "specPath": ".workflow/changes/wf-eb2590f4.md",
+      "status": "cancelled",
+      "cancelledAt": "2026-04-15T10:26:30.130Z",
+      "cancelReason": "CLAUDE.md breadcrumb protocol assumed Layer-2 externalization that no longer exists; state files + session-history.json replace breadcrumbs"
+    },
+    {
+      "id": "wf-f6c88240",
+      "title": "(cancelled) wf-f6c88240",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P2",
+      "specPath": ".workflow/changes/wf-f6c88240.md",
+      "status": "cancelled",
+      "cancelledAt": "2026-04-15T10:26:30.130Z",
+      "cancelReason": "PreToolUse stale-read protection obsolete — session restart gives fresh reads by design, stale-reads cannot persist"
+    },
+    {
+      "id": "wf-96bd6dbb",
+      "title": "Tool-output externalization hook (PostToolUse)",
+      "type": "feature",
+      "level": "L1",
+      "status": "cancelled",
+      "priority": "P0",
+      "created": "2026-04-15T07:30:23.875Z",
+      "startedAt": "2026-04-15T07:30:23.875Z",
+      "specPath": ".workflow/changes/wf-96bd6dbb.md",
+      "epic": "epic-episodic-memory",
+      "cancelledAt": "2026-04-15T10:26:30.130Z",
+      "cancelReason": "PostToolUse tool-output externalization unachievable (hook cannot rewrite toolResponse); superseded by task-boundary session restart in wf-39e9dc09"
+    },
+    {
+      "id": "wf-39e9dc09",
+      "title": "Task-boundary session restart: shell wrapper + hook signaling + postinstall integration",
+      "type": "feature",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-15T08:59:46.142Z",
+      "specPath": ".workflow/changes/wf-39e9dc09.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T09:07:17.644Z",
+      "completedAt": "2026-04-15T09:17:28.239Z",
+      "outcome": "Code complete. Opt-in flag defaults false. Integration test with real Claude Code required before enabling."
+    },
+    {
+      "id": "wf-60ac175d",
+      "title": "Spike: Task-boundary session restart feasibility (wrapper + kill + restart test)",
+      "type": "feature",
+      "level": "L3",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T08:59:46.142Z",
+      "startedAt": "2026-04-15T08:59:46.142Z",
+      "specPath": ".workflow/changes/wf-60ac175d.md",
+      "epic": "epic-episodic-memory",
+      "completedAt": "2026-04-15T09:03:34.082Z",
+      "spikeOutcome": "SUCCESS — wrapper mechanism verified; M1 (hook SIGTERM parent) integration-test needed in wf-39e9dc09"
+    },
+    {
+      "id": "wf-643304c0",
+      "title": "IGR Principle 11 — Platform Capability Grounding (with enforcement-preservation requirement)",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T07:56:31.365Z",
+      "completedAt": "2026-04-15T07:56:31.365Z",
+      "specPath": ".workflow/changes/wf-643304c0.md",
+      "epic": "epic-episodic-memory"
+    },
+    {
+      "id": "wf-7e814fb0",
+      "title": "Self-improvement loop hardening — verify wiring, fix silent failures, prune noise, seed live-fire test data",
+      "type": "feature",
+      "level": "L1",
+      "status": "cancelled",
+      "priority": "P1",
+      "created": "2026-04-15T07:09:28.771Z",
+      "specPath": ".workflow/changes/wf-7e814fb0.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T07:14:41.070Z",
+      "cancelledAt": "2026-04-15T07:30:23.875Z",
+      "cancelReason": "Scope creep — invented work not serving epic token-savings goal. Legitimate fixes (noise prune, capture verification) rolled into wf-a3cc5f2a."
+    },
     {
       "id": "wf-8f5571da",
       "title": "Fix 16 phase-read gate review findings",
@@ -965,6 +1110,43 @@
       "criteria": 6,
       "createdAt": "2026-03-30T07:21:34.709Z",
       "completedAt": "2026-03-30T07:50:36.636Z"
+    },
+    {
+      "id": "wf-0059082d",
+      "title": "State-file coverage audit + gap report",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "status": "completed",
+      "completedAt": "2026-04-15T06:50:46.090Z",
+      "decisions": [
+        "10 gaps identified (G1-G10)",
+        "G4 classifier flagged as prerequisite for capture gate",
+        "G9 operational bug: flow-story does not propagate to ready.json"
+      ],
+      "learnings": [
+        "Intent artifacts stuck in draft undermine IGR confidence",
+        "Reasoning-preservation has no home in current state files",
+        "feedback-patterns.md is dramatically underused (1 CORR vs 265 R-entries)"
+      ]
+    },
+    {
+      "id": "wf-546e96bc",
+      "title": "Config schema + migration for externalMemory",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "status": "completed",
+      "completedAt": "2026-04-15T06:50:46.090Z",
+      "decisions": [
+        "externalMemory.enabled defaults to false until Wave E flip",
+        "thresholds: agent=2000t, read=200L, bash=100L",
+        "exempt phase files and state files from externalization"
+      ],
+      "learnings": [
+        "mergeWithDefaults preserves user overrides correctly",
+        "CONFIG_DEFAULTS lacked an IGR entry — may be a pre-existing gap"
+      ]
     }
   ],
   "backlog": [

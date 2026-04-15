@@ -120,6 +120,69 @@ runHook('Stop', async ({ parsedInput }) => {
     }
   }
 
+  // Task-boundary session restart (wf-39e9dc09 — Phase 2, Stop-hook pivot).
+  // Runs BEFORE checkLoopExit so we can SIGTERM cleanly if a task was just
+  // completed. This is a verified direct child of the claude process (the
+  // Stop hook fires reliably — directly observed in test run 2026-04-15,
+  // unlike TaskCompleted which was found not to fire for Task-tool subagents).
+  // No-op unless task-just-completed marker exists AND feature is enabled
+  // AND wogi-claude wrapper env is present.
+  try {
+    const { consumeAndTriggerRestart, hasPendingMarker } = require('../../core/task-boundary-reset');
+
+    // If we're about to restart, record the session in history FIRST so the
+    // new session can find the prior session's resume token. Use parsedInput
+    // or session-state for the cliSessionId.
+    if (hasPendingMarker()) {
+      try {
+        const { recordSessionEnd } = require('../../core/session-history');
+        let cliSessionId = parsedInput?.sessionId || null;
+        if (!cliSessionId) {
+          // Fallback: read from session-state.json
+          const { PATHS, safeJsonParse } = require('../../../flow-utils');
+          const path = require('node:path');
+          const ss = safeJsonParse(path.join(PATHS.state, 'session-state.json'), {});
+          cliSessionId = ss.cliSessionId || null;
+        }
+        if (cliSessionId) {
+          // Collect tasks completed in this session from recentlyCompleted
+          // (best-effort — not all of these are from THIS session but it's
+          // a reasonable approximation; in practice the newest entries are ours)
+          const { PATHS, safeJsonParse } = require('../../../flow-utils');
+          const path = require('node:path');
+          const ready = safeJsonParse(path.join(PATHS.state, 'ready.json'), {});
+          const recent = ready.recentlyCompleted || [];
+          const lastCompleted = recent[0] || null;
+          recordSessionEnd({
+            cliSessionId,
+            endReason: 'task-boundary-restart',
+            tasksCompletedInSession: recent.slice(0, 5).map(t => t.id).filter(Boolean),
+            lastActiveTaskTitle: lastCompleted?.title || null
+          });
+        }
+      } catch (err) {
+        if (process.env.DEBUG) {
+          console.error(`[Stop] Session history record failed (non-fatal): ${err.message}`);
+        }
+      }
+    }
+
+    const restartResult = consumeAndTriggerRestart();
+    if (restartResult.triggered && process.env.DEBUG) {
+      console.error(`[Stop] Task-boundary restart triggered — claude will exit, wrapper will relaunch`);
+    } else if (!restartResult.triggered && restartResult.reason !== 'no-pending-marker' && process.env.DEBUG) {
+      console.error(`[Stop] Task-boundary restart check: ${restartResult.reason}`);
+    }
+    // If we SIGTERM'd our parent, the process will begin shutting down. Still
+    // return the normal Stop-hook result so any in-flight return value flows
+    // back to claude before the signal is handled.
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Stop] Task-boundary restart module error (fail-open): ${err.message}`);
+    }
+    // Never block Stop on restart-module errors.
+  }
+
   // Check if loop can exit
   return await checkLoopExit();
 }, { failMode: 'warn', failOutput: { continue: false } });
