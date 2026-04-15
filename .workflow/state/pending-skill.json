@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-15T20:03:09.145Z",
+  "markedAt": "2026-04-15T20:20:14.215Z",
   "context": {
-    "args": "wf-94cc3b72 — add IGR logic check to /wogi-review (mirrors /wogi-audit enhancement). Insert intent framing + architect pass + logic adversary + evidence tiers + completion truth gate into wogi-review.md. Ship together with orchestrator extraction as v2.17.3."
+    "args": "wf-94cc3b72 — fix review findings F1-F4 and ship v2.17.4. F1: duplicate 5.7 numbering. F2: stale phase mapping table. F3: adversaryModel bootstrap paradox (static sonnet). F4: clarify config toggles are AI-honored not runtime-enforced. M1 (doc bloat) deferred to separate release — restructure is bigger work."
   },
   "status": "pending"
 }

@@ -174,7 +174,7 @@
     }
   },
   "review": {
-    "_comment": "Code-review settings. The framingPass / evidenceTiers / adversaryPass / completionTruthGate blocks mirror the IGR-hardening applied to /wogi-audit. They port the same rigor (framing, evidence grading, different-model adversary, runtime-evidence truth gate) into /wogi-review so review findings can't rubber-stamp themselves.",
+    "_comment": "Code-review settings. The framingPass / evidenceTiers / adversaryPass / completionTruthGate blocks mirror the IGR-hardening applied to /wogi-audit. They port the same rigor (framing, evidence grading, different-model adversary, runtime-evidence truth gate) into /wogi-review so review findings can't rubber-stamp themselves. These toggles are AI-honored at runtime (the markdown command enforces them); there is no runtime code reading these keys — pattern matches /wogi-audit's docs-driven command model.",
     "minFindings": 3,
     "requireJustificationIfClean": true,
     "framingPass": {
@@ -187,8 +187,14 @@
       "capByTier": true
     },
     "adversaryPass": {
+      "_comment": "adversaryModel is NOT a static default — the AI must resolve it at runtime by inspecting which model the review agents used. Rule: adversary model MUST differ from agent model (same-model adversary = rubber-stamp, defeats IGR). whenAgentOnSonnet = opus; whenAgentOnOpus = sonnet; whenAgentOnHaiku = sonnet. Never match.",
       "enabled": true,
-      "adversaryModel": "sonnet",
+      "adversaryModel": {
+        "whenAgentOnSonnet": "opus",
+        "whenAgentOnOpus": "sonnet",
+        "whenAgentOnHaiku": "sonnet",
+        "default": "sonnet"
+      },
       "applySeverityAdjustments": true,
       "applyScopeDrift": true,
       "blockOnBlockVerdict": true,

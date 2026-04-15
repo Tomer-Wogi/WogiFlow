@@ -29,7 +29,7 @@ Auto-detects when to use multi-pass (4 sequential passes) vs parallel (3 agents)
 At each phase checkpoint, display a progress bar AND update the progress state file:
 
 ```bash
-node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"wf-XXX","command":"/wogi-review","phase":"AI Review","phaseNum":2,"totalPhases":5,"step":"Agent 3/6 complete","stepNum":3,"totalSteps":6}'
+node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"wf-XXX","command":"/wogi-review","phase":"AI Review","phaseNum":2,"totalPhases":7,"step":"Agent 3/6 complete","stepNum":3,"totalSteps":6}'
 ```
 
 **Standard format for each checkpoint:**
@@ -38,14 +38,19 @@ node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"w
   Agent 3/6 complete
 ```
 
-**Phase mapping for /wogi-review:**
+**Phase mapping for /wogi-review (v6.0 — IGR-hardened):**
 | Phase | phaseNum | Description |
 |-------|----------|-------------|
+| 0 | Review Framing | Scope + assumptions (IGR v6.0) |
 | 1 | Verification Gates | Syntax, lint, tests |
 | 2 | AI Review | N agents (sub-steps = agents) |
+| 2.5 | Git-Verified Claims | Cross-reference spec vs diff |
+| 2.8 | Findings Adversary | Different-model critique (IGR v6.0) |
 | 3 | Standards + Promotion | Compliance check + pattern learning |
 | 4 | Optimization | Solution suggestions |
-| 5 | Post-Review | Fix routing, learning, archive |
+| 5 | Post-Review | Fix routing, truth gate, archive |
+
+Note: `totalPhases: 7` when Phase 0 counted as phaseNum=0 (8 named phases overall, 7 sequential numeric slots 0→5). Pass `totalPhases: 7` to the progress tracker.
 
 On review completion, clear progress: `node node_modules/wogiflow/scripts/flow-progress-tracker.js clear`
 
@@ -123,9 +128,36 @@ Multi-pass advantages:
 
 The review system has **two layers**:
 1. **Runtime scripts** (`flow-review.js`, `flow-standards-checker.js`, `flow-solution-optimizer.js`) — perform automated pre-flight checks (verification gates, standards, optimization). These are helper tools, NOT the full review.
-2. **AI instructions** (this document) — describe the complete 5-phase review loop, agent spawning, and post-review workflow. The AI model executes the full 5-phase loop, using runtime script output as input to specific phases.
+2. **AI instructions** (this document) — describe the complete 7-phase review loop, agent spawning, and post-review workflow. The AI model executes the full 7-phase loop, using runtime script output as input to specific phases.
 
-**The runtime script does NOT execute all 5 phases.** It handles pre-flight only. You (the AI) are responsible for orchestrating the complete review.
+**The runtime script does NOT execute all 7 phases.** It handles pre-flight only. You (the AI) are responsible for orchestrating the complete review.
+
+### Config Enforcement Model (IGR v6.0)
+
+**All `config.review.*` toggles are AI-honored, not runtime-enforced.** No JavaScript reads `config.review.framingPass`, `config.review.evidenceTiers`, `config.review.adversaryPass`, or `config.review.completionTruthGate`. The AI executing `/wogi-review` is responsible for reading these keys via `getConfig()` and honoring them. This matches `/wogi-audit`'s docs-driven model.
+
+**Practical implication**: a user who sets `review.adversaryPass.enabled: false` will have the pass skipped ONLY if the AI respects the config. As a reviewer, always load config first and print the toggle states before launching phases.
+
+### Adversary Model Selection Rule (CRITICAL — IGR v6.0)
+
+The `adversaryPass.adversaryModel` is NOT a static string. It is a mapping that the AI MUST resolve based on the model running the review agents.
+
+```json
+"adversaryModel": {
+  "whenAgentOnSonnet": "opus",
+  "whenAgentOnOpus": "sonnet",
+  "whenAgentOnHaiku": "sonnet",
+  "default": "sonnet"
+}
+```
+
+**Rule**: the adversary MUST run on a different model than the agents. Same-model adversary = same-model rubber-stamp, which defeats the entire purpose of the adversary pass.
+
+**How to resolve at runtime**:
+1. Determine which model the Phase 2 agents ran on (usually Sonnet by default).
+2. Look up `adversaryModel[whenAgentOn<Model>]`.
+3. If the resolved value equals the agent model, fall back to a different model (e.g., if agents were on Haiku and the config says `whenAgentOnHaiku: sonnet`, use Sonnet — which differs from Haiku).
+4. If config is a plain string (legacy), and it matches the agent model, OVERRIDE to a different model. Do not rubber-stamp.
 
 ## Step 0: Scope Resolution (Natural Language Scoping)
 
@@ -193,7 +225,7 @@ The resolved file list replaces the default git diff in Phase 1. All subsequent 
 
 ## How It Works (MANDATORY 5-PHASE SEQUENTIAL EXECUTION)
 
-**CRITICAL: You MUST execute ALL 5 phases sequentially. Do NOT stop after Phase 2.**
+**CRITICAL: You MUST execute ALL 7 phases sequentially (0 → 1 → 2 → 2.5 → 2.8 → 3 → 4 → 5). Do NOT stop after Phase 2.**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -232,7 +264,7 @@ The resolved file list replaces the default git diff in Phase 1. All subsequent 
 │     → Persist findings, present fix options to user          │
 │     → If user chooses fix: convert to todos, fix loop        │
 │     → Learning capture: corrections, pattern promotion       │
-│     → Display "Phases: 5/5 executed"                         │
+│     → Display "Phases: 7/7 executed"                         │
 │     ✓ CHECKPOINT: "Phase 5 complete - Review done"           │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
@@ -590,7 +622,7 @@ Track phases completed: start at 0/5, increment after each phase checkpoint.
 **Display Phase 0 results**:
 ```
 ═══════════════════════════════════════
-PHASE 0: REVIEW FRAMING [0/5]
+PHASE 0: REVIEW FRAMING [0/7]
 ═══════════════════════════════════════
 [Framing artifact summary]
 
@@ -620,7 +652,7 @@ git diff --name-only HEAD~N HEAD  # If --commits N specified
 **1.3. Display Phase 1 results**:
 ```
 ═══════════════════════════════════════
-PHASE 1: VERIFICATION GATES [1/5]
+PHASE 1: VERIFICATION GATES [1/7]
 ═══════════════════════════════════════
 ✓ Spec: N/N deliverables exist
 ✓ Lint: passed
@@ -752,7 +784,7 @@ orchestrator.
 **2.7. Display Phase 2 results (per-agent sections)**:
 ```
 ═══════════════════════════════════════
-PHASE 2: AI REVIEW [2/5]
+PHASE 2: AI REVIEW [2/7]
 ═══════════════════════════════════════
 
 Agents: N launched (3 core + 1 optional + 2 project-rules)
@@ -808,7 +840,7 @@ git diff --name-only               # For unstaged changes
 **2.5.5. Display Phase 2.5 results**:
 ```
 ═══════════════════════════════════════
-PHASE 2.5: GIT-VERIFIED CLAIMS [2.5/5]
+PHASE 2.5: GIT-VERIFIED CLAIMS [3/7]
 ═══════════════════════════════════════
 
 Spec: .workflow/changes/wf-XXXXXXXX.md
@@ -845,7 +877,11 @@ Summary: X verified, Y missing, Z unplanned
 
 2. **Launch ONE Agent sub-agent** with:
    - `subagent_type=Explore` (READ-ONLY — must not modify files)
-   - `model=<config.review.adversaryPass.adversaryModel>` (default `opus` when agents ran on Sonnet; `sonnet` when agents ran on Opus — MUST be different from the agent model to avoid same-model rubber-stamp)
+   - `model=<resolved adversary model>` — resolve per the rule in "Architecture Note → Adversary Model Selection Rule":
+     * If agents ran on Sonnet → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnSonnet` (default `opus`)
+     * If agents ran on Opus → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnOpus` (default `sonnet`)
+     * If agents ran on Haiku → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnHaiku` (default `sonnet`)
+     * **Override-always rule**: if the resolved value equals the agent model (e.g., legacy plain-string config set to `sonnet` when agents ran on Sonnet), pick a different model instead. Same-model adversary = rubber-stamp, which defeats the IGR adversary pass.
 
 3. **Prompt structure**:
 
@@ -908,7 +944,7 @@ Specifically HUNT for: (a) findings where evidenceTier=0 but severity ≥ HIGH,
 7. **Display Phase 2.8 results**:
 ```
 ═══════════════════════════════════════
-PHASE 2.8: FINDINGS ADVERSARY [2.8/5]
+PHASE 2.8: FINDINGS ADVERSARY [4/7]
 ═══════════════════════════════════════
 
 Adversary model: [model]  (agents: [agent-model])
@@ -927,7 +963,7 @@ Evidence challenges:   N  (tier downgraded, severity re-capped)
 
 **One pass only** — no iteration loop. If the adversary `BLOCKS`, display the block reason prominently and require the user to acknowledge before proceeding to Phase 3 — or to retry the review with adjusted scope.
 
-**Config toggles**: `review.adversaryPass.enabled` (default true), `review.adversaryPass.adversaryModel` (default `sonnet` when agents on Opus; `opus` when agents on Sonnet), `review.adversaryPass.applySeverityAdjustments` (default true), `review.adversaryPass.applyScopeDrift` (default true), `review.adversaryPass.blockOnBlockVerdict` (default true).
+**Config toggles**: `review.adversaryPass.enabled` (default true), `review.adversaryPass.adversaryModel` (mapping object — see "Adversary Model Selection Rule" in the Architecture Note; resolve at runtime based on agent model, override-always rule applies), `review.adversaryPass.applySeverityAdjustments` (default true), `review.adversaryPass.applyScopeDrift` (default true), `review.adversaryPass.blockOnBlockVerdict` (default true).
 
 ---
 
@@ -964,7 +1000,7 @@ After running the standards check, feed any violations through the pattern promo
 **3.4. Display Phase 3 results**:
 ```
 ═══════════════════════════════════════
-PHASE 3: STANDARDS COMPLIANCE [3/5]
+PHASE 3: STANDARDS COMPLIANCE [5/7]
 ═══════════════════════════════════════
 
 ✓ decisions.md: passed
@@ -1007,7 +1043,7 @@ Or if the runtime script is not available, manually analyze changed files for:
 **4.3. Display Phase 4 results**:
 ```
 ═══════════════════════════════════════
-PHASE 4: SOLUTION OPTIMIZATION [4/5]
+PHASE 4: SOLUTION OPTIMIZATION [6/7]
 ═══════════════════════════════════════
 
 Technical (N):
@@ -1048,7 +1084,7 @@ Phase Results:
 
 Total Findings: N (X critical, Y high, Z medium, W low)
 Pattern Learning: P patterns tracked, M promoted, G enforcement gaps
-Phases: 5/5 executed
+Phases: 7/7 executed
 ```
 
 **5.2. Present severity-aware fix options to user** (use AskUserQuestion):
@@ -1229,10 +1265,10 @@ This ensures that patterns discovered during code review feed into the same prom
 - Display the truth-gate downgrade counts prominently — the user should consciously accept unverified fixes, not have them hidden
 - If user requests additional fixes or verification, return to step 5.3
 
-**5.7. Display final checkpoint**:
+**5.8. Display final checkpoint**:
 ```
 ═══════════════════════════════════════
-PHASE 5: POST-REVIEW COMPLETE [5/5]
+PHASE 5: POST-REVIEW COMPLETE [7/7]
 ═══════════════════════════════════════
 
 Findings: N total
@@ -1245,7 +1281,7 @@ Pattern Learning:
 
 Run /wogi-review-fix --pending to batch-process deferred items.
 
-Phases: 5/5 executed
+Phases: 7/7 executed
 Review complete.
 ```
 
