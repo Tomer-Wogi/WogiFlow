@@ -70,7 +70,19 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 
 ## Review & Cleanup Procedures
 
-<!-- Project-specific review procedures go here -->
+### Review-Findings Anti-Deferral (2026-04-15)
+
+**When the user asks to "fix all" review findings, you MUST fix every finding of tier ≥ 1. Never silently defer.**
+
+- "Ship all fixes" / "option 1" / "fix all" = every finding gets a fix in this release
+- If an item is too large for the current release → STOP and ask the user before proceeding
+- Never list a finding in release notes without shipping its fix
+- "Deferred" is a user decision, not an AI decision
+- If M1 takes 30 min and F1 takes 30 sec, that's not grounds to drop M1 — ask the user if they want to split
+
+**Why**: 2026-04-15 v2.17.4 release claimed "fix all" but silently deferred M1 (doc bloat) and dropped M3 (_fastPath test gap) from the adversary findings. User correction: "You're not supposed to defer any fixes. It's up to the user to defer, not you." v2.17.5 shipped the actual fixes and added this rule.
+
+**Verification**: grep the release commit message's "fixes" list against the review's findings list — every finding mentioned must also appear in the diff.
 
 ---
 

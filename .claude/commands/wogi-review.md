@@ -132,32 +132,13 @@ The review system has **two layers**:
 
 **The runtime script does NOT execute all 7 phases.** It handles pre-flight only. You (the AI) are responsible for orchestrating the complete review.
 
-### Config Enforcement Model (IGR v6.0)
+### IGR v6.0 — Config Enforcement + Adversary Model Rule (concise)
 
-**All `config.review.*` toggles are AI-honored, not runtime-enforced.** No JavaScript reads `config.review.framingPass`, `config.review.evidenceTiers`, `config.review.adversaryPass`, or `config.review.completionTruthGate`. The AI executing `/wogi-review` is responsible for reading these keys via `getConfig()` and honoring them. This matches `/wogi-audit`'s docs-driven model.
+All `config.review.*` toggles are **AI-honored, not runtime-enforced**. Load config first, print toggle states, honor them. Matches `/wogi-audit`'s docs-driven model.
 
-**Practical implication**: a user who sets `review.adversaryPass.enabled: false` will have the pass skipped ONLY if the AI respects the config. As a reviewer, always load config first and print the toggle states before launching phases.
+`adversaryPass.adversaryModel` is a mapping. **Override-always rule**: the adversary MUST run on a different model than the review agents (same-model = rubber-stamp). If the resolved value equals the agent model, pick a different model regardless.
 
-### Adversary Model Selection Rule (CRITICAL — IGR v6.0)
-
-The `adversaryPass.adversaryModel` is NOT a static string. It is a mapping that the AI MUST resolve based on the model running the review agents.
-
-```json
-"adversaryModel": {
-  "whenAgentOnSonnet": "opus",
-  "whenAgentOnOpus": "sonnet",
-  "whenAgentOnHaiku": "sonnet",
-  "default": "sonnet"
-}
-```
-
-**Rule**: the adversary MUST run on a different model than the agents. Same-model adversary = same-model rubber-stamp, which defeats the entire purpose of the adversary pass.
-
-**How to resolve at runtime**:
-1. Determine which model the Phase 2 agents ran on (usually Sonnet by default).
-2. Look up `adversaryModel[whenAgentOn<Model>]`.
-3. If the resolved value equals the agent model, fall back to a different model (e.g., if agents were on Haiku and the config says `whenAgentOnHaiku: sonnet`, use Sonnet — which differs from Haiku).
-4. If config is a plain string (legacy), and it matches the agent model, OVERRIDE to a different model. Do not rubber-stamp.
+Full reference: [intent-grounded-review.md → Config Enforcement Model](../docs/intent-grounded-review.md#config-enforcement-model--reference-detail).
 
 ## Step 0: Scope Resolution (Natural Language Scoping)
 
@@ -580,24 +561,15 @@ Track phases completed: start at 0/5, increment after each phase checkpoint.
 
 ### PHASE 0: Review Framing Pass (IGR v6.0)
 
-**Config toggle**: `config.review.framingPass.enabled` (default `true`). When disabled, skip this phase entirely.
-
-**Problem this solves**: "Review" means different things in different invocations. "Review what we just did" is bounded to the session diff; "review the auth flow" is bounded to a module; "review before ship" expects a final-sign-off posture. Without explicit framing, the AI picks its own scope and grades findings against its own mental rubric, producing a different answer than the user asked for.
-
-**This is NOT a clarifying-questions step** (no user round-trip). It's a self-reflective interpretation: the AI writes down what it thinks the user asked, what scope bounds that implies, and what's explicitly out of scope — BEFORE launching any agents. The user sees the framing before agents run and can correct it.
+**Config toggle**: `config.review.framingPass.enabled` (default `true`). Reference: [intent-grounded-review.md → Phase 0](../docs/intent-grounded-review.md#phase-0-review-framing-pass--reference-detail).
 
 **Procedure**:
 
-1. Interpret the review request into a **Framing Artifact** with 5 fields:
-   - `interpretation` — one sentence: "I understand this as: review X with posture Y"
-   - `scopeIn` — explicit list: which files, commits, or modules are in scope (after Step 0 scope resolution)
-   - `scopeOut` — explicit list: what this review will NOT cover (out of scope by design, not by omission)
-   - `assumptions` — 2–5 review-model assumptions (e.g., "a refactor review must verify behavior preservation, not just test pass", "the unshipped tree is the comparison baseline, not HEAD~1")
-   - `posture` — `pre-ship` | `session-review` | `security-focused` | `exploratory` — adjusts agent emphasis
+1. Interpret the review request into a **Framing Artifact** with 5 fields: `interpretation`, `scopeIn`, `scopeOut`, `assumptions`, `posture` (`pre-ship` | `session-review` | `security-focused` | `exploratory`).
 
-2. Write the artifact to `.workflow/state/review-framing/{timestamp}.md` (with PIN markers for future queryability).
+2. Write the artifact to `.workflow/state/review-framing/{timestamp}.md` (with PIN markers).
 
-3. Display a short summary to the user:
+3. Display a short summary:
    ```
    ━━━ REVIEW FRAMING ━━━
    Interpretation: [one sentence]
@@ -611,13 +583,9 @@ Track phases completed: start at 0/5, increment after each phase checkpoint.
    ━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-4. **Item reconciliation** (when the user's request enumerated multiple focus areas): each named item MUST appear in `scopeIn`. If the count shrank (user named 5, framing has 3), the framing pass FAILS — display which items were dropped and require the user to confirm before proceeding. Anti-deferral guard ported from `/wogi-start`.
+4. **Item reconciliation (MANDATORY anti-deferral guard)**: if the user's request enumerated multiple items, each MUST appear in `scopeIn`. If the count shrank, framing FAILS — require user confirmation before proceeding.
 
-5. **Posture → agent weight adjustment**:
-   - `pre-ship` → boost security + integration agents, require Phase 2.8 adversary pass
-   - `session-review` → balanced across all agents
-   - `security-focused` → security agent mandatory, injection/authn checks emphasized
-   - `exploratory` → logic + architecture agents; adversary pass OPTIONAL (config.review.framingPass.adversaryInExploratory)
+5. **Posture adjusts agent weighting** — see the reference doc for the full table.
 
 **Display Phase 0 results**:
 ```
@@ -862,86 +830,25 @@ Summary: X verified, Y missing, Z unplanned
 
 ### PHASE 2.8: Findings Adversary Critique (IGR v6.0)
 
-**Config toggle**: `config.review.adversaryPass.enabled` (default `true`; MANDATORY when framing posture is `pre-ship` regardless of config). Skipped in `exploratory` posture unless `config.review.framingPass.adversaryInExploratory` is true.
-
-**Problem this solves**: The agents in Phase 2 operate on the same model and share the same biases. An agent can return a "Critical" finding with flawed reasoning (e.g., wrong path math, fabricated line numbers, speculation dressed as certainty) and the consolidation step will rubber-stamp it. Without a challenger on a different model, false positives ship as real bugs and real bugs get missed.
-
-**This is the review analogue of the IGR Logic Adversary pass.** Same pattern: different model, separate context, looking for specific defect classes.
+**Config toggle**: `config.review.adversaryPass.enabled` (default `true`; MANDATORY when framing posture is `pre-ship`). Reference: [intent-grounded-review.md → Phase 2.8](../docs/intent-grounded-review.md#phase-28-findings-adversary-critique--reference-detail).
 
 **Procedure**:
 
-1. **Collect inputs** for the adversary:
-   - The framing artifact from Phase 0 (`interpretation`, `scopeIn`, `scopeOut`, `assumptions`, `posture`)
-   - All Phase 2 findings with `evidenceTier` + `evidenceNote` fields
-   - Phase 2.5 git-claim verification results (if any)
+1. **Collect inputs**: the framing artifact + all Phase 2 findings (with `evidenceTier` + `evidenceNote`) + Phase 2.5 git-claim results.
 
-2. **Launch ONE Agent sub-agent** with:
-   - `subagent_type=Explore` (READ-ONLY — must not modify files)
-   - `model=<resolved adversary model>` — resolve per the rule in "Architecture Note → Adversary Model Selection Rule":
-     * If agents ran on Sonnet → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnSonnet` (default `opus`)
-     * If agents ran on Opus → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnOpus` (default `sonnet`)
-     * If agents ran on Haiku → adversary on `config.review.adversaryPass.adversaryModel.whenAgentOnHaiku` (default `sonnet`)
-     * **Override-always rule**: if the resolved value equals the agent model (e.g., legacy plain-string config set to `sonnet` when agents ran on Sonnet), pick a different model instead. Same-model adversary = rubber-stamp, which defeats the IGR adversary pass.
+2. **Launch ONE Agent sub-agent** (`subagent_type=Explore`, READ-ONLY) on a DIFFERENT model than the review agents. Resolve via `config.review.adversaryPass.adversaryModel` mapping: agents on Sonnet → adversary on Opus; agents on Opus → adversary on Sonnet; agents on Haiku → adversary on Sonnet. **Override-always rule**: if the resolved value equals the agent model, pick a different model anyway.
 
-3. **Prompt structure**:
+3. **Adversary prompt** — produce JSON with: `falsePositives[]`, `missedIssues[]`, `severityAdjustments[]`, `scopeDrift[]`, `evidenceChallenges[]`, `overallVerdict` (`ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCOPE | BLOCK`).
 
-```
-You are the Review Adversary. Critique the review findings below.
+    HUNT specifically for: (a) `evidenceTier=0` + severity ≥ HIGH, (b) line-number claims without code quotes, (c) "broken require path" / "missing import" / "wrong type" without `require.resolve` / `tsc` / `grep` verification, (d) findings contradicting `scopeIn`/`scopeOut`.
 
-FRAMING: [framing artifact]
-FINDINGS: [all findings from N agents, each with evidenceTier + evidenceNote]
-GIT-CLAIM RESULTS: [Phase 2.5 output if present]
+    Forbid "I think" / "might" / "could" — require evidence. Full prompt template in the reference doc.
 
-Your job — produce a JSON object with these fields:
+4. **Parse + apply adjustments**: `severityAdjustments` rewrite severity (mark `[ADVERSARY-ADJUSTED]`); `scopeDrift` moves to appendix; `falsePositives` marked `[DISPUTED]` (not removed); `missedIssues` appended as `[ADVERSARY-FOUND]` Tier-0; `evidenceChallenges` downgrade tier and re-apply severity cap.
 
-{
-  "falsePositives": [
-    { "findingId": "...", "reason": "why this isn't actually a real issue",
-      "evidenceContradicting": "file:line, command output, or tool result that refutes it" }
-  ],
-  "missedIssues": [
-    { "category": "<logic|security|architecture|...>",
-      "issue": "...",
-      "whyMissed": "why the original scan likely skipped it",
-      "evidenceFor": "file:line or grep pattern proving the issue exists" }
-  ],
-  "severityAdjustments": [
-    { "findingId": "...", "from": "CRITICAL", "to": "MEDIUM",
-      "reason": "Tier 0 evidence cannot support CRITICAL; no runtime reproduction cited" }
-  ],
-  "scopeDrift": [
-    { "findingId": "...", "reason": "out of declared scopeIn per framing" }
-  ],
-  "evidenceChallenges": [
-    { "findingId": "...", "challenge": "evidenceNote claims grep returned N but I cannot verify",
-      "suggestedTier": 0 }
-  ],
-  "overallVerdict": "ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCOPE | BLOCK"
-}
+5. **Archive** run to `.workflow/state/adversary-runs/review-{timestamp}.json` for the pattern-promotion pipeline.
 
-Ground every item in a file path, a line number, a grep pattern, a tool output,
-or a test ID. Do NOT invent issues. "I think" / "might" / "could" are FORBIDDEN
-— require evidence.
-
-Specifically HUNT for: (a) findings where evidenceTier=0 but severity ≥ HIGH,
-(b) findings that cite line numbers without quoting the surrounding code,
-(c) "broken require path" / "missing import" / "wrong type" claims without
-    require.resolve / tsc / grep verification,
-(d) findings that contradict the framing's scopeIn/scopeOut declarations.
-```
-
-4. **Parse the adversary response**. If parse fails, log a warning and continue with unmodified findings.
-
-5. **Apply automatic adjustments**:
-   - `severityAdjustments` rewrite findings' severity in the consolidated report (mark `[ADVERSARY-ADJUSTED]`).
-   - `scopeDrift` moves findings out of the main report into an "Out-of-Scope Findings" appendix (not dropped — user still sees them).
-   - `falsePositives` get marked `[DISPUTED]` in the report body (not removed — user sees both the finding and the dispute).
-   - `missedIssues` get appended as new Tier-0 findings labeled `[ADVERSARY-FOUND]`.
-   - `evidenceChallenges` downgrade the evidenceTier on challenged findings and re-apply the severity cap.
-
-6. **Archive the adversary run** to `.workflow/state/adversary-runs/review-{timestamp}.json` — same directory as IGR + audit adversary runs. This feeds the `flow promote` promotion pipeline — recurring review-adversary findings graduate to `feedback-patterns.md`.
-
-7. **Display Phase 2.8 results**:
+6. **Display Phase 2.8 results**:
 ```
 ═══════════════════════════════════════
 PHASE 2.8: FINDINGS ADVERSARY [4/7]

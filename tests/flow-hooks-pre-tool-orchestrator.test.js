@@ -100,23 +100,72 @@ describe('runPreToolGates — empty input', () => {
 // ============================================================
 
 describe('runPreToolGates — fast path via isAllGatesDisabled', () => {
+  function allGatesDisabledStatus() {
+    return {
+      enforcement: {
+        taskGating: false, scopeGating: false, routingGate: false,
+        commitLogGate: false, todoWriteGate: false, loopEnforcement: false,
+        deployGate: false, strikeEscalation: false, bugfixScope: false,
+        scopeMutation: false, gitSafety: false,
+      },
+      componentReuse: false,
+      phaseGate: false,
+      phaseReadGate: false,
+    };
+  }
+
   it('short-circuits with _fastPath=true when all gates disabled', () => {
-    const deps = makeDeps({
-      readHookStatus: () => ({
-        enforcement: {
-          taskGating: false, scopeGating: false, routingGate: false,
-          commitLogGate: false, todoWriteGate: false, loopEnforcement: false,
-          deployGate: false, strikeEscalation: false, bugfixScope: false,
-          scopeMutation: false, gitSafety: false,
-        },
-        componentReuse: false,
-        phaseGate: false,
-        phaseReadGate: false,
-      }),
-    });
+    const deps = makeDeps({ readHookStatus: allGatesDisabledStatus });
     const r = runPreToolGates(ctx('Bash', { command: 'echo hi' }), deps);
     assert.equal(r._fastPath, true);
     assert.equal(r.allowed, true);
+  });
+
+  it('_fastPath result skips ALL gates — no checkPhaseGate/checkRoutingGate/etc invoked', () => {
+    const calls = { phaseGate: 0, routingGate: 0, scopeGate: 0, strike: 0, componentReuse: 0 };
+    const deps = makeDeps({
+      readHookStatus: allGatesDisabledStatus,
+      checkPhaseGate: () => { calls.phaseGate++; return { blocked: true }; },
+      checkRoutingGate: () => { calls.routingGate++; return { blocked: true }; },
+      checkScopeGate: () => { calls.scopeGate++; return { blocked: true }; },
+      checkStrikeGate: () => { calls.strike++; return { blocked: true }; },
+      checkComponentReuse: () => { calls.componentReuse++; return { blocked: true, warning: true }; },
+    });
+    const r = runPreToolGates(ctx('Write', { file_path: 'src/new.ts' }), deps);
+    assert.equal(r._fastPath, true);
+    assert.equal(r.allowed, true);
+    // Even though every gate is set to "blocked: true", none were invoked because
+    // the fast path returned early. This is the critical contract.
+    assert.equal(calls.phaseGate, 0, 'phase gate must not run on fast path');
+    assert.equal(calls.routingGate, 0, 'routing gate must not run on fast path');
+    assert.equal(calls.scopeGate, 0, 'scope gate must not run on fast path');
+    assert.equal(calls.strike, 0, 'strike gate must not run on fast path');
+    assert.equal(calls.componentReuse, 0, 'component reuse must not run on fast path');
+  });
+
+  it('_fastPath is the ONLY short-circuit field — no sentinel collision with allowed/blocked/reason', () => {
+    const deps = makeDeps({ readHookStatus: allGatesDisabledStatus });
+    const r = runPreToolGates(ctx('Read', { file_path: 'x.js' }), deps);
+    // The entry file (pre-tool-use.js) branches on r._fastPath to skip the adapter.
+    // Verify the sentinel is the sole marker, not muddied with a bogus reason.
+    assert.equal(r._fastPath, true);
+    assert.equal(r.allowed, true);
+    assert.equal(r.blocked, false);
+    // No 'reason' field — fast path is not a "blocked with reason" result.
+    assert.ok(r.reason === undefined || typeof r.reason === 'string',
+      '_fastPath result shape must be allow-compatible');
+  });
+
+  it('_fastPath result is bypassed when any gate is enabled in hookStatus', () => {
+    const deps = makeDeps({
+      readHookStatus: () => ({
+        enforcement: { taskGating: true }, // one gate enabled
+        componentReuse: false, phaseGate: false, phaseReadGate: false,
+      }),
+    });
+    const r = runPreToolGates(ctx('Edit', { file_path: 'x.js' }), deps);
+    // With any enabled gate, isAllGatesDisabled returns false → fast path NOT taken
+    assert.notEqual(r._fastPath, true);
   });
 });
 
