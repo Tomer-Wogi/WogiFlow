@@ -39,11 +39,11 @@ For each criterion:
 
 ### 6.5. Additional Mandatory Gates
 
-**Inventory Verification** (remove/fix/replace-all tasks): Pre/post inventory scan per Step 3.55. Wait for user confirmation.
+**Inventory Verification** (remove/fix/replace-all tasks): Pre/post inventory scan per Step 3.55 in `.claude/docs/phases/04-verify.md`. Wait for user confirmation.
 
-**Item Reconciliation** (3+ item inputs): Enumerate all items, verify each becomes a criterion, reconcile at completion per Step 1.25.
+**Item Reconciliation** (3+ item inputs): Enumerate all items, verify each becomes a criterion, reconcile at completion per Step 1.25 in `.claude/docs/phases/01-explore.md`.
 
-**Scope-Confidence Gate** (L0/L1 only): Extract assumptions, verify against codebase, present UNVERIFIABLE/CONTRADICTED per Step 1.45.
+**Scope-Confidence Gate** (L0/L1 only): Extract assumptions, verify against codebase, present UNVERIFIABLE/CONTRADICTED per Step 1.45 in `.claude/docs/phases/01-explore.md`.
 
 ### 7. Verification Gates (ALL MANDATORY)
 
@@ -78,13 +78,13 @@ At every 3rd criterion: commit progress, save checkpoint to `task-checkpoint.jso
 
 Before executing ANY phase, you MUST Read the phase instruction file. The PreToolUse hook BLOCKS Edit/Write/Bash until the phase file is read.
 
-| Phase | File to Read |
-|-------|-------------|
-| exploring | `.claude/docs/phases/01-explore.md` |
-| spec_review | `.claude/docs/phases/02-spec.md` |
-| coding | `.claude/docs/phases/03-implement.md` |
-| validating | `.claude/docs/phases/04-verify.md` |
-| completing | `.claude/docs/phases/05-complete.md` |
+| Phase | File to Read | Contents |
+|-------|-------------|----------|
+| exploring | `.claude/docs/phases/01-explore.md` | Steps 1–1.45: Context, framing, clarifying questions, item reconciliation, multi-agent research, reuse gate, scope-confidence audit |
+| spec_review | `.claude/docs/phases/02-spec.md` | Steps 1.55–2.5: Architect pass, logic adversary, spec generation, approval gate, test generation, TodoWrite, TDD check |
+| coding | `.claude/docs/phases/03-implement.md` | Steps 3–3.52: Execution loop, sprint resets, criteria verification, sub-agent output verification |
+| validating | `.claude/docs/phases/04-verify.md` | Steps 3.55–3.9: Inventory verification, skeptical evaluator, runtime verification, wiring validation, standards compliance, completion truth gate |
+| completing | `.claude/docs/phases/05-complete.md` | Steps 4–5: Quality gates, finalization, progress tracking, mandatory rules |
 
 ## Rules
 - Validate after EVERY file edit

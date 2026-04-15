@@ -149,6 +149,24 @@ function handlePostCompact() {
     }
   }
 
+  // 2d. Clear phase-reads state
+  // After compaction, the AI has fresh context but phase-reads.json still
+  // records that the phase file was "read" — in a prior context that no
+  // longer exists. Clear it so the gate forces the AI to re-read the current
+  // phase's instructions in the new context. Without this, the AI executes
+  // the phase without its instruction file loaded.
+  try {
+    const { clearPhaseReads } = require('./phase-read-gate');
+    clearPhaseReads();
+    if (process.env.DEBUG) {
+      console.error('[post-compact] Phase-reads cleared');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[post-compact] Phase-reads clear failed: ${err.message}`);
+    }
+  }
+
   // 3. Re-set routing-pending flag
   // After compaction, the AI has fresh context and may try to act without routing.
   // Setting routing-pending ensures the next tool use goes through routing checks.

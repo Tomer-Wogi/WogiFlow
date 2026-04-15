@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-276 | 2026-04-15
+**Type**: fix
+**Tags**: #task:wf-8f5571da #origin:wf-4375a420 #security #review-fix
+**Request**: "Fix 16 review findings for phase-read gate (from /wogi-review of wf-4375a420)"
+**Result**: Fixed all 16 findings including HIGH-severity cross-project path forgery in recordPhaseRead (replaced endsWith with path.relative(PATHS.root)), added phase-reads.json to KNOWN_STATE_FILES, cleared phase-reads on session-end and post-compact (prevents cross-session bleed + post-compaction instruction loss), added independent phaseReadGate config toggle with fallback, added fast-path flag, documented fail-open conditions in router prompt, added Contents column + phase-file refs to continuation prompt, inlined blast-radius context in 04-verify.md. Security tests pass (3/3), standards gate passes, all syntax checks pass.
+**Files**: scripts/hooks/core/phase-read-gate.js, scripts/hooks/core/session-context.js, scripts/hooks/core/session-end.js, scripts/hooks/core/post-compact.js, scripts/hooks/entry/claude-code/pre-tool-use.js, scripts/flow-hook-status.js, .claude/commands/wogi-start.md, .claude/commands/wogi-start-continuation.md, .claude/docs/phases/04-verify.md, .workflow/config.json
+
 ### R-275 | 2026-04-14
 **Type**: refactor
 **Tags**: #component:wogi-start #component:pre-tool-use #component:phase-read-gate

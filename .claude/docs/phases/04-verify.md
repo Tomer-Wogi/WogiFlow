@@ -473,7 +473,7 @@ Run `node node_modules/wogiflow/scripts/flow-standards-gate.js wf-XXXXXXXX [chan
 
 Checks scoped by task type: component → naming/components/security. Utility → naming/functions/security. API → naming/api/security. Bugfix → naming/security. Feature → all. Refactor/migration → all + consumer-impact verification.
 
-**Consumer impact check** (ALL L1+ tasks): For each BREAKING consumer from explore phase (blast-radius analysis), verify it was updated. If any NOT migrated → BLOCK task completion. Results are persisted in `.workflow/state/blast-radius-{taskId}.json`.
+**Consumer impact check** (ALL L1+ tasks): The blast-radius analysis ran in the explore phase (Agent 6: Consumer Impact) and wrote results to `.workflow/state/blast-radius-{taskId}.json`. That file contains an array of consumer entries, each classified as BREAKING (must update), NEEDS-UPDATE (review), or SAFE (no change needed). Read the file and, for each entry with `classification: "BREAKING"`, verify the file listed in `path` was actually modified in this task's changeset (check `git diff --name-only`). If any BREAKING consumer is NOT in the diff → BLOCK task completion and surface to user.
 
 **Reuse candidate check** (AI-as-Judge): Standards gate returns similar items from all registries. AI reasons about PURPOSE overlap (not just name). If purpose overlaps → ask user (use existing / extend / create new). If purpose clearly differs → proceed silently.
 

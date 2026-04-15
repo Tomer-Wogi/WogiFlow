@@ -82,7 +82,7 @@ function writeHookStatus(status) {
     fs.renameSync(tmpPath, statusPath);
   } catch (_err) {
     // Non-blocking — hooks fall back to individual reads
-    try { fs.unlinkSync(tmpPath); } catch (_e) { /* ignore */ }
+    try { fs.unlinkSync(tmpPath); } catch (_err) { /* ignore */ }
   }
 }
 

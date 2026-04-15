@@ -58,6 +58,10 @@
         "setup": {
           "enabled": false
         }
+      },
+      "_comment_phaseReadGate": "Phase-read gate blocks Edit/Write/Bash until the current phase's instruction file is read. Falls back to phaseGate.enabled when not set (backwards compat).",
+      "phaseReadGate": {
+        "enabled": true
       }
     }
   },

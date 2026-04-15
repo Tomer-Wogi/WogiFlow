@@ -391,6 +391,19 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-8f5571da",
+      "title": "Fix 16 phase-read gate review findings",
+      "type": "fix",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "originTask": "wf-4375a420",
+      "originReview": ".workflow/state/last-review.json",
+      "created": "2026-04-15T05:14:00.659Z",
+      "specPath": ".workflow/specs/wf-8f5571da.md",
+      "completedAt": "2026-04-15T05:19:38.679Z"
+    },
+    {
       "id": "wf-4375a420",
       "title": "Split wogi-start into phase-loaded router with hook enforcement",
       "type": "refactor",

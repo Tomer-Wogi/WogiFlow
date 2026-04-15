@@ -211,6 +211,8 @@ Before executing ANY phase, you MUST Read the phase instruction file. The PreToo
 
 **How it works**: When you transition to a new phase, Read the corresponding file BEFORE using Edit/Write/Bash. The phase-read gate tracks which files you've read and blocks mutation tools until the current phase's file is loaded.
 
+**Enforcement caveats**: The gate blocks Edit/Write/Bash when all of these hold: (a) phase is non-idle, non-routing, (b) `hooks.rules.phaseReadGate.enabled` is not false, (c) `workflow-phase.json` exists and has a recognized phase, and (d) the required phase file has not been recorded as read. If any condition fails (no phase state, unknown phase, gate disabled, config error), the gate fails open — the tool is allowed through. Read phase files proactively on every phase transition rather than assuming the gate will always catch you.
+
 ## Mandatory Rules
 
 - **TodoWrite**: Track progress. Clean up all items after completion.
