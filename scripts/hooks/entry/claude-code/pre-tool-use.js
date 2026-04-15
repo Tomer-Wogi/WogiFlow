@@ -18,12 +18,16 @@ const { checkTodoWriteGate } = require('../../core/todowrite-gate');
 const { checkRoutingGate, clearRoutingPending, hasActiveTask } = require('../../core/routing-gate');
 const { checkPhaseGate } = require('../../core/phase-gate');
 const { checkCommitLogGate } = require('../../core/commit-log-gate');
-// Phase-read gate: enforce reading phase instruction files before mutation tools
-let recordPhaseRead = () => {}, checkPhaseReadGate = () => ({ blocked: false });
+// Phase-read gate: enforce reading phase instruction files before mutation tools.
+// Uses defensive try/catch fallback (vs direct require like phase-gate/routing-gate):
+// this is newer code with fail-open semantics — if the module is missing, the gate
+// silently degrades to no-op rather than crashing the entire PreToolUse hook.
+let recordPhaseRead = () => {}, checkPhaseReadGate = () => ({ blocked: false }), clearPhaseReads = () => {};
 try {
   const prg = require('../../core/phase-read-gate');
   recordPhaseRead = prg.recordPhaseRead;
   checkPhaseReadGate = prg.checkPhaseReadGate;
+  clearPhaseReads = prg.clearPhaseReads;
 } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Phase-read gate not loaded: ${_err.message}`); }
 // F19: Lazy-load enforcement gates with try/catch to prevent one broken gate from crashing all hooks
 const _noop = () => ({ allowed: true, blocked: false });
@@ -95,7 +99,8 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
       && enf.deployGate === false && enf.strikeEscalation === false
       && enf.bugfixScope === false && enf.scopeMutation === false
       && enf.gitSafety === false
-      && hookStatus.componentReuse === false && hookStatus.phaseGate === false;
+      && hookStatus.componentReuse === false && hookStatus.phaseGate === false
+      && hookStatus.phaseReadGate === false;
     if (allGatesDisabled) {
       if (process.env.DEBUG) {
         const elapsed = Number(process.hrtime.bigint() - hookStart) / 1e6;
@@ -192,7 +197,7 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     if (typeof skillName === 'string' && /^wogi-(bulk|start)$/i.test(skillName)) {
       markSkillPending(skillName.toLowerCase(), { args: toolInput.args });
       // Clear phase reads on new task start (fresh slate for phase-read gate)
-      try { require('../../core/phase-read-gate').clearPhaseReads(); } catch (_err) { /* fail-open */ }
+      try { clearPhaseReads(); } catch (_err) { /* fail-open */ }
       if (process.env.DEBUG) {
         console.error(`[Hook] Marked skill ${skillName} as pending (via Skill tool)`);
       }
@@ -217,7 +222,7 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
   const skipRoutingGateForSubagent = isSubagent && hasActiveTask();
 
   let skipRoutingGateForReadOnlyGit = false;
-  if (toolName === 'Bash' && toolInput.command) {
+  if (toolName === 'Bash' && typeof toolInput.command === 'string') {
     const cmd = toolInput.command.trim();
     const READ_ONLY_GIT_PREFIXES = [
       'git status', 'git log', 'git diff', 'git branch',

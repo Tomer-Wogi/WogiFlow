@@ -109,7 +109,11 @@ function buildEnforcementFromConfig(config) {
     },
     componentReuse: config.componentReuse?.enabled === true,
     // Correct path: hooks.rules.phaseGate.enabled (matches phase-gate.js:84)
-    phaseGate: config.hooks?.rules?.phaseGate?.enabled === true
+    phaseGate: config.hooks?.rules?.phaseGate?.enabled === true,
+    // Phase-read gate: independent toggle, falls back to phaseGate when undefined
+    phaseReadGate: config.hooks?.rules?.phaseReadGate?.enabled !== undefined
+      ? config.hooks?.rules?.phaseReadGate?.enabled === true
+      : config.hooks?.rules?.phaseGate?.enabled === true
   };
 }
 

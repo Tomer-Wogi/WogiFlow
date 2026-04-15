@@ -57,6 +57,7 @@ const KNOWN_STATE_FILES = new Set([
   'durable-session.json',
   'durable-history.json',
   'workflow-phase.json',
+  'phase-reads.json',
   'task-checkpoint.json',
   'todowrite-state.json',
   'suspension.json',

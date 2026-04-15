@@ -100,6 +100,16 @@ function handleSessionEnd(input) {
       // Non-critical — never block session end
     }
 
+    // Clear phase-reads state — prevents cross-session bleed where stale
+    // "already read" records from a previous session silently bypass the
+    // phase-read gate when a new session starts in the same phase.
+    try {
+      const { clearPhaseReads } = require('./phase-read-gate');
+      clearPhaseReads();
+    } catch (_err) {
+      // Non-critical — phase-read gate may not be installed
+    }
+
     // State folder hygiene — clean stale/orphan files (fire-and-forget)
     try {
       const hygiene = cleanStaleFiles();

@@ -10,9 +10,15 @@
  * State file: .workflow/state/phase-reads.json
  * Fail-open: If state file is missing/corrupt, allow the tool call.
  *
- * Two entry points:
+ * Gate execution order note: This gate runs in PreToolUse AFTER phase-gate
+ * and BEFORE routing-gate. The phase-gate pre-filter ensures this gate
+ * only fires in phases where routing has already completed, so the
+ * "read phase file" message can't surface before "route through /wogi-start".
+ *
+ * Three entry points:
  *   recordPhaseRead(filePath)    — called when Read targets a phase file
  *   checkPhaseReadGate(toolName) — called before Edit/Write/Bash
+ *   clearPhaseReads()            — called on new task start, session-end, post-compact
  */
 
 const path = require('node:path');
@@ -37,17 +43,31 @@ const EXEMPT_PHASES = new Set(['idle', 'routing']);
 /**
  * Record that a phase instruction file was read.
  * Called from PreToolUse when toolName === 'Read'.
+ *
+ * Path matching is rooted to the project via path.relative, preventing
+ * cross-project path forgery — e.g., reading /tmp/foo/.claude/docs/phases/03-implement.md
+ * does NOT satisfy the gate for the current project.
  */
 function recordPhaseRead(filePath) {
   if (!filePath || typeof filePath !== 'string') return;
 
-  // Normalize to relative path for matching
-  const relative = filePath.replace(/^.*?\.claude\//, '.claude/');
+  // Resolve to project-relative path. If the file is outside the project,
+  // path.relative produces a path starting with '..' which will never match
+  // any entry in PHASE_FILE_REGISTRY.
+  let projectRelative;
+  try {
+    projectRelative = path.relative(PATHS.root, path.resolve(filePath));
+  } catch (_err) {
+    return; // Invalid path — fail-open, don't record
+  }
 
-  // Check if this file is a phase instruction file
+  // Normalize path separators for cross-platform matching (Windows uses \)
+  projectRelative = projectRelative.split(path.sep).join('/');
+
+  // Check if this file matches a phase instruction file (project-rooted only)
   let matchedPhase = null;
   for (const [phase, requiredFile] of Object.entries(PHASE_FILE_REGISTRY)) {
-    if (relative === requiredFile || filePath.endsWith(requiredFile)) {
+    if (projectRelative === requiredFile) {
       matchedPhase = phase;
       break;
     }
@@ -55,6 +75,10 @@ function recordPhaseRead(filePath) {
 
   if (!matchedPhase) return;
 
+  // Read-modify-write on phase-reads.json.
+  // Locking is intentionally omitted: phase transitions are sequential, and
+  // fail-open semantics mean a lost write just means the gate asks for a
+  // re-read — safe degradation, not a correctness bug.
   try {
     const existing = safeJsonParse(PHASE_READS_FILE, {});
     if (!existing.reads) existing.reads = {};
@@ -80,13 +104,28 @@ function recordPhaseRead(filePath) {
 /**
  * Check if the required phase file has been read before allowing Edit/Write/Bash.
  * Returns { blocked: true/false, message?: string }
+ *
+ * Fail-open on the following conditions (the prompt text should reflect this):
+ * - Config disabled (phaseReadGate.enabled === false OR falls back to phaseGate.enabled === false)
+ * - No workflow-phase.json (task hasn't transitioned)
+ * - Unknown phase (not in PHASE_FILE_REGISTRY)
+ * - Any exception during check
+ *
  * @param {string} toolName
- * @param {Object} [config] - Optional config object; if phase gate is disabled, skip
+ * @param {Object} [config] - Optional config object
  */
 function checkPhaseReadGate(toolName, config) {
   try {
-    // Respect phase gate config — if phase gate is disabled, skip phase-read gate too
-    if (config?.hooks?.rules?.phaseGate?.enabled === false) {
+    // Respect phaseReadGate config with fallback to phaseGate (backwards compat).
+    // If phaseReadGate.enabled is explicitly false, skip. If it's undefined,
+    // fall through to phaseGate.enabled check.
+    const phaseReadGateEnabled = config?.hooks?.rules?.phaseReadGate?.enabled;
+    const phaseGateEnabled = config?.hooks?.rules?.phaseGate?.enabled;
+
+    if (phaseReadGateEnabled === false) {
+      return { blocked: false };
+    }
+    if (phaseReadGateEnabled === undefined && phaseGateEnabled === false) {
       return { blocked: false };
     }
 
@@ -135,7 +174,11 @@ function checkPhaseReadGate(toolName, config) {
 }
 
 /**
- * Clear phase reads state (called when a new task starts).
+ * Clear phase reads state.
+ * Called when:
+ *   - A new task starts (pre-tool-use.js Skill hook)
+ *   - A session ends (session-end.js)
+ *   - Context is compacted (post-compact.js) — forces re-read in new context
  */
 function clearPhaseReads() {
   try {
