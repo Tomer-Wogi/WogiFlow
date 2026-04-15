@@ -50,7 +50,7 @@ const REQUIRED_IGR_SCRIPTS = [
 ];
 
 const REQUIRED_PERSONAS = ['logic-adversary.md', 'architect.md'];
-const REQUIRED_RUBRICS = ['logic-constitution-v1.md', 'logic-constitution-v2.md'];
+const REQUIRED_RUBRICS = ['logic-constitution-v1.md', 'logic-constitution-v2.md', 'logic-constitution-v3.md'];
 
 // ARCH-002 fix (2026-04-13): use shared parseArgs from flow-cli-utils
 const { parseArgs } = require('./flow-cli-utils');

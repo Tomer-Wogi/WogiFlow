@@ -53,7 +53,7 @@ const gateTelemetry = require('./flow-gate-telemetry');
 // ============================================================
 
 const RUBRIC_DIR = path.join(PATHS.workflow, 'rubrics');
-const DEFAULT_RUBRIC = 'logic-constitution-v2';
+const DEFAULT_RUBRIC = 'logic-constitution-v3';
 const CALIBRATION_PATH = path.join(PATHS.state, 'adversary-calibration.json');
 
 const VALID_OVERALL_VERDICTS = new Set([
@@ -84,7 +84,7 @@ const INTENT_ARTIFACTS = {
 
 /**
  * Load the Logic Constitution rubric by version identifier.
- * @param {string} [version='logic-constitution-v2']
+ * @param {string} [version='logic-constitution-v3']
  * @returns {{ content: string, version: string, path: string }}
  */
 function loadRubric(version = DEFAULT_RUBRIC) {
@@ -149,7 +149,7 @@ function readIntentArtifact(key) {
  * @param {string} [opts.taskId]
  * @param {number} [opts.round=1] - Iteration round number (≥1).
  * @param {object} [opts.previousAdversaryOutput] - Prior round's parsed output when re-running.
- * @param {string} [opts.rubricVersion='logic-constitution-v2']
+ * @param {string} [opts.rubricVersion='logic-constitution-v3']
  * @param {number} [opts.calibrationCount=3] - How many calibration examples to inject.
  * @returns {{ systemPrompt:string, userPrompt:string, metadata:object }}
  */
@@ -317,7 +317,7 @@ All 10 principles must appear in the \`principles\` array, even if SKIPped.
  * @param {Object} ctx
  * @param {string} [ctx.taskId]
  * @param {number} [ctx.round=1]
- * @param {string} [ctx.rubricVersion='logic-constitution-v2']
+ * @param {string} [ctx.rubricVersion='logic-constitution-v3']
  * @returns {object} The validated adversary verdict.
  */
 function parseAdversaryOutput(response, ctx = {}) {
