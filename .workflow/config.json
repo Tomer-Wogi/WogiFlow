@@ -173,6 +173,32 @@
       "archiveRuns": true
     }
   },
+  "review": {
+    "_comment": "Code-review settings. The framingPass / evidenceTiers / adversaryPass / completionTruthGate blocks mirror the IGR-hardening applied to /wogi-audit. They port the same rigor (framing, evidence grading, different-model adversary, runtime-evidence truth gate) into /wogi-review so review findings can't rubber-stamp themselves.",
+    "minFindings": 3,
+    "requireJustificationIfClean": true,
+    "framingPass": {
+      "enabled": true,
+      "itemReconciliation": true,
+      "adversaryInExploratory": false
+    },
+    "evidenceTiers": {
+      "enabled": true,
+      "capByTier": true
+    },
+    "adversaryPass": {
+      "enabled": true,
+      "adversaryModel": "sonnet",
+      "applySeverityAdjustments": true,
+      "applyScopeDrift": true,
+      "blockOnBlockVerdict": true,
+      "archiveRuns": true
+    },
+    "completionTruthGate": {
+      "enabled": true,
+      "requireInteractiveForFixed": true
+    }
+  },
   "researchReasoningGate": {
     "_comment": "Research Reasoning Gate (wf-6dbc0b2a). For conversation/research mode: classify the question into Tier 1 (factual, no gate), Tier 2 (domain — surface assumptions, wait for user confirmation), or Tier 3 (architecture — Tier 2 + different-model adversary critique). Classification is by structural markers, not AI self-judgement.",
     "enabled": true,

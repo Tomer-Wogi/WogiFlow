@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-15T17:51:20.620Z",
+  "markedAt": "2026-04-15T20:03:09.145Z",
   "context": {
-    "args": "wf-94cc3b72 — commit current checkpoint + create a small-bump release. Current state: 1278/1278 tests, 0 lint errors, Phase 1 (hook coverage +213 tests) + Phase 2 (flow-utils decomposition -827 LOC across 8 new modules) complete. Follow GitHub Release Workflow (.claude/rules/_internal/github-releases.md): push first, tag locally, push tag, then gh release create. Bump patch version (2.17.0 → 2.17.1). User will continue A+ drive after release."
+    "args": "wf-94cc3b72 — add IGR logic check to /wogi-review (mirrors /wogi-audit enhancement). Insert intent framing + architect pass + logic adversary + evidence tiers + completion truth gate into wogi-review.md. Ship together with orchestrator extraction as v2.17.3."
   },
   "status": "pending"
 }

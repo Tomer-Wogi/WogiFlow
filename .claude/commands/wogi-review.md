@@ -49,22 +49,32 @@ node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"w
 
 On review completion, clear progress: `node node_modules/wogiflow/scripts/flow-progress-tracker.js clear`
 
-## Review Phases (v5.0)
+## Review Phases (v6.0 — IGR-hardened)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  /wogi-review                                                │
 ├─────────────────────────────────────────────────────────────┤
+│  Phase 0: Review Framing Pass (IGR v6.0)                     │
+│     → Interpret what the user asked to review                │
+│     → Surface scope (in/out) + review-model assumptions      │
+│     → Item reconciliation (anti-deferral guard)              │
+│                                                              │
 │  Phase 1: Verification Gates                                 │
 │     → Spec verification, lint, typecheck, tests              │
 │                                                              │
 │  Phase 2: AI Review (multi-pass or parallel)                 │
 │     → Code/Logic, Security, Architecture analysis            │
 │     → Adversarial mode: min findings per agent (v5.0)        │
+│     → Evidence tiers required on every finding (IGR v6.0)    │
 │                                                              │
 │  Phase 2.5: Git-Verified Claim Checking (v5.0)               │
 │     → Cross-reference spec claims vs actual git diff         │
 │     → BLOCKS if spec promises files not in git diff          │
+│                                                              │
+│  Phase 2.8: Findings Adversary Critique (IGR v6.0)           │
+│     → Different-model review of the findings themselves      │
+│     → Flags false positives, severity inflation, missed bugs │
 │                                                              │
 │  Phase 3: Standards Compliance [STRICT]                      │
 │     → decisions.md, app-map.md, naming-conventions.md        │
@@ -74,8 +84,9 @@ On review completion, clear progress: `node node_modules/wogiflow/scripts/flow-p
 │     → Technical alternatives, UX improvements                │
 │     → Suggestions only - not violations                      │
 │                                                              │
-│  Phase 5: Post-Review Workflow                               │
+│  Phase 5: Post-Review Workflow + Completion Truth Gate       │
 │     → Fix loop, learning, task creation                      │
+│     → "Fixed" claims require INTERACTIVE evidence (IGR v6.0) │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -535,6 +546,61 @@ Track phases completed: start at 0/5, increment after each phase checkpoint.
 
 ---
 
+### PHASE 0: Review Framing Pass (IGR v6.0)
+
+**Config toggle**: `config.review.framingPass.enabled` (default `true`). When disabled, skip this phase entirely.
+
+**Problem this solves**: "Review" means different things in different invocations. "Review what we just did" is bounded to the session diff; "review the auth flow" is bounded to a module; "review before ship" expects a final-sign-off posture. Without explicit framing, the AI picks its own scope and grades findings against its own mental rubric, producing a different answer than the user asked for.
+
+**This is NOT a clarifying-questions step** (no user round-trip). It's a self-reflective interpretation: the AI writes down what it thinks the user asked, what scope bounds that implies, and what's explicitly out of scope — BEFORE launching any agents. The user sees the framing before agents run and can correct it.
+
+**Procedure**:
+
+1. Interpret the review request into a **Framing Artifact** with 5 fields:
+   - `interpretation` — one sentence: "I understand this as: review X with posture Y"
+   - `scopeIn` — explicit list: which files, commits, or modules are in scope (after Step 0 scope resolution)
+   - `scopeOut` — explicit list: what this review will NOT cover (out of scope by design, not by omission)
+   - `assumptions` — 2–5 review-model assumptions (e.g., "a refactor review must verify behavior preservation, not just test pass", "the unshipped tree is the comparison baseline, not HEAD~1")
+   - `posture` — `pre-ship` | `session-review` | `security-focused` | `exploratory` — adjusts agent emphasis
+
+2. Write the artifact to `.workflow/state/review-framing/{timestamp}.md` (with PIN markers for future queryability).
+
+3. Display a short summary to the user:
+   ```
+   ━━━ REVIEW FRAMING ━━━
+   Interpretation: [one sentence]
+   Scope (in):  [list]
+   Scope (out): [list]
+   Assumptions:
+     - [assumption 1]
+     - [assumption 2]
+   Posture: [pre-ship | session-review | security-focused | exploratory]
+   Proceeding with N-agent analysis on this scope.
+   ━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+4. **Item reconciliation** (when the user's request enumerated multiple focus areas): each named item MUST appear in `scopeIn`. If the count shrank (user named 5, framing has 3), the framing pass FAILS — display which items were dropped and require the user to confirm before proceeding. Anti-deferral guard ported from `/wogi-start`.
+
+5. **Posture → agent weight adjustment**:
+   - `pre-ship` → boost security + integration agents, require Phase 2.8 adversary pass
+   - `session-review` → balanced across all agents
+   - `security-focused` → security agent mandatory, injection/authn checks emphasized
+   - `exploratory` → logic + architecture agents; adversary pass OPTIONAL (config.review.framingPass.adversaryInExploratory)
+
+**Display Phase 0 results**:
+```
+═══════════════════════════════════════
+PHASE 0: REVIEW FRAMING [0/5]
+═══════════════════════════════════════
+[Framing artifact summary]
+
+✓ Phase 0 complete. Proceeding to Phase 1...
+```
+
+Config toggles: `review.framingPass.enabled` (default true), `review.framingPass.itemReconciliation` (default true), `review.framingPass.adversaryInExploratory` (default false).
+
+---
+
 ### PHASE 1: Verification Gates
 
 **1.1. Get changed files**:
@@ -613,9 +679,9 @@ Agent Lineup (N agents):
   Total: N (max: 6)
 ```
 
-**2.3. Append adversarial minimum findings suffix to EVERY agent prompt**:
+**2.3. Append adversarial minimum findings suffix + evidence tier requirement to EVERY agent prompt**:
 
-Read `config.review.minFindings` (default: 3). Append this to every agent's prompt:
+Read `config.review.minFindings` (default: 3) and `config.review.evidenceTiers.enabled` (default: true). Append this to every agent's prompt:
 
 ```
 IMPORTANT: Adversarial Review Mode
@@ -623,7 +689,36 @@ You MUST find at least [minFindings] findings. If you genuinely cannot find
 [minFindings] issues, you MUST provide a "clean code justification" as a
 special finding with type "clean-justification" explaining WHY the code is
 clean. Generic praise like "looks good" is NOT acceptable.
+
+IMPORTANT: Evidence Tier Requirement (IGR v6.0)
+
+Every finding MUST carry two additional fields:
+
+  evidenceTier: integer 0–4
+    0 = STATIC      — inferred from source alone (weakest)
+    1 = STRUCTURAL  — grepped / globbed / counted instances
+    2 = OBSERVATIONAL — ran a tool (lint, typecheck, npm audit) and read output
+    3 = INTERACTIVE — executed code/tests and observed behavior
+    4 = AUTOMATED   — deterministic check in a quality gate / test suite
+
+  evidenceNote: one-line string citing what produced the evidence
+    examples: "grep 'JSON\\.parse' returned 7 matches in src/api/"
+              "ran require.resolve() — path resolves correctly"
+              "executed tests/foo.test.js and observed assertion failure"
+
+SEVERITY IS CAPPED BY TIER:
+  - Tier 0: severity MUST be LOW (and will be flagged UNVERIFIED in the report)
+  - Tier 1: severity capped at MEDIUM (unless grep returned >=5 instances → HIGH allowed)
+  - Tier 2+: severity stands as you assign it
+
+Also respect the FRAMING ARTIFACT from Phase 0 — only report findings within
+`scopeIn`. Findings outside `scopeOut` will be moved to an appendix by the
+orchestrator.
 ```
+
+**Why evidence tiers matter**: During this project's own self-review (session logs), a `code-reviewer` agent reported an F1 finding as "Critical — broken require path" without citing evidence. Manual verification via `require.resolve()` showed the path was correct — the agent's path math was flawed. With tier enforcement, F1 would have been Tier 0 (no grep, no execution), capped at LOW, and flagged UNVERIFIED — alerting the reader to verify before acting.
+
+**Config toggles**: `review.evidenceTiers.enabled` (default true), `review.evidenceTiers.capByTier` (default true — enforce severity caps).
 
 **2.4. Launch ALL agents in parallel** (single message with N Task tool calls, subagent_type=Explore)
 
@@ -730,6 +825,109 @@ Summary: X verified, Y missing, Z unplanned
 ```
 
 **Severity**: Missing files = BLOCKER. Unplanned changes = WARNING only.
+
+---
+
+### PHASE 2.8: Findings Adversary Critique (IGR v6.0)
+
+**Config toggle**: `config.review.adversaryPass.enabled` (default `true`; MANDATORY when framing posture is `pre-ship` regardless of config). Skipped in `exploratory` posture unless `config.review.framingPass.adversaryInExploratory` is true.
+
+**Problem this solves**: The agents in Phase 2 operate on the same model and share the same biases. An agent can return a "Critical" finding with flawed reasoning (e.g., wrong path math, fabricated line numbers, speculation dressed as certainty) and the consolidation step will rubber-stamp it. Without a challenger on a different model, false positives ship as real bugs and real bugs get missed.
+
+**This is the review analogue of the IGR Logic Adversary pass.** Same pattern: different model, separate context, looking for specific defect classes.
+
+**Procedure**:
+
+1. **Collect inputs** for the adversary:
+   - The framing artifact from Phase 0 (`interpretation`, `scopeIn`, `scopeOut`, `assumptions`, `posture`)
+   - All Phase 2 findings with `evidenceTier` + `evidenceNote` fields
+   - Phase 2.5 git-claim verification results (if any)
+
+2. **Launch ONE Agent sub-agent** with:
+   - `subagent_type=Explore` (READ-ONLY — must not modify files)
+   - `model=<config.review.adversaryPass.adversaryModel>` (default `opus` when agents ran on Sonnet; `sonnet` when agents ran on Opus — MUST be different from the agent model to avoid same-model rubber-stamp)
+
+3. **Prompt structure**:
+
+```
+You are the Review Adversary. Critique the review findings below.
+
+FRAMING: [framing artifact]
+FINDINGS: [all findings from N agents, each with evidenceTier + evidenceNote]
+GIT-CLAIM RESULTS: [Phase 2.5 output if present]
+
+Your job — produce a JSON object with these fields:
+
+{
+  "falsePositives": [
+    { "findingId": "...", "reason": "why this isn't actually a real issue",
+      "evidenceContradicting": "file:line, command output, or tool result that refutes it" }
+  ],
+  "missedIssues": [
+    { "category": "<logic|security|architecture|...>",
+      "issue": "...",
+      "whyMissed": "why the original scan likely skipped it",
+      "evidenceFor": "file:line or grep pattern proving the issue exists" }
+  ],
+  "severityAdjustments": [
+    { "findingId": "...", "from": "CRITICAL", "to": "MEDIUM",
+      "reason": "Tier 0 evidence cannot support CRITICAL; no runtime reproduction cited" }
+  ],
+  "scopeDrift": [
+    { "findingId": "...", "reason": "out of declared scopeIn per framing" }
+  ],
+  "evidenceChallenges": [
+    { "findingId": "...", "challenge": "evidenceNote claims grep returned N but I cannot verify",
+      "suggestedTier": 0 }
+  ],
+  "overallVerdict": "ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCOPE | BLOCK"
+}
+
+Ground every item in a file path, a line number, a grep pattern, a tool output,
+or a test ID. Do NOT invent issues. "I think" / "might" / "could" are FORBIDDEN
+— require evidence.
+
+Specifically HUNT for: (a) findings where evidenceTier=0 but severity ≥ HIGH,
+(b) findings that cite line numbers without quoting the surrounding code,
+(c) "broken require path" / "missing import" / "wrong type" claims without
+    require.resolve / tsc / grep verification,
+(d) findings that contradict the framing's scopeIn/scopeOut declarations.
+```
+
+4. **Parse the adversary response**. If parse fails, log a warning and continue with unmodified findings.
+
+5. **Apply automatic adjustments**:
+   - `severityAdjustments` rewrite findings' severity in the consolidated report (mark `[ADVERSARY-ADJUSTED]`).
+   - `scopeDrift` moves findings out of the main report into an "Out-of-Scope Findings" appendix (not dropped — user still sees them).
+   - `falsePositives` get marked `[DISPUTED]` in the report body (not removed — user sees both the finding and the dispute).
+   - `missedIssues` get appended as new Tier-0 findings labeled `[ADVERSARY-FOUND]`.
+   - `evidenceChallenges` downgrade the evidenceTier on challenged findings and re-apply the severity cap.
+
+6. **Archive the adversary run** to `.workflow/state/adversary-runs/review-{timestamp}.json` — same directory as IGR + audit adversary runs. This feeds the `flow promote` promotion pipeline — recurring review-adversary findings graduate to `feedback-patterns.md`.
+
+7. **Display Phase 2.8 results**:
+```
+═══════════════════════════════════════
+PHASE 2.8: FINDINGS ADVERSARY [2.8/5]
+═══════════════════════════════════════
+
+Adversary model: [model]  (agents: [agent-model])
+Verdict:         [ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCOPE | BLOCK]
+
+False positives:       N  (marked [DISPUTED])
+Severity adjustments:  N  (marked [ADVERSARY-ADJUSTED])
+Missed issues found:   N  (appended as [ADVERSARY-FOUND] Tier-0 findings)
+Scope drift:           N  (moved to Out-of-Scope appendix)
+Evidence challenges:   N  (tier downgraded, severity re-capped)
+
+[For each item, one-line summary with finding ID + reason]
+
+✓ Phase 2.8 complete. Proceeding to Phase 3...
+```
+
+**One pass only** — no iteration loop. If the adversary `BLOCKS`, display the block reason prominently and require the user to acknowledge before proceeding to Phase 3 — or to retry the review with adjusted scope.
+
+**Config toggles**: `review.adversaryPass.enabled` (default true), `review.adversaryPass.adversaryModel` (default `sonnet` when agents on Opus; `opus` when agents on Sonnet), `review.adversaryPass.applySeverityAdjustments` (default true), `review.adversaryPass.applyScopeDrift` (default true), `review.adversaryPass.blockOnBlockVerdict` (default true).
 
 ---
 
@@ -990,9 +1188,46 @@ This ensures that patterns discovered during code review feed into the same prom
 - Save review report to `.workflow/reviews/YYYY-MM-DD-HHMMSS-review.md`
 - Include: date, files reviewed, mode, all findings with status (fixed/task-created/dismissed), summary
 
-**5.6. Sign-off gate**:
+**5.6. Completion Truth Gate (IGR v6.0)** — runs BEFORE sign-off:
+
+**Config toggle**: `config.review.completionTruthGate.enabled` (default `true`).
+
+**Problem this solves**: A review's "fixed" claim is only as good as the evidence behind it. A finding marked `fixed` because the AI applied an edit is NOT the same as a finding verified to work. Without a truth gate, the sign-off rubber-stamps whatever the agent says.
+
+**Procedure** — for every finding now marked `status: fixed`:
+
+1. **Check evidence tier of the fix**:
+   - Did the fix come with an executed test (`tier ≥ 3 INTERACTIVE`)?
+   - Or an automated gate confirming the fix (`tier 4 AUTOMATED`)?
+   - Or just an edit + lint pass (`tier 2 OBSERVATIONAL`)?
+   - Or just an edit (`tier 0 STATIC`)?
+
+2. **Downgrade rule**:
+   - `tier ≥ 3` → status stays `fixed` (INTERACTIVE evidence is sufficient)
+   - `tier 2` → status downgraded to `fixed-unverified` (lint/typecheck passed but behavior not exercised)
+   - `tier ≤ 1` → status downgraded to `implemented-unverified` (edit applied, no evidence of correctness)
+
+3. **Display the downgrade in the final summary**:
+```
+━━━ COMPLETION TRUTH GATE ━━━
+  Findings marked "fixed":         N
+  Tier ≥ 3 (INTERACTIVE):          M  → status stands
+  Tier 2 (OBSERVATIONAL):          K  → downgraded to "fixed-unverified"
+  Tier ≤ 1 (STATIC/STRUCTURAL):    J  → downgraded to "implemented-unverified"
+
+  ⚠ K + J findings lack runtime proof of fix.
+  To upgrade: run the relevant tests / smoke-test / browser check and re-verify.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+4. **Persist downgraded statuses** to `last-review.json`. Do NOT silently mark everything as complete.
+
+**Config toggles**: `review.completionTruthGate.enabled` (default true), `review.completionTruthGate.requireInteractiveForFixed` (default true — when false, Tier 2 counts as fully fixed).
+
+**5.7. Sign-off gate**:
 - Present summary to user and ask for confirmation that the review is complete
-- If user requests additional fixes, return to step 5.3
+- Display the truth-gate downgrade counts prominently — the user should consciously accept unverified fixes, not have them hidden
+- If user requests additional fixes or verification, return to step 5.3
 
 **5.7. Display final checkpoint**:
 ```
