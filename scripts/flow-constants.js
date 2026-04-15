@@ -144,7 +144,9 @@ const KNOWN_CONFIG_KEYS = [
   // v2.0.0+ compat shim output keys
   'proactiveCompaction', 'communitySync',
   // Task-boundary session restart (wf-39e9dc09) — opt-in, experimental
-  'taskBoundaryReset'
+  'taskBoundaryReset',
+  // Session hydration recency filter (wf-729ab5c0)
+  'sessionHydration'
 ];
 
 module.exports = {

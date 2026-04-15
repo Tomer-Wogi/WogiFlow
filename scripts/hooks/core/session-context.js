@@ -398,10 +398,32 @@ function getKeyDecisions(maxEntries = 5) {
  * @param {number} maxEntries - Max entries to return
  * @returns {Array} Recent activity
  */
+/**
+ * Get recency cutoff Date from config (wf-729ab5c0).
+ *
+ * Returns a Date object representing the boundary: entries with dates BEFORE
+ * this are considered "stale" for session-episodic hydration. Returns null
+ * when time filtering is disabled (recencyWindowHours <= 0).
+ *
+ * @returns {Date|null}
+ */
+function getRecencyCutoff() {
+  try {
+    const config = getConfig();
+    const hours = config.sessionHydration?.recencyWindowHours;
+    if (typeof hours !== 'number' || hours <= 0) return null;
+    return new Date(Date.now() - hours * 3600 * 1000);
+  } catch (_err) {
+    return null; // Safe degrade: no time filter if config read fails
+  }
+}
+
 function getRecentActivity(maxEntries = 3) {
   if (!fs.existsSync(PATHS.requestLog)) {
     return [];
   }
+
+  const recencyCutoff = getRecencyCutoff();
 
   try {
     // Wrap in try-catch per security-patterns.md Rule #1
@@ -433,6 +455,18 @@ function getRecentActivity(maxEntries = 3) {
       if (!headerMatch) continue;
 
       const id = `R-${headerMatch[1]}`;
+      const dateStr = headerMatch[2];
+
+      // wf-729ab5c0 — recency filter.
+      // If a cutoff is configured AND this entry's date is parseable AND it
+      // predates the cutoff, skip it. If the date is unparseable, INCLUDE the
+      // entry (safe default: don't drop content we can't classify).
+      if (recencyCutoff) {
+        const entryDate = new Date(dateStr);
+        if (!isNaN(entryDate.getTime()) && entryDate < recencyCutoff) {
+          continue;
+        }
+      }
 
       // Extract request line
       // Length-capped capture to prevent ReDoS on crafted single-line entries
@@ -1108,6 +1142,7 @@ module.exports = {
   getPendingTaskSummary,
   getKeyDecisions,
   getRecentActivity,
+  getRecencyCutoff,
   getSessionState,
   gatherSessionContext,
   formatContextForInjection

@@ -419,32 +419,49 @@
       "created": "2026-04-15T07:09:28.771Z",
       "specPath": ".workflow/changes/wf-942ad14f.md",
       "epic": "epic-episodic-memory"
-    },
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
-      "id": "wf-729ab5c0",
-      "title": "Timestamp-scoped session-episodic hydration (rules always load, session context by recency)",
+      "id": "wf-9541ad78",
+      "title": "Session manifest for --resume",
       "type": "feature",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "created": "2026-04-15T08:59:46.142Z",
-      "specPath": ".workflow/changes/wf-729ab5c0.md",
-      "epic": "epic-episodic-memory"
+      "level": "L2",
+      "priority": "P2",
+      "specPath": ".workflow/changes/wf-9541ad78.md",
+      "status": "completed",
+      "completedAt": "2026-04-15T10:46:42.085Z",
+      "outcome": "Intent satisfied by wf-39e9dc09 (session-history.js) with a superior design: consolidated JSON at .workflow/state/session-history.json instead of per-session files. FIFO-capped at 20 entries. Injected via additionalContext in post-restart SessionStart context. resumeCommand field captures claude --resume <id> for deep recovery if needed. Original spec goal (lean resumed sessions) achieved via different mechanism; no additional work required."
     },
     {
       "id": "wf-f747f993",
       "title": "wogi-claude wrapper compatibility with workspace mode (multi-repo workers)",
       "type": "feature",
       "level": "L1",
-      "status": "ready",
+      "status": "completed",
       "priority": "P1",
       "created": "2026-04-15T10:26:30.130Z",
       "specPath": ".workflow/changes/wf-f747f993.md",
-      "epic": "epic-episodic-memory"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T10:44:27.542Z",
+      "completedAt": "2026-04-15T10:46:08.711Z",
+      "outcome": "Two execSync call sites in lib/workspace.js swapped to resolveClaudeSpawnCommand helper. Manager keeps claude (per S2), worker uses bundled lib/wogi-claude wrapper via absolute path when file exists, falls back to claude otherwise. P11.3 sibling check: 4 other claude invocations in scripts/ are --version/agent listings, not session spawns — no integration needed."
+    },
+    {
+      "id": "wf-729ab5c0",
+      "title": "Timestamp-scoped session-episodic hydration (rules always load, session context by recency)",
+      "type": "feature",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-15T08:59:46.142Z",
+      "specPath": ".workflow/changes/wf-729ab5c0.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T10:30:33.010Z",
+      "completedAt": "2026-04-15T10:33:51.552Z",
+      "outcome": "Recency filter added to getRecentActivity; default 48h window. P11.1/P11.2 evidence verified by observed smoke tests (filter drops old entries, keeps new, disables at 0 hours)."
+    },
     {
       "id": "wf-eb2590f4",
       "title": "(cancelled) wf-eb2590f4",

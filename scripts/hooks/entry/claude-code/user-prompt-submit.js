@@ -27,6 +27,18 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
   const prompt = parsedInput.prompt;
   const source = parsedInput.source;
 
+  // wf-729ab5c0 follow-up — clear pending-question marker on user response.
+  // This unblocks a deferred task-boundary restart. The AI may have asked a
+  // question via `flow ask "..."` after task completion; user's response
+  // releases the deferral, and the next Stop hook will fire the restart.
+  try {
+    const { clearPendingQuestion } = require('../../../flow-ask');
+    const r = clearPendingQuestion();
+    if (r.wasPresent && process.env.DEBUG) {
+      console.error(`[UserPromptSubmit] Cleared pending-question marker — restart deferral released`);
+    }
+  } catch (_err) { /* non-fatal */ }
+
   // v4.1: Detect skill commands that need execution tracking
   if (typeof prompt === 'string') {
     const skillMatch = prompt.match(/^\/(wogi-bulk|wogi-start)\b/i);

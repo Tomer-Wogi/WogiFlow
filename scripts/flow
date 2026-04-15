@@ -516,6 +516,9 @@ case "${1:-}" in
     correct)
         node "$SCRIPT_DIR/flow-correct.js" "${@:2}"
         ;;
+    ask)
+        node "$SCRIPT_DIR/flow-ask.js" "${@:2}"
+        ;;
     aggregate)
         node "$SCRIPT_DIR/flow-aggregate.js" "${@:2}"
         ;;

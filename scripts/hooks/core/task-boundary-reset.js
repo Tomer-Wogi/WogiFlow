@@ -136,6 +136,16 @@ function consumeAndTriggerRestart() {
     return { triggered: false, reason: 'no-pending-marker' };
   }
 
+  // Defer restart when the AI has a pending question for the user
+  // (wf-729ab5c0 follow-up / pending-question safety).
+  // The marker STAYS — we'll try again next Stop hook after user responds.
+  try {
+    const { hasPendingQuestion } = require('../../flow-ask');
+    if (hasPendingQuestion()) {
+      return { triggered: false, reason: 'pending-question-deferred' };
+    }
+  } catch (_err) { /* flow-ask may not be present in older installs; degrade open */ }
+
   const pre = checkPreconditions();
   if (!pre.ready) {
     if (process.env.DEBUG) {

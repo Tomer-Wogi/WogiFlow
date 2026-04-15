@@ -850,6 +850,16 @@ const CONFIG_DEFAULTS = {
     respectDependencies: true
   },
 
+  // --- Session Hydration (wf-729ab5c0) ---
+  // Controls how much session-episodic content (request-log entries, recent
+  // activity) gets injected into SessionStart's additionalContext. Rule-class
+  // files (decisions.md, app-map, etc.) are NOT affected — rules don't expire.
+  sessionHydration: {
+    _comment: 'Recency-based filter for SessionStart episodic-content injection. Complements wf-39e9dc09 task-boundary restart.',
+    recencyWindowHours: 48,
+    _comment_recencyWindowHours: 'Session-episodic entries older than this are excluded from hydration (still on disk, loadable via Read/Grep on demand). 0 = disable time filter (count-based limits still apply).'
+  },
+
   // --- Task-Boundary Session Restart (wf-39e9dc09) ---
   // EXPERIMENTAL, OPT-IN. When enabled AND the `wogi-claude` wrapper is running,
   // TaskCompleted triggers a clean restart of the Claude Code process so each

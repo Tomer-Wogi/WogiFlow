@@ -274,6 +274,7 @@ When creating tasks programmatically, always call `generateTaskId(title)` — ne
 2. Registry maps (app-map, function-map, api-map, schema-map, service-map) are **auto-updated** by the `registryUpdate` quality gate — it runs `flow registry-manager scan` on all active registries
 3. Run quality gates (lint, typecheck, test)
 4. Provide completion report
+5. **If you have a follow-up question for the user** (e.g., "task done — should I also update X?"), run `flow ask "<your question>"` BEFORE the turn ends. This defers the task-boundary session restart (if enabled via `taskBoundaryReset.enabled`) so your question doesn't get orphaned when claude restarts. The user's response automatically clears the deferral.
 
 ## Auto-Validation (CRITICAL)
 
