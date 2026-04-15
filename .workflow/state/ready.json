@@ -1,12 +1,132 @@
 {
-  "lastUpdated": "2026-04-15T06:50:46.090Z",
-  "inProgress": [
+  "lastUpdated": "2026-04-15T14:09:06.746Z",
+  "inProgress": [],
+  "ready": [],
+  "blocked": [],
+  "recentlyCompleted": [
+    {
+      "id": "wf-b5cff650",
+      "title": "flow-story doesn't propagate new stories to ready.json",
+      "type": "bug",
+      "priority": "P3",
+      "severity": "medium",
+      "discoveredFrom": "wf-0059082d",
+      "status": "completed",
+      "createdAt": "2026-04-15T07:08:50.688Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-b5cff650.md",
+      "completedAt": "2026-04-15T14:09:06.745Z"
+    },
+    {
+      "id": "wf-1976a301",
+      "title": "State-file tampering detection + SessionStart warning (re-scoped post-pivot)",
+      "priority": "P2",
+      "level": "L1",
+      "type": "feature",
+      "status": "completed",
+      "created": "2026-04-15T11:21:59.822Z",
+      "specPath": ".workflow/changes/wf-1976a301.md",
+      "epic": "epic-episodic-memory",
+      "completedAt": "2026-04-15T14:04:29.220Z",
+      "closeReason": "intent-satisfied",
+      "closeNote": "Intent satisfied by new architecture. Original spec detected tampering on .workflow/memory/ + PostToolUse memory hook — neither exists in the shipped architecture. The real surfaces (taskBoundaryReset flag, wogi-claude symlink) have trivial failure modes users notice directly."
+    },
+    {
+      "id": "wf-1cde48ad",
+      "title": "Restart-mechanism telemetry / measurement dashboard (re-scoped post-pivot)",
+      "priority": "P2",
+      "level": "L1",
+      "type": "feature",
+      "status": "completed",
+      "created": "2026-04-15T11:21:59.822Z",
+      "specPath": ".workflow/changes/wf-1cde48ad.md",
+      "epic": "epic-episodic-memory",
+      "completedAt": "2026-04-15T14:04:29.220Z",
+      "closeReason": "intent-satisfied",
+      "closeNote": "Intent satisfied by new architecture. Original spec measured externalization (never shipped). Real token-saving = task-boundary restart (wf-39e9dc09). Real telemetry surfaces already exist: gate-telemetry.jsonl + /wogi-gate-stats + flow memory stats (wf-e64cacd0)."
+    },
+    {
+      "id": "wf-6dbc0b2a",
+      "title": "Research Reasoning Gate — lightweight IGR for conversation/research mode",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-14T17:50:33.542Z",
+      "specPath": ".workflow/specs/wf-6dbc0b2a.md",
+      "startedAt": "2026-04-15T13:58:31.623Z",
+      "completedAt": "2026-04-15T14:02:12.369Z"
+    },
+    {
+      "id": "wf-e64cacd0",
+      "title": "flow-memory CLI — query/fetch/tag/promote (re-scoped post-pivot)",
+      "priority": "P1",
+      "level": "L1",
+      "type": "feature",
+      "status": "completed",
+      "created": "2026-04-15T11:21:59.822Z",
+      "specPath": ".workflow/changes/wf-e64cacd0.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T13:49:05.981Z",
+      "completedAt": "2026-04-15T13:57:11.348Z"
+    },
+    {
+      "id": "wf-6a352aae",
+      "title": "Stale cleanup + promotion pipeline (re-scoped post-pivot)",
+      "priority": "P1",
+      "level": "L1",
+      "type": "feature",
+      "status": "completed",
+      "created": "2026-04-15T11:21:59.822Z",
+      "specPath": ".workflow/changes/wf-6a352aae.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T13:03:14.517Z",
+      "completedAt": "2026-04-15T13:25:49.260Z"
+    },
+    {
+      "id": "wf-942ad14f",
+      "title": "Confirm intent artifacts (product/domain-model/glossary/user-journeys) and verify IGR consumption (G2)",
+      "type": "feature",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-04-15T07:09:28.771Z",
+      "specPath": ".workflow/changes/wf-942ad14f.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T12:52:07.376Z",
+      "completedAt": "2026-04-15T13:00:33.422Z"
+    },
+    {
+      "id": "wf-e6d65edf",
+      "title": "Extend flow-correction-detector with hybrid keyword-first classifier and self-learning pattern back-propagation (G4)",
+      "type": "feature",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-15T07:09:28.771Z",
+      "specPath": ".workflow/changes/wf-e6d65edf.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T12:27:41.993Z",
+      "completedAt": "2026-04-15T12:50:10.753Z"
+    },
+    {
+      "id": "wf-a3cc5f2a",
+      "title": "Capture-at-task-boundary enforcement gate",
+      "priority": "P1",
+      "level": "L1",
+      "type": "feature",
+      "status": "completed",
+      "created": "2026-04-15T11:21:59.822Z",
+      "specPath": ".workflow/changes/wf-a3cc5f2a.md",
+      "epic": "epic-episodic-memory",
+      "startedAt": "2026-04-15T11:21:59.822Z",
+      "completedAt": "2026-04-15T12:03:05.336Z"
+    },
     {
       "id": "wf-7104abc4",
       "title": "IGR review fixes + WogiFlow enforcement hardening (L0 epic) — COMPLETE",
       "type": "epic",
       "level": "L0",
-      "status": "coreComplete",
+      "status": "completed",
       "priority": "P0",
       "created": "2026-04-13T13:00:00.000Z",
       "approvedAt": "2026-04-13T13:00:00.000Z",
@@ -47,7 +167,7 @@
       "title": "Implement Intent-Grounded Reasoning (IGR) — epic",
       "type": "epic",
       "level": "L0",
-      "status": "inProgress",
+      "status": "completed",
       "approvedAt": "2026-04-13T00:00:00.000Z",
       "priority": "P0",
       "created": "2026-04-13T00:00:00.000Z",
@@ -373,56 +493,9 @@
           ]
         }
       ],
-      "notes": "EPIC FULLY COMPLETE 2026-04-13. All 8 stories + fast-follows shipped. IGR is now ON BY DEFAULT (intentGroundedReasoning.enabled=true in config.schema.json). Disable via config.json. 100% Adversary R1 catch rate. Fast-follow items shipped: default-on flag, central gate-dispatch telemetry instrumentation, /wogi-gate-stats slash command, recordVerificationEvidence bridge (Step 3.58 → Truth Gate), CLAUDE.md template partial via flow bridge sync, productCoherence eval dimension + docs, flow-migrate-igr.js upgrade CLI. Items intentionally NOT shipped (release-time or out-of-scope): partner-versions.json sync (release-time per dual-repo rule), contract-check script (CI integration), Jaro-Winkler fuzzy match (exact match sufficient), test-mock noise filter, semantic discriminator-overload detection (structural detection works; documented as known limitation), formal unit test infrastructure (no test runner in project)."
-    }
-  ],
-  "ready": [
-    {
-      "id": "wf-6dbc0b2a",
-      "title": "Research Reasoning Gate — lightweight IGR for conversation/research mode",
-      "type": "feature",
-      "level": "L2",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-14T17:50:33.542Z",
-      "specPath": ".workflow/specs/wf-6dbc0b2a.md"
+      "notes": "EPIC FULLY COMPLETE 2026-04-13. All 8 stories + fast-follows shipped. IGR is now ON BY DEFAULT (intentGroundedReasoning.enabled=true in config.schema.json). Disable via config.json. 100% Adversary R1 catch rate. Fast-follow items shipped: default-on flag, central gate-dispatch telemetry instrumentation, /wogi-gate-stats slash command, recordVerificationEvidence bridge (Step 3.58 → Truth Gate), CLAUDE.md template partial via flow bridge sync, productCoherence eval dimension + docs, flow-migrate-igr.js upgrade CLI. Items intentionally NOT shipped (release-time or out-of-scope): partner-versions.json sync (release-time per dual-repo rule), contract-check script (CI integration), Jaro-Winkler fuzzy match (exact match sufficient), test-mock noise filter, semantic discriminator-overload detection (structural detection works; documented as known limitation), formal unit test infrastructure (no test runner in project).",
+      "completedAt": "2026-04-15T11:21:59.822Z"
     },
-    {
-      "id": "wf-b5cff650",
-      "title": "flow-story doesn't propagate new stories to ready.json",
-      "type": "bug",
-      "priority": "P3",
-      "severity": "medium",
-      "discoveredFrom": "wf-0059082d",
-      "status": "ready",
-      "createdAt": "2026-04-15T07:08:50.688Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-b5cff650.md"
-    },
-    {
-      "id": "wf-e6d65edf",
-      "title": "Extend flow-correction-detector with hybrid keyword-first classifier and self-learning pattern back-propagation (G4)",
-      "type": "feature",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-15T07:09:28.771Z",
-      "specPath": ".workflow/changes/wf-e6d65edf.md",
-      "epic": "epic-episodic-memory"
-    },
-    {
-      "id": "wf-942ad14f",
-      "title": "Confirm intent artifacts (product/domain-model/glossary/user-journeys) and verify IGR consumption (G2)",
-      "type": "feature",
-      "level": "L2",
-      "status": "ready",
-      "priority": "P2",
-      "created": "2026-04-15T07:09:28.771Z",
-      "specPath": ".workflow/changes/wf-942ad14f.md",
-      "epic": "epic-episodic-memory"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
     {
       "id": "wf-234d2069",
       "title": "Test coverage (unit + integration + regression)",

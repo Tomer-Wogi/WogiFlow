@@ -128,6 +128,16 @@ show_help() {
     echo "  correct list         List recent corrections"
     echo "  aggregate            Aggregate learnings across skills"
     echo "  aggregate --promote  Interactive promotion wizard"
+    echo "  promote              Scan adversary-runs + correction-patterns for promotions (writes pending-promotions.json)"
+    echo "  promote apply        Apply pending promotions to feedback-patterns.md"
+    echo "  promote status       Show pending promotions"
+    echo "  archive              Archive old adversary-runs + rotate gate-telemetry log"
+    echo "  archive --dry-run    Preview what would be archived"
+    echo "  archive status       Show what is eligible for archival"
+    echo "  memory query ...     Search state files (tasks, corrections, rules, adversary runs, request-log)"
+    echo "  memory fetch <ref>   Fetch a single ref (wf-ID, R-N, CORR-N) with related entries"
+    echo "  memory stats         Show counts across all memory surfaces"
+    echo "  memory tag <ref> #t  Annotate a ref with a tag (sidecar storage, non-mutating)"
     echo "  pattern-enforce      Enforce patterns from decisions/app-map"
     echo ""
     echo "Code Analysis:"
@@ -521,6 +531,15 @@ case "${1:-}" in
         ;;
     aggregate)
         node "$SCRIPT_DIR/flow-aggregate.js" "${@:2}"
+        ;;
+    promote)
+        node "$SCRIPT_DIR/flow-promote.js" "${@:2}"
+        ;;
+    archive)
+        node "$SCRIPT_DIR/flow-archive-runs.js" "${@:2}"
+        ;;
+    memory)
+        node "$SCRIPT_DIR/flow-memory.js" "${@:2}"
         ;;
     skill-create)
         node "$SCRIPT_DIR/flow-skill-create.js" "${@:2}"

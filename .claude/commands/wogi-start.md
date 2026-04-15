@@ -101,6 +101,51 @@ When a local `/wogi-*` CLI command fails (error in output, "Unknown skill", comm
 - After `/wogi-start` classifies as conversation: Read, Glob, Grep, WebSearch, WebFetch (read-only). No Edit/Write/state modifications.
 - Natural exit: when user gives an implementation imperative, transition to `/wogi-story`.
 
+**Research Reasoning Gate** (applies inside Conversation mode when `config.researchReasoningGate.enabled` — default ON): classify the question into a tier based on structural markers. Do NOT self-classify the question's complexity — use the markers below mechanically. When ambiguous, default to Tier 2.
+
+| Tier | Marker phrases | What you do |
+|------|---------------|-------------|
+| **Tier 1 — Factual** | "what is", "how many", "show me", "list all", "which file", "where does" | Answer directly from code/docs. No gate. |
+| **Tier 2 — Domain** (default for ambiguous) | "what should", "how should", "recommend", "which approach", "what do you think about", "is it better to" | **Surface assumptions, then WAIT.** |
+| **Tier 3 — Architecture** | "should we restructure", "what's the right architecture", "design a schema", "how to migrate", "should we split / merge / replace" | Tier 2 flow + spawn adversary on a different model after recommendation. |
+
+**Tier 2 flow — the user is the adversary**:
+1. Before any analysis, identify the domain-model assumptions your answer will depend on (typically 2–5).
+2. Present them in a fenced block and STOP:
+   ```
+   ━━━ ASSUMPTIONS (confirm before I analyze) ━━━
+   My analysis will depend on these domain model assumptions:
+   1. <assumption 1>
+   2. <assumption 2>
+   3. <assumption 3>
+
+   Do these match your understanding? [confirm / correct]
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+3. WAIT for the user to confirm or correct. Do not analyze while waiting.
+4. When confirmed (or corrected), ground the analysis in the user's stated model — not your original guess.
+
+**Tier 3 flow** — after steps 1–4 above, also:
+5. Produce the recommendation.
+6. Spawn an Agent sub-agent on a DIFFERENT model (config-controlled, default `sonnet`) with: the user's confirmed assumptions + your recommendation + the original question. Ask: "Does this recommendation follow from these assumptions? What's the strongest counterargument? List 1–3 specific concerns with line/file citations where possible."
+7. Present both the recommendation AND the adversary critique to the user in a single response:
+   ```
+   ━━━ RECOMMENDATION ━━━
+   <your recommendation>
+
+   ━━━ ADVERSARY CRITIQUE (reviewed by a different model) ━━━
+   <sub-agent output>
+   ```
+8. One pass only — this is conversation, not implementation. No iteration loop.
+
+**Config toggles**:
+- `researchReasoningGate.enabled` — master switch
+- `researchReasoningGate.tier2.enabled` — assumption surfacing
+- `researchReasoningGate.tier3.enabled` — spawn adversary
+- `researchReasoningGate.tier3.adversaryModel` — model for the critique agent (default `sonnet`)
+
+**Why this works** (from spec wf-6dbc0b2a): same-model self-critique is a known rubber-stamp. The USER is the effective adversary — you surface assumptions so they can validate the domain model before you build recommendations on invisible guesses.
+
 **Everything else**: Route to best command from catalog. Zero exemptions.
 
 ### Examples

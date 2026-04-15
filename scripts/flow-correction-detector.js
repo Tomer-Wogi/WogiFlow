@@ -19,9 +19,13 @@ const path = require('node:path');
 const {
   PATHS,
   safeJsonParse,
+  safeJsonParseString,
   writeJson,
-  ensureDir
+  ensureDir,
+  withLock,
+  getTodayDate,
 } = require('./flow-utils');
+const { getConfig } = require('./flow-config-loader');
 
 // ============================================================================
 // Constants
@@ -29,12 +33,28 @@ const {
 
 const PENDING_CORRECTIONS_FILE = 'pending-corrections.json';
 const SESSION_VIEW_FILE = 'session-corrections.json';  // IGR Stage 5 — session-scoped view
+const PATTERNS_FILE = 'correction-patterns.json';      // wf-e6d65edf — hybrid keyword layer
 const MAX_PENDING_CORRECTIONS = 20;
 const MIN_CONFIDENCE_THRESHOLD = 70;
 
 // Pre-filter: skip prompts too short or too long to be corrections
 const MIN_PROMPT_LENGTH = 8;
 const MAX_PROMPT_LENGTH = 1000;
+
+// Hybrid layer (wf-e6d65edf) — defaults align with config.schema.json
+const HYBRID_DEFAULTS = Object.freeze({
+  hybridEnabled: true,
+  learningEnabled: true,
+  learningThreshold: 85,
+  demotionThreshold: 0.5,
+  demotionMinHits: 10,
+  patternConfidenceFloor: 65,
+  patternConfidenceCap: 90,
+  ngramMinWords: 2,
+  ngramMaxWords: 4,
+  ngramMinChars: 8,
+  ngramMaxChars: 60,
+});
 
 // IGR gate IDs that participate in missRate cross-reference (Story 0 telemetry)
 const CORRELATABLE_GATE_IDS = [
@@ -56,6 +76,258 @@ function getPendingCorrectionsPath() {
   return path.join(PATHS.state, PENDING_CORRECTIONS_FILE);
 }
 
+function getPatternsPath() {
+  return path.join(PATHS.state, PATTERNS_FILE);
+}
+
+// ============================================================================
+// Hybrid Layer (wf-e6d65edf) — keyword pre-classifier + self-learning
+// ============================================================================
+
+/**
+ * Read merged hybrid config, applying HYBRID_DEFAULTS for any missing key.
+ */
+function getHybridConfig() {
+  let cfg = {};
+  try {
+    cfg = getConfig() || {};
+  } catch (_err) {
+    cfg = {};
+  }
+  const cd = cfg.correctionDetector || {};
+  const hybrid = cd.hybrid || {};
+  const learning = cd.learning || {};
+  return {
+    hybridEnabled: hybrid.enabled !== false ? (hybrid.enabled === true || HYBRID_DEFAULTS.hybridEnabled) : false,
+    learningEnabled: learning.enabled !== false ? (learning.enabled === true || HYBRID_DEFAULTS.learningEnabled) : false,
+    learningThreshold: Number.isFinite(learning.learningThreshold) ? learning.learningThreshold : HYBRID_DEFAULTS.learningThreshold,
+    demotionThreshold: Number.isFinite(learning.demotionThreshold) ? learning.demotionThreshold : HYBRID_DEFAULTS.demotionThreshold,
+    demotionMinHits: Number.isFinite(learning.demotionMinHits) ? learning.demotionMinHits : HYBRID_DEFAULTS.demotionMinHits,
+  };
+}
+
+// Module-level lazy cache. Cleared by _invalidatePatternCache() (tests) and on
+// every successful upsert (so the same process sees its own writes).
+let _patternCache = null;
+
+/**
+ * Read the raw patterns array from disk. Returns [] when absent / malformed.
+ * Bypasses safeJsonParse (array-rooted JSON), with explicit prototype-pollution
+ * guard per security-patterns.md §2 (mirrors loadPendingCorrections pattern).
+ */
+function readRawPatterns() {
+  const fs = require('node:fs');
+  const patternsPath = getPatternsPath();
+  try {
+    if (!fs.existsSync(patternsPath)) return [];
+    const raw = fs.readFileSync(patternsPath, 'utf-8');
+    // Use safeJsonParseString — it accepts array-rooted JSON and applies the
+    // prototype-pollution guard internally. (safeJsonParse rejects arrays.)
+    const parsed = safeJsonParseString(raw, null);
+    if (!Array.isArray(parsed)) {
+      if (process.env.DEBUG) {
+        console.error(`[correction-patterns] file is not an array — ignoring`);
+      }
+      return [];
+    }
+    return parsed;
+  } catch (_err) {
+    return [];
+  }
+}
+
+/**
+ * Load the patterns array from disk, applying the demotion filter. Returns []
+ * when the file is absent / empty / malformed (graceful bootstrap).
+ */
+function loadPatterns() {
+  if (_patternCache) return _patternCache;
+  const raw = readRawPatterns();
+  const cfg = getHybridConfig();
+  const valid = raw.filter(p => p && typeof p === 'object' && typeof p.phrase === 'string' && p.phrase.length > 0);
+  // Demotion: drop patterns that have proven unreliable.
+  const kept = valid.filter(p => {
+    const hits = Number(p.hits) || 0;
+    const fps = Number(p.falsePositives) || 0;
+    if (hits < cfg.demotionMinHits) return true;
+    return (fps / hits) <= cfg.demotionThreshold;
+  });
+  _patternCache = kept;
+  return _patternCache;
+}
+
+/**
+ * Test/maintenance helper.
+ */
+function _invalidatePatternCache() {
+  _patternCache = null;
+}
+
+/**
+ * Find the first pattern whose phrase appears (case-insensitive) in the message.
+ * Returns the matched pattern object or null.
+ */
+function findKeywordMatch(message) {
+  if (!message || typeof message !== 'string') return null;
+  const patterns = loadPatterns();
+  if (patterns.length === 0) return null;
+  const haystack = message.toLowerCase();
+  for (const p of patterns) {
+    const needle = String(p.phrase || '').toLowerCase();
+    if (needle && haystack.includes(needle)) return p;
+  }
+  return null;
+}
+
+/**
+ * Compute a confidence value for a pattern given its hit history. Linear ramp
+ * from `patternConfidenceFloor` (at 1 confirmedHit) to `patternConfidenceCap`
+ * (at 20+ confirmedHits). Falls back to floor when fields missing.
+ */
+function patternConfidence(pattern) {
+  const ch = Math.max(1, Number(pattern?.confirmedHits) || 1);
+  const span = HYBRID_DEFAULTS.patternConfidenceCap - HYBRID_DEFAULTS.patternConfidenceFloor;
+  const ramp = HYBRID_DEFAULTS.patternConfidenceFloor + Math.round(span * Math.min(ch, 20) / 20);
+  return Math.min(HYBRID_DEFAULTS.patternConfidenceCap, ramp);
+}
+
+// Token classes we should drop when extracting candidate phrases.
+//   - pure numerics ("42", "1.5,2.0")
+//   - hex literals ("0xdeadbeef")
+//   - long hex blobs (likely IDs/hashes)
+//   - WogiFlow task IDs ("wf-...")
+//   - file paths (anything containing "/")
+//   - filenames with code extensions ("foo.js", "src/foo.ts")
+//   - URLs
+const NGRAM_DROP_RE = /^([0-9.,]+|0x[0-9a-fA-F]+|[a-fA-F0-9]{8,}|wf-[a-fA-F0-9]+|[\w./_-]*\/[\w./_-]*|[\w._-]+\.(js|ts|jsx|tsx|json|md|sh|py|go|rs|java|rb|cs|cpp|h)|https?:\/\/\S+)$/;
+
+/**
+ * Extract candidate phrases (n-grams) from a message that AI confirmed as a
+ * correction. Conservative filters keep generic / specific tokens out.
+ *
+ * @param {string} message
+ * @returns {string[]} unique normalized n-grams
+ */
+function extractCandidatePhrases(message) {
+  if (!message || typeof message !== 'string') return [];
+  const cleaned = message
+    .toLowerCase()
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s/.\-_]/gu, ' ');
+  const tokens = cleaned.split(/\s+/).filter(Boolean).filter(t => !NGRAM_DROP_RE.test(t));
+  if (tokens.length === 0) return [];
+  const out = new Set();
+  const { ngramMinWords, ngramMaxWords, ngramMinChars, ngramMaxChars } = HYBRID_DEFAULTS;
+  for (let n = ngramMinWords; n <= ngramMaxWords; n++) {
+    for (let i = 0; i + n <= tokens.length; i++) {
+      const phrase = tokens.slice(i, i + n).join(' ').trim();
+      if (phrase.length < ngramMinChars || phrase.length > ngramMaxChars) continue;
+      out.add(phrase);
+    }
+  }
+  return Array.from(out);
+}
+
+/**
+ * Upsert a list of candidate phrases into the patterns file. Increments
+ * confirmedHits when a phrase already exists. Writes are race-safe via withLock.
+ *
+ * @param {string[]} phrases
+ * @param {string} [source='ai-confirmation']
+ */
+async function upsertPatterns(phrases, source = 'ai-confirmation') {
+  if (!Array.isArray(phrases) || phrases.length === 0) return { added: 0, updated: 0 };
+  const patternsPath = getPatternsPath();
+  ensureDir(path.dirname(patternsPath));
+  let added = 0;
+  let updated = 0;
+  await withLock(patternsPath, async () => {
+    const arr = readRawPatterns().slice();
+    const byPhrase = new Map(arr.map((p, i) => [String(p?.phrase || '').toLowerCase(), i]));
+    const now = new Date().toISOString();
+    for (const phrase of phrases) {
+      const key = phrase.toLowerCase();
+      if (byPhrase.has(key)) {
+        const idx = byPhrase.get(key);
+        arr[idx] = {
+          ...arr[idx],
+          confirmedHits: (Number(arr[idx].confirmedHits) || 0) + 1,
+          lastConfirmedAt: now,
+        };
+        updated += 1;
+      } else {
+        arr.push({
+          phrase,
+          language: 'unknown',
+          hits: 0,
+          confirmedHits: 1,
+          falsePositives: 0,
+          addedAt: now,
+          source,
+        });
+        added += 1;
+      }
+    }
+    writeJson(patternsPath, arr);
+    _patternCache = null; // bust cache so next loadPatterns sees the update
+  });
+  return { added, updated };
+}
+
+/**
+ * Increment counters for a matched pattern. Race-safe via withLock.
+ *
+ * @param {string} matchedPhrase
+ * @param {{ confirmed?: boolean, falsePositive?: boolean }} [opts]
+ */
+async function recordPatternHit(matchedPhrase, opts = {}) {
+  if (!matchedPhrase || typeof matchedPhrase !== 'string') return;
+  const patternsPath = getPatternsPath();
+  // File absent → nothing to update (no-op, not an error).
+  const fs = require('node:fs');
+  if (!fs.existsSync(patternsPath)) return;
+  await withLock(patternsPath, async () => {
+    const arr = readRawPatterns().slice();
+    const key = matchedPhrase.toLowerCase();
+    const idx = arr.findIndex(p => String(p?.phrase || '').toLowerCase() === key);
+    if (idx < 0) return;
+    const next = { ...arr[idx] };
+    next.hits = (Number(next.hits) || 0) + 1;
+    if (opts.confirmed) next.confirmedHits = (Number(next.confirmedHits) || 0) + 1;
+    if (opts.falsePositive) next.falsePositives = (Number(next.falsePositives) || 0) + 1;
+    next.lastHitAt = new Date().toISOString();
+    arr[idx] = next;
+    writeJson(patternsPath, arr);
+    _patternCache = null;
+  });
+}
+
+/**
+ * Fire-and-forget — emit a telemetry event for the hybrid layer.
+ */
+function recordHybridTelemetry(verdict, runCtx = {}) {
+  try {
+    const tel = require('./flow-gate-telemetry');
+    tel.recordGateEvent({
+      gateId: 'correction-keyword',
+      gateVersion: '1.0',
+      taskId: runCtx.taskId || null,
+      verdict,
+      findingCount: 0,
+      findingSummary: [],
+      durationMs: runCtx.durationMs,
+      metadata: {
+        method: runCtx.method || null,
+        matchedPattern: runCtx.matchedPattern || null,
+        learningTriggered: runCtx.learningTriggered || false,
+        confidence: runCtx.confidence ?? null,
+      },
+    });
+  } catch (_err) {
+    // Telemetry failure must never break the detector.
+  }
+}
+
 // ============================================================================
 // AI-Based Detection (Haiku — language-agnostic)
 // ============================================================================
@@ -70,6 +342,7 @@ function getPendingCorrectionsPath() {
  * @returns {Promise<Object>} Detection result
  */
 async function detectCorrection(userMessage, previousContext = '') {
+  const start = Date.now();
   // Pre-filter: skip messages unlikely to be corrections (length-based only, language-agnostic)
   if (!userMessage || typeof userMessage !== 'string') {
     return { isCorrection: false, confidence: 0, method: 'skipped', reason: 'invalid-input' };
@@ -78,6 +351,32 @@ async function detectCorrection(userMessage, previousContext = '') {
   const trimmed = userMessage.trim();
   if (trimmed.length < MIN_PROMPT_LENGTH || trimmed.length > MAX_PROMPT_LENGTH) {
     return { isCorrection: false, confidence: 0, method: 'skipped', reason: 'length-filter' };
+  }
+
+  // Layer 1 (wf-e6d65edf) — keyword pre-classifier. Skips Haiku entirely on a hit.
+  const hybridCfg = getHybridConfig();
+  if (hybridCfg.hybridEnabled) {
+    const matched = findKeywordMatch(trimmed);
+    if (matched) {
+      const conf = patternConfidence(matched);
+      // Increment hits asynchronously — don't block the return.
+      recordPatternHit(matched.phrase, { confirmed: false }).catch(() => {});
+      recordHybridTelemetry('PASS', {
+        method: 'keyword',
+        matchedPattern: matched.phrase,
+        confidence: conf,
+        durationMs: Date.now() - start,
+      });
+      return {
+        isCorrection: true,
+        confidence: conf,
+        correctionType: 'behavior',
+        whatWasWrong: null,
+        whatUserWants: null,
+        method: 'keyword',
+        matchedPattern: matched.phrase,
+      };
+    }
   }
 
   // Check if API key is available
@@ -157,7 +456,7 @@ Respond with JSON only (no markdown, no explanation):
       return { isCorrection: false, confidence: 0, method: 'ai', reason: 'invalid-confidence' };
     }
 
-    return {
+    const aiResult = {
       isCorrection: result.isCorrection,
       confidence: result.confidence,
       correctionType: result.correctionType || null,
@@ -165,6 +464,34 @@ Respond with JSON only (no markdown, no explanation):
       whatUserWants: result.whatUserWants || null,
       method: 'ai'
     };
+
+    // Layer 3 (wf-e6d65edf) — back-propagate confirmed high-confidence corrections
+    // into the keyword-pattern store. Fire-and-forget (background-safe).
+    let learningTriggered = false;
+    if (
+      hybridCfg.learningEnabled &&
+      aiResult.isCorrection &&
+      aiResult.confidence >= hybridCfg.learningThreshold
+    ) {
+      const candidates = extractCandidatePhrases(trimmed);
+      if (candidates.length > 0) {
+        learningTriggered = true;
+        upsertPatterns(candidates, 'ai-confirmation').catch((err) => {
+          if (process.env.DEBUG) {
+            console.error(`[correction-patterns] upsert failed: ${err.message}`);
+          }
+        });
+      }
+    }
+
+    recordHybridTelemetry(aiResult.isCorrection ? 'PASS' : 'SKIP', {
+      method: 'ai',
+      confidence: aiResult.confidence,
+      learningTriggered,
+      durationMs: Date.now() - start,
+    });
+
+    return aiResult;
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[DEBUG] AI correction detection failed: ${err.message}`);
@@ -999,7 +1326,21 @@ module.exports = {
 
   // Paths
   getPendingCorrectionsPath,
+  getPatternsPath,
+
+  // Hybrid layer (wf-e6d65edf)
+  loadPatterns,
+  findKeywordMatch,
+  patternConfidence,
+  extractCandidatePhrases,
+  upsertPatterns,
+  recordPatternHit,
+  getHybridConfig,
 
   // Constants
-  MIN_CONFIDENCE_THRESHOLD
+  MIN_CONFIDENCE_THRESHOLD,
+  HYBRID_DEFAULTS,
+
+  // Test helpers
+  _invalidatePatternCache,
 };

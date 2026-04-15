@@ -41,15 +41,19 @@ node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"a
 ```
 
 **Phase mapping for /wogi-audit:**
-| Phase | phaseNum | Description |
-|-------|----------|-------------|
-| 1 | Gather Files | Scan project files |
-| 1.5 | Gate 0 | Pre-agent baseline checks (build, typecheck, lint, config integrity) |
-| 2 | Agents | 7 parallel agents (sub-steps = agents) |
-| 3 | Consolidate | Score calculation + Gate 0 cap |
-| 4 | Pattern Promotion | AI clustering + cross-reference + gaps |
-| 5 | Report | Display formatted report with Gate 0 baseline |
-| 6 | Persist | Save to last-audit.json (includes Gate 0 data + trend) |
+| Step | Description |
+|------|-------------|
+| 0   | Framing — interpret scope, surface assumptions, item reconciliation |
+| 1   | Gather Files — scan project files |
+| 1.5 | Gate 0 — pre-agent baseline checks (build, typecheck, lint, config integrity) |
+| 1.8 | Evidence Tiers — brief agents on required evidence grading (0–4) |
+| 2   | Agents — 7 parallel agents (sub-steps = agents) |
+| 3   | Consolidate — score calculation + Gate 0 cap |
+| 3.5 | Adversary — different-model critique of findings (false positives, missed issues, severity) |
+| 4   | Pattern Promotion — AI clustering + cross-reference + enforcement-gap detection |
+| 5   | Display Report — formatted report with Gate 0 baseline + adversary block + promotions |
+| 6   | Post-Audit Actions — user chooses follow-up (create tasks, apply promotions, etc.) |
+| 7   | Persist — save to last-audit.json (includes Gate 0 data + adversary run + framing + trend) |
 
 **Display at each agent completion:**
 ```
@@ -60,6 +64,43 @@ node node_modules/wogiflow/scripts/flow-progress-tracker.js update '{"taskId":"a
 On audit completion, clear progress: `node node_modules/wogiflow/scripts/flow-progress-tracker.js clear`
 
 ## How It Works
+
+### Step 0: Framing Pass (MANDATORY when `config.audit.framingPass.enabled`, default ON)
+
+**Problem this solves**: "Audit" means different things in different invocations. "Audit what we did this epic" is bounded to ~20 files; "audit the project" is bounded to the whole repo; "audit our auth flow" is bounded to a module. Without explicit framing, the AI picks its own scope and the user may get an answer to a different question than they asked.
+
+**This is NOT a clarifying-questions step** (no user round-trip). It's a self-reflective interpretation: the AI writes down what it thinks the user asked, what scope bounds that implies, and what's explicitly out of scope — BEFORE launching any agents. The user sees the framing before agents run and can correct it.
+
+**Procedure**:
+1. Interpret the user's audit request into a **Framing Artifact** with 5 fields:
+   - `interpretation` — one sentence: "I understand this as: audit X for Y purpose"
+   - `scopeIn` — explicit list: which files / directories / epics / time windows are in scope
+   - `scopeOut` — explicit list: what this audit will NOT cover (out of scope by design, not by omission)
+   - `assumptions` — 2–5 domain assumptions the audit rests on (e.g., "an audit must verify test coverage" or "the epic-episodic-memory stories were shipped in the last 30 days")
+   - `dimensionWeights` — any adjustment to the 7-dimension balance based on request (e.g., "user asked for token-saving validation → weight performance + tech-debt higher")
+
+2. Write the artifact to `.workflow/state/audit-framing/{timestamp}.md` (with PIN markers for future queryability).
+
+3. Display a short summary to the user:
+   ```
+   ━━━ AUDIT FRAMING ━━━
+   Interpretation: [one sentence]
+   Scope (in):  [list]
+   Scope (out): [list]
+   Assumptions:
+     - [assumption 1]
+     - [assumption 2]
+
+   Dimension weights: [any adjustments from default]
+   Proceeding with 7-agent analysis on this scope.
+   ━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+4. **Item reconciliation** (when the user's request enumerated multiple focus areas, e.g., "audit X, Y, and Z"): each named item MUST appear in `scopeIn`. If the count shrank (user named 5, framing has 3), the framing pass FAILS — display which items were dropped and require the user to confirm before proceeding. This is the anti-deferral guard from `/wogi-start` ported to audit.
+
+5. **Conversation-mode tier check** (shared with Research Reasoning Gate): "What should we do about X?" in audit context → Tier 2 (surface assumptions). Plain audit = Tier 1 factual.
+
+Config toggles: `audit.framingPass.enabled` (default true), `audit.framingPass.itemReconciliation` (default true).
 
 ### Step 1: Gather Project Files
 
@@ -131,11 +172,70 @@ Trend: typecheck errors 939 → 412 (-527) ↑
 
 The framework checks are appended to the existing agent prompts — they don't replace the universal checks.
 
+### Step 1.8: Finding Evidence Tiers (MANDATORY when `config.audit.evidenceTiers.enabled`, default ON)
+
+**Problem this solves**: Today's audit findings say "[HIGH] Missing error handling in X" without telling the reader WHY the AI is confident. That leads to rubber-stamped "HIGH" on a finding that's actually speculative, and dismissed "LOW" on findings that were verified by grep.
+
+**Tier system** (shared with the IGR Completion Truth Gate — same constants from `flow-runtime-verification.js`):
+
+| Tier | Name | What it means for audit findings |
+|------|------|----------------------------------|
+| 0 | STATIC | AI inferred from the source alone — no grep, no execution. Weakest. |
+| 1 | STRUCTURAL | AI grepped / globbed / counted instances across the codebase. |
+| 2 | OBSERVATIONAL | AI ran a tool (lint, typecheck, npm audit) and read its output. |
+| 3 | INTERACTIVE | AI executed code or tests and observed the behavior. |
+| 4 | AUTOMATED | A quality gate or test suite produces this finding deterministically on every run. |
+
+**Agent instructions update** (applies to all 7 agents + new ones): every finding MUST carry an `evidenceTier` 0–4 and a one-line `evidenceNote` citing what produced the evidence (filename, tool name, test ID, command run). A finding at Tier 0 with severity HIGH is suspect and should be flagged in the Adversary pass.
+
+**Severity/tier interaction rule**:
+- Tier ≥ 2 findings: severity stands as agent assigned.
+- Tier 1 findings: severity capped at MEDIUM unless grep returned ≥5 instances.
+- Tier 0 findings: severity capped at LOW and must be flagged "UNVERIFIED" in the report.
+
+Config toggle: `audit.evidenceTiers.enabled` (default true).
+
 ### Step 2: Launch 7 Parallel Agents
 
 Launch ALL enabled agents as parallel `Task` calls in a single message. Each agent uses `subagent_type=Explore` and `model="sonnet"` (per decisions.md: use Sonnet for routine exploration).
 
 **Agent configuration** is in `config.audit.agents` — skip any agent set to `false`.
+
+**Shared agent preamble (prepend to every agent prompt when `config.audit.evidenceTiers.enabled`)**:
+
+```
+IMPORTANT — EVIDENCE TIER REQUIREMENT (wogi-audit evidence tiers):
+
+Every finding you return MUST carry two additional fields:
+
+  evidenceTier: integer 0–4
+    0 = STATIC      — inferred from source alone (weakest)
+    1 = STRUCTURAL  — grepped / globbed / counted instances
+    2 = OBSERVATIONAL — ran a tool (lint, typecheck, npm audit) and read output
+    3 = INTERACTIVE — executed code/tests and observed behavior
+    4 = AUTOMATED   — deterministic check in a quality gate / test suite
+
+  evidenceNote: one-line string citing what produced the evidence
+    examples: "grep 'JSON\\.parse' returned 7 matches in src/api/"
+              "npm audit reports 3 high-severity CVEs in package X"
+              "Agent 1 file scan: 12 files over 300 LOC"
+
+SEVERITY IS CAPPED BY TIER:
+  - Tier 0: severity MUST be LOW (and will be flagged UNVERIFIED in the report)
+  - Tier 1: severity capped at MEDIUM (unless grep returned >=5 instances, then HIGH allowed)
+  - Tier 2+: severity stands as you assign it
+
+Return each finding in this shape:
+  {
+    "severity": "HIGH|MEDIUM|LOW",
+    "description": "...",
+    "files": ["..."],
+    "evidenceTier": 0|1|2|3|4,
+    "evidenceNote": "..."
+  }
+
+Also respect the FRAMING ARTIFACT — only report findings within `scopeIn`. Findings in `scopeOut` will be removed by the orchestrator.
+```
 
 ---
 
@@ -418,7 +518,81 @@ Final score = min(gate0_cap, weighted_agent_score - gate0_penalties)
 **3.4. Trend delta (if previous audit exists):**
 Compare current metrics with `last-audit.json`. Show improvement/regression arrows.
 
-### Step 4: Display Report
+### Step 3.5: Adversary Critique Pass (MANDATORY when `config.audit.adversaryPass.enabled`, default ON)
+
+**Problem this solves**: Agent findings are the single most important output of an audit, and they're also the most likely to contain false positives ("this is HIGH") and false negatives (missing real issues) when no one challenges them. Without an adversary, the audit report rubber-stamps whatever the agents produced.
+
+**This is the audit analogue of the IGR Logic Adversary pass** (wf-3975a001). Same pattern: different model, separate context, looking for specific defect classes.
+
+**Procedure**:
+1. Collect: the framing artifact + ALL agent findings (with evidence tiers) + the consolidated score.
+2. Launch ONE Agent sub-agent with `subagent_type=Explore` (READ-ONLY), `model=<config.audit.adversaryPass.adversaryModel>` (default `opus` when main audit ran on Sonnet; `sonnet` when audit ran on Opus — must be DIFFERENT from the agent model).
+3. Prompt structure:
+   ```
+   You are the Audit Adversary. Critique the audit report below.
+
+   FRAMING: [framing artifact]
+   FINDINGS: [all findings from 7+ agents, each with evidenceTier]
+   SCORE: [consolidated score + cap]
+
+   Your job — produce a JSON object with these fields:
+
+   {
+     "falsePositives": [
+       { "findingId": "...", "reason": "why this isn't actually HIGH/a real issue",
+         "evidenceContradicting": "file:line or command that refutes it" }
+     ],
+     "missedIssues": [
+       { "category": "<dimension>", "issue": "...", "whyMissed": "why the scan likely skipped it",
+         "evidenceFor": "file:line or pattern" }
+     ],
+     "severityAdjustments": [
+       { "findingId": "...", "from": "HIGH", "to": "MEDIUM",
+         "reason": "Tier 0 evidence cannot support HIGH" }
+     ],
+     "scopeDrift": [
+       { "findingId": "...", "reason": "out of declared scopeIn per framing" }
+     ],
+     "frameAssumptionChallenges": [
+       { "assumption": "...from framing", "challenge": "why it may not hold" }
+     ],
+     "overallVerdict": "ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCORE | REVISE_SCOPE"
+   }
+
+   Ground every item in a file path, a line number, a grep pattern, a tool output, or a test ID.
+   Do NOT invent issues. "I think" / "might" / "could" are FORBIDDEN — require evidence.
+   ```
+4. Parse the adversary response. If parse fails, log a warning and continue with unmodified findings.
+5. **Apply automatic adjustments**:
+   - Each `severityAdjustments` item rewrites the finding's severity in the consolidated report (and marks it `[ADVERSARY-ADJUSTED]`).
+   - Each `scopeDrift` item moves the finding out of the main report into an "Out-of-Scope Findings" appendix (not dropped — the user still sees them).
+   - `falsePositives` get marked `[DISPUTED]` in the report body (not removed — the user sees both the finding and the dispute).
+   - `missedIssues` get appended as new Tier-0 findings labeled `[ADVERSARY-FOUND]` — the user can escalate them with follow-up.
+6. **Recompute the score** if `overallVerdict` is `REVISE_SCORE` (e.g., false-positive removal can lift a score by one tier).
+7. **Archive the adversary run** to `.workflow/state/adversary-runs/audit-{timestamp}.json` — same directory as IGR adversary runs. This feeds the `flow promote` promotion pipeline (wf-6a352aae) — recurring audit-adversary findings graduate to feedback-patterns.md.
+8. **Display a summary block** in the final report:
+   ```
+   ━━━ ADVERSARY CRITIQUE (different model) ━━━
+     Verdict:              [ACCEPT | ACCEPT_WITH_ADJUSTMENTS | REVISE_SCORE | REVISE_SCOPE]
+     False positives:      N  (marked [DISPUTED] in findings)
+     Severity adjustments: N  (marked [ADVERSARY-ADJUSTED])
+     Missed issues found:  N  (appended as [ADVERSARY-FOUND] Tier-0 findings)
+     Scope drift:          N  (moved to Out-of-Scope appendix)
+
+     [For each item, show one line with the finding ID + reason]
+   ```
+
+**One pass only** — no iteration loop. This is analysis, not implementation. If the adversary finds a serious issue, the user calls it out and we re-audit with adjusted scope.
+
+Config toggles: `audit.adversaryPass.enabled` (default true), `audit.adversaryPass.adversaryModel` (default `sonnet` — different from the agent model used), `audit.adversaryPass.applySeverityAdjustments` (default true), `audit.adversaryPass.applyScopeDrift` (default true).
+
+### Step 4: Pattern Promotion Analysis (MANDATORY)
+
+_Moved from former "Step 4.5" — pattern promotion must run BEFORE Display Report so the report includes promotion outcomes. Phase-table (L43-56) now matches step numbering. Adversary caught this mismatch 2026-04-15 during audit of epic-episodic-memory; see `.workflow/state/adversary-runs/audit-2026-04-15-epic-episodic-memory.json`._
+
+After the adversary pass consolidates findings, run pattern promotion BEFORE displaying the final report. This ensures promotion outcomes (enforcement gaps, newly promoted rules, recurring patterns) are visible in the report itself. This step has 3 phases.
+
+### Step 5: Display Report
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -473,10 +647,6 @@ Top 5 Quick Wins (highest impact, lowest effort):
   5. [description]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
-
-### Step 4.5: Pattern Promotion Analysis (MANDATORY)
-
-After displaying the report, run pattern promotion analysis **before** offering post-audit actions. This step has 3 phases.
 
 #### Phase 1: AI Semantic Clustering
 
@@ -604,7 +774,7 @@ Display investigation results:
   - Add patterns to standards gate for programmatic enforcement
 ```
 
-### Step 5: Post-Audit Actions
+### Step 6: Post-Audit Actions
 
 After displaying the report and promotion summary, offer these options using AskUserQuestion:
 
@@ -615,9 +785,34 @@ After displaying the report and promotion summary, offer these options using Ask
 5. **Investigate enforcement gaps** — Run Phase 3 investigation for all `ENFORCEMENT_GAP` patterns
 6. **Apply all promotions** — Batch-confirm all auto-promoted rules (already written by Phase 2)
 
-### Step 6: Persist Report
+### Step 7: Persist Report
 
-Regardless of user choice, always save the audit results to `.workflow/state/last-audit.json`:
+Regardless of user choice, always save the audit results to `.workflow/state/last-audit.json`. Include the new framing + adversary sections when those passes ran:
+
+```json
+{
+  "framing": {
+    "interpretation": "...",
+    "scopeIn": [...],
+    "scopeOut": [...],
+    "assumptions": [...],
+    "dimensionWeights": {...},
+    "artifactPath": ".workflow/state/audit-framing/<timestamp>.md"
+  },
+  "adversary": {
+    "ran": true,
+    "overallVerdict": "ACCEPT_WITH_ADJUSTMENTS",
+    "falsePositives": N,
+    "severityAdjustments": N,
+    "missedIssues": N,
+    "scopeDrift": N,
+    "archivePath": ".workflow/state/adversary-runs/audit-<timestamp>.json"
+  },
+  ...
+}
+```
+
+Full persisted shape:
 
 ```json
 {

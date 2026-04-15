@@ -33,6 +33,22 @@ try {
   };
 }
 
+// Capture-at-task-boundary gate (Story wf-a3cc5f2a, epic-episodic-memory).
+// Detects durable conclusions in a completed task and blocks close until they
+// are captured to the correct state file. Ships OFF (config.externalMemory.capture.enabled).
+// Synchronous interface — subprocess spawnSync inside for the AI classifier call.
+let captureGate;
+try {
+  captureGate = require('./flow-capture-gate').captureGate;
+} catch (_err) {
+  captureGate = (ctx) => {
+    if (ctx?.color) {
+      console.log(`  ${ctx.color('yellow', '\u25CB')} captureGate (module unavailable — skipping)`);
+    }
+    return { passed: true };
+  };
+}
+
 // v2.1 task enforcement
 const { canExitLoop, getActiveLoop } = require('./flow-task-enforcer');
 
@@ -906,6 +922,8 @@ const GATE_REGISTRY = {
   verificationProof: verificationProofGate,
   // IGR Stage 6 — richer tier-aware successor to verificationProof; coexists.
   completionTruth: completionTruthGate,
+  // Capture-at-task-boundary enforcement (epic-episodic-memory wf-a3cc5f2a).
+  captureGate: captureGate,
   // Workspace gates (conditional — auto-skip when not in workspace)
   workspaceCompliance: workspaceGate,
 };
@@ -937,6 +955,7 @@ function runGate(gateName, ctx) {
   const SELF_INSTRUMENTED_GATES = new Set([
     'standardsCompliance', // flow-standards-gate.js emits gateId: standards-gate
     'completionTruth',      // flow-completion-truth-gate.js emits gateId: completion-truth-gate
+    'captureGate',          // flow-capture-gate.js emits gateId: capture-gate
   ]);
   if (!SELF_INSTRUMENTED_GATES.has(gateName)) {
     try {
@@ -995,6 +1014,7 @@ module.exports = {
   verificationGate,
   testDiscoveryGate,
   verificationProofGate,
+  captureGate,
   workspaceGate,
   unknownGate,
 };

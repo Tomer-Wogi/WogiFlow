@@ -134,10 +134,12 @@ const KNOWN_CONFIG_KEYS = [
   // Features (alphabetical)
   'audit', 'autoCompact', 'bestOfN', 'bugFlow', 'capture',
   'cascade', 'checkpoint', 'commits', 'community', 'contractSurface',
+  'archive',
+  'correctionDetector',
   'damageControl', 'decide', 'decisions', 'epics', 'errorRecovery',
   'eval', 'figmaAnalyzer', 'finalization', 'gateConfidence', 'guidedEdit',
   'hooks', 'longInputGate', 'lsp', 'mandatorySteps', 'modelAdapters',
-  'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities',
+  'models', 'morningBriefing', 'multiModel', 'parallelExecution', 'prd', 'priorities', 'promotion', 'researchReasoningGate',
   'detection', 'plugins', 'project', 'projectType', 'regressionTesting', 'retrospective',
   'security', 'storyDecomposition', 'techDebt', 'traces',
   'webmcp', 'workflowSteps',

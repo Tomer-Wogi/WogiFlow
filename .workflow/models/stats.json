@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-09T09:56:35.765Z",
+  "lastUpdated": "2026-04-15T12:57:45.249Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
   "summary": {
-    "totalTasks": 11,
+    "totalTasks": 18,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
@@ -11,9 +11,9 @@
   },
   "byModel": {
     "unknown": {
-      "taskCount": 11,
-      "totalIterations": 11,
-      "firstAttemptPasses": 11,
+      "taskCount": 18,
+      "totalIterations": 18,
+      "firstAttemptPasses": 18,
       "totalTokens": 0,
       "totalWallClockMs": 0,
       "totalRevisions": 0,
@@ -47,9 +47,9 @@
           "totalRevisions": 0
         },
         "feature": {
-          "taskCount": 5,
-          "totalIterations": 5,
-          "firstAttemptPasses": 5,
+          "taskCount": 12,
+          "totalIterations": 12,
+          "firstAttemptPasses": 12,
           "totalTokens": 0,
           "totalRevisions": 0
         }
@@ -86,9 +86,9 @@
       "firstAttemptRate": 1
     },
     "feature": {
-      "taskCount": 5,
-      "totalIterations": 5,
-      "firstAttemptPasses": 5,
+      "taskCount": 12,
+      "totalIterations": 12,
+      "firstAttemptPasses": 12,
       "avgIterations": 1,
       "firstAttemptRate": 1
     }
@@ -105,6 +105,104 @@
     "primarySuccessRate": 0
   },
   "recentTasks": [
+    {
+      "taskId": "wf-942ad14f",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T12:57:45.249Z"
+    },
+    {
+      "taskId": "wf-e6d65edf",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T12:48:56.976Z"
+    },
+    {
+      "taskId": "wf-e6d65edf",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T12:39:21.972Z"
+    },
+    {
+      "taskId": "wf-e6d65edf",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T12:30:50.145Z"
+    },
+    {
+      "taskId": "wf-a3cc5f2a",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T11:58:57.542Z"
+    },
+    {
+      "taskId": "wf-a3cc5f2a",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T11:49:45.642Z"
+    },
+    {
+      "taskId": "wf-a3cc5f2a",
+      "model": "unknown",
+      "taskType": "feature",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-15T11:26:27.956Z"
+    },
     {
       "taskId": "wf-d0c2ea2b",
       "model": "unknown",

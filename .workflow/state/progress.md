@@ -5,7 +5,51 @@ Session handoff notes for human readability.
 ---
 
 ## Last Updated
-2026-04-14T00:00:00.000Z
+2026-04-15T16:00:00.000Z
+
+---
+
+## Account switch handoff (mid-session pause) — 2026-04-15 ~16:00
+
+User is switching Claude accounts and will resume the same work after.
+
+### Where to pick up
+- **Current task**: `wf-e64cacd0` (P1) — **flow-memory CLI (query/fetch/stats/tag)** — already moved to `inProgress[]` in `ready.json`. **Implementation not started.**
+- **Re-scoped spec**: user approved the re-scope from "query .workflow/memory/" (obsolete) to "query state files." 4 subcommands: `query`, `fetch`, `stats`, `tag`. Tag storage via sidecar `.workflow/state/memory-tags.json` (boundary-respecting). IGR pass skipped (spec says "Light — straightforward"; user said "do what you recommend").
+- **10 acceptance criteria** already agreed in the session transcript (see R-280 through R-283 precedent entries in request-log for the kind of precision). No need to re-ask — just implement.
+- **Planned files**:
+  - `scripts/flow-memory.js` (new, ~400 lines — implements query/fetch/stats/tag over: ready.json, decisions.md, feedback-patterns.md, corrections/, adversary-runs/, request-log.md, correction-patterns.json, pending-*.json)
+  - `scripts/flow` (bash dispatcher — add `memory)` case + help text)
+  - `.workflow/state/memory-tags.json` (new sidecar — gitignored per existing `.workflow/state/*` rule)
+  - `tests/flow-memory.test.js` (new)
+  - `package.json` (test script extension)
+
+### Shipped this session (4 stories, all epic-episodic-memory)
+1. **wf-a3cc5f2a** — Capture-at-task-boundary enforcement gate (G4 classifier + capture-gate). Flag-gated OFF by default. Ships the `flow-conclusion-classifier.js` + `flow-capture-gate.js` modules, wired into `GATE_REGISTRY`. 18 new tests. R-280.
+2. **wf-e6d65edf** — Hybrid keyword-first classifier with self-learning back-propagation in `flow-correction-detector.js`. 3-layer pipeline (keyword pre-classifier → AI fallback → Layer-3 learning via n-gram extraction). `correction-patterns.json` is the learned-phrase store. Default-ON per user spec. 32 new tests. Also fixed a pre-existing latent `getTodayDate` import bug. R-281.
+3. **wf-942ad14f** — Confirmed all 4 IGR intent artifacts (product / domain-model / glossary / user-journeys). Draft→confirmed. Verified IGR consumption: re-ran adversary on wf-e6d65edf plan and all 4 previously-SKIPped principles (P3/P4/P6/P9) upgraded to PASS. Artifacts have substantial content drawn from CLAUDE.md, decisions.md, README, codebase. R-282.
+4. **wf-6a352aae** — Promotion pipeline + stale archival (re-scoped post-pivot). Two new modules: `flow-promote.js` (adversary-finding + pattern-phrase promotion into feedback-patterns.md) and `flow-archive-runs.js` (gzip old adversary-runs, rotate telemetry log). New `flow promote` and `flow archive` CLI commands. Session-end hook auto-runs promote scan. Exposed `handlePromotion` + `promoteToDecisions` from `flow-auto-learn.js` (were internal). Fixed pre-existing `getTodayDate` import in `flow-auto-learn.js`. 35 new tests. **Adversary R1 verdict: PASS (zero concerns)** — first all-PASS run since intent artifacts confirmed. R-283.
+
+### Epic status
+**17 of 21 stories done (81.0%)** — `epic-episodic-memory`
+
+### Remaining tasks (priority order per user)
+After completing wf-e64cacd0:
+1. **wf-1cde48ad** (P2) — Restart-mechanism telemetry / measurement dashboard (re-scoped post-pivot)
+2. **wf-1976a301** (P2) — State-file tampering detection + SessionStart warning (re-scoped post-pivot)
+3. **wf-6dbc0b2a** (P1) — Research Reasoning Gate — lightweight IGR for conversation/research mode
+4. **wf-b5cff650** (P3 bug) — flow-story doesn't propagate new stories to ready.json
+
+### Session state
+- Uncommitted: many files from 4 completed stories + R-280..R-283 entries in request-log + intent artifacts confirmed. Git status shows ~15 modified, 10+ new files. **No commits yet in this session** — user asked at start, committing was not requested.
+- Test suite: 1017/1017 passing as of end of wf-6a352aae.
+- Standards-gate: clean for all files touched in the 4 shipped stories.
+
+### Notes for the resuming agent
+- **Anti-deferral**: user made clear early in this session — always route through `/wogi-start`, always use the full IGR pipeline when spec requires it. Do NOT drop items.
+- **Session scratch scripts** in `.workflow/scratch/` (e.g., `complete-wf-*.js`, `start-wf-*.js`) are one-offs used to move tasks through state; they get auto-cleaned at session-end. They're NOT part of the work product.
+- **Intent artifacts are confirmed** — Adversary will now give real P3/P4/P6/P9 verdicts instead of SKIP. Don't be surprised.
+- **Dual P11.2 recurrence pattern**: KNOWN_CONFIG_KEYS in `scripts/flow-constants.js` must be updated whenever a new top-level config key is added. The adversary has caught this 3 times (addressed in wf-6a352aae's architect plan proactively).
 
 ---
 

@@ -339,6 +339,43 @@ Before presenting ANY research report, verify ALL of these are present. If any i
 
 If the report is missing any required section, DO NOT present it — add the missing section first.
 
+## Research Reasoning Gate (wf-6dbc0b2a)
+
+When `config.researchReasoningGate.enabled` (default: true), classify the research question into a tier by **structural markers**, NOT by your own judgement. When ambiguous, default to Tier 2.
+
+| Tier | Markers | Behavior |
+|------|---------|----------|
+| 1 — Factual | "what is", "how many", "show me", "list all", "which file", "where does" | Run the zero-trust research protocol and answer. No assumption gate. |
+| 2 — Domain (default for ambiguous) | "what should", "how should", "recommend", "which approach", "what do you think about", "is it better to" | **Before analyzing**, surface the domain-model assumptions your recommendation will depend on. WAIT for user confirmation. |
+| 3 — Architecture | "should we restructure", "what's the right architecture", "design a schema", "how to migrate", "should we split / merge / replace" | Tier 2 flow + after producing the recommendation, spawn an Agent on a DIFFERENT model (config `researchReasoningGate.tier3.adversaryModel`, default `sonnet`) to critique it. Show both perspectives. |
+
+**Tier 2 assumption-surfacing format** (BEFORE any analysis):
+```
+━━━ ASSUMPTIONS (confirm before I analyze) ━━━
+My analysis will depend on these domain model assumptions:
+1. <assumption 1>
+2. <assumption 2>
+3. <assumption 3>
+
+Do these match your understanding? [confirm / correct]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Do NOT produce the research report while waiting. When the user confirms or corrects, ground the report in the user's domain model — not your original guess.
+
+**Tier 3 adversary-critique format** (AFTER recommendation):
+```
+━━━ RECOMMENDATION ━━━
+<research report>
+
+━━━ ADVERSARY CRITIQUE (reviewed by a different model) ━━━
+<sub-agent output — 1-3 specific concerns with citations>
+```
+
+**Why this is here** (and not left to AI self-reflection): same-model self-critique is a known rubber-stamp. The USER is the effective adversary at Tier 2 — surfacing assumptions lets them validate the domain model before you build recommendations on invisible guesses. At Tier 3, a different-model agent catches failures of reasoning the original model cannot see.
+
+Tier toggles: `researchReasoningGate.tier2.enabled` / `researchReasoningGate.tier3.enabled` — independent. Both default ON.
+
 ## CLI Compatibility
 
 This command currently supports Claude Code only.

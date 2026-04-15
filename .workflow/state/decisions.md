@@ -71,3 +71,35 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ## Review & Cleanup Procedures
 
 <!-- Project-specific review procedures go here -->
+
+---
+
+## Rejected Alternatives
+
+<!--
+Catalog of approaches considered and rejected. Capture-gate (wf-a3cc5f2a) directs
+durable rejected-alternative conclusions here so future agents do not re-propose them.
+
+Format per entry:
+
+### Alternative: <short name>
+**Rejected**: <YYYY-MM-DD>
+**Reason**: <why we said no — be specific>
+**Chose instead**: <what we did instead, and where it lives>
+**Source**: <task ID, audit, or session that produced this decision>
+-->
+
+### Alternative: Hand-edit ready.json to register orphaned specs
+**Rejected**: 2026-04-15
+**Reason**: CLAUDE.md memory-hierarchy rule forbids hand-editing `.workflow/state/` files to create tasks. Doing so bypasses routing telemetry and breaks the bypass-counter signal that surfaces actual workflow gaps.
+**Chose instead**: One-off script using `flow-utils` `getReadyData` / `saveReadyData` API. The script is self-documenting (kept in `.workflow/scratch/` for the auto-cleanup pass) and uses the same write path the runtime uses.
+**Source**: wf-a3cc5f2a session, state-sync between progress.md and ready.json after epic-episodic-memory wave.
+
+---
+
+## Architectural Decision Records
+
+ADRs live in `.workflow/state/adr/` as `ADR-{NNN}-{slug}.md` files. Each captures the
+context, decision, consequences, and alternatives considered for a significant design choice.
+The directory listing is the index — no separate registry file. The capture gate's classifier
+identifies ADR-shaped conclusions in completed tasks and directs them here.

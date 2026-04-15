@@ -358,15 +358,15 @@ const CONFIG_DEFAULTS = {
     preTaskBaseline: { enabled: false },
     feature: {
       require: ['loopComplete', 'tests', 'generatedTestsPass', 'uiVerification', 'apiVerification', 'verificationProof', 'registryUpdate', 'requestLogEntry', 'integrationWiring', 'standardsCompliance'],
-      optional: ['review', 'docs', 'webmcpVerification']
+      optional: ['review', 'docs', 'webmcpVerification', 'captureGate']
     },
     bugfix: {
       require: ['loopComplete', 'tests', 'generatedTestsPass', 'verificationProof', 'requestLogEntry', 'standardsCompliance'],
-      optional: ['learningEnforcement', 'resolutionPopulated', 'review', 'webmcpVerification']
+      optional: ['learningEnforcement', 'resolutionPopulated', 'review', 'webmcpVerification', 'captureGate']
     },
     refactor: {
       require: ['loopComplete', 'tests', 'noNewFeatures', 'smokeTest', 'standardsCompliance'],
-      optional: ['review', 'webmcpVerification']
+      optional: ['review', 'webmcpVerification', 'captureGate']
     },
     chore: {
       require: ['requestLogEntry', 'outstandingFindings'],

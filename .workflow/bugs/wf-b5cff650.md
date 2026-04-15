@@ -9,20 +9,20 @@
 **Discovered During**: implementation
 
 ## Bug Summary
-[1-2 sentences: What is broken and what is the impact?]
+`flow story "<title>"` (simple, non-decomposed path) creates the spec file in `.workflow/changes/` but never propagates the task to `ready.json`. Result: the story is invisible to `/wogi-start`, `flow ready`, and the session-end promotion pipeline. Only decomposed stories (`--deep`) reach the task queue.
 
 ## Reproduction
 
 ### Steps to Reproduce
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
+1. `flow story "Add user login"` (no `--deep` flag)
+2. `flow ready`
+3. Notice the new story is missing from the output
 
 ### Expected Behavior
-[What should happen]
+The new story appears in `ready.json → ready[]` with `{id, title, type, level, priority, status, specPath}`.
 
 ### Actual Behavior
-[What actually happens]
+The spec file exists at `.workflow/changes/wf-XXXXXXXX.md` but `ready.json` is unchanged. `flow ready` does not list the new story.
 
 ### Environment
 - Browser: [if applicable]
@@ -129,8 +129,8 @@
 - Discovered while working on: wf-0059082d
 
 ## Resolution
-<!-- Fill in when fixed -->
-- **Fixed in**: [commit hash or PR]
-- **Root cause confirmed**: [yes/no - was initial analysis correct?]
-- **Learnings applied**: [what was added to decisions.md/skills?]
-- **Tests added**: [what tests were added?]
+- **Fixed in**: 2026-04-15 (uncommitted at fix time; see R-287)
+- **Fix**: Added a `ready.json` write path in `scripts/flow-story.js:381-414` for the simple (non-decomposed) branch, mirroring the existing decomposed-path write. Uses `withLock(READY_PATH, ...)` for race safety, `safeJsonParse` for reads, and an idempotency guard that skips the insert if the task ID is already present anywhere in the queue. Also surfaces "Added to ready.json" / "[DRY RUN] Would add..." / "Could not add..." in the CLI output so the user can see what happened.
+- **Root cause confirmed**: Yes. The `ready.json` write was conditionally inside `if (shouldDecompose && analysis.suggestedSubTasks.length > 0)`. Simple stories never entered that block.
+- **Learnings applied**: None promoted to decisions.md — this was a single-site gap, not a pattern.
+- **Tests added**: Verified live — simple story now appears in `ready.json` after creation; dry-run shows "Would add"; idempotency guard prevents duplicate insert of the same task ID. Full test suite (1042/1042) still passes with no regressions.

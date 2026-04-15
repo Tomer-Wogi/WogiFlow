@@ -375,6 +375,46 @@ async function createStory(title, options = {}) {
     result.patterns = analysis.patterns;
   }
 
+  // Propagate simple (non-decomposed) stories to ready.json.
+  // wf-b5cff650: previously only decomposed stories reached the task queue;
+  // simple stories sat in .workflow/changes/ and were invisible to /wogi-start.
+  if (!shouldDecompose && !dryRun && fs.existsSync(READY_PATH)) {
+    try {
+      await withLock(READY_PATH, async () => {
+        const ready = safeJsonParse(READY_PATH, { ready: [] });
+        ready.ready = ready.ready || [];
+        // Idempotent: skip if this task ID is already present anywhere in the queue.
+        const allIds = [
+          ...(ready.ready || []),
+          ...(ready.inProgress || []),
+          ...(ready.blocked || []),
+          ...(ready.recentlyCompleted || []),
+          ...(ready.backlog || []),
+        ].map(t => t && t.id).filter(Boolean);
+        if (!allIds.includes(taskId)) {
+          ready.ready.push({
+            id: taskId,
+            title,
+            type: 'story',
+            level: 'L1',
+            status: 'ready',
+            priority,
+            created: new Date().toISOString(),
+            specPath: path.relative(PATHS.root, storyFile),
+          });
+          ready.lastUpdated = new Date().toISOString();
+          fs.writeFileSync(READY_PATH, JSON.stringify(ready, null, 2));
+        }
+      });
+      result.addedToReady = true;
+    } catch (err) {
+      result.addedToReady = false;
+      result.readyError = err.message;
+    }
+  } else if (!shouldDecompose && dryRun) {
+    result.wouldAddToReady = true;
+  }
+
   if (shouldDecompose && analysis.suggestedSubTasks.length > 0) {
     // Create sub-task files in feature folder
     let subNum = 1;
@@ -610,6 +650,20 @@ Examples:
     log('yellow', `This looks like a complex story (${result.patterns.join(', ')})`);
     log('yellow', `   Consider using --deep to decompose into ~${result.suggestedCount} sub-tasks`);
     log('dim', `   Run: flow story "${title}" --deep`);
+  }
+
+  // Simple (non-decomposed) story ready.json status — wf-b5cff650 fix
+  if (!result.decomposed) {
+    if (result.addedToReady) {
+      console.log('');
+      success('Added to ready.json (run: flow ready)');
+    } else if (result.wouldAddToReady) {
+      console.log('');
+      warn('[DRY RUN] Would add to ready.json');
+    } else if (result.readyError) {
+      console.log('');
+      warn(`Could not add to ready.json: ${result.readyError}`);
+    }
   }
 
   console.log('');

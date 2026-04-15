@@ -145,14 +145,67 @@
       ]
     },
     "capture": {
-      "_comment": "Capture-at-task-boundary enforcement. Disabled until conclusion classifier (G4) is built (wf-a3cc5f2a).",
+      "_comment": "Capture-at-task-boundary enforcement (wf-a3cc5f2a shipped). Set enabled:true to activate the captureGate quality gate. Requires ANTHROPIC_API_KEY for the Haiku conclusion classifier; gate skips with warning when key absent.",
       "enabled": false,
       "blockOnMiss": true,
-      "minLevel": "L2"
+      "minLevel": "L2",
+      "minConfidence": 70
     },
     "telemetry": {
       "_comment": "Per-session token-savings measurement. Needed to validate Wave E flag flip.",
       "enabled": true
+    }
+  },
+  "audit": {
+    "_comment": "Project-wide audit settings. The framingPass / evidenceTiers / adversaryPass blocks were added for the IGR-hardening of /wogi-audit — they port the same rigor from /wogi-start (framing, truth-gate evidence grading, and different-model adversary critique) into the audit pipeline.",
+    "framingPass": {
+      "enabled": true,
+      "itemReconciliation": true
+    },
+    "evidenceTiers": {
+      "enabled": true
+    },
+    "adversaryPass": {
+      "enabled": true,
+      "adversaryModel": "sonnet",
+      "applySeverityAdjustments": true,
+      "applyScopeDrift": true,
+      "archiveRuns": true
+    }
+  },
+  "researchReasoningGate": {
+    "_comment": "Research Reasoning Gate (wf-6dbc0b2a). For conversation/research mode: classify the question into Tier 1 (factual, no gate), Tier 2 (domain — surface assumptions, wait for user confirmation), or Tier 3 (architecture — Tier 2 + different-model adversary critique). Classification is by structural markers, not AI self-judgement.",
+    "enabled": true,
+    "tier2": {
+      "enabled": true
+    },
+    "tier3": {
+      "enabled": true,
+      "adversaryModel": "sonnet"
+    }
+  },
+  "promotion": {
+    "_comment": "Promotion pipeline (wf-6a352aae). Scans adversary-runs/*.json + correction-patterns.json for content that should promote into feedback-patterns.md. Auto-runs at session-end (writes pending-promotions.json — interactive `flow promote apply` confirms before write to feedback-patterns.md).",
+    "autoAtSessionEnd": true,
+    "adversaryPromotionThreshold": 2,
+    "patternToFeedbackThreshold": 3
+  },
+  "archive": {
+    "_comment": "Stale archival (wf-6a352aae). Manual-only — destructive operations stay user-gated. Use `flow archive --dry-run` to preview, `flow archive` to commit.",
+    "autoAtSessionEnd": false,
+    "adversaryRunsDays": 30,
+    "telemetryMaxLines": 5000
+  },
+  "correctionDetector": {
+    "_comment": "Hybrid keyword-first classifier with self-learning back-propagation (wf-e6d65edf). Layer 1 (keyword pre-classifier) skips Haiku on a hit. Layer 2 (AI fallback) runs the existing Haiku path. Layer 3 (learning) extracts n-grams from AI-confirmed corrections at confidence >= learningThreshold and writes them to .workflow/state/correction-patterns.json.",
+    "hybrid": {
+      "enabled": true
+    },
+    "learning": {
+      "enabled": true,
+      "learningThreshold": 85,
+      "demotionThreshold": 0.5,
+      "demotionMinHits": 10
     }
   }
 }

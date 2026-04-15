@@ -147,6 +147,34 @@ function handleSessionEnd(input) {
     } catch (err) {
       // Non-critical — memory DB may not be available
     }
+
+    // Promotion pipeline (wf-6a352aae) — scan adversary-runs + correction-patterns
+    // for content that should be promoted to feedback-patterns.md. Writes to
+    // pending-promotions.json; user reviews via `flow promote apply`.
+    // Fire-and-forget, gated by config.promotion.autoAtSessionEnd.
+    try {
+      const cfg = getConfig();
+      if (cfg.promotion?.autoAtSessionEnd !== false) {
+        const promote = require('../../flow-promote');
+        promote.promoteAll(promote.getPromotionConfig()).then((r) => {
+          if (r.proposed > 0) {
+            result.pendingPromotions = {
+              count: r.proposed,
+              message: `${r.proposed} promotion(s) ready. Run \`flow promote apply\` to write to feedback-patterns.md.`,
+            };
+          }
+        }).catch((err) => {
+          if (process.env.DEBUG) {
+            console.error(`[Session End] Promotion pipeline failed: ${err.message}`);
+          }
+        });
+      }
+    } catch (err) {
+      // Non-critical — promotion module may not be available
+      if (process.env.DEBUG) {
+        console.error(`[Session End] Promotion module unavailable: ${err.message}`);
+      }
+    }
   } catch (err) {
     result.warning = `Session end handler error: ${err.message}`;
   }

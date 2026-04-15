@@ -15,13 +15,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  PROJECT_ROOT,
   fileExists,
   getConfig,
   color,
   success,
   info,
-  warn
+  warn,
+  getTodayDate
 } = require('./flow-utils');
 
 // ============================================================
@@ -608,6 +608,9 @@ module.exports = {
   getAutoLearnConfig,
   loadAutoPatterns,
   saveAutoPatterns,
+  // Promotion API exposed for wf-6a352aae callers (adversary-promotion + pattern-phrase-promotion)
+  handlePromotion,
+  promoteToDecisions,
   showStatus
 };
 

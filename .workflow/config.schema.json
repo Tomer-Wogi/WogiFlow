@@ -592,7 +592,7 @@
             "optional": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["review", "docs", "webmcpVerification"]
+              "default": ["review", "docs", "webmcpVerification", "captureGate"]
             }
           }
         },
@@ -607,7 +607,7 @@
             "optional": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["review", "webmcpVerification"]
+              "default": ["review", "webmcpVerification", "captureGate"]
             }
           }
         },
@@ -622,7 +622,7 @@
             "optional": {
               "type": "array",
               "items": { "type": "string" },
-              "default": ["review", "webmcpVerification"]
+              "default": ["review", "webmcpVerification", "captureGate"]
             }
           }
         }
@@ -2056,7 +2056,36 @@
           "items": { "type": "string" },
           "default": ["node_modules", ".workflow/state", "dist", "build"]
         },
-        "maxFilesPerAgent": { "type": "number", "default": 100 }
+        "maxFilesPerAgent": { "type": "number", "default": 100 },
+        "framingPass": {
+          "type": "object",
+          "description": "Audit framing step — interpret scope, surface assumptions, reconcile user-enumerated items before launching agents (ported from /wogi-start).",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, /wogi-audit writes a Framing Artifact to .workflow/state/audit-framing/ before Step 1 and displays it to the user." },
+            "itemReconciliation": { "type": "boolean", "default": true, "description": "When the user's audit request enumerates multiple focus items, require all of them to appear in the framing's scopeIn before proceeding. Anti-deferral guard." }
+          },
+          "additionalProperties": true
+        },
+        "evidenceTiers": {
+          "type": "object",
+          "description": "Evidence tiering for audit findings (0–4 scale shared with flow-runtime-verification EVIDENCE_TIERS). Caps severity when the tier cannot support it — e.g., a Tier-0 static inference cannot claim HIGH severity.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, every agent finding must carry an evidenceTier (0–4) and evidenceNote, and severity is capped by the tier." }
+          },
+          "additionalProperties": true
+        },
+        "adversaryPass": {
+          "type": "object",
+          "description": "Audit adversary pass (ported from IGR Logic Adversary, wf-3975a001). Different-model critique of agent findings for false positives, missed issues, and unsupported severities. Runs after consolidation, before the final report.",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, a different-model critique agent runs on the consolidated findings and produces adjustments." },
+            "adversaryModel": { "type": "string", "default": "sonnet", "description": "Model for the adversary critique. MUST differ from the agent model used in Step 2. Default 'sonnet' (when main audit runs on Opus; otherwise use 'opus')." },
+            "applySeverityAdjustments": { "type": "boolean", "default": true, "description": "When true, adversary's severityAdjustments automatically rewrite severity in the report and mark findings [ADVERSARY-ADJUSTED]." },
+            "applyScopeDrift": { "type": "boolean", "default": true, "description": "When true, adversary-flagged out-of-scope findings are moved to an Out-of-Scope appendix (not dropped)." },
+            "archiveRuns": { "type": "boolean", "default": true, "description": "When true, adversary output is archived to .workflow/state/adversary-runs/audit-{timestamp}.json so flow-promote can surface recurring adversary findings." }
+          },
+          "additionalProperties": true
+        }
       }
     },
     "plugins": {
@@ -2232,11 +2261,12 @@
         },
         "capture": {
           "type": "object",
-          "description": "Capture-at-task-boundary enforcement. Controls whether task close is blocked when durable conclusions are claimed in the task summary but not written to state files.",
+          "description": "Capture-at-task-boundary enforcement (wf-a3cc5f2a). Quality gate `captureGate` runs at task close, classifies the task summary for durable conclusions via Haiku, and blocks close when a conclusion has no corresponding state-file write. Bypass = set blockOnMiss to false (logged via trackBypassAttempt).",
           "properties": {
-            "enabled": { "type": "boolean", "default": false, "description": "Master switch for the capture gate (wf-a3cc5f2a). Enable after classifier (G4 in audit) is built." },
-            "blockOnMiss": { "type": "boolean", "default": true, "description": "When true, task close is blocked on capture miss. When false, warn only." },
-            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L2", "description": "Minimum task level at which capture gate activates. L3 subtasks skip." }
+            "enabled": { "type": "boolean", "default": false, "description": "Master switch for the capture gate. When false, the gate skips with reason: 'capture-disabled'." },
+            "blockOnMiss": { "type": "boolean", "default": true, "description": "When true, task close is blocked on capture miss. When false, warn only and log a bypass attempt." },
+            "minLevel": { "type": "string", "enum": ["L0", "L1", "L2", "L3"], "default": "L2", "description": "Minimum task level at which capture gate activates. L3 subtasks skip with reason: 'level-too-low'." },
+            "minConfidence": { "type": "number", "minimum": 0, "maximum": 100, "default": 70, "description": "Classifier confidence threshold (0–100). Conclusions below this confidence are dropped before write-verification." }
           },
           "additionalProperties": true
         },
@@ -2245,6 +2275,73 @@
           "description": "Measurement surface for validating the 30%+ token savings claim. See wf-1cde48ad (Telemetry dashboard).",
           "properties": {
             "enabled": { "type": "boolean", "default": true, "description": "When true, per-session metrics are recorded to .workflow/state/memory-telemetry.json." }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "researchReasoningGate": {
+      "type": "object",
+      "description": "Research Reasoning Gate (wf-6dbc0b2a). Applies to conversation/research mode. Classifies questions into 3 tiers by structural markers: Tier 1 (factual — no gate), Tier 2 (domain — surface assumptions, wait for user), Tier 3 (architecture — Tier 2 + different-model adversary critique). Default ON.",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true, "description": "Master switch for the research reasoning gate. When false, conversation/research mode proceeds without assumption surfacing or adversary critique." },
+        "tier2": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, Tier-2 (domain) questions surface assumptions and WAIT for user confirmation before analyzing." }
+          },
+          "additionalProperties": true
+        },
+        "tier3": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, Tier-3 (architecture) questions spawn a critique agent on a different model after the recommendation is produced. Requires tier2.enabled to be true (assumption confirmation must happen first)." },
+            "adversaryModel": { "type": "string", "default": "sonnet", "description": "Model for the critique agent. Default 'sonnet' (different from orchestrator Opus). Valid values follow the Agent tool's model parameter." }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "promotion": {
+      "type": "object",
+      "description": "Promotion pipeline (wf-6a352aae). Closes audit gaps G6 + G8 by feeding adversary-finding recurrences and correction-patterns.json hits into feedback-patterns.md via the existing promotion ladder.",
+      "properties": {
+        "autoAtSessionEnd": { "type": "boolean", "default": true, "description": "When true, promotion scan runs at session-end and writes pending-promotions.json. Apply via `flow promote apply`." },
+        "adversaryPromotionThreshold": { "type": "integer", "minimum": 1, "default": 2, "description": "Minimum number of distinct adversary-run occurrences of the same finding (principleId + normalized issue text) before it becomes a feedback-pattern candidate." },
+        "patternToFeedbackThreshold": { "type": "integer", "minimum": 1, "default": 3, "description": "Minimum confirmedHits on a correction-patterns.json entry before it becomes a feedback-pattern candidate. One-shot per phrase (tracked via lastPromotedAt)." }
+      },
+      "additionalProperties": true
+    },
+    "archive": {
+      "type": "object",
+      "description": "Stale archival (wf-6a352aae). Adversary-runs older than N days get gzipped to _archive/YYYY-MM/. gate-telemetry.jsonl gets rotated when over the line cap. Manual-only — `flow archive` to run.",
+      "properties": {
+        "autoAtSessionEnd": { "type": "boolean", "default": false, "description": "Manual-only by default. Flip to true only if you want session-end to silently archive — strongly NOT recommended." },
+        "adversaryRunsDays": { "type": "integer", "minimum": 1, "default": 30, "description": "Adversary-runs older than this many days are archived. Files referenced by an active task-checkpoint are NEVER archived regardless of age." },
+        "telemetryMaxLines": { "type": "integer", "minimum": 100, "default": 5000, "description": "Rotate gate-telemetry.jsonl when over this line count. Rotated to _archive/gate-telemetry-YYYY-MM-DD.jsonl.gz; live file truncated." }
+      },
+      "additionalProperties": true
+    },
+    "correctionDetector": {
+      "type": "object",
+      "description": "Hybrid keyword-first classifier with self-learning back-propagation (wf-e6d65edf). Extends scripts/flow-correction-detector.js with a keyword pre-classifier (Layer 1), unchanged AI fallback (Layer 2), and pattern learning from AI-confirmed corrections (Layer 3).",
+      "properties": {
+        "hybrid": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, Layer 1 keyword check runs before the AI call. When false, behavior reverts to AI-only (current behavior)." }
+          },
+          "additionalProperties": true
+        },
+        "learning": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true, "description": "When true, AI-confirmed corrections at confidence >= learningThreshold trigger n-gram extraction into .workflow/state/correction-patterns.json. When false, no patterns are written." },
+            "learningThreshold": { "type": "number", "minimum": 0, "maximum": 100, "default": 85, "description": "Minimum AI confidence required before extracting n-grams from a confirmed correction." },
+            "demotionThreshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5, "description": "Pattern is removed on next loadPatterns() when (falsePositives / hits) exceeds this ratio AND hits >= demotionMinHits." },
+            "demotionMinHits": { "type": "integer", "minimum": 1, "default": 10, "description": "Minimum number of Layer 1 hits before demotion logic considers removing a pattern." }
           },
           "additionalProperties": true
         }
