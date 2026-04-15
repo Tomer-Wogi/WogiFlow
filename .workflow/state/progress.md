@@ -1306,3 +1306,61 @@ Conducted deep research on similar solutions:
 - `voiceClarification` config kept (for long-input processing, not voice recording)
 - Security review flagged pre-existing issues in flow-memory-blocks.js (not this session's changes)
 
+
+---
+
+## Session End: 2026-04-15
+
+### Shipped this session
+
+**Two npm releases:**
+- **v2.16.0** — Task-boundary session restart (wogi-claude wrapper + Stop-hook SIGTERM + session-history.json)
+- **v2.17.0** — Hydration recency filter + pending-question defer (`flow ask`) + workspace-mode compat + closed wf-9541ad78 as intent-satisfied
+
+**IGR Logic Constitution: v1 → v2 → v3.** Calibrated 4 times from real failures:
+- P11 — Platform capability grounding (cite + enforcement-preserve + alternative + fallback)
+- P11.1 — Observed > documented (require O1 captured observation or O2 live-test plan for runtime-behavior claims)
+- P11.2 — Self-ground against project's own rules (stack-agnostic: WogiFlow universal + JS/TS + Python + Go + Rust + generic)
+- P11.3 — Sibling-feature compatibility (S1 enumerate, S2 compose, S3 integrate-or-file-followup)
+- P11.4 — Generative 5-bucket edge-case taxonomy (B1 interleaving, B2 partial failure, B3 boundary counts, B4 execution-env portability, B5 silent-failure observability)
+
+**Self-improvement loop bug**: fixed `flow-correct.js` missing `getTodayDate` import (was silently crashing for 2+ months). CORR-002 recorded via the revived pipeline.
+
+**Mid-Execution Anti-Deferral** rule added to CLAUDE.md template — all WogiFlow users now get it.
+
+### Completed stories (epic-episodic-memory)
+- wf-39e9dc09 — Shell wrapper + hook signaling + postinstall (VERIFIED live)
+- wf-60ac175d — Feasibility spike
+- wf-643304c0 — IGR Principle 11
+- wf-729ab5c0 — Timestamp-scoped hydration recency filter
+- wf-f747f993 — Workspace-mode wrapper compatibility
+- wf-9541ad78 — Session manifest (intent-satisfied)
+- wf-2be323f6 — Task-boundary eviction (intent-satisfied)
+- wf-234d2069 — Test coverage (scope-satisfied)
+
+### Epic state
+**13 of 21 stories done (61.9%)**
+
+### Dogfood feature now live
+`.workflow/config.json` has `taskBoundaryReset.enabled: true` and `sessionHydration.recencyWindowHours: 48`. Run `./node_modules/.bin/wogi-claude` instead of `claude` to stress-test the restart mechanism in real development.
+
+### Next session — "continue" should pick up
+
+When you say "continue" in a fresh session, `/wogi-start` will look at ready[] and start the next task. Recommended order (user judgment):
+
+1. **wf-a3cc5f2a** (P1) — Capture gate — the canonical-capture-enforcement mate to the restart mechanism. Most important remaining piece.
+2. **wf-e6d65edf** (P1) — Hybrid classifier with self-learning (keyword → AI fallback → pattern back-propagation). Your idea; complements the restart by making the feedback loop learn from itself.
+3. **wf-942ad14f** (P2) — Intent artifacts + IGR consumption check.
+4. Narrowed-scope carryover: wf-1cde48ad, wf-6a352aae, wf-1976a301, wf-e64cacd0 (each has annotated pivot note in its spec).
+
+### Before starting next session, consider
+- Run `wogi-claude` in your actual development for a while. Friction points become input for the next iteration.
+- If the restart fires during a session where you ask a follow-up question, verify `flow ask "..."` correctly defers the restart (it should — smoke-tested).
+- If you hit an issue with workspace mode, the wrapper integration is at `lib/workspace.js:resolveClaudeSpawnCommand`. Manager = claude; worker = wogi-claude wrapper.
+
+### Notes
+- `wogi-claude` wrapper is at `lib/wogi-claude`. npm install auto-symlinks to node_modules/.bin/.
+- Pending question deferral: `flow ask "question"` writes `.workflow/state/pending-question.json`. UserPromptSubmit clears it. Stop-hook reads it to decide defer vs fire.
+- Resume tokens: `.workflow/state/session-history.json` has the last 20 sessions' cliSessionIds + `resumeCommand` (claude --resume <id>).
+- If something breaks post-restart, check: (1) marker file `.workflow/state/task-just-completed`, (2) wrapper flag `.workflow/state/restart-requested`, (3) session-history entries.
+
