@@ -424,6 +424,28 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-234d2069",
+      "title": "Test coverage (unit + integration + regression)",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "specPath": ".workflow/changes/wf-234d2069.md",
+      "status": "completed",
+      "completedAt": "2026-04-15T11:05:23.245Z",
+      "outcome": "Scope-satisfied. Live-fire 3-restart integration test verified end-to-end in /Users/tomergilboa/Developer/tmp; smoke tests cover Phase 1/Phase 2 task-boundary-reset, hydration recency filter, pending-question defer. Breadcrumb/externalization test scenarios are moot (feature obsolete). Measurement test (30%+ savings) can be added later as a targeted benchmark story if needed."
+    },
+    {
+      "id": "wf-2be323f6",
+      "title": "Task-boundary eviction + rolling index",
+      "type": "feature",
+      "level": "L1",
+      "priority": "P1",
+      "specPath": ".workflow/changes/wf-2be323f6.md",
+      "status": "completed",
+      "completedAt": "2026-04-15T11:05:23.245Z",
+      "outcome": "Intent satisfied. wf-39e9dc09 provides eviction via session restart (stronger than per-task-memory-files). wf-9541ad78/session-history.js provides the rolling 10-task index (capped at 20). wf-729ab5c0 handles hydration. Compaction integration is moot — restart replaces it. No additional code needed."
+    },
+    {
       "id": "wf-9541ad78",
       "title": "Session manifest for --resume",
       "type": "feature",

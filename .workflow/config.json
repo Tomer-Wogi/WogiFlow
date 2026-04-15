@@ -5,6 +5,13 @@
   "cli": {
     "type": "claude-code"
   },
+  "taskBoundaryReset": {
+    "enabled": true,
+    "maxRestartsPerSession": 50
+  },
+  "sessionHydration": {
+    "recencyWindowHours": 48
+  },
   "enforcement": {
     "strictMode": true,
     "taskGating": {
