@@ -10,6 +10,8 @@
 **Purpose**: The agnostic rubric the Logic Adversary uses to critique a plan before code is written.
 **Scope**: Plan-level logic quality, not code style. WogiFlow's other gates handle naming, security, conventions, and patterns.
 
+**Stack-agnosticity contract**: the principles and their required evidence are universal across languages, frameworks, runtimes, and deployment models. Where examples reference specific technologies (bash, Node, React, PostToolUse, `decisions.md`, etc.), treat them as **illustrative** — substitute your project's equivalents. If the rubric feels coupled to a specific stack in how a principle is phrased, that's a bug in the rubric — amend per the "Amending this rubric" section and cite the stack you couldn't map onto the current wording.
+
 This rubric is **versioned** and **user-editable**. When the rubric changes, bump the version number and add a new file (e.g., `logic-constitution-v2.md`). Every gate telemetry event records the rubric version, so the rubric's own evolution is trackable.
 
 ---
@@ -283,9 +285,19 @@ If the plan has neither O1 nor O2 for a runtime-behavior claim, the principle ve
 
 Principle 11 governs PLATFORM capabilities (hooks, APIs, signals). Sub-principle 11.2 extends the same discipline to **the project's own rules, decisions, and patterns** — WogiFlow's when building WogiFlow, and the user's own project rules when using WogiFlow to build anything else.
 
+**This principle is stack-agnostic.** The source list below includes WogiFlow-universal files (which every WogiFlow project has) AND stack-specific rule sources (which vary by language, framework, or toolchain). Substitute the examples with whatever your project uses.
+
 **For every plan artifact** (task IDs, file names, state-file entries, config values, spec structures, commit messages, branch names, schema documents, etc.), the Adversary demands:
 
-- **E1 — Name the rule.** Which entry in `decisions.md`, `feedback-patterns.md`, `.claude/rules/`, `config.schema.json`, or a validator function (`validateTaskId`, `safeJsonParse`, `isPathWithinProject`, etc.) applies to this artifact? "No rule applies" is an acceptable answer — but must be asserted explicitly, not assumed.
+- **E1 — Name the rule.** Which entry governs this artifact? Rule sources include, depending on stack:
+  - **WogiFlow-universal (all projects)**: `decisions.md`, `feedback-patterns.md`, `.claude/rules/`, validator functions (`validateTaskId`, `safeJsonParse`)
+  - **JavaScript/TypeScript projects**: `package.json`, `tsconfig.json`, ESLint/Prettier configs, `config.schema.json`, test-framework conventions
+  - **Python projects**: `pyproject.toml`, `setup.cfg`, `mypy.ini`, `ruff.toml`, pre-commit hooks, `.python-version`
+  - **Go projects**: `go.mod`, `golangci-lint.yml`, build tags, effective-Go idioms
+  - **Rust projects**: `Cargo.toml`, `rustfmt.toml`, `clippy.toml`
+  - **Any stack**: project README/CONTRIBUTING, ADR folders, linter configs, CI workflow expectations, schema definitions (OpenAPI, GraphQL, Protobuf)
+
+  "No rule applies" is an acceptable answer — but must be asserted explicitly, not assumed.
 
 - **E2 — Show the artifact satisfying the rule.** Not "I followed the rule" — *show* the check passing:
   - For validator functions: run the validator on the artifact, cite the passing result
@@ -312,17 +324,19 @@ If any of E1/E2/E3 is missing for any load-bearing artifact, the principle verdi
 
 **Added 2026-04-15 after a plan proposed a `wogi-claude` shell wrapper that worked for single-session CLI use but missed that WogiFlow already has a workspace mode (`lib/workspace.js`) that spawns `claude` directly via `execSync`. The plan would have been incompatible with an existing product feature — not platform capability and not project rules, but a sibling WogiFlow feature that touches the same domain.**
 
-P11 (platform) and P11.2 (project rules) cover the outside and the inside. This clause covers the **sideways** dimension: existing WogiFlow features that may interact with the proposed mechanism.
+P11 (platform) and P11.2 (project rules) cover the outside and the inside. This clause covers the **sideways** dimension: existing features in the same codebase that may interact with the proposed mechanism.
 
-For every plan that introduces a new mechanism (hook, wrapper, CLI entry point, session-management primitive, state-file schema, config key, tool invocation pattern), the Adversary demands:
+**Stack-agnostic**: the questions are universal. The search commands below are illustrative — adapt the greps to your project's layout and language.
 
-- **S1 — Enumerate the sibling surface.** Which existing WogiFlow features touch the same domain as the proposed mechanism?
-  - Session/process management → check `lib/workspace.js`, `scripts/flow-worktree.js`, `scripts/flow-orchestrate.js`, `--fork-session` usage
-  - Hooks → check `scripts/hooks/core/*`, `scripts/hooks/entry/claude-code/*`
-  - State files → check `.workflow/state/*` and all writers via `grep -r "writeJson.*state"`
-  - Commands → check `.claude/commands/` and `lib/commands/`
-  - Config keys → check `scripts/flow-config-defaults.js` and `scripts/flow-constants.js`
-  - Skills → check `.claude/skills/` and skill-match logic
+For every plan that introduces a new mechanism (hook, wrapper, CLI entry point, session-management primitive, state-file schema, config key, tool invocation pattern, route, middleware, component, etc.), the Adversary demands:
+
+- **S1 — Enumerate the sibling surface.** Which existing features in this codebase touch the same domain as the proposed mechanism? Example checks by concern:
+  - **Session/process management** (any stack): grep for subprocess spawners, session factories, background-job runners. For WogiFlow: `lib/workspace.js`, `scripts/flow-worktree.js`. For a Node backend: `child_process` calls, worker-thread creation. For a web app: service workers, web workers, iframe messaging.
+  - **Hooks / middleware / interceptors**: WogiFlow uses `scripts/hooks/core/*`. Express apps use middleware. React apps use hooks/HOCs/context providers. Python web frameworks use middleware decorators. Grep the convention that applies.
+  - **Shared state**: WogiFlow uses `.workflow/state/*`. Web apps use Redux/Zustand/context. Backends use DB rows or cache entries. Whichever your codebase uses, check concurrent writers.
+  - **Commands / CLI entry points**: WogiFlow uses `.claude/commands/`. Node CLIs use `bin` in package.json. Python uses entry-points. Check for command-name overlap.
+  - **Config keys**: WogiFlow uses `scripts/flow-config-defaults.js` + `flow-constants.js`. Any project has some canonical config schema — verify the new key is registered where it needs to be.
+  - **Skills / plugins / extensions**: wherever your project registers user-facing capabilities, check for overlap.
 - **S2 — Show compatibility.** For each sibling surface: does the new mechanism compose cleanly, conflict, or require integration work? "Orthogonal" is an acceptable answer — but must be asserted and substantiated.
 - **S3 — Name integration work as scope.** If a sibling surface requires integration (e.g., workspace mode needs the wrapper to be injected into its `execSync` call), the plan must EITHER include that integration in scope OR explicitly file a follow-up story for it. Silent omission = FAIL.
 
@@ -370,10 +384,20 @@ Plans pass P11.4 when they name each bucket and either address the concern OR as
 - Many: accumulation, caps, wraparound, restart-storm, duplicate-dedup exhaustion
 - Real example: `flow bulk` processing 50 tasks would trigger 50 restarts — each ~30s — turning a 5-min bulk into a 30-min ordeal. Not a correctness bug but a real UX tradeoff that was not acknowledged in wf-39e9dc09's original spec.
 
-**B4 — Platform portability**
-> Does this work on Windows? A non-bash shell (fish, nushell)? Restricted permissions? A network filesystem (iCloud, OneDrive)?
-- Even if "we don't officially support X," the plan should name the unsupported platforms explicitly rather than silently breaking
-- Real example: wf-39e9dc09 wrapper is POSIX bash. Windows users get no task-boundary restart. Plan never said so.
+**B4 — Execution-environment portability**
+> What environments does this run in? Which variants behave differently?
+> The concrete sub-questions depend on WHERE the mechanism executes:
+> - **CLI / shell-based tools** (WogiFlow, build scripts, devops): Windows vs macOS vs Linux? POSIX shell vs fish/nushell? Network filesystems (iCloud, OneDrive, SMB)? Restricted-permission environments (CI sandboxes, corporate containers)?
+> - **Web-frontend** (browsers, PWAs): which browsers (Safari, Chrome, Firefox, mobile WebView)? SSR vs CSR? Different viewport sizes? Reduced-motion / high-contrast accessibility modes?
+> - **Mobile** (iOS, Android, React Native, Flutter): OS version spread? Phone vs tablet? Permission models?
+> - **Backend services** (Node, Python, Go, etc.): runtime version spread? OS of deploy targets? Containerized vs bare-metal? Serverless cold-start vs warm?
+> - **Database / infra**: engine versions? replica vs primary? read vs write traffic?
+> - **IoT / embedded**: hardware variants? memory constraints? offline-first behavior?
+>
+> **The rule regardless of stack**: even if "we don't officially support X," the plan should name the unsupported environments explicitly rather than silently breaking on them.
+>
+> Real example (CLI): wf-39e9dc09 wrapper is POSIX bash. Windows users get no task-boundary restart. Plan never said so.
+> Equivalent failure patterns in other stacks: "tested in Chrome; Safari's Date parsing silently gives NaN", "works in Node 20+; breaks silently in Node 18", "works when replica lag is zero; undefined behavior otherwise."
 
 **B5 — Silent-failure observability**
 > If this goes wrong silently, will anyone notice?
