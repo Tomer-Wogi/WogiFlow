@@ -82,6 +82,123 @@ function checkClaudeCodeVersion() {
   }
 }
 
+/**
+ * Normalize an MCP server config so two equivalent objects compare equal
+ * after JSON.stringify. Recursively sorts object keys and stringifies arrays
+ * in their original order (order is meaningful for args).
+ *
+ * @param {*} cfg - An MCP server config value (typically an object, but may be primitive)
+ * @returns {string} Canonical JSON representation suitable for equality comparison
+ */
+function normalizeMcpConfig(cfg) {
+  const sortKeys = (v) => {
+    if (Array.isArray(v)) return v.map(sortKeys);
+    if (v && typeof v === 'object') {
+      const out = {};
+      for (const k of Object.keys(v).sort()) {
+        out[k] = sortKeys(v[k]);
+      }
+      return out;
+    }
+    return v;
+  };
+  return JSON.stringify(sortKeys(cfg));
+}
+
+/**
+ * Check MCP server definitions across the three Claude Code settings scopes:
+ *   - user:    ~/.claude/settings.json
+ *   - project: <project>/.claude/settings.json
+ *   - local:   <project>/.claude/settings.local.json
+ *
+ * Mirrors the /doctor warning added in Claude Code 2.1.110: a server defined
+ * in multiple scopes with divergent config is almost always a mistake — the
+ * lowest-priority scope silently loses, and users debug ghost endpoints.
+ *
+ * Identical duplicate definitions are intentionally NOT flagged — some teams
+ * duplicate for portability. Only divergent configs surface.
+ *
+ * @param {Object} [opts]
+ * @param {string} [opts.userSettingsPath] - Override path to user scope (for tests)
+ * @param {string} [opts.projectSettingsPath] - Override path to project scope (for tests)
+ * @param {string} [opts.localSettingsPath] - Override path to local scope (for tests)
+ * @returns {{
+ *   duplicates: Array<{name: string, scopes: string[]}>,
+ *   uniqueServers: number,
+ *   parseErrors: Array<{file: string, error: string}>,
+ *   scopesChecked: number
+ * }}
+ */
+function checkMcpScopes(opts = {}) {
+  const os = require('node:os');
+  const scopes = [
+    { file: opts.userSettingsPath || path.join(os.homedir(), '.claude', 'settings.json'), label: 'user' },
+    { file: opts.projectSettingsPath || path.join(PROJECT_ROOT, '.claude', 'settings.json'), label: 'project' },
+    { file: opts.localSettingsPath || path.join(PROJECT_ROOT, '.claude', 'settings.local.json'), label: 'local' }
+  ];
+
+  const parseErrors = [];
+  const serverByName = new Map();
+  let scopesChecked = 0;
+
+  // Sentinel object for safeJsonParse so we can distinguish "file failed to
+  // parse" (returned sentinel) from "file parsed but had no mcpServers" (returned
+  // object without the key). safeJsonParse is mandated by security-patterns.md §2
+  // (prototype-pollution guard + non-object validation) — we layer a raw-read
+  // fallback on top to categorize the failure cause for health output.
+  const PARSE_SENTINEL = Object.create(null);
+
+  for (const scope of scopes) {
+    if (!fileExists(scope.file)) continue;
+    scopesChecked++;
+    const json = safeJsonParse(scope.file, PARSE_SENTINEL);
+    if (json === PARSE_SENTINEL) {
+      // safeJsonParse returned the sentinel — categorize: read failure vs JSON
+      // parse failure vs non-object vs prototype-pollution rejection.
+      let raw;
+      try {
+        raw = fs.readFileSync(scope.file, 'utf-8');
+      } catch (err) {
+        parseErrors.push({ file: scope.file, error: `read failed: ${err.message}` });
+        continue;
+      }
+      try {
+        JSON.parse(raw);
+        // Raw parse succeeded — safeJsonParse rejected for structural reason
+        // (non-object top level, or dangerous __proto__/constructor keys).
+        parseErrors.push({ file: scope.file, error: 'rejected by safeJsonParse (non-object or prototype-pollution guard)' });
+      } catch (err) {
+        parseErrors.push({ file: scope.file, error: `invalid JSON: ${err.message}` });
+      }
+      continue;
+    }
+    const mcp = json.mcpServers;
+    if (!mcp || typeof mcp !== 'object' || Array.isArray(mcp)) continue;
+
+    for (const name of Object.keys(mcp)) {
+      if (!serverByName.has(name)) serverByName.set(name, []);
+      serverByName.get(name).push({ scope: scope.label, config: mcp[name] });
+    }
+  }
+
+  const duplicates = [];
+  for (const [name, entries] of serverByName.entries()) {
+    if (entries.length < 2) continue;
+    const canonical = normalizeMcpConfig(entries[0].config);
+    const allSame = entries.every(e => normalizeMcpConfig(e.config) === canonical);
+    if (!allSame) {
+      duplicates.push({ name, scopes: entries.map(e => e.scope) });
+    }
+  }
+
+  return {
+    duplicates,
+    uniqueServers: serverByName.size,
+    parseErrors,
+    scopesChecked
+  };
+}
+
 function main() {
   console.log(color('cyan', 'Wogi Flow Health Check'));
   console.log('========================');
@@ -661,6 +778,29 @@ function main() {
     }
   }
 
+  // Check MCP server definitions across scopes (mirrors Claude Code 2.1.110 /doctor)
+  console.log('');
+  printSection('Checking MCP server scopes...');
+
+  const mcp = checkMcpScopes();
+  if (mcp.parseErrors.length > 0) {
+    for (const e of mcp.parseErrors) {
+      warn(`Could not parse ${e.file}: ${e.error}`);
+    }
+    warnings += mcp.parseErrors.length;
+  }
+  if (mcp.uniqueServers === 0) {
+    console.log(`  ${color('dim', '○')} No MCP servers defined in user / project / local scopes`);
+  } else if (mcp.duplicates.length === 0) {
+    success(`No conflicting MCP server definitions across ${mcp.scopesChecked} scope(s)`);
+  } else {
+    for (const f of mcp.duplicates) {
+      warn(`MCP server "${f.name}" has divergent config in scopes: ${f.scopes.join(' + ')}`);
+      console.log(`    ${color('dim', '→ Consolidate into a single scope; /doctor will flag this too')}`);
+    }
+    warnings += mcp.duplicates.length;
+  }
+
   // Check .gitignore sync
   console.log('');
   printSection('Checking .gitignore sync...');
@@ -1159,4 +1299,8 @@ function run() {
   }
 }
 
-run();
+if (require.main === module) {
+  run();
+}
+
+module.exports = { checkMcpScopes, normalizeMcpConfig };

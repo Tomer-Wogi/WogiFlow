@@ -1,36 +1,32 @@
 {
-  "reviewDate": "2026-04-15T12:00:00.000Z",
+  "reviewDate": "2026-04-16T00:00:00.000Z",
   "mode": "parallel",
   "agentsLaunched": 3,
   "agentBreakdown": { "core": 3, "optional": 0, "projectRules": 0 },
   "filesReviewed": [
-    "scripts/hooks/core/phase-read-gate.js",
-    "scripts/hooks/entry/claude-code/pre-tool-use.js",
-    ".claude/commands/wogi-start.md",
-    ".claude/commands/wogi-start-continuation.md",
-    ".claude/docs/phases/01-explore.md",
-    ".claude/docs/phases/02-spec.md",
-    ".claude/docs/phases/03-implement.md",
-    ".claude/docs/phases/04-verify.md",
-    ".claude/docs/phases/05-complete.md"
+    ".claude/docs/claude-code-compatibility.md",
+    ".workflow/templates/claude-md.hbs",
+    "CLAUDE.md",
+    "lib/installer.js",
+    "scripts/flow-health.js",
+    "tests/flow-health-mcp-scopes.test.js"
   ],
   "findings": [
-    { "id": "finding-001", "severity": "high", "category": "security", "file": "scripts/hooks/core/phase-read-gate.js", "line": 50, "issue": "endsWith matching allows cross-project path forgery", "recommendation": "Use path.relative(PATHS.root, filePath) for normalization", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-002", "severity": "medium", "category": "architecture", "file": "scripts/hooks/core/session-context.js", "line": 33, "issue": "phase-reads.json missing from KNOWN_STATE_FILES — hygiene system will delete it", "recommendation": "Add 'phase-reads.json' to KNOWN_STATE_FILES set", "autoFixable": true, "agent": "architecture" },
-    { "id": "finding-003", "severity": "medium", "category": "architecture", "file": "scripts/hooks/core/session-end.js", "line": 0, "issue": "No session-end cleanup of phase-reads — stale state bleeds across sessions", "recommendation": "Call clearPhaseReads() in handleSessionEnd OR add freshness check", "autoFixable": true, "agent": "architecture" },
-    { "id": "finding-004", "severity": "medium", "category": "architecture", "file": "scripts/hooks/entry/claude-code/pre-tool-use.js", "line": 195, "issue": "clearPhaseReads uses inline require — DRY violation with top-level import", "recommendation": "Extract clearPhaseReads at top of file with other gate functions", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-005", "severity": "medium-high", "category": "architecture", "file": "scripts/hooks/core/phase-read-gate.js", "line": 95, "issue": "4 fail-open conditions contradict router prompt's 'BLOCKS' claim", "recommendation": "Soften prompt claim OR ensure phase transition fires before gate relevance", "autoFixable": false, "agent": "prompt-quality" },
-    { "id": "finding-006", "severity": "medium", "category": "prompt-quality", "file": ".claude/commands/wogi-start-continuation.md", "line": 81, "issue": "Continuation phase map missing Contents column — weakens read motivation", "recommendation": "Add Contents column to continuation phase map", "autoFixable": true, "agent": "prompt-quality" },
-    { "id": "finding-007", "severity": "medium", "category": "prompt-quality", "file": ".claude/docs/phases/04-verify.md", "line": 476, "issue": "Consumer impact references explore-phase concepts without inline context", "recommendation": "Add sentence explaining blast-radius file structure inline", "autoFixable": true, "agent": "prompt-quality" },
-    { "id": "finding-008", "severity": "medium", "category": "architecture", "file": "scripts/hooks/core/phase-read-gate.js", "line": 89, "issue": "No independent config toggle — parasitic on phaseGate.enabled", "recommendation": "Add hooks.rules.phaseReadGate.enabled with fallback", "autoFixable": true, "agent": "architecture" },
-    { "id": "finding-009", "severity": "medium", "category": "architecture", "file": "scripts/hooks/entry/claude-code/pre-tool-use.js", "line": 92, "issue": "Phase-read gate not in fast-path allGatesDisabled check", "recommendation": "Add phaseReadGate to hook-status.json", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-010", "severity": "low", "category": "code-logic", "file": "scripts/hooks/core/phase-read-gate.js", "line": 45, "issue": "Non-greedy regex fails on nested .claude directories", "recommendation": "Use greedy match or path.relative", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-011", "severity": "low", "category": "code-logic", "file": "scripts/hooks/core/phase-read-gate.js", "line": 59, "issue": "Read-then-write race condition in recordPhaseRead (no file lock)", "recommendation": "Use withLockSync or document why locking is omitted", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-012", "severity": "low", "category": "prompt-quality", "file": ".claude/commands/wogi-start-continuation.md", "line": 42, "issue": "Inline 'per Step X.XX' references don't direct AI to phase file", "recommendation": "Append 'in the corresponding phase file'", "autoFixable": true, "agent": "prompt-quality" },
-    { "id": "finding-013", "severity": "low-medium", "category": "architecture", "file": "scripts/hooks/core/post-compact.js", "line": 0, "issue": "Post-compaction doesn't clear phase-reads — AI loses phase instructions but gate thinks they were read", "recommendation": "Clear phase-reads.json on post-compact", "autoFixable": true, "agent": "prompt-quality" },
-    { "id": "finding-014", "severity": "low", "category": "code-logic", "file": "scripts/hooks/entry/claude-code/pre-tool-use.js", "line": 220, "issue": "No typeof check on toolInput.command before .trim()", "recommendation": "Add typeof check or document contract", "autoFixable": true, "agent": "code-logic" },
-    { "id": "finding-015", "severity": "low", "category": "architecture", "file": "scripts/hooks/entry/claude-code/pre-tool-use.js", "line": 22, "issue": "Defensive import pattern inconsistency with other gates — correct but undocumented", "recommendation": "Add comment explaining defensive-load choice", "autoFixable": true, "agent": "architecture" },
-    { "id": "finding-016", "severity": "low", "category": "architecture", "file": "scripts/hooks/entry/claude-code/pre-tool-use.js", "line": 143, "issue": "Phase-read gate runs before routing gate — routing message is more actionable", "recommendation": "Add comment noting dependency on phase-gate pre-filter", "autoFixable": false, "agent": "architecture" }
+    { "id": "SEC-001", "severity": "medium", "category": "security", "file": "scripts/flow-health.js", "line": 159, "issue": "Raw JSON.parse used instead of safeJsonParse — policy violation per security-patterns.md §2 (prototype-pollution guard). Runtime-safe on Node 20+, but violates project standard.", "recommendation": "Replace with safeJsonParse + sentinel fallback for parseError categorization.", "status": "fixed", "evidenceTier": 3, "evidenceNote": "Applied fix; 13/13 tests pass including new __proto__/top-level-array rejection test.", "adversaryAdjusted": true, "originalSeverity": "high", "agent": "security" },
+    { "id": "SEC-002", "severity": "low", "category": "security", "file": "scripts/flow-health.js", "line": 135, "issue": "os.homedir() not validated against HOME/USERPROFILE hijacking.", "recommendation": "Theoretical Tier-0 concern; if HOME is hijacked, attacker controls settings.json directly anyway.", "status": "dismissed", "evidenceTier": 0, "evidenceNote": "Static inference only; no exploit path demonstrated.", "adversaryAdjusted": true, "originalSeverity": "medium", "dismissReason": "Tier 0 + threat model — dismissed as acceptable risk.", "agent": "security" },
+    { "id": "SEC-003", "severity": "low", "category": "security", "file": "tests/flow-health-mcp-scopes.test.js", "line": 36, "issue": "os.tmpdir() without per-user isolation in test.", "recommendation": "Per-user isolation for dev-only test code.", "status": "dismissed", "evidenceTier": 0, "evidenceNote": "Matches project-wide test convention (multiple other test files use identical pattern).", "dismissReason": "Aligned with existing project test convention; consistency > micro-hardening for dev-only code.", "agent": "security" },
+    { "id": "MISS-1", "severity": "info", "category": "docs", "file": ".claude/docs/claude-code-compatibility.md", "line": 77, "issue": "Version compat row claims '2.18.0+' but package.json is 2.17.5.", "recommendation": "Forward-declaration — becomes accurate when 2.18.0 ships.", "status": "accepted", "evidenceTier": 1, "evidenceNote": "Intentional per task spec; will be accurate at release time.", "adversaryFound": true, "agent": "adversary" },
+    { "id": "MISS-2", "severity": "info", "category": "architecture", "file": "scripts/flow-health.js", "issue": "checkMcpScopes() called only in main(), not deepAudit().", "recommendation": "Deep audit is structural-only by design; MCP scope drift is runtime. Accept as design intent.", "status": "accepted", "evidenceTier": 1, "evidenceNote": "Code flow analysis confirms deepAudit() runs independently.", "adversaryFound": true, "agent": "adversary" }
   ],
-  "triaged": false
+  "enforcementGaps": [
+    { "rule": "security-patterns.md §2: Use safeJsonParse() instead of raw JSON.parse()", "violation": "SEC-001 at flow-health.js:159", "rootCause": "NO_ENFORCEMENT — no standards-gate check for JSON.parse in new code.", "resolution": "FIXED in-review. Future: add lint rule or standards check." }
+  ],
+  "triaged": true,
+  "completionTruthGate": {
+    "enabled": true,
+    "fixed": 1,
+    "tier3OrHigher": 1,
+    "tier2Downgraded": 0,
+    "tier1OrLowerDowngraded": 0
+  }
 }

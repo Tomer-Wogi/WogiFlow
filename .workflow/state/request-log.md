@@ -2862,3 +2862,17 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "End session — A+ drive complete, shipped v2.17.1 through v2.17.5"
 **Result**: v2.17.5 published to npm. +666 tests (1065→1731). flow-utils −47%. pre-tool-use entry −78%. 19 hook gates covered. New Review-Findings Anti-Deferral rule in decisions.md.
 **Files**: package.json, .workflow/state/progress.md, .workflow/state/decisions.md, .claude/docs/intent-grounded-review.md
+
+### R-298 | 2026-04-16
+**Type**: docs
+**Tags**: #docs #compat #prompt-cache #task:wf-c4fcfacb
+**Request**: "Document ENABLE_PROMPT_CACHING_1H for non-subscriber Claude Code users (2.1.108+)"
+**Result**: Added "Features in 2.1.108+" and "Features in 2.1.110+" sections to `.claude/docs/claude-code-compatibility.md` with full rationale for `ENABLE_PROMPT_CACHING_1H=1`. Added version-compatibility row for 2.18.0+ / 2.1.108+. Added `printPromptCachingTip()` to `lib/installer.js` that prints the recommendation once at the end of `flow init`. Added compat-doc reference to `.workflow/templates/claude-md.hbs`, regenerated `CLAUDE.md` via bridge sync.
+**Files**: `.claude/docs/claude-code-compatibility.md`, `.workflow/templates/claude-md.hbs`, `lib/installer.js`, `CLAUDE.md` (regenerated)
+
+### R-299 | 2026-04-16
+**Type**: feature
+**Tags**: #feature #health #mcp #task:wf-5caa40ce
+**Request**: "Add MCP duplicate-scope check to /wogi-health (mirror Claude Code 2.1.110 /doctor)"
+**Result**: Added `checkMcpScopes()` + `normalizeMcpConfig()` helpers to `scripts/flow-health.js`. Scans user (~/.claude/settings.json), project (.claude/settings.json), and local (.claude/settings.local.json) scopes for MCP server definitions; flags divergent configs across scopes, ignores identical duplicates. New "Checking MCP server scopes..." section wired into `main()` between hook-integrity and gitignore checks. Module now exports helpers and guards `run()` behind `require.main === module`. New test suite at `tests/flow-health-mcp-scopes.test.js` (12 tests, all passing) covering identical duplicates, divergent configs, missing files, malformed JSON, null/array mcpServers, and multi-scope conflicts.
+**Files**: `scripts/flow-health.js`, `tests/flow-health-mcp-scopes.test.js`

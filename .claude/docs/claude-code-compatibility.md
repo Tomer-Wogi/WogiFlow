@@ -74,6 +74,7 @@ flow parallel check  # See available parallel tasks
 | 2.5.0+ | 2.1.84+ | TaskCreated hook, YAML glob lists in rules, CLAUDE_STREAM_IDLE_TIMEOUT_MS, WorktreeCreate HTTP transport, idle-return prompt, MCP 2KB cap |
 | 2.9.0+ | 2.1.90+ | --resume deferred-tool cache fix, MCP schema perf, PostToolUse format-on-save fix, PreToolUse exit-code-2 fix, .husky protected |
 | 2.9.2+ | 2.1.97+ | Stop/SubagentStop long-session fix, subagent worktree cwd leak fix, refreshInterval status line, workspace.git_worktree, MCP HTTP/SSE leak fix, 429 backoff, compaction transcript dedup |
+| 2.18.0+ | 2.1.108+ | ENABLE_PROMPT_CACHING_1H guidance, /recap awareness, /doctor MCP duplicate-scope mirror in `/wogi-health` |
 
 ### Environment Variables (2.1.19+)
 
@@ -363,6 +364,50 @@ await cancelTask('wf-123', 'superseded', false);
 
 - **`/claude-api` skill updated for Managed Agents**: The `/claude-api` skill now covers Managed Agents (`/v1/agents`, `/v1/sessions`) alongside the Claude API. **Impact on WogiFlow**: Informational — WogiFlow's `claude-api` skill reference remains accurate.
 
+### Features in 2.1.108+
+
+- **`ENABLE_PROMPT_CACHING_1H` env var (RECOMMENDED for non-subscribers)**: Opts into **1-hour prompt-cache TTL** on **API key, Bedrock, Vertex, and Foundry** providers. Subscribers (Claude Pro, Max, Team, Enterprise via claude.ai OAuth) already get 1h TTL by default — this flag is a **no-op for them**. The complementary `FORCE_PROMPT_CACHING_5M` pins to 5min, and the older `ENABLE_PROMPT_CACHING_1H_BEDROCK` is deprecated but still honored. **Impact on WogiFlow (HIGH)**: WogiFlow sessions load a large, stable prefix every turn — CLAUDE.md (~300 lines), state files (`ready.json`, `decisions.md`, `app-map.md`), phase files, and pinned spec context. At the default 5min TTL, any pause longer than 5 minutes (user thinking, a long `flow` CLI run, a meeting mid-session) invalidates the cache and the next turn pays the full input-token cost again. At 1h TTL, the same prefix stays cached across those pauses, yielding **substantial token-cost reduction** on typical multi-hour WogiFlow work. **Action for API-key / Bedrock / Vertex / Foundry users**: `export ENABLE_PROMPT_CACHING_1H=1` in your shell profile. **Action for subscribers**: none (already enabled). **Risk**: none — if set on a subscriber account it is ignored; if set when not supported, it silently falls back.
+
+- **`/recap` command and session recap feature**: Provides context when returning to a session. Configurable in `/config` and manually invocable with `/recap`. For users with telemetry disabled (Bedrock/Vertex/Foundry/`DISABLE_TELEMETRY`), recap is still enabled by default; opt out via `/config` or `CLAUDE_CODE_ENABLE_AWAY_SUMMARY=0`. **Overlap with WogiFlow**: `/wogi-morning`, `/wogi-session-end`, and `/wogi-pre-compact` already provide durable recap via state files. `/recap` is ephemeral (summarizes the current session); WogiFlow's state survives session exit. Use both: `/recap` for intra-session context, `/wogi-morning` for cross-session pickup.
+
+- **Built-in slash commands via Skill tool**: Claude can now discover and invoke `/init`, `/review`, `/security-review` via the Skill tool. **Impact on WogiFlow**: No collision — all WogiFlow commands use the `wogi-*` prefix (`/wogi-review`, `/wogi-init`, `/wogi-review-fix`). Natural-language routing in CLAUDE.md directs "code review" phrases to `/wogi-review`, not the built-in `/review`. If a user explicitly types `/review`, Claude Code handles it natively — this is expected.
+
+- **`/model` mid-conversation warning**: `/model` now warns before switching models mid-conversation, since the next response re-reads the full history uncached. **Impact on WogiFlow**: Relevant for hybrid mode (`/wogi-hybrid`) — switching the executor model via `/model` during hybrid execution wastes the cached context. WogiFlow's `/wogi-hybrid-setup` is the correct way to change executor models between sessions rather than mid-session.
+
+- **`DISABLE_PROMPT_CACHING*` startup warning**: Claude Code now warns at startup when prompt caching is disabled via `DISABLE_PROMPT_CACHING*` env vars. **Impact on WogiFlow**: WogiFlow's heavy context prefix makes disabled caching **expensive**. This warning helps users who accidentally disabled caching (e.g., copy-pasted env from another project) spot the regression fast.
+
+- **`/undo` alias for `/rewind`**: Typing `/undo` now aliases to `/rewind`. WogiFlow's `/wogi-pre-compact` and `/wogi-suspend` are complementary — `/undo`/`/rewind` rolls back message turns, while the WogiFlow flows preserve state across sessions.
+
+- **Memory footprint reductions for file reads**: Language grammars now load on demand, reducing memory for file reads, edits, and syntax highlighting. **Impact on WogiFlow**: Long WogiFlow sessions (especially `/wogi-bulk-loop` continuous runs) use noticeably less RAM. No code change needed.
+
+### Features in 2.1.110+
+
+- **PreToolUse hook `additionalContext` preserved on tool failure (BUG FIX, GOOD NEWS)**: Previously, when a tool call failed, any `additionalContext` returned by PreToolUse hooks was **dropped**. Fixed in 2.1.110. **Impact on WogiFlow (HIGH)**: WogiFlow injects `additionalContext` in 8 places via `scripts/hooks/adapters/claude-code.js` (PreToolUse, UserPromptSubmit, SessionStart) for routing enforcement, phase-gate messages, component reuse hints, and session-start task context. Before this fix, if a guarded tool call failed, WogiFlow's context message vanished — producing "silent" hook behavior that was confusing to debug. After this fix, WogiFlow's hook messages are reliably delivered regardless of tool outcome. **Action**: none — automatic improvement after upgrade.
+
+- **`/doctor` warns on duplicate MCP server definitions across scopes**: When the same MCP server is defined in user (`~/.claude/settings.json`), project (`.claude/settings.json`), and local (`.claude/settings.local.json`) scopes with different endpoints, `/doctor` now flags the conflict. **Impact on WogiFlow**: `/wogi-health` has a mirror check in `flow-health.js` that scans the same three scopes and reports duplicate MCP server names with divergent endpoints as a health finding (v2.18.0+).
+
+- **PushNotification tool**: Claude can send mobile push notifications when Remote Control and "Push when Claude decides" config are enabled. **WogiFlow opportunity**: Long-running autonomous loops (`/wogi-bulk`, `/wogi-bulk-loop`) could emit a notification on completion, blocker, or extended hang. Tracked as a future enhancement; not auto-wired.
+
+- **Bash tool timeout enforcement**: The Bash tool now enforces the documented maximum timeout (600000ms / 10min) instead of accepting arbitrarily large values. **Impact on WogiFlow**: No impact — all WogiFlow hook Bash timeouts are under 60s (verified across `.claude/settings.json` and `scripts/hooks/`).
+
+- **stdio MCP servers no longer disconnect on stray non-JSON lines**: Fixed a regression from 2.1.105 where stdio MCP servers that print stray non-JSON lines to stdout were disconnected on the first stray line. **Impact on WogiFlow**: WogiFlow has no custom MCP servers in-repo. User-installed MCP servers (figma, atlassian, gmail) benefit automatically.
+
+- **PermissionRequest hook `updatedInput` re-check**: Fixed PermissionRequest hooks returning `updatedInput` not being re-checked against `permissions.deny` rules; `setMode:'bypassPermissions'` updates now respect `disableBypassPermissionsMode`. **Impact on WogiFlow**: WogiFlow does not implement PermissionRequest hooks (only PermissionDenied for logging). Not affected.
+
+- **`--resume`/`--continue` resurrects unexpired scheduled tasks**: Scheduled tasks (cron/CronCreate) now resume across session restarts. **Impact on WogiFlow**: WogiFlow does not currently use Claude Code's cron feature. Not affected; tracked as a future opportunity for automated maintenance tasks.
+
+- **`/context`, `/exit`, `/reload-plugins` work from Remote Control (mobile/web) clients**: Remote Control users can now invoke these built-ins. **Impact on WogiFlow**: WogiFlow has no TTY-only code paths — all `/wogi-*` skills already work identically on Remote Control. Users can now do full WogiFlow-driven work from mobile/web.
+
+- **`/tui` command and `tui` setting**: `/tui fullscreen` switches to flicker-free rendering in the same conversation. The focus view is now toggled separately with `/focus` (Ctrl+O now toggles verbose transcript only). **Impact on WogiFlow**: Documentation only — no runtime dependency on Ctrl+O. The WogiFlow statusline works identically in both TUI modes.
+
+- **`autoScrollEnabled` config**: New setting to disable conversation auto-scroll in fullscreen mode. Purely UX — no WogiFlow impact.
+
+- **Write tool reports IDE diff edits**: The Write tool now informs the model when the user edits the proposed content in the IDE diff before accepting. **Impact on WogiFlow**: Useful signal for learning — WogiFlow's `/wogi-correction` could eventually consume this to detect "user edited my output" events. Not auto-wired; tracked as an enhancement.
+
+- **TRACEPARENT/TRACESTATE in SDK/headless sessions**: SDK and headless sessions now read W3C trace headers from the environment for distributed trace linking. **Impact on wogiflow-cloud**: Teams backend can propagate trace context from CI/CD pipelines into WogiFlow sessions for end-to-end observability. Tracked as a cloud opportunity.
+
+- **Hardened "Open in editor" against command injection**: Security hardening for untrusted filenames. **Impact on WogiFlow**: Validates the same pattern in `.claude/rules/security/security-patterns.md` — external inputs going into shell commands must be validated. No WogiFlow code change needed.
+
 ### Simple Mode Naming Distinction
 
 Claude Code's `CLAUDE_CODE_SIMPLE` environment variable (which enables a simplified tool set) is **unrelated** to WogiFlow's `loops.simpleMode` (a lightweight task completion loop using string detection). They are separate features that happen to share the word "simple":
@@ -497,4 +542,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-04-09*
+*Last updated: 2026-04-16*
