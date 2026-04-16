@@ -867,14 +867,16 @@ const CONFIG_DEFAULTS = {
   // detects the restart flag and relaunches claude. See lib/wogi-claude for
   // the wrapper. See scripts/hooks/core/task-boundary-reset.js for the trigger.
   //
-  // REQUIRES verification against real Claude Code before enabling broadly —
-  // the SIGTERM-to-parent pattern must be confirmed to exit Claude Code
-  // gracefully. Keep disabled until integration test in a throwaway session
-  // confirms clean exit + flag consumption + fresh restart.
+  // Per-task context reset via wogi-claude wrapper. Validated in v2.17.0 for
+  // workspace workers (manager sessions deliberately skip restart to avoid
+  // orchestration storms — see resolveClaudeSpawnCommand in lib/workspace.js).
+  // Enabled by default as of v2.19.0 after the "Sautéed worker" UX complaint:
+  // without it, workers sit idle after task completion instead of restarting
+  // fresh and ready for the next dispatch. Users who want the old behavior
+  // can set `enabled: false` explicitly.
   taskBoundaryReset: {
-    _comment: 'Opt-in per-task context reset via wogi-claude wrapper. See lib/wogi-claude.',
-    enabled: false,
-    _comment_enabled: 'Set true ONLY after verifying SIGTERM behavior with real Claude Code in a throwaway session.',
+    _comment: 'Per-task context reset via wogi-claude wrapper. See lib/wogi-claude.',
+    enabled: true,
     maxRestartsPerSession: 50,
     _comment_maxRestartsPerSession: 'Safety cap. The wrapper also has WOGI_MAX_RESTARTS env override.'
   },
@@ -1167,6 +1169,72 @@ function mergeWithDefaults(userConfig) {
 }
 
 /**
+ * Compute the "lean" form of a config — the minimal object that, when passed
+ * through mergeWithDefaults(), reproduces the input. Removes every key whose
+ * value equals the default. Nested objects are diffed recursively; arrays and
+ * primitives are compared by JSON equality.
+ *
+ * Always preserves these identity keys even if they match defaults:
+ *   - `$schema`, `version`, `projectName`, `cli`, `_configVersion`
+ * These anchor the file's purpose and let tooling (VS Code JSON schema, config
+ * migrations) work correctly on the lean file.
+ *
+ * Round-trip guarantee:
+ *   mergeWithDefaults(computeLeanConfig(full)) deep-equals mergeWithDefaults(full)
+ * for any input — verified in tests.
+ *
+ * @param {Object} fullConfig - A fully-merged config (or any config object)
+ * @returns {Object} Lean config containing only overrides + identity keys
+ */
+function computeLeanConfig(fullConfig) {
+  if (!fullConfig || typeof fullConfig !== 'object') {
+    return {};
+  }
+  const IDENTITY_KEYS = new Set(['$schema', 'version', 'projectName', 'cli', '_configVersion', 'projectType']);
+  return diffAgainstDefaults(fullConfig, CONFIG_DEFAULTS, IDENTITY_KEYS, true);
+}
+
+function diffAgainstDefaults(user, defaults, identityKeys, isRoot) {
+  const out = {};
+  for (const key of Object.keys(user)) {
+    const uVal = user[key];
+    const dVal = defaults ? defaults[key] : undefined;
+
+    // Preserve identity keys at the root regardless of equality.
+    if (isRoot && identityKeys.has(key)) {
+      out[key] = uVal;
+      continue;
+    }
+
+    // Comment fields (prefix _comment) are metadata from the defaults file —
+    // don't propagate into user configs, they bloat without adding meaning.
+    if (typeof key === 'string' && key.startsWith('_comment')) {
+      continue;
+    }
+
+    if (dVal === undefined) {
+      // Key doesn't exist in defaults — it's fully user-defined, keep it.
+      out[key] = uVal;
+      continue;
+    }
+
+    if (isPlainObject(uVal) && isPlainObject(dVal)) {
+      const nested = diffAgainstDefaults(uVal, dVal, identityKeys, false);
+      if (Object.keys(nested).length > 0) {
+        out[key] = nested;
+      }
+      continue;
+    }
+
+    // Primitive / array / null comparison via JSON stringify.
+    if (JSON.stringify(uVal) !== JSON.stringify(dVal)) {
+      out[key] = uVal;
+    }
+  }
+  return out;
+}
+
+/**
  * Apply project-type-aware defaults to a config.
  * Strips/disables irrelevant sections based on detected project type.
  * Call AFTER mergeWithDefaults() and detection has populated testing.detected.
@@ -1249,5 +1317,6 @@ module.exports = {
   isPlainObject,
   getDefaultsForKey,
   mergeWithDefaults,
+  computeLeanConfig,
   applyProjectTypeDefaults
 };

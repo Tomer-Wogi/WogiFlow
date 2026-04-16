@@ -218,6 +218,17 @@ function main() {
     return;
   }
 
+  if (command === 'config') {
+    const { configCommand } = require('../lib/commands/config');
+    try {
+      configCommand(args.slice(1));
+    } catch (err) {
+      console.error(`Config error: ${err.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   // For all other commands, try to find project context
   const projectRoot = findProjectRoot();
 

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T09:14:32.869Z",
+  "lastUpdated": "2026-04-16T11:23:17.844Z",
   "inProgress": [],
   "ready": [
     {
@@ -127,6 +127,54 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-f2c30458",
+      "title": "Lean config — new installs write only project-specific overrides, not full default dump",
+      "type": "task",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-16T11:17:46.943Z",
+      "scope": "lib/installer.js createWorkflowStructure writes MINIMAL config.json containing only {$schema, version, projectName, cli.type}. Runtime loader already merges defaults (flow-config-loader.js:318). Adds a `flow config compact` subcommand to shrink existing fat configs.",
+      "acceptanceCriteria": [
+        "New `flow init` writes a config.json with ≤15 lines",
+        "Runtime behavior identical — getConfig() returns the same merged object whether config is lean or fat",
+        "Existing fat configs continue to work (backwards compat via deep merge)",
+        "New `flow config compact` subcommand rewrites an existing fat config to lean form, preserving only values that differ from defaults",
+        "Test coverage for the new behavior: lean config loads + merges correctly, compact command strips defaults, round-trip (fat → compact → identical merged result)"
+      ],
+      "startedAt": "2026-04-16T11:18:08.506Z",
+      "completedAt": "2026-04-16T11:23:17.843Z",
+      "filesChanged": [
+        "scripts/flow-config-defaults.js",
+        "lib/installer.js",
+        "lib/commands/config.js",
+        "bin/flow",
+        "tests/flow-lean-config.test.js",
+        "package.json"
+      ]
+    },
+    {
+      "id": "wf-ec5edf95",
+      "title": "Flip taskBoundaryReset.enabled default to true",
+      "type": "task",
+      "level": "L3",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-16T11:17:46.943Z",
+      "scope": "flow-config-defaults.js line 876: flip false → true; update comments to reflect validated status (v2.17.0+ workspace-aware).",
+      "acceptanceCriteria": [
+        "scripts/flow-config-defaults.js line 876: enabled: true",
+        "Comment updated to reflect validated state (not \"verify first\")",
+        "Existing projects unaffected (they have explicit overrides)",
+        "Fresh `flow init` gets enabled: true out-of-box"
+      ],
+      "startedAt": "2026-04-16T11:17:46.943Z",
+      "completedAt": "2026-04-16T11:18:08.506Z",
+      "filesChanged": [
+        "scripts/flow-config-defaults.js"
+      ]
+    },
     {
       "id": "wf-9c4c4a51",
       "title": "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, workspace coordination pattern",

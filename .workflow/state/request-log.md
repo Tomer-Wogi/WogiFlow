@@ -2883,3 +2883,17 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, and workspace coordination pattern — revision of adversary-rejected proposal"
 **Result**: Made `generateBlockMessage()` in `scripts/hooks/core/task-gate.js` context-aware. New helpers `isRuleOrMemoryFile()` (matches decisions.md, feedback-patterns.md, MEMORY.md, and Claude Code auto-memory paths) and `isInWorkspaceMode()` (walks up to 6 parents for `.workspace/`). Rule files get a prominent `/wogi-decide` suggestion; workspace-mode blocks get a `coordinate wf-XXX in workspace` suggestion; all messages get `/wogi-capture` and keep the standard /wogi-ready|start|story options. Intent artifacts (domain-model.md, user-journeys.md, glossary.md, product.md) and registry maps (app-map.md, function-map.md, api-map.md) intentionally do NOT trigger the rule-file branch per adversary critique — those remain task-gated through /wogi-story. Enforcement logic unchanged. 10 new tests (32 total), all passing.
 **Files**: `scripts/hooks/core/task-gate.js`, `tests/flow-hooks-task-gate.test.js`
+
+### R-301 | 2026-04-16
+**Type**: feature
+**Tags**: #config #defaults #task:wf-ec5edf95
+**Request**: "Flip taskBoundaryReset.enabled default to true"
+**Result**: `scripts/flow-config-defaults.js:876` — default flipped `false` → `true`. Comment updated to reflect v2.17.0+ workspace-mode validation and the "Sautéed worker" UX incident that motivated the flip. Existing projects with explicit overrides unaffected.
+**Files**: `scripts/flow-config-defaults.js`
+
+### R-302 | 2026-04-16
+**Type**: feature
+**Tags**: #config #installer #cli #task:wf-f2c30458
+**Request**: "Lean config — new installs write only project-specific overrides, not full default dump"
+**Result**: New installs (`flow init`) now write a lean ~5–10 line `.workflow/config.json` instead of the prior ~300-line default dump. Runtime behavior identical — `flow-config-loader.js:318` already merges CONFIG_DEFAULTS on every read. Added `computeLeanConfig()` helper to `flow-config-defaults.js` that diffs against defaults (preserves $schema, version, projectName, cli, projectType identity keys; strips `_comment*` metadata). Added `buildLeanInstallConfig()` to `lib/installer.js` used during init. New `flow config` subcommand: `show` (on-disk), `show --full` (merged), `show --diff` (overrides only), `compact` (shrink existing fat config with backup). 15 new tests covering round-trip guarantee (`mergeWithDefaults(computeLeanConfig(full)) === mergeWithDefaults(full)`) + identity-key preservation. Both new test files (lean-config + mcp-scopes) added to `npm test` script.
+**Files**: `scripts/flow-config-defaults.js`, `lib/installer.js`, `lib/commands/config.js` (NEW), `bin/flow`, `tests/flow-lean-config.test.js` (NEW), `package.json`
