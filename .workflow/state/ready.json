@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T12:41:19.535Z",
+  "lastUpdated": "2026-04-16T13:49:01.358Z",
   "inProgress": [],
   "ready": [
     {
@@ -127,6 +127,42 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2f2e63cc",
+      "title": "v2.21.0 — Remove Gap D regex bypass + add Haiku worker-question classifier at Stop hook",
+      "type": "feature",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-16T13:35:40.770Z",
+      "origin": "User critique: regex brittle; audit confirmed transcriptPath available at stop hook; remove over-engineered bypass and add real AI-logic classifier",
+      "acceptanceCriteria": [
+        "Gap D removed: isDiagnosticCurlBypass + regex deleted from routing-gate.js; its tests deleted; config.workspace.diagnosticCurlBypass removed; decisions.md probation note updated",
+        "New scripts/flow-worker-question-classifier.js mirrors flow-conclusion-classifier pattern",
+        "Classifier reads parsedInput.transcriptPath, parses JSONL, extracts last assistant message",
+        "Haiku call classifies \"is this a question to user expecting response\" with confidence",
+        "Graceful degradation: missing API key / missing transcriptPath / unparseable JSON all return safe no-op",
+        "Stop hook wiring: if isUserQuestion=true + confidence>=threshold + worker mode → block with channel-dispatch instructions",
+        "Config keys: workspace.aiWorkerQuestionClassifier.{enabled,minConfidence,model}",
+        "Tests: YES/NO/ambiguous inputs, credentials missing, transcript missing, malformed JSON, worker vs manager mode",
+        "Added to npm test script",
+        "decisions.md entry documenting G3 mechanism",
+        "All existing tests still pass"
+      ],
+      "startedAt": "2026-04-16T13:35:40.770Z",
+      "completedAt": "2026-04-16T13:49:01.357Z",
+      "filesChanged": [
+        "scripts/flow-worker-question-classifier.js (NEW)",
+        "scripts/hooks/core/routing-gate.js (Gap D removed)",
+        "scripts/hooks/entry/claude-code/stop.js (G3 classifier wired)",
+        "scripts/hooks/core/pre-tool-orchestrator.js (toolInput arg dropped)",
+        "scripts/flow-config-defaults.js",
+        ".workflow/state/decisions.md",
+        "tests/flow-worker-question-classifier.test.js (NEW)",
+        "tests/flow-workspace-autopickup.test.js (Gap D tests removed)",
+        "package.json"
+      ]
+    },
     {
       "id": "wf-9e16e1f1",
       "title": "Block AskUserQuestion in workspace workers — force channel-dispatch ## QUESTION: to manager",

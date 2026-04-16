@@ -167,4 +167,39 @@ Auto-transforming `AskUserQuestion` into a channel-dispatch is tempting but wron
 
 **Complements v2.20.0**: this gap would have been open even with the other four gaps (Gap A auto-pickup, Gap B Stop block, Gap C rules, Gap D curl bypass). v2.20.1 is the piece that actually closes the user's original complaint.
 
-**Self-critique from v2.20.0**: Gap D (diagnostic curl bypass) is on probation — it solves a rare introspection-round-trip problem at the cost of a bypass surface. If usage data shows <5 invocations across 30 days of workspace sessions, it should be removed.
+**Self-critique from v2.20.0 (RESOLVED in v2.21.0)**: Gap D (diagnostic curl bypass) was removed in v2.21.0. User feedback: regex-based detection is brittle and the bypass solved a rare case at the cost of permanent attack surface. Diagnostic round-trips now use normal `/wogi-start` routing — the 10-second ceremony is acceptable for how rarely these fire.
+
+---
+
+## Workspace Worker Text-Question Classifier (v2.21.0+)
+
+**Rule**: In workspace worker mode, if the AI ends a turn with a text-based question to the user (no tool call — just hedging like "let me know", "should I", "which option"), the Stop hook runs a Haiku classifier on the final assistant message via `scripts/flow-worker-question-classifier.js`. If the classifier detects an open question to the user with confidence ≥ 70 → stop is blocked with channel-dispatch instructions.
+
+**Why AI instead of regex**: hedging vocabulary is infinite — "let me know", "should I", "which option", "thoughts?", "any preference?", "?" are all semantically the same but syntactically unbounded. User directive (2026-04-16 session): *"regex is brittle, use AI logic."*
+
+**Why fail-open throughout**:
+- Missing `ANTHROPIC_API_KEY` → skip
+- Missing `transcriptPath` → skip (older Claude Code versions may not provide it)
+- Malformed transcript JSONL → skip (transcript may be mid-write)
+- Model call error → skip
+- Silent-stall false negatives are recoverable; false-positive blocks on every turn are not.
+
+**Complements v2.20.1 (AskUserQuestion block)**: v2.20.1 caught tool-based prompts. G3 catches text-based prompts. Together they make "worker talks to user directly" mechanically impossible across both surfaces.
+
+**Config**: `workspace.aiWorkerQuestionClassifier.{enabled,minConfidence,model}` (defaults: true, 70, `anthropic:claude-3-5-haiku-latest`).
+
+Cost per worker turn end: ~300 input + ~20 output tokens ≈ $0.0001 (or equivalent plan token draw). Latency: ~500ms–1s.
+
+---
+
+## Meta-pattern: Research Before Propose (2026-04-16)
+
+**Pattern**: During the v2.20.x session, I repeatedly proposed fixes without first auditing existing infrastructure. Examples:
+- Proposed blocking `ExitPlanMode` — the tool doesn't exist in the codebase
+- Claimed Stop hook can't read transcripts — `claude-code.js:165-166` already wires `transcriptPath`
+- Proposed "new" Haiku classifier architecture — `flow-conclusion-classifier.js` + `flow-correction-detector.js` already established that pattern
+- Proposed worker-mode guarding for conclusion-detection — no observed problem; over-engineering
+
+**Rule**: Before proposing any fix in a WogiFlow implementation session, audit existing infrastructure for the problem area (grep hooks, classifiers, gates, existing rules). Propose only what fills a confirmed gap. Evidence-before-invention.
+
+**Why**: baseline LLM training biases toward generating plausible-sounding solutions. In a codebase with 100+ script files and rich existing infrastructure, "plausible" is frequently wrong. The correction cycle cost (user rejecting → re-planning → rejecting again) is higher than the upfront audit cost. The user correction that promoted this rule: *"You came up with a few suggestions without really researching what we have."*

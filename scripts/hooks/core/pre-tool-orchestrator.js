@@ -177,7 +177,7 @@ function runPreToolGates(ctx, deps) {
   ]);
   if (!skipRoutingGateForSubagent && !skipRoutingGateForReadOnlyGit && GATED_TOOLS.has(toolName)) {
     try {
-      const routingResult = deps.checkRoutingGate(toolName, config, toolInput);
+      const routingResult = deps.checkRoutingGate(toolName, config);
       if (routingResult.blocked) {
         return {
           allowed: false,

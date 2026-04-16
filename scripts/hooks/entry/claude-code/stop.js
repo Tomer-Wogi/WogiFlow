@@ -242,6 +242,66 @@ runHook('Stop', async ({ parsedInput }) => {
     }
   }
 
+  // G3 (v2.21.0) — AI-based worker-question classifier.
+  //
+  // If the worker ends a turn with a question to the user in free text (no tool
+  // call, just hedging), Gap B above won't fire when the queue is empty.
+  // Regex-based detection was rejected as brittle. Instead: a single Haiku call
+  // classifies the final assistant message. If it IS an open question to the
+  // user → block with escalation instructions.
+  //
+  // Fail-open throughout: missing API key, missing transcript, model errors,
+  // malformed responses all skip cleanly. Silent-stall false-negatives recover;
+  // blocking legitimate stops on classifier bugs does not.
+  try {
+    const isWorker = process.env.WOGI_WORKSPACE_ROOT &&
+                     process.env.WOGI_REPO_NAME &&
+                     process.env.WOGI_REPO_NAME !== 'manager';
+    if (isWorker) {
+      const { getConfig } = require('../../../flow-utils');
+      const config = getConfig();
+      const clf = config.workspace?.aiWorkerQuestionClassifier;
+      const enabled = clf?.enabled !== false;  // default true
+      if (enabled && parsedInput?.transcriptPath) {
+        const { classifyWorkerQuestion } = require('../../../flow-worker-question-classifier');
+        const result = await classifyWorkerQuestion({
+          transcriptPath: parsedInput.transcriptPath,
+          minConfidence: Number.isFinite(clf?.minConfidence) ? clf.minConfidence : 70,
+          model: typeof clf?.model === 'string' ? clf.model : undefined
+        });
+        if (result?.blocked) {
+          const port = process.env.WOGI_MANAGER_PORT || '8800';
+          const repo = process.env.WOGI_REPO_NAME;
+          const msg = [
+            `WORKER→USER QUESTION DETECTED (confidence ${result.confidence}%, threshold ${result.minConfidence}%):`,
+            `  "${String(result.reason || '').slice(0, 200)}"`,
+            '',
+            'In workspace mode, workers CANNOT ask the user directly — the user only sees',
+            'the manager terminal. Your question will stall silently.',
+            '',
+            'Channel-dispatch to the manager instead, THEN end the turn:',
+            '',
+            `  curl -s -X POST http://127.0.0.1:${port} \\`,
+            `    -H "X-Wogi-From: ${repo}" \\`,
+            `    --data-binary "## QUESTION: <your question>"`,
+            '',
+            'The manager will relay to the user, capture the answer, and dispatch a',
+            'follow-up task to you with the resolved context.',
+            '',
+            'If you don\'t actually need the user — make a reasonable autonomous decision',
+            'and note it in your ## Results reply to the manager. Then end the turn.'
+          ].join('\n');
+          return { __raw: true, continue: true, stopReason: msg };
+        }
+      }
+    }
+  } catch (err) {
+    // Fail-OPEN — classifier errors must not block legitimate stops.
+    if (process.env.DEBUG) {
+      console.error(`[Stop] Worker question classifier error (fail-open): ${err.message}`);
+    }
+  }
+
   // Check if loop can exit
   return await checkLoopExit();
 }, { failMode: 'warn', failOutput: { continue: false } });
