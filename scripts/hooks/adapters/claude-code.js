@@ -471,14 +471,23 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       return { continue: true };
     }
 
+    // Gap A (v2.20.0) — inject auto-pickup additionalContext when workspace
+    // worker has queued channel dispatches. Core already decided whether this
+    // applies (only fires in workspace worker mode + autoPickupChannelDispatches
+    // config + at least one queued dispatch).
+    const hookSpecificOutput = {
+      hookEventName: 'TaskCompleted',
+      completed: coreResult.completed,
+      taskId: coreResult.taskId
+    };
+    if (coreResult.workspaceAutoPickup?.additionalContext) {
+      hookSpecificOutput.additionalContext = coreResult.workspaceAutoPickup.additionalContext;
+    }
+
     return {
       continue: true,
       ...(coreResult.message && { systemMessage: coreResult.message }),
-      hookSpecificOutput: {
-        hookEventName: 'TaskCompleted',
-        completed: coreResult.completed,
-        taskId: coreResult.taskId
-      }
+      hookSpecificOutput
     };
   }
 

@@ -396,7 +396,11 @@ const CONFIG_DEFAULTS = {
     _comment_workerGatesSovereign: 'When true, workers cannot skip their own quality gates even if the manager instructs them to',
     workerGatesSovereign: true,
     managerCanOverrideLevel: false,
-    managerCanSkipGates: false
+    managerCanSkipGates: false,
+    _comment_autoPickupChannelDispatches: 'v2.20.0+: After task completion, if channel-dispatched tasks are queued in ready.json, the task-completed hook injects additionalContext instructing the AI to auto-invoke /wogi-start on the next queued task in the same turn. Prevents "Sauteed worker" silent stalls between queued dispatches. The Stop hook also blocks end-of-turn when queued dispatches exist but no task is in progress — making "awaiting signal" language mechanically impossible as a terminal state.',
+    autoPickupChannelDispatches: true,
+    _comment_diagnosticCurlBypass: 'v2.20.0+: When true, PreToolUse routing gate allows narrow curl-to-manager-port when replying to channel messages tagged INTROSPECTION or DIAGNOSTIC, with body starting "## ". Unblocks diagnostic round-trips without forcing fake task creation. Scope: localhost:8800 only.',
+    diagnosticCurlBypass: true
   },
   checkpoint: { enabled: false },
   regressionTesting: { enabled: false },

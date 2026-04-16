@@ -115,3 +115,33 @@ ADRs live in `.workflow/state/adr/` as `ADR-{NNN}-{slug}.md` files. Each capture
 context, decision, consequences, and alternatives considered for a significant design choice.
 The directory listing is the index — no separate registry file. The capture gate's classifier
 identifies ADR-shaped conclusions in completed tasks and directs them here.
+
+---
+
+## Workspace Autonomous-Mode Action-After-Completion Contract (v2.20.0+)
+
+**Rule**: A workspace worker's end-of-turn must be a deterministic action. Exactly one of these states must hold:
+
+1. **ACTION** — started the next pre-approved channel dispatch (invoked `/wogi-start <nextId>`), OR
+2. **ESCALATION** — channel-dispatched a `## QUESTION:` to the manager (after Resolution Protocol Steps 1–2 failed), OR
+3. **IDLE** — zero pending channel dispatches AND zero in-progress tasks.
+
+**Hedging language is mechanically forbidden**: "awaiting your signal", "let me know if", "or will proceed", "should I continue", "ready when you are", "standing by", "awaiting confirmation". These invent an imaginary decision point that does not exist in autonomous mode — the manager already pre-approved the dispatch by queuing it.
+
+**Enforcement**:
+- `TaskCompleted` hook emits `additionalContext` directing auto-pickup when queued channel dispatches exist (Gap A)
+- `Stop` hook BLOCKS end-of-turn when a worker has queued dispatches but no in-progress task (Gap B)
+- `worker-rules.md` template strengthened with the 3-state contract (Gap C)
+- `routing-gate.js` narrow diagnostic-curl bypass for INTROSPECTION/DIAGNOSTIC replies (Gap D)
+
+**Why**: 2026-04-16 incident — frontend worker on port 8802 completed wf-069c356e, sent results, then ended turn with "3 more queued — awaiting your signal or will proceed." Worker introspection: *"I treated visibility as a substitute for action. The 'or' in 'awaiting signal or will proceed' is the tell — in autonomous mode there is no 'or.' The dispatch is pre-approved. I invented an imaginary decision point to give myself permission to stop."*
+
+**Visibility is NOT a substitute for action**. Workers can narrate AND act in the same turn. Stopping between queued dispatches creates a gap in the signal — the owner doesn't see the worker's terminal, so "transparency via hedge" is invisible.
+
+**Config**: `config.workspace.autoPickupChannelDispatches` (default `true`), `config.workspace.diagnosticCurlBypass` (default `true`).
+
+**Anti-rationalization checklist for workers**:
+- "Let me give the owner visibility before acting" → WRONG. They don't see your terminal.
+- "This is a natural stopping point" → WRONG. In autonomous mode there are no natural stopping points between queued tasks.
+- "I should ask before proceeding" → WRONG. The queue IS the approval.
+- "The work is done, I should summarize" → You can summarize AND start the next one in the same turn.

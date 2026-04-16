@@ -539,7 +539,143 @@ async function handleTaskCompleted(input) {
     result.message = `Task completed handler error: ${err.message}`;
   }
 
+  // Gap A (v2.20.0) — workspace worker auto-pickup of queued channel dispatches.
+  //
+  // Without this, a worker completes a task, reports to manager, then ends the
+  // turn. Any channel-dispatches that landed while the worker was busy remain
+  // in ready.json indefinitely — the worker sits idle ("awaiting signal").
+  //
+  // Fix: when a workspace worker's task completes and queued channel dispatches
+  // exist, emit additionalContext instructing the AI to auto-invoke
+  // /wogi-start <nextId> in the SAME turn, before the Stop hook fires.
+  //
+  // Only runs in worker mode (WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME !== 'manager').
+  // Manager sessions deliberately do NOT auto-pickup — that would hijack user
+  // orchestration.
+  if (result.completed && isWorkspaceWorker()) {
+    try {
+      const pickup = findQueuedChannelDispatches();
+      if (pickup.count > 0) {
+        result.workspaceAutoPickup = {
+          nextTaskId: pickup.nextTaskId,
+          queuedCount: pickup.count,
+          additionalContext: buildAutoPickupContext(pickup)
+        };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Task Completed] Auto-pickup check failed (non-fatal): ${err.message}`);
+      }
+    }
+  }
+
   return result;
 }
 
-module.exports = { handleTaskCompleted, isTaskCompletedEnabled };
+/**
+ * Detect if the current process is a workspace worker (not a manager and not a
+ * single-repo session). Requires WOGI_WORKSPACE_ROOT env var set by the worker
+ * spawn path AND WOGI_REPO_NAME to be something other than 'manager'.
+ *
+ * @returns {boolean}
+ */
+function isWorkspaceWorker() {
+  if (!process.env.WOGI_WORKSPACE_ROOT) return false;
+  const repo = process.env.WOGI_REPO_NAME;
+  if (!repo || repo === 'manager') return false;
+  return true;
+}
+
+/**
+ * Scan ready.json for channel-dispatched tasks that are queued but not in
+ * progress. Returns the oldest pending task (FIFO — channel dispatches should
+ * be processed in arrival order).
+ *
+ * Tagging conventions recognized (in priority order):
+ *   1. task.channelSource === 'wogi-workspace-channel' (explicit tag)
+ *   2. task.source starts with 'workspace:' (existing tag from
+ *      lib/workspace-routing.js decomposeToRepoTasks at line 428)
+ *   3. task.dispatchedBy === 'workspace-manager' (alternate explicit tag)
+ *
+ * Tasks already in inProgress are NOT counted — the AI already has work to do.
+ *
+ * @returns {{ count: number, nextTaskId: string|null, nextTaskTitle: string|null }}
+ */
+function findQueuedChannelDispatches() {
+  const config = getConfig();
+  if (config.workspace?.autoPickupChannelDispatches === false) {
+    return { count: 0, nextTaskId: null, nextTaskTitle: null };
+  }
+
+  const readyPath = path.join(PATHS.state, 'ready.json');
+  const ready = safeJsonParse(readyPath, { ready: [], inProgress: [] });
+
+  // If anything is in progress, the worker already has direction. Don't auto-pickup.
+  if ((ready.inProgress || []).length > 0) {
+    return { count: 0, nextTaskId: null, nextTaskTitle: null };
+  }
+
+  const queued = (ready.ready || []).filter(isChannelDispatched);
+  if (queued.length === 0) {
+    return { count: 0, nextTaskId: null, nextTaskTitle: null };
+  }
+
+  // FIFO — pick the earliest created. Tasks without createdAt fall through
+  // to input order (JavaScript sort is stable for equal keys).
+  const sorted = [...queued].sort((a, b) => {
+    const at = a.createdAt || a.created || '';
+    const bt = b.createdAt || b.created || '';
+    return at.localeCompare(bt);
+  });
+  const next = sorted[0];
+
+  return {
+    count: queued.length,
+    nextTaskId: next?.id || null,
+    nextTaskTitle: next?.title || null
+  };
+}
+
+function isChannelDispatched(task) {
+  if (!task || typeof task !== 'object') return false;
+  if (task.channelSource === 'wogi-workspace-channel') return true;
+  if (task.dispatchedBy === 'workspace-manager') return true;
+  if (typeof task.source === 'string' && task.source.startsWith('workspace:')) return true;
+  return false;
+}
+
+/**
+ * Build the additionalContext text that instructs the AI to auto-invoke
+ * /wogi-start on the next queued dispatch. Wording is deliberately imperative —
+ * hedging ("consider", "you may wish to") was the exact anti-pattern that
+ * caused the original silent-stall incident (worker introspection 2026-04-16).
+ */
+function buildAutoPickupContext({ count, nextTaskId, nextTaskTitle }) {
+  const s = count === 1 ? '' : 's';
+  return [
+    `⚡ WORKSPACE AUTONOMOUS PICKUP (${count} channel dispatch${s} queued):`,
+    '',
+    `You just completed a task. ${count} more channel-dispatched task${s} ${count === 1 ? 'is' : 'are'} queued in ready.json.`,
+    `Next: ${nextTaskId} — ${nextTaskTitle || '(no title)'}`,
+    '',
+    'AUTONOMOUS MODE CONTRACT (workspace worker):',
+    '  • These dispatches are pre-approved by the manager.',
+    '  • You MUST start the next one IMMEDIATELY in this same turn.',
+    '  • Do NOT end the turn with hedging language ("awaiting signal",',
+    '    "let me know if you want", "or will proceed"). Those are forbidden.',
+    '  • Visibility is NOT a substitute for action. You can narrate AND act',
+    '    in the same turn.',
+    '',
+    `ACT NOW: Invoke Skill(skill="wogi-start", args="${nextTaskId}")`
+  ].join('\n');
+}
+
+module.exports = {
+  handleTaskCompleted,
+  isTaskCompletedEnabled,
+  // Exposed for testing (v2.20.0)
+  isWorkspaceWorker,
+  findQueuedChannelDispatches,
+  isChannelDispatched,
+  buildAutoPickupContext
+};

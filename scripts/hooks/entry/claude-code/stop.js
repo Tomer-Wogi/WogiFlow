@@ -183,6 +183,65 @@ runHook('Stop', async ({ parsedInput }) => {
     // Never block Stop on restart-module errors.
   }
 
+  // Gap B (v2.20.0) — block end-of-turn when a workspace worker has queued
+  // channel dispatches but no task in progress. This is the hedging-as-terminal-
+  // state anti-pattern ("awaiting signal or will proceed"). The worker MUST
+  // either (a) start the next dispatch or (b) escalate via ## QUESTION: — idle
+  // with pending dispatches is not a valid end-of-turn state.
+  //
+  // Gap A already injects additionalContext telling the AI to auto-pickup. This
+  // gate is the second line of defense: if the AI ignored the context and tried
+  // to stop anyway, block it.
+  try {
+    const isWorker = process.env.WOGI_WORKSPACE_ROOT &&
+                     process.env.WOGI_REPO_NAME &&
+                     process.env.WOGI_REPO_NAME !== 'manager';
+    if (isWorker) {
+      const { getConfig, PATHS, safeJsonParse } = require('../../../flow-utils');
+      const path = require('node:path');
+      const config = getConfig();
+      const gateEnabled = config.workspace?.autoPickupChannelDispatches !== false;
+      if (gateEnabled) {
+        const ready = safeJsonParse(path.join(PATHS.state, 'ready.json'), { ready: [], inProgress: [] });
+        const inProgressCount = (ready.inProgress || []).length;
+        const queued = (ready.ready || []).filter(t => {
+          if (!t || typeof t !== 'object') return false;
+          return t.channelSource === 'wogi-workspace-channel' ||
+                 t.dispatchedBy === 'workspace-manager' ||
+                 (typeof t.source === 'string' && t.source.startsWith('workspace:'));
+        });
+        if (inProgressCount === 0 && queued.length > 0) {
+          const nextId = queued[0].id;
+          const msg = [
+            `AUTONOMOUS MODE VIOLATION: ${queued.length} channel dispatch(es) queued, no task in progress.`,
+            '',
+            `You are a workspace worker — "awaiting your signal" / "let me know" / "or will proceed" is NOT a valid terminal state.`,
+            '',
+            'Exactly one of these must be true at end-of-turn:',
+            '  (a) You started the next pre-approved dispatch (ACTION), or',
+            '  (b) You channel-dispatched a "## QUESTION:" to manager (ESCALATION), or',
+            '  (c) Zero queued and zero in-progress (IDLE — not your current state).',
+            '',
+            `ACT NOW: Invoke Skill(skill="wogi-start", args="${nextId}")`,
+            '',
+            `Or escalate: curl -s -X POST http://127.0.0.1:${process.env.WOGI_MANAGER_PORT || '8800'} \\`,
+            `  -H "X-Wogi-From: ${process.env.WOGI_REPO_NAME}" \\`,
+            `  --data-binary "## QUESTION: <your blocker>"`
+          ].join('\n');
+          return { __raw: true, continue: true, stopReason: msg };
+        }
+      }
+    }
+  } catch (err) {
+    // Fail-OPEN for this specific gate — we do not want a bug here to block
+    // legitimate stops. The routing gate above is fail-closed; this one isn't
+    // because unlike routing it's not a last-line-of-defense — the auto-pickup
+    // additionalContext already nudged the AI before this point.
+    if (process.env.DEBUG) {
+      console.error(`[Stop] Workspace autopickup gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // Check if loop can exit
   return await checkLoopExit();
 }, { failMode: 'warn', failOutput: { continue: false } });

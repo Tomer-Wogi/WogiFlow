@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T11:23:17.844Z",
+  "lastUpdated": "2026-04-16T12:29:19.286Z",
   "inProgress": [],
   "ready": [
     {
@@ -127,6 +127,42 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6cbd62a0",
+      "title": "Workspace worker silent-stall fix — action-after-completion contract (4 gaps + learning)",
+      "type": "bug",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-16T12:22:27.367Z",
+      "origin": "User-reported workspace stall, 2026-04-16. Worker introspection preserved in task spec.",
+      "acceptanceCriteria": [
+        "Gap A: task-completed hook emits additionalContext directing AI to auto-invoke /wogi-start <nextId> when queued channel dispatches exist",
+        "Gap B: Stop hook blocks end-of-turn when workspace worker has queued channel dispatches but no in-progress task",
+        "Gap C: worker-rules content strengthened with \"End-of-turn must be a deterministic action\" section (3 states: action | escalate | idle)",
+        "Gap D: routing gate narrow allowlist for curl-to-localhost:8800 during INTROSPECTION/DIAGNOSTIC channel replies starting with \"## \"",
+        "Config toggle config.workspace.autoPickupChannelDispatches (default true)",
+        "decisions.md: autonomous-mode action-after-completion contract entry",
+        "feedback-patterns.md: verbatim worker \"visibility-as-substitute-for-action\" rationalization",
+        "Tests covering Gap A context emission and Gap B block trigger, Gap D allowlist matching",
+        "All 1770 existing tests still pass"
+      ],
+      "startedAt": "2026-04-16T12:22:27.367Z",
+      "completedAt": "2026-04-16T12:29:19.285Z",
+      "filesChanged": [
+        "scripts/hooks/core/task-completed.js",
+        "scripts/hooks/core/routing-gate.js",
+        "scripts/hooks/entry/claude-code/stop.js",
+        "scripts/hooks/adapters/claude-code.js",
+        "scripts/hooks/core/pre-tool-orchestrator.js",
+        "scripts/flow-config-defaults.js",
+        "lib/workspace.js",
+        ".workflow/state/decisions.md",
+        ".workflow/state/feedback-patterns.md",
+        "tests/flow-workspace-autopickup.test.js",
+        "package.json"
+      ]
+    },
     {
       "id": "wf-f2c30458",
       "title": "Lean config — new installs write only project-specific overrides, not full default dump",
