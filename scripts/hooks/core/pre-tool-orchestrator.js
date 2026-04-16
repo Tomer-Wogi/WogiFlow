@@ -215,6 +215,28 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // Worker boundary (v2.20.1) — parallel to manager boundary.
+  // Blocks tools that prompt the user directly (AskUserQuestion) in worker
+  // mode, since the user only sees the manager terminal. Forces workers to
+  // channel-dispatch ## QUESTION: to the manager instead.
+  if (process.env.WOGI_WORKSPACE_ROOT && process.env.WOGI_REPO_NAME && process.env.WOGI_REPO_NAME !== 'manager') {
+    try {
+      if (typeof deps.checkWorkerBoundary === 'function') {
+        const workerResult = deps.checkWorkerBoundary(toolName, toolInput, config);
+        if (workerResult.blocked) {
+          return {
+            allowed: false,
+            blocked: true,
+            reason: workerResult.reason,
+            message: workerResult.message,
+          };
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Worker boundary gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // Commit log gate
   if (toolName === 'Bash' && toolInput.command) {
     try {

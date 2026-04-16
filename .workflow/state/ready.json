@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T12:29:19.286Z",
+  "lastUpdated": "2026-04-16T12:41:19.535Z",
   "inProgress": [],
   "ready": [
     {
@@ -127,6 +127,37 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-9e16e1f1",
+      "title": "Block AskUserQuestion in workspace workers — force channel-dispatch ## QUESTION: to manager",
+      "type": "bug",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-16T12:38:53.350Z",
+      "origin": "v2.20.0 self-critique + user clarification: main issue was worker prompting user directly instead of escalating via ## QUESTION: to manager.",
+      "acceptanceCriteria": [
+        "New scripts/hooks/core/worker-boundary-gate.js with checkWorkerBoundary(toolName, toolInput)",
+        "PreToolUse hook blocks AskUserQuestion when WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME !== manager",
+        "Block message gives the exact curl command to channel-dispatch ## QUESTION: to manager",
+        "Config toggle workspace.blockAskUserQuestionInWorker (default true)",
+        "Wired into pre-tool-orchestrator.js + pre-tool-use.js",
+        "Tests: blocks in worker mode, allows in manager mode, allows when WOGI_WORKSPACE_ROOT unset (single-repo), respects config toggle",
+        "decisions.md entry explaining the contract",
+        "Full test suite still passes"
+      ],
+      "startedAt": "2026-04-16T12:38:53.350Z",
+      "completedAt": "2026-04-16T12:41:19.534Z",
+      "filesChanged": [
+        "scripts/hooks/core/worker-boundary-gate.js (NEW)",
+        "scripts/hooks/core/pre-tool-orchestrator.js",
+        "scripts/hooks/entry/claude-code/pre-tool-use.js",
+        "scripts/flow-config-defaults.js",
+        ".workflow/state/decisions.md",
+        "tests/flow-worker-boundary-gate.test.js (NEW)",
+        "package.json"
+      ]
+    },
     {
       "id": "wf-6cbd62a0",
       "title": "Workspace worker silent-stall fix — action-after-completion contract (4 gaps + learning)",

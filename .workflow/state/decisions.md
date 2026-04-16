@@ -145,3 +145,26 @@ identifies ADR-shaped conclusions in completed tasks and directs them here.
 - "This is a natural stopping point" → WRONG. In autonomous mode there are no natural stopping points between queued tasks.
 - "I should ask before proceeding" → WRONG. The queue IS the approval.
 - "The work is done, I should summarize" → You can summarize AND start the next one in the same turn.
+
+
+---
+
+## Workspace Worker Cannot Prompt User Directly (v2.20.1+)
+
+**Rule**: In workspace worker mode, the `AskUserQuestion` tool is mechanically blocked. Questions to the user MUST be channel-dispatched to the manager via `## QUESTION:`.
+
+**Why this was necessary (not covered by v2.20.0)**:
+v2.20.0 closed the hedging-between-queued-tasks gap: if a worker had queued dispatches and tried to stop, the Stop hook blocked. But that gap didn't fire when the queue was empty — a worker could still complete a task, have a question, and call `AskUserQuestion` (or just hedge in text) and stall silently. The user only sees the manager terminal, so direct prompts from workers are invisible.
+
+**Enforcement**:
+- `scripts/hooks/core/worker-boundary-gate.js` → `checkWorkerBoundary()`
+- PreToolUse hook blocks `AskUserQuestion` when `WOGI_WORKSPACE_ROOT` set + `WOGI_REPO_NAME !== 'manager'`
+- Block message gives the exact `curl ... --data-binary "## QUESTION: ..."` command so the worker has zero excuse to ask the user directly
+- Config toggle: `config.workspace.blockAskUserQuestionInWorker` (default `true`)
+
+**Design rationale — why block instead of redirect**:
+Auto-transforming `AskUserQuestion` into a channel-dispatch is tempting but wrong. The worker needs to make a decision: either (a) channel-dispatch the real question to the manager for user input, or (b) make a reasonable autonomous decision and note it in the task reply. Silently redirecting would remove that choice. A hard block forces the worker to consciously pick.
+
+**Complements v2.20.0**: this gap would have been open even with the other four gaps (Gap A auto-pickup, Gap B Stop block, Gap C rules, Gap D curl bypass). v2.20.1 is the piece that actually closes the user's original complaint.
+
+**Self-critique from v2.20.0**: Gap D (diagnostic curl bypass) is on probation — it solves a rare introspection-round-trip problem at the cost of a bypass surface. If usage data shows <5 invocations across 30 days of workspace sessions, it should be removed.
