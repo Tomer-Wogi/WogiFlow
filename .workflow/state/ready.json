@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T07:16:47.030Z",
+  "lastUpdated": "2026-04-16T09:14:32.869Z",
   "inProgress": [],
   "ready": [
     {
@@ -127,6 +127,32 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-9c4c4a51",
+      "title": "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, workspace coordination pattern",
+      "type": "task",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-04-16T09:12:37.336Z",
+      "origin": "Adversary critique of workspace-mode task-gate friction (session 2026-04-16). Teach patterns via block messages instead of weakening gate.",
+      "scope": "Modify generateBlockMessage() in scripts/hooks/core/task-gate.js to be context-aware. No enforcement change — pure UX fix for error messages.",
+      "acceptanceCriteria": [
+        "When blocked path matches rule/memory files (decisions.md, feedback-patterns.md, MEMORY.md), message prominently suggests /wogi-decide for rule capture",
+        "When .workspace/ directory exists at any parent of cwd, message includes /wogi-start \"coordinate wf-XXX in workspace\" option",
+        "Message always includes /wogi-capture for side thoughts as a low-friction option",
+        "Existing suggestions (/wogi-ready, /wogi-start wf-XXX, /wogi-story) preserved",
+        "Intent artifacts (domain-model.md, user-journeys.md, product.md, glossary.md) are NOT treated as rule files — they still route to /wogi-story per adversary critique attack 4",
+        "No enforcement logic changed — task-gate decisions remain identical",
+        "Tests cover: rule file path, workspace parent detected, both rule + workspace, plain file with neither"
+      ],
+      "startedAt": "2026-04-16T09:12:37.338Z",
+      "completedAt": "2026-04-16T09:14:32.868Z",
+      "filesChanged": [
+        "scripts/hooks/core/task-gate.js",
+        "tests/flow-hooks-task-gate.test.js"
+      ]
+    },
     {
       "id": "wf-5caa40ce",
       "title": "Add MCP duplicate-scope check to /wogi-health",

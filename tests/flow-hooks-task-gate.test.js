@@ -14,6 +14,9 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 
 console.log = () => {};
 console.warn = () => {};
@@ -157,8 +160,106 @@ describe('generateBlockMessage', () => {
     assert.ok(msg.includes('/wogi-ready') || msg.includes('/wogi-start') || msg.includes('/wogi-story'));
   });
 
+  it('always suggests /wogi-capture as a low-friction side-thought option', () => {
+    const msg = generateBlockMessage('edit', 'src/x.js');
+    assert.ok(msg.includes('/wogi-capture'), '/wogi-capture should appear in every block message');
+  });
+
   it('handles missing inputs without throwing', () => {
     assert.doesNotThrow(() => generateBlockMessage(null, null));
+  });
+
+  it('suggests /wogi-decide when blocking a write to decisions.md', () => {
+    const msg = generateBlockMessage('edit', '.workflow/state/decisions.md');
+    assert.ok(msg.includes('/wogi-decide'), '/wogi-decide should be suggested for decisions.md');
+    assert.ok(msg.match(/rule.*capture|capture.*rule|from now on/i),
+      'rule-capture phrasing should accompany /wogi-decide');
+  });
+
+  it('suggests /wogi-decide when blocking a write to feedback-patterns.md', () => {
+    const msg = generateBlockMessage('edit', '.workflow/state/feedback-patterns.md');
+    assert.ok(msg.includes('/wogi-decide'));
+  });
+
+  it('suggests /wogi-decide when blocking a write to MEMORY.md', () => {
+    const msg = generateBlockMessage('write', '/any/path/MEMORY.md');
+    assert.ok(msg.includes('/wogi-decide'));
+  });
+
+  it('suggests /wogi-decide for Claude Code auto-memory paths', () => {
+    const autoMemoryPath = path.join('/home', 'user', '.claude', 'projects', 'some-proj', 'memory', 'user_role.md');
+    const msg = generateBlockMessage('write', autoMemoryPath);
+    assert.ok(msg.includes('/wogi-decide'), 'auto-memory paths should suggest /wogi-decide');
+  });
+
+  it('does NOT suggest /wogi-decide for intent artifacts (domain-model.md)', () => {
+    // Per adversary critique: intent artifacts are product-design work and should
+    // route to /wogi-story, not /wogi-decide. Only pure rule/memory files bypass.
+    const msg = generateBlockMessage('edit', '.workflow/state/domain-model.md');
+    assert.ok(!msg.includes('/wogi-decide'),
+      'domain-model.md is an intent artifact, not a rule file — should not suggest /wogi-decide');
+    assert.ok(msg.includes('/wogi-story'), 'should still suggest /wogi-story for intent artifacts');
+  });
+
+  it('does NOT suggest /wogi-decide for user-journeys.md or glossary.md or product.md', () => {
+    for (const file of ['user-journeys.md', 'glossary.md', 'product.md']) {
+      const msg = generateBlockMessage('edit', `.workflow/state/${file}`);
+      assert.ok(!msg.includes('/wogi-decide'),
+        `${file} is an intent artifact and should not trigger /wogi-decide branch`);
+    }
+  });
+
+  it('does NOT suggest /wogi-decide for registry maps (app-map.md, function-map.md, api-map.md)', () => {
+    for (const file of ['app-map.md', 'function-map.md', 'api-map.md']) {
+      const msg = generateBlockMessage('edit', `.workflow/state/${file}`);
+      assert.ok(!msg.includes('/wogi-decide'),
+        `${file} is a registry map (auto-updated), not a rule file`);
+    }
+  });
+
+  it('preserves existing /wogi-ready, /wogi-start, /wogi-story suggestions in all branches', () => {
+    const msg1 = generateBlockMessage('edit', '.workflow/state/decisions.md'); // rule branch
+    const msg2 = generateBlockMessage('edit', 'src/x.js'); // plain branch
+    for (const msg of [msg1, msg2]) {
+      assert.ok(msg.includes('/wogi-ready'));
+      assert.ok(msg.includes('/wogi-start'));
+      assert.ok(msg.includes('/wogi-story'));
+    }
+  });
+
+  it('suggests workspace coordination when .workspace/ exists at a parent', () => {
+    // Create a fake workspace dir in a tmp parent, then cd there before calling.
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-gate-ws-'));
+    const workspaceMarker = path.join(tmp, '.workspace');
+    const managerDir = path.join(tmp, 'manager-repo');
+    fs.mkdirSync(workspaceMarker, { recursive: true });
+    fs.mkdirSync(managerDir, { recursive: true });
+    const origCwd = process.cwd();
+    try {
+      process.chdir(managerDir);
+      const msg = generateBlockMessage('edit', 'src/x.js');
+      assert.ok(msg.includes('coordinate'),
+        'workspace coordination phrase should appear when .workspace/ is a parent');
+      assert.ok(msg.match(/workspace mode|in workspace/i),
+        'workspace-mode phrasing should appear');
+    } finally {
+      process.chdir(origCwd);
+      try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+    }
+  });
+
+  it('does NOT suggest workspace coordination when .workspace/ is absent', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-gate-noworkspace-'));
+    const origCwd = process.cwd();
+    try {
+      process.chdir(tmp);
+      const msg = generateBlockMessage('edit', 'src/x.js');
+      assert.ok(!msg.match(/coordinate.*in workspace/i),
+        'workspace phrase should NOT appear when no .workspace/ parent exists');
+    } finally {
+      process.chdir(origCwd);
+      try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+    }
   });
 });
 

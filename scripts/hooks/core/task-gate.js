@@ -418,19 +418,104 @@ function generateWarningMessage(operation, filePath) {
   return `Warning: ${operation === 'write' ? 'Creating' : 'Editing'} ${fileName} without an active task. Consider starting a task first.`;
 }
 
+// Rule / memory files where /wogi-decide is the idiomatic capture command.
+// Intent artifacts (domain-model.md, user-journeys.md, glossary.md, product.md)
+// are deliberately excluded — modifying those is product-design work and should
+// flow through /wogi-story per the normal task lifecycle.
+const RULE_FILE_BASENAMES = new Set([
+  'decisions.md',
+  'feedback-patterns.md',
+  'MEMORY.md'
+]);
+
 /**
- * Generate block message
+ * Detect whether the given file path (or its basename) is a rule/memory file
+ * that should route to /wogi-decide for capture instead of /wogi-story.
+ *
+ * Also matches Claude Code auto-memory paths under `.claude/projects/*\/memory/`.
+ */
+function isRuleOrMemoryFile(filePath) {
+  if (!filePath || typeof filePath !== 'string') return false;
+  const base = path.basename(filePath);
+  if (RULE_FILE_BASENAMES.has(base)) return true;
+  if (filePath.includes(`${path.sep}.claude${path.sep}projects${path.sep}`) &&
+      filePath.includes(`${path.sep}memory${path.sep}`)) return true;
+  return false;
+}
+
+/**
+ * Detect whether the current working directory (or its parents) contains a
+ * `.workspace/` directory — the marker for WogiFlow workspace mode where a
+ * manager repo coordinates worker repos. When present, the block message
+ * additionally suggests the workspace-coordination task pattern.
+ *
+ * Walks up at most 6 parents to avoid unbounded traversal.
+ */
+function isInWorkspaceMode(startDir) {
+  const start = startDir || process.cwd();
+  try {
+    let dir = start;
+    for (let i = 0; i < 6; i++) {
+      const candidate = path.join(dir, '.workspace');
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return true;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  } catch (_err) {
+    // Filesystem errors (permissions, etc.) → conservatively say no. The
+    // standard suggestions are still shown, so the user is never stranded.
+  }
+  return false;
+}
+
+/**
+ * Generate block message (context-aware).
+ *
+ * The message adapts to two signals:
+ *  1. If the blocked path is a rule/memory file (e.g. decisions.md), the
+ *     message leads with `/wogi-decide` — the idiomatic "from now on" rule
+ *     capture command that doesn't require a code task.
+ *  2. If a `.workspace/` directory exists at cwd or a parent, the message
+ *     adds a workspace-coordination task pattern.
+ *
+ * Enforcement behavior is unchanged — this only affects the text shown to
+ * the AI / user when the gate blocks. Intent artifacts (domain-model.md,
+ * user-journeys.md, glossary.md, product.md) deliberately do NOT trigger
+ * the rule-file branch — those still route to /wogi-story.
  */
 function generateBlockMessage(operation, filePath) {
   const fileName = filePath ? path.basename(filePath) : 'file';
-  return `Cannot ${operation} ${fileName} without an active task.
+  const isRuleFile = isRuleOrMemoryFile(filePath);
+  const inWorkspace = isInWorkspaceMode();
 
-To proceed:
-1. Check available tasks: /wogi-ready
-2. Start an existing task: /wogi-start wf-XXXXXXXX
-3. Or create a new task: /wogi-story "description"
+  const lines = [`Cannot ${operation} ${fileName} without an active task.`, ''];
 
-Task gating is enforced when strictMode is enabled.`;
+  if (isRuleFile) {
+    lines.push('For rule / memory capture without a code task:');
+    lines.push('  /wogi-decide "from now on, <your rule>"');
+    lines.push('');
+  }
+
+  if (inWorkspace) {
+    lines.push('For workspace coordination (manager repo in workspace mode):');
+    lines.push('  /wogi-start "coordinate wf-XXXXXXXX in workspace"');
+    lines.push('');
+  }
+
+  lines.push('For a side thought or idea to save for later:');
+  lines.push('  /wogi-capture "your idea"');
+  lines.push('');
+  lines.push('Other options:');
+  lines.push('  /wogi-ready                 → see available tasks');
+  lines.push('  /wogi-start wf-XXXXXXXX     → start an existing task');
+  lines.push('  /wogi-story "description"   → create a new task');
+  lines.push('');
+  lines.push('Task gating is enforced when strictMode is enabled.');
+
+  return lines.join('\n');
 }
 
 module.exports = {

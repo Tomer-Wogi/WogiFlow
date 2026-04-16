@@ -2876,3 +2876,10 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Add MCP duplicate-scope check to /wogi-health (mirror Claude Code 2.1.110 /doctor)"
 **Result**: Added `checkMcpScopes()` + `normalizeMcpConfig()` helpers to `scripts/flow-health.js`. Scans user (~/.claude/settings.json), project (.claude/settings.json), and local (.claude/settings.local.json) scopes for MCP server definitions; flags divergent configs across scopes, ignores identical duplicates. New "Checking MCP server scopes..." section wired into `main()` between hook-integrity and gitignore checks. Module now exports helpers and guards `run()` behind `require.main === module`. New test suite at `tests/flow-health-mcp-scopes.test.js` (12 tests, all passing) covering identical duplicates, divergent configs, missing files, malformed JSON, null/array mcpServers, and multi-scope conflicts.
 **Files**: `scripts/flow-health.js`, `tests/flow-health-mcp-scopes.test.js`
+
+### R-300 | 2026-04-16
+**Type**: fix
+**Tags**: #hooks #ux #task-gate #task:wf-9c4c4a51
+**Request**: "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, and workspace coordination pattern — revision of adversary-rejected proposal"
+**Result**: Made `generateBlockMessage()` in `scripts/hooks/core/task-gate.js` context-aware. New helpers `isRuleOrMemoryFile()` (matches decisions.md, feedback-patterns.md, MEMORY.md, and Claude Code auto-memory paths) and `isInWorkspaceMode()` (walks up to 6 parents for `.workspace/`). Rule files get a prominent `/wogi-decide` suggestion; workspace-mode blocks get a `coordinate wf-XXX in workspace` suggestion; all messages get `/wogi-capture` and keep the standard /wogi-ready|start|story options. Intent artifacts (domain-model.md, user-journeys.md, glossary.md, product.md) and registry maps (app-map.md, function-map.md, api-map.md) intentionally do NOT trigger the rule-file branch per adversary critique — those remain task-gated through /wogi-story. Enforcement logic unchanged. 10 new tests (32 total), all passing.
+**Files**: `scripts/hooks/core/task-gate.js`, `tests/flow-hooks-task-gate.test.js`
