@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-15T20:25:34.412Z",
+  "markedAt": "2026-04-15T20:33:51.804Z",
   "context": {
-    "args": "wf-94cc3b72 — fix M1 (wogi-review.md doc bloat — split to reference doc) + M3 (pre-tool-orchestrator _fastPath end-to-end test coverage gap). Then add mid-execution anti-deferral rule to CLAUDE.md/decisions so future sessions cannot silently defer findings. User correction: \"You're not supposed to defer any fixes. It's up to the user to defer, not you.\""
+    "args": "Publish v2.17.5 to npm. Already committed and tagged on GitHub. Run npm publish and verify it's live."
   },
   "status": "pending"
 }

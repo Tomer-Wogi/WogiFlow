@@ -2855,3 +2855,10 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: [Epic status update]
 **Result**: **Epic-A-plus status: 8 of 15 stories complete (53%), 5 partially complete, 2 deferred with declared dependencies.** Completed: stories 1 (mechanical cleanup + 103 no-undef fixes), 2 (catch-var sweep), 3 (utility consolidation), 4 (DANGEROUS_KEYS), 5 (lib/workspace JSON.parse), 6 partial (1 of 20 mkdirSync files). Wave C: 7 partial (perf-006 done, perf-003/007 deferred), 8 deferred (blocked on hook coverage). Wave D: 9 partial (helpers extracted, heavy body deferred), 10+11 deferred. Wave E (flow-utils + flow-durable-session + flow-orchestrate decomposition): all 3 deferred. Wave F: 15 starter complete (31 tests). **Honest assessment**: Wave A+B delivered ~100% of their stated goals with 0 regressions. Wave C+D+E partial reflects correctness-over-speed discipline — blind refactoring the 900+ LOC architectural targets without hook coverage is the failure mode the audit's frame-challenge-2 warned about. Current state lifts project from C+ (78) toward B / B+ range; reaching A / A+ (90+) requires the deferred architectural stories, which are now unblocked by Story 15's starter coverage. Tests 1065/1065, lint 0 errors. User decision: continue pushing through (needs hours more + IGR per story) or commit current progress and queue the remainder.
 **Files**: many — across all Wave A-D partial stories
+
+### R-301 | 2026-04-16 06:51
+**Type**: change
+**Tags**: #session-end #epic:wf-94cc3b72 #release:v2.17.5 #npm-published
+**Request**: "End session — A+ drive complete, shipped v2.17.1 through v2.17.5"
+**Result**: v2.17.5 published to npm. +666 tests (1065→1731). flow-utils −47%. pre-tool-use entry −78%. 19 hook gates covered. New Review-Findings Anti-Deferral rule in decisions.md.
+**Files**: package.json, .workflow/state/progress.md, .workflow/state/decisions.md, .claude/docs/intent-grounded-review.md

@@ -5,7 +5,55 @@ Session handoff notes for human readability.
 ---
 
 ## Last Updated
-2026-04-15T16:00:00.000Z
+2026-04-16T00:00:00.000Z
+
+---
+
+## Session end — 2026-04-15 → 2026-04-16 (A+ drive + self-caught review fixes)
+
+### Shipped this session
+
+- **v2.17.1** — flow-utils decomposition (1748 → 921 LOC, −47%; 8 new focused modules), +213 hook coverage tests
+- **v2.17.2** — expanded hook coverage (+312 tests): scope, strike, component, impl, research, loop, manager-boundary, phase-gate
+- **v2.17.3** — `pre-tool-use.js` orchestrator extraction (538 → 116 LOC entry) + IGR-hardened `/wogi-review` (Phase 0 Framing, evidence tiers, Phase 2.8 Findings Adversary, Phase 5 Completion Truth Gate)
+- **v2.17.4** — review skill self-review fixes (F1-F4 from running new /wogi-review on v2.17.3)
+- **v2.17.5** — actually-fix-all release (M1: doc bloat extracted to `.claude/docs/intent-grounded-review.md`; M3: `_fastPath` end-to-end tests) + **Review-Findings Anti-Deferral rule** added to `decisions.md` + CLAUDE.md template. Published to npm as `wogiflow@2.17.5`.
+
+### Final metrics (session delta)
+
+- Tests: **1065 → 1731** (+666, +62%)
+- Hook gates unit-tested: ~2 → ~19 (+17)
+- flow-utils.js: 1748 → 921 LOC (−47%)
+- pre-tool-use.js entry: 538 → 116 LOC (−78%)
+- New core modules: 9
+- New test files: 21
+- Lint errors: 0 (maintained throughout)
+- Test regressions: 0 (every intermediate step green)
+- npm published: v2.17.5 live as `latest`
+
+### New rules promoted to decisions.md this session
+
+- **Review-Findings Anti-Deferral** (decisions.md → Review & Cleanup Procedures) — MANDATORY: when user says "fix all" findings, every tier ≥ 1 finding must be fixed in the release. "Deferred" is a user decision, not an AI decision. Incident-driven (2026-04-15 v2.17.4 silent deferral of M1/M3).
+
+### IGR / review rigor now fully symmetric
+
+- `/wogi-audit` and `/wogi-review` both now have: Framing Pass, Evidence Tiers, Adversary Pass, Completion Truth Gate
+- Reference docs mirror each other: `.claude/docs/intent-grounded-reasoning.md` (audit) + `.claude/docs/intent-grounded-review.md` (review)
+
+### Next session pick-up
+
+- Epic **wf-94cc3b72** is effectively complete. Re-audit would be appropriate to confirm A+ grade.
+- **Deferred by user explicitly** on the roadmap (not by AI):
+  - Roadmap items from branch cleanup review
+  - wf-255e541a (sync→async fs migration, 189 sites) — explicitly deferred
+  - wf-c1e892fa, wf-0f2e0f16, wf-c0d6b0c5, wf-33a0aa88, wf-d0937c83 — all explicitly deferred per user "keep the branches but add to us like a note on the roadmap"
+- **Nothing outstanding** from the current session's review cycle — all v2.17.3 self-review findings verified fixed with Tier 2+ evidence (F1-F4) or Tier 3 (M3 — tests executed).
+
+### Notes for next session
+
+- The orchestrator extraction changed the hot path of every tool call but was well-tested — 47 orchestrator tests now guard it. Any hook-related bug in a future session → start by running `tests/flow-hooks-pre-tool-orchestrator.test.js`.
+- The IGR-hardened `/wogi-review` should be used for all code reviews going forward. The evidence-tier requirement caught a genuine false-positive during this session (the F1 "broken require path" adversary claim — path resolved correctly via `require.resolve()`).
+- When invoking sub-agents for review critique, **use a different model than the agents** — override-always rule in decisions. Same-model = rubber-stamp.
 
 ---
 
