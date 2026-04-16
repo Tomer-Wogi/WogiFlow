@@ -9,7 +9,7 @@
 
 const { execSync } = require('node:child_process');
 const path = require('node:path');
-const { getProjectRoot, PATHS } = require('./flow-utils');
+const { PATHS } = require('./flow-utils');
 
 /**
  * Run regression tests as a workflow step
@@ -37,7 +37,7 @@ async function run(options = {}) {
     let parsed;
     try {
       parsed = JSON.parse(result);
-    } catch (err) {
+    } catch (_err) {
       // Non-JSON output means success with no issues
       return { passed: true, message: 'Regression tests passed' };
     }
@@ -67,7 +67,7 @@ async function run(options = {}) {
             details: parsed.failures,
           };
         }
-      } catch (err) {
+      } catch (_err) {
         // Not JSON, treat as error
       }
     }

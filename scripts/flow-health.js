@@ -35,7 +35,7 @@ const {
   getFdCommand,
   getConfig
 } = require('./flow-utils')
-const { color, printSection, printHeader, success, warn, error, info } = require('./flow-output');;
+const { color, printSection, printHeader, success, warn, error } = require('./flow-output');;
 
 const { execSync, execFileSync } = require('node:child_process');
 
@@ -268,7 +268,7 @@ function main() {
         success(`WogiFlow version: ${pkg.version}`);
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Non-critical — skip silently
   }
 
@@ -582,7 +582,7 @@ function main() {
           warn(`Strict mode: NOT CONFIGURED (add enforcement section to config.json)`);
           warnings++;
         }
-      } catch (err) {
+      } catch (_err) {
         warn(`Could not parse config.json for strict mode check`);
         warnings++;
       }
@@ -659,7 +659,7 @@ function main() {
         console.log(`  ${color('yellow', '○')} respectGitignore: not set`);
       }
 
-    } catch (err) {
+    } catch (_err) {
       warn(`Could not parse settings.local.json`);
       warnings++;
     }
@@ -773,7 +773,7 @@ function main() {
         console.log(`    ${color('dim', "→ Run 'flow bridge sync' to regenerate CLAUDE.md from template")}`);
         issues++;
       }
-    } catch (err) {
+    } catch (_err) {
       // Already warned about CLAUDE.md read failure above
     }
   }
@@ -801,6 +801,36 @@ function main() {
     warnings += mcp.duplicates.length;
   }
 
+  // Check anti-deferral rule compliance (decisions.md:75)
+  console.log('');
+  printSection('Checking anti-deferral rule compliance...');
+  const deferralViolations = checkAntiDeferralCompliance();
+  if (deferralViolations.length === 0) {
+    success('No anti-deferral violations in ready.json');
+  } else {
+    for (const v of deferralViolations) {
+      warn(`${v.id} (${v.list}): "${v.note.substring(0, 80)}..."`);
+    }
+    warn(`${deferralViolations.length} task(s) in "ready/in-progress" with deferral language — move to "blocked" with dependsOn`);
+    warn(`Rule: .workflow/state/decisions.md §Review-Findings Anti-Deferral`);
+    warnings += deferralViolations.length;
+  }
+
+  // Completion-claim honesty scan (2026-04-16 honesty-infrastructure)
+  console.log('');
+  printSection('Checking completion-claim honesty...');
+  const honestyHits = checkCompletionClaimHonesty();
+  if (honestyHits.length === 0) {
+    success('No claim-vs-state contradictions in ready.json');
+  } else {
+    for (const h of honestyHits) {
+      warn(`${h.id} (${h.class === 'A' ? 'status-mismatch' : 'negation-vs-evidence'}): "${h.snippet}"`);
+    }
+    warn(`${honestyHits.length} contradiction(s): free-text claim disagrees with structured state`);
+    warn(`Gate: scripts/flow-completion-truth-gate.js → scanForClaimContradictions`);
+    warnings += honestyHits.length;
+  }
+
   // Check .gitignore sync
   console.log('');
   printSection('Checking .gitignore sync...');
@@ -817,7 +847,7 @@ function main() {
       warn(`Run: node scripts/flow-gitignore.js sync`);
       warnings += gitignoreHealth.missing.length;
     }
-  } catch (err) {
+  } catch (_err) {
     console.log(`  ${color('yellow', '○')} Gitignore check unavailable`);
   }
 
@@ -1217,7 +1247,7 @@ function deepAudit(flags = {}) {
   for (const feature of features) {
     const scriptExists = fileExists(path.join(PROJECT_ROOT, feature.script));
     const folderExists = dirExists(path.join(WORKFLOW_DIR, feature.folder.replace('/', '')));
-    const skillExists = fileExists(path.join(PROJECT_ROOT, feature.skill));
+    const _skillExists = fileExists(path.join(PROJECT_ROOT, feature.skill));
 
     if (scriptExists && folderExists) {
       success(`${feature.name}: script + folder`);
@@ -1303,4 +1333,61 @@ if (require.main === module) {
   run();
 }
 
-module.exports = { checkMcpScopes, normalizeMcpConfig };
+/**
+ * Detect anti-deferral rule violations in ready.json.
+ * A task carrying "defer/deferred" language in blockedNote while in the ready
+ * or inProgress arrays contradicts the decisions.md:75 anti-deferral rule,
+ * which requires such tasks to be moved to `blocked` with a concrete `dependsOn`.
+ * @returns {Array<{id: string, list: string, note: string}>}
+ */
+function checkAntiDeferralCompliance() {
+  const violations = [];
+  try {
+    const ready = safeJsonParse(PATHS.ready, {});
+    const check = (list, arr) => {
+      for (const task of arr || []) {
+        const note = task.blockedNote || task.deferReason || '';
+        if (/\b(deferred?|defer)\b/i.test(note)) {
+          violations.push({ id: task.id, list, note });
+        }
+      }
+    };
+    check('ready', ready.ready);
+    check('inProgress', ready.inProgress);
+  } catch (_err) {
+    // If ready.json is unreadable, other checks will flag it separately.
+  }
+  return violations;
+}
+
+/**
+ * Check completion-claim honesty across ready.json. Uses
+ * flow-completion-truth-gate.scanForClaimContradictions to detect:
+ *   Class A — done-word in notes/result while status is partial
+ *   Class B — "0 outages"-style negation while hotfixes[] is non-empty
+ * Returns flattened list of {id, class, field, snippet} for health-report display.
+ * @returns {Array<{id: string, class: 'A'|'B', field: string, snippet: string}>}
+ */
+function checkCompletionClaimHonesty() {
+  const hits = [];
+  try {
+    const { scanForClaimContradictions } = require('./flow-completion-truth-gate');
+    const ready = safeJsonParse(PATHS.ready, {});
+    const toScan = []
+      .concat(Array.isArray(ready.inProgress) ? ready.inProgress : [])
+      .concat(Array.isArray(ready.recentlyCompleted) ? ready.recentlyCompleted : []);
+    for (const task of toScan) {
+      if (!task || typeof task !== 'object') continue;
+      const res = scanForClaimContradictions(task);
+      if (!res.scanned) continue;
+      for (const c of res.contradictions) {
+        hits.push({ id: task.id, class: c.class, field: c.field, snippet: c.snippet });
+      }
+    }
+  } catch (_err) {
+    // Non-critical; other checks remain.
+  }
+  return hits;
+}
+
+module.exports = { checkMcpScopes, normalizeMcpConfig, checkAntiDeferralCompliance, checkCompletionClaimHonesty };

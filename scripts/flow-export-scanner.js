@@ -133,7 +133,7 @@ function extractExports(filePath) {
       result.defaultExport = defaultAtEnd[1];
     }
 
-  } catch (err) {
+  } catch (_err) {
     // Ignore read errors
   }
 
@@ -227,7 +227,7 @@ function extractComponentDetails(filePath) {
     // Pattern 5: type Props = { ... } (object type alias - treat like interface)
     const typeObjectMatches = content.matchAll(/type\s+(\w+Props)\s*=\s*\{/g);
     for (const match of typeObjectMatches) {
-      const typeName = match[1];
+      const _typeName = match[1];
       const startIndex = match.index + match[0].length;
 
       let braceCount = 1;
@@ -285,7 +285,7 @@ function extractComponentDetails(filePath) {
       result.typeAliases[`_fcProps_${propsTypeName}`] = propsTypeName;
     }
 
-  } catch (err) {
+  } catch (_err) {
     // Ignore read errors
   }
 
@@ -590,7 +590,7 @@ function scanDirectory(dirPath, baseImportPath, target, includeDetails = false) 
         target[entry.name] = result;
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Ignore scan errors
   }
 }
@@ -630,7 +630,7 @@ function scanDirectoryFlat(dirPath, baseImportPath, target, typesOnly = false) {
         }
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Ignore scan errors
   }
 }

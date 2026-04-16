@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline/promises');
-const { colors: c, getProjectRoot, readJson, PATHS } = require('./flow-utils');
+const { colors: c, getProjectRoot, readJson } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn, error: printError } = require('./flow-output');
 
 /**
@@ -219,7 +219,7 @@ function generateDiffsForOperations(operations) {
  * Format diffs for terminal display
  */
 function formatDiffsForDisplay(diffs, options = {}) {
-  const showLineNumbers = options.showLineNumbers !== false;
+  const _showLineNumbers = options.showLineNumbers !== false;
   let output = '';
 
   for (const d of diffs) {
@@ -456,7 +456,7 @@ function applyDiffs(operations) {
 /**
  * Interactive confirmation prompt
  */
-async function confirmApply(diffs) {
+async function confirmApply(_diffs) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout

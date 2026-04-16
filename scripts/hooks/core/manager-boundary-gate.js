@@ -27,6 +27,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
+const { safeJsonParse } = require('../../flow-io');
 
 // ============================================================
 // Member Path Resolution
@@ -50,7 +51,7 @@ function getMemberPaths() {
   if (!fs.existsSync(manifestPath)) return [];
 
   try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    const manifest = safeJsonParse(manifestPath, {});
     const members = manifest.members || {};
     const paths = [];
 
@@ -141,7 +142,7 @@ function getMemberPort(memberName) {
 
   try {
     const manifestPath = path.join(workspaceRoot, '.workspace', 'state', 'workspace-manifest.json');
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    const manifest = safeJsonParse(manifestPath, {});
     const member = manifest.members?.[memberName];
     return member?.port ?? member?.channelPort ?? null;
   } catch (_err) {

@@ -31,13 +31,15 @@ runHook('PermissionDenied', async ({ input, parsedInput }) => {
   try {
     const fs = require('node:fs');
     const { PATHS } = require('../../../flow-utils');
+    const { safeJsonParseString } = require('../../../flow-io');
     const logPath = path.join(PATHS.state, 'permission-denials.json');
 
     let denials = [];
     try {
       if (fs.existsSync(logPath)) {
-        denials = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
-        if (!Array.isArray(denials)) denials = [];
+        const raw = fs.readFileSync(logPath, 'utf-8');
+        const parsed = safeJsonParseString(raw, []);
+        denials = Array.isArray(parsed) ? parsed : [];
       }
     } catch (_err) {
       denials = [];

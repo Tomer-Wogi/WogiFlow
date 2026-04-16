@@ -20,7 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   safeJsonParse,
   getConfig,
   colors,
@@ -500,7 +500,7 @@ function reviewCode(options = {}) {
 
   if (!isEnabled()) return { warnings };
 
-  const standards = loadStandards();
+  const _standards = loadStandards();
   const config = loadConfig();
 
   // Only run in user review mode

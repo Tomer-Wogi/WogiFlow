@@ -11,7 +11,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { PATHS, PROJECT_ROOT, isPathWithinProject } = require('./flow-paths');
-const { checkForDangerousKeys, readJson, writeJson, acquireLock, safeJsonParse, safeJsonParseString } = require('./flow-io');
+const { writeJson, acquireLock, safeJsonParse, safeJsonParseString } = require('./flow-io');
 const { warn } = require('./flow-output');
 
 // Late-loaded to avoid circular dependency

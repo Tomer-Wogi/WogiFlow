@@ -72,7 +72,7 @@ class ComplexityStep extends BaseWorkflowStep {
  * - Base complexity: 1
  * - +1 for each: if, else if, for, while, case, catch, &&, ||, ?, ??
  */
-function analyzeComplexity(content, fileName) {
+function analyzeComplexity(content, _fileName) {
   const functions = [];
 
   // Match function declarations and expressions

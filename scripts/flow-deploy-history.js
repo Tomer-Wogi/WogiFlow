@@ -98,7 +98,7 @@ function detectProductionCrash(description, config) {
  * @param {boolean} [options.hasDeployHistory] - Whether deploy history exists
  * @returns {string} Formatted recommendation message
  */
-function generateRevertRecommendation(options) {
+function generateRevertRecommendation(_options) {
   const lastDeploy = getLastGoodDeploy();
   const revertConfig = getRevertFirstConfig();
 

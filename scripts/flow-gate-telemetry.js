@@ -46,7 +46,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const { PATHS } = require('./flow-paths');
-const { ensureDir, fileExists, safeJsonParse } = require('./flow-io');
+const { ensureDir, fileExists } = require('./flow-io');
 const { success, warn, info, color } = require('./flow-output');
 
 // ============================================================

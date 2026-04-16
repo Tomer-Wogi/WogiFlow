@@ -54,7 +54,7 @@ function clearCapabilitiesCache() {
 /**
  * Load a single capability file for a model.
  * Exported as public API for plugin/extension use.
- * @param {string} modelKey - Model key (e.g., "claude-opus-4-6")
+ * @param {string} modelKey - Model key (e.g., "claude-opus-4-7")
  * @returns {Object|null} Capability data or null if not found
  */
 function loadCapability(modelKey) {
@@ -92,7 +92,7 @@ function loadAllCapabilities() {
       try {
         const stat = fs.lstatSync(path.join(CAPABILITIES_DIR, entry));
         if (!stat.isFile()) continue;
-      } catch (err) {
+      } catch (_err) {
         continue;
       }
       const modelKey = entry.replace(/\.json$/, '');
@@ -101,7 +101,7 @@ function loadAllCapabilities() {
         capabilities[modelKey] = capData;
       }
     }
-  } catch (err) {
+  } catch (_err) {
     warn(`Failed to read capabilities directory`);
   }
 

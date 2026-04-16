@@ -15,8 +15,8 @@
  * - Algorithm complexity hints
  */
 
-const path = require('node:path');
-const { readFile, PATHS, getConfig } = require('../flow-utils');
+const _path = require('node:path');
+const { } = require('../flow-utils');
 
 /**
  * Error handling patterns to check
@@ -188,7 +188,7 @@ const EDGE_CASE_PATTERNS = [
  * @param {Object} context - Review context
  * @returns {Object[]} Array of issues
  */
-function checkFileLogic(file, context) {
+function checkFileLogic(file, _context) {
   const issues = [];
   const content = file.content || '';
   const isTestFile = /\.(test|spec)\.[tj]sx?$/.test(file.path);

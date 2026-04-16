@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { colors, PATHS } = require('./flow-utils');
 const { getExecParts } = require('./flow-script-resolver');
 
 function log(color, ...args) {

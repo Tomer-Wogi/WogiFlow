@@ -65,7 +65,7 @@ function handleConfigChange(options = {}) {
     let bridgeState = null;
     try {
       bridgeState = require('../../flow-bridge-state');
-const { PATHS } = require('../../flow-utils');
+const { } = require('../../flow-utils');
     } catch (_err) {
       // Bridge state module unavailable
     }

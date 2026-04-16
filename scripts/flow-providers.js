@@ -20,11 +20,11 @@
  *   flow providers configure <type>     # Configure a provider
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 const https = require('node:https');
 const http = require('node:http');
-const { getProjectRoot, getConfig, colors: c, estimateTokens, PATHS } = require('./flow-utils');
+const { getConfig, colors: c, estimateTokens } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
 
 /**
@@ -64,6 +64,7 @@ const MODEL_CAPABILITIES = {
   'gemma2': { codeQuality: 'high', instructionFollowing: 'high', contextWindow: 8192 },
 
   // Cloud models - Full capability
+  'claude-opus-4-7': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 1000000, costTier: 'premium' },
   'claude-opus-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
   'claude-opus-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
   'claude-sonnet-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'standard' },
@@ -74,6 +75,7 @@ const MODEL_CAPABILITIES = {
 
   // Cloud models - Executor tier (cheaper/faster)
   'gpt-4o-mini': { codeQuality: 'high', instructionFollowing: 'high', contextWindow: 128000, costTier: 'cheap' },
+  'claude-haiku-4-5': { codeQuality: 'high', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'cheap' },
   'claude-3-haiku': { codeQuality: 'high', instructionFollowing: 'high', contextWindow: 200000, costTier: 'cheap' },
   'claude-3-5-haiku': { codeQuality: 'high', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'cheap' },
   'gemini-flash': { codeQuality: 'high', instructionFollowing: 'high', contextWindow: 1000000, costTier: 'cheap' },
@@ -197,8 +199,13 @@ class BaseProvider {
     this.name = 'base';
   }
 
-  async complete(prompt, options = {}) {
-    throw new Error('Not implemented');
+  /**
+   * Abstract — every concrete provider subclass (AnthropicProvider,
+   * OpenAIProvider, OllamaProvider, etc.) must override this.
+   */
+  // eslint-disable-next-line no-unused-vars
+  async complete(prompt, _options = {}) {
+    throw new Error(`Provider ${this.name}: complete() not implemented — override in subclass`);
   }
 
   async test() {
@@ -235,8 +242,8 @@ class OllamaProvider extends BaseProvider {
       prompt,
       stream: false,
       options: {
-        temperature: options.temperature || this.config.temperature || 0.7,
-        num_predict: options.maxTokens || this.config.maxTokens || 4096
+        temperature: options.temperature ?? this.config.temperature ?? 0.7,
+        num_predict: options.maxTokens ?? this.config.maxTokens ?? 4096
       }
     };
 
@@ -323,7 +330,7 @@ class OllamaProvider extends BaseProvider {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: this.config.timeout || 120000
+        timeout: this.config.timeout ?? 120000
       };
 
       const req = http.request(options, (res) => {
@@ -365,8 +372,8 @@ class LMStudioProvider extends BaseProvider {
     const body = {
       model: options.model || this.config.model || 'local-model',
       messages: [{ role: 'user', content: prompt }],
-      temperature: options.temperature || this.config.temperature || 0.7,
-      max_tokens: options.maxTokens || this.config.maxTokens || 4096
+      temperature: options.temperature ?? this.config.temperature ?? 0.7,
+      max_tokens: options.maxTokens ?? this.config.maxTokens ?? 4096
     };
 
     const response = await this._request(url, body);
@@ -391,7 +398,7 @@ class LMStudioProvider extends BaseProvider {
         headers: {
           'Content-Type': 'application/json'
         },
-        timeout: this.config.timeout || 120000
+        timeout: this.config.timeout ?? 120000
       };
 
       const req = http.request(options, (res) => {
@@ -462,7 +469,7 @@ class AnthropicProvider extends BaseProvider {
 
     const body = {
       model: options.model || this.config.model || DEFAULT_CONFIGS.anthropic.model,
-      max_tokens: options.maxTokens || this.config.maxTokens || 4096,
+      max_tokens: options.maxTokens ?? this.config.maxTokens ?? 4096,
       messages: [{ role: 'user', content: prompt }]
     };
 
@@ -499,7 +506,7 @@ class AnthropicProvider extends BaseProvider {
           'x-api-key': this.apiKey,
           'anthropic-version': '2023-06-01'
         },
-        timeout: this.config.timeout || 60000
+        timeout: this.config.timeout ?? 60000
       };
 
       const req = https.request(options, (res) => {
@@ -549,8 +556,8 @@ class OpenAIProvider extends BaseProvider {
     const body = {
       model: options.model || this.config.model || DEFAULT_CONFIGS.openai.model,
       messages,
-      temperature: options.temperature || this.config.temperature || 0.7,
-      max_tokens: options.maxTokens || this.config.maxTokens || 4096
+      temperature: options.temperature ?? this.config.temperature ?? 0.7,
+      max_tokens: options.maxTokens ?? this.config.maxTokens ?? 4096
     };
 
     const response = await this._request(url, body);
@@ -601,7 +608,7 @@ class OpenAIProvider extends BaseProvider {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
         },
-        timeout: this.config.timeout || 60000
+        timeout: this.config.timeout ?? 60000
       };
 
       const req = https.request(options, (res) => {
@@ -652,8 +659,8 @@ class GoogleProvider extends BaseProvider {
         parts: [{ text: prompt }]
       }],
       generationConfig: {
-        temperature: options.temperature || this.config.temperature || 0.7,
-        maxOutputTokens: options.maxTokens || this.config.maxTokens || 4096
+        temperature: options.temperature ?? this.config.temperature ?? 0.7,
+        maxOutputTokens: options.maxTokens ?? this.config.maxTokens ?? 4096
       }
     };
 
@@ -714,7 +721,7 @@ class GoogleProvider extends BaseProvider {
           'Content-Type': 'application/json',
           ...additionalHeaders
         },
-        timeout: this.config.timeout || 60000
+        timeout: this.config.timeout ?? 60000
       };
 
       const req = https.request(options, (res) => {
@@ -929,11 +936,12 @@ async function detectProviders() {
       local: false,
       cost: 'paid',
       models: [
+        { id: 'claude-opus-4-7', name: 'Claude Opus 4.7 (latest)', recommended: true },
         { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
-        { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku (Best for executor)', recommended: true },
-        { id: 'claude-sonnet-4-6-20250819', name: 'Claude Sonnet 4.6' },
-        { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-        { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' }
+        { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5 (Best for executor)' },
+        { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+        { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
+        { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5' }
       ]
     });
   }

@@ -24,15 +24,15 @@ const path = require('node:path');
 const {
   getConfig,
   PATHS,
-  STATE_DIR,
-  colors,
+  STATE_DIR: _STATE_DIR,
+  colors: _colors,
   color,
   success,
-  warn,
+  warn: _warn,
   error,
-  readFile,
-  writeFile,
-  fileExists,
+  readFile: _readFile,
+  writeFile: _writeFile,
+  fileExists: _fileExists,
   printHeader,
   getTodayDate
 } = require('./flow-utils');
@@ -280,7 +280,7 @@ async function storeSkillLearning(correction, route, context) {
   };
 }
 
-async function storeProjectDecision(correction, route, context) {
+async function storeProjectDecision(correction, _route, context) {
   const decisionsPath = PATHS.decisions;
 
   let content = '';

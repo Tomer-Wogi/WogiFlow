@@ -23,7 +23,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
+const { PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 
 // ============================================================
@@ -124,7 +124,7 @@ const FRAMEWORK_PORTS = {
 function existsInProject(relativePath) {
   try {
     return fs.existsSync(path.join(PATHS.root, relativePath));
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -146,7 +146,7 @@ function readPackageJson() {
 function readProjectFile(relativePath) {
   try {
     return fs.readFileSync(path.join(PATHS.root, relativePath), 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -403,7 +403,7 @@ function detectDocker() {
       timeout: DOCKER_TIMEOUT_MS
     });
     result.available = dockerResult.status === 0;
-  } catch (err) {
+  } catch (_err) {
     result.available = false;
   }
 
@@ -567,11 +567,11 @@ function detectFixtures() {
         try {
           const entries = fs.readdirSync(fullPath).slice(0, 20);
           result.files.push(...entries.map(e => `${fixtureDir}/${e}`));
-        } catch (err) {
+        } catch (_err) {
           // Skip unreadable directories
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Path doesn't exist — continue
     }
   }
@@ -621,12 +621,12 @@ function detectCI() {
                 }
               }
             }
-          } catch (err) {
+          } catch (_err) {
             // Skip
           }
           return result;
         }
-      } catch (err) {
+      } catch (_err) {
         // Not found
       }
     } else if (ci.file) {
@@ -702,7 +702,7 @@ function detectLanguage() {
  */
 function buildVerificationStrategy(profile) {
   const config = getConfig();
-  const testingConfig = config.testing || {};
+  const _testingConfig = config.testing || {};
 
   // Tier 0: Static Analysis (always available)
   const tier0Tools = [];

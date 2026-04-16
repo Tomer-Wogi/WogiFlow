@@ -289,7 +289,7 @@ function generateTemplate(file, type) {
   const content = file.content;
   const lines = content.split('\n');
   const templateLines = [];
-  let insideBody = false;
+  let _insideBody = false;
   let braceDepth = 0;
   let bodyStartDepth = 0;
   let skipUntilCloseBrace = false;
@@ -379,10 +379,10 @@ function generateTemplate(file, type) {
 /**
  * Check if a line is structural (should always be kept)
  */
-function isStructuralLine(trimmed, type) {
+function isStructuralLine(trimmed, _type) {
   // Import statements
   if (trimmed.startsWith('import ') || trimmed.startsWith('const ') && trimmed.includes('require(')) return true;
-const { PATHS } = require('./flow-utils');
+const { } = require('./flow-utils');
   if (trimmed.startsWith('from ')) return true;
 
   // Export statements

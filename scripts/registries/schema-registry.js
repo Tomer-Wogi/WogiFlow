@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { RegistryPlugin } = require('../flow-registry-manager');
-const { getProjectRoot, safeJsonParse: safeJsonParseFile, PATHS, getTodayDate } = require('../flow-utils');
+const { safeJsonParse: safeJsonParseFile, PATHS, getTodayDate } = require('../flow-utils');
 
 const INDEX_PATH = path.join(PATHS.state, 'schema-index.json');
 const MAP_PATH = path.join(PATHS.state, 'schema-map.md');
@@ -47,7 +47,7 @@ class SchemaRegistry extends RegistryPlugin {
         const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
         const ormPackages = ['prisma', '@prisma/client', 'typeorm', 'drizzle-orm', 'sequelize', 'mongoose'];
         if (ormPackages.some(p => allDeps[p])) return true;
-      } catch (err) {
+      } catch (_err) {
         // ignore
       }
     }
@@ -197,7 +197,7 @@ class SchemaRegistry extends RegistryPlugin {
         const content = fs.readFileSync(file, 'utf-8');
         const relPath = path.relative(PATHS.root, file);
         this._parsePrismaFile(content, relPath);
-      } catch (err) {
+      } catch (_err) {
         // Skip unreadable files
       }
     }
@@ -217,7 +217,7 @@ class SchemaRegistry extends RegistryPlugin {
           results.push(fullPath);
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable directories
     }
     return results;
@@ -368,7 +368,7 @@ class SchemaRegistry extends RegistryPlugin {
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable directories
     }
   }

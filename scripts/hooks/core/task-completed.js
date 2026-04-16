@@ -168,7 +168,7 @@ async function handleTaskCompleted(input) {
         writeJson(readyPath, ready);
         result.completed = true;
         result.message = `Task ${completedTask.id} (${completedTask.title}) moved to completed`;
-      } catch (err) {
+      } catch (_err) {
         result.message = 'Failed to update ready.json';
       }
     });
@@ -401,12 +401,18 @@ async function handleTaskCompleted(input) {
             { mode: 0o644 }
           );
         }
-      } catch (_err) {
-        // Non-critical — workspace message is defense-in-depth.
-        // The Stop hook curl remains as fallback.
-        if (process.env.DEBUG) {
-          console.error(`[Task Completed] Workspace message write failed: ${_err.message}`);
-        }
+      } catch (err) {
+        // Workspace message is the VERIFIED completion signal. A silent failure
+        // produces "workers stopped writing since <date>" incidents that are
+        // indistinguishable from "no tasks completed recently" — surface on
+        // stderr unconditionally so regressions are visible in worker logs.
+        // (diagnostic D1, 2026-04-16 honesty-infrastructure review.)
+        const reason = err && err.message ? err.message : 'unknown';
+        const root = process.env.WOGI_WORKSPACE_ROOT || '(unset)';
+        const repo = process.env.WOGI_REPO_NAME || '(unset)';
+        console.error(
+          `[Task Completed] workspace message write FAILED for ${completedTask.id}: ${reason} (root=${root}, repo=${repo})`
+        );
       }
     }
 

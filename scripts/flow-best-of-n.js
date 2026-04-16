@@ -14,14 +14,14 @@
  *   flow best-of-n config             Show Best-of-N configuration
  */
 
-const path = require('node:path');
+const _path = require('node:path');
 const {
   getConfig,
-  PATHS,
-  readJson,
+  PATHS: _PATHS,
+  readJson: _readJson,
   validateTaskId
 } = require('./flow-utils');
-const { analyzeTask, analyzeComplexity } = require('./flow-task-analyzer');
+const { analyzeComplexity } = require('./flow-task-analyzer');
 
 // ============================================================
 // Constants
@@ -108,7 +108,7 @@ function assessRisk(params) {
       factors.push(`Medium complexity + many files`);
       if (riskLevel !== 'high') riskLevel = 'medium';
     }
-  } catch (err) {
+  } catch (_err) {
     // Non-critical — analyzer may not fully parse
   }
 
@@ -242,7 +242,7 @@ function parseSelectionResponse(response) {
   try {
     const parsed = JSON.parse(response.trim());
     if (parsed.winner && parsed.scores) return parsed;
-  } catch (err) {
+  } catch (_err) {
     // Not direct JSON
   }
 
@@ -252,7 +252,7 @@ function parseSelectionResponse(response) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
       if (parsed.winner && parsed.scores) return parsed;
-    } catch (err) {
+    } catch (_err) {
       // Failed to parse
     }
   }

@@ -159,7 +159,7 @@ function detectAssumptions(params) {
 /**
  * Detect technical assumptions (framework, patterns, etc.)
  */
-function detectTechnicalAssumptions(title, description, context) {
+function detectTechnicalAssumptions(title, description, _context) {
   const assumptions = [];
   const text = `${title} ${description}`.toLowerCase();
 

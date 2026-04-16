@@ -14,20 +14,20 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const {
-  getConfig,
+  getConfig: _getConfig,
   PATHS,
   readJson,
   writeJson,
-  fileExists,
-  safeJsonParse,
+  fileExists: _fileExists,
+  safeJsonParse: _safeJsonParse,
   validateTaskId
 } = require('./flow-utils');
 const { loadStats } = require('./flow-stats-collector');
 const {
-  buildJudgePrompt,
-  aggregateScores,
-  getEvalConfig,
-  getJudgeComposition,
+  buildJudgePrompt: _buildJudgePrompt,
+  aggregateScores: _aggregateScores,
+  getEvalConfig: _getEvalConfig,
+  getJudgeComposition: _getJudgeComposition,
   formatEvalResults
 } = require('./flow-eval-judge');
 

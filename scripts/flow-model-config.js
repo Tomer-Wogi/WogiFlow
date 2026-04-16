@@ -31,7 +31,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, safeJsonParseString, colors: c, error, success, PATHS } = require('./flow-utils');
+const { safeJsonParse, safeJsonParseString, colors: c, error, success, PATHS } = require('./flow-utils');
 
 const CONFIG_PATH = path.join(PATHS.workflow, 'config.json');
 const ENV_PATH = path.join(PATHS.root, '.env');
@@ -62,8 +62,8 @@ const KNOWN_PROVIDERS = {
     envKey: 'ANTHROPIC_API_KEY',
     endpoint: 'https://api.anthropic.com/v1',
     testEndpoint: '/messages',
-    models: ['claude-opus-4-6', 'claude-sonnet-4-5-20250929', 'claude-3-5-haiku-20241022', 'claude-opus-4-5-20251101'],
-    defaultModel: 'claude-sonnet-4-20250514'
+    models: ['claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001', 'claude-3-5-haiku-20241022', 'claude-opus-4-5-20251101'],
+    defaultModel: 'claude-opus-4-7'
   },
   local: {
     displayName: 'Local LLM',
@@ -277,7 +277,7 @@ function updateEnvFile(keyName, keyValue) {
 
   try {
     envContent = fs.readFileSync(ENV_PATH, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     if (process.env.DEBUG) {
       console.log(`[model-config] .env doesn't exist, will create`);
     }
@@ -387,7 +387,7 @@ async function testLocalProvider(endpoint) {
             message: `Connected to Ollama. Found ${models.length} models.`,
             models
           });
-        } catch (err) {
+        } catch (_err) {
           resolve({ success: false, message: 'Invalid response from local LLM' });
         }
       });

@@ -17,7 +17,7 @@
  */
 
 const path = require('node:path');
-const { readFile, PATHS, getConfig } = require('../flow-utils');
+const { } = require('../flow-utils');
 
 /**
  * API contract patterns
@@ -90,7 +90,7 @@ const BREAKING_CHANGE_PATTERNS = [
 /**
  * Import/export mismatch patterns
  */
-const IMPORT_EXPORT_PATTERNS = [
+const _IMPORT_EXPORT_PATTERNS = [
   {
     pattern: /import\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]/g,
     type: 'named-import'
@@ -351,7 +351,7 @@ function checkCrossModuleIssues(file) {
  * @param {Object} context - Review context with project files
  * @returns {Object[]} Array of disconnected module warnings
  */
-function checkDisconnectedModules(files, context = {}) {
+function checkDisconnectedModules(files, _context = {}) {
   const issues = [];
 
   // Build a map of all exports in the changed files

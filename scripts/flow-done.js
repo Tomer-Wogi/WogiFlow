@@ -66,15 +66,15 @@ const getTodoWriteStats = todoWriteSync?.getTodoWriteStats || (() => null);
 const clearTodoWriteState = todoWriteSync?.clearTodoWriteState || (() => {});
 
 // v3.0 epic progress propagation
-const { updateEpicProgress, listEpics, getEpic } = require('./flow-epics');
+const { updateEpicProgress, listEpics } = require('./flow-epics');
 
 // v3.2 cascade completion (extracted to flow-cascade-completion.js)
 const {
-  findParentFeature, findParentEpic, findParentPlan,
-  allStoriesComplete, allFeaturesComplete, allEpicsComplete,
-  markFeatureComplete, markEpicComplete, markPlanComplete,
-  archiveByType, archiveCompletedParent, cascadeCompletion,
-  CASCADE_MAX_DEPTH, VALID_CASCADE_TYPES
+  findParentFeature: _findParentFeature, findParentEpic: _findParentEpic, findParentPlan: _findParentPlan,
+  allStoriesComplete: _allStoriesComplete, allFeaturesComplete: _allFeaturesComplete, allEpicsComplete: _allEpicsComplete,
+  markFeatureComplete: _markFeatureComplete, markEpicComplete: _markEpicComplete, markPlanComplete: _markPlanComplete,
+  archiveByType: _archiveByType, archiveCompletedParent: _archiveCompletedParent, cascadeCompletion,
+  CASCADE_MAX_DEPTH: _CASCADE_MAX_DEPTH, VALID_CASCADE_TYPES
 } = require('./flow-cascade-completion');
 
 // v3.1 spec verification gate
@@ -625,7 +625,7 @@ async function main() {
         console.log(`Criteria: ${stats.completed}/${stats.total} completed (${completionPercent}%)`);
 
         if (todoStats.criteria && todoStats.criteria.length > 0) {
-          todoStats.criteria.forEach((c, i) => {
+          todoStats.criteria.forEach((c, _i) => {
             const icon = c.status === 'completed' ? color('green', '●') :
                          c.status === 'in_progress' ? color('yellow', '◐') : color('dim', '○');
             const statusColor = c.status === 'completed' ? 'green' :

@@ -857,7 +857,7 @@ function unknownGate(ctx, gateName) {
  * This is a single gate entry in GATE_REGISTRY that runs all applicable
  * workspace sub-gates based on task type.
  */
-function workspaceGate(ctx, gateName) {
+function workspaceGate(ctx, _gateName) {
   const wsGates = getWorkspaceGates();
   if (!wsGates) {
     return { passed: true, skipped: true };

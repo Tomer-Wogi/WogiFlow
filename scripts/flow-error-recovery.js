@@ -23,7 +23,7 @@ const {
   readJson,
   writeJson,
   ensureDir,
-  color,
+  color: _color,
   success,
   warn,
   error,
@@ -34,7 +34,7 @@ const {
 let adaptiveLearning;
 try {
   adaptiveLearning = require('./flow-adaptive-learning');
-} catch (err) {
+} catch (_err) {
   // Module not available - adaptive learning is optional
   adaptiveLearning = null;
 }
@@ -421,12 +421,12 @@ function recordFixAttempt(level, strategy, newOutput) {
  * @param {Object} state - Error recovery state
  * @returns {Object} Reassessment result
  */
-function checkArchitecturalReassessment(session, currentLevel, state) {
+function checkArchitecturalReassessment(session, currentLevel, _state) {
   // Get config for architectural reassessment
   let config;
   try {
     config = require('./flow-utils').getConfig();
-  } catch (err) {
+  } catch (_err) {
     config = {};
   }
 

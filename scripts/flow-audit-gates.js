@@ -33,7 +33,7 @@ const { execFileSync, execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { PATHS, getConfig, safeJsonParse, color } = require('./flow-utils');
+const { PATHS, safeJsonParse } = require('./flow-utils');
 
 // ============================================================
 // Score Cap Thresholds
@@ -90,13 +90,23 @@ function runProjectScript(scriptName, timeout = 60000) {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' }
     });
-    return { exists: true, passed: true, output: output.substring(0, 5000), errorCount: 0 };
+    return { exists: true, passed: true, output: truncateOutput(output), errorCount: 0, rawOutput: output };
   } catch (err) {
     const output = (err.stdout || '') + (err.stderr || '');
-    // Count error lines
     const errorCount = (output.match(/error TS\d+|Error:|ERROR/gi) || []).length;
-    return { exists: true, passed: false, output: output.substring(0, 5000), errorCount };
+    return { exists: true, passed: false, output: truncateOutput(output), errorCount, rawOutput: output };
   }
+}
+
+/**
+ * Truncate output while preserving head AND tail so that end-of-output
+ * summary lines (e.g. "N problems (X errors, Y warnings)") remain parseable.
+ */
+function truncateOutput(output) {
+  if (!output || output.length <= 5000) return output;
+  const head = output.substring(0, 3500);
+  const tail = output.substring(output.length - 1500);
+  return `${head}\n\n... [truncated ${output.length - 5000} chars] ...\n\n${tail}`;
 }
 
 /**
@@ -161,16 +171,22 @@ function checkTypecheck() {
 function checkLint() {
   const result = runProjectScript('lint', 60000);
 
-  // Parse error/warning counts
+  // Parse error/warning counts from the RAW (untruncated) output so the
+  // end-of-output ESLint summary line is never missed. Bug fixed 2026-04-16:
+  // previously used result.output which was truncated to 5000 chars, causing
+  // runs with many warnings to silently report "0 warnings".
   let errorCount = 0;
   let warningCount = 0;
-  if (result.output) {
-    // ESLint format: "N problems (X errors, Y warnings)"
-    const match = result.output.match(/(\d+) problems?\s*\((\d+) errors?,\s*(\d+) warnings?\)/);
-    if (match) {
-      errorCount = parseInt(match[2], 10);
-      warningCount = parseInt(match[3], 10);
-    }
+  const parseSource = result.rawOutput || result.output || '';
+  // ESLint format: "N problems (X errors, Y warnings)"
+  const match = parseSource.match(/(\d+) problems?\s*\((\d+) errors?,\s*(\d+) warnings?\)/);
+  if (match) {
+    errorCount = parseInt(match[2], 10);
+    warningCount = parseInt(match[3], 10);
+  } else {
+    // Fallback: count individual warning/error lines (still accurate if summary missing).
+    warningCount = (parseSource.match(/^\s*\d+:\d+\s+warning/gm) || []).length;
+    errorCount = (parseSource.match(/^\s*\d+:\d+\s+error/gm) || []).length;
   }
 
   let scoreCap = 100;
@@ -312,9 +328,19 @@ function checkScriptCompleteness() {
  */
 function countEslintDisables() {
   try {
+    // Exclude node_modules, dist, build, coverage, and .workflow runtime data.
+    // Bug fixed 2026-04-16: previously walked the entire repo and counted
+    // eslint-disable in dependencies, inflating project-health reports.
     const output = execFileSync('grep', [
       '-r', 'eslint-disable',
       '--include=*.ts', '--include=*.tsx', '--include=*.js', '--include=*.jsx',
+      '--exclude-dir=node_modules',
+      '--exclude-dir=dist',
+      '--exclude-dir=build',
+      '--exclude-dir=coverage',
+      '--exclude-dir=.next',
+      '--exclude-dir=.workflow',
+      '--exclude-dir=.git',
       '-c', '.'
     ], { cwd: PATHS.root, encoding: 'utf-8', timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
     const lines = output.trim().split('\n').filter(Boolean);

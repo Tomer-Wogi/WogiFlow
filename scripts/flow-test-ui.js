@@ -35,7 +35,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const https = require('node:https');
-const { getProjectRoot, PATHS } = require('./flow-paths');
+const { PATHS } = require('./flow-paths');
 const { getConfig } = require('./flow-config-loader');
 const { ensureDir } = require('./flow-io');
 const { loadProfile } = require('./flow-verification-profile');
@@ -177,14 +177,14 @@ function killProcess(proc) {
     if (proc.pid) {
       try {
         process.kill(-proc.pid, 'SIGTERM');
-      } catch (err) {
+      } catch (_err) {
         // Fallback to direct kill if process group kill fails
         proc.kill('SIGTERM');
       }
     } else {
       proc.kill('SIGTERM');
     }
-  } catch (err) {
+  } catch (_err) {
     // Process may already be dead
   }
 }
@@ -382,11 +382,11 @@ function loadTestFlows(taskId) {
         const content = fs.readFileSync(specPath, 'utf-8');
         const tests = parseTestFile(content);
         flows.push(...tests);
-      } catch (err) {
+      } catch (_err) {
         // Skip unreadable spec files
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Test directory read failure
   }
 
@@ -424,8 +424,8 @@ function parseTestFile(content) {
     const surrounding = content.slice(surroundingStart, surroundingEnd);
 
     // Extract from Given/When/Then comments
-    const givenMatch = surrounding.match(/\/\/\s*Given:\s*(.+)/);
-    const whenMatch = surrounding.match(/\/\/\s*When:\s*(.+)/);
+    const _givenMatch = surrounding.match(/\/\/\s*Given:\s*(.+)/);
+    const _whenMatch = surrounding.match(/\/\/\s*When:\s*(.+)/);
     const thenMatch = surrounding.match(/\/\/\s*Then:\s*(.+)/);
 
     if (thenMatch) {
@@ -513,7 +513,7 @@ function saveReport(report) {
 
   try {
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     // Report save failure is non-fatal — caller handles
   }
 

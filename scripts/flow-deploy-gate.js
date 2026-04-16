@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { PATHS, getConfig, safeJsonParse, writeJson } = require('./flow-utils');
+const { PATHS, getConfig, safeJsonParse } = require('./flow-utils');
 const {
   isDeployGateEnabled,
   getDeployGateConfig,
@@ -24,7 +24,7 @@ const {
   getRouteInventory,
   addRoute,
   getLastGoodDeploy,
-  DEPLOY_ROUTES_PATH,
+  DEPLOY_ROUTES_PATH: _DEPLOY_ROUTES_PATH,
   DEPLOY_HISTORY_PATH
 } = require('./hooks/core/deploy-gate');
 

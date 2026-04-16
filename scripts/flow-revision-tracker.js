@@ -17,8 +17,8 @@ const path = require('node:path');
 const {
   getConfig,
   PATHS,
-  readJson,
-  fileExists,
+  readJson: _readJson,
+  fileExists: _fileExists,
   getTodayDate
 } = require('./flow-utils');
 const { recordRevision, loadStats } = require('./flow-stats-collector');

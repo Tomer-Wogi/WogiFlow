@@ -15,7 +15,7 @@
 
 const path = require('node:path');
 const { getConfig, readJson, writeJson, ensureDir, PATHS } = require('../flow-utils');
-const { loadTree, saveTree, estimateTokens, calculateTreeTokens } = require('./summary-tree');
+const { loadTree, estimateTokens, calculateTreeTokens } = require('./summary-tree');
 const { scoreNodeRelevance, extractKeywords } = require('./section-extractor');
 
 // ============================================================

@@ -34,8 +34,8 @@ const {
   getConfig,
   success,
   warn,
-  error,
-  safeJsonParse,
+  error: _error,
+  safeJsonParse: _safeJsonParse,
   isPathWithinProject
 } = require('./flow-utils');
 
@@ -338,7 +338,7 @@ function getSourceFiles() {
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch (err) {
+    } catch (_err) {
       return;
     }
 
@@ -402,7 +402,7 @@ function checkFileExists(entry) {
  * @param {Object} [options] - Options
  * @returns {Object} Check results
  */
-function runConsistencyCheck(options = {}) {
+function runConsistencyCheck(_options = {}) {
   const config = getConfig();
   const consistencyConfig = config.consistency || {};
 
@@ -426,7 +426,7 @@ function runConsistencyCheck(options = {}) {
   const appMapEntries = checks.appMapVsCodebase !== false || checks.orphanDetection !== false ? parseAppMap() : [];
   const functionMapEntries = checks.functionMapVsCodebase !== false || checks.orphanDetection !== false ? parseFunctionMap() : [];
   const apiMapEntries = checks.apiMapVsCodebase !== false || checks.orphanDetection !== false ? parseApiMap() : [];
-  const additionalEntries = checks.orphanDetection !== false ? parseAdditionalRegistryMaps() : [];
+  const _additionalEntries = checks.orphanDetection !== false ? parseAdditionalRegistryMaps() : [];
 
   // 1. App-map vs codebase
   if (checks.appMapVsCodebase !== false) {

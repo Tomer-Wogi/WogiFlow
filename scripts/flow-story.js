@@ -15,7 +15,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   colors,
   getConfig,
   getConfigValue,
@@ -26,7 +26,7 @@ const {
   safeJsonParse,
   isPathWithinProject, PATHS
 } = require('./flow-utils');
-const { success, warn, error, info, print, printHeader } = require('./flow-output');
+const { success, warn, error, info } = require('./flow-output');
 
 // Import context orchestrator for product context
 let contextOrchestrator = null;

@@ -29,7 +29,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { estimateTokens, generateHashId, getConfig, safeJsonParse, PATHS } = require('./flow-utils');
-const { success: printSuccess, warn: printWarn } = require('./flow-output');
+const { } = require('./flow-output');
 
 // Import extracted sub-modules
 const transcriptParsing = require('./flow-long-input-parsing');
@@ -51,37 +51,37 @@ const {
 
 // Destructure parsing functions
 const {
-  parseVTT, parseSRT, parseSubtitle, mergeCues, formatCuesAsText, getSubtitleStats,
-  parseZoom, parseTeams, parseMeeting, mergeMeetingEntries, formatMeetingAsText, getMeetingStats
+  parseVTT: _parseVTT, parseSRT: _parseSRT, parseSubtitle: _parseSubtitle, mergeCues: _mergeCues, formatCuesAsText: _formatCuesAsText, getSubtitleStats: _getSubtitleStats,
+  parseZoom: _parseZoom, parseTeams: _parseTeams, parseMeeting: _parseMeeting, mergeMeetingEntries: _mergeMeetingEntries, formatMeetingAsText: _formatMeetingAsText, getMeetingStats
 } = transcriptParsing;
 
 // Destructure chunking functions
 const {
-  loadDurableSessions, listDurableSessions, getDurableSession, switchDurableSession,
-  archiveDurableSession, deleteDurableSession, generateRecoverySummaryForSession,
-  getTimeSince, needsChunking, planChunks, getChunkingStatus
+  loadDurableSessions: _loadDurableSessions, listDurableSessions: _listDurableSessions, getDurableSession: _getDurableSession, switchDurableSession: _switchDurableSession,
+  archiveDurableSession: _archiveDurableSession, deleteDurableSession: _deleteDurableSession, generateRecoverySummaryForSession: _generateRecoverySummaryForSession,
+  getTimeSince: _getTimeSince, needsChunking: _needsChunking, planChunks: _planChunks, getChunkingStatus
 } = transcriptChunking;
 
 const { listSupportedLanguages } = transcriptLanguage;
 
 // Destructure story functions
 const {
-  generateStoryFromTopic, generateAllStories, saveStory, loadStory, loadAllStories,
-  formatStoryAsMarkdown, getPresentationStatus, getNextStory, getCurrentStory,
-  approveCurrentStory, rejectCurrentStory, skipCurrentStory, formatStorySummary,
-  formatActionsPrompt, getCompletionSummary, resetPresentation,
-  startEditSession, editUserStory, editCriterion, addCriterion, removeCriterion,
-  getEditChanges, commitEditSession, cancelEditSession, getEditHistory, listEditableStories,
-  previewExport, exportApprovedStories, finalizeDigestion
+  generateStoryFromTopic: _generateStoryFromTopic, generateAllStories: _generateAllStories, saveStory: _saveStory, loadStory: _loadStory, loadAllStories: _loadAllStories,
+  formatStoryAsMarkdown: _formatStoryAsMarkdown, getPresentationStatus: _getPresentationStatus, getNextStory: _getNextStory, getCurrentStory: _getCurrentStory,
+  approveCurrentStory: _approveCurrentStory, rejectCurrentStory: _rejectCurrentStory, skipCurrentStory: _skipCurrentStory, formatStorySummary: _formatStorySummary,
+  formatActionsPrompt: _formatActionsPrompt, getCompletionSummary: _getCompletionSummary, resetPresentation: _resetPresentation,
+  startEditSession: _startEditSession, editUserStory: _editUserStory, editCriterion: _editCriterion, addCriterion: _addCriterion, removeCriterion: _removeCriterion,
+  getEditChanges: _getEditChanges, commitEditSession: _commitEditSession, cancelEditSession: _cancelEditSession, getEditHistory: _getEditHistory, listEditableStories: _listEditableStories,
+  previewExport: _previewExport, exportApprovedStories: _exportApprovedStories, finalizeDigestion
 } = transcriptStories;
 
 // Destructure constants
 const {
-  FILLER_PATTERNS, REQUIREMENT_PATTERNS, SEMANTIC_EXPANSIONS,
-  CORRECTION_PATTERNS, ADDITIVE_PATTERNS,
+  FILLER_PATTERNS: _FILLER_PATTERNS, REQUIREMENT_PATTERNS, SEMANTIC_EXPANSIONS: _SEMANTIC_EXPANSIONS,
+  CORRECTION_PATTERNS: _CORRECTION_PATTERNS, ADDITIVE_PATTERNS: _ADDITIVE_PATTERNS,
   ENTITY_PATTERNS, VAGUE_PATTERNS, QUESTION_TEMPLATES,
   DETAIL_PATTERNS, QUESTION_TEMPLATES_BY_LANGUAGE, FOLLOWUP_TRIGGERS,
-  UI_PATTERNS, DATA_PATTERNS, INTERACTION_PATTERNS, COMPLEXITY_LEVELS
+  UI_PATTERNS: _UI_PATTERNS, DATA_PATTERNS: _DATA_PATTERNS, INTERACTION_PATTERNS: _INTERACTION_PATTERNS, COMPLEXITY_LEVELS
 } = longInputConstants;
 
 // Destructure voice functions
@@ -124,14 +124,14 @@ const {
 
 // Destructure passes functions
 const {
-  extractKeyPhrase, createTopicFromOrphans, ensureGeneralTopic,
+  extractKeyPhrase: _extractKeyPhrase, createTopicFromOrphans, ensureGeneralTopic,
   saveOrphans, loadOrphans, runPass2, runPass3, runPass4,
   runFullPipeline, quickProcess, generateQuickSummary
 } = longInputPasses;
 
 // Paths - temp processing files go to .workflow/tmp/, cleaned up after completion
 const TMP_DIR = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
-const STATE_DIR = TMP_DIR; // Alias for backward compatibility during migration
+const _STATE_DIR = TMP_DIR; // Alias for backward compatibility during migration
 const ACTIVE_DIGEST_FILE = path.join(TMP_DIR, 'active-digest.json');
 
 // ============================================

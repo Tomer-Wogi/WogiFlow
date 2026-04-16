@@ -14,10 +14,10 @@
  * Part of S1: Smart Context Compaction
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const {
-  getConfig,
+  getConfig: _getConfig,
   STATE_DIR,
   readJson,
   writeJson,

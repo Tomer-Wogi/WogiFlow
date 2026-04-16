@@ -524,7 +524,7 @@ Examples:
         path: fp,
         content: fs.readFileSync(fp, 'utf-8')
       };
-    } catch (err) {
+    } catch (_err) {
       return null;
     }
   }).filter(Boolean);

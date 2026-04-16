@@ -9,7 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
+const { colors, PATHS } = require('./flow-utils');
 
 const KNOWLEDGE_DIR = path.join(PATHS.root, '.claude', 'docs', 'knowledge-base');
 
@@ -167,7 +167,7 @@ function detectLearnings(files, taskTitle) {
 /**
  * Suggest knowledge base file based on learnings
  */
-function suggestKnowledgeFile(learnings, taskTitle) {
+function suggestKnowledgeFile(learnings, _taskTitle) {
   if (learnings.length === 0) return null;
 
   const primary = learnings[0];

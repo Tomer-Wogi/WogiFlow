@@ -185,7 +185,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
       if (qualityChecks.length > 0) {
         report.concerns.push({ file: testFile, issues: qualityChecks.length });
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable files
     }
   }
@@ -199,7 +199,7 @@ async function analyzeTestQuality(sourceFiles, allFiles) {
       const content = fs.readFileSync(sourcePath, 'utf8');
       const testabilityIssues = checkTestability(content, sourceFile);
       issues.push(...testabilityIssues);
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable files
     }
   }

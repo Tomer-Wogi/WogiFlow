@@ -369,7 +369,7 @@ function assessTaskComplexity(task) {
 /**
  * Generates human-readable reasoning
  */
-function generateReasoning(level, factors, breakdown) {
+function generateReasoning(level, factors, _breakdown) {
   const parts = [];
 
   // File summary

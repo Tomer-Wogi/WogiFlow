@@ -25,7 +25,7 @@ const {
   ensureDir,
   color,
   success,
-  warn,
+  warn: _warn,
   error,
   info
 } = require('./flow-utils');

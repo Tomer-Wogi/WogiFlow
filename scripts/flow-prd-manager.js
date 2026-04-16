@@ -17,11 +17,11 @@
  *   ./scripts/flow prd clear           Clear PRD memory
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const {
   getConfig,
-  colors,
+  colors: _colors,
   color,
   success,
   warn,

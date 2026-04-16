@@ -31,7 +31,7 @@
  * `.workflow/archive/session-history-<date>.json`.
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 
 const { PATHS, safeJsonParse, writeJson } = require('../../flow-utils');

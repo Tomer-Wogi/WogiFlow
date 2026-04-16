@@ -26,11 +26,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
+const { PATHS, ensureDir, safeJsonParse } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 const { loadProfile } = require('./flow-verification-profile');
 const { parseAPIMap, executeAPITest, startAPIServer, stopAPIServer } = require('./flow-test-api');
-const { startDevServer, stopDevServer, assertDataInTree, flattenTreeToText } = require('./flow-test-ui');
+const { startDevServer, stopDevServer, flattenTreeToText } = require('./flow-test-ui');
 
 // ============================================================
 // Constants
@@ -578,7 +578,7 @@ function writeIntegrityReport(taskId, results) {
 
   try {
     fs.writeFileSync(reportPath, JSON.stringify(results, null, 2), 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     // Report save failure is non-fatal
   }
 

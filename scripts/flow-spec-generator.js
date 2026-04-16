@@ -15,9 +15,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
-const { success, warn, error: errorMsg, info } = require('./flow-output');
-const { matchSkills, loadSkillContext } = require('./flow-skill-matcher');
+const { getConfig, PATHS, colors, readJson } = require('./flow-utils');
+const { success, warn, error: errorMsg } = require('./flow-output');
+const { matchSkills } = require('./flow-skill-matcher');
 const { getCommand } = require('./flow-script-resolver');
 
 // ============================================================
@@ -369,7 +369,7 @@ function generateTestStrategy(taskContext) {
  * Generate verification commands
  */
 function generateVerificationCommands(taskContext) {
-  const config = getConfig();
+  const _config = getConfig();
   const commands = [];
 
   // Add lint command (resolved from package.json / config)
@@ -424,7 +424,7 @@ function generateVerificationCommands(taskContext) {
 /**
  * Generate rollback plan
  */
-function generateRollbackPlan(taskContext) {
+function generateRollbackPlan(_taskContext) {
   return {
     strategy: 'git-revert',
     steps: [

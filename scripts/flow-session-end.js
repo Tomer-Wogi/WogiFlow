@@ -531,6 +531,56 @@ function clearSessionPermissions() {
 }
 
 /**
+ * 2026-04-16 honesty-infrastructure: surface claim-vs-state contradictions
+ * in ready.json entries. Uses flow-completion-truth-gate.scanForClaimContradictions
+ * (Class A: done-word + partial status; Class B: "0 outages" + hotfixes evidence).
+ *
+ * Mode: surface-and-prompt. Logs findings to stdout at session-end; does NOT
+ * hard-fail (hard-fail has no recovery path for the user). A subsequent release
+ * can promote to blocking after false-positive calibration.
+ */
+function runCompletionContradictionScan() {
+  try {
+    const { scanForClaimContradictions } = require('./flow-completion-truth-gate');
+    const readyPath = path.join(PATHS.state, 'ready.json');
+    if (!fs.existsSync(readyPath)) return;
+    const ready = safeJsonParse(readyPath, {});
+    const toScan = []
+      .concat(Array.isArray(ready.inProgress) ? ready.inProgress : [])
+      .concat(Array.isArray(ready.recentlyCompleted) ? ready.recentlyCompleted : []);
+
+    const hits = [];
+    for (const task of toScan) {
+      if (!task || typeof task !== 'object') continue;
+      const res = scanForClaimContradictions(task);
+      if (res.scanned && res.contradictions.length > 0) {
+        hits.push({ id: task.id, title: task.title, contradictions: res.contradictions });
+      }
+    }
+
+    if (hits.length === 0) return;
+
+    console.log('');
+    printSection('Completion-claim honesty scan...');
+    for (const h of hits) {
+      warn(`${h.id || '(no id)'}: ${h.title || ''}`);
+      for (const c of h.contradictions) {
+        const classLabel = c.class === 'A' ? 'status-mismatch' : 'negation-vs-evidence';
+        console.log(`    [${classLabel}] ${c.field}: "${c.snippet}"`);
+        console.log(color('dim', `      evidence: ${c.structuralEvidence}`));
+        console.log(color('dim', `      suggest : ${c.suggestion}`));
+      }
+    }
+    console.log('');
+    console.log(color('dim', '  These are non-blocking hints. Reconcile the text or the status before the next release.'));
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[completion-contradiction-scan] ${err.message}`);
+    }
+  }
+}
+
+/**
  * v1.7.0: Archive request log if threshold exceeded
  */
 function archiveRequestLogIfNeeded() {
@@ -1199,6 +1249,12 @@ async function main() {
 
   // v1.9.0: Offer tech debt cleanup
   await offerDebtCleanup();
+
+  // Completion-claim honesty scan (2026-04-16 honesty-infrastructure)
+  // Scan ready.json + recently-completed for notes/result fields that contain
+  // done-words contradicting status, or "0 outages"-class negations contradicting
+  // hotfixes[] evidence. Surface-and-prompt, not hard-fail (calibration first).
+  runCompletionContradictionScan();
 
   console.log('');
 

@@ -18,10 +18,10 @@
  *   flow models providers          List available providers
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 const {
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   parseFlags,
   outputJson,
   color,
@@ -30,8 +30,8 @@ const {
   warn,
   getConfig,
   fileExists,
-  dirExists,
-  safeJsonParse,
+  dirExists: _dirExists,
+  safeJsonParse: _safeJsonParse,
   printHeader,
   printSection,
   showHelp: showHelpGeneric
@@ -39,9 +39,9 @@ const {
 
 // Shared model registry/stats (extracted to break circular dep)
 const {
-  MODELS_DIR,
+  MODELS_DIR: _MODELS_DIR,
   REGISTRY_PATH,
-  STATS_PATH,
+  STATS_PATH: _STATS_PATH,
   loadRegistry,
   loadStats,
   saveStats
@@ -506,7 +506,7 @@ function recordTaskExecution(modelId, taskData) {
 /**
  * Get cost analysis
  */
-function getCostAnalysis(options = {}) {
+function getCostAnalysis(_options = {}) {
   const stats = loadStats();
   const registry = loadRegistry();
 

@@ -28,7 +28,7 @@ function getSkillFilePath(dir) {
   const lower = path.join(dir, 'skill.md');
   return fs.existsSync(lower) ? lower : path.join(dir, 'SKILL.md');
 }
-const { getProjectRoot, getConfig, PATHS, colors } = require('./flow-utils');
+const { getConfig, PATHS, colors } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 
 const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
@@ -80,7 +80,7 @@ function discoverNestedSkills(baseDir = SKILLS_DIR, prefix = '', depth = 0) {
       const nestedSkills = discoverNestedSkills(entryPath, skillPath, depth + 1);
       skills.push(...nestedSkills);
     }
-  } catch (err) {
+  } catch (_err) {
     // Silently ignore permission errors, etc.
   }
 

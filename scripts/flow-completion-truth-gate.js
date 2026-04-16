@@ -40,13 +40,13 @@
  *   const safeText = downgradeClaim('Task is done.', audit);
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 
-const { PATHS } = require('./flow-paths');
-const { fileExists } = require('./flow-io');
+const { } = require('./flow-paths');
+const { } = require('./flow-io');
 const { getConfig } = require('./flow-config-loader');
-const { color, info, warn, error } = require('./flow-output');
+const { } = require('./flow-output');
 
 const gateTelemetry = require('./flow-gate-telemetry');
 
@@ -461,6 +461,160 @@ function recordTelemetry(verdict, runCtx = {}) {
 }
 
 // ============================================================
+// Claim-vs-state contradiction scanner (2026-04-16 honesty-infra review)
+// ============================================================
+
+/**
+ * Done-words must be preceded by a negation to qualify as a "no outage" claim.
+ * We keep the list narrow to avoid false positives on routine phrasing.
+ */
+const NEGATION_PREFIXES = /\b(?:no|zero|0|without(?: any)?|not a single)\s+/i;
+
+/**
+ * State-disagreement words a user would recognize as "the work did NOT go cleanly":
+ * hotfix/hotfixes (committed after-the-fact repair), regression, outage, incident,
+ * P0/P1, rollback, revert. Regex is intentionally anchored so "incidentally" does
+ * not match.
+ */
+const DISAGREEMENT_WORDS = ['outage', 'outages', 'incident', 'incidents', 'regression', 'regressions', 'rollback', 'rollbacks', 'revert', 'reverts', 'hotfix', 'hotfixes'];
+const DISAGREEMENT_RE = new RegExp(`\\b(?:${DISAGREEMENT_WORDS.join('|')})\\b`, 'i');
+
+const PARTIAL_STATUSES = new Set(['completed-partial', 'completed_partial', 'partial', 'in-progress', 'in_progress', 'blocked', 'failed']);
+
+/**
+ * Scan a task-shaped object (from ready.json, completed-archive.json, or a durable
+ * session snapshot) for contradictions between its free-text claim fields and its
+ * structured state fields.
+ *
+ * Free-text fields scanned: `notes`, `result`, `summary`, `description`.
+ * Structured fields inspected: `status`, `childTasks[].hotfixes`, `hotfixes`,
+ * `incidents`, `regressions`.
+ *
+ * Two contradiction classes:
+ *   A) **done-word vs partial-status** — notes say "shipped end-to-end" while
+ *      status is "completed-partial". If the notes claim completion but the
+ *      status is not `completed`, emit a contradiction.
+ *   B) **negated-disagreement vs evidence-of-disagreement** — result says
+ *      "0 outages" while `childTasks[].hotfixes` is non-empty, or notes say
+ *      "no regressions" while a `regressions` array has entries.
+ *
+ * Return shape:
+ *   {
+ *     contradictions: [
+ *       { class: 'A'|'B', field, snippet, structuralEvidence, suggestion }, ...
+ *     ],
+ *     scanned: true,
+ *     reason: '...'  // when scanned=false (e.g., input not a task)
+ *   }
+ *
+ * @param {Object} task - task-shaped object
+ * @returns {Object}
+ */
+function scanForClaimContradictions(task) {
+  if (!task || typeof task !== 'object' || Array.isArray(task)) {
+    return { contradictions: [], scanned: false, reason: 'not-a-task-object' };
+  }
+
+  const contradictions = [];
+  const freeTextFields = ['notes', 'result', 'summary', 'description'];
+
+  const status = String(task.status || '').toLowerCase().trim();
+  const isPartial = PARTIAL_STATUSES.has(status);
+
+  // Evidence that the work hit real disagreement (would invalidate "0 outages" claims).
+  const hotfixes = collectArrayEntries(task, ['hotfixes', 'incidents', 'regressions']);
+  const childHotfixes = Array.isArray(task.childTasks)
+    ? task.childTasks.flatMap((c) => collectArrayEntries(c, ['hotfixes', 'incidents', 'regressions']))
+    : [];
+  const hasDisagreementEvidence = hotfixes.length > 0 || childHotfixes.length > 0;
+
+  for (const field of freeTextFields) {
+    const text = extractText(task[field]);
+    if (!text) continue;
+
+    // Class A: done-word + partial status
+    if (isPartial) {
+      const hit = findDoneWordHit(text);
+      if (hit) {
+        contradictions.push({
+          class: 'A',
+          field,
+          snippet: snippetAround(text, hit.index, hit.word.length),
+          structuralEvidence: `task.status = "${task.status}"`,
+          suggestion: `Reconcile: either update status to "completed" (if actually done) or soften the ${field} wording (e.g., "implemented" / "partially shipped")`,
+        });
+      }
+    }
+
+    // Class B: negated-disagreement + evidence of disagreement
+    if (hasDisagreementEvidence) {
+      const bHit = findNegatedDisagreement(text);
+      if (bHit) {
+        const evidenceSummary = [
+          hotfixes.length > 0 ? `task.hotfixes/incidents/regressions has ${hotfixes.length} entry(ies)` : null,
+          childHotfixes.length > 0 ? `childTasks[].hotfixes has ${childHotfixes.length} entry(ies)` : null,
+        ].filter(Boolean).join(' + ');
+        contradictions.push({
+          class: 'B',
+          field,
+          snippet: snippetAround(text, bHit.index, bHit.length),
+          structuralEvidence: evidenceSummary,
+          suggestion: `Either remove the negation (e.g., "one hotfix resolved in X min" instead of "0 outages") or move the disagreement entries off this task`,
+        });
+      }
+    }
+  }
+
+  return { contradictions, scanned: true };
+}
+
+function extractText(value) {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(extractText).filter(Boolean).join(' ');
+  return '';
+}
+
+function findDoneWordHit(text) {
+  const re = new RegExp(`\\b(?:${DONE_WORDS.join('|')})\\b(?:\\s+end-to-end)?`, 'i');
+  const m = re.exec(text);
+  if (!m) return null;
+  return { word: m[0], index: m.index };
+}
+
+function findNegatedDisagreement(text) {
+  // Walk every occurrence of a disagreement word and check if it's preceded
+  // (within the same sentence, up to ~40 chars) by a negation prefix.
+  const re = new RegExp(`\\b(${DISAGREEMENT_WORDS.join('|')})\\b`, 'gi');
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const windowStart = Math.max(0, m.index - 40);
+    const window = text.slice(windowStart, m.index);
+    if (NEGATION_PREFIXES.test(window)) {
+      return { index: m.index, length: m[0].length };
+    }
+  }
+  return null;
+}
+
+function snippetAround(text, index, length) {
+  const start = Math.max(0, index - 30);
+  const end = Math.min(text.length, index + length + 30);
+  const prefix = start > 0 ? '…' : '';
+  const suffix = end < text.length ? '…' : '';
+  return `${prefix}${text.slice(start, end).replace(/\s+/g, ' ').trim()}${suffix}`;
+}
+
+function collectArrayEntries(obj, keys) {
+  if (!obj || typeof obj !== 'object') return [];
+  const out = [];
+  for (const k of keys) {
+    const v = obj[k];
+    if (Array.isArray(v)) out.push(...v.filter((x) => x !== null && x !== undefined && x !== ''));
+  }
+  return out;
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -472,6 +626,8 @@ module.exports = {
   getStepEvidence,
   isTruthGateDisabled,
   getMinTierForDone,
+  scanForClaimContradictions,
   TIER_NAMES,
   DONE_WORDS,
+  DISAGREEMENT_WORDS,
 };

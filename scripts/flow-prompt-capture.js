@@ -20,7 +20,7 @@
  * - Bug 3: Top-level prompts[] never used → now the primary storage
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
@@ -234,7 +234,7 @@ function getCurrentTaskId() {
     }
 
     return taskId;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

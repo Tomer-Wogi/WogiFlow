@@ -263,12 +263,12 @@ function loadRulesDir() {
               content,
               source: fullPath
             });
-          } catch (err) {
+          } catch (_err) {
             // Skip unreadable files
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable directories
     }
   }
@@ -439,7 +439,7 @@ function checkFunctionDuplication(file, existingFunctions, matchConfig) {
  * @param {Object[]} securityRules - Security rules from rules dir
  * @returns {Object[]} Array of violations
  */
-function checkSecurityPatterns(file, securityRules) {
+function checkSecurityPatterns(file, _securityRules) {
   const violations = [];
   const content = file.content || '';
 
@@ -795,7 +795,7 @@ function discoverAllRegistries() {
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Fall through to disk scan
     }
   }
@@ -818,7 +818,7 @@ function discoverAllRegistries() {
         seen.add(entry);
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Disk scan failed — proceed with manifest-only results
   }
 
@@ -834,7 +834,7 @@ function discoverAllRegistries() {
  * @returns {Array<{newItem: string, file: string, domain: string, matches: Object[]}>}
  */
 function collectReuseCandidates(files, options = {}) {
-  const config = getMatchConfig();
+  const _config = getMatchConfig();
   const candidates = [];
 
   // Map domain → parser
@@ -862,7 +862,7 @@ function collectReuseCandidates(files, options = {}) {
         mapPath: path.join(PATHS.state, r.mapFile),
         source: 'active'
       }));
-    } catch (err) {
+    } catch (_err) {
       registries = discoverAllRegistries();
     }
   }
@@ -998,7 +998,7 @@ function runStandardsCheck(files, options = {}) {
   const checksToRun = getCheckTypesForTask(options);
 
   // Load all standards (lazy load only what's needed)
-  const decisions = parseDecisions();
+  const _decisions = parseDecisions();
   const components = checksToRun.includes('components') ? parseAppMap() : [];
   const functions = checksToRun.includes('functions') ? parseFunctionMap() : [];
   const endpoints = checksToRun.includes('api') ? parseApiMap() : [];

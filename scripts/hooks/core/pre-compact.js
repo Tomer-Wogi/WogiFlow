@@ -21,7 +21,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
-const { PATHS, safeJsonParse, getConfig } = require('../../flow-utils');
+const { PATHS, safeJsonParse } = require('../../flow-utils');
 
 /**
  * Phases where compaction should be BLOCKED because interruption

@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { readJson, safeJsonParse, safeJsonParseString } = require('./flow-io');
 const crypto = require('node:crypto');
-const { getProjectRoot, colors: c, PATHS } = require('./flow-utils');
+const { colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 
 const RUNS_DIR = PATHS.runs;

@@ -20,7 +20,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
-const { PATHS, safeJsonParse } = require('./flow-utils');
+const { PATHS } = require('./flow-utils');
 
 /** Maximum chars per summary line in the manifest */
 const MAX_SUMMARY_LEN = 120;

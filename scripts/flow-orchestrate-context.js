@@ -15,7 +15,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
+const { colors, getConfig, PATHS } = require('./flow-utils');
 const {
   buildExportMap,
   loadCachedExportMap,
@@ -308,7 +308,7 @@ class ProjectContextGenerator {
           };
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Ignore scan errors
     }
 

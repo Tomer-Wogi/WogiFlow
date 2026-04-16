@@ -18,9 +18,9 @@ const { spawnSync } = require('node:child_process');
 const {
   PATHS,
   fileExists,
-  getConfig,
+  getConfig: _getConfig,
   safeJsonParse,
-  readFile,
+  readFile: _readFile,
   writeJson,
   validateTaskId,
   color, error, success } = require('./flow-utils');
@@ -30,7 +30,7 @@ const {
 // ============================================================
 
 /** Glob patterns for discovering test files */
-const TEST_FILE_PATTERNS = [
+const _TEST_FILE_PATTERNS = [
   '**/*.test.js', '**/*.test.ts', '**/*.test.jsx', '**/*.test.tsx',
   '**/*.spec.js', '**/*.spec.ts', '**/*.spec.jsx', '**/*.spec.tsx',
   '**/__tests__/**/*.js', '**/__tests__/**/*.ts',
@@ -107,7 +107,7 @@ function findTestFiles(dir, baseDir, skipSet) {
   let entries;
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch (err) {
+  } catch (_err) {
     return results;
   }
 
@@ -435,7 +435,7 @@ function discoverTests(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(fullPath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -751,7 +751,7 @@ function generateDiscoveryReport(taskId, discoveryResults, gateResults) {
     if (!fs.existsSync(verificationsDir)) {
       fs.mkdirSync(verificationsDir, { recursive: true });
     }
-  } catch (err) {
+  } catch (_err) {
     // Fall back — directory might already exist
   }
 
@@ -824,7 +824,7 @@ function runTestDiscoveryGate(taskId, projectRoot) {
   try {
     const vp = require('./flow-verification-profile');
     profile = vp.loadProfile();
-  } catch (err) {
+  } catch (_err) {
     // flow-verification-profile not available — use defaults
   }
   const passToPass = runPassToPass(projectRoot, profile);
@@ -841,7 +841,7 @@ function runTestDiscoveryGate(taskId, projectRoot) {
   let reportPath = null;
   try {
     reportPath = generateDiscoveryReport(taskId, discovered, gateResults);
-  } catch (err) {
+  } catch (_err) {
     // Report generation failure should not block the gate
   }
 
@@ -923,7 +923,7 @@ function loadTaskCriteria(taskId) {
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Spec file not found — that's fine
     }
   }

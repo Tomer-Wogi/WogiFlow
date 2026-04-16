@@ -21,14 +21,14 @@ const {
   readJson,
   writeJson,
   ensureDir,
-  color,
+  color: _color,
   success,
-  warn,
+  warn: _warn,
   error,
   info,
   findAllWithParent,
-  normalizeTask,
-  generateEpicId,
+  normalizeTask: _normalizeTask,
+  generateEpicId: _generateEpicId,
   getReadyData,
 } = require('./flow-utils');
 
@@ -443,7 +443,7 @@ function deleteEpic(epicId) {
       ensureDir(archiveDir);
       fs.renameSync(mdPath, path.join(archiveDir, `${epicId}.md`));
       archived = true;
-    } catch (err) {
+    } catch (_err) {
       // Fallback: delete if archive fails
       try { fs.unlinkSync(mdPath); } catch (_err) { /* ignore */ }
     }

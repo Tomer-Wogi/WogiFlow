@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson, info, PATHS } = require('./flow-utils');
+const { readJson, info, PATHS } = require('./flow-utils');
 
 const TEMPLATES_DIR = path.join(PATHS.root, 'templates', 'hybrid');
 

@@ -12,7 +12,7 @@
  */
 
 const fs = require('node:fs');
-const path = require('node:path');
+const _path = require('node:path');
 
 // ============================================================
 // Figma Node Parser
@@ -162,7 +162,7 @@ class FigmaExtractor {
   classifyNodeType(node) {
     const type = node.type;
     const childCount = node.children?.length || 0;
-    const name = (node.name || '').toLowerCase();
+    const _name = (node.name || '').toLowerCase();
 
     // Explicit component types from Figma
     if (type === 'COMPONENT' || type === 'INSTANCE') {

@@ -23,12 +23,12 @@ const {
   fileExists,
   safeJsonParse,
   parseFlags,
-  getConfig,
+  getConfig: _getConfig,
   isPathWithinProject,
   escapeRegex,
   getTodayDate
 } = require('./flow-utils');
-const { success, warn, error, info, printHeader } = require('./flow-output');
+const { success, warn, error } = require('./flow-output');
 
 // Phase headers constant (used by add and move)
 const PHASE_HEADERS = {

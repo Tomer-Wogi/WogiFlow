@@ -21,7 +21,7 @@ let flowPlan;
 try {
   flowFeature = require('./flow-feature');
   flowPlan = require('./flow-plan');
-} catch (err) {
+} catch (_err) {
   // Modules optional - graceful degradation
   flowFeature = null;
   flowPlan = null;
@@ -149,7 +149,7 @@ function allFeaturesComplete(epic) {
         if (!isComplete) return false;
       }
       return true;
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
   }

@@ -56,7 +56,7 @@ function getActiveLoopSession() {
     }
 
     return session;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

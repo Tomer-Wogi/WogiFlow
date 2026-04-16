@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, PATHS } = require('./flow-utils');
+const { safeJsonParse, PATHS } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 
 // ============================================================
@@ -101,7 +101,7 @@ function parseSpecCriteria(specPath) {
   let content;
   try {
     content = fs.readFileSync(specPath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 
@@ -211,13 +211,13 @@ function detectTestConventions(projectRoot) {
 
           // Check for describe blocks
           result.hasDescribeBlocks = /describe\s*\(/.test(sampleContent);
-        } catch (err) {
+        } catch (_err) {
           // sample read failure — keep defaults
         }
 
         break; // Found test files, stop searching
       }
-    } catch (err) {
+    } catch (_err) {
       // dir scan failure — try next
     }
   }
@@ -245,7 +245,7 @@ function findTestFiles(dir, depth) {
         results.push(path.join(dir, entry.name));
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Read error — skip
   }
 

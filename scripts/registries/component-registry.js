@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn, PATHS } = require('../flow-utils');
+const { getConfig, color, success, warn, PATHS } = require('../flow-utils');
 const { RegistryPlugin } = require('../flow-registry-manager');
 const { BaseScanner, PROJECT_ROOT } = require('../flow-scanner-base');
 const { info } = require('../flow-output');
@@ -92,7 +92,7 @@ class ComponentScanner extends BaseScanner {
       } else {
         this._scanJSXFile(content, relativePath, category);
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip files that can't be read
     }
   }

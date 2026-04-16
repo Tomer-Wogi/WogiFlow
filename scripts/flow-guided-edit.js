@@ -25,11 +25,11 @@ const path = require('node:path');
 const {
   execSync } = require('node:child_process');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   getConfig,
   PATHS,
-  readFile,
-  writeFile,
+  readFile: _readFile,
+  writeFile: _writeFile,
   writeJson,
   readJson
 } = require('./flow-utils')

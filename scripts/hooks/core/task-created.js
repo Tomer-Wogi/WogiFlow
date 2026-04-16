@@ -31,7 +31,7 @@ function isTaskCreatedEnabled() {
  * @param {Object} input - Parsed hook input from Claude Code
  * @returns {Object} Core result
  */
-async function handleTaskCreated(input) {
+async function handleTaskCreated(_input) {
   if (!isTaskCreatedEnabled()) {
     return { enabled: false, message: null };
   }

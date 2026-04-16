@@ -15,15 +15,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getConfig,
+  getConfig: _getConfig,
   PATHS,
-  STATE_DIR,
-  colors,
-  color,
+  STATE_DIR: _STATE_DIR,
+  colors: _colors,
+  color: _color,
   warn,
   success,
   error,
-  readFile,
+  readFile: _readFile,
   writeFile,
   fileExists,
   printHeader,

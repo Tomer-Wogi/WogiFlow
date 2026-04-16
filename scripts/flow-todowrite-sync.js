@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, PATHS } = require('./flow-utils');
+const { getProjectRoot, safeJsonParse } = require('./flow-utils');
 
 // ============================================================================
 // Constants

@@ -18,8 +18,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, showHelp: showHelpGeneric, readJson } = require('./flow-utils');
-const { success, error: errorMsg } = require('./flow-output');
+const { getConfig, PATHS, colors, showHelp: showHelpGeneric, readJson } = require('./flow-utils');
+const { success } = require('./flow-output');
 
 const METRICS_PATH = PATHS.commandMetrics;
 

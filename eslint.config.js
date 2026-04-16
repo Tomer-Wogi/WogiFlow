@@ -63,6 +63,20 @@ module.exports = [
         varsIgnorePattern: '^_',
         caughtErrorsIgnorePattern: '^_'
       }],
+      // Security: ban raw JSON.parse(fs.readFileSync(...)) pattern — security-patterns.md §2
+      // Use safeJsonParse (file-based) or safeJsonParseString (string-based) from flow-io.js.
+      'no-restricted-syntax': ['warn', {
+        selector: "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > CallExpression[callee.object.name='fs'][callee.property.name='readFileSync']",
+        message: "Use safeJsonParse(path, default) from flow-io.js instead of raw JSON.parse(fs.readFileSync(...)) — security-patterns.md §2"
+      }],
+    }
+  },
+  {
+    // flow-io.js, postinstall.js are exempt — they ARE the safe wrappers / bootstrap.
+    // Tests are exempt — tests assert their own test state with trusted fixtures.
+    files: ['scripts/flow-io.js', 'scripts/postinstall.js', 'tests/**/*.js'],
+    rules: {
+      'no-restricted-syntax': 'off',
     }
   },
   {

@@ -20,7 +20,7 @@ const {
   PATHS,
   WORKFLOW_DIR,
   STATE_DIR,
-  colors,
+  colors: _colors,
   color,
   warn,
   success,
@@ -228,7 +228,7 @@ Archived entries from request-log.md.
 /**
  * Update running summary of archived entries
  */
-function updateSummary(archivedEntries, archiveDate) {
+function updateSummary(archivedEntries, _archiveDate) {
   let summary;
 
   if (fileExists(SUMMARY_PATH)) {

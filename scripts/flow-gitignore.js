@@ -109,7 +109,7 @@ function readGitignore() {
   const gitignorePath = path.join(PROJECT_ROOT, '.gitignore');
   try {
     return fs.readFileSync(gitignorePath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     return '';
   }
 }

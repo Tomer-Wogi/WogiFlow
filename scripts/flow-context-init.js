@@ -19,7 +19,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
+const { colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess } = require('./flow-output');
 const { detectPackageManager } = require('./flow-script-resolver');
 
@@ -188,7 +188,7 @@ function detectStack() {
           stack.dependencies[dep] = deps[dep].replace(/[\^~]/g, '');
         }
       }
-    } catch (err) {
+    } catch (_err) {
       console.error(`${c.yellow}Warning: Could not parse package.json${c.reset}`);
     }
   }

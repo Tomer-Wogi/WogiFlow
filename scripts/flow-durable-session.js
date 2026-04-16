@@ -112,7 +112,7 @@ function cleanupLegacyHybridSession() {
  * @returns {Object} Created session
  */
 function createDurableSession(taskId, taskType, steps = []) {
-  const sessionPath = getSessionPath();
+  const _sessionPath = getSessionPath();
 
   // Check if session already exists for this task
   const existing = loadDurableSession();

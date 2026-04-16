@@ -82,7 +82,7 @@ function isPhaseGateEnabled(config) {
   try {
     if (!config) config = getConfig();
     return config.hooks?.rules?.phaseGate?.enabled === true;
-  } catch (err) {
+  } catch (_err) {
     return false; // Fail-open
   }
 }
@@ -104,7 +104,7 @@ function getCurrentPhase() {
       updatedAt: data.updatedAt || null,
       previousPhase: data.previousPhase || null
     };
-  } catch (err) {
+  } catch (_err) {
     return defaults;
   }
 }
@@ -287,7 +287,7 @@ function checkPhaseGate(toolName, toolInput, config) {
 /**
  * Get guidance text for a blocked tool in a phase
  */
-function getPhaseGuidance(phase, toolName) {
+function getPhaseGuidance(phase, _toolName) {
   const guidance = {
     idle: 'Route your request through a /wogi-* command first.',
     routing: 'Wait for /wogi-start to finish routing.',
@@ -381,7 +381,7 @@ function checkAndResetStalePhase() {
       return true;
     }
     return false;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }

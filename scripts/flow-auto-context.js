@@ -23,13 +23,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync, spawnSync } = require('node:child_process');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   getConfig,
   PATHS,
   colors,
   isAstGrepAvailable,
   astGrepSearch,
-  AST_PATTERNS,
+  AST_PATTERNS: _AST_PATTERNS,
   findReactComponents,
   findCustomHooks,
   findTypeDefinitions,
@@ -902,7 +902,7 @@ async function getLegacyContext(description, options = {}, config = null) {
 
   const autoConf = config.taskContext?.auto || config.context?.auto;
   const maxFiles = options.maxFiles || autoConf?.maxFilesToLoad || 10;
-  const showFiles = options.showFiles ?? autoConf?.showLoadedFiles ?? true;
+  const _showFiles = options.showFiles ?? autoConf?.showLoadedFiles ?? true;
 
   // Extract keywords
   const keywords = extractKeywords(description);

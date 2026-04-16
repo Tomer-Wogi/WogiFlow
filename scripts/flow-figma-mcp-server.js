@@ -23,7 +23,7 @@
  */
 
 const http = require('node:http');
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline');
 
@@ -31,7 +31,7 @@ const { ComponentScanner } = require('./flow-figma-index');
 const { FigmaExtractor } = require('./flow-figma-extract');
 const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
 const { CodeGenerator } = require('./flow-figma-generate');
-const { getProjectRoot, readJson, PATHS } = require('./flow-utils');
+const { readJson, PATHS } = require('./flow-utils');
 
 const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
 
@@ -135,7 +135,7 @@ class FigmaAnalyzerMCP {
     }
   }
 
-  async analyzeScreen(figmaData, threshold) {
+  async analyzeScreen(figmaData, _threshold) {
     // Extract components from Figma data
     const extractor = new FigmaExtractor();
     const extracted = extractor.parse(figmaData);

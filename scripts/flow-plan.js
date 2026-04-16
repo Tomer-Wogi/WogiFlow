@@ -19,7 +19,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  readJson,
+  readJson: _readJson,
   writeJson,
   ensureDir,
   success,

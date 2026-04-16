@@ -14,8 +14,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline/promises');
-const { getProjectRoot, colors, PATHS, getTodayDate } = require('./flow-utils');
-const { success, warn, error: errorMsg, info, print } = require('./flow-output');
+const { colors, PATHS, getTodayDate } = require('./flow-utils');
+const { success, warn, error: errorMsg } = require('./flow-output');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
@@ -76,7 +76,7 @@ async function createSkill(name, options = {}) {
   // Support nested paths like "frontend/react" or "backend/nestjs"
   const pathParts = name.split('/').filter(Boolean);
   const skillPath = path.join(SKILLS_DIR, ...pathParts);
-  const displayName = pathParts[pathParts.length - 1]; // Base name for display
+  const _displayName = pathParts[pathParts.length - 1]; // Base name for display
 
   if (fs.existsSync(skillPath)) {
     errorMsg(`Skill '${name}' already exists at ${skillPath}`);

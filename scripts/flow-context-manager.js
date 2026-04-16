@@ -47,7 +47,7 @@ async function gatherContext(taskId, options = {}) {
   if (taskId) {
     try {
       return await orchestrator.getContextForTaskId(taskId);
-    } catch (err) {
+    } catch (_err) {
       // Fall through to auto-context
     }
   }

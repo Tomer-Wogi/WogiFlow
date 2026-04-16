@@ -10,7 +10,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { getProjectRoot, colors, getConfig, safeJsonParse, readJson, error, PATHS } = require('./flow-utils');
+const { colors, safeJsonParse, readJson, error, PATHS } = require('./flow-utils');
 const { getCommand, getExec } = require('./flow-script-resolver');
 
 // Common coverage output locations
@@ -127,7 +127,7 @@ function findExistingCoverage() {
           const result = readJson(jsonPath, null);
           if (result) return result;
         }
-      } catch (err) {
+      } catch (_err) {
         // Continue to next path
       }
     }
@@ -175,7 +175,7 @@ async function runCoverageTests() {
     // Try to read the output
     return findExistingCoverage();
 
-  } catch (err) {
+  } catch (_err) {
     // Test run failed or timed out
     return null;
   }

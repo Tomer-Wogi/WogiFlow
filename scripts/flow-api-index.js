@@ -15,11 +15,11 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn, error, safeJsonParse, PATHS } = require('./flow-utils');
+const { color, success, warn, error, safeJsonParse, PATHS } = require('./flow-utils');
 const {
   findSimilarItems,
   generateAIDecisionPrompt,
-  generateContextBlock,
+  generateContextBlock: _generateContextBlock,
   getMatchConfig
 } = require('./flow-semantic-match');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');

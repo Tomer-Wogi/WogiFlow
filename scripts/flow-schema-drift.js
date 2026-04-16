@@ -22,6 +22,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { safeJsonParse } = require('./flow-io');
 
 // ============================================================
 // Constants
@@ -68,7 +69,7 @@ function getRegisteredSchemaFiles() {
   // Try schema-index.json first (structured data)
   try {
     if (fs.existsSync(SCHEMA_INDEX_PATH)) {
-      const index = JSON.parse(fs.readFileSync(SCHEMA_INDEX_PATH, 'utf-8'));
+      const index = safeJsonParse(SCHEMA_INDEX_PATH, {});
       if (index.models) {
         for (const model of index.models) {
           if (model.file) {
@@ -554,7 +555,7 @@ function runSchemaDriftGate(changedFiles, opts = {}) {
   let enabled = true;
   try {
     if (fs.existsSync(CONFIG_PATH)) {
-      const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
+      const config = safeJsonParse(CONFIG_PATH, {});
       enabled = config.enforcement?.schemaDrift?.enabled ?? config.schemaDrift?.enabled ?? true;
     }
   } catch (_err) {
@@ -641,7 +642,7 @@ function scanCrossRepoConsumers(driftEntries, workspaceRoot) {
   try {
     const configPath = path.join(workspaceRoot, 'wogi-workspace.json');
     if (!fs.existsSync(configPath)) return results;
-    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    config = safeJsonParse(configPath, {});
   } catch (_err) {
     return results;
   }

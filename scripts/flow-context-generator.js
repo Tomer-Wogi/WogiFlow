@@ -286,7 +286,7 @@ function scanDirectory(dir, extensions, excludePatterns) {
         }
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Ignore permission errors
   }
 
@@ -347,7 +347,7 @@ function extractExportsScript(files) {
       if (exports.namedExports.length > 0 || exports.defaultExport || exports.typeExports.length > 0) {
         result.files.push(exports);
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip files we can't read
     }
   }
@@ -450,7 +450,7 @@ async function runContextTask(taskName, input, options = {}) {
         }
         return parsed;
       }
-    } catch (err) {
+    } catch (_err) {
       // Return raw response if not JSON
     }
 
@@ -468,7 +468,7 @@ async function runContextTask(taskName, input, options = {}) {
  * @param {Object} options - Options
  * @returns {*} - Fallback result
  */
-function runScriptFallback(taskName, input, options = {}) {
+function runScriptFallback(taskName, input, _options = {}) {
   switch (taskName) {
   case 'extractExports':
     return extractExportsScript(input);
@@ -699,7 +699,7 @@ function saveContextCache(context) {
 
   try {
     writeFile(CONTEXT_CACHE_PATH, JSON.stringify(cache, null, 2));
-  } catch (err) {
+  } catch (_err) {
     // Not critical
   }
 }
@@ -727,7 +727,7 @@ function clearContextCache() {
     try {
       fs.unlinkSync(CONTEXT_CACHE_PATH);
       return true;
-    } catch (err) {
+    } catch (_err) {
       return false;
     }
   }

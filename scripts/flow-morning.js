@@ -13,7 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync, execFileSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const {
   PATHS,
   PROJECT_ROOT,

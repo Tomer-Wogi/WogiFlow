@@ -737,7 +737,15 @@ const CONFIG_DEFAULTS = {
     autoMergeForTypes: ['bugfix', 'quick-fix'],
     requirePRForTypes: [],
     squashOnMerge: true,
-    prTemplate: { includeTaskSpec: true, includeCommitList: true, includeFileSummary: true }
+    prTemplate: { includeTaskSpec: true, includeCommitList: true, includeFileSummary: true },
+    // Merge-plan gate: require .workflow/scratch/merge-plan.md for large or cross-repo merges.
+    // See .claude/commands/wogi-finalize.md §Step 2.5. Added 2026-04-16.
+    mergePlan: {
+      enabled: true,
+      threshold: 5,
+      restructureThreshold: 0.20,
+      alwaysForCrossRepo: true
+    }
   },
 
   // --- Models ---

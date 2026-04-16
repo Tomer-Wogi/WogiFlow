@@ -47,6 +47,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { getConfig, PATHS } = require('../../flow-utils');
+const { safeJsonParse } = require('../../flow-io');
 
 const PENDING_MARKER_FILE = 'task-just-completed';
 
@@ -157,10 +158,7 @@ function consumeAndTriggerRestart() {
   // Consume the marker. Do this BEFORE signaling so we never double-fire if
   // for some reason the signal delivery is delayed and a second Stop-hook
   // invocation races through.
-  let markerPayload = null;
-  try {
-    markerPayload = JSON.parse(fs.readFileSync(markerPath, 'utf-8'));
-  } catch (_err) { /* payload read is optional */ }
+  const markerPayload = safeJsonParse(markerPath, null);
   try {
     fs.unlinkSync(markerPath);
   } catch (err) {

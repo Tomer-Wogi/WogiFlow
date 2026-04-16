@@ -26,22 +26,22 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  PROJECT_ROOT,
-  readFile,
+  PROJECT_ROOT: _PROJECT_ROOT,
+  readFile: _readFile,
   writeFile,
   fileExists,
   dirExists,
   info,
   warn,
-  success,
+  success: _success,
   error: logError,
   parseFlags,
   outputJson,
   safeJsonParse
 } = require('./flow-utils');
 
-const { updateModelProfile, getModelProfile } = require('./flow-model-profile');
-const { classifyTask } = require('./flow-task-classifier');
+const { updateModelProfile } = require('./flow-model-profile');
+const { } = require('./flow-task-classifier');
 
 // ============================================================
 // Configuration
@@ -415,7 +415,7 @@ function saveLearning(result) {
   if (!dirExists(LEARNINGS_DIR)) {
     try {
       fs.mkdirSync(LEARNINGS_DIR, { recursive: true });
-    } catch (err) {
+    } catch (_err) {
       return; // Can't save, not critical
     }
   }
@@ -426,7 +426,7 @@ function saveLearning(result) {
 
   try {
     writeFile(filepath, JSON.stringify(result, null, 2));
-  } catch (err) {
+  } catch (_err) {
     // Not critical
   }
 
@@ -467,7 +467,7 @@ function updateLearningStats(result) {
   try {
     fs.writeFileSync(tempPath, JSON.stringify(stats, null, 2), 'utf-8');
     fs.renameSync(tempPath, statsPath);
-  } catch (err) {
+  } catch (_err) {
     // Clean up temp file if rename failed
     try {
       if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
@@ -516,7 +516,7 @@ function getRecentLearnings(modelId, limit = 10) {
       const filePath = path.join(LEARNINGS_DIR, f);
       return safeJsonParse(filePath, null);
     }).filter(Boolean);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }

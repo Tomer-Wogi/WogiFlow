@@ -18,9 +18,9 @@
  */
 
 const fs = require('node:fs');
-const path = require('node:path');
+const _path = require('node:path');
 const memoryDb = require('./flow-memory-db');
-const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
+const { getConfig } = require('./flow-config-loader');
 const { color } = require('./flow-output');
 const { PATHS } = require('./flow-utils');
 
@@ -29,7 +29,7 @@ let _syncDecisionsToRules = null;
 function syncDecisionsToRules() {
   if (!_syncDecisionsToRules) {
     _syncDecisionsToRules = require('./flow-rules-sync').syncDecisionsToRules;
-const { PATHS } = require('./flow-utils');
+const { } = require('./flow-utils');
   }
   return _syncDecisionsToRules();
 }

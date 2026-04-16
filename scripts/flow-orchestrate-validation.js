@@ -32,7 +32,7 @@ const { loadCachedExportMap } = require('./flow-export-scanner');
  * - JSON wrapper responses
  * - Multiple code blocks (selects largest/most relevant)
  */
-function extractCodeFromResponse(response, modelName = '') {
+function extractCodeFromResponse(response, _modelName = '') {
   if (!response || typeof response !== 'string') {
     return response;
   }
@@ -304,7 +304,7 @@ function validateOutputMatchesTask(code, step) {
   const stepType = step.type;
   const expectedName = step.params?.name || step.params?.componentName || '';
   const targetPath = step.params?.path || '';
-  const codeLower = code.toLowerCase();
+  const _codeLower = code.toLowerCase();
   const issues = [];
   let confidence = 100;
 

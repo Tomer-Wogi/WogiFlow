@@ -191,7 +191,7 @@ function loadComponentIndex() {
               }
             }
           }
-        } catch (err) {
+        } catch (_err) {
           // Skip unreadable map files
         }
       }
@@ -199,7 +199,7 @@ function loadComponentIndex() {
 
     if (components.length === 0) return null;
     return { components, source: 'fallback-from-maps' };
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -238,7 +238,7 @@ function parseAppMap() {
     }
 
     return components;
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }

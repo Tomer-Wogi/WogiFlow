@@ -18,11 +18,11 @@
  */
 
 const {
-  color,
+  color: _color,
   success,
   warn,
   error,
-  info,
+  info: _info,
   parseFlags
 } = require('./flow-utils');
 

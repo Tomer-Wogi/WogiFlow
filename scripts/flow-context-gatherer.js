@@ -23,17 +23,17 @@
  *   });
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 
 const {
-  PATHS,
+  PATHS: _PATHS,
   getConfig,
-  fileExists,
-  readFile,
+  fileExists: _fileExists,
+  readFile: _readFile,
   estimateTokens,
   info,
-  warn,
+  warn: _warn,
   success
 } = require('./flow-utils');
 

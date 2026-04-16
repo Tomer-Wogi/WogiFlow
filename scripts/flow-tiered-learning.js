@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   parseFlags,
   outputJson,
   color,
@@ -92,8 +92,8 @@ const DEFAULT_TIERED_LEARNING_CONFIG = {
 // ============================================================
 
 const PATTERNS_PATH = path.join(PATHS.state, 'learning-patterns.json');
-const DECISIONS_PATH = PATHS.decisions;
-const FEEDBACK_PATH = PATHS.feedbackPatterns;
+const _DECISIONS_PATH = PATHS.decisions;
+const _FEEDBACK_PATH = PATHS.feedbackPatterns;
 
 // ============================================================
 // Configuration

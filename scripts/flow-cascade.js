@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   parseFlags,
   outputJson,
   color,

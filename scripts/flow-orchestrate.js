@@ -13,10 +13,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync, execFileSync, spawn } = require('node:child_process');
-const readline = require('node:readline');
-const { validatePathWithinProject } = require('./flow-security');
-const { getExecParts } = require('./flow-script-resolver');
+const { } = require('node:child_process');
+const _readline = require('node:readline');
+const { } = require('./flow-security');
+const { } = require('./flow-script-resolver');
 const { readJson } = require('./flow-io');
 
 // Extracted class modules
@@ -27,12 +27,12 @@ const { RollbackManager } = require('./flow-orchestrate-rollback');
 const { StateManager } = require('./flow-orchestrate-state');
 
 // Import LLM clients (extracted for modularity)
-const { LocalLLM, CloudExecutor, createExecutor } = require('./flow-orchestrate-llm');
+const { createExecutor } = require('./flow-orchestrate-llm');
 
 // Import complexity assessment module
 const {
   assessTaskComplexity,
-  TOKEN_BUDGETS,
+  TOKEN_BUDGETS: _TOKEN_BUDGETS,
   getDefaultTokens,
   clampTokens
 } = require('./flow-complexity');
@@ -40,33 +40,33 @@ const {
 // Import instruction richness module
 const {
   getInstructionRichness,
-  getVerbosityGuidance,
+  getVerbosityGuidance: _getVerbosityGuidance,
   loadProjectContext: loadRichnessContext,
-  loadPatterns,
-  loadRelevantTypes,
+  loadPatterns: _loadPatterns,
+  loadRelevantTypes: _loadRelevantTypes,
   loadRelatedCode
 } = require('./flow-instruction-richness');
 
 // Import export scanner module
 const {
-  buildExportMap,
-  loadCachedExportMap,
-  saveExportMapCache,
-  formatExportMapForTemplate,
-  validateComponentUsage,
-  formatComponentWithUsage,
+  buildExportMap: _buildExportMap,
+  loadCachedExportMap: _loadCachedExportMap,
+  saveExportMapCache: _saveExportMapCache,
+  formatExportMapForTemplate: _formatExportMapForTemplate,
+  validateComponentUsage: _validateComponentUsage,
+  formatComponentWithUsage: _formatComponentWithUsage,
   setProjectRoot: setExportScannerRoot
 } = require('./flow-export-scanner');
 
 // Import utilities for consistent project root, colors, and config
-const { getProjectRoot, colors, getConfig, writeJson, estimateTokens, error, PATHS } = require('./flow-utils');
+const { colors, getConfig, estimateTokens, error, PATHS } = require('./flow-utils');
 const { getPromptAdjustments, recordModelResult } = require('./flow-model-adapter');
 
 // Import provider infrastructure for cloud executors
 const {
-  createExecutorFromConfig,
+  createExecutorFromConfig: _createExecutorFromConfig,
   getExecutorConfig,
-  MODEL_CAPABILITIES,
+  MODEL_CAPABILITIES: _MODEL_CAPABILITIES,
   getModelContextLimit
 } = require('./flow-providers');
 
@@ -92,13 +92,13 @@ const {
 // Import pattern enforcer for active learning enforcement
 const {
   injectPatterns,
-  extractRelevantPatterns,
-  validateAgainstPatterns,
+  extractRelevantPatterns: _extractRelevantPatterns,
+  validateAgainstPatterns: _validateAgainstPatterns,
   generateSessionSummary
 } = require('./flow-pattern-enforcer');
 
 // v2.0: Import durable session for unified step tracking
-const durableSession = require('./flow-durable-session');
+const _durableSession = require('./flow-durable-session');
 
 // v2.1: Import Hybrid Mode Intelligence modules
 const {
@@ -175,7 +175,7 @@ function generateFixSuggestion(errorHistory) {
     return 'Review the task requirements and try again';
   }
 
-  const lastError = errorHistory[errorHistory.length - 1];
+  const _lastError = errorHistory[errorHistory.length - 1];
   const errorCounts = {};
 
   for (const e of errorHistory) {
@@ -290,7 +290,7 @@ function getProjectContext() {
   try {
     const config = getConfig();
     return config.hybrid?.projectContext ?? {};
-  } catch (err) {
+  } catch (_err) {
     return {};
   }
 }
@@ -444,7 +444,7 @@ function detectUIFramework(projectRoot = PATHS.root) {
     if (deps['tailwindcss']) return 'tailwind';
 
     return 'react'; // vanilla
-  } catch (err) {
+  } catch (_err) {
     return 'react';
   }
 }
@@ -1242,7 +1242,7 @@ class Orchestrator {
 
     // Smart retry tracking - detect stuck loops and progress
     const errorHistory = [];
-    const errorSignatures = new Map(); // Track how many times we see each error pattern
+    const _errorSignatures = new Map(); // Track how many times we see each error pattern
     let consecutiveSameError = 0;
     let lastErrorSignature = null;
 

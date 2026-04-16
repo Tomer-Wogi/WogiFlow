@@ -102,7 +102,7 @@ class LSPClient {
         if (result.status === 0) {
           return result.stdout.trim() || loc;
         }
-      } catch (err) {
+      } catch (_err) {
         // Try next location
       }
 
@@ -112,7 +112,7 @@ class LSPClient {
         if (result.status === 0) {
           return loc;
         }
-      } catch (err) {
+      } catch (_err) {
         // Try next location
       }
     }
@@ -579,7 +579,7 @@ class LSPClient {
     try {
       await this._send('shutdown', null);
       this._notify('exit', null);
-    } catch (err) {
+    } catch (_err) {
       // Ignore errors during shutdown
     }
 
@@ -686,7 +686,7 @@ async function getTypesForPositions(filePath, positions) {
           const key = pos.name || `${pos.line}:${pos.character}`;
           types[key] = extractTypeFromHover(content);
         }
-      } catch (err) {
+      } catch (_err) {
         // Skip individual errors
       }
     }

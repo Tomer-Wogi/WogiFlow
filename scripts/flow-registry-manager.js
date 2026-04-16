@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, safeJsonParse, color, success, warn, error, info, PATHS } = require('./flow-utils');
+const { getConfig, safeJsonParse, color, success, warn, error, info, PATHS } = require('./flow-utils');
 
 const MANIFEST_PATH = path.join(PATHS.state, 'registry-manifest.json');
 const REGISTRIES_DIR = path.join(__dirname, 'registries');
@@ -55,7 +55,7 @@ class RegistryPlugin {
    * @param {Object} stack - Output from detectStack()
    * @returns {boolean} True if plugin should activate
    */
-  activateWhen(stack) {
+  activateWhen(_stack) {
     return true;
   }
 
@@ -264,7 +264,7 @@ class RegistryManager {
     try {
       const { detectStack } = require('./flow-context-init');
       this.stack = detectStack(PATHS.root);
-    } catch (err) {
+    } catch (_err) {
       this.stack = null;
     }
 
@@ -439,7 +439,7 @@ function printStatus(manager) {
       console.log(`  Generated: ${manifest.generatedAt || 'unknown'}`);
       console.log(`  Version: ${manifest.version || 'unknown'}`);
       console.log(`  Registries: ${(manifest.registries || []).length}`);
-    } catch (err) {
+    } catch (_err) {
       console.log(`  Manifest: ${color('red', 'error reading')}`);
     }
   } else {

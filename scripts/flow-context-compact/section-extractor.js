@@ -13,7 +13,7 @@
  * 4. Respect token budget constraints
  */
 
-const path = require('node:path');
+const _path = require('node:path');
 const { getConfig } = require('../flow-utils');
 const { loadTree, estimateTokens, calculateTreeTokens } = require('./summary-tree');
 
@@ -88,7 +88,7 @@ function scoreNodeRelevance(node, query, queryKeywords) {
   }
 
   // Type-based bonus for certain queries
-  const queryLower = query.toLowerCase();
+  const _queryLower = query.toLowerCase();
 
   if (node.type === 'task' && /task|progress|status|work/i.test(query)) {
     score += 0.1;
@@ -125,7 +125,7 @@ function selectNodes(tree, options = {}) {
   } = options;
 
   const config = getConfig();
-  const compactionConfig = config.contextManagement?.compaction || config.context?.compaction || {};
+  const _compactionConfig = config.contextManagement?.compaction || config.context?.compaction || {};
 
   const queryKeywords = extractKeywords(query);
   const selected = [];

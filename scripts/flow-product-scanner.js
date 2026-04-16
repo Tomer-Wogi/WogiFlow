@@ -26,7 +26,7 @@ const {
   safeJsonParse,
   parseFlags,
   outputJson,
-  info,
+  info: _info,
   warn
 } = require('./flow-utils');
 
@@ -293,7 +293,7 @@ function detectRoutes(projectRoot) {
           });
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Ignore read errors
     }
   }

@@ -23,7 +23,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS, getTodayDate } = require('./flow-utils');
+const { colors, getConfig, PATHS } = require('./flow-utils');
 
 const PATTERNS_FILE = path.join(PATHS.workflow, 'damage-control.yaml');
 
@@ -853,7 +853,7 @@ Configuration (config.json):
       if (contextStr) {
         try {
           context = JSON.parse(contextStr);
-        } catch (err) {
+        } catch (_err) {
           log('red', 'Error: Context must be valid JSON');
           process.exit(1);
         }

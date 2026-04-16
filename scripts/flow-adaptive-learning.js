@@ -15,7 +15,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors, PATHS, getTodayDate } = require('./flow-utils');
+const { colors, PATHS, getTodayDate } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 const { readJson } = require('./flow-io');
 const { storeSingleLearning, getAdapterPath } = require('./flow-model-adapter');
@@ -24,7 +24,7 @@ const {
   detectCategory,
   shouldEscalate: checkShouldEscalate
 } = require('./flow-failure-categories');
-const { validateRepoFormat, safeGitCommand, sanitizeCommitMessage } = require('./flow-security');
+const { validateRepoFormat, safeGitCommand } = require('./flow-security');
 
 const LEARNING_LOG_PATH = path.join(PATHS.state, 'adaptive-learning.json');
 const STRATEGY_STATS_PATH = path.join(PATHS.state, 'strategy-effectiveness.json');
@@ -66,7 +66,7 @@ const ERROR_CATEGORIES = {
  * @param {object} context - Task context
  * @returns {object} Failure analysis
  */
-function analyzeFailure(error, output, context = {}) {
+function analyzeFailure(error, output, _context = {}) {
   const errorStr = String(error);
   const outputStr = String(output || '');
 
@@ -393,7 +393,7 @@ function generateGuidanceFromFailures(category, details) {
   switch (category) {
     case 'IMPORT_ERROR': {
       const modules = details.map(d => d.moduleName).filter(Boolean);
-      const exports = details.map(d => d.exportName).filter(Boolean);
+      const _exports = details.map(d => d.exportName).filter(Boolean);
       return {
         do: 'Copy import paths exactly from the "Available Imports" section',
         dont: modules.length > 0
@@ -530,7 +530,7 @@ function getBestStrategy(modelName, category) {
 /**
  * Check if a similar learning already exists
  */
-function isDuplicateLearning(modelName, category, details) {
+function isDuplicateLearning(modelName, category, _details) {
   const adapterPath = getAdapterPath(modelName);
   if (!fs.existsSync(adapterPath)) return false;
 
@@ -800,7 +800,7 @@ function checkGitHubCLI() {
   try {
     execFileSync('gh', ['auth', 'status'], { stdio: 'pipe' });
     return { available: true };
-  } catch (err) {
+  } catch (_err) {
     return { available: false, error: 'gh CLI not authenticated. Run: gh auth login' };
   }
 }

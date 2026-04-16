@@ -25,9 +25,9 @@
  */
 
 const {
-  PATHS,
-  fileExists,
-  readFile,
+  PATHS: _PATHS,
+  fileExists: _fileExists,
+  readFile: _readFile,
   info,
   warn
 } = require('./flow-utils');
@@ -45,7 +45,7 @@ const {
   searchSectionsByPins: dbSearchSectionsByPins,
   searchSectionsBySimilarity,
   getSectionById: dbGetSectionById,
-  getSectionsBySource,
+  getSectionsBySource: _getSectionsBySource,
   getSectionStats
 } = require('./flow-memory-db');
 

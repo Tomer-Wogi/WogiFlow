@@ -142,7 +142,7 @@ function printIssue(issue) {
 /**
  * Run multi-agent review (3 perspectives)
  */
-async function runMultiAgentReview(files, config) {
+async function runMultiAgentReview(files, _config) {
   const allIssues = [];
 
   for (const file of files) {
@@ -165,7 +165,7 @@ async function runMultiAgentReview(files, config) {
       ]);
 
       allIssues.push(...fileIssues);
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable files
     }
   }
@@ -176,7 +176,7 @@ async function runMultiAgentReview(files, config) {
 /**
  * Run simple review (single pass)
  */
-async function runSimpleReview(files, config) {
+async function runSimpleReview(files, _config) {
   const allIssues = [];
 
   for (const file of files) {
@@ -187,7 +187,7 @@ async function runSimpleReview(files, config) {
       const content = fs.readFileSync(filePath, 'utf8');
       const fileIssues = runBasicChecks(content, file);
       allIssues.push(...fileIssues);
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable files
     }
   }
@@ -200,7 +200,7 @@ async function runSimpleReview(files, config) {
  */
 function reviewArchitecture(content, fileName) {
   const issues = [];
-  const lines = content.split('\n');
+  const _lines = content.split('\n');
 
   // Check for god objects (too many methods/properties)
   const methodCount = (content.match(/(?:function\s+\w+|(?:const|let|var)\s+\w+\s*=\s*(?:async\s*)?\()/g) || []).length;

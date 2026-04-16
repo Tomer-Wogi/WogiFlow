@@ -25,7 +25,7 @@ const {
   PROJECT_ROOT,
   readFile,
   fileExists,
-  info,
+  info: _info,
   warn,
   parseFlags,
   outputJson
@@ -113,7 +113,7 @@ const TASK_TYPE_PATTERNS = {
  * @param {Object} options - Classification options
  * @returns {Object} - Classification result with type and confidence
  */
-function classifyTask(taskDescription, affectedFiles = [], options = {}) {
+function classifyTask(taskDescription, affectedFiles = [], _options = {}) {
   const descLower = taskDescription.toLowerCase();
   const scores = {};
 

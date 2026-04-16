@@ -161,7 +161,7 @@ function summarizeInput(toolName, toolInput) {
         const inputStr = JSON.stringify(toolInput);
         return `${toolName}: ${inputStr.slice(0, 60)}${inputStr.length > 60 ? '...' : ''}`;
     }
-  } catch (err) {
+  } catch (_err) {
     return `${toolName}: (summarization failed)`;
   }
 }
@@ -232,7 +232,7 @@ function summarizeOutput(toolName, toolResponse, success) {
       default:
         return `Completed: ${responseStr.slice(0, 60)}${responseStr.length > 60 ? '...' : ''}`;
     }
-  } catch (err) {
+  } catch (_err) {
     return 'Completed (summarization failed)';
   }
 }
@@ -298,7 +298,7 @@ async function captureObservation(options) {
       const blocks = getMemoryBlocks();
       const currentTask = blocks.getCurrentTask();
       contextTaskId = currentTask?.id || null;
-    } catch (err) {
+    } catch (_err) {
       // Ignore - task context is optional
     }
 
@@ -316,7 +316,7 @@ async function captureObservation(options) {
       if (fullInput.length > maxInputSize) {
         fullInput = fullInput.slice(0, maxInputSize) + '...[truncated]';
       }
-    } catch (err) {
+    } catch (_err) {
       fullInput = '[serialization failed]';
     }
 
@@ -328,7 +328,7 @@ async function captureObservation(options) {
       if (fullOutput.length > maxOutputSize) {
         fullOutput = fullOutput.slice(0, maxOutputSize) + '...[truncated]';
       }
-    } catch (err) {
+    } catch (_err) {
       fullOutput = '[serialization failed]';
     }
 
@@ -356,7 +356,7 @@ async function captureObservation(options) {
           inputSummary || `${toolName} call`,
           outputSummary || 'unknown error'
         ).catch(() => { /* non-blocking */ });
-      } catch (err) {
+      } catch (_err) {
         // Non-critical - memory pipeline may not be available
       }
     }

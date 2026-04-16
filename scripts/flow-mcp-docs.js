@@ -17,7 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   safeJsonParse,
   fileExists,
   PATHS

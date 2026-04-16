@@ -97,7 +97,7 @@ function getExistingStartTime() {
   try {
     const existing = safeJsonParse(PROGRESS_PATH, null);
     return existing?.startedAt || null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -186,7 +186,7 @@ function formatProgressBar(opts) {
  */
 function formatProgress(opts) {
   const lines = [];
-  const pct = calculatePercentage(opts);
+  const _pct = calculatePercentage(opts);
 
   // Phase-level bar
   lines.push(formatProgressBar({

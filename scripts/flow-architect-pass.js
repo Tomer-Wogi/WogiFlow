@@ -42,7 +42,7 @@ const path = require('node:path');
 const { PATHS } = require('./flow-paths');
 const { fileExists, ensureDir, readFile } = require('./flow-io');
 const { getConfig } = require('./flow-config-loader');
-const { color, info, warn, error } = require('./flow-output');
+const { color, warn, error } = require('./flow-output');
 
 const gateTelemetry = require('./flow-gate-telemetry');
 

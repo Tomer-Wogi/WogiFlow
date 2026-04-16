@@ -29,7 +29,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { PATHS, getTodayDate } = require('./flow-utils');
+const { PATHS } = require('./flow-utils');
 
 class BaseWorkflowStep {
   /**
@@ -77,7 +77,7 @@ class BaseWorkflowStep {
    * @param {object} options - Remaining options (stepConfig, mode, taskType, etc.)
    * @returns {Promise<{passed: boolean, message: string, details?: any}>}
    */
-  async execute(files, options) {
+  async execute(_files, options) {
     throw new Error(`${this.name}: execute() must be overridden`);
   }
 

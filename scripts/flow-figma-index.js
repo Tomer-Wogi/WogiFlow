@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson, PATHS } = require('./flow-utils');
+const { readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError, info: printInfo } = require('./flow-output');
 
 const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');
@@ -427,7 +427,7 @@ class ComponentScanner {
 
       return component;
 
-    } catch (err) {
+    } catch (_err) {
       console.log(`   ⚠️ Babel parse error: ${component.name}`);
       return this.parseReactWithRegex(content, component);
     }

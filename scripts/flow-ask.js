@@ -69,7 +69,7 @@ function clearPendingQuestion() {
   try {
     fs.unlinkSync(p);
     return { cleared: true, wasPresent: true };
-  } catch (err) {
+  } catch (_err) {
     return { cleared: false, wasPresent: true };
   }
 }

@@ -32,13 +32,13 @@ const {
   colors: c,
   safeJsonParse,
   writeJson,
-  fileExists,
+  fileExists: _fileExists,
   getProjectRoot,
   ensureDir,
-  generateTaskId, PATHS,
+  generateTaskId, PATHS: _PATHS,
   getTodayDate
 } = require('./flow-utils');
-const { success: printSuccess, warn: printWarn } = require('./flow-output');
+const { warn: printWarn } = require('./flow-output');
 
 // ============================================================================
 // Constants

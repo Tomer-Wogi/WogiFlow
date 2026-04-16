@@ -11,8 +11,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { colors, getConfig, PROJECT_ROOT, PATHS } = require('./flow-utils');
-const { success, warn, error, info, printHeader } = require('./flow-output');
+const { colors, getConfig, PROJECT_ROOT } = require('./flow-utils');
+const { success, warn, error } = require('./flow-output');
 
 const { PACKAGE_PATHS } = require('./flow-paths');
 const BRIDGES_DIR = PACKAGE_PATHS.bridges;
@@ -129,7 +129,7 @@ async function syncBridge(options = {}) {
     let bridges;
     try {
       bridges = require(path.join(BRIDGES_DIR, 'index.js'));
-    } catch (err) {
+    } catch (_err) {
       error('Bridges module not found.');
       console.error('Make sure .workflow/bridges/index.js exists.');
       process.exit(1);

@@ -28,8 +28,8 @@ const {
   AUTH_OPTIONS,
   TESTING_OPTIONS,
   ADDITIONAL_TOOLS,
-  MOBILE_TOOLS,
-  ECOSYSTEMS,
+  MOBILE_TOOLS: _MOBILE_TOOLS,
+  ECOSYSTEMS: _ECOSYSTEMS,
   BEST_DEFAULTS,
   getOptionsForFramework,
   getEcosystemDefaults,
@@ -40,7 +40,7 @@ const {
 // COLORS & FORMATTING
 // ============================================
 
-const { colors: COLORS, color: c } = require('./flow-output');
+const { color: c } = require('./flow-output');
 
 // ============================================
 // WIZARD CLASS
@@ -651,7 +651,7 @@ class EnhancedStackWizard {
     try {
       const { detectProjectType } = require('./flow-project-analyzer');
       detected = detectProjectType();
-    } catch (err) {
+    } catch (_err) {
       // detectProjectType not available — skip auto-detection
     }
 
@@ -846,13 +846,13 @@ class EnhancedStackWizard {
       if (generateCount > 0) {
         console.log(c('yellow', `    ${generateCount} will be generated (may use Context7)`));
       }
-    } catch (err) {
+    } catch (_err) {
       console.log(`\n  Creating skills for ${technologies.length} technologies...`);
     }
 
     try {
       const generator = require('./flow-skill-generator');
-const { PATHS } = require('./flow-utils');
+const { } = require('./flow-utils');
       await generator.generateSkills(technologies, this.selections);
 
       console.log(c('green', '\n✅ Skills generated successfully!\n'));

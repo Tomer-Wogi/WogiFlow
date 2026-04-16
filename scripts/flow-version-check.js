@@ -36,7 +36,7 @@ function getClaudeCodeVersion() {
     }).trim();
     const match = output.match(/(\d+\.\d+\.\d+)/);
     return match ? match[1] : null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -160,7 +160,7 @@ function fetchLatestNpmVersion() {
     ).trim();
     const match = output.match(/^(\d+\.\d+\.\d+)$/);
     return match ? match[1] : null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

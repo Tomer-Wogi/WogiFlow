@@ -11,15 +11,15 @@
  */
 
 const { execSync } = require('node:child_process');
-const path = require('node:path');
+const _path = require('node:path');
 const {
-  PATHS,
+  PATHS: _PATHS,
   parseFlags,
   outputJson,
   getConfig,
-  getConfigValue,
+  getConfigValue: _getConfigValue,
   color,
-  success,
+  success: _success,
   warn,
   error,
   info,
@@ -87,7 +87,7 @@ function getStagedChanges() {
     // If no staged changes, try unstaged
     const unstaged = execSync('git diff', { encoding: 'utf-8' });
     return unstaged;
-  } catch (err) {
+  } catch (_err) {
     return '';
   }
 }
@@ -120,7 +120,7 @@ function getTaskChanges(taskId) {
       }
       return execSync(`git show ${commitHash} --no-notes`, { encoding: 'utf-8' });
     }
-  } catch (err) {
+  } catch (_err) {
     // Fall back to staged changes
   }
   return getStagedChanges();
@@ -175,7 +175,7 @@ function getFilesContent(glob) {
       }
     }
     return content;
-  } catch (err) {
+  } catch (_err) {
     return '';
   }
 }
@@ -200,7 +200,7 @@ function parseModelResponse(response, modelName) {
         overallAssessment: parsed.overallAssessment || ''
       };
     }
-  } catch (err) {
+  } catch (_err) {
     // Parse as free-form text
   }
 

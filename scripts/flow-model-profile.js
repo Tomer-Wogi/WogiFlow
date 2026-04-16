@@ -28,7 +28,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   readFile,
   writeFile,
   fileExists,
@@ -39,18 +39,18 @@ const {
   error,
   parseFlags,
   outputJson,
-  safeJsonParse,
+  safeJsonParse: _safeJsonParse,
   getTodayDate
 } = require('./flow-utils');
 
-const { getSectionsByPins, readIndex } = require('./flow-section-index');
+const { getSectionsByPins } = require('./flow-section-index');
 
 // ============================================================
 // Configuration
 // ============================================================
 
 const PROFILES_DIR = path.join(PATHS.state, 'model-profiles');
-const TEMPLATE_PATH = path.join(PROFILES_DIR, '_template.md');
+const _TEMPLATE_PATH = path.join(PROFILES_DIR, '_template.md');
 
 // Default profile settings
 const DEFAULT_SETTINGS = {
@@ -297,7 +297,7 @@ function getModelProfile(modelId, taskType = null) {
         if (Array.isArray(sections)) {
           profile._pinSections = sections.filter(s => s && typeof s === 'object');
         }
-      } catch (err) {
+      } catch (_err) {
         // PIN lookup optional, continue without it
       }
     }
@@ -539,7 +539,7 @@ function getInstructionRichness(modelId, taskType, tokenBudget = 8192) {
  * @param {string} taskDescription - Task description for additional matching
  * @returns {Object} - Context recommendation
  */
-function getContextRecommendation(modelId, taskType, taskDescription = '') {
+function getContextRecommendation(modelId, taskType, _taskDescription = '') {
   const richness = getInstructionRichness(modelId, taskType);
 
   const recommendation = {
@@ -591,7 +591,7 @@ function getContextRecommendation(modelId, taskType, taskDescription = '') {
   // Try to load sections by PIN
   try {
     recommendation.sections = getSectionsByPins(recommendation.pins);
-  } catch (err) {
+  } catch (_err) {
     // PIN lookup optional
   }
 

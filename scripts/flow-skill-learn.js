@@ -20,7 +20,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors, PATHS, getTodayDate } = require('./flow-utils');
+const { getConfig, colors, PATHS, getTodayDate } = require('./flow-utils');
 const { getAllSkills, getSkillDir } = require('./flow-skill-matcher');
 
 const SKILLS_DIR = path.join(PATHS.root, '.claude', 'skills');
@@ -76,7 +76,7 @@ function getChangedFiles(staged = false) {
       : 'git diff HEAD --name-only';
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     return output.trim().split('\n').filter(Boolean);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -86,7 +86,7 @@ function getRecentCommitFiles(count = 1) {
     const cmd = `git diff HEAD~${count} --name-only`;
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     return output.trim().split('\n').filter(Boolean);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -153,7 +153,7 @@ function extractSemanticChanges(files, staged = false) {
       if (fileChanges.length > 0) {
         changes.push({ file, changes: fileChanges });
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip files that can't be diffed
     }
   }
@@ -353,13 +353,13 @@ function detectPatternChanges(added, removed) {
   return changes;
 }
 
-function detectNamingChanges(added, removed, filename) {
+function detectNamingChanges(added, removed, _filename) {
   const changes = [];
 
   // Check for consistent naming pattern adoption
   const camelCaseRegex = /\b[a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/g;
   const snakeCaseRegex = /\b[a-z][a-z0-9]*_[a-z][a-z0-9_]*\b/g;
-  const kebabCaseRegex = /['"][a-z][a-z0-9]*-[a-z][a-z0-9-]*['"]/g;
+  const _kebabCaseRegex = /['"][a-z][a-z0-9]*-[a-z][a-z0-9-]*['"]/g;
 
   const addedCamel = added.join(' ').match(camelCaseRegex)?.length || 0;
   const removedCamel = removed.join(' ').match(camelCaseRegex)?.length || 0;
@@ -444,7 +444,7 @@ function extractLearningContext(files, trigger, staged = false) {
     try {
       const msg = execSync('git log -1 --format=%B', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
       context.summary = msg.trim().split('\n')[0];
-    } catch (err) {
+    } catch (_err) {
       context.summary = `Changed ${files.length} files`;
     }
   } else {

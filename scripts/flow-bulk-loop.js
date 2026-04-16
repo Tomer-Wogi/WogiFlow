@@ -14,19 +14,19 @@
  * - Graceful shutdown on Ctrl+C
  */
 
-const path = require('node:path');
+const _path = require('node:path');
 const {
   PATHS,
   PROJECT_ROOT,
-  getConfig,
+  getConfig: _getConfig,
   safeJsonParse,
   writeJson,
-  fileExists,
+  fileExists: _fileExists,
   readFile
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 
-const { loadDurableSession, saveDurableSession } = require('./flow-durable-session');
+const { } = require('./flow-durable-session');
 
 // ============================================================================
 // Constants
@@ -140,7 +140,7 @@ function getInProgressTask() {
     const readyData = safeJsonParse(PATHS.ready, {});
     const inProgress = getArraySafe(readyData, 'inProgress');
     return inProgress.length > 0 ? inProgress[0] : null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -163,7 +163,7 @@ function getNextReadyTask() {
     });
 
     return sorted[0];
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -184,7 +184,7 @@ function getNextCapture() {
     );
 
     return captures.length > 0 ? captures[0] : null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

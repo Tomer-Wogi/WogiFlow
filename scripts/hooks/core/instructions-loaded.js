@@ -14,7 +14,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { safeJsonParse, PATHS } = require('../../flow-utils');
+const { safeJsonParse } = require('../../flow-utils');
 
 /**
  * Check if new packages have been added since last scan.

@@ -27,7 +27,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, writeJson, ensureDir, readJson, safeJsonParse } = require('./flow-utils');
+const { getConfig, PATHS, colors, writeJson, ensureDir, readJson, safeJsonParse } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 
 const APPROACHES_DIR = path.join(PATHS.state, 'approaches');

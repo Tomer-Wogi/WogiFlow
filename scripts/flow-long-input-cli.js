@@ -34,9 +34,9 @@ async function main() {
   const longInput = require('./flow-long-input');
   const {
     // Core session
-    getStatus, createSession, countWords, loadActiveDigest, saveActiveDigest,
-    updatePhase, saveTopics, loadTopics, loadStatementMap, loadOrphans,
-    loadClarifications, saveClarifications,
+    getStatus, createSession, countWords, loadActiveDigest: _loadActiveDigest, saveActiveDigest: _saveActiveDigest,
+    updatePhase: _updatePhase, saveTopics, loadTopics, loadStatementMap, loadOrphans,
+    loadClarifications, saveClarifications: _saveClarifications,
     // Detection
     detectLargeInput, analyzeInput, classifyContentTypes, shouldExcludeContent,
     // Parsing - subtitles

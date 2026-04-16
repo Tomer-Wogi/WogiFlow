@@ -14,7 +14,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const readline = require('node:readline/promises');
-const { getProjectRoot, colors: c, readJson, PATHS } = require('./flow-utils');
+const { colors: c, readJson, PATHS } = require('./flow-utils');
 
 const DECISIONS_PATH = path.join(PATHS.workflow, 'state', 'figma-decisions.json');
 

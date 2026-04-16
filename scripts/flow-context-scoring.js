@@ -28,9 +28,9 @@ const PROJECT_ROOT = path.resolve(__dirname, '..');
 const {
   getConfig,
   parseFlags,
-  info,
-  success,
-  warn,
+  info: _info,
+  success: _success,
+  warn: _warn,
   error,
   color,
   outputJson,
@@ -589,7 +589,7 @@ function analyzeFile(filePath) {
   const tokens = estimateTokens(content, { useLineEstimate: true });
 
   // Determine file type
-  const ext = path.extname(filePath);
+  const _ext = path.extname(filePath);
   let fileType = 'full_files';
 
   if (/\.(d\.ts|types\.ts)$/.test(filePath)) {

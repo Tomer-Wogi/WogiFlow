@@ -16,7 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS } = require('./flow-utils');
+const { getConfig, PATHS } = require('./flow-utils');
 
 const DEFAULT_OUTPUT = path.join(PATHS.state, 'contract-surface.json');
 

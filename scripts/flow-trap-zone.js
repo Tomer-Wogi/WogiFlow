@@ -42,7 +42,7 @@ const path = require('node:path');
 
 const { PATHS } = require('./flow-paths');
 const { fileExists, dirExists } = require('./flow-io');
-const { info, success, warn, color } = require('./flow-output');
+const { color } = require('./flow-output');
 
 // ============================================================
 // Constants

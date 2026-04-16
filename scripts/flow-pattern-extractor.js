@@ -36,9 +36,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync, execFileSync } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const { resolvePatterns } = require('./flow-framework-resolver');
-const { getProjectRoot, generateHashId, readJson, safeJsonParse, PATHS } = require('./flow-utils');
+const { getProjectRoot, generateHashId, readJson, safeJsonParse } = require('./flow-utils');
 
 // ============================================================================
 // Constants
@@ -2154,7 +2154,7 @@ async function extractPatterns(projectRoot, options = {}) {
       // Merge framework patterns with base patterns (additive only)
       filePatterns = [...new Set([...filePatterns, ...frameworkResolved.patterns])];
     }
-  } catch (err) {
+  } catch (_err) {
     // Fallback: if detectStack or resolver fails, continue with base patterns only
     // This ensures backwards compatibility
   }

@@ -39,7 +39,7 @@ try {
 let standardsLearner;
 try {
   standardsLearner = require('./flow-standards-learner');
-} catch (err) {
+} catch (_err) {
   standardsLearner = null;
 }
 
@@ -202,7 +202,7 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
   const changedPaths = taskContext?.filesToChange || options.changedPaths || [];
 
   // Determine which checks to run based on config
-  const alwaysCheck = standardsConfig.alwaysCheck || ['naming', 'security'];
+  const _alwaysCheck = standardsConfig.alwaysCheck || ['naming', 'security'];
   const scopeByTaskType = standardsConfig.scopeByTaskType !== false;
 
   // Build check options
@@ -240,7 +240,7 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
         changedPaths,
         allRegistries
       });
-    } catch (err) {
+    } catch (_err) {
       // Non-blocking — reuse candidate collection is best-effort
     }
   }
@@ -337,7 +337,7 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
  * @param {string} taskType - Task type for context
  * @returns {string} Formatted feedback prompt
  */
-function formatViolationsForRetry(violations, taskType) {
+function formatViolationsForRetry(violations, _taskType) {
   const lines = [];
 
   lines.push('');

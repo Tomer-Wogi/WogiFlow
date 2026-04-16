@@ -1,3 +1,5 @@
+<!-- PINS: architecture-decisions, coding-standards, ui-ux-decisions, file-folder-structure, operational-procedures, review-cleanup-procedures, rejected-alternatives, architectural-decision-records, workspace-autonomous-action-contract, workspace-worker-ask-user-question-block, workspace-worker-text-question-classifier, meta-pattern-research-before-propose, completion-claim-honesty-scan, merge-plan-artifact-gate -->
+
 # Project Decisions
 
 Project-specific rules for the **wogi-flow** repository. These are conventions and decisions unique to THIS project, not WogiFlow product behavior.
@@ -8,6 +10,7 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ---
 
 ## Architecture Decisions
+<!-- PIN: architecture-decisions -->
 
 ### Dual-Repo Architecture (2026-02-28)
 **Source**: User directive — formalize dual-repo management for wogi-flow + wogiflow-cloud
@@ -25,6 +28,7 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ---
 
 ## Coding Standards
+<!-- PIN: coding-standards -->
 
 ### Code Quality Patterns (2026-01-12)
 **Source**: Session review findings
@@ -54,6 +58,7 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ---
 
 ## Operational Procedures
+<!-- PIN: operational-procedures -->
 
 ### GitHub Release Workflow (2026-01-30)
 **Source**: Repeated failures (10+ times) in npm publish automation
@@ -69,6 +74,7 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ---
 
 ## Review & Cleanup Procedures
+<!-- PIN: review-cleanup-procedures -->
 
 ### Review-Findings Anti-Deferral (2026-04-15)
 
@@ -87,6 +93,7 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 ---
 
 ## Rejected Alternatives
+<!-- PIN: rejected-alternatives -->
 
 <!--
 Catalog of approaches considered and rejected. Capture-gate (wf-a3cc5f2a) directs
@@ -110,6 +117,7 @@ Format per entry:
 ---
 
 ## Architectural Decision Records
+<!-- PIN: architectural-decision-records -->
 
 ADRs live in `.workflow/state/adr/` as `ADR-{NNN}-{slug}.md` files. Each captures the
 context, decision, consequences, and alternatives considered for a significant design choice.
@@ -119,6 +127,7 @@ identifies ADR-shaped conclusions in completed tasks and directs them here.
 ---
 
 ## Workspace Autonomous-Mode Action-After-Completion Contract (v2.20.0+)
+<!-- PIN: workspace-autonomous-action-contract -->
 
 **Rule**: A workspace worker's end-of-turn must be a deterministic action. Exactly one of these states must hold:
 
@@ -150,6 +159,7 @@ identifies ADR-shaped conclusions in completed tasks and directs them here.
 ---
 
 ## Workspace Worker Cannot Prompt User Directly (v2.20.1+)
+<!-- PIN: workspace-worker-ask-user-question-block -->
 
 **Rule**: In workspace worker mode, the `AskUserQuestion` tool is mechanically blocked. Questions to the user MUST be channel-dispatched to the manager via `## QUESTION:`.
 
@@ -172,6 +182,7 @@ Auto-transforming `AskUserQuestion` into a channel-dispatch is tempting but wron
 ---
 
 ## Workspace Worker Text-Question Classifier (v2.21.0+)
+<!-- PIN: workspace-worker-text-question-classifier -->
 
 **Rule**: In workspace worker mode, if the AI ends a turn with a text-based question to the user (no tool call — just hedging like "let me know", "should I", "which option"), the Stop hook runs a Haiku classifier on the final assistant message via `scripts/flow-worker-question-classifier.js`. If the classifier detects an open question to the user with confidence ≥ 70 → stop is blocked with channel-dispatch instructions.
 
@@ -193,6 +204,7 @@ Cost per worker turn end: ~300 input + ~20 output tokens ≈ $0.0001 (or equival
 ---
 
 ## Meta-pattern: Research Before Propose (2026-04-16)
+<!-- PIN: meta-pattern-research-before-propose -->
 
 **Pattern**: During the v2.20.x session, I repeatedly proposed fixes without first auditing existing infrastructure. Examples:
 - Proposed blocking `ExitPlanMode` — the tool doesn't exist in the codebase
@@ -203,3 +215,44 @@ Cost per worker turn end: ~300 input + ~20 output tokens ≈ $0.0001 (or equival
 **Rule**: Before proposing any fix in a WogiFlow implementation session, audit existing infrastructure for the problem area (grep hooks, classifiers, gates, existing rules). Propose only what fills a confirmed gap. Evidence-before-invention.
 
 **Why**: baseline LLM training biases toward generating plausible-sounding solutions. In a codebase with 100+ script files and rich existing infrastructure, "plausible" is frequently wrong. The correction cycle cost (user rejecting → re-planning → rejecting again) is higher than the upfront audit cost. The user correction that promoted this rule: *"You came up with a few suggestions without really researching what we have."*
+
+---
+
+## Completion-Claim Honesty Scan (2026-04-16)
+<!-- PIN: completion-claim-honesty-scan -->
+
+**Rule**: At session-end and on `flow health`, scan ready.json entries for two contradiction classes and surface (not block) them for user reconciliation.
+
+**Class A — status-mismatch**: a free-text field (`notes`, `result`, `summary`, `description`) contains done-words (`done|completed|shipped|deployed|finished|complete`) while `status` is partial (`completed-partial`, `blocked`, `in-progress`, `failed`).
+
+**Class B — negation-vs-evidence**: a free-text field contains a negated disagreement claim (`no outages`, `0 regressions`, `zero incidents`) while `hotfixes[]`, `incidents[]`, `regressions[]`, or `childTasks[].hotfixes` is non-empty.
+
+**Why**: the 2026-04-16 honesty-infrastructure review found that mechanical gates (test counts, deploy numbers, lint, tsc) survived the Opus 4.6→4.7 transition, but narrative-quality fields got rubber-stamped. Free-text fields were invisible to existing gates because gates read structured fields (`status`, `evidenceTier`, `verificationProof`) and the narrative lived elsewhere. This scan closes the loop: it compares the narrative text against the structured fields right next to it.
+
+**Enforcement**:
+- `scripts/flow-completion-truth-gate.js` → `scanForClaimContradictions(task)` → contradiction list
+- `scripts/flow-session-end.js` → invokes at session-end (surface-and-prompt, non-blocking)
+- `scripts/flow-health.js` → `checkCompletionClaimHonesty()` exposed via `/wogi-health`
+- Tests: `tests/flow-completion-truth-gate-contradictions.test.js` (12 cases)
+
+**Mode**: non-blocking (surface-and-prompt). A hard-fail at session-end has no recovery path — the user cannot end their own session. A future release can promote to blocking after false-positive calibration; start by measuring the rate.
+
+---
+
+## Merge-Plan Artifact Gate (2026-04-16)
+<!-- PIN: merge-plan-artifact-gate -->
+
+**Rule**: `/wogi-finalize` requires `.workflow/scratch/merge-plan.md` for any merge with more than `config.finalization.mergePlan.threshold` commits (default 5) OR any cross-repo merge. The plan must map every commit in `git log <base>..<branch>` to one of five actions: `port | adapt | skip-style | superseded | skip-with-reason`.
+
+**Mechanical invariant**: the count of SHA-prefixed lines in the plan MUST equal `git log <base>..<branch> | wc -l`. Mismatch blocks the merge until reconciled.
+
+**Why**: in wogi-hub on 2026-04-16, a pre-merge audit predicted "1-2h mostly mechanical conflicts" that turned into 27 conflicts with a folder-per-component restructure. The audit counted commits-per-file without reading commit content. Forcing a per-commit action assignment prevents the bucket-miss pattern.
+
+**Structural-change sensor**: `scripts/flow-structure-sensor.js` scans the diff for folder-per-component, split-into-submodule, barrel-introduction, and rename-new-home patterns. When ≥ `config.finalization.mergePlan.restructureThreshold` (default 20%) of changed files match a restructure pattern, a structural warning prefixes the plan and biases affected commits toward `adapt`.
+
+**Enforcement**:
+- `scripts/flow-structure-sensor.js` → `detectStructureChanges({range})` / CLI
+- `.claude/commands/wogi-finalize.md` → Step 2.5 (merge-plan gate)
+- `config.finalization.mergePlan.*` → enable/threshold/restructureThreshold/alwaysForCrossRepo
+- Tests: `tests/flow-structure-sensor.test.js` (12 cases)
+

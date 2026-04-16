@@ -16,13 +16,13 @@
  * Part of S3: Eval System
  */
 
-const path = require('node:path');
+const _path = require('node:path');
 const {
   getConfig,
-  PATHS,
-  readJson,
-  writeJson,
-  fileExists,
+  PATHS: _PATHS,
+  readJson: _readJson,
+  writeJson: _writeJson,
+  fileExists: _fileExists,
   safeJsonParse
 } = require('./flow-utils');
 

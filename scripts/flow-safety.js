@@ -17,9 +17,9 @@
  *   flow safety status                # Show current limits and permissions
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, colors: c, PATHS } = require('./flow-utils');
+const { getConfig, colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
 
 /**
@@ -201,7 +201,7 @@ class SafetyGuard {
   /**
    * Check if file access is allowed
    */
-  checkFilePermission(filePath, operation = 'read') {
+  checkFilePermission(filePath, _operation = 'read') {
     if (!this.enabled) return true;
 
     const permissions = this.config.permissions?.files || {};

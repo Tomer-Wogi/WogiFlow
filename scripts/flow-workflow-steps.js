@@ -11,9 +11,9 @@
  *   await runSteps('afterTask', { taskId: 'TASK-001', files: [...] });
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
-const { getProjectRoot, colors, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
+const _fs = require('node:fs');
+const _path = require('node:path');
+const { colors, getConfig, invalidateConfigCache, writeJson, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Step Registry - All available workflow steps

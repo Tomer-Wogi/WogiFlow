@@ -888,7 +888,7 @@ const COMMUNITY_MARKER = '<!-- community-knowledge-v1 -->';
  * @param {Object} config - WogiFlow config
  * @returns {{ modelIntelligence: number, errorStrategies: number, patterns: number }} Merge counts
  */
-function mergeCommunityKnowledge(knowledge, config) {
+function mergeCommunityKnowledge(knowledge, _config) {
   const counts = { modelIntelligence: 0, errorStrategies: 0, patterns: 0 };
   if (!knowledge || typeof knowledge !== 'object') return counts;
 

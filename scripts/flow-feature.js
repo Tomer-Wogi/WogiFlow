@@ -19,12 +19,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  readJson,
+  readJson: _readJson,
   writeJson,
-  readFile,
+  readFile: _readFile,
   ensureDir,
-  fileExists,
-  color,
+  fileExists: _fileExists,
+  color: _color,
   success,
   warn,
   error,
@@ -126,7 +126,7 @@ function parseFeatureFile(featureId) {
 
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const lines = content.split('\n');
+    const _lines = content.split('\n');
 
     const feature = {
       id: featureId,

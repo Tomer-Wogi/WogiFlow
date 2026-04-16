@@ -22,7 +22,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, execSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors: c, readJson, PATHS } = require('./flow-utils');
+const { getConfig, colors: c, readJson, PATHS } = require('./flow-utils');
 const { success: printSuccess, error: printError } = require('./flow-output');
 const { recordCommandResult } = require('./flow-metrics');
 const { detectPackageManager, getExecCommand, getRunPrefix } = require('./flow-script-resolver');
@@ -113,7 +113,7 @@ class GateResult {
 function buildDefaultGates() {
   const pm = detectPackageManager();
   const exec = getExecCommand(pm);
-  const run = getRunPrefix(pm);
+  const _run = getRunPrefix(pm);
   // For test/build: npm uses 'npm test'/'npm run build', others use 'pnpm test'/'pnpm build'
   const pmCmd = pm;
 

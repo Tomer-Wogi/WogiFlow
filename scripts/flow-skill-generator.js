@@ -16,7 +16,7 @@ function getTechOptions() {
   if (!_techOptions) {
     try {
       _techOptions = require('./flow-tech-options');
-    } catch (err) {
+    } catch (_err) {
       _techOptions = { getSkillType: () => 'library', getParentFramework: () => null };
     }
   }
@@ -78,7 +78,7 @@ function getPrebuiltSkillPath(techValue) {
     if (fs.existsSync(prebuiltDir) && fs.existsSync(path.join(prebuiltDir, 'skill.md'))) {
       return prebuiltDir;
     }
-  } catch (err) {
+  } catch (_err) {
     // Silently fail — pre-built not available
   }
 
@@ -128,13 +128,13 @@ function copyPrebuiltSkill(prebuiltPath, projectRoot, skillId) {
           if (entry.name === 'skill.md' && src === prebuiltPath) {
             try {
               skillMdContent = fs.readFileSync(srcPath, 'utf8');
-            } catch (err) {
+            } catch (_err) {
               // Will fall back to default type
             }
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable directories
     }
   }
@@ -166,12 +166,12 @@ function listPrebuiltSkills() {
         try {
           fs.accessSync(path.join(dir, e.name, 'skill.md'));
           return true;
-        } catch (err) {
+        } catch (_err) {
           return false;
         }
       })
       .map(e => e.name);
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }

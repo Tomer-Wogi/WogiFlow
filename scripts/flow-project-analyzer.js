@@ -612,7 +612,7 @@ function detectProjectType(projectRoot) {
         }
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Config read failure — use defaults
   }
 
@@ -672,7 +672,7 @@ function detectProjectType(projectRoot) {
         uiScore += weights.uiDirectory;
         break; // Only count one directory match
       }
-    } catch (err) {
+    } catch (_err) {
       // stat failure — skip
     }
   }
@@ -684,7 +684,7 @@ function detectProjectType(projectRoot) {
         apiScore += weights.apiDirectory;
         break; // Only count one directory match
       }
-    } catch (err) {
+    } catch (_err) {
       // stat failure — skip
     }
   }

@@ -71,7 +71,7 @@ function getSmartCompactionConfig() {
         }
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Non-blocking — fall back to default thresholds
   }
 

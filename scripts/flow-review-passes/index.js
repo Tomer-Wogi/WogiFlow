@@ -14,8 +14,8 @@
  * 4. Integration (Sonnet, conditional) - Breaking changes, contracts
  */
 
-const path = require('node:path');
-const { getConfig, readJson, writeJson, PATHS, success, warn, error, info } = require('../flow-utils');
+const _path = require('node:path');
+const { getConfig, warn, error, info } = require('../flow-utils');
 
 // Import pass modules
 const structurePass = require('./structure');

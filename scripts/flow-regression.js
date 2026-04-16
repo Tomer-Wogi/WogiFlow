@@ -17,7 +17,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
-const { getProjectRoot, colors, getConfig, safeJsonParse, PATHS } = require('./flow-utils');
+const { colors, getConfig, safeJsonParse, PATHS } = require('./flow-utils');
 const { getExecParts, getCommand } = require('./flow-script-resolver');
 
 const READY_PATH = PATHS.ready;

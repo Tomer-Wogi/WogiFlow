@@ -19,7 +19,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
-  fileExists,
+  fileExists: _fileExists,
   dirExists,
   writeFile,
   writeJson,
@@ -269,7 +269,7 @@ Examples:
   const discoveredDuring = currentTask ? 'implementation' : null;
 
   // Determine priority
-  const config = getConfig();
+  const _config = getConfig();
   const defaultPriority = getConfigValue('priorities.defaultPriority', 'P2');
 
   let priority = flags.priority;

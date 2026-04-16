@@ -27,7 +27,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, readJson, getTodayDate } = require('./flow-utils');
+const { getConfig, PATHS, colors, readJson, getTodayDate } = require('./flow-utils');
 
 const ADAPTERS_DIR = PATHS.modelAdapters;
 const MODEL_STATS_PATH = PATHS.modelStatsLegacy;
@@ -40,9 +40,9 @@ const MODEL_STATS_PATH = PATHS.modelStatsLegacy;
  * Known model patterns for identification
  */
 const MODEL_PATTERNS = {
-  'claude-opus': ['claude-opus', 'opus', 'claude-3-opus', 'claude-opus-4', 'claude-opus-4-5', 'claude-opus-4-6', 'opus-4.5', 'opus-4.6'],
+  'claude-opus': ['claude-opus', 'opus', 'claude-3-opus', 'claude-opus-4', 'claude-opus-4-5', 'claude-opus-4-6', 'claude-opus-4-7', 'opus-4.5', 'opus-4.6', 'opus-4.7'],
   'claude-sonnet': ['claude-sonnet', 'sonnet', 'claude-3-sonnet', 'claude-sonnet-4', 'claude-sonnet-4-5', 'claude-sonnet-4-6', 'sonnet-4.5', 'sonnet-4.6'],
-  'claude-haiku': ['claude-haiku', 'haiku', 'claude-3-haiku'],
+  'claude-haiku': ['claude-haiku', 'haiku', 'claude-3-haiku', 'claude-haiku-4-5', 'haiku-4.5'],
   'gpt-4': ['gpt-4', 'gpt-4-turbo', 'gpt-4o'],
   'gpt-3.5': ['gpt-3.5', 'gpt-3.5-turbo'],
   'ollama-nemotron': ['nemotron', 'nvidia-nemotron'],
@@ -141,7 +141,7 @@ function getAdapterPath(modelName) {
 function safeReadFile(filePath) {
   try {
     return fs.readFileSync(filePath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     // File may have been deleted/moved between existsSync and readFileSync (TOCTOU)
     return null;
   }

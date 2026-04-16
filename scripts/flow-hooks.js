@@ -17,12 +17,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   getConfig, PATHS
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 
-const { getAdapter, getAllAdapters, getAvailableAdapters } = require('./hooks/adapters');
+const { getAdapter, getAllAdapters } = require('./hooks/adapters');
 const { readJson, safeJsonParse } = require('./flow-io');
 
 /**
@@ -45,7 +45,7 @@ function getInstalledVersion() {
 
   return 'unknown';
 }
-const HOOK_MARKER = '// WOGI_FLOW_MANAGED_HOOKS';
+const _HOOK_MARKER = '// WOGI_FLOW_MANAGED_HOOKS';
 
 // ============================================================
 // Configuration

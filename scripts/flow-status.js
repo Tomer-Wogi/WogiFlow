@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const {
   PATHS,
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   fileExists,
   dirExists,
   getTaskCounts,

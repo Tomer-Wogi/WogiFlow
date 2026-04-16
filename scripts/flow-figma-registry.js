@@ -15,8 +15,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, readJson, writeJson, PATHS } = require('./flow-utils');
-const { SimilarityMatcher, MATCH_CONFIG } = require('./flow-figma-match');
+const { readJson, writeJson, PATHS } = require('./flow-utils');
+const { SimilarityMatcher } = require('./flow-figma-match');
 
 const REGISTRY_PATH = path.join(PATHS.state, 'figma-component-registry.json');
 

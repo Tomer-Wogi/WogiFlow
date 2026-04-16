@@ -48,7 +48,7 @@ async function fetchJSON(url, timeout = 3000) {
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
-        } catch (err) {
+        } catch (_err) {
           reject(new Error('Invalid JSON response'));
         }
       });
@@ -95,7 +95,7 @@ async function detectAll() {
   return results;
 }
 
-async function testConnection(endpoint, model) {
+async function testConnection(endpoint, _model) {
   const isOllama = endpoint.includes('11434');
 
   try {

@@ -27,7 +27,7 @@ const {
 let adaptiveLearning;
 try {
   adaptiveLearning = require('./flow-adaptive-learning');
-} catch (err) {
+} catch (_err) {
   // Module not available - will use local error categories
   adaptiveLearning = null;
 }
@@ -36,7 +36,7 @@ try {
 let errorRecovery;
 try {
   errorRecovery = require('./flow-error-recovery');
-} catch (err) {
+} catch (_err) {
   errorRecovery = null;
 }
 
@@ -372,7 +372,7 @@ function generateHypotheses(errorText, context = {}, maxCount = 5) {
  * @param {Object} context - Test context
  * @returns {Object} Test result
  */
-async function testHypothesis(hypothesis, context) {
+async function testHypothesis(hypothesis, _context) {
   // This is a placeholder for actual test implementations
   // In practice, each test strategy would have specific logic
   const testStrategies = {
@@ -484,7 +484,7 @@ function saveHypothesisTree(tree, sessionId) {
 function loadHypothesisTree() {
   try {
     return readJson(HYPOTHESIS_STATE_PATH);
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

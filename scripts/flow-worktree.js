@@ -22,7 +22,7 @@
  *   await discardWorktree(worktree);
  */
 
-const { execFileSync, spawn } = require('node:child_process');
+const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');

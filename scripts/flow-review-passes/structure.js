@@ -301,7 +301,7 @@ async function run(context) {
 
   // Load project-specific patterns
   const projectPatterns = loadProjectPatterns();
-  const allContentPatterns = [...CONTENT_ANTI_PATTERNS, ...projectPatterns];
+  const _allContentPatterns = [...CONTENT_ANTI_PATTERNS, ...projectPatterns];
 
   // Check each file
   for (const file of files) {

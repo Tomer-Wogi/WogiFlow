@@ -38,7 +38,7 @@ function getUncommittedCount() {
       stdio: ['pipe', 'pipe', 'pipe']
     });
     return output.trim().split('\n').filter(line => line.trim()).length;
-  } catch (err) {
+  } catch (_err) {
     return 0;
   }
 }
@@ -131,7 +131,7 @@ function handleSessionEnd(input) {
           console.error(`[Session End] Community sync-up failed: ${err.message}`);
         }
       });
-    } catch (err) {
+    } catch (_err) {
       // Non-critical — community sync module may not be available
     }
 
@@ -144,7 +144,7 @@ function handleSessionEnd(input) {
           // Non-critical - memory pipeline may not be available
         });
       }
-    } catch (err) {
+    } catch (_err) {
       // Non-critical — memory DB may not be available
     }
 

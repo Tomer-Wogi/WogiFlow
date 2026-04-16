@@ -22,10 +22,10 @@ const {
   PATHS,
   readJson,
   writeJson,
-  fileExists,
+  fileExists: _fileExists,
   getTodayDate
 } = require('./flow-utils');
-const { anonymizeBatch, createUploadPayload } = require('./flow-sync-anonymizer');
+const { createUploadPayload } = require('./flow-sync-anonymizer');
 const { loadStats } = require('./flow-stats-collector');
 
 // ============================================================
@@ -84,7 +84,7 @@ function isSyncEnabled() {
     if (!fs.existsSync(authPath)) return false;
     const auth = readJson(authPath, {});
     return !!(auth.token || auth.apiKey);
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -293,7 +293,7 @@ function getQueueStatus() {
         ? queue.payloads[0].queuedAt
         : null
     };
-  } catch (err) {
+  } catch (_err) {
     return { queuedSessions: 0, lastUpdated: null };
   }
 }
@@ -324,7 +324,7 @@ function loadCommunityScores() {
   try {
     if (!fs.existsSync(COMMUNITY_SCORES_PATH)) return {};
     return readJson(COMMUNITY_SCORES_PATH, {});
-  } catch (err) {
+  } catch (_err) {
     return {};
   }
 }
@@ -338,7 +338,7 @@ function loadCommunityRouting() {
   try {
     if (!fs.existsSync(COMMUNITY_ROUTING_PATH)) return {};
     return readJson(COMMUNITY_ROUTING_PATH, {});
-  } catch (err) {
+  } catch (_err) {
     return {};
   }
 }

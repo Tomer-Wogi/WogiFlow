@@ -8,7 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, PATHS } = require('./flow-utils');
+const { colors, PATHS } = require('./flow-utils');
 const { readJson } = require('./flow-io');
 
 function log(color, ...args) {

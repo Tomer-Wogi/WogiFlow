@@ -25,7 +25,7 @@ const {
   readFile,
   parseFlags,
   outputJson,
-  info,
+  info: _info,
   warn,
   safeJsonParse,
   estimateTokens
@@ -185,7 +185,7 @@ function getProductOverview() {
       tagline: taglineMatch ? taglineMatch[1].trim() : null,
       type: typeMatch ? typeMatch[1].trim() : null
     };
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

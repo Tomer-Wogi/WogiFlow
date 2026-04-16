@@ -9,7 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
+const { colors, PATHS } = require('./flow-utils');
 
 const CHANGELOG_PATH = path.join(PATHS.root, 'CHANGELOG.md');
 
@@ -83,7 +83,7 @@ async function run(options = {}) {
 /**
  * Determine changelog category from task type
  */
-function getChangelogCategory(taskType, taskTitle, files) {
+function getChangelogCategory(taskType, taskTitle, _files) {
   // Explicit type mapping
   const typeMap = {
     feature: 'Added',
@@ -133,7 +133,7 @@ function getChangelogCategory(taskType, taskTitle, files) {
 /**
  * Generate a changelog entry
  */
-function generateEntry(taskId, taskTitle, category, files) {
+function generateEntry(taskId, taskTitle, _category, files) {
   // Clean up title
   let entry = taskTitle || 'Update';
 

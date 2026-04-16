@@ -23,7 +23,7 @@ const REVIEW_FILE = path.join(TMP_DIR, 'review-session.json');
 
 // Colors
 const { colors: c } = require('./flow-output');
-const { PATHS } = require('./flow-utils');
+const { } = require('./flow-utils');
 
 // =============================================================================
 // REVIEW SESSION MANAGEMENT

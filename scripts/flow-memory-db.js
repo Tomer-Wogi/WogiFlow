@@ -54,7 +54,7 @@ const DEFAULTS = {
 // Configuration
 // ============================================================
 
-const { getProjectRoot, PATHS } = require('./flow-paths');
+const { PATHS } = require('./flow-paths');
 const MEMORY_DIR = path.join(PATHS.workflow, 'memory');
 const DB_PATH = path.join(MEMORY_DIR, 'local.db');
 
@@ -69,7 +69,7 @@ try {
   const flowUtils = require('./flow-utils');
   safeJsonParseString = flowUtils.safeJsonParseString;
   getConfig = flowUtils.getConfig;
-} catch (err) {
+} catch (_err) {
   // Fallback if flow-utils not available (e.g., in MCP server context)
   safeJsonParseString = null;
   getConfig = null;
@@ -2326,7 +2326,7 @@ async function generateSectionEmbeddings() {
       } else {
         results.skipped++;
       }
-    } catch (err) {
+    } catch (_err) {
       results.failed++;
     }
   }
@@ -2349,7 +2349,7 @@ function getMemoryLevel() {
     if (!getConfig) return 'off';
     const config = getConfig();
     return config.memory?.level || 'off';
-  } catch (err) {
+  } catch (_err) {
     return 'off';
   }
 }

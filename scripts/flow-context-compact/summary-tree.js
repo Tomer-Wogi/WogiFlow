@@ -61,7 +61,7 @@ const DEFAULT_COMPACTION_CONFIG = {
 // ============================================================
 
 // Token estimation constant (rough approximation for English text)
-const CHARS_PER_TOKEN = 4;
+const _CHARS_PER_TOKEN = 4;
 
 /**
  * Generate a unique node ID

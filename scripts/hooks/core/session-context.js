@@ -809,7 +809,7 @@ async function gatherSessionContext(options = {}) {
         console.error(`[session-context] Community sync-down failed: ${err.message}`);
       }
     });
-  } catch (err) {
+  } catch (_err) {
     // Non-critical — community sync module may not be available
   }
 

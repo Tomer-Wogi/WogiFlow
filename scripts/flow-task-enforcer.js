@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse, PATHS } = require('./flow-utils');
+const { getConfig, getProjectRoot, writeJson, readJson, safeJsonParse } = require('./flow-utils');
 const { getCommand } = require('./flow-script-resolver');
 const { sanitizeShellArg } = require('./flow-security');
 
@@ -84,7 +84,7 @@ function isRecheckEnabled() {
  * Returns { allowed: boolean, message: string }
  */
 function canSkipCriterion(criterionId, approvalGiven = false) {
-  const config = getConfig();
+  const _config = getConfig();
   const session = getActiveLoop();
 
   if (!session) {
@@ -150,7 +150,7 @@ function startLoop(taskId, acceptanceCriteria) {
 
   // v2.0: Use durable session if enabled
   if (config.durableSteps?.enabled !== false) {
-    const session = durableSession.createDurableSession(taskId, 'task', acceptanceCriteria);
+    const _session = durableSession.createDurableSession(taskId, 'task', acceptanceCriteria);
     // Return backward-compatible format
     return durableSession.getActiveLoop();
   }
@@ -753,7 +753,7 @@ function getLoopStats() {
 function verifyCriterion(criterion, context = {}) {
   const { execSync, execFileSync } = require('node:child_process');
   const { changedFiles = [], testResults = null, lintResults = null } = context;
-  const config = getConfig();
+  const _config = getConfig();
   const taskConfig = getTaskConfig();
   const desc = criterion.description;
   const descLower = desc.toLowerCase();
@@ -848,7 +848,7 @@ function verifyCriterion(criterion, context = {}) {
             }
           }
         }
-      } catch (err) { /* ignore permission errors */ }
+      } catch (_err) { /* ignore permission errors */ }
       return results;
     }
 

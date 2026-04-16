@@ -23,10 +23,10 @@ const {
   PATHS,
   PROJECT_ROOT,
   fileExists,
-  dirExists,
+  dirExists: _dirExists,
   parseFlags,
   outputJson,
-  getConfig,
+  getConfig: _getConfig,
   isPathWithinProject,
   safeJsonParse,
   writeJson,
@@ -461,7 +461,7 @@ function printStatus(driftStatus) {
  * @param {string[]} categories - Categories to regenerate
  * @returns {Promise<Object>} New sync state or null if failed
  */
-async function regenerateKnowledgeFiles(categories = ['stack', 'architecture', 'testing']) {
+async function regenerateKnowledgeFiles(_categories = ['stack', 'architecture', 'testing']) {
   info('Regenerating knowledge files...');
 
   const { spawn } = require('node:child_process');

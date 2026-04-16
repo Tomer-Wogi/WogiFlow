@@ -79,6 +79,79 @@ Pre-finalization checks:
 
 If checks fail, display warnings and suggest fixes before proceeding.
 
+### Step 2.5: Merge-Plan Gate (when `mergePlan.threshold` exceeded)
+
+**Activates when** the branch carries more commits than `config.finalization.mergePlan.threshold` (default **5**) OR the diff is flagged cross-repo by the workspace manifest. The gate writes — and requires the AI to fill in — `.workflow/scratch/merge-plan.md`. The gate exists because the "1-2h mostly mechanical" audit that predicted a 27-conflict merge (wogi-hub, 2026-04-16) counted commits-per-file without reading diff content; the fix is to force per-commit action assignment in a file.
+
+**Mechanical invariants (gate blocks on violation):**
+
+1. For every commit in `git log <base>..<branch>`, the plan MUST contain one line starting with the short SHA and a tagged action. No commits in an "unaccounted" bucket.
+2. Allowed actions: `port | adapt | skip-style | superseded | skip-with-reason`.
+3. `git log <base>..<branch> | wc -l` MUST equal the count of SHA-prefixed lines in the plan. Mismatch → hard-stop until reconciled.
+4. `skip-with-reason` entries MUST include a one-line reason after a `—` (em dash).
+
+**Structural-change detection (before plan write):**
+
+Run the structure-change sensor (`scripts/flow-structure-sensor.js`) on the diff. If ≥ `config.finalization.mergePlan.restructureThreshold` (default **20%**) of changed files match one of these restructure patterns, display a STRUCTURAL CHANGE warning at the top of the plan and bias the default action for affected commits to `adapt`:
+
+| Pattern | Example | Meaning |
+|---------|---------|---------|
+| `X.tsx` deleted + `X/X.tsx` added | `Card.tsx` → `Card/Card.tsx` | folder-per-component |
+| `X.ts` deleted + `<dir>/X.ts` added at deeper depth | `utils.ts` → `utils/date.ts` | split into submodule |
+| `X` deleted + `X.<ext>` added elsewhere | `types.ts` → `types/index.ts` | barrel introduction |
+
+**Procedure:**
+
+```bash
+# 1. Gather commit list
+git log --pretty='%h %s' <base>..<branch> > .workflow/scratch/.merge-plan-commits.txt
+
+# 2. Run structure sensor
+node node_modules/wogiflow/scripts/flow-structure-sensor.js <base>..<branch> > .workflow/scratch/.merge-plan-sensor.json
+
+# 3. Write .workflow/scratch/merge-plan.md using the template below,
+#    one SHA-prefixed line per commit. Read the FULL diff of each commit
+#    (not just the subject line) before assigning an action — that is
+#    the whole point of this gate.
+
+# 4. Verify the mechanical invariant
+test "$(git log --oneline <base>..<branch> | wc -l)" -eq \
+     "$(grep -cE '^[a-f0-9]{7,}\s' .workflow/scratch/merge-plan.md)"
+```
+
+**Plan template** (write verbatim, then fill each row by reading the full diff):
+
+```markdown
+# Merge plan: <branch> → <base>
+
+Commits: N (from `git log <base>..<branch>`)
+Structural-change sensor: <WARN|clean>  — N/M files match restructure patterns
+Cross-repo impact: <list workspace members affected, or "single-repo">
+
+## Per-commit actions
+
+| SHA | Subject | Action | Notes |
+|-----|---------|--------|-------|
+| abc1234 | feat: add login form | port | — |
+| def5678 | refactor: split Card.tsx into Card/ | adapt | folder-per-component restructure |
+| ghi9012 | chore: lint fixes | skip-style | — |
+| jkl3456 | revert: roll back header | skip-with-reason | superseded by mno7890 |
+
+## Structural risks
+
+<leave empty if sensor is clean; otherwise list each pattern hit>
+
+## Content risks
+
+<list overlaps in shared types, DTOs, API surface that need manual review>
+```
+
+**When the plan is complete**, the gate verifies the commit-count invariant (step 4) and proceeds to Step 3 (options). If invariant fails, the command stops with the reconciliation command printed.
+
+**Skip conditions:**
+- `config.finalization.mergePlan.enabled: false` — opt-out for users who don't want the gate
+- Branch commits ≤ threshold AND single-repo — small merges don't need a plan
+
 ### Step 3: Present Options
 
 ```
@@ -241,6 +314,12 @@ When `/wogi-start` completes a task that was executed in a worktree, the finaliz
       "includeTaskSpec": true,
       "includeCommitList": true,
       "includeFileSummary": true
+    },
+    "mergePlan": {
+      "enabled": true,
+      "threshold": 5,
+      "restructureThreshold": 0.20,
+      "alwaysForCrossRepo": true
     }
   }
 }
@@ -254,6 +333,10 @@ When `/wogi-start` completes a task that was executed in a worktree, the finaliz
 | `requirePRForTypes` | `[]` | Task types that must create a PR (useful for teams) |
 | `squashOnMerge` | `true` | Squash commits when merging |
 | `prTemplate` | `{...}` | What to include in auto-generated PR body |
+| `mergePlan.enabled` | `true` | Require per-commit merge plan on large or cross-repo merges |
+| `mergePlan.threshold` | `5` | Commit count above which the merge plan is required |
+| `mergePlan.restructureThreshold` | `0.20` | % of changed files matching restructure patterns that triggers a structural-change warning |
+| `mergePlan.alwaysForCrossRepo` | `true` | Require the plan on any cross-repo merge regardless of commit count |
 
 ## Examples
 

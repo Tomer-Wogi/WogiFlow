@@ -22,7 +22,7 @@ const {
   getConfig,
   color,
   success,
-  warn,
+  warn: _warn,
   error,
   parseFlags,
   outputJson,
@@ -286,7 +286,7 @@ function main() {
         execFileSync(process.execPath, [path.join(__dirname, 'flow-config-set.js'), key, value], {
           stdio: 'inherit'
         });
-      } catch (err) {
+      } catch (_err) {
         process.exit(1);
       }
       break;

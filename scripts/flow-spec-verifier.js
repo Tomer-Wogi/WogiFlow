@@ -25,8 +25,8 @@ const {
   success,
   warn,
   error,
-  info,
-  color,
+  info: _info,
+  color: _color,
   safeJsonParse
 } = require('./flow-utils');
 

@@ -18,15 +18,15 @@
 
 const path = require('node:path');
 const {
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   parseFlags,
   outputJson,
   color,
-  info,
+  info: _info,
   warn,
   error,
   safeJsonParse,
-  getConfig,
+  getConfig: _getConfig,
   printHeader,
   printSection,
   estimateTokens, PATHS
@@ -42,7 +42,7 @@ let instructionRichness = null;
 try {
   contextGatherer = require('./flow-context-gatherer');
   instructionRichness = require('./flow-instruction-richness');
-} catch (err) {
+} catch (_err) {
   // Smart Context modules not available
 }
 
@@ -1126,7 +1126,7 @@ module.exports = {
   getAgentModel: (() => {
     try {
       return require('./flow-prompt-template').getAgentModel;
-    } catch (err) {
+    } catch (_err) {
       // Fallback if prompt template module not available
       return () => 'sonnet';
     }

@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, PATHS, colors, readJson } = require('./flow-utils');
+const { getConfig, PATHS, colors, readJson } = require('./flow-utils');
 const { success, error: errorMsg } = require('./flow-output');
 const { safeGrep, safeFind, escapeRegex } = require('./flow-security');
 
@@ -105,7 +105,7 @@ function analyzeRelationships(filePath) {
 /**
  * Extract imports from file content
  */
-function extractImports(content, fileDir) {
+function extractImports(content, _fileDir) {
   const imports = [];
 
   // ES6 imports
@@ -456,7 +456,7 @@ async function searchCodebase(keyword, maxResults = 10) {
  * Generate enhanced component index with relationships
  */
 async function generateEnhancedIndex() {
-  const config = getConfig();
+  const _config = getConfig();
   const indexPath = path.join(PATHS.state, 'component-index.json');
 
   // Read existing index
@@ -514,7 +514,7 @@ async function generateEnhancedIndex() {
  * @param {object} options - Options
  */
 async function getSmartContext(taskDescription, options = {}) {
-  const config = getConfig();
+  const _config = getConfig();
   const indexPath = path.join(PATHS.state, 'component-index.json');
 
   if (!fs.existsSync(indexPath)) {

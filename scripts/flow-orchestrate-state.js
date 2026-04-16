@@ -8,7 +8,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, writeJson, PATHS } = require('./flow-utils');
+const { colors, getConfig, writeJson, PATHS } = require('./flow-utils');
 const { readJson } = require('./flow-io');
 const { loadCachedExportMap } = require('./flow-export-scanner');
 const durableSession = require('./flow-durable-session');
@@ -235,7 +235,7 @@ ${step.description || ''}
       // Format components
       if (Object.keys(exportMap.components).length > 0) {
         context.availableComponents = Object.entries(exportMap.components)
-          .map(([name, info]) => {
+          .map(([_name, info]) => {
             if (info.exports.length > 0) {
               return `import { ${info.exports.join(', ')} } from '${info.importPath}';`;
             } else if (info.defaultExport) {
@@ -250,7 +250,7 @@ ${step.description || ''}
       // Format hooks
       if (Object.keys(exportMap.hooks).length > 0) {
         context.availableHooks = Object.entries(exportMap.hooks)
-          .map(([name, info]) => info.exports.length > 0
+          .map(([_name, info]) => info.exports.length > 0
             ? `import { ${info.exports.join(', ')} } from '${info.importPath}';`
             : null)
           .filter(Boolean)
@@ -260,7 +260,7 @@ ${step.description || ''}
       // Format services
       if (Object.keys(exportMap.services).length > 0) {
         context.availableServices = Object.entries(exportMap.services)
-          .map(([name, info]) => info.exports.length > 0
+          .map(([_name, info]) => info.exports.length > 0
             ? `import { ${info.exports.join(', ')} } from '${info.importPath}';`
             : null)
           .filter(Boolean)
@@ -270,7 +270,7 @@ ${step.description || ''}
       // Format types
       if (Object.keys(exportMap.types).length > 0) {
         context.availableTypes = Object.entries(exportMap.types)
-          .map(([name, info]) => info.types?.length > 0
+          .map(([_name, info]) => info.types?.length > 0
             ? `import type { ${info.types.join(', ')} } from '${info.importPath}';`
             : null)
           .filter(Boolean)
@@ -280,7 +280,7 @@ ${step.description || ''}
       // Format utils
       if (Object.keys(exportMap.utils).length > 0) {
         context.availableUtils = Object.entries(exportMap.utils)
-          .map(([name, info]) => info.exports.length > 0
+          .map(([_name, info]) => info.exports.length > 0
             ? `import { ${info.exports.join(', ')} } from '${info.importPath}';`
             : null)
           .filter(Boolean)

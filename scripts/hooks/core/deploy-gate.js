@@ -264,7 +264,8 @@ function findLatestArtifact(options) {
     for (const file of files) {
       const filePath = path.join(VERIFICATION_DIR, file);
       try {
-        const artifact = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        const artifact = safeJsonParse(filePath, null);
+        if (!artifact) continue;
 
         // Verify HMAC signature
         const sigResult = verifyArtifactSignature(artifact);

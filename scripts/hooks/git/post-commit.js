@@ -15,7 +15,7 @@ const path = require('node:path');
 
 // Resolve paths relative to this script's location
 const scriptsDir = path.resolve(__dirname, '../..');
-const { getReadyData, saveReadyData, info, color } = require(path.join(scriptsDir, 'flow-utils'));
+const { getReadyData, saveReadyData, info } = require(path.join(scriptsDir, 'flow-utils'));
 const { success } = require('../../flow-output');
 
 /**

@@ -9,7 +9,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { getProjectRoot, getConfig, error, success, PATHS } = require('./flow-utils');
+const { getConfig, error, success, PATHS } = require('./flow-utils');
 
 const TESTS = [];
 let passed = 0;

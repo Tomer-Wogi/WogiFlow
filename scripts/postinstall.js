@@ -62,7 +62,7 @@ function safeJsonParseString(jsonString, defaultValue = null) {
       return defaultValue;
     }
     return parsed;
-  } catch (err) {
+  } catch (_err) {
     return defaultValue;
   }
 }
@@ -93,7 +93,7 @@ function hasDangerousKeys(obj) {
  */
 function safeClose(fd) {
   if (fd !== null) {
-    try { fs.closeSync(fd); } catch (err) { /* intentionally ignored */ }
+    try { fs.closeSync(fd); } catch (_err) { /* intentionally ignored */ }
   }
 }
 
@@ -520,7 +520,7 @@ function copyClaudeResources() {
         }
         try {
           fs.chmodSync(projectSettings, FILE_MODE);
-        } catch (err) { /* non-critical */ }
+        } catch (_err) { /* non-critical */ }
       } catch (err) {
         if (process.env.DEBUG) {
           console.error(`[postinstall] settings.json initial copy failed: ${err.message}`);
@@ -608,7 +608,7 @@ function getPackageVersion() {
     const content = fs.readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf-8');
     const pkg = safeJsonParseString(content, null);
     return (pkg && pkg.version) || 'unknown';
-  } catch (err) {
+  } catch (_err) {
     return 'unknown';
   }
 }
@@ -644,7 +644,7 @@ function regenerateClaudeMd() {
       }
       return;
     }
-  } catch (err) {
+  } catch (_err) {
     // No version file yet — proceed with regen
   }
 
@@ -688,7 +688,7 @@ function regenerateClaudeMd() {
     // Record successful regen version for skip gate
     try {
       fs.writeFileSync(versionFile, pkgVersion, { mode: FILE_MODE });
-    } catch (err) {
+    } catch (_err) {
       // Non-critical — next install will just regen again
     }
 
@@ -1015,7 +1015,7 @@ function main() {
       // Combine access check and open into single try-catch to avoid TOCTOU
       ttyFd = fs.openSync('/dev/tty', 'w');
       output = { write: (msg) => fs.writeSync(ttyFd, msg) };
-    } catch (err) {
+    } catch (_err) {
       // /dev/tty not available (no terminal, CI, etc.) - fallback to stderr
       ttyFd = null;
     }

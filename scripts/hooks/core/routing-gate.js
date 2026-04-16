@@ -250,7 +250,7 @@ function isRoutingPending() {
       const age = Date.now() - new Date(data.timestamp).getTime();
       if (age > ROUTING_FLAG_TTL_MS) {
         // Flag is stale — clean it up and return false
-        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (err) { /* ignore cleanup failure */ }
+        try { fs.unlinkSync(ROUTING_FLAG_PATH); } catch (_err) { /* ignore cleanup failure */ }
         if (process.env.DEBUG) {
           console.error(`[routing-gate] Cleaned stale flag (${Math.round(age / 1000)}s old)`);
         }

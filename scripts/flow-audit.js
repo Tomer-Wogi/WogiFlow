@@ -16,12 +16,12 @@
  */
 
 const { execFileSync } = require('node:child_process');
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const {
   PATHS,
   getConfig,
-  color,
+  color: _color,
   safeJsonParse,
   safeJsonParseString,
   escapeRegex
@@ -55,10 +55,10 @@ function getProjectFiles(extraExcludes = []) {
     const config = getConfig();
     // escapeRegex imported from flow-utils.js
     const configExcludes = (config.audit?.exclude || []).map(p => {
-      try { return new RegExp(`^${escapeRegex(p)}/`); } catch (err) { return null; }
+      try { return new RegExp(`^${escapeRegex(p)}/`); } catch (_err) { return null; }
     }).filter(Boolean);
     const allExcludes = [...DEFAULT_EXCLUDE, ...configExcludes, ...extraExcludes.map(p => {
-      try { return new RegExp(p); } catch (err) { return null; }
+      try { return new RegExp(p); } catch (_err) { return null; }
     }).filter(Boolean)];
 
     return output.trim().split('\n').filter(f =>

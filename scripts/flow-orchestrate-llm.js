@@ -165,7 +165,7 @@ class LocalLLM {
               parsed.parameters?.num_ctx ||
               parsed.details?.parameter_size && 4096; // fallback
             resolve({ contextLength: contextLength || 4096 });
-          } catch (err) {
+          } catch (_err) {
             reject(new Error('Invalid response from Ollama /api/show'));
           }
         });
@@ -208,7 +208,7 @@ class LocalLLM {
             // LM Studio may include context_length in model object
             const contextLength = model?.context_length || model?.max_tokens || 4096;
             resolve({ contextLength });
-          } catch (err) {
+          } catch (_err) {
             reject(new Error('Invalid response from /v1/models'));
           }
         });
@@ -262,7 +262,7 @@ class LocalLLM {
           try {
             const parsed = JSON.parse(data);
             resolve(parsed.response || '');
-          } catch (err) {
+          } catch (_err) {
             reject(new Error('Invalid response from Ollama'));
           }
         });
@@ -305,7 +305,7 @@ class LocalLLM {
           try {
             const parsed = JSON.parse(data);
             resolve(parsed.choices?.[0]?.message?.content || '');
-          } catch (err) {
+          } catch (_err) {
             reject(new Error('Invalid response from LLM'));
           }
         });

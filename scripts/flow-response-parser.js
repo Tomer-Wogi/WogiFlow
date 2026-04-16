@@ -190,7 +190,7 @@ function removePreambles(content) {
  * @param {string} expectedLanguage - Expected language (optional)
  * @returns {string} - Clean code
  */
-function cleanCodeBlock(response, expectedLanguage = null) {
+function cleanCodeBlock(response, _expectedLanguage = null) {
   if (!response) return '';
 
   let content = response;

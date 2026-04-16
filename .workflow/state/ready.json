@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T13:49:01.358Z",
+  "lastUpdated": "2026-04-16T18:36:33.061Z",
   "inProgress": [],
   "ready": [
     {
@@ -30,28 +30,32 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    },
+    }
+  ],
+  "blocked": [
     {
       "id": "wf-c1e892fa",
       "title": "Wave D — Extract session-start.js + stop.js business logic to core (three-layer)",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P1",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
       "wave": "D",
-      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "blockedNote": "Blocked on dependency: large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
       "dependsOn": [
         "wf-e9e31c7c"
-      ]
+      ],
+      "blockedAt": "2026-04-16T18:36:33.060Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-e9e31c7c"
     },
     {
       "id": "wf-0f2e0f16",
       "title": "Wave D — Hook three-layer compliance lint rule (adversary-added)",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P1",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
@@ -61,71 +65,80 @@
         "wf-c1e892fa",
         "wf-e9e31c7c"
       ],
-      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials."
+      "blockedNote": "Blocked on dependency: large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "blockedAt": "2026-04-16T18:36:33.061Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-93b48ca1, wf-c1e892fa, wf-e9e31c7c"
     },
     {
       "id": "wf-c0d6b0c5",
       "title": "Wave E — Decompose flow-utils.js per TD-005 (keep barrel for 302 importers)",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P1",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
       "wave": "E",
-      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "blockedNote": "Blocked on dependency: large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
       "dependsOn": [
         "wf-e9e31c7c"
-      ]
+      ],
+      "blockedAt": "2026-04-16T18:36:33.061Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-e9e31c7c"
     },
     {
       "id": "wf-33a0aa88",
       "title": "Wave E — Decompose flow-durable-session.js per TD-004",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P1",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
       "wave": "E",
-      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "blockedNote": "Blocked on dependency: large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
       "dependsOn": [
         "wf-e9e31c7c"
-      ]
+      ],
+      "blockedAt": "2026-04-16T18:36:33.061Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-e9e31c7c"
     },
     {
       "id": "wf-d0937c83",
       "title": "Wave E — Decompose flow-orchestrate autoCorrectCode per TD-002",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P1",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
       "wave": "E",
-      "blockedNote": "Deferred — large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
+      "blockedNote": "Blocked on dependency: large architectural refactor requires test coverage (wf-e9e31c7c) first to de-risk. Same pattern as stories 8+9 partials.",
       "dependsOn": [
         "wf-e9e31c7c"
-      ]
+      ],
+      "blockedAt": "2026-04-16T18:36:33.061Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-e9e31c7c"
     },
     {
       "id": "wf-255e541a",
       "title": "Wave C — Migrate top-5 sync-fs-in-async-context files to fs/promises (phased)",
       "type": "story",
       "level": "L1",
-      "status": "ready",
+      "status": "blocked",
       "priority": "P2",
       "created": "2026-04-15T15:49:49.165Z",
       "epic": "wf-94cc3b72",
       "wave": "C",
       "startedAt": "2026-04-15T17:04:31.126Z",
-      "blockedNote": "Deferred — 183 sync-fs sites across 5 files is high-risk conversion without test coverage on lib/workspace + lib/installer. Complete wf-e9e31c7c (hook coverage) first. Conversion then becomes verifiable.",
+      "blockedNote": "Blocked on dependency: 183 sync-fs sites across 5 files is high-risk conversion without test coverage on lib/workspace + lib/installer. Complete wf-e9e31c7c (hook coverage) first. Conversion then becomes verifiable.",
       "dependsOn": [
         "wf-e9e31c7c"
-      ]
+      ],
+      "blockedAt": "2026-04-16T18:36:33.061Z",
+      "blockedReason": "anti-deferral rule (decisions.md:75) — dependsOn wf-e9e31c7c"
     }
   ],
-  "blocked": [],
   "recentlyCompleted": [
     {
       "id": "wf-2f2e63cc",

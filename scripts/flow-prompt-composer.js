@@ -24,7 +24,7 @@ const {
   info,
   warn,
   error,
-  fileExists,
+  fileExists: _fileExists,
   dirExists,
   printHeader,
   printSection,
@@ -41,7 +41,7 @@ try {
   sectionResolver = require('./flow-section-resolver');
   contextGatherer = require('./flow-context-gatherer');
   instructionRichness = require('./flow-instruction-richness');
-} catch (err) {
+} catch (_err) {
   // Smart Context modules not available, will use traditional approach
 }
 
@@ -50,7 +50,7 @@ try {
 // ============================================================
 
 const FRAGMENTS_DIR = path.join(PATHS.workflow, 'prompts', 'fragments');
-const COMPOSED_DIR = path.join(PATHS.workflow, 'prompts', 'composed');
+const _COMPOSED_DIR = path.join(PATHS.workflow, 'prompts', 'composed');
 
 // Model to CLI mapping (Claude Code only)
 const MODEL_CLI_MAP = {

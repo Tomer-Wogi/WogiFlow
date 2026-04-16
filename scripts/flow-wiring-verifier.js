@@ -27,10 +27,10 @@ const {
   PROJECT_ROOT,
   fileExists,
   readFile,
-  success,
-  warn,
-  error,
-  info,
+  success: _success,
+  warn: _warn,
+  error: _error,
+  info: _info,
   color,
   getFdCommand
 } = require('./flow-utils');
@@ -111,7 +111,7 @@ function extractExportName(filePath) {
  */
 function findImports(filePath) {
   const relativePath = path.relative(PROJECT_ROOT, filePath);
-  const dirPath = path.dirname(relativePath);
+  const _dirPath = path.dirname(relativePath);
   const filename = path.basename(filePath, path.extname(filePath));
   const exportNames = extractExportName(filePath);
 
@@ -159,7 +159,7 @@ function findImports(filePath) {
           imports.push(normalizedFile);
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // grep returns non-zero if no matches, ignore
     }
   }
@@ -369,7 +369,7 @@ function findFileByName(filename) {
       if (files.length > 0) {
         return files[0]; // Return first match
       }
-    } catch (err) {
+    } catch (_err) {
       // Ignore errors (find/fd returns non-zero if no matches on some systems)
     }
   }
@@ -519,7 +519,7 @@ function getRemovedLines(files) {
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe']
         });
-      } catch (err) {
+      } catch (_err) {
         // No staged changes for this file
       }
 
@@ -534,7 +534,7 @@ function getRemovedLines(files) {
       if (removed.length > 0) {
         removedByFile[file] = removed;
       }
-    } catch (err) {
+    } catch (_err) {
       // File may not have changes or not be tracked
     }
   }
@@ -545,7 +545,7 @@ function getRemovedLines(files) {
 /**
  * Extract identifiers from removed lines that could be referenced elsewhere
  */
-function extractRemovedIdentifiers(removedLines, sourceFile) {
+function extractRemovedIdentifiers(removedLines, _sourceFile) {
   const identifiers = new Set();
 
   for (const line of removedLines) {
@@ -630,7 +630,7 @@ function findReferences(identifier, excludeFile) {
         line: line.substring(colonIdx + 1).trim()
       });
     }
-  } catch (err) {
+  } catch (_err) {
     // grep returns non-zero if no matches
   }
 
@@ -692,7 +692,7 @@ function verifyRemovalImpact(modifiedFiles) {
           if (currentContent.includes(identifier)) {
             stillExists = true;
           }
-        } catch (err) {
+        } catch (_err) {
           // If we can't read the file, assume it was deleted entirely
         }
 
@@ -835,7 +835,7 @@ if (require.main === module) {
           cwd: PROJECT_ROOT, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
         }).trim().split('\n').filter(Boolean);
         files = [...new Set([...staged, ...unstaged])];
-      } catch (err) {
+      } catch (_err) {
         console.error('Could not get modified files from git');
         process.exit(1);
       }

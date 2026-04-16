@@ -57,7 +57,7 @@ function walkSourceFiles(dir, options = {}) {
     let entries;
     try {
       entries = fs.readdirSync(currentDir, { withFileTypes: true });
-    } catch (err) {
+    } catch (_err) {
       return; // Skip unreadable directories
     }
 
@@ -120,12 +120,12 @@ function scanHttpClients(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(filePath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
     const relPath = path.relative(projectRoot, filePath);
-    const lines = content.split('\n');
+    const _lines = content.split('\n');
 
     for (const pattern of patterns) {
       // Reset lastIndex for global regex
@@ -192,7 +192,7 @@ function scanRouteDefinitions(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(filePath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -286,7 +286,7 @@ function scanNextjsApiRoutes(projectRoot) {
       let content;
       try {
         content = fs.readFileSync(filePath, 'utf-8');
-      } catch (err) {
+      } catch (_err) {
         continue;
       }
 
@@ -352,7 +352,7 @@ function scanEventBus(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(filePath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -422,7 +422,7 @@ function scanSharedTypes(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(filePath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -495,7 +495,7 @@ function scanEnvVars(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(filePath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -531,7 +531,7 @@ function scanEnvVars(projectRoot, options = {}) {
     let content;
     try {
       content = fs.readFileSync(envPath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       continue;
     }
 
@@ -588,7 +588,7 @@ function detectProjectType(projectRoot) {
         try {
           const entries = fs.readdirSync(dir, { withFileTypes: true });
           packageCount += entries.filter(e => e.isDirectory()).length;
-        } catch (err) {
+        } catch (_err) {
           // skip
         }
       }
@@ -651,7 +651,7 @@ function getCommitSha(projectRoot) {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
     }).trim();
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }

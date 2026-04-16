@@ -18,7 +18,7 @@
 
 'use strict';
 
-const path = require('node:path');
+const _path = require('node:path');
 const { getConfig, PATHS } = require('../../flow-utils');
 
 // ============================================================

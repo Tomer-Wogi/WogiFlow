@@ -34,7 +34,8 @@
     },
     "loopEnforcement": {
       "enabled": false
-    }
+    },
+    "requireGateLatch": true
   },
   "componentReuse": {
     "enabled": false
@@ -239,5 +240,29 @@
       "demotionThreshold": 0.5,
       "demotionMinHits": 10
     }
-  }
+  },
+  "runtimeVerification": {
+    "enabled": true,
+    "autoGenerateTests": true,
+    "blockOnFailure": true,
+    "frontend": {
+      "method": "webmcp",
+      "fallback": [
+        "playwright",
+        "checklist"
+      ],
+      "devServerUrl": "http://localhost:5173"
+    },
+    "backend": {
+      "method": "api-test",
+      "fallback": [
+        "curl",
+        "checklist"
+      ],
+      "baseUrl": "http://localhost:3000"
+    },
+    "testOutput": "tests/verification",
+    "persistTests": true
+  },
+  "_configVersion": 2
 }

@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, safeJsonParse, safeJsonParseString, PATHS } = require('./flow-utils')
+const { safeJsonParse, safeJsonParseString, PATHS } = require('./flow-utils')
 const { error } = require('./flow-output');;
 
 const REGISTRY_PATH = path.join(PATHS.workflow, 'state', 'component-registry.json');

@@ -55,7 +55,7 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
   let hookConfig;
   try {
     hookConfig = getConfig();
-  } catch (err) {
+  } catch (_err) {
     hookConfig = {};
   }
 

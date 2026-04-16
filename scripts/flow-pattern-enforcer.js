@@ -22,13 +22,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getProjectRoot,
+  getProjectRoot: _getProjectRoot,
   getConfig,
   PATHS,
-  fileExists,
-  readFile,
+  fileExists: _fileExists,
+  readFile: _readFile,
   writeFile,
-  withLockSync,
+  withLockSync: _withLockSync,
   info,
   success,
   warn,
@@ -354,7 +354,7 @@ function injectPatterns(prompt, task, projectRoot = PATHS.root) {
 /**
  * Validation rules based on pattern categories
  */
-const VALIDATION_RULES = {
+const _VALIDATION_RULES = {
   'naming': [
     { pattern: /PascalCase/i, check: (code) => /[A-Z][a-z]+[A-Z]/.test(code), inverse: false },
     { pattern: /kebab-case/i, check: (code, files) => files?.every(f => /^[a-z0-9-]+\.[a-z]+$/.test(path.basename(f))), inverse: false },
@@ -461,7 +461,7 @@ function validateAgainstPatterns(code, patterns, files = []) {
 /**
  * Check if code includes required citations
  */
-function validateCitations(code, patterns) {
+function validateCitations(code, _patterns) {
   const citations = code.match(/\/\/\s*(?:Following|Reusing|Pattern):\s*.+/gi) || [];
 
   return {
@@ -483,7 +483,7 @@ function validateCitations(code, patterns) {
 function generateSessionSummary(projectRoot = PATHS.root) {
   const decisions = loadDecisionPatterns(projectRoot);
   const components = loadAppMapComponents(projectRoot);
-  const config = getConfig();
+  const _config = getConfig();
 
   let summary = '\n';
   summary += '┌─────────────────────────────────────────────────────────────┐\n';

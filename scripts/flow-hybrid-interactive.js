@@ -14,7 +14,7 @@ const readline = require('node:readline/promises');
 const http = require('node:http');
 const { HttpClient } = require('./flow-http-client');
 const { URL, URLSearchParams } = require('node:url');
-const { getProjectRoot, colors, safeJsonParse, PATHS } = require('./flow-utils');
+const { colors, safeJsonParse, PATHS } = require('./flow-utils');
 const { error: errorMsg } = require('./flow-output');
 
 // Import model registry for smart model selection

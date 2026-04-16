@@ -61,7 +61,7 @@ function readManifest() {
       return manifest;
     }
     return null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -112,7 +112,7 @@ function cleanupEmptyDirs(baseDir) {
           if (remaining.length === 0) {
             fs.rmdirSync(subDir);
           }
-        } catch (err) {
+        } catch (_err) {
           // Dir already gone or inaccessible
         }
       }
@@ -156,7 +156,7 @@ function manifestBasedCleanup(manifest) {
           preserved.push(path.join(dir, f));
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Dir doesn't exist or already removed
     }
   }
@@ -231,7 +231,7 @@ function removeClaudeMd() {
       return true;
     }
     return false;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -254,7 +254,7 @@ function cleanupClaudeDir() {
       return { removed: true, preserved: [] };
     }
     return { removed: false, preserved: userFiles };
-  } catch (err) {
+  } catch (_err) {
     return { removed: false, preserved: [] };
   }
 }

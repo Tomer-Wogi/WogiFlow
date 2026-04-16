@@ -14,7 +14,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, getConfig, color, success, warn, error, PATHS } = require('./flow-utils');
+const { getConfig, PATHS } = require('./flow-utils');
 
 // ============================================================
 // Base Scanner Class

@@ -16,7 +16,7 @@ const {
   PATHS,
   fileExists,
   readFile,
-  writeFile,
+  writeFile: _writeFile,
   getConfig,
   color,
   escapeRegex
@@ -545,7 +545,7 @@ ${learning.ruleTemplate}
       );
       return { content: updated };
     }, { caller: 'flow-standards-learner/promoteToDecisions-markPromoted', skipDedup: true });
-  } catch (err) {
+  } catch (_err) {
     // Non-fatal, rule was already promoted to decisions
   }
 

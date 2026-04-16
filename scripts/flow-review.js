@@ -12,21 +12,21 @@ const {
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  PATHS,
-  fileExists,
+  PATHS: _PATHS,
+  fileExists: _fileExists,
   getConfig,
   isPathWithinProject
 } = require('./flow-utils')
-const { color, success, warn, error, info } = require('./flow-output');;
+const { color, success, warn, error } = require('./flow-output');;
 
 // v3.1 spec verification
-const { verifySpecDeliverables, formatVerificationResults } = require('./flow-spec-verifier');
+const { verifySpecDeliverables } = require('./flow-spec-verifier');
 
 // v3.1 multi-pass review system
 let multiPassReview;
 try {
   multiPassReview = require('./flow-review-passes');
-} catch (err) {
+} catch (_err) {
   multiPassReview = null;
 }
 
@@ -34,7 +34,7 @@ try {
 let standardsChecker;
 try {
   standardsChecker = require('./flow-standards-checker');
-} catch (err) {
+} catch (_err) {
   standardsChecker = null;
 }
 
@@ -42,7 +42,7 @@ try {
 let solutionOptimizer;
 try {
   solutionOptimizer = require('./flow-solution-optimizer');
-} catch (err) {
+} catch (_err) {
   solutionOptimizer = null;
 }
 
@@ -50,7 +50,7 @@ try {
 let standardsGate;
 try {
   standardsGate = require('./flow-standards-gate');
-} catch (err) {
+} catch (_err) {
   standardsGate = null;
 }
 
@@ -315,7 +315,7 @@ function runVerificationGates(files, options = {}) {
     try {
       execFileSync('npm', ['run', 'lint'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
       results.gates.push({ name: 'Lint', passed: true });
-    } catch (err) {
+    } catch (_err) {
       results.gates.push({ name: 'Lint', passed: false, details: 'Lint errors found' });
       results.allPassed = false;
     }
@@ -326,7 +326,7 @@ function runVerificationGates(files, options = {}) {
     try {
       execFileSync('npm', ['run', 'typecheck'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
       results.gates.push({ name: 'TypeCheck', passed: true });
-    } catch (err) {
+    } catch (_err) {
       results.gates.push({ name: 'TypeCheck', passed: false, details: 'Type errors found' });
       results.allPassed = false;
     }
@@ -337,7 +337,7 @@ function runVerificationGates(files, options = {}) {
     try {
       execFileSync('npm', ['test'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
       results.gates.push({ name: 'Tests', passed: true });
-    } catch (err) {
+    } catch (_err) {
       results.gates.push({ name: 'Tests', passed: false, details: 'Test failures' });
       results.allPassed = false;
     }

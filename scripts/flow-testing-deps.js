@@ -26,7 +26,7 @@
 const { execSync } = require('node:child_process');
 const path = require('node:path');
 const fs = require('node:fs');
-const { getProjectRoot, PATHS } = require('./flow-utils');
+const { getProjectRoot } = require('./flow-utils');
 
 // ============================================================
 // Dependency Definitions
@@ -77,7 +77,7 @@ function isPackageInstalled(packageName, projectRoot) {
   const nodeModulesPath = path.join(root, 'node_modules', ...packageName.split('/'));
   try {
     return fs.existsSync(nodeModulesPath);
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }
@@ -157,7 +157,7 @@ function installDeps(mode, projectRoot) {
     try {
       execSync(installCmd, { cwd: root, stdio: 'pipe', timeout: 120000 });
       installed.push(...status.missing);
-    } catch (err) {
+    } catch (_err) {
       failed.push(...status.missing);
       return {
         success: false,
@@ -175,7 +175,7 @@ function installDeps(mode, projectRoot) {
     commands.push(cmd);
     try {
       execSync(cmd, { cwd: root, stdio: 'pipe', timeout: 300000 });
-    } catch (err) {
+    } catch (_err) {
       // postInstall failures are non-fatal but worth noting
       return {
         success: true,

@@ -230,7 +230,7 @@ function main() {
     console.log(`Reason: ${result.reason}`);
 
     // Show helpful info based on condition type
-    const status = getSuspensionStatus();
+    const _status = getSuspensionStatus();
     switch (result.reason) {
       case 'waiting-for-time':
         console.log(`Resume at: ${result.resumeAt}`);

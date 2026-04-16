@@ -96,11 +96,11 @@ function getSkillFreshnessReport(projectRoot) {
           prebuiltVersion: fm.prebuiltVersion || null,
           context7: fm.context7 || null
         });
-      } catch (err) {
+      } catch (_err) {
         // Skip unreadable skills (ENOENT, permission errors, etc.)
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // Skills directory doesn't exist or is unreadable
     return [];
   }

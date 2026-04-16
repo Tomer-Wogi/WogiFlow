@@ -19,7 +19,7 @@ const {
   getConfig,
   safeJsonParse
 } = require('./flow-utils');
-const { success, warn, info, printHeader, printSection } = require('./flow-output');
+const { success, warn } = require('./flow-output');
 const { getCommand: resolveCommand } = require('./flow-script-resolver');
 // Auto-context module (optional - graceful degradation)
 let autoContext = null;
@@ -60,14 +60,14 @@ const { setActiveTask: setHookActiveTask } = require('./flow-hook-status');
 // v2.0 durable session support
 const {
   loadDurableSession,
-  createDurableSession,
+  createDurableSession: _createDurableSession,
   createDurableSessionAsync,
   canResumeFromStep,
-  getResumeContext,
+  getResumeContext: _getResumeContext,
   getSuspensionStatus,
   resumeSession,
-  isSuspended,
-  STEP_STATUS,
+  isSuspended: _isSuspended,
+  STEP_STATUS: _STEP_STATUS,
   clearPendingSkill  // v4.1: Clear pending skill state when task starts
 } = require('./flow-durable-session');
 
@@ -103,7 +103,7 @@ const {
 let contextCompact;
 try {
   contextCompact = require('./flow-context-compact');
-} catch (err) {
+} catch (_err) {
   // Module optional - graceful degradation
   contextCompact = null;
 }
@@ -539,7 +539,7 @@ async function main() {
       }
 
       // Use async version with file locking to prevent race conditions
-      const session = await createDurableSessionAsync(taskId, 'task', sessionSteps, {
+      const _session = await createDurableSessionAsync(taskId, 'task', sessionSteps, {
         filesToChange
       });
 
@@ -715,8 +715,8 @@ async function main() {
   // v2.7: Check and suggest function/API registries when relevant
   const funcRegistryPath = path.join(PATHS.state, 'function-index.json');
   const apiRegistryPath = path.join(PATHS.state, 'api-index.json');
-  const funcMapPath = path.join(PATHS.state, 'function-map.md');
-  const apiMapPath = path.join(PATHS.state, 'api-map.md');
+  const _funcMapPath = path.join(PATHS.state, 'function-map.md');
+  const _apiMapPath = path.join(PATHS.state, 'api-map.md');
 
   const showFunctionRegistry = config.functionRegistry?.enabled !== false && isRelevantToFunctions(taskDescription);
   const showApiRegistry = config.apiRegistry?.enabled !== false && isRelevantToAPIs(taskDescription);

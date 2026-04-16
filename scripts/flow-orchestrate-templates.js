@@ -9,7 +9,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { getProjectRoot, colors, getConfig, PATHS } = require('./flow-utils');
+const { colors, getConfig, PATHS } = require('./flow-utils');
 const {
   getVerbosityGuidance,
   loadPatterns,

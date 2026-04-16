@@ -141,14 +141,14 @@ function cleanupPlanFiles() {
       try {
         const stats = fs.lstatSync(filePath);
         if (stats.isSymbolicLink()) continue;
-      } catch (err) {
+      } catch (_err) {
         continue;
       }
 
       let content;
       try {
         content = fs.readFileSync(filePath, 'utf-8');
-      } catch (err) {
+      } catch (_err) {
         continue; // Skip files we can't read
       }
 

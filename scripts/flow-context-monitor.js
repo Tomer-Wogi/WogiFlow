@@ -15,12 +15,12 @@ const {
   getConfig,
   PATHS,
   STATE_DIR,
-  PROJECT_ROOT,
-  colors,
+  PROJECT_ROOT: _PROJECT_ROOT,
+  colors: _colors,
   color,
-  warn,
+  warn: _warn,
   success,
-  readFile,
+  readFile: _readFile,
   fileExists,
   printHeader,
   safeJsonParse,
@@ -195,7 +195,7 @@ function writeNativeContextInfo(usedPercentage, remainingPercentage) {
     };
     fs.writeFileSync(NATIVE_CONTEXT_FILE, JSON.stringify(data, null, 2));
     return true;
-  } catch (err) {
+  } catch (_err) {
     return false;
   }
 }

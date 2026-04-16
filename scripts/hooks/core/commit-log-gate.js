@@ -80,7 +80,7 @@ function checkCommitLogGate(command, config) {
 
   // Load config if not provided
   if (!config) {
-    try { config = getConfig(); } catch (err) { config = {}; }
+    try { config = getConfig(); } catch (_err) { config = {}; }
   }
 
   // Check if gate is enabled (default: enabled when enforcement section exists)
@@ -92,7 +92,7 @@ function checkCommitLogGate(command, config) {
   let readyData;
   try {
     readyData = getReadyData();
-  } catch (err) {
+  } catch (_err) {
     // Can't read ready.json → fail-open (don't block work)
     return { allowed: true, blocked: false };
   }

@@ -12,7 +12,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const { getConfig, PATHS, safeJsonParse, readFile, writeFile, ensureDir, isPathWithinProject, validateTaskId } = require('./flow-utils');
+const { getConfig, PATHS, safeJsonParse, writeFile, ensureDir, isPathWithinProject, validateTaskId } = require('./flow-utils');
 
 /**
  * Check if completion summaries are enabled in config

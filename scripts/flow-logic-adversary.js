@@ -39,13 +39,13 @@
  *   node scripts/flow-logic-adversary.js rubric
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 
 const { PATHS } = require('./flow-paths');
 const { fileExists, safeJsonParse, readFile } = require('./flow-io');
 const { getConfig } = require('./flow-config-loader');
-const { warn, info, success, error, color } = require('./flow-output');
+const { info, error, color } = require('./flow-output');
 const gateTelemetry = require('./flow-gate-telemetry');
 
 // ============================================================
@@ -446,10 +446,11 @@ function shouldIterate(verdict, round) {
  */
 // CL-008 fix (2026-04-13): pairing table moved to config so model IDs stay
 // current as new versions release. Defaults preserved as fallback.
+// Updated 2026-04-16: Opus 4.7 is the new top tier; sonnet/haiku adversary upgraded.
 const DEFAULT_MODEL_PAIRING = {
   opus: 'claude-sonnet-4-6',
-  sonnet: 'claude-opus-4-6',
-  haiku: 'claude-opus-4-6',
+  sonnet: 'claude-opus-4-7',
+  haiku: 'claude-opus-4-7',
 };
 
 function selectAdversaryModel(architectModel) {

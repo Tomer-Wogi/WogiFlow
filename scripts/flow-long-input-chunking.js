@@ -12,7 +12,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { readJson } = require('./flow-io');
-const { PATHS } = require('./flow-utils');
+const { } = require('./flow-utils');
 
 // Core functions are injected via init() to avoid circular dependencies
 let digestCore = null;

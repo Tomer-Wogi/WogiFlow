@@ -12,7 +12,7 @@
  * Called by flow-session-end.js, can also run standalone.
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const { slugify: _slugify } = require('./flow-output');
 const slugify = (s) => _slugify(s, { maxLength: 40 });
@@ -331,7 +331,7 @@ function getSemanticMatch() {
         const score = typeof result === 'object' ? result.combined : result;
         return score / 100; // Convert to 0-1 scale
       };
-    } catch (err) {
+    } catch (_err) {
       // Fallback to simple string matching if semantic module not available
       _calculateCombinedSimilarity = (a, b) => {
         const aLower = a.toLowerCase();

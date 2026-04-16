@@ -11,13 +11,13 @@
  *   const response = await callModel('openai:gpt-4o', prompt);
  */
 
-const path = require('node:path');
+const _path = require('node:path');
 const {
-  PATHS,
+  PATHS: _PATHS,
   getConfig,
-  getConfigValue,
-  color,
-  warn,
+  getConfigValue: _getConfigValue,
+  color: _color,
+  warn: _warn,
   error
 } = require('./flow-utils');
 
@@ -37,8 +37,8 @@ const PROVIDERS = {
     name: 'Anthropic',
     apiBase: 'https://api.anthropic.com/v1',
     envKey: 'ANTHROPIC_API_KEY',
-    models: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-sonnet-4-5-20250929', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
-    defaultModel: 'claude-3-5-haiku-latest'
+    models: ['claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
+    defaultModel: 'claude-haiku-4-5-20251001'
   },
   google: {
     name: 'Google',
@@ -352,7 +352,7 @@ function isModelCallingAvailable() {
 /**
  * Format manual mode prompt for copy-paste
  */
-function formatManualPrompt(prompt, context) {
+function formatManualPrompt(prompt, _context) {
   return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 Copy this prompt to another AI model:

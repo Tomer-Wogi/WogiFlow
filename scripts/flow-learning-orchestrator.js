@@ -23,7 +23,7 @@
  *   - flow-standards-learner.js    — Standards violation learning
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const { PATHS } = require('./flow-paths');
 const { acquireLock, readFile, writeFile, fileExists } = require('./flow-io');
 

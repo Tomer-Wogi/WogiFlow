@@ -29,8 +29,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { PATHS } = require('./flow-paths');
-const { fileExists, ensureDir, safeJsonParse } = require('./flow-io');
-const { color, info, success, warn, error } = require('./flow-output');
+const { fileExists, safeJsonParse } = require('./flow-io');
+const { color, info, success, error } = require('./flow-output');
 
 const REQUIRED_INTENT_ARTIFACTS = [
   'product.md',

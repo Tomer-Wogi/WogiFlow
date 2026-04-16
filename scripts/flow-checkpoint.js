@@ -22,8 +22,8 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { execSync, spawnSync } = require('node:child_process');
-const { getProjectRoot, getConfig, colors: c, PATHS } = require('./flow-utils');
+const { spawnSync } = require('node:child_process');
+const { getConfig, colors: c, PATHS } = require('./flow-utils');
 const { success: printSuccess, warn: printWarn } = require('./flow-output');
 
 const CHECKPOINTS_DIR = PATHS.checkpoints;

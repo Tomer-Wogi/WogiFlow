@@ -14,7 +14,7 @@
 const path = require('node:path');
 const {
   PATHS,
-  readJson,
+  readJson: _readJson,
   readFile,
   fileExists,
   parseFlags,
@@ -171,7 +171,7 @@ function assessComplexity(context) {
  * @returns {Object[]} Array of questions with category and text
  */
 function generateQuestions(context, options = {}) {
-  const config = getConfig();
+  const _config = getConfig();
   const maxQuestions = options.maxQuestions ||
     getConfigValue('clarifyingQuestions.maxQuestions', 5);
   const skipForSmall = options.skipForSmall ??

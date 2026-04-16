@@ -18,12 +18,12 @@ const {
   PATHS,
   PROJECT_ROOT,
   WORKFLOW_DIR,
-  fileExists,
+  fileExists: _fileExists,
   dirExists,
   parseFlags,
   outputJson,
   checkSpecMigration,
-  SPEC_FILE_MAP,
+  SPEC_FILE_MAP: _SPEC_FILE_MAP,
   getTodayDate
 } = require('./flow-utils')
 const { printHeader, printSection, color, success, warn, error, info } = require('./flow-output');;

@@ -19,14 +19,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { getProjectRoot, PATHS, ensureDir, safeJsonParse, safeJsonParseString } = require('./flow-utils');
+const { PATHS, ensureDir, safeJsonParse, safeJsonParseString } = require('./flow-utils');
 const { getConfig } = require('./flow-config-loader');
 const { loadProfile } = require('./flow-verification-profile');
 
 let scenarioEngine;
 try {
   scenarioEngine = require('./flow-scenario-engine');
-} catch (err) {
+} catch (_err) {
   scenarioEngine = null;
 }
 
@@ -58,7 +58,7 @@ function parseAPIMap(apiMapPath) {
   let content;
   try {
     content = fs.readFileSync(apiMapPath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 
@@ -137,7 +137,7 @@ function parseOpenAPISpec(specPath) {
   let content;
   try {
     content = fs.readFileSync(specPath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     return { endpoints: [], raw: null };
   }
 
@@ -524,13 +524,13 @@ async function executeAPITest(testCase, baseUrl, options = {}) {
     if (contentType.includes('application/json')) {
       try {
         body = await response.json();
-      } catch (err) {
+      } catch (_err) {
         body = null;
       }
     } else {
       try {
         body = await response.text();
-      } catch (err) {
+      } catch (_err) {
         body = null;
       }
     }
@@ -665,7 +665,7 @@ async function startAPIServer(command, baseUrl, timeout = SERVER_READY_TIMEOUT) 
         if (response.ok || response.status < 500) {
           return { process: serverProcess, ready: true, error: null };
         }
-      } catch (err) {
+      } catch (_err) {
         // Server not ready yet — continue polling
       }
     }
@@ -693,7 +693,7 @@ function stopAPIServer(serverProcess) {
     if (serverProcess.pid) {
       try {
         process.kill(-serverProcess.pid, 'SIGTERM');
-      } catch (err) {
+      } catch (_err) {
         // Process group kill failed — try direct kill
         try {
           serverProcess.kill('SIGTERM');
@@ -708,12 +708,12 @@ function stopAPIServer(serverProcess) {
           if (!serverProcess.killed) {
             process.kill(-serverProcess.pid, 'SIGKILL');
           }
-        } catch (err) {
+        } catch (_err) {
           // Already dead
         }
       }, 5000);
     }
-  } catch (err) {
+  } catch (_err) {
     // Process already terminated
   }
 }
@@ -1049,7 +1049,7 @@ function loadOrGenerateScenarios(taskId, options = {}) {
   let apiMapContent = null;
   try {
     apiMapContent = fs.readFileSync(apiMapPath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     // No API map available
   }
 
@@ -1105,7 +1105,7 @@ async function runScenarioTests(taskId, scenarios, options = {}) {
     try {
       fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
       report.reportPath = reportPath;
-    } catch (err) {
+    } catch (_err) {
       // Non-fatal
     }
   }

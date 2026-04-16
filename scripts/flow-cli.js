@@ -22,8 +22,8 @@
  *   cli.fail('Something went wrong', 1);
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 const { colors: c, parseFlags: utilsParseFlags } = require('./flow-utils');
 const { success: outputSuccess, warn: outputWarn, error: outputError, info: outputInfo } = require('./flow-output');
 

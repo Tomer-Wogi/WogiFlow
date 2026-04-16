@@ -209,7 +209,7 @@ function listTemplates() {
     return fs.readdirSync(TEMPLATES_DIR)
       .filter((f) => f.endsWith('.yaml'))
       .map((f) => f.replace('.yaml', ''));
-  } catch (err) {
+  } catch (_err) {
     return [];
   }
 }
@@ -391,9 +391,9 @@ function getCapabilityScore(modelFamily, taskType) {
 
   // Map model family to capability file
   const fileMap = {
-    opus: 'claude-opus-4-6.yaml',
+    opus: 'claude-opus-4-7.yaml',
     sonnet: 'claude-sonnet-4-6.yaml',
-    haiku: 'claude-haiku-3-5.yaml'
+    haiku: 'claude-haiku-4-5.yaml'
   };
 
   const fileName = fileMap[modelFamily];
@@ -435,7 +435,7 @@ function getCapabilityScore(modelFamily, taskType) {
     const capKey = keyMap[taskType] || taskType;
     const score = parseInt(scores[capKey], 10);
     return isNaN(score) ? 0 : score;
-  } catch (err) {
+  } catch (_err) {
     return 0;
   }
 }

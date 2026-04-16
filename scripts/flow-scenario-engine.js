@@ -19,12 +19,12 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { getProjectRoot, safeJsonParseString, PATHS } = require('./flow-utils');
+const { safeJsonParseString } = require('./flow-utils');
 
 let verificationProfile;
 try {
   verificationProfile = require('./flow-verification-profile');
-} catch (err) {
+} catch (_err) {
   verificationProfile = null;
 }
 
@@ -241,13 +241,13 @@ async function executeStep(step, baseUrl, context, options = {}) {
     if (contentType.includes('application/json')) {
       try {
         body = await response.json();
-      } catch (err) {
+      } catch (_err) {
         body = null;
       }
     } else {
       try {
         body = await response.text();
-      } catch (err) {
+      } catch (_err) {
         body = null;
       }
     }
@@ -378,7 +378,7 @@ function runAssertion(assertion, stepResult, context) {
       try {
         const regex = new RegExp(assertion.expected);
         passed = regex.test(actualStr);
-      } catch (err) {
+      } catch (_err) {
         return {
           passed: false,
           type,
@@ -652,7 +652,7 @@ function resolveBaseUrl(scenario) {
       if (profile && profile.api && profile.api.baseUrl) {
         return profile.api.baseUrl;
       }
-    } catch (err) {
+    } catch (_err) {
       // Fall through to default
     }
   }
@@ -679,7 +679,7 @@ function applyIsolationStrategy(scenario) {
       return { ...scenario, teardown: { strategy: 'none' } };
     }
     // Tier 2 (database) and Tier 3 (reverse DELETE) use default teardown
-  } catch (err) {
+  } catch (_err) {
     // Non-fatal — use existing teardown config
   }
   return scenario;

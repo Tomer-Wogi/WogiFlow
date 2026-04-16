@@ -13,7 +13,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { RegistryPlugin } = require('../flow-registry-manager');
-const { getProjectRoot, safeJsonParse: safeJsonParseFile, PATHS, getTodayDate } = require('../flow-utils');
+const { safeJsonParse: safeJsonParseFile, PATHS, getTodayDate } = require('../flow-utils');
 
 const INDEX_PATH = path.join(PATHS.state, 'service-index.json');
 const MAP_PATH = path.join(PATHS.state, 'service-map.md');
@@ -314,12 +314,12 @@ class ServiceRegistry extends RegistryPlugin {
             if (content.includes('NestMiddleware')) {
               this._parseNestJSMiddleware(content, relPath, 'middleware');
             }
-          } catch (err) {
+          } catch (_err) {
             // Skip unreadable files
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip unreadable directories
     }
   }
@@ -466,12 +466,12 @@ class ServiceRegistry extends RegistryPlugin {
                 file: relPath
               });
             }
-          } catch (err) {
+          } catch (_err) {
             // Skip
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip
     }
   }
@@ -523,12 +523,12 @@ class ServiceRegistry extends RegistryPlugin {
             const content = fs.readFileSync(fullPath, 'utf-8');
             const relPath = path.relative(PATHS.root, fullPath);
             this._parseDjangoFile(content, relPath);
-          } catch (err) {
+          } catch (_err) {
             // Skip
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip
     }
   }
@@ -589,12 +589,12 @@ class ServiceRegistry extends RegistryPlugin {
               const relPath = path.relative(PATHS.root, fullPath);
               this._parseGoFile(content, relPath);
             }
-          } catch (err) {
+          } catch (_err) {
             // Skip
           }
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Skip
     }
   }

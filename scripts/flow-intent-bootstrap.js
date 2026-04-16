@@ -39,7 +39,7 @@ const path = require('node:path');
 
 const { PATHS } = require('./flow-paths');
 const { fileExists, safeJsonParse, ensureDir } = require('./flow-io');
-const { info, success, warn, error, color } = require('./flow-output');
+const { info, warn, color } = require('./flow-output');
 const { detectTrapZones } = require('./flow-trap-zone');
 const gateTelemetry = require('./flow-gate-telemetry');
 

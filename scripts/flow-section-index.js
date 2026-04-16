@@ -25,7 +25,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const {
   PATHS,
-  PROJECT_ROOT,
+  PROJECT_ROOT: _PROJECT_ROOT,
   readFile,
   writeFile,
   fileExists,
@@ -40,7 +40,7 @@ const {
 } = require('./flow-utils');
 
 // Re-use existing section parser from flow-rules-sync
-const { parseMarkdownSections, slugify } = require('./flow-rules-sync');
+const { slugify } = require('./flow-rules-sync');
 
 // ============================================================
 // Configuration

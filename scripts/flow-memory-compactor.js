@@ -16,10 +16,10 @@
  * Part of v1.8.0 - Automatic Memory Management
  */
 
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 const memoryDb = require('./flow-memory-db');
-const { getConfig, PROJECT_ROOT } = require('./flow-config-loader');
+const { getConfig } = require('./flow-config-loader');
 const { color } = require('./flow-output');
 
 // ============================================================

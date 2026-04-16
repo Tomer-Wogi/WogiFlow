@@ -103,14 +103,14 @@ function anonymizeBatch(records) {
  */
 function createUploadPayload(params) {
   const { records, capabilityScores, routingEffectiveness } = params;
-  const config = getConfig();
+  const _config = getConfig();
 
   // Get WogiFlow version from package.json
   let version = 'unknown';
   try {
     const pkg = require(path.join(PATHS.root, 'package.json'));
     version = pkg.version || 'unknown';
-  } catch (err) {
+  } catch (_err) {
     // Non-critical
   }
 
@@ -209,7 +209,7 @@ function main() {
       const sample = [
         {
           taskId: 'wf-abc123',
-          model: 'claude-opus-4-6',
+          model: 'claude-opus-4-7',
           taskType: 'feature',
           iterations: 2,
           firstAttemptPass: true,

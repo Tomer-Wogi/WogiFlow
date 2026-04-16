@@ -12,7 +12,7 @@
  *   flow pending mark-processed <id> # Mark item as processed
  */
 
-const fs = require('node:fs');
+const _fs = require('node:fs');
 const path = require('node:path');
 const { PATHS, readJson, writeJson } = require('./flow-utils');
 

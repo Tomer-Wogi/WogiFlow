@@ -15,9 +15,9 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const { getProjectRoot, getConfig, color, success, warn, error, PATHS } = require('./flow-utils');
-const { readJson, writeJson, ensureDir, fileExists } = require('./flow-utils');
+const _crypto = require('node:crypto');
+const { color, success, warn, error, PATHS } = require('./flow-utils');
+const { readJson, ensureDir, fileExists } = require('./flow-utils');
 const { BaseScanner, PROJECT_ROOT } = require('./flow-scanner-base');
 
 const WEBMCP_DIR = path.join(PATHS.workflow, 'webmcp');

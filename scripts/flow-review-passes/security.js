@@ -17,7 +17,7 @@
  */
 
 const path = require('node:path');
-const { readFile, PATHS, getConfig } = require('../flow-utils');
+const { } = require('../flow-utils');
 const { CREDENTIAL_SCAN_PATTERNS } = require('../flow-security');
 
 /**
@@ -359,7 +359,7 @@ async function run(context) {
   };
 
   // Focus on files flagged by previous passes
-  const priorityFiles = [
+  const _priorityFiles = [
     ...(previousResults.structure?.filesToExamine || []),
     ...(previousResults.logic?.filesToExamine || [])
   ];

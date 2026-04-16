@@ -19,7 +19,8 @@
  */
 
 const fs = require('node:fs');
-const path = require('node:path');
+const _path = require('node:path');
+const { safeJsonParse } = require('./flow-io');
 
 /** Current config version — increment when adding new migrations */
 const CURRENT_CONFIG_VERSION = 2;
@@ -232,12 +233,10 @@ function migrateConfigFile(configPath) {
     return { migrated: false, fromVersion: 0, toVersion: 0, applied: [] };
   }
 
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-  } catch (err) {
+  const config = safeJsonParse(configPath, null);
+  if (!config) {
     if (process.env.DEBUG) {
-      console.error(`[config-migrate] Failed to read config: ${err.message}`);
+      console.error(`[config-migrate] Failed to read config at ${configPath}`);
     }
     return { migrated: false, fromVersion: 0, toVersion: 0, applied: [] };
   }

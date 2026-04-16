@@ -19,7 +19,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const {
-  getConfig,
+  getConfig: _getConfig,
   PATHS,
   readJson,
   writeJson,
@@ -77,7 +77,7 @@ function getDefaultStats() {
  *
  * @param {Object} record - Task performance record
  * @param {string} record.taskId - Task ID (wf-XXXXXXXX)
- * @param {string} record.model - Model used (e.g., 'claude-opus-4-6')
+ * @param {string} record.model - Model used (e.g., 'claude-opus-4-7')
  * @param {string} record.taskType - Task type (feature, bugfix, refactor, etc.)
  * @param {number} record.iterations - Number of implementation iterations
  * @param {boolean} record.firstAttemptPass - Whether first attempt passed verification

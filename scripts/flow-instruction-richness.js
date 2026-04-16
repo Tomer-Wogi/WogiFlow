@@ -30,7 +30,7 @@ function warn(msg) {
 let lspModule = null;
 try {
   lspModule = require('./flow-lsp');
-} catch (err) {
+} catch (_err) {
   // LSP module not available, will use fallback
 }
 
@@ -60,7 +60,7 @@ function loadModelRegistry() {
       warn('[instruction-richness] Registry unavailable — using fallback defaults');
     }
     return registryCache;
-  } catch (err) {
+  } catch (_err) {
     warn('[instruction-richness] Could not load model registry — using fallback defaults');
     registryCache = null;
     return null;
@@ -272,7 +272,7 @@ function loadProjectContext(projectRoot) {
   if (fs.existsSync(contextPath)) {
     try {
       context += fs.readFileSync(contextPath, 'utf-8');
-    } catch (err) {
+    } catch (_err) {
       // File may have been deleted/modified between check and read
     }
   }
@@ -286,7 +286,7 @@ function loadProjectContext(projectRoot) {
       if (summaryMatch) {
         context += '\n\n### Project Summary\n' + summaryMatch[0];
       }
-    } catch (err) {
+    } catch (_err) {
       // File may have been deleted/modified between check and read
     }
   }
@@ -308,7 +308,7 @@ function loadPatterns(projectRoot) {
   let content;
   try {
     content = fs.readFileSync(decisionsPath, 'utf-8');
-  } catch (err) {
+  } catch (_err) {
     // File may have been deleted/modified between check and read
     return null;
   }
@@ -427,7 +427,7 @@ function loadRelevantTypes(projectRoot, filePath, options = {}) {
  * @returns {Promise<string|null>} Formatted type information
  */
 async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
-  const { getConfig, PATHS } = require('./flow-utils');
+  const { getConfig } = require('./flow-utils');
   const config = getConfig();
 
   // Check if LSP is enabled
@@ -451,7 +451,7 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
       let content;
       try {
         content = fs.readFileSync(absPath, 'utf-8');
-      } catch (err) {
+      } catch (_err) {
         // File may have been deleted/modified between check and read
         return loadRelevantTypes(projectRoot, filePath, options);
       }
@@ -464,7 +464,7 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
           if (typeInfo) {
             types.push(`// ${id.name}\n${typeInfo}`);
           }
-        } catch (err) {
+        } catch (_err) {
           // Skip individual errors
         }
       }
@@ -482,7 +482,7 @@ async function loadRelevantTypesWithLSP(projectRoot, filePath, options = {}) {
     }
 
     return types.length > 0 ? types.join('\n\n') : null;
-  } catch (err) {
+  } catch (_err) {
     // Fallback to regex-based loading on any error
     return loadRelevantTypes(projectRoot, filePath, options);
   }
@@ -545,12 +545,12 @@ function extractIdentifiersForLSP(content, keywords = []) {
 /**
  * Finds related code files (similar components, hooks, etc.)
  */
-function loadRelatedCode(projectRoot, filePath, stepType) {
+function loadRelatedCode(projectRoot, filePath, _stepType) {
   if (!filePath) return null;
 
   const related = [];
   const dir = path.dirname(filePath);
-  const ext = path.extname(filePath);
+  const _ext = path.extname(filePath);
 
   // Find siblings or similar files
   const searchDirs = [dir, path.join(dir, '..'), path.join(dir, '..', '..')];

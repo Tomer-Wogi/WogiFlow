@@ -93,7 +93,7 @@ function handleSetup(options = {}) {
  * @param {Object} options
  * @returns {Object} Result: { tasks, message, results }
  */
-function handleMaintenance(options = {}) {
+function handleMaintenance(_options = {}) {
   if (!isSetupEnabled()) {
     return {
       tasks: [],
