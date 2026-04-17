@@ -17,12 +17,51 @@
 #   Opt-out: pass --no-wogi-restart to run claude once without the restart loop
 #
 # Environment:
-#   WOGI_RESTART_FLAG  — path to restart-flag file (default: <cwd>/.workflow/state/restart-requested)
-#   WOGI_MAX_RESTARTS  — safety cap, default 50 (prevents runaway restart storms)
-#   WOGI_WRAPPER_PID   — exported to child; hook checks this to confirm wrapper is present
-#   WOGI_CLAUDE_BIN    — override path to claude binary (default: found via PATH)
+#   WOGI_RESTART_FLAG    — path to restart-flag file (default: <cwd>/.workflow/state/restart-requested)
+#   WOGI_MAX_RESTARTS    — safety cap, default 50 (prevents runaway restart storms)
+#   WOGI_WRAPPER_PID     — exported to child; hook checks this to confirm wrapper is present
+#   WOGI_CLAUDE_BIN      — override path to claude binary (default: found via PATH)
+#   WOGI_NO_EXPECT       — set to 1 to disable expect-based auto-dismiss of the
+#                          "Loading development channels" dialog (v2.22.3+).
+#                          With expect enabled (default when expect is on PATH
+#                          and --dangerously-load-development-channels is in args),
+#                          the dialog is auto-accepted so workspace worker
+#                          restarts require zero manual interaction.
+#   WOGI_EXPECT_TIMEOUT  — override the expect timeout (default 30s) for watching
+#                          the dialog. After timeout we hand off to the user
+#                          unconditionally.
 
 set -u
+
+# --- Resolve helper paths (for expect-based dialog auto-dismiss) ---
+WOGI_CLAUDE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WOGI_EXPECT_SCRIPT="$WOGI_CLAUDE_DIR/wogi-claude-expect.exp"
+
+# Detect whether to use the expect wrapper. Two conditions must hold:
+#   1. `expect` is on PATH and the wogi-claude-expect.exp script exists
+#   2. The args include --dangerously-load-development-channels (which is the
+#      only flag that triggers the "Loading development channels" dialog we
+#      want to auto-dismiss)
+# AND WOGI_NO_EXPECT is NOT set (escape hatch).
+__wogi_use_expect=0
+if [ -z "${WOGI_NO_EXPECT:-}" ] && command -v expect >/dev/null 2>&1 && [ -x "$WOGI_EXPECT_SCRIPT" ]; then
+  for arg in "$@"; do
+    if [ "$arg" = "--dangerously-load-development-channels" ]; then
+      __wogi_use_expect=1
+      break
+    fi
+  done
+fi
+
+# run_claude — invoke claude, routing through expect when we can auto-dismiss
+# the dev-channels dialog. Preserves stdin/stdout/stderr exactly.
+run_claude() {
+  if [ "$__wogi_use_expect" -eq 1 ]; then
+    expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "$@"
+  else
+    "$CLAUDE_BIN" "$@"
+  fi
+}
 
 # --- Opt-out path: no restart loop, just exec claude once ---
 for arg in "$@"; do
@@ -31,7 +70,11 @@ for arg in "$@"; do
     filtered=()
     for a in "$@"; do [ "$a" = "--no-wogi-restart" ] || filtered+=("$a"); done
     CLAUDE_BIN="${WOGI_CLAUDE_BIN:-claude}"
-    exec "$CLAUDE_BIN" "${filtered[@]}"
+    if [ "$__wogi_use_expect" -eq 1 ]; then
+      exec expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "${filtered[@]}"
+    else
+      exec "$CLAUDE_BIN" "${filtered[@]}"
+    fi
   fi
 done
 
@@ -66,7 +109,7 @@ while true; do
     rm -f "$FLAG_FILE"
   fi
 
-  "$CLAUDE_BIN" "$@"
+  run_claude "$@"
   inner_exit=$?
 
   # If the user hit Ctrl+C (INT/TERM reached us), don't restart

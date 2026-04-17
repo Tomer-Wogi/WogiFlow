@@ -1,0 +1,73 @@
+#!/usr/bin/env expect
+#
+# wogi-claude-expect.exp — Auto-dismiss Claude Code's "Loading development
+# channels" dialog so workspace worker restarts are truly seamless.
+#
+# Claude Code fires an interactive Ink dialog EVERY session when:
+#   - User is OAuth-authenticated to claude.ai
+#   - The CLI is launched with --dangerously-load-development-channels
+#
+# There's no Claude Code setting that persists an "accepted" state
+# (verified via decompiled source 2026-04-17). So we intercept the dialog
+# at the wrapper level: spawn claude in an expect-managed PTY, watch for
+# the dialog title text, send Enter to accept the already-highlighted
+# "I am using this for local development" option, then hand off control
+# to the user via `interact`.
+#
+# Usage (invoked from lib/wogi-claude):
+#   expect wogi-claude-expect.exp /absolute/path/to/claude [args...]
+#
+# Disable at runtime: set WOGI_NO_EXPECT=1. The wrapper then execs claude
+# directly and the user sees the dialog as before (manual single-click).
+
+set timeout 30
+
+# Allow WOGI_EXPECT_TIMEOUT override (rarely needed)
+if {[info exists env(WOGI_EXPECT_TIMEOUT)]} {
+    set timeout $env(WOGI_EXPECT_TIMEOUT)
+}
+
+# Mirror claude's output to the user's terminal during dialog watch
+log_user 1
+
+# argv[0] is the claude binary path; rest are claude's args
+if {[llength $argv] < 1} {
+    puts stderr "wogi-claude-expect.exp: missing claude binary path"
+    exit 2
+}
+
+set claude_bin [lindex $argv 0]
+set claude_args [lrange $argv 1 end]
+
+# Spawn claude in a pseudo-TTY so its Ink UI renders normally.
+# eval is needed because claude_args is a list and spawn expects a
+# flattened command line.
+eval spawn $claude_bin $claude_args
+
+# Watch for the DevChannels dialog title, then press Enter to accept
+# the default-highlighted "I am using this for local development" option.
+#
+# On timeout or EOF: fall through to `interact`. If the dialog appears
+# AFTER our timeout window, the user can still answer it manually —
+# same failure mode as running claude directly.
+expect {
+    -re "Loading development channels" {
+        # Let Ink finish rendering the dialog before sending Enter.
+        # Without this, the select-input component may not have bound
+        # its keyboard listener yet and the keystroke is dropped.
+        after 250
+        send "\r"
+    }
+    timeout { }
+    eof { exit }
+}
+
+# Hand off: user's keystrokes flow to claude, claude's output flows
+# to the user's terminal. interact blocks until claude exits.
+interact
+
+# After claude exits, let the bash wrapper decide whether to restart.
+# Pass through claude's exit status (expect sets it in $expect_out(-code)
+# after `interact`, but a plain exit is sufficient since the wrapper
+# only cares about the restart flag file, not exit code).
+exit
