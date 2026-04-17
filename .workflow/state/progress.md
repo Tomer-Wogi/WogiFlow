@@ -694,11 +694,7 @@ None
 <!-- MEMORY-BLOCKS-START -->
 ```json
 {
-  "currentTask": {
-    "id": "wf-00000001",
-    "title": "TEST: trigger restart via subagent completion",
-    "startedAt": "2026-04-15T09:24:55.744Z"
-  },
+  "currentTask": null,
   "sessionContext": {
     "filesModified": [
       "scripts/flow",
@@ -725,9 +721,10 @@ None
     "Phase 1 (critical): All 7 items fixed and committed",
     "Phase 2 (data integrity): In progress",
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
-    "Backlog: wf-3daad465 (subagent metrics aggregation) still pending"
+    "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
+    "Completed: Silent-worker-halt detection via dispatch-tracking"
   ],
-  "lastUpdated": "2026-04-15T09:24:55.745Z",
+  "lastUpdated": "2026-04-17T09:41:23.856Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

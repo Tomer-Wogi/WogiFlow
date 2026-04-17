@@ -1,5 +1,10 @@
 # Implementation Timeline
 
+## 2026-04
+
+### Week 3 (Apr 12-18)
+- [x] wf-d3e67abe: Silent-worker-halt detection via dispatch-tracking (Apr 17)
+
 ## 2026-02
 
 ### Week 1 (Feb 1-7)

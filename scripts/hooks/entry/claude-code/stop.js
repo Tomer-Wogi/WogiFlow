@@ -61,57 +61,84 @@ runHook('Stop', async ({ parsedInput }) => {
     };
   }
 
-  // Workspace worker: send results to manager via HTTP when stopping.
-  // Uses execFileSync with array args to avoid shell injection (finding-001).
-  if (process.env.WOGI_MANAGER_PORT && process.env.WOGI_REPO_NAME && process.env.WOGI_REPO_NAME !== 'manager') {
+  // Workspace worker: write a structured `worker-stopped` message to the
+  // workspace message bus when stopping. This is the graceful-stop half of
+  // silent-halt detection (wf-d3e67abe) — the manager's overdue check uses
+  // this (vs. task-complete vs. nothing) to tell "finished" from "gave up
+  // gracefully" from "died silently".
+  //
+  // Replaces the previous plain-text curl POST to the manager channel — that
+  // was fire-and-forget with no structure, so manager-side reconciliation
+  // couldn't distinguish graceful stops from silent deaths.
+  if (process.env.WOGI_REPO_NAME && process.env.WOGI_REPO_NAME !== 'manager') {
     try {
-      const { execFileSync, execSync } = require('node:child_process');
-      const path = require('node:path');
+      const nodePath = require('node:path');
+      const childProcess = require('node:child_process');
       const VALID_NAME = /^[a-zA-Z0-9_-]{1,64}$/;
       const repoName = process.env.WOGI_REPO_NAME;
-      const managerPort = parseInt(process.env.WOGI_MANAGER_PORT, 10);
 
-      // Validate inputs before using them (finding-001, finding-002)
-      if (!VALID_NAME.test(repoName) || !Number.isInteger(managerPort) || managerPort < 1024 || managerPort > 65535) {
-        throw new Error(`Invalid WOGI_REPO_NAME or WOGI_MANAGER_PORT`);
+      if (!VALID_NAME.test(repoName)) {
+        throw new Error(`Invalid WOGI_REPO_NAME`);
       }
 
-      // Build summary from available state
-      const summaryParts = [];
-      const { PATHS, safeJsonParse } = require('../../flow-utils');
+      const workspaceRoot = process.env.WOGI_WORKSPACE_ROOT;
+      if (workspaceRoot) {
+        const { PATHS, safeJsonParse } = require('../../flow-utils');
+        const ready = safeJsonParse(nodePath.join(PATHS.state, 'ready.json'), {});
+        const recentTask = (ready.recentlyCompleted || [])[0];
+        const inProgressTask = (ready.inProgress || [])[0];
+        const mostRecent = recentTask || inProgressTask;
 
-      const ready = safeJsonParse(path.join(PATHS.state, 'ready.json'), {});
-      const recentTask = (ready.recentlyCompleted || [])[0];
-      const inProgressTask = (ready.inProgress || [])[0];
-      const task = recentTask || inProgressTask;
+        // Determine worker state at stop-time
+        const hasInProgress = Boolean(inProgressTask);
+        const state = hasInProgress ? 'mid-work' : 'idle';
+        const taskInProgress = hasInProgress ? inProgressTask.id : null;
 
-      if (task) {
-        summaryParts.push(`**Task**: ${task.title || task.id}`);
-        if (task.type) summaryParts.push(`**Type**: ${task.type}`);
-      }
+        // Best-effort lastSha
+        let lastSha = null;
+        try {
+          lastSha = childProcess.execSync('git rev-parse --short HEAD 2>/dev/null || true', {
+            cwd: PATHS.root,
+            encoding: 'utf-8',
+            timeout: 2000
+          }).trim() || null;
+        } catch (_err) { /* non-critical */ }
 
-      try {
-        const diff = execSync('git diff --name-only HEAD 2>/dev/null || true', { cwd: PATHS.root, encoding: 'utf-8' }).trim();
-        const staged = execSync('git diff --name-only --staged 2>/dev/null || true', { cwd: PATHS.root, encoding: 'utf-8' }).trim();
-        const allChanged = [...new Set([...diff.split('\n'), ...staged.split('\n')].filter(Boolean))];
-        if (allChanged.length > 0) {
-          summaryParts.push(`**Files changed**: ${allChanged.join(', ')}`);
+        // Build structured message and persist via the workspace message bus.
+        // The worker-stopped type was added to MESSAGE_TYPES in
+        // workspace-messages.js (wf-d3e67abe).
+        try {
+          const libMessages = nodePath.resolve(__dirname, '..', '..', '..', '..', 'lib', 'workspace-messages');
+          const { createMessage, saveMessage } = require(libMessages);
+          const msg = createMessage({
+            from: repoName,
+            to: 'manager',
+            type: 'worker-stopped',
+            subject: hasInProgress
+              ? `Worker stopped mid-work on ${taskInProgress}`
+              : `Worker stopped (idle)`,
+            body: [
+              `Worker "${repoName}" is stopping.`,
+              `State: ${state}`,
+              taskInProgress ? `Task in progress: ${taskInProgress}` : null,
+              mostRecent?.title ? `Most recent task: ${mostRecent.title}` : null,
+              lastSha ? `Last commit: ${lastSha}` : null
+            ].filter(Boolean).join('\n'),
+            priority: hasInProgress ? 'high' : 'medium',
+            actionRequired: hasInProgress
+          });
+          // Attach structured fields the manager-side reconciler consumes.
+          msg.taskId = taskInProgress;
+          msg.reason = 'graceful';
+          msg.state = state;
+          msg.taskInProgress = taskInProgress;
+          msg.lastSha = lastSha;
+          saveMessage(workspaceRoot, msg);
+        } catch (err) {
+          if (process.env.DEBUG) {
+            console.error(`[Stop] Workspace message write failed: ${err.message}`);
+          }
         }
-      } catch (_err) { /* non-critical */ }
-
-      const body = summaryParts.join('\n') || `Work completed by ${repoName}.`;
-
-      // execFileSync with array args — no shell interpretation (finding-001 fix)
-      try {
-        execFileSync('curl', [
-          '-s', '-X', 'POST',
-          `http://127.0.0.1:${managerPort}`,
-          '-H', 'Content-Type: text/plain',
-          '-H', `X-Wogi-From: ${repoName}`,
-          '--data-binary', '@-'
-        ], { input: body, timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] });
-      } catch (_err) {
-        // Manager might be offline — that's OK
       }
     } catch (err) {
       if (process.env.DEBUG) {

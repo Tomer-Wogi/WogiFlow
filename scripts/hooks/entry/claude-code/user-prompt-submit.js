@@ -12,6 +12,7 @@ const { checkImplementationGate } = require('../../core/implementation-gate');
 const { checkResearchRequirement } = require('../../core/research-gate');
 const { setRoutingPending, clearRoutingPending, ROUTING_CLEARED_PATH } = require('../../core/routing-gate');
 const { getPhaseContextPrompt } = require('../../core/phase-gate');
+const { buildOverdueContext } = require('../../core/overdue-dispatches');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
 const { spawnBackgroundDetection } = require('../../../flow-correction-detector');
@@ -170,6 +171,23 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
       ...coreResult,
       phasePrompt
     };
+  }
+
+  // wf-d3e67abe — surface overdue workspace dispatches (silent worker deaths)
+  // to the manager model before it processes the next prompt. Manager-only;
+  // fail-open (buildOverdueContext returns null on any error or wrong scope).
+  try {
+    const overduePrompt = buildOverdueContext();
+    if (overduePrompt) {
+      coreResult = {
+        ...coreResult,
+        overduePrompt
+      };
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Hook] Overdue dispatches check failed: ${err.message}`);
+    }
   }
 
   return coreResult;

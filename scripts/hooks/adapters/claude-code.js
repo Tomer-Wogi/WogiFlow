@@ -421,46 +421,27 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       };
     }
 
-    // Research protocol triggered - inject protocol steps as additional context
-    if (coreResult.systemReminder) {
-      // Append phase prompt if present
-      const context = coreResult.phasePrompt
-        ? `${coreResult.systemReminder}\n\n${coreResult.phasePrompt}`
-        : coreResult.systemReminder;
-      return {
-        hookSpecificOutput: {
-          hookEventName: 'UserPromptSubmit',
-          additionalContext: context
-        }
-      };
+    // Compose additionalContext from up to four pieces:
+    //   1. systemReminder (research protocol) OR message (warning)
+    //   2. phasePrompt (phase-specific context)
+    //   3. overduePrompt (wf-d3e67abe — silent-halt surfacing, manager-only)
+    const pieces = [];
+    if (coreResult.systemReminder) pieces.push(coreResult.systemReminder);
+    else if (coreResult.message) pieces.push(coreResult.message);
+    if (coreResult.phasePrompt) pieces.push(coreResult.phasePrompt);
+    if (coreResult.overduePrompt) pieces.push(coreResult.overduePrompt);
+
+    if (pieces.length === 0) {
+      // Allowed - empty response means allow
+      return {};
     }
 
-    // Warning - allow but inject context with the warning message
-    if (coreResult.message && !coreResult.blocked) {
-      // Append phase prompt if present
-      const context = coreResult.phasePrompt
-        ? `${coreResult.message}\n\n${coreResult.phasePrompt}`
-        : coreResult.message;
-      return {
-        hookSpecificOutput: {
-          hookEventName: 'UserPromptSubmit',
-          additionalContext: context
-        }
-      };
-    }
-
-    // Phase prompt only (no other context to inject)
-    if (coreResult.phasePrompt) {
-      return {
-        hookSpecificOutput: {
-          hookEventName: 'UserPromptSubmit',
-          additionalContext: coreResult.phasePrompt
-        }
-      };
-    }
-
-    // Allowed - empty response means allow
-    return {};
+    return {
+      hookSpecificOutput: {
+        hookEventName: 'UserPromptSubmit',
+        additionalContext: pieces.join('\n\n')
+      }
+    };
   }
 
   /**

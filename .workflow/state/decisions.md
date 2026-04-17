@@ -158,6 +158,55 @@ identifies ADR-shaped conclusions in completed tasks and directs them here.
 
 ---
 
+## Workspace Worker Silent-Halt Detection Contract (v2.22.0+ / wf-d3e67abe)
+<!-- PIN: workspace-worker-silent-halt-detection -->
+
+**Rule**: Every workspace dispatch MUST be tracked. Any pending dispatch past its `expectedDeadline` with no matching `task-complete` or `worker-stopped` message = silent death, surfaced on the manager's next turn.
+
+**Why this was necessary**:
+Before this contract, workers could die silently — OOM kill, SIGKILL, network drop, infinite hang, Ctrl+C without graceful exit — and the manager would not notice. The Stop hook fires only on graceful shutdown, `task-complete` messages never arrive for dead workers, and the manager has no polling loop. Multiple real session cycles were lost to workers that died without a trace while the manager waited for a response it would never receive.
+
+**The three terminal states for a dispatch**:
+1. **Completed** — `task-complete` message arrived. Normal happy path.
+2. **Graceful-stop** — `worker-stopped` message arrived (worker's Stop hook fired). Worker gave up but is alive. Manager re-dispatches or moves on.
+3. **Silent-halt** — no message, deadline passed. Worker is probably dead. Manager must check the worker terminal, re-dispatch, or mark failed.
+
+**Architecture — file-based, hook-driven, no background processes**:
+- `lib/workspace-dispatch-tracking.js` — record / reconcile / overdue helpers
+- `.workspace/state/dispatched-tasks.json` — ring buffer of last 100 active records
+- `.workspace/state/dispatched-tasks.archive.jsonl` — append-only overflow for audit
+- Manager's `dispatchToChannel()` calls `recordDispatch()` after a successful POST
+- Manager's `UserPromptSubmit` hook sweeps the message bus for `task-complete` / `worker-stopped` messages and reconciles matching records, then surfaces remaining overdue records as `additionalContext` to the model
+- Worker's Stop hook writes a structured `worker-stopped` message via the workspace message bus (replaces the pre-v2.22 plain-text curl)
+
+**Deadline semantics**:
+- Default `expectedDurationMs` = 30 min (aligns with `waitForCompletion` default)
+- Callers may override per-dispatch: `dispatchToChannel(root, repo, taskId, { expectedDurationMs })`
+- `expectedDeadline = dispatchedAt + expectedDurationMs`
+- Dispatches for legitimately long tasks MUST pass a realistic override — no worker-side heartbeats (rejected as over-engineered)
+
+**Scope — manager-only**:
+- Overdue check fires only when `WOGI_WORKSPACE_ROOT` is set AND `WOGI_REPO_NAME` is `'manager'` or unset. Worker sessions skip the check.
+
+**Reconciliation policy**:
+- Mark in-place: `status: 'completed' | 'graceful-stop' | 'silent-halt'`, add `reconciledAt`
+- Ring buffer caps active records at 100; overflow appends to `.archive.jsonl` for audit trail
+- A `worker-stopped` message for a task in progress reconciles as `graceful-stop` (distinct from `completed`) so the manager can tell "worker finished" from "worker gave up gracefully"
+
+**Constraints honoured**:
+- No new daemons, watchers, setInterval loops, or long setTimeouts
+- All signalling via file writes + hook-driven reads
+- Existing `waitForCompletion()` path is byte-identical
+- Existing `task-complete` message shape unchanged (additive `worker-stopped` type)
+- No MCP surface changes
+
+**Out of scope (follow-up)**:
+- Automatic re-dispatch of detected silent-dead tasks — detection + surfacing only; recovery is the manager's decision
+- Manager-side silence detection (if the manager itself halts) — separate problem
+- Worker-side progress heartbeats — rejected; callers that need longer budgets pass `expectedDurationMs`
+
+---
+
 ## Workspace Worker Cannot Prompt User Directly (v2.20.1+)
 <!-- PIN: workspace-worker-ask-user-question-block -->
 

@@ -1,0 +1,159 @@
+/**
+ * Wogi Flow — Overdue Dispatch Detection (wf-d3e67abe)
+ *
+ * Computes overdue workspace dispatches for manager sessions and
+ * returns an additionalContext string to inject into UserPromptSubmit,
+ * surfacing silent worker deaths to the model before it processes the
+ * next prompt.
+ *
+ * Manager-scoped: returns null for worker sessions and when
+ * WOGI_WORKSPACE_ROOT is unset.
+ */
+
+const path = require('node:path');
+
+/**
+ * Returns true when this process is a workspace manager session
+ * (i.e., NOT a worker). A session counts as manager when:
+ *   - WOGI_WORKSPACE_ROOT is set (we have a workspace to inspect), AND
+ *   - WOGI_REPO_NAME is 'manager' OR unset (not a worker name).
+ */
+function isManagerSession() {
+  if (!process.env.WOGI_WORKSPACE_ROOT) return false;
+  const repo = process.env.WOGI_REPO_NAME;
+  return !repo || repo === 'manager';
+}
+
+function formatDuration(ms) {
+  const totalMin = Math.max(0, Math.floor(ms / 60000));
+  const hours = Math.floor(totalMin / 60);
+  const min = totalMin % 60;
+  if (hours === 0) return `${min}m`;
+  return `${hours}h${min}m`;
+}
+
+function formatLine(record, now) {
+  const dispatched = Date.parse(record.dispatchedAt || '');
+  const deadline = Date.parse(record.expectedDeadline || '');
+  const sinceDispatch = Number.isFinite(dispatched) ? formatDuration(now - dispatched) : '?';
+  const pastDeadline = Number.isFinite(deadline) ? formatDuration(now - deadline) : '?';
+  const budget = record.expectedDurationMs
+    ? formatDuration(record.expectedDurationMs)
+    : '?';
+  return `• ${record.taskId} → ${record.repoName}  | dispatched ${sinceDispatch} ago (${pastDeadline} past ${budget} deadline) | no task-complete / worker-stopped message`;
+}
+
+/**
+ * Reconcile any pending dispatches against `task-complete` or `worker-stopped`
+ * messages in the workspace message bus. Called before overdue computation so
+ * records that matched an incoming message don't get flagged as silent deaths.
+ *
+ * @param {string} workspaceRoot
+ * @returns {number} count of reconciled records
+ */
+function sweepAndReconcile(workspaceRoot) {
+  let reconciled = 0;
+  let readMessages, reconcileDispatch, readDispatches;
+  try {
+    const libMessages = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-messages.js');
+    const libTracking = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
+    readMessages = require(libMessages).readMessages;
+    const tracking = require(libTracking);
+    reconcileDispatch = tracking.reconcileDispatch;
+    readDispatches = tracking.readDispatches;
+  } catch (_err) {
+    return 0; // Fail-open
+  }
+
+  let dispatches;
+  try {
+    dispatches = readDispatches(workspaceRoot).filter(r => r && r.status === 'pending');
+  } catch (_err) {
+    return 0;
+  }
+  if (dispatches.length === 0) return 0;
+
+  const byTaskId = new Map();
+  for (const r of dispatches) {
+    if (r.taskId && !byTaskId.has(r.taskId)) byTaskId.set(r.taskId, r);
+  }
+
+  // Pull both message types. readMessages throws on missing dir internally
+  // but guards with existsSync, so it's safe.
+  let messages = [];
+  try {
+    const completes = readMessages(workspaceRoot, { type: 'task-complete' });
+    const stops = readMessages(workspaceRoot, { type: 'worker-stopped' });
+    messages = completes.concat(stops);
+  } catch (_err) {
+    return 0;
+  }
+
+  for (const msg of messages) {
+    const taskId = msg.taskId || (msg.type === 'task-complete' ? msg.subject : null);
+    if (!taskId || !byTaskId.has(taskId)) continue;
+    try {
+      const status = msg.type === 'worker-stopped' ? 'graceful-stop' : 'completed';
+      const reason = msg.type === 'worker-stopped' ? (msg.reason || 'graceful') : null;
+      const result = reconcileDispatch(workspaceRoot, taskId, status, reason);
+      if (result) {
+        reconciled++;
+        byTaskId.delete(taskId); // Don't double-reconcile
+      }
+    } catch (_err) {
+      // Per-record failure must not poison the sweep.
+    }
+  }
+
+  return reconciled;
+}
+
+/**
+ * Build the overdue-dispatches additionalContext block, or return null
+ * when nothing to surface (non-manager, no workspace root, no overdue).
+ *
+ * @param {Object} [opts]
+ * @param {string} [opts.workspaceRoot] — override (primarily for tests)
+ * @param {number} [opts.now=Date.now()]
+ * @returns {string|null}
+ */
+function buildOverdueContext(opts = {}) {
+  const workspaceRoot = opts.workspaceRoot || process.env.WOGI_WORKSPACE_ROOT;
+  if (!workspaceRoot) return null;
+  if (!opts.workspaceRoot && !isManagerSession()) return null;
+
+  // Sweep: reconcile any pending records that match incoming messages
+  // before computing overdue. This prevents false positives for workers
+  // whose completion/stop message arrived while the manager was idle.
+  try { sweepAndReconcile(workspaceRoot); }
+  catch (_err) { /* fail-open */ }
+
+  let overdue;
+  try {
+    const libPath = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
+    const { getOverdueDispatches } = require(libPath);
+    overdue = getOverdueDispatches(workspaceRoot, opts.now);
+  } catch (_err) {
+    return null; // Fail-open — tracking module missing or IO failure should never block the prompt.
+  }
+
+  if (!Array.isArray(overdue) || overdue.length === 0) return null;
+
+  const now = Number.isFinite(opts.now) ? opts.now : Date.now();
+  const lines = overdue.map(r => formatLine(r, now));
+  return [
+    `━━━ OVERDUE WORKSPACE DISPATCHES (${overdue.length}) ━━━`,
+    ...lines,
+    '',
+    'These workers may have died silently. Check worker terminals;',
+    'if dead, re-dispatch or mark failed. Records:',
+    '  .workspace/state/dispatched-tasks.json',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+  ].join('\n');
+}
+
+module.exports = {
+  isManagerSession,
+  buildOverdueContext,
+  sweepAndReconcile
+};
