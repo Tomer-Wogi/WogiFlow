@@ -99,4 +99,15 @@ During `/wogi-start` Step 3, verify:
 - Run generated tests AFTER implementing → they should all pass
 - If any test passes before implementation → WARNING: test may be trivial
 
+## Evidence Tier (v2.24.0+)
+
+Generated tests that only assert structural properties (class exists, function has signature) emit **Evidence Tier 1 (STATIC)**. Tests that exercise actual behavior emit **Evidence Tier 2 (COMPILED)** once they pass. To reach Tier 3+ (interactive / shipped), tests must make real network or DOM calls — see `/wogi-test` (API/UI) and `/wogi-test-browser` for those.
+
+When recording test results in `.workflow/verifications/`, include:
+```json
+{ "evidenceTier": 1|2, "evidenceTierLabel": "STATIC"|"COMPILED" }
+```
+
+The Completion Truth Gate reads these labels to decide whether "tests pass" is sufficient to accept a "done" claim. L0/L1 tasks cannot close on Tier 1 alone.
+
 ARGUMENTS: {args}

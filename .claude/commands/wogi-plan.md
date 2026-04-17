@@ -182,6 +182,34 @@ When `/wogi-plan` is invoked with a description argument, it should:
 1. Create the plan structure in `.workflow/plans/`
 2. Enter Claude Code plan mode with the description: `EnterPlanMode` with the plan context
 
+## Anti-Deferral Rule (MANDATORY — v2.24.0+)
+
+**When creating a plan from user input, EVERY item the user provided MUST become a tracked epic or feature within the plan.**
+
+You must NEVER:
+- Create epics for items 1-3 and silently skip items 4-7 because you judged them as "enhancements" or "long-term"
+- Label items as "deferred" and exclude them from the plan
+- Apply your own filter to decide which items deserve tracking
+
+You MAY:
+- Assign different priorities (P0/P1/P2/P3) — but ALL items get epics/features
+- Suggest an execution order — but ALL items are tracked in the plan
+- Ask the user "Should I defer items 4-7?" — explicit user consent is the ONLY valid reason to exclude items
+
+**If the user provides 7 items, the plan MUST contain 7 tracked sub-items (epics or features, possibly grouped where every item appears as a criterion).** Verify with a reconciliation count before proceeding.
+
+## P0 Specification-Quality Gates (v2.24.0+)
+
+When creating a plan from user input, apply the same P0 gates `/wogi-story` uses (`scripts/flow-story-gates.js`):
+
+1. **Long Input Gate** — ≥40 lines or ≥5 items → route to `/wogi-extract-review`
+2. **Item Reconciliation** — ≥3 items → enumerate manifest + verify every item maps
+3. **Consumer Impact** — refactor keywords trigger a grep; ≥5 breaking consumers → recommend phased migration
+4. **Scope-Confidence** — extract "new X"/"existing Y"/"the Z service" claims; classify against codebase; surface contradictions as Pending Clarifications
+5. **Intent Bootstrap Coordination** — schedule IGR bootstrap if missing (don't re-prompt)
+
+All fail-open.
+
 ## Tips
 
 - **Plans are for strategic visibility** - Track high-level progress

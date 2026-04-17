@@ -182,6 +182,31 @@ Contradictions are resolved automatically using temporal ordering:
 
 The superseded statement is marked and excluded from story generation.
 
+## Item Manifest Export (v2.24.0+)
+
+After review is complete, the confirmed items can be exported as an **Item Manifest** in the format `/wogi-story`'s P0 item-reconciliation gate consumes directly. This closes the re-extraction loop — when `/wogi-start` routes a long input to `/wogi-extract-review`, the resulting manifest is handed to `/wogi-story` with `bypassLongInput: true` so story creation doesn't re-route back to extraction.
+
+```bash
+flow extract-zero-loss manifest    # JSON: { items, count, bypassLongInput, sourceSessionId, intentBootstrapScheduled }
+```
+
+AI flow:
+```
+User pastes large input
+  ↓
+/wogi-start detects line/item threshold → routes to /wogi-extract-review
+  ↓
+Extract → review → confirm completeness
+  ↓
+flow extract-zero-loss manifest → JSON
+  ↓
+/wogi-story --full-input=<manifest.items.join('\n')> --bypass-long-input
+  ↓
+Item Reconciliation gate sees bypassLongInput, skips Gate 1, runs Gates 2-5 normally
+```
+
+The manifest also carries an `intentBootstrapScheduled` flag so `/wogi-story` won't re-prompt the user if /wogi-extract-review already scheduled IGR bootstrap.
+
 ## Files
 
 | File | Location |

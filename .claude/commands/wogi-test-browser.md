@@ -328,3 +328,14 @@ Controlled by `.workflow/config.json`:
 - **WebMCP assertions**: ~100 tokens per step (tool call + JSON assertion)
 - **Savings**: ~95% token reduction for a 10-step test flow
 - **Bonus**: Deterministic results (no visual diff ambiguity)
+
+## Evidence Tier (v2.24.0+)
+
+A successful `/wogi-test-browser` run emits **Evidence Tier 4 (SHIPPED)** — the highest tier on the Completion Truth Gate scale. Browser-driven WebMCP tests exercise real DOM interactions with real event listeners, network calls, and state transitions.
+
+When reporting results:
+```json
+{ "evidenceTier": 4, "evidenceTierLabel": "SHIPPED" }
+```
+
+See `/wogi-test` for the full tier scale. L0/L1 tasks touching UI should reach Tier 4 before closing; Truth Gate (Step 3.9) will downgrade "done" claims that don't.

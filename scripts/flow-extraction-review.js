@@ -390,6 +390,46 @@ function getConfirmedTasks() {
     }));
 }
 
+/**
+ * v2.24.0 — Export confirmed items as an "Item Manifest" compatible with
+ * /wogi-story's item-reconciliation gate (wf-63c0f4cc). Downstream callers
+ * (/wogi-story, /wogi-epics, /wogi-feature, /wogi-plan) can pass this to
+ * their P0 gates as `fullInput` and mark `bypassLongInput: true` so the
+ * re-extraction loop is skipped.
+ *
+ * @returns {{items: Array<string>, count: number, bypassLongInput: true, sourceSessionId: string, intentBootstrapScheduled: boolean}}
+ */
+function exportAsItemManifest() {
+  const session = loadReviewSession();
+  if (!session) throw new Error('No review session active');
+  if (!session.completeness_confirmed) {
+    throw new Error('Cannot export manifest: review not yet confirmed as complete');
+  }
+
+  const items = session.items
+    .filter(i => i.review_status === 'confirmed')
+    .map(i => (i.text || '').trim())
+    .filter(Boolean);
+
+  // Coordinate with Intent Bootstrap (see flow-story-gates.coordinateIntentBootstrap)
+  // so /wogi-start doesn't re-prompt if the user already scheduled bootstrap via
+  // /wogi-story during this session.
+  let intentBootstrapScheduled = false;
+  try {
+    const gates = require('./flow-story-gates');
+    const result = gates.coordinateIntentBootstrap();
+    intentBootstrapScheduled = !!(result && result.scheduled);
+  } catch (_err) { /* non-critical */ }
+
+  return {
+    items,
+    count: items.length,
+    bypassLongInput: true,
+    sourceSessionId: session.id || null,
+    intentBootstrapScheduled
+  };
+}
+
 // =============================================================================
 // DISPLAY HELPERS
 // =============================================================================
@@ -779,6 +819,7 @@ module.exports = {
 
   // Get results
   getConfirmedTasks,
+  exportAsItemManifest,  // v2.24.0 — Wave 2 alignment with /wogi-story P0 gates
 
   // Display
   formatReviewStatus,
@@ -853,6 +894,16 @@ if (require.main === module) {
       try {
         const tasks = getConfirmedTasks();
         console.log(JSON.stringify(tasks, null, 2));
+      } catch (err) {
+        console.error(`${c.red}✗ ${err.message}${c.reset}`);
+      }
+      break;
+
+    case 'manifest':
+      // v2.24.0 — export Item Manifest for downstream /wogi-story coordination
+      try {
+        const manifest = exportAsItemManifest();
+        console.log(JSON.stringify(manifest, null, 2));
       } catch (err) {
         console.error(`${c.red}✗ ${err.message}${c.reset}`);
       }

@@ -285,6 +285,31 @@ Include results in the summary:
 Generated Tests: [passed]/[total] passed
 ```
 
+## Evidence Tiers (v2.24.0+)
+
+Every test invocation should emit an **evidence tier** label that the Completion Truth Gate (Step 3.9 in `/wogi-start`) uses to accept or downgrade "done" claims. A task that claims completion without sufficient tier evidence gets surfaced as "implemented (unverified)" rather than rubber-stamped as done.
+
+| Tier | Label | What it means | Source |
+|------|-------|---------------|--------|
+| 0 | NONE | No test ran or all tests silently skipped | N/A |
+| 1 | STATIC | Code parses / type-checks cleanly | `flow lint`, `flow typecheck` |
+| 2 | COMPILED | Unit tests pass | `flow-test-integrity.js` generated/unit tests |
+| 3 | INTERACTIVE | API calls succeed end-to-end (HTTP round-trips, DB reads) | `flow-test-api.js`, `flow-test-ui.js` backend hits |
+| 4 | SHIPPED | UI interaction succeeds in a real browser (click, submit, see result) | `flow-test-ui.js` browser E2E |
+
+Output format (JSON mode):
+```json
+{
+  "passed": true,
+  "results": [...],
+  "evidenceTier": 3,
+  "evidenceTierLabel": "INTERACTIVE",
+  "gates": { "static": true, "unit": true, "api": true, "ui": false }
+}
+```
+
+Any `/wogi-start` task closing with `evidenceTier < 3` for features that touch UI or a service boundary will be flagged by the Truth Gate. L3 tasks (refactor/chore) accept tier 1–2. L0/L1 tasks require tier 3+.
+
 ## Important Notes
 
 - Testing is **disabled by default** — zero overhead for projects that don't use it

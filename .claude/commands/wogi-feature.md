@@ -145,6 +145,41 @@ node node_modules/wogiflow/scripts/flow-feature.js progress ft-a1b2c3d4
 | → | In Progress (1-99%) |
 | ✓ | Completed (100%) |
 
+## Anti-Deferral Rule (MANDATORY — v2.24.0+)
+
+**When creating a feature from user input, EVERY item the user provided MUST become a tracked story within the feature.**
+
+You must NEVER:
+- Create stories for items 1-3 and silently skip items 4-6 because you judged them as "enhancements"
+- Label items as "deferred" or "long-term" and exclude them from the feature
+- Apply your own priority filter to decide which items deserve stories
+
+You MAY:
+- Assign different priorities (P0/P1/P2/P3) — but ALL items get stories
+- Suggest an execution order — but ALL items are tracked in the feature
+- Ask the user "Should I defer items 4-6?" — explicit user consent is the ONLY valid reason to exclude items
+
+**If the user provides 5 items, the feature MUST contain 5 stories (or items grouped into stories where every item appears as an acceptance criterion).** Verify with a reconciliation count before proceeding.
+
+## P0 Specification-Quality Gates (v2.24.0+)
+
+When creating a feature from user input, apply the same P0 gates `/wogi-story` uses (from `scripts/flow-story-gates.js`):
+
+1. **Long Input Gate** — ≥40 lines or ≥5 items → route to `/wogi-extract-review` first
+2. **Item Reconciliation** — ≥3 items → enumerate items as a manifest + verify every item maps to at least one story
+3. **Consumer Impact Analysis** — if the feature title/description contains refactor/rename/migrate/replace/consolidate/split/extract/move keywords → run `git grep` on seeded filenames, list likely consumers, recommend phased migration if ≥5 breaking consumers
+4. **Scope-Confidence Audit** — extract "new X"/"existing Y"/"the Z service" assumptions from the description, classify against codebase (VERIFIED/CONTRADICTED/UNVERIFIED), write to a Pending Clarifications section on the feature
+5. **Intent Bootstrap Coordination** — if IGR is enabled and artifacts missing, schedule bootstrap via session-state flag (do NOT duplicate-prompt)
+
+All gates fail-open. Use `flow-story-gates.js` directly:
+
+```javascript
+const gates = require('wogiflow/scripts/flow-story-gates');
+gates.reconcileItems(userInput);
+gates.analyzeConsumerImpact(title + ' ' + description);
+gates.auditScopeConfidence(description);
+```
+
 ## Tips
 
 - **Features represent user-facing capabilities** - Not technical components

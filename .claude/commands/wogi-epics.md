@@ -165,6 +165,18 @@ You MAY:
 
 **If the user provides 9 items, the epic MUST contain 9 stories (or items grouped into stories where every item appears as an acceptance criterion). Verify this with a reconciliation count before proceeding.**
 
+## P0 Specification-Quality Gates (v2.24.0+)
+
+Before finalizing an epic, run the same P0 gates `/wogi-story` uses (`scripts/flow-story-gates.js`):
+
+1. **Long Input Gate** — ≥40 lines or ≥5 items → route to `/wogi-extract-review`
+2. **Item Reconciliation** — already enforced via Anti-Deferral above; use `gates.reconcileItems()` to generate the manifest mechanically
+3. **Consumer Impact** — if epic description contains refactor/rename/migrate/etc. → grep consumers, list breaking count, recommend phased migration at ≥5
+4. **Scope-Confidence** — extract "new X"/"existing Y" assumptions → classify against codebase → surface CONTRADICTED/UNVERIFIED as Pending Clarifications
+5. **Intent Bootstrap Coordination** — schedule IGR bootstrap if missing; respects existing session-state flag
+
+All fail-open. Call `require('wogiflow/scripts/flow-story-gates')` directly in the epic-creation flow.
+
 ## Tips
 
 - **Start with epics for major features** - Break down into stories before implementation
