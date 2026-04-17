@@ -109,8 +109,120 @@ function sweepAndReconcile(workspaceRoot) {
 }
 
 /**
+ * Reconcile pending `worker-ready` messages (2.22.2 restart-handoff).
+ *
+ * A worker-ready message signals that a worker session started with an
+ * empty queue — possibly because a prior dispatch was lost during the
+ * wrapper's restart window. For each pending worker-ready:
+ *   - Find pending dispatches to that repo in dispatched-tasks.json
+ *   - If any found: they're likely the lost dispatches. Collect as
+ *     `lostDispatches` for surface to the manager.
+ *   - Mark the worker-ready message as acknowledged regardless — once
+ *     the manager has seen it, there's nothing more to do with the
+ *     same message. If another restart happens, a fresh worker-ready
+ *     will be written.
+ *
+ * @param {string} workspaceRoot
+ * @param {Object} [opts]
+ * @param {number} [opts.staleGraceMs=30000] — ignore dispatches newer than this
+ *   (to avoid flagging just-sent dispatches still in flight).
+ * @returns {{acknowledged: number, lostDispatches: Array}}
+ */
+function reconcileWorkerReady(workspaceRoot, opts = {}) {
+  const staleGraceMs = Number.isFinite(opts.staleGraceMs) ? opts.staleGraceMs : 30000;
+  const now = Number.isFinite(opts.now) ? opts.now : Date.now();
+
+  let readMessages, updateMessageStatus, readDispatches;
+  try {
+    const libMessages = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-messages.js');
+    const libTracking = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
+    const bus = require(libMessages);
+    readMessages = bus.readMessages;
+    updateMessageStatus = bus.updateMessageStatus;
+    const tracking = require(libTracking);
+    readDispatches = tracking.readDispatches;
+  } catch (_err) {
+    return { acknowledged: 0, lostDispatches: [] };
+  }
+
+  let pendingReady = [];
+  try {
+    pendingReady = readMessages(workspaceRoot, { type: 'worker-ready', status: 'pending' });
+  } catch (_err) {
+    return { acknowledged: 0, lostDispatches: [] };
+  }
+  if (pendingReady.length === 0) return { acknowledged: 0, lostDispatches: [] };
+
+  let dispatches = [];
+  try {
+    dispatches = readDispatches(workspaceRoot).filter(r => r && r.status === 'pending');
+  } catch (_err) {
+    dispatches = [];
+  }
+
+  const lostDispatches = [];
+  let acknowledged = 0;
+
+  for (const msg of pendingReady) {
+    const repoName = msg.from;
+    if (!repoName) continue;
+
+    // Find pending dispatches to this repo that are older than the grace
+    // period (avoid race conditions with just-sent dispatches).
+    const candidates = dispatches.filter(r => {
+      if (r.repoName !== repoName) return false;
+      const dispatched = Date.parse(r.dispatchedAt || '');
+      if (!Number.isFinite(dispatched)) return false;
+      return (now - dispatched) > staleGraceMs;
+    });
+
+    for (const c of candidates) {
+      lostDispatches.push({ ...c, workerReadyMsgId: msg.id });
+    }
+
+    // Acknowledge the worker-ready message — we've processed it once.
+    // If the restart-loss recurs, a fresh worker-ready will be written.
+    try {
+      if (updateMessageStatus) {
+        updateMessageStatus(workspaceRoot, msg.id, 'acknowledged');
+        acknowledged++;
+      }
+    } catch (_err) { /* non-fatal */ }
+  }
+
+  return { acknowledged, lostDispatches };
+}
+
+/**
+ * Format the lost-dispatches block for manager additionalContext.
+ *
+ * @param {Array} lost
+ * @returns {string|null}
+ */
+function formatLostDispatchesContext(lost) {
+  if (!Array.isArray(lost) || lost.length === 0) return null;
+  const lines = lost.map(r => {
+    const dispatchedAt = r.dispatchedAt || '?';
+    return `• ${r.taskId} → ${r.repoName}  | dispatched ${dispatchedAt} | still pending after worker restart`;
+  });
+  return [
+    `━━━ LOST DISPATCHES — WORKER RESTARTED WITH EMPTY QUEUE (${lost.length}) ━━━`,
+    ...lines,
+    '',
+    'A worker announced fresh readiness but these dispatches are still',
+    'pending. Likely lost during the wrapper\'s restart window. Re-dispatch',
+    'them now via dispatchToChannel(workspaceRoot, repoName, taskId).',
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+  ].join('\n');
+}
+
+/**
  * Build the overdue-dispatches additionalContext block, or return null
  * when nothing to surface (non-manager, no workspace root, no overdue).
+ *
+ * Also handles worker-ready reconciliation (2.22.2) — if workers announced
+ * readiness and there are matching pending dispatches, include a lost-dispatch
+ * section so the manager can re-dispatch.
  *
  * @param {Object} [opts]
  * @param {string} [opts.workspaceRoot] — override (primarily for tests)
@@ -128,32 +240,52 @@ function buildOverdueContext(opts = {}) {
   try { sweepAndReconcile(workspaceRoot); }
   catch (_err) { /* fail-open */ }
 
+  // Reconcile worker-ready announcements. Surface any lost dispatches
+  // the manager should re-send.
+  let lostBlock = null;
+  try {
+    const { lostDispatches } = reconcileWorkerReady(workspaceRoot, { now: opts.now });
+    lostBlock = formatLostDispatchesContext(lostDispatches);
+  } catch (_err) { /* fail-open */ }
+
   let overdue;
   try {
     const libPath = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
     const { getOverdueDispatches } = require(libPath);
     overdue = getOverdueDispatches(workspaceRoot, opts.now);
   } catch (_err) {
-    return null; // Fail-open — tracking module missing or IO failure should never block the prompt.
+    // If dispatch-tracking is missing but we have lost-dispatches from
+    // worker-ready, still surface those.
+    return lostBlock;
   }
 
-  if (!Array.isArray(overdue) || overdue.length === 0) return null;
+  if ((!Array.isArray(overdue) || overdue.length === 0) && !lostBlock) return null;
 
-  const now = Number.isFinite(opts.now) ? opts.now : Date.now();
-  const lines = overdue.map(r => formatLine(r, now));
-  return [
-    `━━━ OVERDUE WORKSPACE DISPATCHES (${overdue.length}) ━━━`,
-    ...lines,
-    '',
-    'These workers may have died silently. Check worker terminals;',
-    'if dead, re-dispatch or mark failed. Records:',
-    '  .workspace/state/dispatched-tasks.json',
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-  ].join('\n');
+  const sections = [];
+
+  if (lostBlock) sections.push(lostBlock);
+
+  if (Array.isArray(overdue) && overdue.length > 0) {
+    const now = Number.isFinite(opts.now) ? opts.now : Date.now();
+    const lines = overdue.map(r => formatLine(r, now));
+    sections.push([
+      `━━━ OVERDUE WORKSPACE DISPATCHES (${overdue.length}) ━━━`,
+      ...lines,
+      '',
+      'These workers may have died silently. Check worker terminals;',
+      'if dead, re-dispatch or mark failed. Records:',
+      '  .workspace/state/dispatched-tasks.json',
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    ].join('\n'));
+  }
+
+  return sections.length > 0 ? sections.join('\n\n') : null;
 }
 
 module.exports = {
   isManagerSession,
   buildOverdueContext,
-  sweepAndReconcile
+  sweepAndReconcile,
+  reconcileWorkerReady,
+  formatLostDispatchesContext
 };

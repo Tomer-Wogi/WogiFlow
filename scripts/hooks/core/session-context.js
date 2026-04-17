@@ -871,6 +871,23 @@ function formatContextForInjection(context) {
     // Non-critical — history file may not exist; continue with normal context
   }
 
+  // Workspace worker auto-resume (wf-restart-handoff / 2.22.2).
+  // CRITICAL priority — shown at the top so the model acts on it before
+  // anything else. Fires when a worker session starts with queued channel
+  // dispatches that were inherited from the prior (restarted) session.
+  if (ctx.workerAutoResume) {
+    output += `### Workspace Worker Auto-Resume\n`;
+    output += ctx.workerAutoResume + '\n\n';
+  }
+
+  // Workspace worker readiness announcement (wf-restart-handoff / 2.22.2).
+  // Informational — worker started idle, announced readiness to manager.
+  // Manager will reconcile async; no immediate action required from the worker.
+  if (ctx.workerReadyAnnounce) {
+    output += `### Workspace Worker Ready\n`;
+    output += ctx.workerReadyAnnounce + '\n\n';
+  }
+
   // CRITICAL: CLAUDE_CODE_SIMPLE mode warning (highest priority)
   if (ctx.simpleModeWarning && ctx.simpleModeWarning.active) {
     output += `### CLAUDE_CODE_SIMPLE Mode Detected\n`;

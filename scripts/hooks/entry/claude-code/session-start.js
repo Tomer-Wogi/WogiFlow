@@ -303,5 +303,27 @@ runHook('SessionStart', async ({ parsedInput }) => {
     }
   }
 
+  // Workspace worker restart-handoff (wf-restart-handoff / 2.22.2).
+  // When the wogi-claude wrapper restarts a worker (via task-boundary-reset),
+  // queued dispatches from the PRIOR session are picked up by auto-resume;
+  // if the queue is truly empty, announce worker-ready so the manager can
+  // reconcile against its dispatch log and re-dispatch anything lost during
+  // the restart window. See scripts/hooks/core/session-start-worker.js.
+  try {
+    const { handleWorkerSessionStart } = require('../../core/session-start-worker');
+    const workerResult = handleWorkerSessionStart();
+    if (workerResult.context && coreResult && coreResult.context) {
+      if (workerResult.branch === 'auto-resume') {
+        coreResult.context.workerAutoResume = workerResult.context;
+      } else if (workerResult.branch === 'announce-ready') {
+        coreResult.context.workerReadyAnnounce = workerResult.context;
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-start] Worker session-start handler failed: ${err.message}`);
+    }
+  }
+
   return coreResult;
 }, { failMode: 'warn' });
