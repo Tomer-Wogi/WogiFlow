@@ -195,14 +195,32 @@ runHook('Stop', async ({ parsedInput }) => {
     }
 
     const restartResult = consumeAndTriggerRestart();
-    if (restartResult.triggered && process.env.DEBUG) {
-      console.error(`[Stop] Task-boundary restart triggered — claude will exit, wrapper will relaunch`);
-    } else if (!restartResult.triggered && restartResult.reason !== 'no-pending-marker' && process.env.DEBUG) {
+    if (restartResult.triggered) {
+      if (process.env.DEBUG) {
+        console.error(`[Stop] Task-boundary restart triggered — claude will exit, wrapper will relaunch`);
+      }
+      // CRITICAL: return NOW, short-circuiting subsequent stop-blocking gates.
+      //
+      // Before this fix (observed 2026-04-17): Phase 2 would SIGTERM claude and
+      // write the restart flag, then fall through to the workspace autopickup
+      // gate (lines below). For a worker with queued dispatches (the common
+      // case), that gate returns `{ continue: true, stopReason: ... }` which
+      // Claude Code honours as "don't stop, pick up next dispatch." Result: the
+      // SIGTERM + restart flag became a no-op because claude was told to keep
+      // running in the SAME session. Symptom: single claude PID survives across
+      // N tasks, context accumulates, tokens burn — exactly the complaint this
+      // feature was supposed to solve.
+      //
+      // The restart is our stop path. The next session's SessionStart hook will
+      // inject queued-dispatch context, so the worker picks up the next task
+      // on RESTART rather than via the autopickup gate's continue-override.
+      // __raw skips the adapter transform — we want the literal {continue:false}
+      // wire format to reach claude unchanged.
+      return { __raw: true, continue: false };
+    }
+    if (restartResult.reason !== 'no-pending-marker' && process.env.DEBUG) {
       console.error(`[Stop] Task-boundary restart check: ${restartResult.reason}`);
     }
-    // If we SIGTERM'd our parent, the process will begin shutting down. Still
-    // return the normal Stop-hook result so any in-flight return value flows
-    // back to claude before the signal is handled.
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[Stop] Task-boundary restart module error (fail-open): ${err.message}`);
