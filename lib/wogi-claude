@@ -21,12 +21,16 @@
 #   WOGI_MAX_RESTARTS    — safety cap, default 50 (prevents runaway restart storms)
 #   WOGI_WRAPPER_PID     — exported to child; hook checks this to confirm wrapper is present
 #   WOGI_CLAUDE_BIN      — override path to claude binary (default: found via PATH)
-#   WOGI_NO_EXPECT       — set to 1 to disable expect-based auto-dismiss of the
-#                          "Loading development channels" dialog (v2.22.3+).
-#                          With expect enabled (default when expect is on PATH
-#                          and --dangerously-load-development-channels is in args),
-#                          the dialog is auto-accepted so workspace worker
-#                          restarts require zero manual interaction.
+#   WOGI_USE_EXPECT      — (EXPERIMENTAL, v2.22.4+) set to 1 to opt IN to the
+#                          expect-based auto-dismiss of the "Loading development
+#                          channels" dialog. OFF BY DEFAULT because Ink's
+#                          ANSI-rich output can cause expect's text match to
+#                          miss, which deadlocks the dialog (user keystrokes
+#                          get held by expect, not forwarded to claude). If
+#                          you can confirm it works for your terminal, opt in
+#                          and enjoy zero-click restarts.
+#   WOGI_NO_EXPECT       — legacy opt-out from 2.22.3. Still honored (forces
+#                          expect off regardless of WOGI_USE_EXPECT).
 #   WOGI_EXPECT_TIMEOUT  — override the expect timeout (default 30s) for watching
 #                          the dialog. After timeout we hand off to the user
 #                          unconditionally.
@@ -37,14 +41,21 @@ set -u
 WOGI_CLAUDE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WOGI_EXPECT_SCRIPT="$WOGI_CLAUDE_DIR/wogi-claude-expect.exp"
 
-# Detect whether to use the expect wrapper. Two conditions must hold:
-#   1. `expect` is on PATH and the wogi-claude-expect.exp script exists
-#   2. The args include --dangerously-load-development-channels (which is the
-#      only flag that triggers the "Loading development channels" dialog we
-#      want to auto-dismiss)
-# AND WOGI_NO_EXPECT is NOT set (escape hatch).
+# Detect whether to use the expect wrapper (v2.22.4: OPT-IN only).
+# Four conditions must all hold:
+#   1. WOGI_USE_EXPECT=1 is explicitly set (opt-in)
+#   2. WOGI_NO_EXPECT is NOT set (legacy escape hatch still honored)
+#   3. `expect` is on PATH and the wogi-claude-expect.exp script exists
+#   4. The args include --dangerously-load-development-channels (the only
+#      flag that triggers the dialog we want to auto-dismiss)
+#
+# 2.22.3 tried opt-out by default; in practice, expect's text match can miss
+# Ink's ANSI-fragmented output, which deadlocks the dialog (user keystrokes
+# get held in expect's buffer instead of reaching claude). 2.22.4 flips to
+# opt-in so the default UX is predictable.
 __wogi_use_expect=0
-if [ -z "${WOGI_NO_EXPECT:-}" ] && command -v expect >/dev/null 2>&1 && [ -x "$WOGI_EXPECT_SCRIPT" ]; then
+if [ "${WOGI_USE_EXPECT:-}" = "1" ] && [ -z "${WOGI_NO_EXPECT:-}" ] && \
+   command -v expect >/dev/null 2>&1 && [ -x "$WOGI_EXPECT_SCRIPT" ]; then
   for arg in "$@"; do
     if [ "$arg" = "--dangerously-load-development-channels" ]; then
       __wogi_use_expect=1

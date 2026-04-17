@@ -104,13 +104,25 @@ describe('wogi-claude wrapper', () => {
     assert.ok(!log.includes('wogi-claude-expect.exp'), 'expect should not be in the invocation trace');
   });
 
-  it('WOGI_NO_EXPECT=1 disables the expect wrapper even with channels flag', () => {
-    // Under opt-out the env vars aren't set, but we can still verify the
-    // channels flag is passed through intact and claude was exec'd.
+  it('does NOT route through expect by default (v2.22.4: opt-in only)', () => {
+    // Even with --dangerously-load-development-channels present, expect is
+    // NOT invoked unless WOGI_USE_EXPECT=1 is explicitly set. This is the
+    // 2.22.4 behavior change: default-opt-in burned us when Ink's ANSI
+    // output deadlocked the text match.
+    const { log } = runWrapper(
+      '--no-wogi-restart --dangerously-load-development-channels server:x'
+    );
+    assert.match(log, /ARGV:.*--dangerously-load-development-channels server:x/);
+    assert.ok(!log.includes('wogi-claude-expect.exp'), 'expect must NOT be invoked by default');
+  });
+
+  it('WOGI_NO_EXPECT=1 disables the expect wrapper (legacy escape hatch)', () => {
+    // Backwards-compat: the old opt-out env var still works.
     const { log } = runWrapper(
       '--no-wogi-restart --dangerously-load-development-channels server:x',
-      { WOGI_NO_EXPECT: '1' }
+      { WOGI_NO_EXPECT: '1', WOGI_USE_EXPECT: '1' }
     );
+    // WOGI_NO_EXPECT takes precedence over WOGI_USE_EXPECT
     assert.match(log, /ARGV:.*--dangerously-load-development-channels server:x/);
   });
 });
