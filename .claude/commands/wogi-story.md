@@ -8,11 +8,38 @@ Run `./scripts/flow story "<title>"` to create a story.
 
 Load `agents/story-writer.md` for the full story format.
 
+## Anti-Deferral Rule (MANDATORY)
+
+**Every item the user provides MUST become a work item** (criterion or sub-task). Never silently filter items. If you believe an item should be deferred, **ASK the user** — do not decide autonomously.
+
+For multi-item inputs, the command output MUST include: **"All {N} items captured as {criteria|sub-tasks}."** If any item cannot be mapped, the "Unmapped" warning must be surfaced, not suppressed.
+
+This rule applies equally to deep-decomposition mode and flat stories.
+
+## Specification-Quality Gates (wf-63c0f4cc)
+
+Five P0 gates run automatically at creation time (all fail-open):
+
+| Gate | Fires When | Effect |
+|------|-----------|--------|
+| 1. Long Input | input ≥40 lines OR ≥5 discrete items | routes to `/wogi-extract-review` |
+| 2. Item Reconciliation | input has ≥3 discrete items | writes manifest, verifies coverage |
+| 3. Consumer Impact | input contains refactor/rename/migrate/etc. | greps consumers, flags phased migration at ≥5 breaking |
+| 4. Scope-Confidence | input mentions "new X" / "existing Y" / "the Z service" | audits assumptions → "Pending Clarifications" block |
+| 5. Intent Bootstrap | IGR artifacts missing + not already scheduled | schedules background bootstrap via session-state.json |
+
+Gates enforce **specification quality at creation time**; runtime-quality gates (wiring, typecheck, tests) remain `/wogi-start`'s job.
+
+Config: `storyFlow.consumerImpactAnalysis`, `storyFlow.scopeConfidenceAudit`, `storyFlow.itemReconciliation`. All default-true.
+
 ## Options
 
 - `--deep` - Enable deep decomposition mode (auto-generate granular sub-tasks)
 - `--priority <P>` - Set priority P0-P4 (default: P2 from config)
 - `--json` - Output JSON for programmatic access
+- `--skip-gates` - Skip all P0 gates (testing/debug only)
+- `--bypass-long-input` - Skip Gate 1 (set by `/wogi-start` when it already routed long input)
+- `--full-input <txt>` - Full user input for gates (when title is a summary)
 
 Examples:
 ```bash

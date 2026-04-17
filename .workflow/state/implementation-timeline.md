@@ -3,6 +3,7 @@
 ## 2026-04
 
 ### Week 3 (Apr 12-18)
+- [x] wf-63c0f4cc: Enhance /wogi-story with P0 specification-quality gates (Apr 17)
 - [x] wf-d3e67abe: Silent-worker-halt detection via dispatch-tracking (Apr 17)
 
 ## 2026-02

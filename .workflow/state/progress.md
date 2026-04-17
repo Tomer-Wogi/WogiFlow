@@ -722,9 +722,10 @@ None
     "Phase 2 (data integrity): In progress",
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
-    "Completed: Silent-worker-halt detection via dispatch-tracking"
+    "Completed: Silent-worker-halt detection via dispatch-tracking",
+    "Completed: Enhance /wogi-story with P0 specification-quality gates"
   ],
-  "lastUpdated": "2026-04-17T09:41:23.856Z",
+  "lastUpdated": "2026-04-17T10:19:04.731Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

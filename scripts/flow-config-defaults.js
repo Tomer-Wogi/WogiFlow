@@ -328,6 +328,15 @@ const CONFIG_DEFAULTS = {
     supportEpics: true,
     propagateProgress: true
   },
+
+  // --- Story Creation Quality Gates (wf-63c0f4cc) ---
+  // Specification-quality gates enforced at story CREATION time. Execution-
+  // quality gates (runtime wiring, typecheck, tests) remain /wogi-start's job.
+  storyFlow: {
+    consumerImpactAnalysis: { enabled: true, breakingThreshold: 5 },
+    scopeConfidenceAudit: { enabled: true },
+    itemReconciliation: { enabled: true, minItems: 3 }
+  },
   epics: { enabled: false },
 
   // --- Specification & Questions ---

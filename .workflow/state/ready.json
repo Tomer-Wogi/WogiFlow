@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-17T09:41:23.849Z",
+  "lastUpdated": "2026-04-17T10:19:04.725Z",
   "inProgress": [],
   "ready": [
     {
@@ -30,16 +30,6 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    },
-    {
-      "id": "wf-63c0f4cc",
-      "title": "Enhance /wogi-story with P0 specification-quality gates",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-17T07:49:21.797Z",
-      "specPath": ".workflow/changes/wf-63c0f4cc.md"
     }
   ],
   "blocked": [
@@ -150,6 +140,18 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-63c0f4cc",
+      "title": "Enhance /wogi-story with P0 specification-quality gates",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-17T07:49:21.797Z",
+      "specPath": ".workflow/changes/wf-63c0f4cc.md",
+      "startedAt": "2026-04-17T10:09:43.814Z",
+      "completedAt": "2026-04-17T10:19:04.723Z"
+    },
     {
       "id": "wf-d3e67abe",
       "title": "Silent-worker-halt detection via dispatch-tracking",
@@ -383,32 +385,6 @@
       "filesChanged": [
         "scripts/flow-health.js",
         "tests/flow-health-mcp-scopes.test.js"
-      ]
-    },
-    {
-      "id": "wf-c4fcfacb",
-      "title": "Document ENABLE_PROMPT_CACHING_1H for non-subscriber Claude Code users",
-      "type": "task",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P2",
-      "created": "2026-04-16T07:06:44.428Z",
-      "origin": "Claude Code 2.1.108 changelog review (session 2026-04-16)",
-      "scope": "Surface ENABLE_PROMPT_CACHING_1H=1 recommendation to API-key/Bedrock/Vertex/Foundry users during onboard and in docs. Subscribers already get 1h TTL; non-subscribers default to 5min and waste cache on long WogiFlow sessions.",
-      "acceptanceCriteria": [
-        "Installer onboard output (lib/installer.js) mentions ENABLE_PROMPT_CACHING_1H for non-subscriber providers",
-        "A referenced doc (new or existing) explains when to enable, which providers need it, and that subscribers already have 1h by default",
-        "CLAUDE.md or commands.md references the doc so users can find it from /wogi-help or /wogi-morning",
-        "Recommendation appears exactly once per onboard (no repeated nagging)",
-        "No behavior change when env var is unset — purely a docs/guidance task"
-      ],
-      "startedAt": "2026-04-16T07:07:00.617Z",
-      "completedAt": "2026-04-16T07:12:44.814Z",
-      "filesChanged": [
-        ".claude/docs/claude-code-compatibility.md",
-        ".workflow/templates/claude-md.hbs",
-        "lib/installer.js",
-        "CLAUDE.md (regenerated)"
       ]
     }
   ],

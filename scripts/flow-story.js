@@ -39,6 +39,9 @@ try {
 // Import parallel execution detection
 const { findParallelizable, getParallelConfig } = require('./flow-parallel');
 
+// wf-63c0f4cc — specification-quality gates
+const storyGates = require('./flow-story-gates');
+
 const CHANGES_DIR = PATHS.changes;
 const READY_PATH = PATHS.ready;
 
@@ -79,6 +82,85 @@ function getProductContextForStory() {
     // console.error('[getProductContextForStory] Error:', _err.message);
     return null;
   }
+}
+
+/**
+ * Build additional story sections from gate results (wf-63c0f4cc).
+ * Returns a markdown string or null if nothing to append.
+ *
+ * @param {Object} gateResults
+ * @returns {string|null}
+ */
+function buildGateSections(gateResults) {
+  const parts = [];
+
+  const items = gateResults?.itemReconciliation;
+  if (items?.active && items.items.length > 0) {
+    parts.push(
+      '## Item Manifest (zero-loss)',
+      `Detected ${items.count} discrete items in the original request. ALL must map to a criterion or sub-task (anti-deferral rule).`,
+      '',
+      ...items.items.map((it, i) => `${i + 1}. ${it}`),
+      ''
+    );
+  }
+
+  const ci = gateResults?.consumerImpact;
+  if (ci?.active && Array.isArray(ci.matches)) {
+    const byFile = new Map();
+    for (const m of ci.matches) {
+      if (!byFile.has(m.file)) byFile.set(m.file, { kinds: new Set(), seeds: new Set() });
+      byFile.get(m.file).kinds.add(m.kind);
+      byFile.get(m.file).seeds.add(m.seed);
+    }
+    parts.push(
+      '## Consumer Impact',
+      `Refactoring-keyword detected in input; grepped codebase for consumers of: ${(ci.seeds || []).join(', ') || '(no seeds extracted)'}`,
+      '',
+      `Files matched: ${byFile.size} (breaking: ${ci.breakingCount || 0})`
+    );
+    if (byFile.size > 0) {
+      parts.push('', '| File | Kind | Via |', '|------|------|-----|');
+      for (const [file, info] of byFile) {
+        parts.push(`| \`${file}\` | ${[...info.kinds].join(', ')} | ${[...info.seeds].join(', ')} |`);
+      }
+    }
+    if (ci.phasedMigrationRecommended) {
+      parts.push(
+        '',
+        `**Phased migration strategy recommended** — ${ci.breakingCount} breaking consumers exceeds the threshold. Consider Phase 1 (new alongside old) → Phase 2 (migrate consumers) → Phase 3 (remove old) rather than a big-bang rewrite.`
+      );
+    }
+    parts.push('');
+  }
+
+  const sc = gateResults?.scopeConfidence;
+  if (sc?.active && sc.assumptions.length > 0) {
+    const bad = sc.assumptions.filter(a => a.status === 'UNVERIFIED' || a.status === 'CONTRADICTED');
+    if (bad.length > 0) {
+      parts.push(
+        '## Pending Clarifications',
+        'Scope-confidence audit found assumptions that do not match the codebase. Resolve before implementation (or /wogi-start Step 1.45 will).',
+        ''
+      );
+      for (const a of sc.assumptions) {
+        const icon = a.status === 'VERIFIED' ? '✓' : a.status === 'CONTRADICTED' ? '✗' : '?';
+        parts.push(`- ${icon} **${a.status}** — "${a.label} ${a.phrase}"`);
+      }
+      parts.push('');
+    }
+  }
+
+  const ib = gateResults?.intentBootstrap;
+  if (ib?.scheduled) {
+    parts.push(
+      '## IGR Bootstrap Scheduled',
+      'Intent-Grounded Reasoning artifacts are missing. Bootstrap has been scheduled for `/wogi-session-end` (Option C [2]). No action needed now.',
+      ''
+    );
+  }
+
+  return parts.length > 0 ? parts.join('\n') : null;
 }
 
 /**
@@ -135,6 +217,8 @@ ${productSection}
 - **Wires into**: [ParentComponent.tsx]
 - **Triggered by**: [onClick on table row / button click / route navigation]
 - **Verification**: [Component is imported AND rendered when trigger fires]
+
+**Enforcement**: this section is verified during \`/wogi-start\` Step 3.7 (Wiring Check). If wiring is broken at runtime, the task will fail verification.
 
 *Delete this section if no new UI components are created.*
 
@@ -304,6 +388,54 @@ async function createStory(title, options = {}) {
   const decompositionConfig = config.storyDecomposition || {};
   const dryRun = options.dryRun || false;
 
+  // wf-63c0f4cc — specification-quality gates.
+  // The "input" for gate purposes is either the explicit fullInput option
+  // (when a long multi-item payload was passed programmatically) or the
+  // title (typical CLI / single-request path).
+  const gateInput = options.fullInput || title;
+  const gateResults = {};
+
+  // Gate 1: Long Input — route oversized inputs to /wogi-extract-review.
+  // The `bypassLongInput` flag prevents re-routing when /wogi-start already
+  // handled long-input detection and forwarded to /wogi-story for a single
+  // extracted story.
+  if (!options.skipGates) {
+    gateResults.longInput = storyGates.checkLongInput(gateInput, {
+      bypassLongInput: options.bypassLongInput
+    });
+    if (gateResults.longInput.route) {
+      return {
+        taskId: null,
+        title,
+        gateResults,
+        routed: '/wogi-extract-review',
+        message: 'Input is large — routing to /wogi-extract-review for zero-loss capture.'
+      };
+    }
+  }
+
+  // Gate 2: Item Reconciliation — BEFORE decomposition, so enumerated items
+  // drive sub-task generation.
+  if (!options.skipGates) {
+    gateResults.itemReconciliation = storyGates.reconcileItems(gateInput);
+  }
+
+  // Gate 3: Consumer Impact Analysis (refactoring-keyword triggered)
+  if (!options.skipGates) {
+    gateResults.consumerImpact = storyGates.analyzeConsumerImpact(gateInput);
+  }
+
+  // Gate 4: Scope-Confidence Audit — writes a "Pending Clarifications" block
+  // to the story (non-interactive; resolved later by user or /wogi-start).
+  if (!options.skipGates) {
+    gateResults.scopeConfidence = storyGates.auditScopeConfidence(gateInput);
+  }
+
+  // Gate 5: Intent Bootstrap coordination (no UI prompt — background scheduling)
+  if (!options.skipGates) {
+    gateResults.intentBootstrap = storyGates.coordinateIntentBootstrap();
+  }
+
   // Get priority from options or config
   const defaultPriority = getConfigValue('priorities.defaultPriority', 'P2');
   const priority = options.priority || defaultPriority;
@@ -342,7 +474,13 @@ async function createStory(title, options = {}) {
   }
 
   // Create main story file (or just compute path in dry-run mode)
-  const storyContent = generateStoryTemplate(taskId, title);
+  let storyContent = generateStoryTemplate(taskId, title);
+
+  // Append gate-derived sections (Consumer Impact, Pending Clarifications,
+  // Item Manifest). These are additive — the base template is unchanged.
+  const gateSections = buildGateSections(gateResults);
+  if (gateSections) storyContent += '\n' + gateSections;
+
   const storyFile = path.join(targetDir, `${taskId}.md`);
   if (!dryRun) {
     fs.writeFileSync(storyFile, storyContent);
@@ -355,7 +493,8 @@ async function createStory(title, options = {}) {
     storyFile,
     featureFolder,  // null for flat, folder name for decomposed
     subTasks: [],
-    dryRun  // Include dry-run flag in result
+    dryRun,  // Include dry-run flag in result
+    gateResults  // wf-63c0f4cc — specification-quality gate findings
   };
 
   const shouldSuggest = !options.deep &&
@@ -493,6 +632,22 @@ async function createStory(title, options = {}) {
 
     result.decomposed = true;
 
+    // wf-63c0f4cc scenario 4 — item-coverage reconciliation check.
+    // After the template is populated, verify each enumerated item appears
+    // in at least one criterion / sub-task objective. Unmapped items are
+    // surfaced (non-blocking) for the user to address.
+    if (gateResults.itemReconciliation?.active) {
+      const criteriaTexts = result.subTasks.map(s => s.objective);
+      const coverage = storyGates.verifyItemCoverage(
+        gateResults.itemReconciliation.items,
+        criteriaTexts
+      );
+      gateResults.itemReconciliation.coverage = coverage;
+      if (!coverage.allMapped) {
+        result.unmappedItems = coverage.unmapped;
+      }
+    }
+
     // Check if sub-tasks can run in parallel
     try {
       const parallelConfig = getParallelConfig();
@@ -540,10 +695,13 @@ Usage:
   flow story "<title>" --deep --json   All options
 
 Options:
-  --deep           Automatically decompose into sub-tasks
-  --priority <P>   Priority P0-P4 (default: from config, usually P2)
-  --dry-run        Preview what would be created without writing files
-  --json           Output JSON instead of human-readable
+  --deep              Automatically decompose into sub-tasks
+  --priority <P>      Priority P0-P4 (default: from config, usually P2)
+  --dry-run           Preview what would be created without writing files
+  --json              Output JSON instead of human-readable
+  --skip-gates        Skip all P0 spec-quality gates (wf-63c0f4cc)
+  --bypass-long-input Skip Gate 1 (when /wogi-start already handled it)
+  --full-input <txt>  Full user input for gates (when title is a summary)
 
 Storage:
   - Simple stories: flat in .workflow/changes/
@@ -585,8 +743,21 @@ Examples:
   const result = await createStory(title, {
     deep: flags.deep,
     priority,
-    dryRun: flags['dry-run'] || flags.dryRun
+    dryRun: flags['dry-run'] || flags.dryRun,
+    skipGates: flags['skip-gates'] || flags.skipGates,
+    bypassLongInput: flags['bypass-long-input'] || flags.bypassLongInput,
+    fullInput: flags['full-input'] || flags.fullInput
   });
+
+  // If Gate 1 routed the input to /wogi-extract-review, print guidance + exit.
+  if (result.routed === '/wogi-extract-review') {
+    console.log('');
+    warn(result.message);
+    log('yellow', `   Run: /wogi-extract-review "<your input>"`);
+    console.log('');
+    if (flags.json) outputJson({ success: true, ...result });
+    process.exit(0);
+  }
 
   // JSON output
   if (flags.json) {
@@ -644,6 +815,33 @@ Examples:
     log('yellow', `This looks like a complex story (${result.patterns.join(', ')})`);
     log('yellow', `   Consider using --deep to decompose into ~${result.suggestedCount} sub-tasks`);
     log('dim', `   Run: flow story "${title}" --deep`);
+  }
+
+  // wf-63c0f4cc — gate results summary
+  const gr = result.gateResults || {};
+  if (gr.itemReconciliation?.active) {
+    console.log('');
+    const items = gr.itemReconciliation;
+    log('cyan', `Item Reconciliation: ${items.count} items detected`);
+    if (items.coverage && !items.coverage.allMapped) {
+      log('yellow', `   ⚠ Unmapped: ${items.coverage.unmapped.length} — review story for completeness`);
+    } else if (result.decomposed) {
+      log('green', `   ✓ All ${items.count} items mapped to sub-tasks`);
+    }
+  }
+  if (gr.consumerImpact?.active && gr.consumerImpact.breakingCount > 0) {
+    console.log('');
+    log('cyan', `Consumer Impact: ${gr.consumerImpact.breakingCount} potentially-breaking consumers found`);
+    if (gr.consumerImpact.phasedMigrationRecommended) {
+      log('yellow', `   ⚠ Phased migration recommended — see story "Consumer Impact" section`);
+    }
+  }
+  if (gr.scopeConfidence?.active) {
+    const bad = gr.scopeConfidence.assumptions.filter(a => a.status !== 'VERIFIED');
+    if (bad.length > 0) {
+      console.log('');
+      log('yellow', `Scope-Confidence: ${bad.length} unverified/contradicted assumptions — see "Pending Clarifications"`);
+    }
   }
 
   // Simple (non-decomposed) story ready.json status — wf-b5cff650 fix

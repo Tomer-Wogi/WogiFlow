@@ -158,6 +158,49 @@ identifies ADR-shaped conclusions in completed tasks and directs them here.
 
 ---
 
+## Story Creation Quality Gates (v2.22.0+ / wf-63c0f4cc)
+<!-- PIN: story-creation-quality-gates -->
+
+**Rule**: `/wogi-story` enforces five P0 specification-quality gates at creation time. Gates are scoped to answering *"is the story clear, complete, checkable?"* — NOT *"is the implementation correct, tested, verified?"* (those remain `/wogi-start`'s job).
+
+**The five gates**:
+
+1. **Long Input** — inputs ≥40 lines OR ≥5 discrete items route to `/wogi-extract-review` for zero-loss capture. Prevents silent item drop when many requests compress into few stories. Matches `/wogi-start`'s threshold for UX consistency.
+
+2. **Item Reconciliation** — inputs with ≥3 discrete items (numbered/bulleted/semi-separated/"and also") get an enumerated "Item Manifest" section in the story. After decomposition, every item is verified to appear in at least one criterion or sub-task. Unmapped items surface as a warning (non-blocking) so the anti-deferral rule is mechanically enforced, not a matter of AI discretion.
+
+3. **Consumer Impact Analysis** — refactoring keywords (`refactor`, `rename`, `restructure`, `migrate`, `replace`, `consolidate`, `split`, `extract`, `move`) trigger an inline `git grep` over the codebase for likely consumers. Findings go into a "Consumer Impact" section with file/seed/kind classification. ≥5 breaking consumers → phased migration recommendation. Prevents the failure mode where refactor stories silently leave consumers broken.
+
+4. **Scope-Confidence Audit** — assumption patterns ("new <X>", "existing <Y>", "the <Z> service/table/endpoint") are extracted and verified against the codebase. VERIFIED / CONTRADICTED / UNVERIFIED findings go into a "Pending Clarifications" block in the story file. The block is resolved later by the user or by `/wogi-start` Step 1.45 — this gate is one-shot / non-interactive (programmatic callers must not block on prompts).
+
+5. **Intent Bootstrap Coordination** — when IGR is enabled and artifacts are missing, `/wogi-story` schedules a background bootstrap via a `intentBootstrapScheduledAt` flag in `session-state.json`. This prevents `/wogi-story` and `/wogi-start` from both prompting the user — `/wogi-start` skips its prompt when the flag is present.
+
+**Design guard-rails**:
+
+- **All gates fail-open**. Grep failure, classifier unavailable, I/O error → warning logged, story still created. No gate failure ever blocks creation.
+- **Consumer Impact uses inline grep, not sub-agents**. Spec-time gates are fast and deterministic; sub-agent-level analysis stays in `/wogi-start` Agent 6.
+- **Scope-Confidence extraction is regex-only**. LLM-based auditing remains `/wogi-start` Step 1.45 — spec-time classification must be deterministic and testable.
+- **Item Reconciliation runs BEFORE decomposition**. Items feed decomp; reconciling after is lossy because decomp collapses items.
+- **Scope-Confidence writes a "Pending Clarifications" block**, does not inline-prompt. `/wogi-story` is one-shot and often invoked programmatically (CLI, Skill, scripts) — blocking on prompts would break non-interactive callers.
+
+**Config** (`.workflow/config.json`):
+```json
+{
+  "storyFlow": {
+    "consumerImpactAnalysis": { "enabled": true, "breakingThreshold": 5 },
+    "scopeConfidenceAudit": { "enabled": true },
+    "itemReconciliation": { "enabled": true, "minItems": 3 }
+  }
+}
+```
+(Long-input gate reuses the existing `longInputGate.enabled`/`lineThreshold` keys; intent-bootstrap coordination reuses `intentGroundedReasoning.enabled`.)
+
+**Deep-decomposition is preserved exactly**. The gates are additive — execution-ordering (`-01`, `-02`, ...) and complexity detection are unchanged.
+
+**Backwards compatibility** — all gates may be bypassed via `--skip-gates` for testing. `--bypass-long-input` is set by `/wogi-start` so it doesn't re-route when it already handled long-input detection. When gates are disabled via config, `/wogi-story` output is byte-identical to pre-enhancement behavior.
+
+---
+
 ## Workspace Worker Silent-Halt Detection Contract (v2.22.0+ / wf-d3e67abe)
 <!-- PIN: workspace-worker-silent-halt-detection -->
 
