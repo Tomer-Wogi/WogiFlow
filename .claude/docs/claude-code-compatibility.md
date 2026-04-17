@@ -408,6 +408,37 @@ await cancelTask('wf-123', 'superseded', false);
 
 - **Hardened "Open in editor" against command injection**: Security hardening for untrusted filenames. **Impact on WogiFlow**: Validates the same pattern in `.claude/rules/security/security-patterns.md` — external inputs going into shell commands must be validated. No WogiFlow code change needed.
 
+### Features in 2.1.111+
+
+- **`xhigh` effort level for Opus 4.7**: New effort level sitting between `high` and `max`, available via `/effort`, `--effort`, and the model picker. Other models fall back to `high`. `/effort` now opens an interactive slider when called without arguments. **Impact on WogiFlow**: The effort-level mapping in `wogi-start.md` now acknowledges `xhigh`/`max` as Opus 4.7-only. For L0 epics running on Opus 4.7, users may prefer `xhigh` over `high` for deeper architectural reasoning — the mapping table documents this as an option. No code change needed; the mapping is advisory.
+
+- **`/ultrareview` built-in command**: Claude Code now ships a native `/ultrareview` that runs parallel multi-agent analysis and critique in the cloud — invoke with no arguments to review the current branch, or `/ultrareview <PR#>` to fetch and review a specific GitHub PR. **Relationship to WogiFlow's review commands**: No collision (`wogi-*` prefix). How to choose:
+  - `/ultrareview` — cloud-side parallel multi-agent critique. Zero local setup. Best for standalone branch/PR reviews when you don't have peer models configured.
+  - `/wogi-peer-review` — uses the peer models you configured via `/wogi-models-setup` (local/BYO models). Best when you want specific perspectives (e.g., a different vendor's model) or offline/cost-controlled review.
+  - `/wogi-review` — single-reviewer code review wired into WogiFlow task state (findings logged to `last-review.json`, triaged via `/wogi-triage`). Best for in-flow review during task execution.
+  - `/wogi-review-fix` — auto-applies fixes from `/wogi-review` findings.
+  Users can combine them: run `/ultrareview` for a wide-angle cloud critique, then `/wogi-review` for task-linked findings.
+
+- **`/less-permission-prompts` built-in skill**: Scans recent transcripts for common read-only Bash and MCP tool calls and proposes a prioritized allowlist for `.claude/settings.json`. **Relationship to WogiFlow**: Complementary to `computeLeanConfig()` in `lib/installer.js` — the installer produces a minimal allowlist at install time, while `/less-permission-prompts` tunes the allowlist based on actual session usage. Suggested workflow: after a few WogiFlow sessions, run `/less-permission-prompts` to prune redundant prompts. Future opportunity: surface this suggestion in `/wogi-health` output.
+
+- **Auto-allow for read-only bash with globs and `cd <project-dir> &&` prefix**: Read-only commands like `ls *.ts` and commands starting with `cd <project-dir> &&` no longer trigger a permission prompt. **Impact on WogiFlow**: Reduces prompts during WogiFlow hook-driven validation (lint/typecheck) and user-driven exploration. Allowlist rules in `lib/installer.js` that duplicated these patterns are now redundant — minor cleanup opportunity (tracked, low priority). No action required; the installer's lean-config approach already avoids over-emitting.
+
+- **Auto mode for Max subscribers on Opus 4.7**: Auto mode is now available for Max subscribers when using Opus 4.7, and no longer requires `--enable-auto-mode`. 2.1.112 fixed a "claude-opus-4-7 is temporarily unavailable" error in auto mode. **Impact on WogiFlow**: WogiFlow's model registry already lists Opus 4.7 (v2.22.0); auto-mode routing is orthogonal to WogiFlow's hybrid mode. Users on Max with Opus 4.7 benefit automatically.
+
+- **`OTEL_LOG_RAW_API_BODIES` env var**: Emits full API request and response bodies as OpenTelemetry log events for debugging. **Impact on WogiFlow**: Useful when debugging hybrid mode (`/wogi-hybrid`) routing and peer-review (`/wogi-peer-review`) model calls — set this env var to see the exact payloads reaching each model. Complements WogiFlow's gate telemetry (`/wogi-gate-stats`) which tracks pass/catch/miss rates at a higher level. Set with: `export OTEL_LOG_RAW_API_BODIES=1`. Note: payloads may contain sensitive data — only enable in development.
+
+- **Headless `--output-format stream-json` includes `plugin_errors` on init**: Plugin demotion errors (unsatisfied dependencies, conflicting versions) are now surfaced on the init event in headless mode. **WogiFlow opportunity**: `/wogi-health` could read this stream when running in CI/headless mode to flag plugin-registry issues before they cause silent failures. Tracked as an enhancement.
+
+- **Opus 4.7 availability fix (2.1.112)**: Fixed a "claude-opus-4-7 is temporarily unavailable" error in auto mode. Aligned with WogiFlow v2.22.0 registry update. No WogiFlow code change needed.
+
+- **Windows improvements**: `CLAUDE_ENV_FILE` and SessionStart hook environment files now apply on Windows (previously a no-op). Permission rules with drive-letter paths are now correctly root-anchored, and paths differing only by drive-letter case are recognized as the same path. **Impact on WogiFlow**: Windows users of WogiFlow's SessionStart hook can now configure environment variables via `CLAUDE_ENV_FILE`. Drive-letter-path permission rules generated by the installer now behave correctly. Automatic improvement after upgrade.
+
+- **Miscellaneous UX**: Plan files named after the originating prompt (e.g. `fix-auth-race-snug-otter.md`), `/skills` menu supports sorting by estimated token count (press `t`), Ctrl+U clears the entire input buffer (Ctrl+Y restores), Ctrl+L forces a full redraw, and typo suggestions on near-miss subcommands. Documentation-only for WogiFlow.
+
+- **Fixed "Unknown skill: commit" error**: Users without a custom `/commit` skill were seeing this error when Claude Code tried to invoke a non-existent built-in. **Impact on WogiFlow**: No WogiFlow-shipped `/commit` skill (commits go through `/wogi-finalize` and git commit instructions). Users benefit passively from the fix.
+
+- **Reliability fixes (all automatic after upgrade)**: Terminal display tearing in iTerm2+tmux, `@`-file suggestions re-scanning entire project in non-git directories, LSP diagnostics from before an edit appearing after it, tab-completing `/resume` behavior, `/context` grid rendering, `/clear` dropping session name, spurious decompression/network/transient errors in the TUI. Reverted v2.1.110 cap on non-streaming fallback retries (now uncapped again). Fixed Bedrock/Vertex/Foundry 429 retries pointing users at the wrong status page, bare URLs unclickable when wrapped in tool output, feedback surveys appearing back-to-back. WogiFlow sessions benefit from all of these automatically.
+
 ### Simple Mode Naming Distinction
 
 Claude Code's `CLAUDE_CODE_SIMPLE` environment variable (which enables a simplified tool set) is **unrelated** to WogiFlow's `loops.simpleMode` (a lightweight task completion loop using string detection). They are separate features that happen to share the word "simple":
@@ -542,4 +573,4 @@ Run `/keybindings` in Claude Code to customize your shortcuts.
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*

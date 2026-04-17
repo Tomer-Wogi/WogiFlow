@@ -180,18 +180,18 @@ When epic creation adds 2+ stories to ready.json and `config.bulkOrchestrator.en
 
 Non-blocking if transition fails.
 
-### Effort Level Optimization (Claude Code 2.1.72+)
+### Effort Level Optimization (Claude Code 2.1.72+, xhigh added 2.1.111+)
 
 After task level classification (L0-L3), set the reasoning effort level to optimize token usage:
 
 | Task Level | Effort | Rationale |
 |------------|--------|-----------|
-| L0 (Epic) | high | Complex planning, multi-file architecture |
+| L0 (Epic) | high (xhigh on Opus 4.7 for deep architectural reasoning) | Complex planning, multi-file architecture |
 | L1 (Story) | high | Multi-criteria implementation |
 | L2 (Task) | medium | Standard 1-5 file changes |
 | L3 (Subtask) | low | Single file, trivial change |
 
-This is advisory — Claude Code 2.1.72 simplified effort to low/medium/high (removed "max"). The AI should adjust its reasoning depth accordingly during implementation phases.
+This is advisory. Claude Code's effort levels: `low` / `medium` / `high` are universal. Claude Code 2.1.111+ added `xhigh` (between high and max) and `max` as Opus 4.7-only levels — other models fall back to `high`. Use `/effort` interactively (slider as of 2.1.111) to switch mid-session. The AI should adjust reasoning depth during implementation phases accordingly.
 
 ### Task Checkpoints (when `config.proactiveCompaction.enabled`)
 

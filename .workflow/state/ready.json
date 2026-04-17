@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-16T18:36:33.061Z",
+  "lastUpdated": "2026-04-17T07:49:21.798Z",
   "inProgress": [],
   "ready": [
     {
@@ -30,6 +30,26 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-d3e67abe",
+      "title": "Silent-worker-halt detection via dispatch-tracking",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-17T07:20:57.305Z",
+      "specPath": ".workflow/changes/wf-d3e67abe.md"
+    },
+    {
+      "id": "wf-63c0f4cc",
+      "title": "Enhance /wogi-story with P0 specification-quality gates",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-17T07:49:21.797Z",
+      "specPath": ".workflow/changes/wf-63c0f4cc.md"
     }
   ],
   "blocked": [
@@ -140,6 +160,27 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-75550f24",
+      "title": "Update wogiflow docs for Claude Code 2.1.111/112 alignment",
+      "type": "docs",
+      "level": "L2",
+      "status": "completed",
+      "createdAt": "2026-04-17T06:17:03.210Z",
+      "startedAt": "2026-04-17T06:17:03.210Z",
+      "criteria": [
+        "Fix stale 2.1.72 effort-level comment in wogi-start.md:194",
+        "Update Effort Level Optimization table to note xhigh option on Opus 4.7 for L0",
+        "Add Features in 2.1.111+ section to claude-code-compatibility.md",
+        "Document /ultrareview vs /wogi-peer-review distinction",
+        "Document OTEL_LOG_RAW_API_BODIES env var"
+      ],
+      "completedAt": "2026-04-17T06:23:23.739Z",
+      "filesChanged": [
+        ".claude/commands/wogi-start.md",
+        ".claude/docs/claude-code-compatibility.md"
+      ]
+    },
     {
       "id": "wf-2f2e63cc",
       "title": "v2.21.0 — Remove Gap D regex bypass + add Haiku worker-question classifier at Stop hook",

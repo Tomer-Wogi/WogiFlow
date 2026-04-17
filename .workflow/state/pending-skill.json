@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-15T20:33:51.804Z",
+  "markedAt": "2026-04-17T08:06:04.088Z",
   "context": {
-    "args": "Publish v2.17.5 to npm. Already committed and tagged on GitHub. Run npm publish and verify it's live."
+    "args": "wf-d3e67abe"
   },
   "status": "pending"
 }

@@ -1456,3 +1456,28 @@ When you say "continue" in a fresh session, `/wogi-start` will look at ready[] a
 - Resume tokens: `.workflow/state/session-history.json` has the last 20 sessions' cliSessionIds + `resumeCommand` (claude --resume <id>).
 - If something breaks post-restart, check: (1) marker file `.workflow/state/task-just-completed`, (2) wrapper flag `.workflow/state/restart-requested`, (3) session-history entries.
 
+
+## Session End: 2026-04-17
+
+### Accomplished (research + story drafts — no code changes this session)
+- **Research**: verified silent-worker-halt gap in workspace-worker infra. Stop hook at `scripts/hooks/entry/claude-code/stop.js:64-121` fires only on graceful stop (never on OOM/crash/network). Manager at `lib/workspace-routing.js:829-890` polls only inside explicit `waitForCompletion()`. No dispatch-tracking exists today.
+- **Research**: `/wogi-story` gap analysis vs peer commands. Last non-trivial change Feb 2026; drifted 6–8 months behind `/wogi-start`, `/wogi-bug`, `/wogi-extract-review`. 5 P0 gaps identified (all appropriate for a creation command — scope creep rejects documented).
+- **Created**: wf-d3e67abe — Silent-worker-halt detection via dispatch-tracking (L1, P1, 11 scenarios, 6 open design questions tagged for architect+adversary).
+- **Created**: wf-63c0f4cc — Enhance `/wogi-story` with P0 specification-quality gates (L1, P1, 11 scenarios, 6 open design questions).
+- **Queue initialized**: wf-d3e67abe → wf-63c0f4cc → wf-94cc3b72 (recommended order: operational blocker → meta-improvement → epic).
+
+### Next Session
+Run `/wogi-start wf-d3e67abe`. Stop-hook auto-continuation carries through the queue.
+
+### Why checkpointed mid-bulk
+Both new L1 stories need full Architect + Logic Adversary passes (6 open design questions each). Epic wf-94cc3b72 has 15 child stories also requiring IGR. Orchestrator context in this session was already heavy from research rounds + two story drafts. Fresh session gives full budget for spec-phase synthesis on each task. Sub-agent architecture unchanged — only the orchestrator runs fresh.
+
+### Notes on new stories
+- **wf-d3e67abe**: shape is **dispatch-tracking** — manager records `{taskId, repoName, dispatchedAt, expectedDeadline}` to `.workspace/state/dispatched-tasks.json`; manager-turn hook diffs dispatched-vs-completed and surfaces overdue. Rejected: Stop-hook-structured-JSON alone (misses 90% of halts); worker heartbeat daemon (violates file-based no-daemon architecture).
+- **wf-63c0f4cc**: 5 gates = long-input routing, consumer impact analysis, scope-confidence audit, item reconciliation, intent bootstrap coordination. All fail-open. Backwards-compat regression test mandatory. Deep-decomposition execution-ordering is explicitly preserved (unique strength).
+- **Open design questions**: every open question for both stories is tagged in the story file under "Open Design Questions" — must be resolved in spec phase (architect + adversary), not during coding.
+
+### User-stated constraints for next session
+- **No compromises / no deferrals** — if something is scoped in, it ships. Reordering permitted, skipping not.
+- **100% certainty bar** — if not certain, STOP and ask, do not silently work around.
+- **Spec approval gates honored** — each L1/L0 task pauses at spec_review for user approval before coding.

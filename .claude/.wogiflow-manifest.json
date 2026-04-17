@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedBy": "wogiflow@2.17.5",
-  "generatedAt": "2026-04-16T06:52:24.880Z",
+  "generatedBy": "wogiflow@2.22.0",
+  "generatedAt": "2026-04-16T19:50:01.794Z",
   "files": [
     "commands/wogi-audit.md",
     "commands/wogi-bug.md",
