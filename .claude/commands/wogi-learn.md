@@ -275,6 +275,52 @@ In `config.json`:
 }
 ```
 
+## Promotion Adversary (v2.25.0+ — MANDATORY)
+
+Before promoting a pattern from `feedback-patterns.md` to `decisions.md`, run a **Promotion Adversary** on a different model. Rationale: same-model self-critique rubber-stamps. The adversary checks whether the N events that triggered promotion share an actual root cause (genuine recurrence) vs. superficial similarity with different underlying causes (false recurrence — common when the pattern detector just matched keywords).
+
+```
+Spawn Agent (subagent_type: general-purpose,
+             model: config.researchReasoningGate.tier3.adversaryModel, default 'sonnet'):
+
+Input:
+  Proposed rule: <title + body>
+  Triggering events: [
+    { date, request, correction },
+    { date, request, correction },
+    { date, request, correction }
+  ]
+
+Prompt:
+  You are the rule-promotion adversary.
+  Do these N events actually share a root cause, or are they superficially
+  similar events with different underlying issues?
+
+  1. For each event: describe the root cause in your own words.
+  2. List what's common to all N root causes.
+  3. List what's different between them.
+  4. Verdict:
+     - SAME_PATTERN  — genuine recurrence; rule is well-founded
+     - MIXED         — N-1 match but one event has a different root cause
+     - DIFFERENT     — surface-similar only; no unifying pattern
+
+  Output JSON:
+  {
+    "verdict": "SAME_PATTERN" | "MIXED" | "DIFFERENT",
+    "root_causes": [...],
+    "commonalities": [...],
+    "differences": [...],
+    "suggested_rule_scope": "as_proposed" | "narrower" | "split_into_N"
+  }
+```
+
+Process the verdict:
+- **SAME_PATTERN** → proceed with promotion as-is
+- **MIXED** → ask the user: "Adversary flags event #X as different root cause. Promote rule anyway, narrow scope, or split into multiple rules?"
+- **DIFFERENT** → DO NOT auto-promote. Surface adversary output; require explicit user confirmation.
+
+Fail-open: if adversary cannot be spawned (missing API key, network), proceed with standard promotion and log a warning. The threshold check + user confirmation still apply.
+
 ## Files
 
 | Action | File |

@@ -1209,3 +1209,32 @@ Say "show me the rules" or "what patterns are we using?" anytime.
 ### If user cancels mid-wizard
 - Save progress to `.workflow/state/setup-progress.json`
 - Next run can offer to resume
+
+## v2.25.0+ — Modern Config Scaffolding (MANDATORY)
+
+New projects MUST be initialized with the following modern-stack config blocks explicitly written to `.workflow/config.json` so users can see + tune them (defaults-only inheritance is fine for behavior, but visibility matters for learning):
+
+```json
+{
+  "intentGroundedReasoning": { "enabled": true },
+  "taskBoundaryReset": {
+    "enabled": true,
+    "maxRestartsPerSession": 50
+  },
+  "storyFlow": {
+    "consumerImpactAnalysis": { "enabled": true, "breakingThreshold": 5 },
+    "scopeConfidenceAudit": { "enabled": true },
+    "itemReconciliation": { "enabled": true, "minItems": 3 }
+  },
+  "longInputGate": { "enabled": true, "lineThreshold": 40 },
+  "researchReasoningGate": {
+    "enabled": true,
+    "tier2": { "enabled": true },
+    "tier3": { "enabled": true, "adversaryModel": "sonnet" }
+  }
+}
+```
+
+These capabilities (IGR, task-boundary restart, P0 story gates, long-input routing, research reasoning gate) have proven out in 2.22+ releases. New users should NOT have to manually enable them via `flow migrate-igr` or equivalent — they are active from the first session.
+
+If onboarding a workspace (multi-repo), also ensure `workspace.autoPickupChannelDispatches: true` and the 2.22.x restart-handoff settings are present.

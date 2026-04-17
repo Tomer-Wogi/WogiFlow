@@ -356,3 +356,44 @@ Each finding is displayed using these fields from `last-review.json`:
 | File | `finding.file` + `finding.line` | "src/api.ts:45" |
 | Issue | `finding.issue` | "Raw JSON.parse without try-catch" |
 | Recommendation | `finding.recommendation` | "Use safeJsonParse from flow-utils.js" |
+
+## Anti-Deferral Enforcement (v2.25.0+ — MANDATORY)
+
+The **Review-Findings Anti-Deferral Rule** (`.workflow/state/decisions.md`, 2026-04-15) extends to `/wogi-triage` mechanically in v2.25.0+. Prevents the rubber-stamp pattern where the AI silently drops findings from "fix all" requests.
+
+**Enforcement rules**:
+
+1. **"Defer" / "skip" requires explicit user confirmation with a reason.** When the AI or user proposes to defer a finding, the triage flow MUST prompt:
+   ```
+   Defer finding wf-review-XXXX?
+     Severity: HIGH
+     Reason required: [user input]
+     [Confirm defer] [Cancel — fix now]
+   ```
+   Auto-defer without reason is FORBIDDEN.
+
+2. **"Fix all" / "Option 1" / equivalent means fix ALL.** If the user requests bulk processing:
+   - Ship a fix for every finding with evidence-tier ≥ 1
+   - If any finding is too large, STOP and ask: "Finding X requires ~Y minutes of work. Ship now, split to its own release, or defer (needs reason)?"
+   - Never silently convert a finding to "deferred" in commit messages or release notes
+
+3. **Commit/release consistency check.** Before finalizing, scan the commit message / release notes against the findings list. If the message claims "fixes F1, F2, F3, M1" but M1 isn't in the diff, BLOCK with:
+   ```
+   Commit message claims M1 is fixed, but M1 does not appear in the diff.
+   Options: [Fix M1 now] [Remove M1 from message] [Acknowledge + proceed]
+   ```
+
+4. **Triage output includes a Deferral Audit Trail**:
+   ```
+   ━━━ TRIAGE SUMMARY ━━━
+   Fixed: 12
+   Deferred (with reasons): 2
+     • M3 — "requires restructure, tracked as wf-XXXXXXXX" (user-confirmed)
+     • L5 — "out of scope for current release" (user-confirmed)
+   Silently dropped: 0 ← MUST be 0
+   ━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+Historical incident (v2.17.4 release, 2026-04-15): commit message claimed "fix all findings" but M1 and M3 were silently dropped. The v2.25.0+ mechanical enforcement makes that failure mode architecturally impossible — the flow stops and asks rather than letting the AI make an autonomous defer decision.
+
+Skip only if `config.triage.antiDeferralEnforcement.enabled` is explicitly `false` (default: true).

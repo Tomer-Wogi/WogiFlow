@@ -304,6 +304,46 @@ In `config.json`:
 }
 ```
 
+## Rule-Creation Adversary (v2.25.0+ — OPTIONAL but recommended for ambiguous rules)
+
+When creating a non-trivial rule (anything beyond pure preference-setting like "always use semicolons"), spawn an adversary on a different model (default `sonnet` via `config.researchReasoningGate.tier3.adversaryModel`) to stress-test the proposed rule BEFORE it lands in `decisions.md`.
+
+```
+Spawn Agent (subagent_type: general-purpose, model: <adversaryModel>):
+
+Input:
+  Proposed rule title: <title>
+  Proposed rule body: <body>
+  User's original phrasing: <literal request>
+
+Prompt:
+  You are the rule-creation adversary.
+  1. Edge cases: name 3 situations where following this rule would produce
+     worse outcomes than NOT following it.
+  2. Interpretation: are there 2+ reasonable interpretations? If yes, list
+     them and pick the one the user most likely meant.
+  3. Scope creep: could this rule be over-applied to situations the user
+     didn't intend? Suggest scope qualifiers.
+  4. Verdict:
+     - ACCEPT   — ship as-is
+     - CLARIFY  — multiple interpretations; ask user
+     - NARROW   — over-application risk; add scope qualifiers
+     - REJECT   — edge cases dominate; more harm than good
+
+  Output JSON: {
+    "verdict", "edge_cases", "interpretations",
+    "scope_qualifiers", "suggested_revision"
+  }
+```
+
+Process:
+- **ACCEPT** → proceed with rule creation
+- **CLARIFY** → ask user to pick interpretation
+- **NARROW** → show scope qualifier; ask user to approve
+- **REJECT** → surface edge cases; require explicit override
+
+Fail-open: adversary unavailable → proceed with standard flow. User confirmation is still present.
+
 ## Files
 
 | Action | File |

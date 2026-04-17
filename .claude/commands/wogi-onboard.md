@@ -1077,3 +1077,29 @@ AskUserQuestion({
   }]
 });
 ```
+
+## v2.25.0+ — Modern Config Scaffolding (MANDATORY)
+
+When generating `.workflow/config.json` for a fresh project, include these 2.22+ capability blocks so new users inherit the current-best defaults:
+
+```json
+{
+  "intentGroundedReasoning": { "enabled": true },
+  "taskBoundaryReset": { "enabled": true, "maxRestartsPerSession": 50 },
+  "storyFlow": {
+    "consumerImpactAnalysis": { "enabled": true, "breakingThreshold": 5 },
+    "scopeConfidenceAudit": { "enabled": true },
+    "itemReconciliation": { "enabled": true, "minItems": 3 }
+  },
+  "longInputGate": { "enabled": true, "lineThreshold": 40 },
+  "researchReasoningGate": {
+    "enabled": true,
+    "tier2": { "enabled": true },
+    "tier3": { "enabled": true, "adversaryModel": "sonnet" }
+  }
+}
+```
+
+These drive IGR (Architect + Adversary + Truth Gate), task-boundary context reset via the `wogi-claude` wrapper, `/wogi-story` P0 spec gates, auto-routing of long inputs to `/wogi-extract-review`, and the research reasoning gate's assumption-surfacing + cross-model adversary. All have proven out across the 2.22.x release series; new users should not have to discover them one at a time.
+
+For multi-repo workspaces, also scaffold `workspace.autoPickupChannelDispatches: true` and leave the other `workspace.*` defaults intact — they include the 2.22.2 restart-handoff protocol.
