@@ -30,6 +30,20 @@ KEY CONTEXT
 BLOCKERS
   - Waiting on backend team for /preferences endpoint
 
+WORKSPACE DISPATCH ISSUES (v2.23.0 — manager mode only)
+  ━━━ OVERDUE WORKSPACE DISPATCHES (2) ━━━
+  • wf-a1b2c3d4 → worker-1  | dispatched 47m ago (17m past 30m deadline)
+  • wf-e5f67890 → worker-2  | dispatched 2h3m ago (1h33m past 30m deadline)
+
+  ━━━ LOST DISPATCHES — WORKER RESTARTED WITH EMPTY QUEUE (1) ━━━
+  • wf-55555555 → worker-3  | dispatched 4m ago | still pending after worker restart
+
+HONESTY CHECK — claim/state contradictions (v2.23.0)
+  ⚠ 2 tasks with claim-vs-state mismatch
+    wf-abc12345 (class A, field notes): "fully completed, shipped yesterday..."
+    wf-def67890 (class B, field result): "0 outages reported, clean rollout..."
+  Review: flow health
+
 RULE VIOLATIONS (deferred from rule creation)
   Rule: "Split Prisma schema into domain files" (added 2026-02-20)
   Violations: 4 across 1 file

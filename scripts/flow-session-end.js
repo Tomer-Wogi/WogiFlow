@@ -581,6 +581,53 @@ function runCompletionContradictionScan() {
 }
 
 /**
+ * v2.23.0 — Workspace session-end handoff.
+ *
+ * When running inside a workspace manager session, write a structured
+ * `heads-up` message to .workspace/messages/ so workers (and subsequent
+ * manager sessions) can see that the manager is closing cleanly. Pairs
+ * with the worker-ready / worker-stopped / lost-dispatches protocol
+ * from 2.22.x — gives workers a definitive "manager went away, no new
+ * dispatches coming" signal instead of silent absence.
+ *
+ * Fail-open: any error is logged in DEBUG mode but never blocks session-end.
+ */
+function writeWorkspaceSessionEndMessage() {
+  const workspaceRoot = process.env.WOGI_WORKSPACE_ROOT;
+  if (!workspaceRoot) return;
+  const repo = process.env.WOGI_REPO_NAME;
+  // Only manager-mode sessions emit this signal. Workers use their own
+  // Stop-hook worker-stopped message (see lib/workspace-messages.js).
+  if (repo && repo !== 'manager') return;
+
+  try {
+    const messagesLib = path.resolve(__dirname, '..', 'lib', 'workspace-messages.js');
+    const { createMessage, saveMessage } = require(messagesLib);
+    const msg = createMessage({
+      from: repo || 'manager',
+      to: 'all',
+      type: 'heads-up',
+      subject: 'Manager session ended',
+      body: [
+        'The workspace manager session has ended cleanly.',
+        'No new dispatches will arrive until a new manager session starts.',
+        'Workers finishing current tasks can safely end-of-turn and restart.'
+      ].join('\n'),
+      priority: 'medium',
+      actionRequired: false
+    });
+    saveMessage(workspaceRoot, msg);
+    if (process.env.DEBUG) {
+      console.error(`[session-end] Wrote manager-session-ended message: ${msg.id}`);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-end] Workspace session-end message failed (non-fatal): ${err.message}`);
+    }
+  }
+}
+
+/**
  * v1.7.0: Archive request log if threshold exceeded
  */
 function archiveRequestLogIfNeeded() {
@@ -1255,6 +1302,9 @@ async function main() {
   // done-words contradicting status, or "0 outages"-class negations contradicting
   // hotfixes[] evidence. Surface-and-prompt, not hard-fail (calibration first).
   runCompletionContradictionScan();
+
+  // v2.23.0 — Workspace session-end message (manager mode only).
+  writeWorkspaceSessionEndMessage();
 
   console.log('');
 

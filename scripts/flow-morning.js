@@ -377,8 +377,30 @@ function collectBriefingData() {
     git: gitStatus,
     progress: progressData,
     metrics: sessionState.metrics,
-    suggestedPrompt: null // Will be generated if enabled
+    suggestedPrompt: null, // Will be generated if enabled
+    workspaceOverdue: null,   // v2.23.0 — populated below when manager mode
+    honestyHits: []           // v2.23.0 — populated below
   };
+
+  // v2.23.0 — Workspace dispatch surfacing (manager mode only).
+  // If the user is working inside a workspace manager session, surface any
+  // overdue or restart-gap-lost dispatches so the morning briefing catches
+  // what the last manager turn would have caught. Fail-open.
+  try {
+    if (process.env.WOGI_WORKSPACE_ROOT) {
+      const { buildOverdueContext } = require('./hooks/core/overdue-dispatches');
+      const ctx = buildOverdueContext();
+      if (ctx) briefing.workspaceOverdue = ctx;
+    }
+  } catch (_err) { /* non-critical */ }
+
+  // v2.23.0 — Completion-claim honesty scan.
+  // Catches done-word-in-notes-while-status-partial and similar
+  // contradictions across ready.json (uses the honesty-infra from 2026-04-16).
+  try {
+    const { checkCompletionClaimHonesty } = require('./flow-health');
+    briefing.honestyHits = checkCompletionClaimHonesty();
+  } catch (_err) { /* non-critical */ }
 
   // Generate suggested prompt if enabled
   if (morningConfig.generatePrompt !== false) {
@@ -530,6 +552,30 @@ function printBriefing(briefing) {
     } catch (_err) {
       // Tech debt manager not available - skip silently
     }
+  }
+
+  // v2.23.0 — Workspace dispatch issues (manager mode)
+  if (briefing.workspaceOverdue) {
+    printSection('WORKSPACE DISPATCH ISSUES');
+    for (const line of briefing.workspaceOverdue.split('\n')) {
+      console.log(`  ${line}`);
+    }
+    console.log('');
+  }
+
+  // v2.23.0 — Completion-claim honesty contradictions
+  if (Array.isArray(briefing.honestyHits) && briefing.honestyHits.length > 0) {
+    printSection('HONESTY CHECK — claim/state contradictions');
+    console.log(`  ${color('yellow', '\u26a0')} ${briefing.honestyHits.length} task${briefing.honestyHits.length === 1 ? '' : 's'} with claim-vs-state mismatch`);
+    for (const h of briefing.honestyHits.slice(0, 5)) {
+      const snippet = String(h.snippet || '').slice(0, 80);
+      console.log(`    ${color('dim', `${h.id} (class ${h.class}, field ${h.field}): "${snippet}..."`)}`);
+    }
+    if (briefing.honestyHits.length > 5) {
+      console.log(`    ${color('dim', `... and ${briefing.honestyHits.length - 5} more`)}`);
+    }
+    console.log(`  ${color('dim', 'Review: flow health')}`);
+    console.log('');
   }
 
   // Changes since last session

@@ -39,30 +39,40 @@ Models are selected once per session and remembered for subsequent runs.
 
 **Config**: Models configured in `.workflow/config.json` under `models.providers`. API keys in `.env`.
 
-## Review Flow
+## Review Flow (v2.23.0+)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  /wogi-peer-review                                       │
 ├─────────────────────────────────────────────────────────┤
 │  1. Collect code changes (git diff or specified files)   │
-│  2. Generate improvement-focused prompt                  │
-│  3. If includeClaude enabled:                            │
+│  2. Classify change size → effort tier:                  │
+│     L0/L1 (>10 files)  → opus-4-7 xhigh                  │
+│     L2 (3-10 files)    → sonnet medium                   │
+│     L3 (<3 files)      → haiku medium                    │
+│  3. Generate improvement-focused prompt                  │
+│  4. If includeClaude enabled:                            │
 │     - Launch Claude review (Task agent, Explore type)    │
-│  4. External model(s) review via API                     │
-│  5. Collect all results                                  │
-│  6. Compare findings:                                    │
+│  5. External model(s) review via API                     │
+│  6. Collect all results, tag each claim with Evidence    │
+│     Tier 0-4 (NONE/STATIC/COMPILED/INTERACTIVE/SHIPPED)  │
+│  7. Compare findings:                                    │
 │     - All agree → Strong suggestion                      │
 │     - Partial agree → Present perspectives               │
 │     - Disagree → Surface disagreement                    │
-│  7. Claude synthesizes and responds to feedback           │
-│  8. Output final synthesis                               │
+│  8. Synthesis Adversary (v2.23.0 — NEW):                 │
+│     spawn cross-model agent on DIFFERENT model to        │
+│     critique the synthesis itself — does "3/3 agreement" │
+│     actually mean "3 models all hallucinated the same    │
+│     thing"?                                              │
+│  9. Claude synthesizes + incorporates adversary critique │
+│  10. Output final synthesis with evidence-tier per claim │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ## Review Prompt Template
 
-The peer review prompt focuses on improvements, not correctness:
+The peer review prompt focuses on improvements, not correctness, and now demands evidence tiers per claim (v2.23.0+):
 
 ```
 Review this code for IMPROVEMENT OPPORTUNITIES, not bugs:
@@ -73,8 +83,46 @@ Review this code for IMPROVEMENT OPPORTUNITIES, not bugs:
 4. **Readability**: Could this be clearer/simpler?
 5. **Extensibility**: Will this be easy to extend?
 
-Respond with: specific suggestions, alternative approaches, trade-off analysis.
+For EACH suggestion, tag it with an evidence tier:
+  Tier 0 (NONE)         — no evidence, pure opinion
+  Tier 1 (STATIC)       — based on reading the code
+  Tier 2 (COMPILED)     — would affect compile / type errors
+  Tier 3 (INTERACTIVE)  — would affect runtime behavior observably
+  Tier 4 (SHIPPED)      — you can cite a production incident
+
+Respond with: specific suggestions, alternative approaches, trade-off
+analysis, EACH carrying an explicit evidence tier.
 ```
+
+## Synthesis Adversary (v2.23.0+ — MANDATORY unless `--no-adversary`)
+
+After initial synthesis, spawn a single adversary agent on a DIFFERENT model from the synthesizer (default: if synthesizer is Opus, adversary is Sonnet; config via `peerReview.adversaryModel`). Prompt:
+
+```
+You are the synthesis adversary.
+
+Synthesis claims:
+  • [claim 1, tier 2, agreed by 3 models]
+  • [claim 2, tier 1, agreed by 2 models]
+  • [claim 3, tier 0, 1-model unique insight]
+
+Your job (5 min):
+  1. For each claim: could "agreement" be shared hallucination? What would
+     refute the claim that couldn't have been seen by all 3 reviewers?
+  2. For Tier 0/1 claims: is the evidence actually there in the code, or
+     is it vibes-based?
+  3. Is there an important suggestion MISSING from the synthesis that a
+     human reviewer would flag?
+
+Output:
+{
+  "shared_hallucination_risk": [list of claim indices with reason],
+  "vibes_based_claims": [list of claim indices],
+  "missing_suggestions": [list of suggestions the synthesis missed]
+}
+```
+
+Merge adversary output into the final report — downgrade any claim flagged as shared-hallucination or vibes-based by one evidence tier.
 
 ## Output
 
@@ -150,5 +198,8 @@ For manual review (no API keys needed): `/wogi-peer-review --manual`
 | `--json` | Output JSON for automation |
 | `--verbose` | Show full model responses |
 | `--create-tasks` | Auto-create tasks for strong agreements |
+| `--no-adversary` | Skip the v2.23.0 synthesis adversary (not recommended for L0/L1 diffs) |
+| `--adversary-model <id>` | Override adversary model (default: cross-model from synthesizer) |
+| `--effort <level>` | Override effort tier (low/medium/high/xhigh/max) — otherwise derived from diff size |
 
 ARGUMENTS: {args}

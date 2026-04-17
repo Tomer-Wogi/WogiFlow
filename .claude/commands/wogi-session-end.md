@@ -10,8 +10,10 @@ Steps:
 3. **Check app-map** - If new components created, verify they're added
 4. **Update progress.md** - Add handoff notes for next session
 5. **Community push** - If `config.community.enabled`, push anonymous learnings
-6. **Commit changes** - Stage and commit all workflow files
-7. **Offer to push** - Ask if should push to remote
+6. **Completion-claim honesty scan** - Surface done-in-text-but-not-in-status contradictions (2026-04-16 honesty-infra)
+7. **Workspace session-end message (v2.23.0+)** - If running inside a workspace manager, write a `heads-up` message to `.workspace/messages/` so workers know no new dispatches are coming
+8. **Commit changes** - Stage and commit all workflow files
+9. **Offer to push** - Ask if should push to remote
 
 Output:
 ```
