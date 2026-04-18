@@ -615,6 +615,133 @@ function collectArrayEntries(obj, keys) {
 }
 
 // ============================================================
+// Commit-vs-diff consistency scanner (v2.25.1 — H2b from Waves 1-3 review)
+// ============================================================
+
+/**
+ * Parse a commit message for "fixes X" / "closes X" / "F1, F2, M1" style claims
+ * that should be verifiable against the diff.
+ *
+ * Heuristics — conservative to avoid false positives:
+ *   1. Bracketed finding IDs: `F1`, `F2`, `M1`, `H3`, `L5`, or `SEC-001`/`PERF-002`
+ *   2. Task IDs: `wf-XXXXXXXX` that appear as "fixes wf-...", "closes wf-...", etc.
+ *   3. File paths mentioned in fix-context: "fixes `path/to/file.js`"
+ *
+ * Returns the structured claims a diff-consistency check can verify.
+ *
+ * @param {string} commitMessage
+ * @returns {{claims: Array<{kind: 'finding-id'|'task-id'|'file', value: string, raw: string}>}}
+ */
+function parseCommitMessageClaims(commitMessage) {
+  const claims = [];
+  if (typeof commitMessage !== 'string' || commitMessage.trim().length === 0) {
+    return { claims };
+  }
+
+  // Finding IDs: F1, F2, M1, H3, L5, SEC-001, PERF-002, etc.
+  //   - Single-letter + digits: match on word boundary
+  //   - ALLCAPS-dashnum: SEC-001, PERF-002
+  const findingRe = /\b(?:F\d+|H\d+|M\d+|L\d+|[A-Z]{2,6}-\d+)\b/g;
+  for (const m of commitMessage.matchAll(findingRe)) {
+    claims.push({ kind: 'finding-id', value: m[0], raw: m[0] });
+  }
+
+  // Task IDs (wf-XXXXXXXX) — only count if preceded by fix/close/resolve verb
+  const taskRe = /\b(?:fix(?:es|ed)?|clos(?:es|ed)?|resolv(?:es|ed)?|address(?:es|ed)?)\s+(wf-[0-9a-f]{8})\b/gi;
+  for (const m of commitMessage.matchAll(taskRe)) {
+    claims.push({ kind: 'task-id', value: m[1], raw: m[0] });
+  }
+
+  // File paths in backticks after fix/address verbs: `fixes \`path/to/file.js\``
+  const fileRe = /(?:fix(?:es|ed)?|address(?:es|ed)?|updat(?:es|ed)?)\s+`([^`\n]{3,120})`/gi;
+  for (const m of commitMessage.matchAll(fileRe)) {
+    // Only count values that look like file paths (have an extension or a slash)
+    const val = m[1];
+    if (/[./]/.test(val) && !val.includes(' ')) {
+      claims.push({ kind: 'file', value: val, raw: m[0] });
+    }
+  }
+
+  // Dedup
+  const seen = new Set();
+  return {
+    claims: claims.filter(c => {
+      const k = `${c.kind}::${c.value.toLowerCase()}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+  };
+}
+
+/**
+ * Check commit message claims against the staged diff. Each claim must appear
+ * somewhere in the diff (a file path in the changed-files list OR the token
+ * appearing as-is in the diff body).
+ *
+ * @param {string} commitMessage
+ * @param {Object} [opts]
+ * @param {string} [opts.diffText] — raw `git diff --staged` output
+ * @param {string[]} [opts.changedFiles] — staged file list (alternative input)
+ * @returns {{ok: boolean, totalClaims: number, missingClaims: Array, verifiedClaims: Array}}
+ */
+function verifyCommitMessageAgainstDiff(commitMessage, opts = {}) {
+  const { claims } = parseCommitMessageClaims(commitMessage);
+  if (claims.length === 0) return { ok: true, totalClaims: 0, missingClaims: [], verifiedClaims: [] };
+
+  const diffText = typeof opts.diffText === 'string' ? opts.diffText : '';
+  const changedFiles = Array.isArray(opts.changedFiles) ? opts.changedFiles : [];
+  const haystack = [diffText, ...changedFiles].join('\n');
+
+  const missingClaims = [];
+  const verifiedClaims = [];
+
+  for (const claim of claims) {
+    let found = false;
+    if (claim.kind === 'file') {
+      // File claims verify by exact path match (or suffix) in changed-files list
+      found = changedFiles.some(f => f === claim.value || f.endsWith('/' + claim.value) || f.endsWith(claim.value));
+      if (!found) found = diffText.includes(claim.value);
+    } else {
+      // finding-id + task-id: plain substring search in the haystack
+      found = haystack.includes(claim.value);
+    }
+    (found ? verifiedClaims : missingClaims).push(claim);
+  }
+
+  return {
+    ok: missingClaims.length === 0,
+    totalClaims: claims.length,
+    missingClaims,
+    verifiedClaims
+  };
+}
+
+/**
+ * Human-readable message when claims are missing from the diff.
+ *
+ * @param {Object} result — from verifyCommitMessageAgainstDiff
+ * @returns {string|null}
+ */
+function formatMissingClaimsMessage(result) {
+  if (!result || result.ok || !Array.isArray(result.missingClaims) || result.missingClaims.length === 0) {
+    return null;
+  }
+  const lines = [
+    `Commit message claims ${result.missingClaims.length} item(s) that do not appear in the staged diff:`
+  ];
+  for (const c of result.missingClaims) {
+    lines.push(`  • ${c.kind === 'finding-id' ? 'Finding' : c.kind === 'task-id' ? 'Task' : 'File'} "${c.value}" — not found`);
+  }
+  lines.push('');
+  lines.push('Options:');
+  lines.push('  1. Add the missing fix to the commit now (git add + amend)');
+  lines.push('  2. Remove the unverified claim from the commit message');
+  lines.push('  3. Acknowledge + proceed (use --force-commit-claims if blocking from a gate)');
+  return lines.join('\n');
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -627,6 +754,9 @@ module.exports = {
   isTruthGateDisabled,
   getMinTierForDone,
   scanForClaimContradictions,
+  parseCommitMessageClaims,
+  verifyCommitMessageAgainstDiff,
+  formatMissingClaimsMessage,
   TIER_NAMES,
   DONE_WORDS,
   DISAGREEMENT_WORDS,

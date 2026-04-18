@@ -47,9 +47,11 @@ Models are selected once per session and remembered for subsequent runs.
 ├─────────────────────────────────────────────────────────┤
 │  1. Collect code changes (git diff or specified files)   │
 │  2. Classify change size → effort tier:                  │
-│     L0/L1 (>10 files)  → opus-4-7 xhigh                  │
+│     L0/L1 (>10 files)  → opus (latest) xhigh             │
 │     L2 (3-10 files)    → sonnet medium                   │
 │     L3 (<3 files)      → haiku medium                    │
+│     (Model IDs resolve from config.models — avoid        │
+│      hardcoding model version in this doc.)              │
 │  3. Generate improvement-focused prompt                  │
 │  4. If includeClaude enabled:                            │
 │     - Launch Claude review (Task agent, Explore type)    │
@@ -96,7 +98,7 @@ analysis, EACH carrying an explicit evidence tier.
 
 ## Synthesis Adversary (v2.23.0+ — MANDATORY unless `--no-adversary`)
 
-After initial synthesis, spawn a single adversary agent on a DIFFERENT model from the synthesizer (default: if synthesizer is Opus, adversary is Sonnet; config via `peerReview.adversaryModel`). Prompt:
+After initial synthesis, spawn a single adversary agent on a DIFFERENT model from the synthesizer (default `sonnet`; override via the canonical `config.researchReasoningGate.tier3.adversaryModel` — same key used by `/wogi-debug-hypothesis`, `/wogi-learn`, `/wogi-decide`). Prompt:
 
 ```
 You are the synthesis adversary.
@@ -199,7 +201,7 @@ For manual review (no API keys needed): `/wogi-peer-review --manual`
 | `--verbose` | Show full model responses |
 | `--create-tasks` | Auto-create tasks for strong agreements |
 | `--no-adversary` | Skip the v2.23.0 synthesis adversary (not recommended for L0/L1 diffs) |
-| `--adversary-model <id>` | Override adversary model (default: cross-model from synthesizer) |
+| `--adversary-model <id>` | Override adversary model (default: `config.researchReasoningGate.tier3.adversaryModel`, usually `sonnet`) |
 | `--effort <level>` | Override effort tier (low/medium/high/xhigh/max) — otherwise derived from diff size |
 
 ARGUMENTS: {args}

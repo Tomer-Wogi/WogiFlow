@@ -357,33 +357,45 @@ Each finding is displayed using these fields from `last-review.json`:
 | Issue | `finding.issue` | "Raw JSON.parse without try-catch" |
 | Recommendation | `finding.recommendation` | "Use safeJsonParse from flow-utils.js" |
 
-## Anti-Deferral Enforcement (v2.25.0+ — MANDATORY)
+## Anti-Deferral Enforcement (v2.25.0+ — two layers)
 
-The **Review-Findings Anti-Deferral Rule** (`.workflow/state/decisions.md`, 2026-04-15) extends to `/wogi-triage` mechanically in v2.25.0+. Prevents the rubber-stamp pattern where the AI silently drops findings from "fix all" requests.
+The **Review-Findings Anti-Deferral Rule** (`.workflow/state/decisions.md`, 2026-04-15) gets two complementary enforcement layers. One mechanical (an actual gate in the codebase), one AI-followed (a protocol documented here that the triage flow honors).
 
-**Enforcement rules**:
+### Layer 1 — Mechanical gate (v2.25.1+)
 
-1. **"Defer" / "skip" requires explicit user confirmation with a reason.** When the AI or user proposes to defer a finding, the triage flow MUST prompt:
+`scripts/flow-completion-truth-gate.js` exports `parseCommitMessageClaims()` and `verifyCommitMessageAgainstDiff()`. Callers pass a commit message and the staged diff (or changed-files list); the function parses finding IDs (`F1`/`M1`/`SEC-001`), task IDs (`wf-XXXXXXXX` after fix/close/resolve verbs), and file-path mentions, then checks each against the diff. Any unverified claim surfaces as a blocking prompt with three remediation options. This is real code, callable from pre-commit hooks, `flow-done.js`, or the triage flow itself.
+
+Example usage:
+```javascript
+const { verifyCommitMessageAgainstDiff, formatMissingClaimsMessage } =
+  require('wogiflow/scripts/flow-completion-truth-gate');
+
+const result = verifyCommitMessageAgainstDiff(commitMsg, { diffText, changedFiles });
+if (!result.ok) {
+  console.error(formatMissingClaimsMessage(result));
+  // Block + remediate
+}
+```
+
+### Layer 2 — AI-followed protocol (documentation)
+
+The rest of the triage flow is a protocol the AI follows. It is NOT automatically enforced by a hook — the historical v2.17.4 incident showed that doc-only protocols can be violated. The mechanical gate above closes the most damaging failure mode (commit message / diff mismatch). The AI-followed rules below cover the earlier stages:
+
+1. **Defer requires explicit user confirmation + reason.** The triage flow prompts when proposing to defer:
    ```
    Defer finding wf-review-XXXX?
      Severity: HIGH
      Reason required: [user input]
      [Confirm defer] [Cancel — fix now]
    ```
-   Auto-defer without reason is FORBIDDEN.
+   Auto-defer without reason is forbidden by this protocol.
 
-2. **"Fix all" / "Option 1" / equivalent means fix ALL.** If the user requests bulk processing:
+2. **"Fix all" / "Option 1" means fix ALL.** If the user requests bulk processing:
    - Ship a fix for every finding with evidence-tier ≥ 1
    - If any finding is too large, STOP and ask: "Finding X requires ~Y minutes of work. Ship now, split to its own release, or defer (needs reason)?"
    - Never silently convert a finding to "deferred" in commit messages or release notes
 
-3. **Commit/release consistency check.** Before finalizing, scan the commit message / release notes against the findings list. If the message claims "fixes F1, F2, F3, M1" but M1 isn't in the diff, BLOCK with:
-   ```
-   Commit message claims M1 is fixed, but M1 does not appear in the diff.
-   Options: [Fix M1 now] [Remove M1 from message] [Acknowledge + proceed]
-   ```
-
-4. **Triage output includes a Deferral Audit Trail**:
+3. **Triage output includes a Deferral Audit Trail**:
    ```
    ━━━ TRIAGE SUMMARY ━━━
    Fixed: 12
@@ -394,6 +406,10 @@ The **Review-Findings Anti-Deferral Rule** (`.workflow/state/decisions.md`, 2026
    ━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-Historical incident (v2.17.4 release, 2026-04-15): commit message claimed "fix all findings" but M1 and M3 were silently dropped. The v2.25.0+ mechanical enforcement makes that failure mode architecturally impossible — the flow stops and asks rather than letting the AI make an autonomous defer decision.
+### Honest tradeoff
 
-Skip only if `config.triage.antiDeferralEnforcement.enabled` is explicitly `false` (default: true).
+Layer 1 is genuinely mechanical — impossible for an AI to bypass without explicitly disabling the gate. Layer 2 is a protocol the AI can fail to follow if prompted poorly, distracted, or confused about priorities. Both matter; calling the whole system "architecturally impossible to bypass" would be inaccurate. The mechanical gate at least ensures that WHEN the AI writes a commit message, claimed fixes must actually appear in the diff.
+
+Historical incident (v2.17.4 release, 2026-04-15): commit claimed "fix all findings" but M1 and M3 were silently dropped. Layer 1 would have caught that — the commit message mentioned M1 + M3 but the diff didn't. Layer 2 is the human-protocol reinforcement.
+
+Skip via `config.triage.antiDeferralEnforcement.enabled: false` — note that this is currently a surface flag only (read by AI-followed protocol, not by the Layer 1 gate); to disable Layer 1 set `config.commitClaimsGate.enabled: false`.

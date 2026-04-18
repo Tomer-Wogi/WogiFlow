@@ -596,9 +596,18 @@ function writeWorkspaceSessionEndMessage() {
   const workspaceRoot = process.env.WOGI_WORKSPACE_ROOT;
   if (!workspaceRoot) return;
   const repo = process.env.WOGI_REPO_NAME;
-  // Only manager-mode sessions emit this signal. Workers use their own
-  // Stop-hook worker-stopped message (see lib/workspace-messages.js).
-  if (repo && repo !== 'manager') return;
+  // Only emit this signal from EXPLICIT manager-mode sessions.
+  // v2.25.1 (M2 from Waves 1-3 review): tightened to require
+  // WOGI_REPO_NAME === 'manager' explicitly. Previously we let
+  // unset-repo sessions fall through, which could emit a spurious
+  // "manager session ended" broadcast from a mis-env'd worker shell.
+  // Workers use their own Stop-hook worker-stopped message.
+  if (repo !== 'manager') {
+    if (repo && process.env.DEBUG) {
+      console.error(`[session-end] Skipping workspace message — WOGI_REPO_NAME is '${repo}', not 'manager'`);
+    }
+    return;
+  }
 
   try {
     const messagesLib = path.resolve(__dirname, '..', 'lib', 'workspace-messages.js');

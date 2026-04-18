@@ -36,6 +36,46 @@ describe('flow-extraction-review (Wave 2.1)', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'flow-extraction-review.js'), 'utf-8');
     assert.match(src, /case 'manifest':/);
   });
+
+  it('happy path: emits manifest with items + bypassLongInput + intentBootstrapScheduled (v2.25.1 — M1)', () => {
+    // The module's TMP_DIR is baked at load-time from process.cwd(), so we
+    // write the fixture to the REAL default location, preserve whatever's
+    // there today, and restore on cleanup.
+    const tmpDir = path.join(process.cwd(), '.workflow', 'tmp', 'long-input');
+    const reviewFile = path.join(tmpDir, 'review-session.json');
+
+    const preexisting = fs.existsSync(reviewFile) ? fs.readFileSync(reviewFile) : null;
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    try {
+      const session = {
+        id: 'review-test123',
+        status: 'complete',
+        completeness_confirmed: true,
+        completeness_confirmed_at: new Date().toISOString(),
+        items: [
+          { id: 'i1', text: 'Fix the login page', review_status: 'confirmed' },
+          { id: 'i2', text: 'Add dark mode toggle', review_status: 'confirmed' },
+          { id: 'i3', text: 'Skipped item', review_status: 'removed' },
+          { id: 'i4', text: 'Remove mock data', review_status: 'confirmed' }
+        ]
+      };
+      fs.writeFileSync(reviewFile, JSON.stringify(session, null, 2));
+
+      const manifest = mod.exportAsItemManifest();
+      assert.equal(manifest.count, 3);
+      assert.deepEqual(manifest.items, ['Fix the login page', 'Add dark mode toggle', 'Remove mock data']);
+      assert.equal(manifest.bypassLongInput, true);
+      assert.equal(manifest.sourceSessionId, 'review-test123');
+      assert.equal(typeof manifest.intentBootstrapScheduled, 'boolean');
+    } finally {
+      if (preexisting) {
+        fs.writeFileSync(reviewFile, preexisting);
+      } else {
+        try { fs.unlinkSync(reviewFile); } catch (_err) { /* ignore */ }
+      }
+    }
+  });
 });
 
 // ============================================================

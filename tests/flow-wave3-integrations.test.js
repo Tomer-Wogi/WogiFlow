@@ -74,8 +74,8 @@ describe('wogi-triage.md (Wave 3.3)', () => {
   it('requires explicit user confirmation + reason to defer', () => {
     assert.match(file, /Reason required|requires explicit user confirmation/i);
   });
-  it('documents Commit/release consistency check', () => {
-    assert.match(file, /consistency check|commit message claims/i);
+  it('documents Commit/diff consistency gate (v2.25.1 — mechanical layer)', () => {
+    assert.match(file, /Mechanical gate|verifyCommitMessageAgainstDiff|parseCommitMessageClaims/i);
   });
   it('documents Deferral Audit Trail', () => {
     assert.match(file, /Deferral Audit Trail/);

@@ -385,22 +385,31 @@ function collectBriefingData() {
   // v2.23.0 — Workspace dispatch surfacing (manager mode only).
   // If the user is working inside a workspace manager session, surface any
   // overdue or restart-gap-lost dispatches so the morning briefing catches
-  // what the last manager turn would have caught. Fail-open.
+  // what the last manager turn would have caught. Fail-open; DEBUG-logged.
   try {
     if (process.env.WOGI_WORKSPACE_ROOT) {
       const { buildOverdueContext } = require('./hooks/core/overdue-dispatches');
       const ctx = buildOverdueContext();
       if (ctx) briefing.workspaceOverdue = ctx;
     }
-  } catch (_err) { /* non-critical */ }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[morning] Workspace overdue check failed (fail-open): ${err.message}`);
+    }
+  }
 
   // v2.23.0 — Completion-claim honesty scan.
   // Catches done-word-in-notes-while-status-partial and similar
   // contradictions across ready.json (uses the honesty-infra from 2026-04-16).
+  // Fail-open; DEBUG-logged.
   try {
     const { checkCompletionClaimHonesty } = require('./flow-health');
     briefing.honestyHits = checkCompletionClaimHonesty();
-  } catch (_err) { /* non-critical */ }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[morning] Honesty scan failed (fail-open): ${err.message}`);
+    }
+  }
 
   // Generate suggested prompt if enabled
   if (morningConfig.generatePrompt !== false) {

@@ -176,7 +176,7 @@ After all agents complete, display the consolidated results:
 
 ### Step 4: Hypothesis Adversary (v2.23.0+ — MANDATORY unless `--no-adversary`)
 
-After consolidation, spawn a single Agent (different `model` param if `config.hybrid.enabled`, else same) with this prompt:
+After consolidation, spawn a single Agent on a DIFFERENT model (default `sonnet` via `config.researchReasoningGate.tier3.adversaryModel` — canonical cross-command adversary key, same as `/wogi-peer-review`, `/wogi-learn`, `/wogi-decide`) with this prompt:
 
 ```
 You are the hypothesis adversary.

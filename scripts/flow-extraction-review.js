@@ -104,8 +104,13 @@ function loadReviewSession() {
       return null;
     }
 
-    // Check for prototype pollution keys
-    if ('__proto__' in parsed || 'constructor' in parsed || 'prototype' in parsed) {
+    // Check for prototype pollution keys. Use Object.prototype.hasOwnProperty
+    // rather than `key in parsed` — the latter also returns true for inherited
+    // properties, and EVERY plain object inherits `constructor` from
+    // Object.prototype, which made this guard falsely trip on every valid
+    // session file (pre-existing bug, found via v2.25.1 wave2 test).
+    const hasOwn = Object.prototype.hasOwnProperty;
+    if (hasOwn.call(parsed, '__proto__') || hasOwn.call(parsed, 'constructor') || hasOwn.call(parsed, 'prototype')) {
       console.error('Review session file contains unsafe keys');
       return null;
     }
@@ -414,11 +419,21 @@ function exportAsItemManifest() {
   // Coordinate with Intent Bootstrap (see flow-story-gates.coordinateIntentBootstrap)
   // so /wogi-start doesn't re-prompt if the user already scheduled bootstrap via
   // /wogi-story during this session.
+  //
+  // v2.25.1: Semantics corrected (nit from Waves 1-3 review). The flag
+  // represents "is IGR bootstrap active/scheduled for this session?", NOT
+  // "did THIS call schedule it?". `result.active` is true when IGR is enabled
+  // and bootstrap has been scheduled — whether by this call or a prior one.
   let intentBootstrapScheduled = false;
   try {
     const gates = require('./flow-story-gates');
     const result = gates.coordinateIntentBootstrap();
-    intentBootstrapScheduled = !!(result && result.scheduled);
+    if (result && result.active) {
+      // Scheduled in this call OR already-scheduled from a prior call = active
+      intentBootstrapScheduled = result.scheduled === true ||
+                                 result.reason === 'already-scheduled' ||
+                                 result.reason === 'artifacts-exist';
+    }
   } catch (_err) { /* non-critical */ }
 
   return {

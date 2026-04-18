@@ -818,6 +818,31 @@ const CONFIG_DEFAULTS = {
   // --- Gate Confidence ---
   gateConfidence: { enabled: false },
 
+  // --- Intent-Grounded Reasoning (IGR) ---
+  // Master flag for the IGR pipeline: Intent Framing (Step 1.15), Architect
+  // Pass (Step 1.55), Logic Adversary (Step 1.57), Scope-Confidence Audit
+  // (Step 1.45), Completion Truth Gate (Step 3.9). Default-on so new projects
+  // inherit the full reasoning pipeline. See .claude/docs/intent-grounded-reasoning.md.
+  intentGroundedReasoning: {
+    enabled: true,
+    _comment: 'IGR pipeline: architect + logic adversary + truth gate. See .claude/docs/intent-grounded-reasoning.md'
+  },
+
+  // --- Research Reasoning Gate ---
+  // Tiered classification for conversation-mode questions. Tier 1 = factual,
+  // direct answer. Tier 2 = domain/recommendation, surface assumptions and
+  // wait for user confirmation. Tier 3 = architecture, tier 2 flow + spawn
+  // cross-model adversary. See wogi-start.md § Research Reasoning Gate.
+  researchReasoningGate: {
+    enabled: true,
+    tier2: { enabled: true },
+    tier3: {
+      enabled: true,
+      adversaryModel: 'sonnet',
+      _comment_adversaryModel: 'Model used for Tier-3 cross-model adversary. Reused by /wogi-peer-review, /wogi-debug-hypothesis, /wogi-learn, /wogi-decide — single canonical key.'
+    }
+  },
+
   // --- Long Input Gate ---
   longInputGate: {
     enabled: true,
