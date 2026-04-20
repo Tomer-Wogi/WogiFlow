@@ -1,4 +1,4 @@
-<!-- PINS: architecture-decisions, operational-procedures, rejected-alternatives, architectural-decision-records -->
+<!-- PINS: rule-placement-decision, architecture-decisions, operational-procedures, rejected-alternatives, architectural-decision-records -->
 
 # Project Decisions
 
@@ -6,6 +6,32 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 
 **What belongs here:** Team conventions, project-specific architecture, repo-specific procedures.
 **What does NOT belong here:** WogiFlow product behavior (fix the commands/scripts/templates instead), rules already in `.claude/rules/` (no duplication), rules already in CLAUDE.md.
+
+---
+
+## Rule Placement Decision (2026-04-20)
+<!-- PIN: rule-placement-decision -->
+
+**Rule**: When you discover a new rule, pattern, or contract during a wogi-flow development session, evaluate WHERE it belongs **before writing it**. Do not default to this file.
+
+**Why this rule exists**: On 2026-04-20, an audit found 9 methodology rules mis-filed in this `decisions.md` that should have been shipped to every WogiFlow user via `.workflow/templates/partials/methodology-rules.hbs`. The shadows meant end-user CLAUDE.md was silent on contracts like "Workspace Worker Cannot Prompt User Directly" and "Merge-Plan Artifact Gate" even though the enforcement code was shipping. v2.26.0 promoted all 9 — but the promotion lag cost every downstream user real guidance for multiple releases.
+
+**The decision procedure**:
+
+| Question | If YES → | If NO → |
+|----------|----------|---------|
+| Would this rule apply inside a user's project that installed wogiflow? | Product-level (`.workflow/templates/partials/methodology-rules.hbs`) | Project-level (this file) |
+| Does it describe WogiFlow methodology, contracts, gates, or user-facing behavior? | Product-level | Project-level |
+| Does it reference wogi-flow's own internal file paths, scripts, build/release tooling, or dual-repo coordination? | Project-level | Revisit — probably product-level |
+| If a user ran `npm install -D wogiflow` in a fresh project, should this rule appear in their generated CLAUDE.md? | Product-level | Project-level |
+
+**Rule of thumb**: If the rule's enforcement code ships in `scripts/`, `lib/`, or `scripts/hooks/`, the rule's TEXT belongs in the template too. Shipping enforcement without shipping the rule text is the exact pattern the 2026-04-20 promotion had to fix.
+
+**What stays here (project-level)**: Dual-Repo Architecture, GitHub Release Workflow, Rejected Alternatives specific to wogi-flow sessions, ADR conventions for `.workflow/state/adr/`, this meta-rule itself.
+
+**What goes there (product-level, `methodology-rules.hbs`)**: Workspace contracts, gate behaviors, session-end contracts, honesty scans, anti-deferral rules, IGR meta-patterns, generic coding patterns that apply to any codebase.
+
+**If you find a rule mis-filed**: promote it to the partial, delete the shadow here (leave a marker comment pointing to the new home), run `flow bridge sync`, commit as a feat release. Do not silently duplicate — when rule text drifts between the two locations, the template wins.
 
 ---
 
