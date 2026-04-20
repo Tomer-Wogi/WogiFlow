@@ -13,7 +13,7 @@ Steps:
 6. **Completion-claim honesty scan** - Surface done-in-text-but-not-in-status contradictions (2026-04-16 honesty-infra)
 7. **Workspace session-end message (v2.23.0+)** - If running inside a workspace manager, write a `heads-up` message to `.workspace/messages/` so workers know no new dispatches are coming
 8. **Commit changes** - Stage and commit all workflow files
-9. **Offer to push** - Ask if should push to remote
+9. **Offer to push** - Ask if should push to remote. In workspace worker mode, the prompt is suppressed (workers cannot prompt the user directly). When `config.sessionEnd.autoPushInWorker` is `true` (default), the worker auto-pushes silently. When `false`, the push is skipped and the user pushes manually later. Non-worker sessions are unchanged.
 
 Output:
 ```

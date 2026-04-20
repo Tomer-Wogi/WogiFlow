@@ -80,6 +80,9 @@ function runPreToolGates(ctx, deps) {
   // Phase-read recording (side effect)
   if (toolName === 'Read' && filePath) {
     try { deps.recordPhaseRead(filePath); } catch (_err) { /* fail-open */ }
+    if (deps.recordEvidenceRead) {
+      try { deps.recordEvidenceRead(filePath); } catch (_err) { /* fail-open */ }
+    }
   }
 
   // Phase gate
@@ -114,6 +117,24 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // Research-evidence gate (spec-write): blocks Edit/Write to proposal paths
+  // when the AI has not read enough evidence files this task turn.
+  if ((toolName === 'Edit' || toolName === 'Write') && deps.checkSpecWriteGate) {
+    try {
+      const specResult = deps.checkSpecWriteGate(filePath, config);
+      if (specResult.blocked) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: 'Research-evidence gate: insufficient research before proposal',
+          message: specResult.message,
+        };
+      }
+    } catch (_err) {
+      if (process.env.DEBUG) console.error(`[Hook] Research-evidence gate error (fail-open): ${_err.message}`);
+    }
+  }
+
   // Scope gate (Edit/Write only)
   if (toolName === 'Edit' || toolName === 'Write') {
     coreResult = deps.checkScopeGate({ filePath, operation: toolName.toLowerCase() }, config);
@@ -133,6 +154,9 @@ function runPreToolGates(ctx, deps) {
     if (typeof skillName === 'string' && /^wogi-(bulk|start)$/i.test(skillName)) {
       deps.markSkillPending(skillName.toLowerCase(), { args: toolInput.args });
       try { deps.clearPhaseReads(); } catch (_err) { /* fail-open */ }
+      if (deps.clearResearchEvidence) {
+        try { deps.clearResearchEvidence(); } catch (_err) { /* fail-open */ }
+      }
       if (process.env.DEBUG) {
         console.error(`[Hook] Marked skill ${skillName} as pending (via Skill tool)`);
       }

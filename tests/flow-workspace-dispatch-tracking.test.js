@@ -284,12 +284,14 @@ describe('no background processes introduced (Scenario 7)', () => {
 // Scenario 8: decisions.md contract exists
 // ============================================================
 
-describe('decisions.md contract (Scenario 8)', () => {
-  it('contains Workspace Worker Silent-Halt Detection Contract rule', () => {
-    const decisions = fs.readFileSync(path.join(__dirname, '..', '.workflow', 'state', 'decisions.md'), 'utf8');
-    assert.match(decisions, /Workspace Worker Silent-Halt Detection Contract/);
-    assert.match(decisions, /workspace-worker-silent-halt-detection/);
-    assert.match(decisions, /dispatched-tasks\.json/);
+describe('methodology template contract (Scenario 8)', () => {
+  it('contains Workspace Worker Silent-Halt Detection Contract rule in the shipped template', () => {
+    const partial = fs.readFileSync(
+      path.join(__dirname, '..', '.workflow', 'templates', 'partials', 'methodology-rules.hbs'),
+      'utf8'
+    );
+    assert.match(partial, /Workspace Worker Silent-Halt Detection/);
+    assert.match(partial, /dispatched-tasks\.json/);
   });
 });
 

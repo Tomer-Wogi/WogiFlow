@@ -110,6 +110,13 @@ function handleSessionEnd(input) {
       // Non-critical — phase-read gate may not be installed
     }
 
+    try {
+      const { clearResearchEvidence } = require('./research-evidence-gate');
+      clearResearchEvidence();
+    } catch (_err) {
+      // Non-critical — research-evidence gate may not be installed
+    }
+
     // State folder hygiene — clean stale/orphan files (fire-and-forget)
     try {
       const hygiene = cleanStaleFiles();

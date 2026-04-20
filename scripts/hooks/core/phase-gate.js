@@ -164,6 +164,28 @@ function transitionPhase(from, to, taskId) {
     return false;
   }
 
+  // Research-evidence gate: transitions into proposal phases (spec_review,
+  // coding) require minimum evidence fingerprint. Fail-open if gate module
+  // is absent. Prints the block message to stderr so flow-phase.js CLI
+  // surfaces it to the AI invoking the transition.
+  if (to === 'spec_review' || to === 'coding') {
+    try {
+      const { checkPhaseTransitionEvidence } = require('./research-evidence-gate');
+      let cfg = null;
+      try {
+        const { getConfig } = require('../../flow-utils');
+        cfg = getConfig();
+      } catch (_err) { /* fail-open on config error */ }
+      const result = checkPhaseTransitionEvidence(from, to, cfg);
+      if (result.blocked) {
+        console.error(result.message);
+        return false;
+      }
+    } catch (_err) {
+      // Gate not installed — fail-open
+    }
+  }
+
   return writePhaseState({
     phase: to,
     taskId: taskId || current.taskId,

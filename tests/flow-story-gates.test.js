@@ -259,12 +259,14 @@ describe('coordinateIntentBootstrap (Scenario 5)', () => {
 // Scenario 10: decisions.md rule exists
 // ============================================================
 
-describe('decisions.md rule (Scenario 10)', () => {
-  it('contains Story Creation Quality Gates rule', () => {
-    const decisions = fs.readFileSync(path.join(__dirname, '..', '.workflow', 'state', 'decisions.md'), 'utf8');
-    assert.match(decisions, /Story Creation Quality Gates/);
-    assert.match(decisions, /story-creation-quality-gates/);
-    assert.match(decisions, /storyFlow/);
+describe('methodology template rule (Scenario 10)', () => {
+  it('contains Story Creation Quality Gates rule in the shipped template', () => {
+    const partial = fs.readFileSync(
+      path.join(__dirname, '..', '.workflow', 'templates', 'partials', 'methodology-rules.hbs'),
+      'utf8'
+    );
+    assert.match(partial, /Story Creation Quality Gates/);
+    assert.match(partial, /storyFlow/);
   });
 });
 

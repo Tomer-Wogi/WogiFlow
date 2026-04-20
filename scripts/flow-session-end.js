@@ -41,6 +41,17 @@ const { getReadyData, saveReadyData } = require('./flow-utils');
 // v2.6.1: Use centralized state cleanup module
 const { cleanupStaleState } = require('./flow-state-cleanup');
 
+// Workspace worker detection — used by offerPush() to branch between
+// interactive prompt (single-repo) and silent auto-push (worker mode).
+// Loaded eagerly; if module is missing on a broken install, fail loud
+// rather than masking the issue via a lazy require deep in offerPush().
+let isWorker;
+try {
+  isWorker = require('../lib/workspace-worker-ready').isWorker;
+} catch (_err) {
+  isWorker = () => false;
+}
+
 // v1.8.0 automatic memory management
 let memoryDb = null;
 try {
@@ -448,22 +459,63 @@ function analyzeCrossSessionPatterns() {
 }
 
 /**
- * Offer to push to remote
+ * Offer to push to remote.
+ *
+ * In workspace worker mode (WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME !== 'manager'),
+ * workers must not prompt the user directly — that violates the Workspace Worker
+ * Cannot Prompt User Directly contract (decisions.md v2.20.1+). Instead:
+ *   - config.sessionEnd.autoPushInWorker === true  (default) → push silently
+ *   - config.sessionEnd.autoPushInWorker === false          → skip push silently
+ * In single-repo mode (the common case), the interactive prompt is unchanged.
  */
 async function offerPush() {
   if (!isGitRepo()) return;
 
   try {
     execSync('git remote get-url origin', { stdio: 'pipe' });
+  } catch (_err) {
+    return;
+  }
 
+  // Worker-mode detection + secondary validation (SEC-001). isWorker() checks
+  // WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME env vars. For defense in depth,
+  // confirm that `.workspace/` exists inside WOGI_WORKSPACE_ROOT before
+  // treating env-var signals as authoritative — this narrows the window in
+  // which a misconfigured single-repo session could be misidentified as a
+  // worker and auto-push without confirmation.
+  if (isWorker() && isValidWorkspaceRoot()) {
+    const autoPush = getConfigValue('sessionEnd.autoPushInWorker', true);
+    if (!autoPush) {
+      console.log(color('dim', '⊘ Push skipped (worker mode — autoPushInWorker: false)'));
+      return;
+    }
+    try {
+      execSync('git push', { stdio: 'inherit' });
+      success('Auto-pushed (worker mode)');
+    } catch (err) {
+      warn(`Auto-push failed: ${err.message}`);
+    }
+    return;
+  }
+
+  try {
     const confirm = await prompt('Push to remote? (y/N) ');
-
     if (confirm.toLowerCase() === 'y') {
       execSync('git push', { stdio: 'inherit' });
       success('Pushed to remote');
     }
   } catch (_err) {
-    // No remote configured, skip
+    // Prompt or push failed, skip
+  }
+}
+
+function isValidWorkspaceRoot() {
+  const root = process.env.WOGI_WORKSPACE_ROOT;
+  if (!root || !path.isAbsolute(root)) return false;
+  try {
+    return fs.existsSync(path.join(root, '.workspace'));
+  } catch (_err) {
+    return false;
   }
 }
 

@@ -167,6 +167,21 @@ function handlePostCompact() {
     }
   }
 
+  // Clear research-evidence fingerprint after compaction — the AI has fresh
+  // context, so claims of "already read X" in the previous context no longer
+  // apply. The gate must force re-reading in the new context.
+  try {
+    const { clearResearchEvidence } = require('./research-evidence-gate');
+    clearResearchEvidence();
+    if (process.env.DEBUG) {
+      console.error('[post-compact] Research-evidence cleared');
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[post-compact] Research-evidence clear failed: ${err.message}`);
+    }
+  }
+
   // 3. Re-set routing-pending flag
   // After compaction, the AI has fresh context and may try to act without routing.
   // Setting routing-pending ensures the next tool use goes through routing checks.

@@ -35,6 +35,20 @@ try {
   clearPhaseReads = prg.clearPhaseReads;
 } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Phase-read gate not loaded: ${_err.message}`); }
 
+let recordEvidenceRead = () => {}, checkSpecWriteGate = () => ({ blocked: false }), clearResearchEvidence = () => {};
+try {
+  const reg = require('../../core/research-evidence-gate');
+  recordEvidenceRead = reg.recordEvidenceRead;
+  checkSpecWriteGate = reg.checkSpecWriteGate;
+  clearResearchEvidence = reg.clearResearchEvidence;
+} catch (err) {
+  // CL-004: load failure for a gate file that SHOULD be present is a
+  // deployment issue worth surfacing even without DEBUG set. Silently
+  // shimming masks broken installs. Preserve fail-open (shims above)
+  // so the hook pipeline still works, but log to stderr so operators see it.
+  console.error(`[Hook] WARNING: Research-evidence gate failed to load — gate is disabled. ${err.message}`);
+}
+
 const _noop = () => ({ allowed: true, blocked: false });
 let checkDeployGate = _noop, checkWriteBlock = _noop;
 try { const dg = require('../../core/deploy-gate'); checkDeployGate = dg.checkDeployGate; checkWriteBlock = dg.checkWriteBlock; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Deploy gate not loaded: ${_err.message}`); }
@@ -84,6 +98,7 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     checkRoutingGate, clearRoutingPending, hasActiveTask,
     checkPhaseGate, checkCommitLogGate,
     recordPhaseRead, checkPhaseReadGate, clearPhaseReads,
+    recordEvidenceRead, checkSpecWriteGate, clearResearchEvidence,
     checkDeployGate, checkWriteBlock,
     checkStrikeGate, checkBugfixScope, checkScopeMutation,
     checkGitSafety, checkManagerBoundary, checkWorkerBoundary,

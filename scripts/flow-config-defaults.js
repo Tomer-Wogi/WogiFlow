@@ -986,7 +986,8 @@ const CONFIG_DEFAULTS = {
         configChange: { enabled: false },
         setup: { enabled: true, autoOnboard: false, maintenanceTasks: ['healthCheck', 'cleanupLocks'] },
         sessionCleanup: { enabled: true },
-        phaseGate: { enabled: true }
+        phaseGate: { enabled: true },
+        researchEvidenceGate: { enabled: true, minEvidence: 2 }
       }
     },
     claudeCode: { installPath: '.claude/settings.local.json' }
@@ -1065,6 +1066,14 @@ const CONFIG_DEFAULTS = {
 
   // --- Decisions ---
   decisions: { amendmentTracking: { enabled: false } },
+
+  // --- Session End ---
+  // autoPushInWorker: when /wogi-session-end runs inside a workspace worker
+  // (WOGI_WORKSPACE_ROOT set, WOGI_REPO_NAME !== 'manager'), the worker must
+  // not prompt the user directly. true (default) → auto-push silently.
+  // false → skip push entirely; user pushes manually. Non-worker sessions
+  // are unaffected and still see the interactive prompt.
+  sessionEnd: { autoPushInWorker: true },
 
   // --- Community ---
   community: {

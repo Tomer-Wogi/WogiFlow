@@ -437,10 +437,163 @@ Set `intentGroundedReasoning.enabled: false` in `.workflow/config.json`. All IGR
 
 ---
 
+## WogiFlow Methodology Rules
+
+These are product-level rules that apply to every WogiFlow session. They ship with the tool — enforcement is in the shipped scripts/hooks, and the text below explains the contract to Claude so it doesn't try to work around the enforcement.
+
+---
+
+### Research Before Propose (MANDATORY)
+
+**Rule**: Before proposing any fix, plan, or spec, audit existing infrastructure for the problem area. Propose only what fills a confirmed gap. Evidence-before-invention.
+
+**What counts as research**: read relevant files in `.workflow/state/` (decisions.md, feedback-patterns.md, app-map.md, function-map.md, api-map.md), read the task spec from `.workflow/changes/` or `.workflow/specs/`, grep existing hooks/classifiers/gates, read relevant source files.
+
+**Why**: baseline LLM training biases toward generating plausible-sounding solutions. In a codebase with existing infrastructure, "plausible" is frequently wrong — proposing a feature that already exists, missing an existing pattern, or reinventing a wired-up hook. The correction cycle cost (user rejecting → replanning → rejecting again) is higher than the upfront audit cost.
+
+**You MAY ask the user clarifying questions when genuinely needed.** The rule is not "never ask" — it is "don't propose before researching." Asking is a valid escape hatch; proposing without evidence is not.
+
+**Enforcement**: `scripts/hooks/core/research-evidence-gate.js` tracks state-file reads (`.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, `.workflow/epics/`) in the current task turn. Three enforcement points check the evidence fingerprint before proposal actions:
+
+1. **Phase transition** — `transitionPhase()` blocks `→ spec_review` and `→ coding` until `minEvidence` distinct state/spec file reads have been recorded.
+2. **Spec write** — PreToolUse blocks `Edit`/`Write` to `.workflow/changes/*.md`, `.workflow/specs/*.md`, or `.workflow/epics/*.md` when evidence is below threshold.
+3. **Channel dispatch** — in workspace manager mode, `dispatchToChannel()` blocks dispatching a task to a worker until the manager has read evidence from the target member repo.
+
+Evidence is cleared at task start, session end, and post-compaction so each task begins with a clean slate. The `AskUserQuestion` tool is NOT gated — asking for clarification is a valid escape hatch. IGR's architect + adversary passes challenge solution *quality* downstream; this gate enforces the evidence *base* upstream.
+
+**Config**: `hooks.rules.researchEvidenceGate.{enabled,minEvidence}` (defaults: `true`, `2`).
+
+---
+
+### Completion-Claim Honesty Scan
+
+**Rule**: At session-end and on `flow health`, scan `ready.json` entries for two contradiction classes and surface (not block) them for user reconciliation.
+
+- **Class A — status-mismatch**: free-text field contains done-words (`done|completed|shipped|deployed|finished`) while `status` is partial (`completed-partial|blocked|in-progress|failed`).
+- **Class B — negation-vs-evidence**: free-text contains a negated claim (`no outages`, `0 regressions`) while `hotfixes[]`, `incidents[]`, or `regressions[]` is non-empty.
+
+**Why**: mechanical gates (test counts, lint, tsc) catch implementation errors. Narrative-quality claims in free-text fields (`notes`, `result`, `summary`, `description`) get rubber-stamped. This scan compares narrative against adjacent structured fields.
+
+**Mode**: surface-and-prompt, non-blocking. A hard-fail at session-end has no recovery path.
+
+**Enforcement**: `scripts/flow-completion-truth-gate.js` → `scanForClaimContradictions()`. Invoked by `flow-session-end.js` and `flow-health.js`.
+
+---
+
+### Merge-Plan Artifact Gate
+
+**Rule**: `/wogi-finalize` requires `.workflow/scratch/merge-plan.md` for any merge with more than `config.finalization.mergePlan.threshold` commits (default 5) OR any cross-repo merge. The plan must map every commit in `git log <base>..<branch>` to one of: `port | adapt | skip-style | superseded | skip-with-reason`.
+
+**Mechanical invariant**: count of SHA-prefixed lines in the plan MUST equal `git log <base>..<branch> | wc -l`. Mismatch blocks the merge.
+
+**Structural-change sensor**: when ≥ `config.finalization.mergePlan.restructureThreshold` (default 20%) of changed files match a restructure pattern (folder-per-component, split-into-submodule, barrel-introduction, rename-new-home), a structural warning prefixes the plan and biases affected commits toward `adapt`.
+
+**Enforcement**: `scripts/flow-structure-sensor.js`, `.claude/commands/wogi-finalize.md` Step 2.5.
+
+---
+
+### Story Creation Quality Gates
+
+**Rule**: `/wogi-story` enforces five P0 specification-quality gates at creation time. Gates answer *"is the story clear, complete, checkable?"* — NOT *"is the implementation correct?"* (the latter remains `/wogi-start`'s job).
+
+1. **Long Input** — ≥40 lines OR ≥5 discrete items → route to `/wogi-extract-review` for zero-loss capture.
+2. **Item Reconciliation** — ≥3 discrete items → enumerated "Item Manifest" section; every item must appear in at least one criterion or sub-task. Unmapped items surface as a warning.
+3. **Consumer Impact Analysis** — refactoring keywords (`refactor`, `rename`, `migrate`, `split`, `extract`, ...) trigger `git grep` for consumers. ≥5 breaking consumers → phased migration recommendation.
+4. **Scope-Confidence Audit** — assumption patterns (`new <X>`, `existing <Y>`, `the <Z> service`) are verified against the codebase; findings go into a "Pending Clarifications" block.
+5. **Intent Bootstrap Coordination** — schedules IGR artifact bootstrap via `intentBootstrapScheduledAt` flag so `/wogi-story` and `/wogi-start` don't both prompt.
+
+**Guard-rails**: all gates fail-open (grep failure, classifier unavailable → warning, story still created). Gates may be bypassed via `--skip-gates` for testing.
+
+**Config**: `storyFlow.consumerImpactAnalysis.*`, `storyFlow.scopeConfidenceAudit.*`, `storyFlow.itemReconciliation.*` in `.workflow/config.json`.
+
+---
+
+### Workspace Autonomous-Mode Action-After-Completion Contract
+
+**Applies to**: workspace worker mode (`WOGI_WORKSPACE_ROOT` set + `WOGI_REPO_NAME !== 'manager'`).
+
+**Rule**: A worker's end-of-turn must be a deterministic action. Exactly one of these states must hold:
+
+1. **ACTION** — started the next pre-approved channel dispatch (invoked `/wogi-start <nextId>`), OR
+2. **ESCALATION** — channel-dispatched a `## QUESTION:` to the manager (after local resolution attempts failed), OR
+3. **IDLE** — zero pending channel dispatches AND zero in-progress tasks.
+
+**Hedging language is mechanically forbidden**: *"awaiting your signal"*, *"let me know if"*, *"should I continue"*, *"standing by"*, *"ready when you are"*. These invent an imaginary decision point — the manager already pre-approved the dispatch by queuing it. Visibility is NOT a substitute for action; workers narrate AND act in the same turn.
+
+**Enforcement**: `TaskCompleted` hook emits auto-pickup when queued dispatches exist. `Stop` hook blocks end-of-turn when a worker has queued dispatches but no in-progress task. `worker-rules.md` template carries the 3-state contract.
+
+**Config**: `workspace.autoPickupChannelDispatches` (default `true`).
+
+---
+
+### Workspace Worker Cannot Prompt User Directly
+
+**Applies to**: workspace worker mode.
+
+**Rule**: The `AskUserQuestion` tool is mechanically blocked in worker mode. Questions to the user MUST be channel-dispatched to the manager via `## QUESTION: ...`.
+
+**Why block instead of auto-redirect**: the worker must consciously choose between (a) channel-dispatching the real question to the manager for user input, or (b) making a reasonable autonomous decision and noting it in the task reply. Silent redirection removes that choice.
+
+**Enforcement**: `scripts/hooks/core/worker-boundary-gate.js` → `checkWorkerBoundary()`. PreToolUse hook blocks `AskUserQuestion`; block message includes the exact `curl ... --data-binary "## QUESTION: ..."` command. Config: `workspace.blockAskUserQuestionInWorker` (default `true`).
+
+---
+
+### Workspace Worker Text-Question Classifier
+
+**Applies to**: workspace worker mode.
+
+**Rule**: If a worker ends a turn with a text-based question to the user (no tool call — just hedging: *"let me know"*, *"should I"*, *"which option"*, *"thoughts?"*, trailing `?`), the Stop hook runs a Haiku classifier on the final assistant message. If it detects an open question with confidence ≥ `minConfidence` → stop is blocked with channel-dispatch instructions.
+
+**Why AI instead of regex**: hedging vocabulary is infinite. Regex misses novel phrasings.
+
+**Fail-open throughout**: missing `ANTHROPIC_API_KEY`, missing transcript path, malformed transcript, or model error → skip. Silent-stall false negatives are recoverable; false-positive blocks every turn are not.
+
+**Enforcement**: `scripts/flow-worker-question-classifier.js`. Config: `workspace.aiWorkerQuestionClassifier.{enabled,minConfidence,model}`.
+
+---
+
+### Workspace Worker Silent-Halt Detection
+
+**Applies to**: workspace manager mode.
+
+**Rule**: Every dispatch to a worker MUST be tracked. Any pending dispatch past its `expectedDeadline` with no matching `task-complete` or `worker-stopped` message = silent death, surfaced on the manager's next turn.
+
+**Three terminal states**:
+1. **Completed** — `task-complete` message arrived.
+2. **Graceful-stop** — `worker-stopped` message arrived (worker's Stop hook fired, but didn't complete).
+3. **Silent-halt** — no message, deadline passed. Worker probably dead.
+
+**Deadline**: default `expectedDurationMs` = 30 min. Callers override per-dispatch for long tasks.
+
+**Architecture — file-based, hook-driven, no background processes**:
+- `lib/workspace-dispatch-tracking.js` — record / reconcile / overdue helpers
+- `.workspace/state/dispatched-tasks.json` — ring buffer of last 100 active records
+- Manager's `dispatchToChannel()` calls `recordDispatch()` after successful POST
+- Manager's `UserPromptSubmit` hook sweeps the message bus and surfaces overdue records as `additionalContext`
+
+---
+
+### Code Quality Patterns (generic)
+
+These apply to any codebase being built with WogiFlow's help.
+
+**1. Single Source of Truth for Constants** — avoid duplicating model/configuration objects across files. Import from one canonical location. Prevents drift and makes updates simpler.
+
+**2. Named Constants for Magic Numbers** — define thresholds and limits as named constants; don't inline literals.
+
+```js
+const COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85, concise: 0.5 };
+```
+
+Self-documenting; easier to maintain.
+
+
+---
+
 ## Generated by CLI Bridge
 
 This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-04-16T19:50:01.864Z
+Last synced: 2026-04-20T18:09:37.916Z
