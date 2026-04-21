@@ -55,17 +55,33 @@ function generatePlanId(title) {
 }
 
 /**
- * Check if a string is a valid task ID (old or new format)
- * @returns {{ valid: boolean, format: 'hash' | 'legacy' | null }}
+ * Check if a string is a valid task ID.
+ * @returns {{ valid: boolean, format: 'hash' | 'slug' | 'legacy' | null }}
+ *
+ * Accepted formats:
+ *   - 'hash'   — wf-XXXXXXXX (8-char hex, produced by generateTaskId)
+ *   - 'slug'   — wf-<alphanum>[<alphanum or hyphen>]*<alphanum>, 5-64 chars total.
+ *                For manager-dispatched descriptive IDs (e.g. wf-ttp-gate-2a,
+ *                wf-auth-me-customer-capabilities). Path-safe: no '.', no '/',
+ *                no '\\', no whitespace — safe to interpolate into file paths.
+ *   - 'legacy' — TASK-NNN / BUG-NNN (grandfathered)
  */
 function validateTaskId(id) {
   if (!id || typeof id !== 'string') {
     return { valid: false, format: null };
   }
 
-  // New hash-based format: wf-XXXXXXXX
+  // Hash format: wf-XXXXXXXX
   if (/^wf-[a-f0-9]{8}$/i.test(id)) {
     return { valid: true, format: 'hash' };
+  }
+
+  // Slug format: wf-<start-alphanum><0-60 alphanum-or-hyphen><end-alphanum>.
+  // Min 5 chars ("wf-ab"), max 64 chars. Start+end must be alphanum so the ID
+  // never begins or ends with '-'. No dots or path separators allowed — this
+  // keeps `path.join(DIR, `.routing-receipt-${id}`)` safe from traversal.
+  if (/^wf-[a-z0-9][a-z0-9-]{0,60}[a-z0-9]$/i.test(id)) {
+    return { valid: true, format: 'slug' };
   }
 
   // Legacy formats: TASK-XXX, BUG-XXX

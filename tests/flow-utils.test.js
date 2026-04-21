@@ -130,19 +130,68 @@ describe('validateTaskId', () => {
     assert.deepStrictEqual(result, { valid: false, format: null });
   });
 
-  it('rejects descriptive IDs', () => {
+  // Slug format — manager-dispatched descriptive IDs (added to accept
+  // wf-ttp-gate-2a, wf-auth-me-customer-capabilities, etc. without forcing
+  // every dispatch to use the 8-hex hash form).
+  it('accepts descriptive slug ID', () => {
     const result = validateTaskId('wf-health-001');
-    assert.deepStrictEqual(result, { valid: false, format: null });
+    assert.deepStrictEqual(result, { valid: true, format: 'slug' });
   });
 
-  it('rejects too-short hex', () => {
+  it('accepts multi-segment descriptive slug ID', () => {
+    const result = validateTaskId('wf-auth-me-customer-capabilities');
+    assert.deepStrictEqual(result, { valid: true, format: 'slug' });
+  });
+
+  it('accepts short slug with 3-char body (wf-a1b2 → slug, previously invalid)', () => {
+    // Pre-loosening this was rejected as "too-short hex". Now valid as a slug.
     const result = validateTaskId('wf-a1b2');
+    assert.deepStrictEqual(result, { valid: true, format: 'slug' });
+  });
+
+  it('accepts 12-char hex-like slug (wf-a1b2c3d4e5 → slug, previously invalid)', () => {
+    // Pre-loosening this was rejected as "too-long hex". Now valid as a slug.
+    const result = validateTaskId('wf-a1b2c3d4e5');
+    assert.deepStrictEqual(result, { valid: true, format: 'slug' });
+  });
+
+  it('rejects slug with leading hyphen after prefix', () => {
+    const result = validateTaskId('wf--bad');
     assert.deepStrictEqual(result, { valid: false, format: null });
   });
 
-  it('rejects too-long hex', () => {
-    const result = validateTaskId('wf-a1b2c3d4e5');
+  it('rejects slug with trailing hyphen', () => {
+    const result = validateTaskId('wf-bad-');
     assert.deepStrictEqual(result, { valid: false, format: null });
+  });
+
+  it('rejects slug containing path separator (path-traversal guard)', () => {
+    assert.deepStrictEqual(validateTaskId('wf-bad/../etc'), { valid: false, format: null });
+    assert.deepStrictEqual(validateTaskId('wf-bad\\win'), { valid: false, format: null });
+  });
+
+  it('rejects slug containing dot (path-traversal guard)', () => {
+    assert.deepStrictEqual(validateTaskId('wf-bad.dot'), { valid: false, format: null });
+  });
+
+  it('rejects slug containing whitespace', () => {
+    assert.deepStrictEqual(validateTaskId('wf-bad id'), { valid: false, format: null });
+  });
+
+  it('rejects slug exceeding 64 chars', () => {
+    const tooLong = 'wf-' + 'a'.repeat(62) + 'b'; // 3 + 63 = 66 chars
+    assert.deepStrictEqual(validateTaskId(tooLong), { valid: false, format: null });
+  });
+
+  it('accepts 64-char slug at the boundary', () => {
+    const atLimit = 'wf-' + 'a'.repeat(60) + 'b'; // 3 + 61 = 64 chars
+    const result = validateTaskId(atLimit);
+    assert.deepStrictEqual(result, { valid: true, format: 'slug' });
+  });
+
+  it('rejects IDs without wf- prefix', () => {
+    assert.deepStrictEqual(validateTaskId('random-slug'), { valid: false, format: null });
+    assert.deepStrictEqual(validateTaskId('task-abc'), { valid: false, format: null });
   });
 });
 

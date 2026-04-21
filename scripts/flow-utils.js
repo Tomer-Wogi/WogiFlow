@@ -262,6 +262,10 @@ function isValidWogiId(id) {
   if (/^wf-rv-[a-f0-9]{8}$/i.test(id)) return true;
   // Epic, feature, plan IDs
   if (/^(ep|ft|pl)-[a-f0-9]{8}$/i.test(id)) return true;
+  // Slug format: wf-<alphanum>[<alphanum or hyphen>]*<alphanum>, 5-64 chars.
+  // For manager-dispatched descriptive IDs. Path-safe (no dots/separators).
+  // Keep this in sync with validateTaskId() 'slug' branch in flow-id.js.
+  if (/^wf-[a-z0-9][a-z0-9-]{0,60}[a-z0-9]$/i.test(id)) return true;
   // Legacy format
   if (/^(TASK|BUG)-\d{3,}$/i.test(id)) return true;
   return false;
