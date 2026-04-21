@@ -33,7 +33,7 @@ Reflection: "Have I introduced any bugs or regressions?"
 
 1. Reflection: "Does this match what the user asked for?"
 2. Close out all TodoWrite items for this task
-3. Move task to recentlyCompleted in ready.json
+3. **Run `node node_modules/wogiflow/scripts/flow-done.js <taskId>`** — this is the ONLY supported way to complete a task. It runs quality gates, moves the task from `inProgress` → `recentlyCompleted`, writes the gate latch, and fires the task-boundary-restart Phase 1 marker. **Do NOT hand-edit `ready.json` to move the task** — that bypasses the CLI and silently disables: quality-gate verification, gate latch, and the task-boundary session restart. If `flow` is not on PATH in this environment, invoke it as `node node_modules/wogiflow/scripts/flow-done.js <taskId>` directly.
 4. Registry maps auto-updated by `registryUpdate` quality gate (runs `flow registry-manager scan` on all active registries — app-map, function-map, api-map, schema-map, service-map)
 5. If `config.webmcp.enabled` and UI files created: run `node node_modules/wogiflow/scripts/flow-webmcp-generator.js scan`
 6. Commit: `feat: Complete wf-XXXXXXXX - [title]`

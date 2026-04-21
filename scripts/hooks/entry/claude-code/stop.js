@@ -155,7 +155,33 @@ runHook('Stop', async ({ parsedInput }) => {
   // No-op unless task-just-completed marker exists AND feature is enabled
   // AND wogi-claude wrapper env is present.
   try {
-    const { consumeAndTriggerRestart, hasPendingMarker } = require('../../core/task-boundary-reset');
+    const {
+      consumeAndTriggerRestart,
+      hasPendingMarker,
+      ensurePhase1MarkedIfRecentlyCompleted
+    } = require('../../core/task-boundary-reset');
+
+    // Phase 1 fallback: if the task completed via a path that didn't write the
+    // marker (e.g., agent edited ready.json directly instead of running
+    // `flow done`, or TaskCompleted hook didn't fire), retro-mark here so
+    // Phase 2 below can consume it. Anti-replay sentinel prevents double-firing
+    // across the SIGTERM + wrapper restart cycle.
+    try {
+      const fallback = ensurePhase1MarkedIfRecentlyCompleted();
+      if (fallback.marked && process.env.DEBUG) {
+        console.error(`[Stop] Phase 1 fallback marked ${fallback.taskId}`);
+      } else if (!fallback.marked && fallback.reason !== 'marker-already-present' &&
+                 fallback.reason !== 'no-fresh-completion' &&
+                 fallback.reason !== 'stale-completion' &&
+                 fallback.reason !== 'already-triggered-for-this-task' &&
+                 process.env.DEBUG) {
+        console.error(`[Stop] Phase 1 fallback skipped: ${fallback.reason}`);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Stop] Phase 1 fallback error (fail-open): ${err.message}`);
+      }
+    }
 
     // If we're about to restart, record the session in history FIRST so the
     // new session can find the prior session's resume token. Use parsedInput
