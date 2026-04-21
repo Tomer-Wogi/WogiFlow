@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "1.6.0",
+    "version": "2.26.2",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -10,7 +10,7 @@
       "version": "0.1.0",
       "repo": "wogiflow-cloud",
       "path": "packages/server",
-      "checkedAt": "2026-02-28"
+      "checkedAt": "2026-04-21"
     },
     "wogiflow-teams-client": {
       "package": "@wogiflow/teams",
@@ -18,14 +18,14 @@
       "repo": "wogiflow-cloud",
       "path": "packages/client",
       "minCompatible": "1.5.0",
-      "checkedAt": "2026-02-28"
+      "checkedAt": "2026-04-21"
     },
     "wogiflow-portal": {
       "package": "wogiflow-portal",
       "version": "0.1.0",
       "repo": "wogiflow-portal",
-      "checkedAt": "2026-02-28"
+      "checkedAt": "2026-04-21"
     }
   },
-  "lastUpdated": "2026-02-28T20:00:00.000Z"
+  "lastUpdated": "2026-04-21T00:00:00.000Z"
 }

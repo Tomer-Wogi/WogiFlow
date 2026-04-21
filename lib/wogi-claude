@@ -41,27 +41,68 @@ set -u
 WOGI_CLAUDE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WOGI_EXPECT_SCRIPT="$WOGI_CLAUDE_DIR/wogi-claude-expect.exp"
 
-# Detect whether to use the expect wrapper (v2.22.4: OPT-IN only).
-# Four conditions must all hold:
-#   1. WOGI_USE_EXPECT=1 is explicitly set (opt-in)
-#   2. WOGI_NO_EXPECT is NOT set (legacy escape hatch still honored)
-#   3. `expect` is on PATH and the wogi-claude-expect.exp script exists
-#   4. The args include --dangerously-load-development-channels (the only
-#      flag that triggers the dialog we want to auto-dismiss)
+# Detect whether to use the expect wrapper for auto-dismissing the
+# --dangerously-load-development-channels modal.
 #
-# 2.22.3 tried opt-out by default; in practice, expect's text match can miss
-# Ink's ANSI-fragmented output, which deadlocks the dialog (user keystrokes
-# get held in expect's buffer instead of reaching claude). 2.22.4 flips to
-# opt-in so the default UX is predictable.
+# Precedence (highest to lowest):
+#   1. WOGI_NO_EXPECT=1 → always OFF (kill switch)
+#   2. Workspace worker mode → ON automatically (headless, cannot Enter by hand)
+#   3. WOGI_USE_EXPECT=1 → ON (explicit opt-in for interactive users)
+#   4. Default → OFF (interactive users get the native Claude Code dialog)
+#
+# Worker auto-enable (v2.26.2): WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME (worker
+# side) are set by `flow workspace start` before spawning this wrapper, so
+# detection here is reliable. Interactive users never set these vars, so their
+# default remains opt-in — the v2.22.3 regression (expect's text match miss on
+# Ink ANSI output) is bounded to users who explicitly asked for expect.
+#
+# The rewritten wogi-claude-expect.exp (v2.26.2) replaces the old brittle
+# per-chunk text match with: rolling buffer + ANSI strip + bounded elapsed-time
+# window. Misses fall back to the same failure mode as running claude without
+# the wrapper (dialog stays up until someone presses Enter) — no unsafe blind
+# keystrokes injected into server-mode Claude.
+
+__wogi_is_worker=0
+if [ -n "${WOGI_WORKSPACE_ROOT:-}" ] && [ -n "${WOGI_REPO_NAME:-}" ] && \
+   [ "${WOGI_REPO_NAME}" != "manager" ]; then
+  __wogi_is_worker=1
+fi
+
+__wogi_wants_expect=0
+if [ -z "${WOGI_NO_EXPECT:-}" ]; then
+  if [ "$__wogi_is_worker" -eq 1 ] || [ "${WOGI_USE_EXPECT:-}" = "1" ]; then
+    __wogi_wants_expect=1
+  fi
+fi
+
 __wogi_use_expect=0
-if [ "${WOGI_USE_EXPECT:-}" = "1" ] && [ -z "${WOGI_NO_EXPECT:-}" ] && \
-   command -v expect >/dev/null 2>&1 && [ -x "$WOGI_EXPECT_SCRIPT" ]; then
+if [ "$__wogi_wants_expect" -eq 1 ]; then
+  # The dialog only fires when --dangerously-load-development-channels is in
+  # argv; skip the expect dance otherwise.
+  __wogi_has_flag=0
   for arg in "$@"; do
     if [ "$arg" = "--dangerously-load-development-channels" ]; then
-      __wogi_use_expect=1
+      __wogi_has_flag=1
       break
     fi
   done
+  if [ "$__wogi_has_flag" -eq 1 ]; then
+    if command -v expect >/dev/null 2>&1 && [ -x "$WOGI_EXPECT_SCRIPT" ]; then
+      __wogi_use_expect=1
+      if [ "$__wogi_is_worker" -eq 1 ]; then
+        echo "[wogi-claude] worker mode detected — auto-enabled expect-based dialog dismissal" >&2
+      fi
+    elif [ "$__wogi_is_worker" -eq 1 ]; then
+      # Headless worker + missing expect = the dialog WILL deadlock this
+      # worker on restart. Warn loudly so the operator can install expect,
+      # but still start claude (better than failing the worker outright).
+      echo "[wogi-claude] WARNING: worker mode detected (repo '${WOGI_REPO_NAME}') but 'expect' is not installed." >&2
+      echo "[wogi-claude] The --dangerously-load-development-channels dialog will block this worker on the next restart." >&2
+      echo "[wogi-claude] Install expect to enable headless auto-dismiss:" >&2
+      echo "[wogi-claude]   macOS:           brew install expect" >&2
+      echo "[wogi-claude]   Debian/Ubuntu:   apt install expect" >&2
+    fi
+  fi
 fi
 
 # run_claude — invoke claude, routing through expect when we can auto-dismiss
