@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-22T14:08:53.984Z",
+  "lastUpdated": "2026-04-22T15:19:45.588Z",
   "inProgress": [],
   "ready": [
     {
@@ -552,6 +552,70 @@
       "type": "feature",
       "certainty": "certain",
       "capturedAt": "2026-04-22T14:08:53.984Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-004",
+      "title": "EPIC WogiFlow Native Runtime - 4-tier capability evolution: Phase 0 heuristic orchestrator ships weeks 1-6",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.586Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-005",
+      "title": "Phase 1 production telemetry collection",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.586Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-006",
+      "title": "Phase 2 synthetic benchmarking (1-2K budget",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.587Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-007",
+      "title": "40-50 tasks",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.587Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-008",
+      "title": "holdout set discipline",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.587Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-009",
+      "title": "LLM-judge panel bias mitigation)",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.588Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-010",
+      "title": "Phase 3 community-learning step-model matrix. Multi-model architecture as first-class (not opt-in). Provider-availability tiering (user declares available API keys",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.588Z",
+      "capturedDuring": "wf-abcd1234"
+    },
+    {
+      "id": "cap-20260422-011",
+      "title": "orchestrator picks from available set). Super-charged wogi-onboard as adjacent direction. Browser/Playwright in Phase 1 per actual usage. Privacy-by-design for Phase 3 telemetry. Session transcripts from last 15 sessions authorized for usage audit. Plan doc to be produced next session 2026-04-23 by 4-task agent day",
+      "type": "feature",
+      "certainty": "certain",
+      "capturedAt": "2026-04-22T15:19:45.588Z",
       "capturedDuring": "wf-abcd1234"
     }
   ]

@@ -348,3 +348,10 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 **Tags**: #task:wf-a97af500 #epic:wf-94cc3b72 #deferred #audit:td-f01
 **Request**: "Wave F story 15 (wf-a97af500) — Test coverage for remaining legacy gates"
 **Result**: DEFERRED. Deferred — depends on which gates remain uncovered after stories 9/10/12/13/14 co-land their characterization tests. Cannot scope this story correctly until those complete. Marked completed-partial (deferred) in ready.json so epic progress is visible; this story needs a focused session when it comes time.
+
+### R-326 | 2026-04-22 15:22
+**Type**: planning
+**Tags**: #strategy #native-runtime #multi-model #epic
+**Request**: "Strategic pivot discussion: WogiFlow Native Runtime — replace Claude Code as WogiFlow runtime"
+**Result**: Long session decided to build WogiFlow Native CLI as a multi-model agent runtime, not a layer on Claude Code. Revised estimate with me as engineer: 2.5-3 months. Core architectural decisions: (1) multi-model orchestration is first-class, not opt-in — each WogiFlow step runs on best-fit model, (2) provider-availability is a first-class config concern (user declares keys, orchestrator picks from available set), (3) 4-tier capability evolution: Phase 0 heuristic runtime + internal dogfood (weeks 1-6), Phase 1 K pre-launch benchmarking (weeks 6-8, 40-50 tasks, holdout discipline, LLM-judge panel bias mitigation), Phase 2 production telemetry ongoing, Phase 3 community learning via existing feedback-patterns infrastructure. K benchmarking happens BEFORE public launch — evidence-backed step-model matrix is v1.0 launch gate. Tier 1 methodology (regression discipline + memory-first clarification) already shipped in prior work tonight. Super-charged /wogi-onboard flagged as adjacent direction. Session transcripts from last 15 sessions authorized for usage audit. Next-session brief written to .workflow/scratch/next-session-brief-2026-04-23.md. Tomorrow: 4-task agent day producing 12-15 page consolidated planning doc; building starts day after if plan approved.
+**Files**: .workflow/scratch/next-session-brief-2026-04-23.md, .workflow/roadmap.md
