@@ -10,14 +10,14 @@
  * Run: NODE_ENV=test node --test tests/flow-durable-session.test.js
  */
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, _beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const os = require('node:os');
+const _fs = require('node:fs');
+const _path = require('node:path');
+const _os = require('node:os');
 
 // Suppress console output during tests
-const originalConsole = { ...console };
+const _originalConsole = { ...console };
 console.log = () => {};
 console.warn = () => {};
 console.error = () => {};
@@ -506,7 +506,7 @@ describe('getSessionBoundaries', () => {
 afterEach(() => {
   try {
     mod.archiveDurableSession('completed');
-  } catch (err) {
+  } catch (_err) {
     // ignore cleanup errors
   }
 });

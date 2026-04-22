@@ -93,7 +93,7 @@ describe('CREDENTIAL_SCAN_PATTERNS', () => {
 
   it('matches Stripe live key (sk_live_...)', () => {
     // Test the pattern regex directly (avoid triggering GitHub secret scanning)
-    const stripePattern = CREDENTIAL_SCAN_PATTERNS.find(p => p.name.toLowerCase().includes('stripe'));
+    const _stripePattern = CREDENTIAL_SCAN_PATTERNS.find(p => p.name.toLowerCase().includes('stripe'));
     const text = 'sk_' + 'live_' + 'x'.repeat(24);
     const matched = CREDENTIAL_SCAN_PATTERNS.some(p => {
       p.pattern.lastIndex = 0;

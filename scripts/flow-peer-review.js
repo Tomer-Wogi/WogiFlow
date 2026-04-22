@@ -342,7 +342,7 @@ function formatResults(comparison, results) {
 // ============================================================
 
 async function main() {
-  const { flags, positional } = parseFlags(process.argv.slice(2));
+  const { flags, _positional } = parseFlags(process.argv.slice(2));
 
   if (flags.help) {
     console.log(`

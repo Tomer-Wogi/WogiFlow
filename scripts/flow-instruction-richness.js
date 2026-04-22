@@ -834,7 +834,7 @@ this without guessing anything. Local LLM tokens are FREE - don't hold back!
  * @returns {string|null} Formatted type hints
  */
 function generateTypeHints(projectRoot, options = {}) {
-  const { maxTypes = 10, taskDescription = '' } = options;
+  const { maxTypes = 10, _taskDescription = '' } = options;
   const typeHints = [];
 
   // Common type file locations

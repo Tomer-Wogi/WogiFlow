@@ -26,7 +26,7 @@ const KNOWLEDGE_DIR = path.join(PATHS.root, '.claude', 'docs', 'knowledge-base')
  * @returns {object} - { passed: boolean, message: string, suggestion?: string }
  */
 async function run(options = {}) {
-  const { taskId, taskTitle, files = [], mode, stepConfig = {}, learnings } = options;
+  const { _taskId, taskTitle, files = [], mode, _stepConfig = {}, learnings } = options;
 
   // Ensure knowledge base directory exists
   if (!fs.existsSync(KNOWLEDGE_DIR)) {

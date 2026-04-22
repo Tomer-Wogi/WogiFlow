@@ -523,7 +523,7 @@ const VALID_DECISIONS = ['auto-apply', 'approved', 'blocked'];
  * @param {Object} params - Decision parameters
  * @throws {Error} If decision is not a valid type
  */
-function recordDecision({ _analysisId, decision, outcome }) {
+function recordDecision({ _analysisId, decision, _outcome }) {
   // Validate decision type to prevent silent failures
   if (!VALID_DECISIONS.includes(decision)) {
     throw new Error(`Invalid decision type: ${decision}. Must be one of: ${VALID_DECISIONS.join(', ')}`);

@@ -7,7 +7,7 @@
  * Run: node --test tests/flow-io.test.js
  */
 
-const { describe, it, beforeEach, afterEach, after } = require('node:test');
+const { describe, it, _beforeEach, _afterEach, after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -20,11 +20,11 @@ const {
   safeJsonParseString,
   fileExists,
   dirExists,
-  ensureDir,
+  _ensureDir,
   readFile,
-  writeFile,
+  _writeFile,
   validateJson,
-  listDirs,
+  _listDirs,
   listFiles,
   countFiles,
   checkForDangerousKeys,

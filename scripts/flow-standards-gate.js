@@ -23,7 +23,7 @@ const {
   runStandardsCheck,
   formatStandardsResults,
   collectReuseCandidates,
-  TASK_CHECK_MAP
+  _TASK_CHECK_MAP
 } = require('./flow-standards-checker');
 
 // Gate telemetry — records every invocation for self-assessment.

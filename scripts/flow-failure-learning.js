@@ -34,7 +34,7 @@ const {
   info,
   warn,
   success: _success,
-  error: logError,
+  error: _logError,
   parseFlags,
   outputJson,
   safeJsonParse

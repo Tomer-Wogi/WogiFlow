@@ -415,7 +415,7 @@ function printStatus(driftStatus) {
     { key: 'testing', name: 'Testing (testing.md)', file: getSpecFilePath('testing', { warnOnOld: false, preferNew: true }) }
   ];
 
-  for (const { key, name, file } of categories) {
+  for (const { key, name, _file } of categories) {
     const status = driftStatus.categories[key];
     printSection(name);
 

@@ -74,7 +74,7 @@ const {
   allStoriesComplete: _allStoriesComplete, allFeaturesComplete: _allFeaturesComplete, allEpicsComplete: _allEpicsComplete,
   markFeatureComplete: _markFeatureComplete, markEpicComplete: _markEpicComplete, markPlanComplete: _markPlanComplete,
   archiveByType: _archiveByType, archiveCompletedParent: _archiveCompletedParent, cascadeCompletion,
-  CASCADE_MAX_DEPTH: _CASCADE_MAX_DEPTH, VALID_CASCADE_TYPES
+  CASCADE_MAX_DEPTH: _CASCADE_MAX_DEPTH, _VALID_CASCADE_TYPES
 } = require('./flow-cascade-completion');
 
 // v3.1 spec verification gate

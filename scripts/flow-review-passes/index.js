@@ -183,7 +183,7 @@ async function runMultiPassReview(context, options = {}) {
     passes = ['structure', 'logic', 'security', 'integration'],
     earlyExitOnCritical = reviewConfig.earlyExitOnCritical !== false,
     passForward = reviewConfig.passForward !== false,
-    parallel = false
+    _parallel = false
   } = options;
 
   const results = {

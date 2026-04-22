@@ -7,7 +7,7 @@
  * Run: node --test tests/flow-config-loader.test.js
  */
 
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach, _afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -19,7 +19,7 @@ const os = require('node:os');
  * Create a temporary directory with a .workflow/config.json for isolated tests.
  * Returns { dir, configPath, cleanup }.
  */
-function makeTempProject(configObj = {}) {
+function _makeTempProject(configObj = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-cfg-test-'));
   const workflowDir = path.join(dir, '.workflow');
   fs.mkdirSync(workflowDir, { recursive: true });
@@ -464,7 +464,7 @@ describe('applyProjectTypeDefaults', () => {
 
 describe('invalidateConfigCache', () => {
   it('causes getConfig to re-read on next call', () => {
-    const config1 = getConfig();
+    const _config1 = getConfig();
     invalidateConfigCache();
     const config2 = getConfig();
     // After invalidation, should be a fresh object (different reference)

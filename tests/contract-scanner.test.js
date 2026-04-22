@@ -14,7 +14,7 @@ const path = require('node:path');
 const os = require('node:os');
 
 // Suppress console output during tests
-const originalConsole = { ...console };
+const _originalConsole = { ...console };
 console.log = () => {};
 console.warn = () => {};
 console.error = () => {};
@@ -53,7 +53,7 @@ function writeFile(dir, relativePath, content) {
 function cleanupDir(dir) {
   try {
     fs.rmSync(dir, { recursive: true, force: true });
-  } catch (err) {
+  } catch (_err) {
     // best effort
   }
 }

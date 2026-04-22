@@ -77,7 +77,7 @@ class BaseWorkflowStep {
    * @param {object} options - Remaining options (stepConfig, mode, taskType, etc.)
    * @returns {Promise<{passed: boolean, message: string, details?: any}>}
    */
-  async execute(_files, options) {
+  async execute(_files, _options) {
     throw new Error(`${this.name}: execute() must be overridden`);
   }
 

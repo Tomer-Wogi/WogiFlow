@@ -43,9 +43,6 @@ function getProjectRoot() {
   return PROJECT_ROOT;
 }
 
-// Alias getConfig as loadConfig for minimal code changes
-const loadConfig = getConfig;
-
 // ============================================================
 // Export Extraction
 // ============================================================
@@ -996,7 +993,7 @@ if (require.main === module) {
 
   if (!exportMap) {
     console.log('Scanning project exports...\n');
-    const config = loadConfig();
+    const config = getConfig();
     exportMap = buildExportMap(config);
     saveExportMapCache(exportMap);
   }
@@ -1041,6 +1038,5 @@ module.exports = {
   formatComponentWithUsage,
   // Configuration functions (for use as module)
   setProjectRoot,
-  getProjectRoot,
-  loadConfig
+  getProjectRoot
 };

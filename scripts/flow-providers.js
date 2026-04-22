@@ -203,7 +203,7 @@ class BaseProvider {
    * Abstract — every concrete provider subclass (AnthropicProvider,
    * OpenAIProvider, OllamaProvider, etc.) must override this.
    */
-  // eslint-disable-next-line no-unused-vars
+   
   async complete(prompt, _options = {}) {
     throw new Error(`Provider ${this.name}: complete() not implemented — override in subclass`);
   }

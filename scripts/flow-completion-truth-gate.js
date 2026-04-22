@@ -52,7 +52,7 @@ const gateTelemetry = require('./flow-gate-telemetry');
 
 // Lazy-loaded to keep Story 6 independently testable
 let _evidenceTiers;
-function getEvidenceTiers() {
+function _getEvidenceTiers() {
   if (_evidenceTiers) return _evidenceTiers;
   try {
     _evidenceTiers = require('./flow-runtime-verification').EVIDENCE_TIERS;
@@ -477,7 +477,7 @@ const NEGATION_PREFIXES = /\b(?:no|zero|0|without(?: any)?|not a single)\s+/i;
  * not match.
  */
 const DISAGREEMENT_WORDS = ['outage', 'outages', 'incident', 'incidents', 'regression', 'regressions', 'rollback', 'rollbacks', 'revert', 'reverts', 'hotfix', 'hotfixes'];
-const DISAGREEMENT_RE = new RegExp(`\\b(?:${DISAGREEMENT_WORDS.join('|')})\\b`, 'i');
+const _DISAGREEMENT_RE = new RegExp(`\\b(?:${DISAGREEMENT_WORDS.join('|')})\\b`, 'i');
 
 const PARTIAL_STATUSES = new Set(['completed-partial', 'completed_partial', 'partial', 'in-progress', 'in_progress', 'blocked', 'failed']);
 

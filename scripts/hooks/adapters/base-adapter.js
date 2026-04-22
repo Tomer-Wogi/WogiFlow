@@ -38,7 +38,7 @@ class BaseAdapter {
    * @param {Object} coreResult - Result from core module
    * @returns {Object} CLI-specific format
    */
-  transformResult(_event, coreResult) {
+  transformResult(_event, _coreResult) {
     throw new Error('transformResult() must be implemented by subclass');
   }
 
@@ -58,7 +58,7 @@ class BaseAdapter {
    * @param {Object} [transportConfig] - Transport config: { transport, url, headers, allowedEnvVars }
    * @returns {Object} CLI-specific hook configuration
    */
-  generateConfig(_rules, projectRoot, transportConfig) {
+  generateConfig(_rules, _projectRoot, _transportConfig) {
     throw new Error('generateConfig() must be implemented by subclass');
   }
 

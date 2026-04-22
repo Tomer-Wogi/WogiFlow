@@ -19,7 +19,7 @@ const {
   PATHS,
   readJson: _readJson,
   fileExists: _fileExists,
-  getTodayDate
+  _getTodayDate
 } = require('./flow-utils');
 const { recordRevision, loadStats } = require('./flow-stats-collector');
 

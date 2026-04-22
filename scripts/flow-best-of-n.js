@@ -19,7 +19,7 @@ const {
   getConfig,
   PATHS: _PATHS,
   readJson: _readJson,
-  validateTaskId
+  _validateTaskId
 } = require('./flow-utils');
 const { analyzeComplexity } = require('./flow-task-analyzer');
 

@@ -165,7 +165,7 @@ function installClaudeCodeHooks(adapter, hooksConfig) {
  * Install hooks for all configured targets
  */
 function setupHooks(options = {}) {
-  const { target, force } = options;
+  const { target, _force } = options;
 
   console.log(color('cyan', '🪝 Setting Up CLI Hooks'));
   console.log('');

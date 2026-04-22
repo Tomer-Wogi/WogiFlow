@@ -220,7 +220,7 @@ function calculateApproachScore(result) {
   if (result.code) score += 10;
 
   // Validation gates
-  for (const [gate, passed] of Object.entries(result.validationResults)) {
+  for (const [_gate, passed] of Object.entries(result.validationResults)) {
     if (passed) score += 20;
     else score -= 10;
   }

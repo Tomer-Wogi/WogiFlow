@@ -157,7 +157,7 @@ function selectNodes(tree, options = {}) {
   sectionScores.sort((a, b) => b.score - a.score);
 
   // Include sections based on score and budget
-  for (const { section, score, id } of sectionScores) {
+  for (const { section, score, _id } of sectionScores) {
     // Always include certain types
     const alwaysInclude = alwaysIncludeTypes.includes(section.type);
 
@@ -266,7 +266,7 @@ function formatSelectedContext(tree, selectedNodes) {
       node.children?.includes(d.node.id)
     );
 
-    for (const { node: child, includeContent, score: childScore } of sectionChildren) {
+    for (const { node: child, includeContent, score: _childScore } of sectionChildren) {
       lines.push(`- ${child.summary}`);
 
       if (includeContent && child.content) {

@@ -308,7 +308,7 @@ function findDuplicationPatterns(content, fileName) {
   }
 
   // Report lines that appear 3+ times
-  for (const [pattern, lineNumbers] of Object.entries(patterns)) {
+  for (const [_pattern, lineNumbers] of Object.entries(patterns)) {
     if (lineNumbers.length >= 3) {
       suggestions.push({
         file: fileName,

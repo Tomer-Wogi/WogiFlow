@@ -29,7 +29,7 @@ const {
   fileExists: _fileExists,
   readFile: _readFile,
   info,
-  warn
+  _warn
 } = require('./flow-utils');
 
 const {

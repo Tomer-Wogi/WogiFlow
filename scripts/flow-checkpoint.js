@@ -29,9 +29,6 @@ const { success: printSuccess, warn: printWarn } = require('./flow-output');
 const CHECKPOINTS_DIR = PATHS.checkpoints;
 const CHECKPOINT_LOG = path.join(CHECKPOINTS_DIR, 'checkpoint-log.json');
 
-// Alias getConfig as loadConfig for minimal code changes
-const loadConfig = getConfig;
-
 /**
  * Default checkpoint configuration
  */
@@ -385,8 +382,7 @@ function formatCheckpointList(checkpoints) {
 // Module exports
 module.exports = {
   Checkpoint,
-  DEFAULT_CHECKPOINT_CONFIG,
-  loadConfig
+  DEFAULT_CHECKPOINT_CONFIG
 };
 
 // CLI Handler
@@ -394,7 +390,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  const config = loadConfig();
+  const config = getConfig();
   const cp = new Checkpoint(config);
 
   switch (command) {

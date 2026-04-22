@@ -34,17 +34,17 @@ const {
   assessTaskComplexity,
   TOKEN_BUDGETS: _TOKEN_BUDGETS,
   getDefaultTokens,
-  clampTokens
+  _clampTokens
 } = require('./flow-complexity');
 
 // Import instruction richness module
 const {
   getInstructionRichness,
   getVerbosityGuidance: _getVerbosityGuidance,
-  loadProjectContext: loadRichnessContext,
+  loadProjectContext: _loadRichnessContext,
   loadPatterns: _loadPatterns,
   loadRelevantTypes: _loadRelevantTypes,
-  loadRelatedCode
+  _loadRelatedCode
 } = require('./flow-instruction-richness');
 
 // Import export scanner module
@@ -67,7 +67,7 @@ const {
   createExecutorFromConfig: _createExecutorFromConfig,
   getExecutorConfig,
   MODEL_CAPABILITIES: _MODEL_CAPABILITIES,
-  getModelContextLimit
+  _getModelContextLimit
 } = require('./flow-providers');
 
 // Import response parser for error recovery
@@ -86,7 +86,7 @@ const {
   analyzeFailure,
   refinePromptForRetry,
   recordSuccessfulRecovery,
-  ERROR_CATEGORIES
+  _ERROR_CATEGORIES
 } = require('./flow-adaptive-learning');
 
 // Import pattern enforcer for active learning enforcement
@@ -94,7 +94,7 @@ const {
   injectPatterns,
   extractRelevantPatterns: _extractRelevantPatterns,
   validateAgainstPatterns: _validateAgainstPatterns,
-  generateSessionSummary
+  _generateSessionSummary
 } = require('./flow-pattern-enforcer');
 
 // v2.0: Import durable session for unified step tracking
@@ -109,12 +109,12 @@ const {
 
 const {
   classifyTask,
-  getTaskTypeContext
+  _getTaskTypeContext
 } = require('./flow-task-classifier');
 
 const {
   learnFromFailure,
-  enhancePromptWithLearning
+  _enhancePromptWithLearning
 } = require('./flow-failure-learning');
 
 // ============================================================

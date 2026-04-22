@@ -31,7 +31,7 @@ const COVERAGE_PATHS = [
  * @returns {object} - { passed: boolean, message: string, coverage?: object }
  */
 async function run(options = {}) {
-  const { files = [], stepConfig = {}, mode } = options;
+  const { files = [], stepConfig = {}, _mode } = options;
   const minCoverage = stepConfig.minCoverage || 80;
   const checkFiles = stepConfig.checkModifiedOnly ?? true;
 

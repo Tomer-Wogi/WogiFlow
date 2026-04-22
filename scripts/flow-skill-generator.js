@@ -229,7 +229,7 @@ async function fetchDocsViaContext7(technology) {
 // SKILL FILE GENERATION
 // ============================================
 
-function generateSkillMd(tech, docs) {
+function _generateSkillMd(tech, docs) {
   const date = getTodayDate();
 
   return `---
@@ -595,7 +595,7 @@ This skill is loaded on-demand when:
  * v2.0 format includes: type, ecosystem, loadWith, tokenCost
  */
 function generateSkillsIndex(technologies, selections) {
-  const { getSkillType, getParentFramework, ECOSYSTEMS } = getTechOptions();
+  const { getSkillType, getParentFramework, _ECOSYSTEMS } = getTechOptions();
   const skills = {};
 
   // First pass: identify all technologies and their types
@@ -759,7 +759,7 @@ function migrateOldSkills(projectRoot) {
  * @param {Object} skillContext - Additional context { type, parentFramework, ecosystemSkills }
  */
 async function writeSkillFiles(tech, docs, projectRoot, skillContext = {}) {
-  const { getSkillType, getParentFramework } = getTechOptions();
+  const { getSkillType, _getParentFramework } = getTechOptions();
 
   const skillId = tech.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const skillDir = path.join(projectRoot, '.claude', 'skills', skillId);

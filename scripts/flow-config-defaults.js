@@ -1309,7 +1309,7 @@ function applyProjectTypeDefaults(config) {
   const detected = config.testing?.detected;
   if (!detected || !detected.projectType) return config;
 
-  const { hasUI, hasAPI, projectType } = detected;
+  const { hasUI, hasAPI, _projectType } = detected;
 
   // --- Adjust testing mode default ---
   if (config.testing?.mode === 'auto') {

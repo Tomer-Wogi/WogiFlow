@@ -181,7 +181,7 @@ function expandForQuery(query, options = {}) {
   const lines = [];
   let totalTokens = 0;
 
-  for (const { id, node, tokens, score } of toExpand) {
+  for (const { id, node, tokens, _score } of toExpand) {
     markExpanded(id, tokens, `query: ${query.substring(0, 50)}`);
 
     lines.push(`### ${node.summary}`);

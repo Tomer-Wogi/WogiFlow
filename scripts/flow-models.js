@@ -545,7 +545,7 @@ function getCostAnalysis(_options = {}) {
   }
 
   // Generate recommendations using CONFIG constants
-  for (const [modelId, modelData] of Object.entries(analysis.byModel)) {
+  for (const [_modelId, modelData] of Object.entries(analysis.byModel)) {
     if (modelData.costTier === 'premium' && modelData.totalTasks > CONFIG.MIN_TASKS_FOR_RECOMMENDATION) {
       const avgCost = modelData.avgCostPerTask;
       if (avgCost > CONFIG.COST_OPTIMIZATION_THRESHOLD) {
@@ -826,7 +826,7 @@ function formatCostAnalysis(analysis) {
     const sortedModels = Object.entries(analysis.byModel)
       .sort((a, b) => b[1].totalCost - a[1].totalCost);
 
-    for (const [modelId, data] of sortedModels) {
+    for (const [_modelId, data] of sortedModels) {
       output += `  ${color('cyan', data.displayName)} (${data.costTier})\n`;
       output += `    Total: $${data.totalCost.toFixed(4)} | Tasks: ${data.totalTasks} | Avg: $${data.avgCostPerTask.toFixed(4)}\n`;
     }

@@ -21,7 +21,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   detectFramework } = require('./flow-figma-index');
-const { getProjectRoot,
+const { _getProjectRoot,
   getConfig,
   addRequestLogEntry,
   addAppMapComponent,

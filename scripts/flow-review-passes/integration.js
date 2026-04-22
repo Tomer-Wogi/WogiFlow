@@ -502,7 +502,7 @@ function analyzeDependencyGraph(files) {
  * @returns {Promise<Object>} Pass results
  */
 async function run(context) {
-  const { files = [], previousResults = {} } = context;
+  const { files = [], _previousResults = {} } = context;
 
   const issues = [];
   const suggestions = [];

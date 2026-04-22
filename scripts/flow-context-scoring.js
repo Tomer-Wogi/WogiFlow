@@ -176,7 +176,7 @@ function categorizeScore(score) {
  * @param {string} filePath - Path to file
  * @returns {number} Estimated tokens
  */
-function estimateFileTokens(filePath) {
+function _estimateFileTokens(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
     return estimateTokens(content, { useLineEstimate: true });

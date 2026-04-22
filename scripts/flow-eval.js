@@ -28,7 +28,7 @@ const {
   aggregateScores: _aggregateScores,
   getEvalConfig: _getEvalConfig,
   getJudgeComposition: _getJudgeComposition,
-  formatEvalResults
+  _formatEvalResults
 } = require('./flow-eval-judge');
 
 // ============================================================

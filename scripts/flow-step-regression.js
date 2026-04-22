@@ -21,7 +21,7 @@ const { PATHS } = require('./flow-utils');
  * @returns {object} - { passed: boolean, message: string, details?: object }
  */
 async function run(options = {}) {
-  const { stepConfig = {}, mode } = options;
+  const { stepConfig = {}, _mode } = options;
   const sampleSize = stepConfig.sampleSize || 3;
 
   try {

@@ -49,7 +49,7 @@ const DECISIONS_PATH = PATHS.decisions;
 /**
  * Extract patterns from facts by category
  */
-async function analyzePatterns() {
+async function _analyzePatterns() {
   const facts = await memoryDb.getAllFacts();
   const patterns = {};
 

@@ -752,7 +752,7 @@ function getLoopStats() {
  */
 function verifyCriterion(criterion, context = {}) {
   const { execSync, execFileSync } = require('node:child_process');
-  const { changedFiles = [], testResults = null, lintResults = null } = context;
+  const { _changedFiles = [], testResults = null, lintResults = null } = context;
   const _config = getConfig();
   const taskConfig = getTaskConfig();
   const desc = criterion.description;

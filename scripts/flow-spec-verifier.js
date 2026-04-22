@@ -410,7 +410,7 @@ function isLikelyNewFile(content, filePath) {
  * @param {string} filePath - File path
  * @returns {string|null} Section name
  */
-function findFileSection(content, filePath) {
+function _findFileSection(content, filePath) {
   const lines = content.split('\n');
   let currentSection = null;
 

@@ -17,7 +17,7 @@ const {
   loadRelatedCode
 } = require('./flow-instruction-richness');
 
-function log(color, ...args) {
+function _log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
 }
 

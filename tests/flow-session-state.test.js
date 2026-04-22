@@ -9,8 +9,8 @@
 
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const _fs = require('node:fs');
+const _path = require('node:path');
 
 // Suppress console output during tests
 let originalLog, originalWarn, originalError;

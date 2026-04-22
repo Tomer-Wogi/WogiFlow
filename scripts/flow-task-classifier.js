@@ -176,7 +176,7 @@ function classifyTask(taskDescription, affectedFiles = [], _options = {}) {
     .sort((a, b) => b[1] - a[1]);
 
   const [topType, topScore] = sortedTypes[0];
-  const [secondType, secondScore] = sortedTypes[1] || ['none', 0];
+  const [_secondType, secondScore] = sortedTypes[1] || ['none', 0];
 
   // Calculate confidence
   let confidence = 'high';

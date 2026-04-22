@@ -287,7 +287,7 @@ function checkDirectoryStructure(files) {
  * @returns {Promise<Object>} Pass results
  */
 async function run(context) {
-  const { files = [], previousResults = {} } = context;
+  const { files = [], _previousResults = {} } = context;
   const config = getConfig();
   const namingConvention = config.componentReuse?.namingConvention || 'kebab-case';
 

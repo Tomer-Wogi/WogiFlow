@@ -75,6 +75,8 @@ flow parallel check  # See available parallel tasks
 | 2.9.0+ | 2.1.90+ | --resume deferred-tool cache fix, MCP schema perf, PostToolUse format-on-save fix, PreToolUse exit-code-2 fix, .husky protected |
 | 2.9.2+ | 2.1.97+ | Stop/SubagentStop long-session fix, subagent worktree cwd leak fix, refreshInterval status line, workspace.git_worktree, MCP HTTP/SSE leak fix, 429 backoff, compaction transcript dedup |
 | 2.18.0+ | 2.1.108+ | ENABLE_PROMPT_CACHING_1H guidance, /recap awareness, /doctor MCP duplicate-scope mirror in `/wogi-health` |
+| 2.27.0+ | 2.1.116+ | Sandbox dangerous-path safety on auto-allow, agent frontmatter hooks for `--agent`, `/resume` large-session speedup, MCP stdio concurrent startup |
+| 2.27.0+ | 2.1.117+ | Native bfs/ugrep via Bash (hook audit documented), Opus 4.7 /context fix (estimator already percentage-based), Pro/Max effort default shift (advisory delta documented), agent frontmatter `mcpServers` for `--agent`, subagent model-mismatch malware-warning fix, managed-settings plugin marketplace enforcement |
 
 ### Environment Variables (2.1.19+)
 
@@ -438,6 +440,44 @@ await cancelTask('wf-123', 'superseded', false);
 - **Fixed "Unknown skill: commit" error**: Users without a custom `/commit` skill were seeing this error when Claude Code tried to invoke a non-existent built-in. **Impact on WogiFlow**: No WogiFlow-shipped `/commit` skill (commits go through `/wogi-finalize` and git commit instructions). Users benefit passively from the fix.
 
 - **Reliability fixes (all automatic after upgrade)**: Terminal display tearing in iTerm2+tmux, `@`-file suggestions re-scanning entire project in non-git directories, LSP diagnostics from before an edit appearing after it, tab-completing `/resume` behavior, `/context` grid rendering, `/clear` dropping session name, spurious decompression/network/transient errors in the TUI. Reverted v2.1.110 cap on non-streaming fallback retries (now uncapped again). Fixed Bedrock/Vertex/Foundry 429 retries pointing users at the wrong status page, bare URLs unclickable when wrapped in tool output, feedback surveys appearing back-to-back. WogiFlow sessions benefit from all of these automatically.
+
+### Features in 2.1.116+
+
+- **Agent frontmatter hooks fire for main-thread `--agent` sessions (BUG FIX)**: Previously, hooks declared in an agent frontmatter only fired when the agent ran as a sub-agent. When the same agent was invoked on the main thread via `--agent`, its hooks silently did not fire. **Impact on WogiFlow**: WogiFlow ships several agents under `.workflow/agents/` (logic-adversary, architect, etc.). Users running them via `--agent` previously lost any per-agent hook behavior. Automatic improvement after upgrade — no WogiFlow code change.
+
+- **`/resume` large-session speedup (up to 67% on 40MB+ sessions)**: `/resume` now loads significantly faster on large sessions and handles many dead-fork entries efficiently. **Impact on WogiFlow**: WogiFlow's post-compact state recovery and task-checkpoint resume benefit directly — long bulk sessions (`/wogi-bulk`, `/wogi-bulk-loop`) that accumulate large transcripts restart faster. No code change needed.
+
+- **MCP stdio concurrent startup**: Multiple stdio MCP servers now start concurrently instead of serially, and `resources/templates/list` is deferred to first `@`-mention. **Impact on WogiFlow**: Users with several MCP servers (figma, atlassian, gmail) see faster session startup. Orthogonal to WogiFlow. No action.
+
+- **Sandbox auto-allow honors dangerous-path safety check (SECURITY)**: Sandbox auto-allow rules no longer bypass the dangerous-path safety check when a command targets `/`, `$HOME`, or other critical system directories (e.g. `rm -rf /`, `rmdir $HOME`). **Impact on WogiFlow**: Reinforces `.claude/rules/security/security-patterns.md §6` — destructive commands should be scoped to safe variants, not blanket-wildcarded. WogiFlow's installer-generated permission rules already scope `git reset`, `git restore`, `git clean` away from blanket wildcards (v2.19.0+). No code change needed; this is defense-in-depth for users who hand-edited their settings.
+
+- **Bash tool `gh` rate-limit hint**: Bash tool surfaces a hint when `gh` commands hit GitHub's API rate limit, so agents can back off instead of retrying. **Impact on WogiFlow**: Affects `/wogi-finalize`, `/wogi-review` when they shell out to `gh`. No code change needed — WogiFlow's commands already terminate on CLI errors instead of retry-looping.
+
+- **Other UX fixes**: Thinking spinner shows inline progress, `/config` search matches values, Bash security no longer bypasses dangerous-path check for wildcard-allowed rm/rmdir, `/resume` reports load errors on large files instead of silently showing empty, `/doctor` can open during a response. All automatic. See `.claude/rules/security/security-patterns.md §6` for the permission-rule pattern the sandbox fix reinforces.
+
+### Features in 2.1.117+
+
+- **Native macOS/Linux builds replace Glob and Grep tools with embedded bfs/ugrep via Bash**: On native builds (not npm, not Windows), Claude Code now executes `bfs`/`ugrep` through the Bash tool instead of the separate Glob/Grep tools. **Impact on WogiFlow**:
+  - **Hooks that match on `tool === 'Glob'|'Grep'`**: audited 2026-04-22. All matches are in **allow-list** contexts (`phase-gate.js`, `routing-gate.js`, `manager-boundary-gate.js`, `pre-tool-orchestrator.js` classify Glob/Grep as read-only; `observation-capture.js` logs them). On native builds, search operations arrive as `Bash` — Bash is NOT in those read-only allow-lists, so search calls get the stricter Bash treatment. No bypass, no gate weakening.
+  - **Evidence tracking** (`research-evidence-gate.js`) and **scope enforcement** (`scope-gate.js`) do NOT match on Glob/Grep — unaffected.
+  - **Observation gap (minor)**: `observation-capture.js` no longer logs search patterns from native-build users. Cosmetic — does not affect enforcement.
+  - **WogiFlow scripts do NOT invoke `bfs`/`ugrep` directly** — those binaries are embedded in Claude Code's native build only, not on users' PATH. Invoking them would break npm/Windows users. Existing Node `fs` / `ripgrep` / `git grep` tooling is the cross-platform path. **No code change needed.**
+
+- **Opus 4.7 `/context` fix — was computing against 200K instead of native 1M**: Claude Code 2.1.117 fixed inflated `/context` percentages and premature auto-compaction on Opus 4.7 sessions. **Impact on WogiFlow**: `scripts/flow-context-estimator.js` operates entirely in percentages provided by Claude Code — no hardcoded 200K/1M assumption. Audited 2026-04-22. When Claude Code reports the correct percentage post-upgrade, the estimator consumes it correctly. **No code change needed.** Only env-var-gated branch is `CLAUDE_CODE_DISABLE_1M_CONTEXT` — which correctly tightens thresholds when the user opts out of extended context.
+
+- **Default effort `high` on Opus 4.6/4.7 for Pro/Max subscribers (was `medium`)**: Claude Code raised the session default. **Impact on WogiFlow**: WogiFlow's effort-level advisory table in `.claude/commands/wogi-start.md` is **task-level-scoped** (L2 → `medium` because 1–5 file changes don't need deep reasoning), not a global default. It intentionally differs from Claude Code's new default — documented inline in the table. Users on Pro/Max wanting the CC default everywhere can use `/effort high` at session start.
+
+- **Agent frontmatter `mcpServers` loaded for main-thread `--agent` sessions**: Complements the 2.1.116 hook fix — MCP servers declared in an agent's frontmatter are now loaded when the agent is invoked via `--agent`. **Impact on WogiFlow**: WogiFlow's `.workflow/agents/` personas that depend on MCP tooling now work correctly when invoked on the main thread. No code change needed.
+
+- **Subagent model-mismatch malware-warning fix**: Previously, subagents running on a different model than the main agent incorrectly flagged file reads with a malware warning. **Impact on WogiFlow (HIGH)**: IGR architect + adversary passes routinely run on a DIFFERENT model from the main agent (config: `intentGroundedReasoning.adversaryModel`, `researchReasoningGate.tier3.adversaryModel`). Pre-fix, these sub-agents could see spurious "malware" warnings on normal file reads during critique. Post-fix, IGR sub-agent reads are clean. Automatic improvement. No code change needed.
+
+- **Managed-settings `blockedMarketplaces`/`strictKnownMarketplaces` enforcement on plugin install/update**: Enterprise admins can now block plugin marketplaces, enforced at install, update, refresh, and autoupdate time. **Impact on WogiFlow**: Relevant to `/wogi-register` and plugin-registry routing (`plugin-registry.json`). Users in managed environments may now be blocked from installing plugins WogiFlow's registry references. `/wogi-register` should surface the underlying Claude Code error verbatim (it already does — no code change). Future enhancement: detect a blocked-marketplace error and suggest the admin-controlled alternative.
+
+- **Pro/Max Opus 4.7 `/context` fix — expanded details**: Fixed alongside the percentage fix, Opus 4.7 sessions no longer auto-compact early. Pairs with WogiFlow's smart-compaction thresholds which recalibrated to 0.80 safe / 0.92 emergency under Claude Code 2.1.75+ token accuracy (see `scripts/flow-context-estimator.js:65`).
+
+- **Other notable fixes**: Plain-CLI OAuth sessions now refresh tokens reactively on 401 (no more mid-session "Please run /login"); WebFetch no longer hangs on very large HTML (truncates before conversion); `/login` works when launched with `CLAUDE_CODE_OAUTH_TOKEN` env var and token expires; Windows caches `where.exe` lookups per process; Bedrock `application-inference-profile` + Opus 4.7 with thinking disabled no longer returns 400; MCP `elicitation/create` no longer auto-cancels in print/SDK mode when the server connects mid-turn. All automatic after upgrade.
+
+- **Experimental flag**: `CLAUDE_CODE_FORK_SUBAGENT=1` enables forked subagents on external builds. Not currently consumed by WogiFlow. Tracked as a future enhancement for faster IGR sub-agent spawning.
 
 ### Simple Mode Naming Distinction
 

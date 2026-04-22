@@ -23,7 +23,7 @@ const {
   readJson: _readJson,
   writeJson: _writeJson,
   fileExists: _fileExists,
-  safeJsonParse
+  _safeJsonParse
 } = require('./flow-utils');
 
 // ============================================================

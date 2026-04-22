@@ -52,17 +52,17 @@ const {
 // Destructure parsing functions
 const {
   parseVTT: _parseVTT, parseSRT: _parseSRT, parseSubtitle: _parseSubtitle, mergeCues: _mergeCues, formatCuesAsText: _formatCuesAsText, getSubtitleStats: _getSubtitleStats,
-  parseZoom: _parseZoom, parseTeams: _parseTeams, parseMeeting: _parseMeeting, mergeMeetingEntries: _mergeMeetingEntries, formatMeetingAsText: _formatMeetingAsText, getMeetingStats
+  parseZoom: _parseZoom, parseTeams: _parseTeams, parseMeeting: _parseMeeting, mergeMeetingEntries: _mergeMeetingEntries, formatMeetingAsText: _formatMeetingAsText, _getMeetingStats
 } = transcriptParsing;
 
 // Destructure chunking functions
 const {
   loadDurableSessions: _loadDurableSessions, listDurableSessions: _listDurableSessions, getDurableSession: _getDurableSession, switchDurableSession: _switchDurableSession,
   archiveDurableSession: _archiveDurableSession, deleteDurableSession: _deleteDurableSession, generateRecoverySummaryForSession: _generateRecoverySummaryForSession,
-  getTimeSince: _getTimeSince, needsChunking: _needsChunking, planChunks: _planChunks, getChunkingStatus
+  getTimeSince: _getTimeSince, needsChunking: _needsChunking, planChunks: _planChunks, _getChunkingStatus
 } = transcriptChunking;
 
-const { listSupportedLanguages } = transcriptLanguage;
+const { _listSupportedLanguages } = transcriptLanguage;
 
 // Destructure story functions
 const {
@@ -72,7 +72,7 @@ const {
   formatActionsPrompt: _formatActionsPrompt, getCompletionSummary: _getCompletionSummary, resetPresentation: _resetPresentation,
   startEditSession: _startEditSession, editUserStory: _editUserStory, editCriterion: _editCriterion, addCriterion: _addCriterion, removeCriterion: _removeCriterion,
   getEditChanges: _getEditChanges, commitEditSession: _commitEditSession, cancelEditSession: _cancelEditSession, getEditHistory: _getEditHistory, listEditableStories: _listEditableStories,
-  previewExport: _previewExport, exportApprovedStories: _exportApprovedStories, finalizeDigestion
+  previewExport: _previewExport, exportApprovedStories: _exportApprovedStories, _finalizeDigestion
 } = transcriptStories;
 
 // Destructure constants
@@ -81,7 +81,7 @@ const {
   CORRECTION_PATTERNS: _CORRECTION_PATTERNS, ADDITIVE_PATTERNS: _ADDITIVE_PATTERNS,
   ENTITY_PATTERNS, VAGUE_PATTERNS, QUESTION_TEMPLATES,
   DETAIL_PATTERNS, QUESTION_TEMPLATES_BY_LANGUAGE, FOLLOWUP_TRIGGERS,
-  UI_PATTERNS: _UI_PATTERNS, DATA_PATTERNS: _DATA_PATTERNS, INTERACTION_PATTERNS: _INTERACTION_PATTERNS, COMPLEXITY_LEVELS
+  UI_PATTERNS: _UI_PATTERNS, DATA_PATTERNS: _DATA_PATTERNS, INTERACTION_PATTERNS: _INTERACTION_PATTERNS, _COMPLEXITY_LEVELS
 } = longInputConstants;
 
 // Destructure voice functions

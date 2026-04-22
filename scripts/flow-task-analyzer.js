@@ -355,7 +355,7 @@ function determineCapabilities(text, complexity) {
  * @returns {Object} Token estimates
  */
 function estimateTaskTokens(analysis) {
-  const { complexity, domains, languages } = analysis;
+  const { complexity, domains, _languages } = analysis;
 
   const multiplier = TOKEN_FACTORS.COMPLEXITY_MULTIPLIER[complexity.level];
   const baseInput = TOKEN_FACTORS.BASE_INPUT;

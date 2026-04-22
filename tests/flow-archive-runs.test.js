@@ -160,7 +160,7 @@ describe('archiveAdversaryRuns — dry-run + idempotency', () => {
   it('archives a file for real (and is idempotent on second run)', async () => {
     const file = writeOldRun(`${TEST_PREFIX}-archive.json`, { taskId: 'wf-archive', round: 1 }, 60);
     testFiles.push(file);
-    const r1 = await archive.archiveAdversaryRuns({ config: { adversaryRunsDays: 30 }, dryRun: false });
+    const _r1 = await archive.archiveAdversaryRuns({ config: { adversaryRunsDays: 30 }, dryRun: false });
     // File moved (gzipped)
     assert.equal(fs.existsSync(file), false);
     // Index updated for our file

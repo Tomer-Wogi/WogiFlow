@@ -633,7 +633,7 @@ function generateImportsMarkdown(imports) {
     '```typescript'
   ];
 
-  for (const [name, statement] of Object.entries(imports)) {
+  for (const [_name, statement] of Object.entries(imports)) {
     lines.push(statement);
   }
 

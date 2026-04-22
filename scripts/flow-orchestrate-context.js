@@ -440,7 +440,7 @@ class ProjectContextGenerator {
 
       // Collect all array exports for global warning
       const allArrayExports = [];
-      for (const [name, info] of Object.entries(exportMap.components)) {
+      for (const [_name, info] of Object.entries(exportMap.components)) {
         if (info.arrayExports && info.arrayExports.length > 0) {
           allArrayExports.push(...info.arrayExports);
         }
@@ -479,7 +479,7 @@ class ProjectContextGenerator {
     if (Object.keys(exportMap.services).length > 0) {
       section += '### Services\n\n';
       section += '```typescript\n';
-      for (const [name, info] of Object.entries(exportMap.services)) {
+      for (const [_name, info] of Object.entries(exportMap.services)) {
         if (info.exports.length > 0) {
           section += `import { ${info.exports.join(', ')} } from '${info.importPath}';\n`;
         }
@@ -491,7 +491,7 @@ class ProjectContextGenerator {
     if (Object.keys(exportMap.types).length > 0) {
       section += '### Types\n\n';
       section += '```typescript\n';
-      for (const [name, info] of Object.entries(exportMap.types)) {
+      for (const [_name, info] of Object.entries(exportMap.types)) {
         if (info.types && info.types.length > 0) {
           section += `import type { ${info.types.join(', ')} } from '${info.importPath}';\n`;
         }
@@ -503,7 +503,7 @@ class ProjectContextGenerator {
     if (Object.keys(exportMap.utils).length > 0) {
       section += '### Utilities\n\n';
       section += '```typescript\n';
-      for (const [name, info] of Object.entries(exportMap.utils)) {
+      for (const [_name, info] of Object.entries(exportMap.utils)) {
         if (info.exports.length > 0) {
           section += `import { ${info.exports.join(', ')} } from '${info.importPath}';\n`;
         }

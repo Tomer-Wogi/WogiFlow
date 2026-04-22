@@ -264,7 +264,7 @@ function parseTypeScript(file) {
     /(?:^|\n)\s*(?:export\s+)?(interface|class|type)\s+([A-Z]\w*)\b\s*(?:extends[^{]*|implements[^{]*|<[^>]*>\s*)?(?:=\s*)?(\{)/g;
   let m;
   while ((m = headerRegex.exec(content)) !== null) {
-    const [, kind, name, openBrace] = m;
+    const [, kind, name, _openBrace] = m;
     const bodyStart = m.index + m[0].length;
     const body = extractBalancedBlock(content, bodyStart - 1); // include the opening brace
     if (!body) continue;

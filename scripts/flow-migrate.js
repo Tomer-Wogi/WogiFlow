@@ -24,7 +24,7 @@ const {
   outputJson,
   checkSpecMigration,
   SPEC_FILE_MAP: _SPEC_FILE_MAP,
-  getTodayDate
+  _getTodayDate
 } = require('./flow-utils')
 const { printHeader, printSection, color, success, warn, error, info } = require('./flow-output');;
 

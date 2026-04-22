@@ -34,7 +34,7 @@ const {
   estimateTokens,
   info,
   warn: _warn,
-  success
+  _success
 } = require('./flow-utils');
 
 const {

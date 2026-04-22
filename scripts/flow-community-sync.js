@@ -23,7 +23,7 @@ const {
   readJson,
   writeJson,
   fileExists: _fileExists,
-  getTodayDate
+  _getTodayDate
 } = require('./flow-utils');
 const { createUploadPayload } = require('./flow-sync-anonymizer');
 const { loadStats } = require('./flow-stats-collector');

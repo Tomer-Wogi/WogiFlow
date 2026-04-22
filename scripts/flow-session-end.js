@@ -25,7 +25,7 @@ const {
   isGitRepo,
   getGitStatus,
   safeJsonParse,
-  getTodayDate
+  _getTodayDate
 } = require('./flow-utils')
 const { color, printSection, success, warn, error } = require('./flow-output');;
 

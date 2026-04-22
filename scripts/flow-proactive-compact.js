@@ -78,7 +78,7 @@ function getProactiveCompactionConfig() {
  * @returns {{ shouldCompact: boolean, reason: string, checkpoint: Object|null }}
  */
 function shouldCompactAtPhase(params) {
-  const { phase, contextPercent, taskId } = params;
+  const { phase, contextPercent, _taskId } = params;
   const config = getProactiveCompactionConfig();
 
   // Disabled — skip

@@ -147,3 +147,49 @@ const COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85, concise: 0.5 };
 ```
 
 Self-documenting; easier to maintain.
+
+---
+
+### Regression Discipline (Trust-Preserving Orchestration)
+
+**Rule**: In a large platform, every fix risks breaking an adjacent working feature. Typecheck/lint/build gates catch code errors, NOT behavior drift. To prevent the "something else broke" loop that burns user trust, follow four principles:
+
+**1. Executable regression scripts, NOT test-plan documents.**
+A 10-page test plan rots the moment code changes. Each critical user-facing flow (login, submit, approve, delete, invite, etc.) should have an *executable* regression artifact — whatever runtime your project uses (Playwright, WebMCP, Jest integration, bash curl-scripted end-to-end). Scripts fail loudly, pass silently, and live in the repo at a predictable path like `regression-suite/<flow>.<ext>`.
+
+**2. Living feature inventory, not a frozen document.**
+Maintain a single table (proposed shape `.workflow/state/feature-map.md` — registry infrastructure lands in a future WogiFlow release) with one row per critical flow: `Feature | Last Verified | Commit | Regression Script | Known Issues`. When a feature breaks, you update the row's "Known Issues" cell with the bug's task ID — you don't write a separate incident document. The inventory IS the document.
+
+**3. Change-touch rule.**
+When a task modifies a file that's mapped to a regression script, the task isn't complete until that script passes. This turns regression into a gate, not an aspiration. Tie each regression script to a list of files it covers — when those files change, those scripts MUST run before task close. Until WogiFlow ships the `regressionCoverage` quality gate natively, enforce this in each task's acceptance criteria manually: "Criterion N: re-run `<script>` with exit 0 before marking done."
+
+**4. Audit-seeded, not human-written.**
+Don't write the inventory from scratch when you've already shipped features. Use `/wogi-audit` to produce a draft inventory from current code, then review row-by-row. This preserves reviewer attention for checking hallucinations, not remembering features.
+
+**Anti-rationalization**: "We don't have regression coverage for this flow, but I'm confident my fix won't break it" → **WRONG**. Confidence is not evidence. If a flow is critical, it needs an executable script. If it doesn't have one, that's the first fix — not the last.
+
+---
+
+### Memory-First Clarification
+
+**Rule**: Before asking the user a product-domain question (role model, business rules, product scope, terminology), check whether the answer is already captured in the project's domain artifacts. Every redundant question costs trust.
+
+**Where domain knowledge lives (canonical, team-shared)**:
+- `.workflow/state/product.md` — what the product does, business model, user types
+- `.workflow/state/domain-model.md` — entities, relationships, business rules, role capabilities
+- `.workflow/state/user-journeys.md` — end-to-end flows
+- `.workflow/state/glossary.md` — canonical terminology
+
+These are the IGR intent artifacts. They're committed to git, visible to the whole team, and already the default knowledge carriers when `intentGroundedReasoning.enabled` is true.
+
+**Before invoking `AskUserQuestion` on a domain topic**:
+1. Grep or read the relevant artifact first.
+2. If the answer is there, act on it and note the citation.
+3. Only ask if the artifact is silent, stale, or contradictory.
+4. When you ask, include *what you checked* — "I read domain-model.md §Roles; it says admins have X — does this also apply to managers?" — not "what's the manager role?"
+
+**If the artifacts don't exist yet**: that's the bootstrap failure mode. Run `node scripts/flow-intent-bootstrap.js bootstrap` (or via `/wogi-start` on any IGR-enabled task) to scaffold them. A project without `domain-model.md` is a project where every question about the domain will be re-asked every session.
+
+**If you find domain knowledge scattered in auto-memory files (`memory/project_*.md`)**: that content belongs in the IGR artifacts. Migrating consolidates team-shared truth into the repo instead of fragmenting it across individual user machines. When WogiFlow ships the `domainEvidenceGate` and its temporary migration helper (tracked as a future release), that migration will be assisted. Until then, treat the IGR artifacts as the destination.
+
+**Anti-rationalization**: "The user can answer this faster than I can search" → **WRONG**. The user has answered this before. If it's not in the artifacts, it *will* be asked again by a future session. Writing the answer into `domain-model.md` once stops the loop permanently.

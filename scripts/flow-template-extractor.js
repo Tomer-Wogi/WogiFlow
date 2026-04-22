@@ -461,7 +461,7 @@ function getIndent(line) {
 async function extractTemplates(projectRoot, options = {}) {
   const {
     types = Object.keys(FILE_TYPES),
-    outputDir = path.join(projectRoot, '.workflow', 'templates', 'extracted')
+    _outputDir = path.join(projectRoot, '.workflow', 'templates', 'extracted')
   } = options;
 
   const startTime = Date.now();

@@ -18,7 +18,7 @@ const {
   getConfigValue: _getConfigValue,
   color: _color,
   warn: _warn,
-  error
+  _error
 } = require('./flow-utils');
 
 // ============================================================

@@ -402,7 +402,7 @@ describe('flow-done _test exports', () => {
   let doneMod;
   try {
     doneMod = require('../scripts/flow-done');
-  } catch (err) {
+  } catch (_err) {
     // If it fails to load, skip these tests
     doneMod = null;
   }

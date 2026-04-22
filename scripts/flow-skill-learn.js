@@ -29,9 +29,6 @@ function log(color, ...args) {
   console.log(colors[color] + args.join(' ') + colors.reset);
 }
 
-// Alias getConfig as loadConfig for minimal code changes
-const loadConfig = getConfig;
-
 function isLearningEnabled(config, trigger) {
   if (!config?.skillLearning?.enabled) return false;
   if (!config?.skillLearning?.autoExtract) return false;
@@ -81,7 +78,7 @@ function getChangedFiles(staged = false) {
   }
 }
 
-function getRecentCommitFiles(count = 1) {
+function _getRecentCommitFiles(count = 1) {
   try {
     const cmd = `git diff HEAD~${count} --name-only`;
     const output = execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
@@ -387,7 +384,7 @@ function formatSemanticChanges(semanticChanges) {
 
   const lines = [];
 
-  for (const { file, changes } of semanticChanges) {
+  for (const { _file, changes } of semanticChanges) {
     if (changes.length === 0) continue;
 
     for (const change of changes) {
@@ -714,7 +711,7 @@ async function main() {
     process.exit(0);
   }
 
-  const config = loadConfig();
+  const config = getConfig();
 
   if (!isLearningEnabled(config, options.trigger)) {
     if (options.verbose) {

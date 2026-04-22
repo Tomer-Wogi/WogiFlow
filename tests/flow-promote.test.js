@@ -15,7 +15,7 @@ const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const os = require('node:os');
+const _os = require('node:os');
 
 console.log = () => {};
 console.warn = () => {};
@@ -28,7 +28,7 @@ const { PATHS } = require('../scripts/flow-utils');
 // We seed adversary-runs and correction-patterns into the real .workflow/state/
 // directories under unique sub-dirs to avoid collision with live data.
 const TEST_SUFFIX = `_test_${process.pid}_${Date.now()}`;
-const TEST_RUN_DIR = path.join(PATHS.state, 'adversary-runs', TEST_SUFFIX);
+const _TEST_RUN_DIR = path.join(PATHS.state, 'adversary-runs', TEST_SUFFIX);
 const PATTERNS_FILE = path.join(PATHS.state, 'correction-patterns.json');
 const PENDING_FILE = path.join(PATHS.state, 'pending-promotions.json');
 

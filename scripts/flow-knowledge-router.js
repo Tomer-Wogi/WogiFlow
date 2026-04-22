@@ -280,7 +280,7 @@ async function storeSkillLearning(correction, route, context) {
   };
 }
 
-async function storeProjectDecision(correction, _route, context) {
+async function storeProjectDecision(correction, _route, _context) {
   const decisionsPath = PATHS.decisions;
 
   let content = '';

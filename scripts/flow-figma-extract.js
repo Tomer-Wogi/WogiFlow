@@ -83,7 +83,7 @@ class FigmaExtractor {
   }
 
   parseNodes(nodes, parent = null) {
-    for (const [nodeId, nodeData] of Object.entries(nodes)) {
+    for (const [_nodeId, nodeData] of Object.entries(nodes)) {
       const node = nodeData.document || nodeData;
       this.parseNode(node, parent);
     }
@@ -445,7 +445,7 @@ class FigmaExtractor {
 // ============================================================
 
 async function main() {
-  const [,, input, ...args] = process.argv;
+  const [,, input, ..._args] = process.argv;
 
   const extractor = new FigmaExtractor();
 

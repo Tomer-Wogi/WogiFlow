@@ -45,7 +45,7 @@ function getSetupConfig() {
  * @returns {Object} Result: { needsSetup, message, action, context }
  */
 function handleSetup(options = {}) {
-  const { trigger = 'init' } = options;
+  const { _trigger = 'init' } = options;
 
   if (!isSetupEnabled()) {
     return {

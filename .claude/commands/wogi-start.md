@@ -193,6 +193,8 @@ After task level classification (L0-L3), set the reasoning effort level to optim
 
 This is advisory. Claude Code's effort levels: `low` / `medium` / `high` are universal. Claude Code 2.1.111+ added `xhigh` (between high and max) and `max` as Opus 4.7-only levels — other models fall back to `high`. Use `/effort` interactively (slider as of 2.1.111) to switch mid-session. The AI should adjust reasoning depth during implementation phases accordingly.
 
+**Note on Claude Code 2.1.117 default change**: Claude Code 2.1.117 raised the default effort for Pro/Max subscribers on Opus 4.6 and Opus 4.7 from `medium` to `high`. WogiFlow's advisory mapping above is **task-level-scoped** (L2 recommends `medium` because 1–5 file changes don't need deep reasoning), not a global session default. It intentionally differs from Claude Code's new default — L2 work runs faster at `medium` regardless of Pro/Max. If you're on Pro/Max with Opus 4.6/4.7 and want the CC default for everything, use `/effort high` at session start and ignore the L2 row.
+
 ### Task Checkpoints (when `config.proactiveCompaction.enabled`)
 
 At each phase boundary: save checkpoint to `.workflow/state/task-checkpoint.json` (task ID, phase, completed scenarios, changed files, verification results). If context >= `triggerThreshold` (75%), run `/wogi-pre-compact` before proceeding.

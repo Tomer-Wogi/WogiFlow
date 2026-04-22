@@ -10,11 +10,11 @@
  * Run: NODE_ENV=test node --test tests/flow-utils.test.js
  */
 
-const { describe, it, beforeEach } = require('node:test');
+const { describe, it, _beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
 // Suppress console output during tests
-const originalConsole = { ...console };
+const _originalConsole = { ...console };
 console.log = () => {};
 console.warn = () => {};
 console.error = () => {};

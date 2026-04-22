@@ -26,7 +26,7 @@ const CHANGELOG_PATH = path.join(PATHS.root, 'CHANGELOG.md');
  * @returns {object} - { passed: boolean, message: string, entry?: string }
  */
 async function run(options = {}) {
-  const { taskId, taskTitle, taskType, files = [], mode, stepConfig = {} } = options;
+  const { taskId, taskTitle, taskType, files = [], mode, _stepConfig = {} } = options;
 
   // Determine changelog category
   const category = getChangelogCategory(taskType, taskTitle, files);
@@ -133,7 +133,7 @@ function getChangelogCategory(taskType, taskTitle, _files) {
 /**
  * Generate a changelog entry
  */
-function generateEntry(taskId, taskTitle, _category, files) {
+function generateEntry(taskId, taskTitle, _category, _files) {
   // Clean up title
   let entry = taskTitle || 'Update';
 

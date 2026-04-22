@@ -20,7 +20,7 @@ const {
   getPendingCount,
   markProcessed,
   loadPending,
-  savePending,
+  _savePending,
   PENDING_PATH
 } = require('../scripts/flow-pending');
 

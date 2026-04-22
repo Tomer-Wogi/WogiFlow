@@ -18,7 +18,7 @@ const path = require('node:path');
 const {
   getProjectRoot: _getProjectRoot,
   getConfig, PATHS,
-  getTodayDate
+  _getTodayDate
 } = require('./flow-utils')
 const { color, success, warn, error } = require('./flow-output');;
 

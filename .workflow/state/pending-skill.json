@@ -1,8 +1,6 @@
 {
-  "skillName": "wogi-start",
-  "markedAt": "2026-04-17T10:09:33.062Z",
-  "context": {
-    "args": "wf-63c0f4cc"
-  },
-  "status": "pending"
+  "skillName": null,
+  "markedAt": null,
+  "context": null,
+  "status": "cleared"
 }
