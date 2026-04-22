@@ -2,6 +2,38 @@
 
 Session handoff notes for human readability.
 
+## Session End: 2026-04-22 — v2.26.1 + v2.26.2 RELEASES (task-boundary restart reliability)
+
+### Completed
+- **v2.26.1 — Phase 1 wiring fix** (commit 83bbcc9, published to npm)
+  - Root cause: `.claude/docs/phases/05-complete.md` step 5.3 told agents to hand-edit `ready.json` instead of running `flow done`, bypassing both Phase 1 marker-write sites. `TaskCompleted` hook doesn't fire for `/wogi-start` completions (documented in task-boundary-reset.js design comment), so path (a) `flow-done.js:604` was the only live trigger — and agents weren't hitting it.
+  - Fix: mandated `flow done <taskId>` in phase doc + added Stop-hook fallback `ensurePhase1MarkedIfRecentlyCompleted()` with anti-replay sentinel (`task-boundary-last-triggered`) that survives SIGTERM + wrapper restart cycle.
+- **v2.26.2 — dialog dismissal reliability** (commit 62db756, published to npm)
+  - Auto-enable expect when worker env detected (`WOGI_WORKSPACE_ROOT` + `WOGI_REPO_NAME != "manager"`); interactive users unchanged.
+  - Rewrote `lib/wogi-claude-expect.exp` with rolling buffer + ANSI strip (CSI, 8-bit CSI, OSC, ISO 2022) + bounded elapsed-time window. Replaced `eval spawn` with `spawn {*}$claude_args` to eliminate Tcl bracket injection.
+  - No blind fallback — misses degrade to the same failure mode as running without wrapper (safe).
+  - All 6 review findings from `/wogi-review + /wogi-audit` shipped in-release (Sec #1/2/3, Arch #4/5/6). No deferrals.
+
+### Tests
+- `tests/flow-wogi-claude-wrapper.test.js` — 19 cases covering precedence tree, worker auto-enable, three-way kill-switch, fragmented-ANSI dismissal, OSC+8-bit+ISO 2022 dismissal, bounded-window EOF exit.
+- `tests/flow-task-boundary-reset.test.js` (new) — 8 cases for the Phase 1 state machine (fresh+nomarker marks; marker-present skips; anti-replay; new-task marks; stale skips; empty; legacy no-completedAt).
+- Total 47/47 pass across wrapper + task-boundary + restart-handoff tests. Lint clean (0 errors).
+
+### Known test-harness trick
+- `lib/wogi-claude-expect.exp` has a `WOGI_EXPECT_NO_INTERACT=1` test hook that swaps `interact` for `expect eof` so node:test (pipe-backed stdin, no TTY) can verify dialog dismissal. Production callers MUST NOT set this — users need `interact` to drive claude after dismissal. Documented inline.
+
+### Next Session
+- Uncommitted working-tree changes pre-date this session and are NOT from this work: `.workflow/state/pending-skill.json`, `registry-manifest.json`, `CLAUDE.md`, deleted `.template` files. These are prior in-progress state — user's call whether to clean up or keep.
+- Pending queue still includes: wf-94cc3b72 epic (Ready) + 6 blocked tasks. Use `/wogi-ready` to view.
+- Prior handoff notes below remain relevant for the wf-d3e67abe / wf-63c0f4cc stories.
+
+### Constraints confirmed by user this session
+- "No compromises / no deferrals" — all 6 review findings shipped in release, zero deferred.
+- "Challenge your recommendations" — user pushed back twice; each round tightened the solution (no blind fallback, no global default flip, no test-only production hooks without explicit gating).
+
+---
+
+
 ---
 
 ## Last Updated
