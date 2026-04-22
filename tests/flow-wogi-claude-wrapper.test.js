@@ -61,13 +61,19 @@ function runWrapper(args, env = {}) {
   const pwd = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-claude-cwd-'));
   fs.mkdirSync(path.join(pwd, '.workflow', 'state'), { recursive: true });
   try {
-    // Redirect stderr to file so we can assert on wrapper diagnostic messages
+    // Redirect stderr to file so we can assert on wrapper diagnostic messages.
+    // WOGI_EXPECT_NO_INTERACT=1 is set so the expect script uses `expect eof`
+    // instead of `interact` — interact requires a real TTY on stdin and this
+    // harness runs the wrapper via execSync with pipe-backed stdin. Production
+    // workers get real TTYs from `flow workspace start` so this env var MUST
+    // NOT be set outside the test harness.
     const result = execSync(`bash ${WRAPPER} ${args} 2>${stderrLog}`, {
       cwd: pwd,
       env: {
         PATH: process.env.PATH,
         WOGI_CLAUDE_BIN: fake,
         WOGI_TEST_LOG: log,
+        WOGI_EXPECT_NO_INTERACT: '1',
         ...env
       },
       encoding: 'utf-8',

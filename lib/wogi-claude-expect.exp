@@ -16,22 +16,38 @@
 # interleaved with ANSI color codes, so the literal phrase rarely arrived
 # in a single buffer and the regex missed. Workers deadlocked.
 #
-# v2.26.2 rewrite (this file) solves it with three properties:
-#   1. Rolling buffer — accumulate every chunk into one growing string,
-#      match against the whole buffer on each iteration, not per-chunk.
-#   2. ANSI strip — remove CSI / OSC escape sequences before matching,
-#      so the color-interleaved Ink output normalizes to plain text.
-#   3. Bounded elapsed-time window — stop accumulating after
-#      WOGI_EXPECT_TIMEOUT seconds (default 30). Without this, a very
-#      chatty claude startup with no dialog would keep exp_continue'ing
-#      forever until the per-iteration timeout.
+# v2.26.2 rewrite (DEPRECATED): rolling buffer + ANSI strip + timed window.
+# Fixed the per-chunk brittleness but introduced a WORSE bug: the
+# `expect { -re ".+" {...} }` watch-loop OWNS stdin while it runs. If the
+# dialog title text didn't match (e.g., Ink rendered differently in a new
+# Claude Code version, terminal line-wrapped mid-phrase, or the user's
+# terminal injected extra escape sequences), user keystrokes during the
+# 30-second watch window were captured by expect and NEVER forwarded to
+# claude. The dialog appeared frozen — Enter did nothing, letters went to
+# expect's buffer and were echoed to stray terminal positions. Reported
+# 2026-04-22.
 #
-# NO BLIND FALLBACK. If the window elapses without matching, we hand off
-# to interact unchanged. Sending a speculative \r to claude in server:
-# mode mid-startup is not safe (server-mode input handling is not a
-# standard REPL and could corrupt the handshake). Miss = same failure
-# mode as running claude without this wrapper. Worker retries via
-# wogi-claude's restart loop.
+# v2.26.3 (this file) solves both failure modes by using expect's
+# `interact -o` pattern instead of watch-then-handoff:
+#
+#   1. `interact` starts immediately after spawn. From second zero, user
+#      stdin is forwarded to claude — ZERO stdin capture.
+#   2. The `-o -re <pattern>` trigger watches CHILD output for the dialog
+#      phrase while stdin flows freely. When matched, we inject \r to
+#      accept the default-highlighted "I am using this for local
+#      development" option.
+#   3. Graceful fallback: if the pattern never matches (new CC dialog
+#      text, terminal weirdness), the user simply sees the dialog and
+#      presses 1+Enter themselves. No 30-second stdin black hole. Worst
+#      case = same as running claude without this wrapper. Best case =
+#      zero-click dismiss.
+#   4. A `_wogi_dismissed` flag prevents re-firing Enter if the phrase
+#      reappears later in chat output (paranoid safety).
+#
+# Pattern tolerance: `Loading.{0,20}development.{0,20}channels` matches
+# the phrase with up to 20 arbitrary bytes between each word, covering
+# ANSI color codes Ink inserts mid-rendering without requiring explicit
+# ANSI stripping (interact doesn't natively support it).
 #
 # Usage (invoked from lib/wogi-claude):
 #   expect wogi-claude-expect.exp /absolute/path/to/claude [args...]
@@ -63,76 +79,75 @@ set claude_args [lrange $argv 1 end]
 # expands the list without reparsing.
 spawn $claude_bin {*}$claude_args
 
-# --- Dialog dismissal watch ---
-#
-# dialog_buf accumulates raw stdout chunks. After each chunk we strip ANSI
-# escapes into `plain` and substring-search for the dialog title text. If
-# found, we send Enter (accepts the default-highlighted "I am using this
-# for local development" option). Otherwise we exp_continue until either
-# the total elapsed time exceeds $timeout or EOF.
-set dialog_buf ""
-set start_ts [clock seconds]
+# ============================================================================
+# Test-mode branch (WOGI_EXPECT_NO_INTERACT=1): use the v2.26.2 expect +
+# rolling-buffer + ANSI-strip approach, followed by `expect eof`. Behavioural
+# tests can observe the child receiving our \r keystroke via a fake claude
+# that reads stdin and logs; interact would require a real TTY and CI stdin
+# pipes break it. Production users MUST NOT set this env var.
+# ============================================================================
+if {[info exists env(WOGI_EXPECT_NO_INTERACT)] && $env(WOGI_EXPECT_NO_INTERACT) eq "1"} {
+    set dialog_buf ""
+    set start_ts [clock seconds]
 
-expect {
-    -re "(.+)" {
-        append dialog_buf $expect_out(1,string)
+    expect {
+        -re "(.+)" {
+            append dialog_buf $expect_out(1,string)
 
-        # Strip ANSI CSI sequences (colors, cursor moves): ESC [ ... letter
-        regsub -all {\x1b\[[0-9;?]*[a-zA-Z]} $dialog_buf "" plain
-        # Strip 8-bit CSI form (0x9B byte instead of ESC [), same terminator
-        regsub -all {\x9b[0-9;?]*[a-zA-Z]} $plain "" plain
-        # Strip OSC sequences (titles, hyperlinks): ESC ] ... BEL
-        regsub -all {\x1b\][^\x07]*\x07} $plain "" plain
-        # Strip ISO 2022 charset-selection sequences: ESC ( B, ESC ) 0, etc.
-        regsub -all {\x1b[\(\)\*\+\-\.\/][\x20-\x7e]} $plain "" plain
-        # Strip bare ESC that didn't belong to a recognized sequence
-        regsub -all {\x1b} $plain "" plain
+            # Strip ANSI CSI sequences (colors, cursor moves): ESC [ ... letter
+            regsub -all {\x1b\[[0-9;?]*[a-zA-Z]} $dialog_buf "" plain
+            # Strip 8-bit CSI form (0x9B byte instead of ESC [), same terminator
+            regsub -all {\x9b[0-9;?]*[a-zA-Z]} $plain "" plain
+            # Strip OSC sequences (titles, hyperlinks): ESC ] ... BEL
+            regsub -all {\x1b\][^\x07]*\x07} $plain "" plain
+            # Strip ISO 2022 charset-selection sequences: ESC ( B, ESC ) 0, etc.
+            regsub -all {\x1b[\(\)\*\+\-\.\/][\x20-\x7e]} $plain "" plain
+            # Strip bare ESC that didn't belong to a recognized sequence
+            regsub -all {\x1b} $plain "" plain
 
-        if {[string first "Loading development channels" $plain] >= 0} {
-            # Let Ink finish rendering the select-input component before
-            # sending Enter — without this the keystroke can land before
-            # the keyboard listener binds and gets dropped.
-            after 250
-            send "\r"
-            # Fall through to interact — dialog is dismissed, user drives
-            # from here.
-        } else {
-            # Bound total accumulation by elapsed wall-clock time so we
-            # don't exp_continue forever on a chatty startup with no
-            # dialog.
-            set elapsed [expr {[clock seconds] - $start_ts}]
-            if {$elapsed < $timeout} {
-                # Cap buffer at 64KB to prevent runaway memory on a very
-                # long startup that never shows the dialog. Keep the tail
-                # half so any late-arriving title text still matches.
-                if {[string length $dialog_buf] > 65536} {
-                    set dialog_buf [string range $dialog_buf 32768 end]
+            if {[string first "Loading development channels" $plain] >= 0} {
+                after 250
+                send "\r"
+            } else {
+                set elapsed [expr {[clock seconds] - $start_ts}]
+                if {$elapsed < $timeout} {
+                    if {[string length $dialog_buf] > 65536} {
+                        set dialog_buf [string range $dialog_buf 32768 end]
+                    }
+                    exp_continue
                 }
-                exp_continue
             }
-            # Elapsed >= timeout: fall through to interact without
-            # dismissing. Same failure mode as running claude without
-            # this wrapper.
         }
+        timeout { }
+        eof { exit }
     }
-    timeout { }
-    eof { exit }
+    expect eof
+    exit
 }
 
-# Hand off: user's keystrokes flow to claude, claude's output flows to
-# the user's terminal. interact blocks until claude exits.
-#
-# Test hook: set WOGI_EXPECT_NO_INTERACT=1 to substitute `expect eof`.
-# `interact` requires a real TTY on stdin; under node:test / CI with
-# pipe-backed stdin it closes the PTY before our sent \r flushes to the
-# child. The test harness sets this env var so the behavioral tests (dialog
-# dismissal, ANSI fragmentation) can actually observe the child receiving
-# the keystroke. Production callers MUST NOT set this — users need
-# interact to drive claude after the dialog dismisses.
-if {[info exists env(WOGI_EXPECT_NO_INTERACT)] && $env(WOGI_EXPECT_NO_INTERACT) eq "1"} {
-    expect eof
-} else {
-    interact
+# ============================================================================
+# Production branch: interact with output trigger. Stdin flows to claude
+# from second zero — user keystrokes are NEVER captured by expect. When the
+# dialog phrase appears in child output, we inject Enter. Graceful fallback
+# on mismatch: user sees the dialog, presses 1+Enter themselves, no harm.
+# ============================================================================
+set _wogi_dismissed 0
+
+interact {
+    -o
+    -re "Loading.{0,20}development.{0,20}channels" {
+        global _wogi_dismissed
+        if {!$_wogi_dismissed} {
+            set _wogi_dismissed 1
+            # Let Ink finish rendering the SelectInput component and bind its
+            # keyboard listener before injecting Enter. 500ms is generous —
+            # typical Ink reconciliation is <50ms but cold startups can be
+            # slower. If this fires before the listener binds, the user's
+            # own Enter keystroke (which we no longer capture) still works.
+            after 500
+            send "\r"
+        }
+    }
 }
 
 # Pass claude's exit status — wrapper cares about the restart flag file,

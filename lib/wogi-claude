@@ -56,11 +56,13 @@ WOGI_EXPECT_SCRIPT="$WOGI_CLAUDE_DIR/wogi-claude-expect.exp"
 # default remains opt-in — the v2.22.3 regression (expect's text match miss on
 # Ink ANSI output) is bounded to users who explicitly asked for expect.
 #
-# The rewritten wogi-claude-expect.exp (v2.26.2) replaces the old brittle
-# per-chunk text match with: rolling buffer + ANSI strip + bounded elapsed-time
-# window. Misses fall back to the same failure mode as running claude without
-# the wrapper (dialog stays up until someone presses Enter) — no unsafe blind
-# keystrokes injected into server-mode Claude.
+# v2.26.3: the expect script now uses `interact -o -re` from second zero —
+# stdin flows to claude throughout, so user keystrokes are NEVER captured
+# by expect. The v2.26.2 approach (rolling buffer + ANSI strip in an expect
+# watch block) had a worse failure mode: on match miss, expect owned stdin
+# for 30s and user keystrokes went into its buffer, making the dialog
+# appear frozen. The new interact approach falls back gracefully — mismatch
+# just means the user dismisses the dialog themselves, no black hole.
 
 __wogi_is_worker=0
 if [ -n "${WOGI_WORKSPACE_ROOT:-}" ] && [ -n "${WOGI_REPO_NAME:-}" ] && \
