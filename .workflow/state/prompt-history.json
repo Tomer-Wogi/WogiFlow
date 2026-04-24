@@ -2,16 +2,6 @@
   "version": 2,
   "prompts": [
     {
-      "timestamp": "2026-02-25T09:49:15.281Z",
-      "content": "So let's skip it \nWhat else do we have on the roadmap? ",
-      "taskId": "wf-postinstall",
-      "taskTitle": null,
-      "isRefinement": false,
-      "isInitial": false,
-      "sessionId": null,
-      "source": "migrated-v1"
-    },
-    {
       "timestamp": "2026-02-25T09:51:49.813Z",
       "content": "ok let's continue with t3 ",
       "taskId": "wf-postinstall",
@@ -4920,6 +4910,15 @@
       "content": "Add a way for users to filter the customer list by status.\n",
       "taskId": "wf-smoke",
       "taskTitle": "framing-pass:wf-smoke",
+      "isRefinement": false,
+      "sessionId": null,
+      "source": "hook"
+    },
+    {
+      "timestamp": "2026-04-24T17:17:26.934Z",
+      "content": "# Task Input — wf-8294d960\n\nInvestigate and fix worker boot latency: users report 20-30s unresponsive keystroke window after worker terminal appears. Keystrokes visually echo to TTY but don't register with Ink until the window passes. Must produce instrumented measurement (not speculation) → data-backed root cause → targeted fix per user-confirmed scenario.\n\nConstraints:\n- Investigation-first: NO code fix until root cause measured\n- User quality bar: production-grade, no compromises\n- Phase 1.5 gate: user confirms scenario before Phase 2 implementation\n- Fix hook three-layer violation: `scripts/hooks/entry/claude-code/session-start.js` is 329 LOC (rule: ≤120 LOC)\n- Cross-terminal test: iTerm2, native Terminal.app, Alacritty, Ghostty\n\nOrigin: pending item #4 expanded → epic wf-a48fafdd (autonomous epic execution) → Story A ships first because rest of epic can't be validated if worker boot is broken.\n",
+      "taskId": "wf-8294d960",
+      "taskTitle": "framing-pass:wf-8294d960",
       "isRefinement": false,
       "sessionId": null,
       "source": "hook"

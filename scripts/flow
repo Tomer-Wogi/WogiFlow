@@ -541,6 +541,12 @@ case "${1:-}" in
     memory)
         node "$SCRIPT_DIR/flow-memory.js" "${@:2}"
         ;;
+    feature-dossier|dossier)
+        node "$SCRIPT_DIR/flow-feature-dossier.js" "${@:2}"
+        ;;
+    logic-rules)
+        node "$SCRIPT_DIR/flow-logic-rules.js" "${@:2}"
+        ;;
     skill-create)
         node "$SCRIPT_DIR/flow-skill-create.js" "${@:2}"
         ;;

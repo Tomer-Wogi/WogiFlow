@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedBy": "wogiflow@2.26.3",
-  "generatedAt": "2026-04-24T08:54:22.582Z",
+  "generatedBy": "wogiflow@2.27.0",
+  "generatedAt": "2026-04-24T14:32:31.245Z",
   "files": [
     "commands/wogi-audit.md",
     "commands/wogi-bug.md",
@@ -161,8 +161,12 @@
     "rules/_internal/github-releases.md",
     "rules/_internal/model-management.md",
     "rules/_internal/self-maintenance.md",
+    "rules/_internal/worker-tool-first-turn.md",
+    "rules/alternative-execpolicy-toml-command-policy.md",
     "rules/alternative-hand-edit-ready-json-to-register-orpha.md",
+    "rules/alternative-permission-ruleset-per-phase.md",
     "rules/alternative-short-name.md",
+    "rules/alternative-wogi-flow-as-mcp-client-oauth-manager.md",
     "rules/architecture/component-reuse.md",
     "rules/architecture/hook-three-layer.md",
     "rules/code-style/naming-conventions.md",

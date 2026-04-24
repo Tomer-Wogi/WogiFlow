@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "patterns": [],
+  "slugs": {
+    "feature-dossier-system": {
+      "title": "Feature Dossier + Logic Rules System",
+      "created": "2026-04-24",
+      "owners": [
+        "core"
+      ]
+    }
+  },
+  "lastUpdated": "2026-04-24T18:48:51.064Z"
+}

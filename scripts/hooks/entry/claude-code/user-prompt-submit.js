@@ -13,6 +13,7 @@ const { checkResearchRequirement } = require('../../core/research-gate');
 const { setRoutingPending, clearRoutingPending, ROUTING_CLEARED_PATH } = require('../../core/routing-gate');
 const { getPhaseContextPrompt } = require('../../core/phase-gate');
 const { buildOverdueContext } = require('../../core/overdue-dispatches');
+const { getDossierInjection } = require('../../core/feature-dossier-gate');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
 const { spawnBackgroundDetection } = require('../../../flow-correction-detector');
@@ -133,6 +134,22 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
     if (process.env.DEBUG) {
       console.error(`[Hook] Phase context injection failed: ${err.message}`);
     }
+  }
+
+  // wf-557cf08a — Feature dossier + logic rules auto-injection.
+  // Surfaces canonical per-feature knowledge and cross-cutting logic rules
+  // into the phase prompt so Claude doesn't have to fetch them under token
+  // pressure. Fail-open: returns null on any error.
+  let dossierPrompt = null;
+  try {
+    dossierPrompt = getDossierInjection();
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Hook] Dossier injection failed: ${err.message}`);
+    }
+  }
+  if (dossierPrompt) {
+    phasePrompt = phasePrompt ? `${phasePrompt}\n\n${dossierPrompt}` : dossierPrompt;
   }
 
   // Check research gate first (before implementation gate)

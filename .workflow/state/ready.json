@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T18:22:10.852Z",
+  "lastUpdated": "2026-04-24T18:53:59.109Z",
   "inProgress": [],
   "ready": [
     {
@@ -104,6 +104,30 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-557cf08a",
+      "title": "Feature Dossier + Logic Rules System with mechanical auto-injection",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-24T18:39:22.986Z",
+      "startedAt": "2026-04-24T18:39:22.986Z",
+      "criteria": [
+        "flow-feature-dossier.js library with matchFeatures/loadDossier/scaffoldDossier/appendEvent/validateSpec/detectDrift + CLI",
+        "flow-logic-rules.js library with listRules/matchRulesForFiles/checkPropagation/detectViolations + CLI",
+        ".workflow/features/ directory with README, index.json, _template.md, _logic-rules.md",
+        "feature-dossier-gate hook injects matching dossiers + rules into phase context on exploring/spec_review/coding",
+        "Contradiction gate blocks spec approval when spec conflicts with dossier canonical claims",
+        "Drift detector CLI subcommand greps codebase for patterns the dossier claims were removed",
+        "config.json featureDossier block added with enabled/autoMatchConfidence/blockOnContradiction/driftCheckOnSessionStart",
+        "CLAUDE.md rule section added explaining feature dossier system",
+        "Workspace-mode path resolution: .workspace/features/ for cross-repo, .workflow/features/ for per-repo",
+        "Unit tests for dossier + logic rules libraries"
+      ],
+      "notes": "User pre-authorized YOLO autonomous implementation (~1h window). Skip spec approval gate.",
+      "completedAt": "2026-04-24T18:53:59.108Z"
+    },
     {
       "id": "wf-8294d960",
       "title": "Worker Boot Latency Fix (Ink-readiness detection + SessionStart parallelization)",

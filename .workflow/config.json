@@ -42,6 +42,13 @@
   "componentReuse": {
     "enabled": false
   },
+  "_comment_featureDossier": "wf-557cf08a — Feature dossier + logic rules system. Auto-injects per-feature canonical knowledge (rejected alternatives, removed elements, contracts) and cross-cutting logic rules into phase context. enabled: master switch. autoMatchConfidence: minimum match score for a dossier to be injected (0-5). blockOnContradiction: if true, /wogi-story blocks spec approval when the spec contradicts an active dossier. driftCheckOnSessionStart: run drift detector on session start. See .workflow/dossiers/README.md.",
+  "featureDossier": {
+    "enabled": true,
+    "autoMatchConfidence": 1,
+    "blockOnContradiction": true,
+    "driftCheckOnSessionStart": false
+  },
   "skills": {
     "installed": [
       "figma-analyzer"
