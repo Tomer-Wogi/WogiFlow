@@ -757,9 +757,10 @@ None
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
     "Completed: Silent-worker-halt detection via dispatch-tracking",
-    "Completed: Enhance /wogi-story with P0 specification-quality gates"
+    "Completed: Enhance /wogi-story with P0 specification-quality gates",
+    "Completed: Main-mode question classifier auto-defers task-boundary restart"
   ],
-  "lastUpdated": "2026-04-17T10:19:04.731Z",
+  "lastUpdated": "2026-04-24T09:29:18.255Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

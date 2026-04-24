@@ -155,9 +155,13 @@ function checkPreconditions() {
  * Returns a result object for diagnostics; never throws. If something goes
  * wrong, the Stop hook should continue with its normal flow.
  *
- * @returns {{ triggered: boolean, reason?: string, flagPath?: string, parentPid?: number }}
+ * @param {Object} [opts]
+ * @param {string} [opts.transcriptPath] - Claude Code transcript path, used by
+ *   the main-mode question classifier safety net. When absent, the classifier
+ *   step is skipped (fail-open).
+ * @returns {Promise<{ triggered: boolean, reason?: string, flagPath?: string, parentPid?: number }>}
  */
-function consumeAndTriggerRestart() {
+async function consumeAndTriggerRestart(opts = {}) {
   const markerPath = getPendingMarkerPath();
   if (!fs.existsSync(markerPath)) {
     return { triggered: false, reason: 'no-pending-marker' };
@@ -172,6 +176,42 @@ function consumeAndTriggerRestart() {
       return { triggered: false, reason: 'pending-question-deferred' };
     }
   } catch (_err) { /* flow-ask may not be present in older installs; degrade open */ }
+
+  // Main-mode question classifier safety net (wf-191d5f6e). Catches the case
+  // where the AI ends a turn with an open user-facing question but forgot to
+  // call `flow ask` first. On a YES classification, auto-write the
+  // pending-question marker and defer the restart. Fail-open throughout —
+  // any error or skip falls through to normal restart logic.
+  try {
+    const isWorker = process.env.WOGI_WORKSPACE_ROOT &&
+                     process.env.WOGI_REPO_NAME &&
+                     process.env.WOGI_REPO_NAME !== 'manager';
+    if (!isWorker) {
+      const config = getConfig();
+      const clf = config.mainModeQuestionClassifier;
+      const enabled = clf?.enabled !== false;  // default true
+      if (enabled && opts.transcriptPath) {
+        const { classifyQuestion } = require('../../flow-worker-question-classifier');
+        const result = await classifyQuestion({
+          mode: 'main',
+          transcriptPath: opts.transcriptPath,
+          minConfidence: Number.isFinite(clf?.minConfidence) ? clf.minConfidence : 70,
+          model: typeof clf?.model === 'string' ? clf.model : undefined
+        });
+        if (result?.blocked) {
+          try {
+            const { markQuestionPending } = require('../../flow-ask');
+            markQuestionPending(`auto-deferred: ${String(result.reason || 'classifier detected open question').slice(0, 500)}`);
+          } catch (_err) { /* best effort — marker write failure falls through to restart */ }
+          return { triggered: false, reason: 'auto-deferred-question-detected' };
+        }
+      }
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[task-boundary-reset] main-mode classifier error (fail-open): ${err.message}`);
+    }
+  }
 
   const pre = checkPreconditions();
   if (!pre.ready) {
@@ -352,8 +392,14 @@ if (require.main === module) {
     process.exit(0);
   }
   if (arg === 'consume') {
-    console.log(JSON.stringify(consumeAndTriggerRestart(), null, 2));
-    process.exit(0);
+    consumeAndTriggerRestart().then((r) => {
+      console.log(JSON.stringify(r, null, 2));
+      process.exit(0);
+    }).catch((err) => {
+      console.error(err.message);
+      process.exit(1);
+    });
+    return;
   }
   console.log('Usage: node task-boundary-reset.js <check|has-pending|mark|consume>');
   process.exit(2);

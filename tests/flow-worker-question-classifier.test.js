@@ -19,10 +19,12 @@ const path = require('node:path');
 console.log = () => {}; console.warn = () => {}; console.error = () => {};
 
 const {
+  classifyQuestion,
   classifyWorkerQuestion,
   extractLastAssistantMessage,
   extractAssistantText,
   buildClassifierPrompt,
+  buildMainModePrompt,
   hasDangerousKeys,
   DEFAULT_MIN_CONFIDENCE,
   DEFAULT_MODEL
@@ -238,13 +240,90 @@ describe('classifyWorkerQuestion — fail-open paths (no live API)', () => {
 
 describe('exports', () => {
   it('exports the documented public API', () => {
+    assert.ok(typeof classifyQuestion === 'function');
     assert.ok(typeof classifyWorkerQuestion === 'function');
     assert.ok(typeof extractLastAssistantMessage === 'function');
     assert.ok(typeof extractAssistantText === 'function');
     assert.ok(typeof buildClassifierPrompt === 'function');
+    assert.ok(typeof buildMainModePrompt === 'function');
     assert.ok(typeof hasDangerousKeys === 'function');
     assert.equal(typeof DEFAULT_MIN_CONFIDENCE, 'number');
     assert.equal(typeof DEFAULT_MODEL, 'string');
     assert.ok(DEFAULT_MODEL.includes('haiku'), 'default model should be haiku');
+  });
+});
+
+describe('buildMainModePrompt', () => {
+  it('frames prompt for SOLO/main-mode sessions, not worker', () => {
+    const p = buildMainModePrompt('any message');
+    assert.ok(p.includes('SOLO'), 'main-mode prompt must frame session as SOLO');
+    assert.ok(!p.includes('WORKSPACE WORKER'), 'main-mode prompt must NOT reuse worker framing');
+    assert.ok(p.includes('task-boundary') || p.includes('flow ask'), 'mentions the deferral context');
+  });
+
+  it('embeds message between MESSAGE_START and MESSAGE_END markers', () => {
+    const p = buildMainModePrompt('Option A or B?');
+    assert.ok(p.includes('[MESSAGE_START]\nOption A or B?\n[MESSAGE_END]'));
+  });
+
+  it('requests structured JSON output matching the worker schema', () => {
+    const p = buildMainModePrompt('x');
+    assert.ok(p.includes('"isUserQuestion"'));
+    assert.ok(p.includes('"confidence"'));
+    assert.ok(p.includes('"reason"'));
+  });
+
+  it('caps message length to MAX_MESSAGE_CHARS (8000)', () => {
+    const long = 'a'.repeat(20000);
+    const p = buildMainModePrompt(long);
+    const aCount = (p.match(/a/g) || []).length;
+    assert.ok(aCount <= 8100, `message should be capped; got ${aCount} a's in prompt`);
+  });
+});
+
+describe('classifyQuestion — fail-open paths (main mode)', () => {
+  it('returns classified:false with no-credentials when ANTHROPIC_API_KEY absent', async () => {
+    const prev = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const r = await classifyQuestion({ mode: 'main', transcriptPath: '/tmp/x' });
+      assert.equal(r.classified, false);
+      assert.equal(r.reason, 'no-credentials');
+    } finally {
+      if (prev) process.env.ANTHROPIC_API_KEY = prev;
+    }
+  });
+
+  it('returns classified:false with no-transcript-path when path missing', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-fake';
+    try {
+      const r = await classifyQuestion({ mode: 'main' });
+      assert.equal(r.classified, false);
+      assert.equal(r.reason, 'no-transcript-path');
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+    }
+  });
+
+  it('returns classified:false with no-last-message for empty transcript', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-fake';
+    const file = withTranscript([]);
+    try {
+      const r = await classifyQuestion({ mode: 'main', transcriptPath: file });
+      assert.equal(r.classified, false);
+      assert.equal(r.reason, 'no-last-message');
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+    }
+  });
+
+  it('defaults mode to worker when mode param is missing or invalid', async () => {
+    // Both should follow the worker prompt path — easiest proxy: the fail-open
+    // reason is identical regardless of mode, so we check that classifyQuestion
+    // without mode matches classifyWorkerQuestion behavior.
+    const a = await classifyQuestion({ transcriptPath: '/tmp/nope' });
+    const b = await classifyWorkerQuestion({ transcriptPath: '/tmp/nope' });
+    assert.equal(a.classified, b.classified);
+    assert.equal(a.reason, b.reason);
   });
 });

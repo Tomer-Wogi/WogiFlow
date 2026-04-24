@@ -2,6 +2,9 @@
 
 ## 2026-04
 
+### Week 4 (Apr 19-25)
+- [x] wf-191d5f6e: Main-mode question classifier auto-defers task-boundary restart (Apr 24)
+
 ### Week 3 (Apr 12-18)
 - [x] wf-63c0f4cc: Enhance /wogi-story with P0 specification-quality gates (Apr 17)
 - [x] wf-d3e67abe: Silent-worker-halt detection via dispatch-tracking (Apr 17)

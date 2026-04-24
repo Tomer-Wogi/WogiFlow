@@ -183,3 +183,57 @@ describe('task-boundary-reset — Stop-hook fallback (ensurePhase1MarkedIfRecent
     });
   });
 });
+
+describe('task-boundary-reset — consumeAndTriggerRestart async + main-mode classifier safety net', () => {
+  it('consumeAndTriggerRestart is async and returns a Promise', () => {
+    withProject((_tmp, tbr) => {
+      const ret = tbr.consumeAndTriggerRestart();
+      assert.ok(ret && typeof ret.then === 'function', 'must return a thenable (Promise)');
+      return ret.then((r) => {
+        // No marker present → returns no-pending-marker sync-resolved.
+        assert.strictEqual(r.triggered, false);
+        assert.strictEqual(r.reason, 'no-pending-marker');
+      });
+    });
+  });
+
+  it('returns no-pending-marker when marker absent (no classifier call)', async () => {
+    await new Promise((resolve) => {
+      withProject(async (_tmp, tbr) => {
+        const r = await tbr.consumeAndTriggerRestart({ transcriptPath: '/tmp/anything' });
+        assert.strictEqual(r.triggered, false);
+        assert.strictEqual(r.reason, 'no-pending-marker');
+        resolve();
+      });
+    });
+  });
+
+  it('classifier path fails open when ANTHROPIC_API_KEY absent (no wrapper env) — restart still skipped due to no-wrapper-pid', async () => {
+    const prevKey = process.env.ANTHROPIC_API_KEY;
+    const prevPid = process.env.WOGI_WRAPPER_PID;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.WOGI_WRAPPER_PID;
+    try {
+      await new Promise((resolve) => {
+        withProject(async (_tmp, tbr) => {
+          // Write the marker so the classifier path is reachable.
+          tbr.markRestartPending({ taskId: 'wf-test0001', source: 'test' });
+          const r = await tbr.consumeAndTriggerRestart({ transcriptPath: '/tmp/nosuch' });
+          // Classifier short-circuits on no-credentials; wrapper preconditions then fail.
+          // Either reason is acceptable; the key assertion is no throw and triggered:false.
+          assert.strictEqual(r.triggered, false);
+          assert.ok(
+            ['no-wrapper-pid', 'no-flag-path', 'auto-deferred-question-detected'].includes(r.reason) ||
+              r.reason.startsWith('config-error') || r.reason === 'disabled-by-config',
+            `unexpected reason: ${r.reason}`
+          );
+          resolve();
+        });
+      });
+    } finally {
+      if (prevKey) process.env.ANTHROPIC_API_KEY = prevKey;
+      if (prevPid) process.env.WOGI_WRAPPER_PID = prevPid;
+    }
+  });
+});
+

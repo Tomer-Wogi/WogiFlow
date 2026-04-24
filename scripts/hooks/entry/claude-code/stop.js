@@ -220,7 +220,9 @@ runHook('Stop', async ({ parsedInput }) => {
       }
     }
 
-    const restartResult = consumeAndTriggerRestart();
+    const restartResult = await consumeAndTriggerRestart({
+      transcriptPath: parsedInput?.transcriptPath
+    });
     if (restartResult.triggered) {
       if (process.env.DEBUG) {
         console.error(`[Stop] Task-boundary restart triggered — claude will exit, wrapper will relaunch`);

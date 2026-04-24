@@ -113,6 +113,22 @@ Evidence is cleared at task start, session end, and post-compaction so each task
 
 ---
 
+### Main-Mode Question Classifier (Task-Boundary Restart Safety Net)
+
+**Applies to**: solo / main-mode sessions with `taskBoundaryReset.enabled: true` (no workspace env vars set).
+
+**Rule**: Before the Stop hook fires SIGTERM to trigger a task-boundary session restart, a Haiku classifier inspects the final assistant message. If the AI ended the turn with an open user-facing question AND `.workflow/state/pending-question.json` is absent, the classifier auto-writes the pending-question marker and defers the restart with reason `auto-deferred-question-detected`. The user's next reply then lands in the same session context instead of a fresh one.
+
+**Why this exists**: the AI is supposed to call `flow ask "<question>"` before ending a turn with a user-facing question — that writes the pending-question marker and defers the restart. But "always remember to call `flow ask`" is a behavioral rule that fails under load. This classifier is the mechanical safety net for that failure, mirroring the worker-mode classifier that already exists for the analogous channel-dispatch-forgotten case.
+
+**Fail-open throughout**: missing `ANTHROPIC_API_KEY`, missing transcript path, malformed transcript, classifier error → restart proceeds normally. A silent-restart false-negative (question orphaned) is recoverable via `claude --resume`; a stuck-forever false-positive block would make the feature useless.
+
+**Interaction with manual `flow ask`**: if `pending-question.json` is already present (AI called `flow ask` manually), the existing `hasPendingQuestion()` short-circuit fires FIRST and defers with reason `pending-question-deferred`. The classifier only runs when the manual path was skipped.
+
+**Enforcement**: `scripts/hooks/core/task-boundary-reset.js` → `consumeAndTriggerRestart()`. Config: `mainModeQuestionClassifier.{enabled,minConfidence,model}` (top-level, mirrors `workspace.aiWorkerQuestionClassifier`). Shared classifier: `scripts/flow-worker-question-classifier.js` → `classifyQuestion({ mode: 'main' })`.
+
+---
+
 ### Workspace Worker Silent-Halt Detection
 
 **Applies to**: workspace manager mode.

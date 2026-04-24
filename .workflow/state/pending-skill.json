@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-24T07:06:23.540Z",
+  "markedAt": "2026-04-24T09:14:37.961Z",
   "context": {
-    "args": "Continue work on the WogiFlow improvements epic. Session context mentions pending tasks wf-34290000 and wf-94cc3b72, and an untracked epic file at .workflow/epics/wf-34290000.md. Please load that epic, show current progress, and pick up the next task in sequence."
+    "args": "Extend the Haiku question-classifier (currently workspace-worker-only in scripts/flow-worker-question-classifier.js) to also run in main/solo mode. In consumeAndTriggerRestart() in scripts/hooks/core/task-boundary-reset.js, before SIGTERM: if classifier detects the final assistant message ends with an open question to the user AND .workflow/state/pending-question.json is absent, auto-write the pending-question marker and defer restart with reason 'auto-deferred-question-detected'. Add config key for main-mode toggle (mirror workspace.aiWorkerQuestionClassifier shape). Goal: mechanically prevent the orphaned-question bug where the AI forgets to call `flow ask` before ending a turn with a text question, causing the task-boundary restart to fire and lose the user's answer."
   },
   "status": "pending"
 }
