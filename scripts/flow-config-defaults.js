@@ -958,7 +958,9 @@ const CONFIG_DEFAULTS = {
     _comment: 'Per-task context reset via wogi-claude wrapper. See lib/wogi-claude.',
     enabled: true,
     maxRestartsPerSession: 50,
-    _comment_maxRestartsPerSession: 'Safety cap. The wrapper also has WOGI_MAX_RESTARTS env override.'
+    _comment_maxRestartsPerSession: 'Safety cap. The wrapper also has WOGI_MAX_RESTARTS env override.',
+    autoPickupNextTask: true,
+    _comment_autoPickupNextTask: 'When true, after a clean task completion + restart, the next SessionStart injects an AUTO-PICKUP block instructing the AI to immediately invoke /wogi-start <nextReadyId> instead of asking "what\'s next?". Skipped if pending-question.json exists, ready queue is empty, or this flag is false.'
   },
 
   // --- Contract Surface (Teams-only — activated on wogi login) ---

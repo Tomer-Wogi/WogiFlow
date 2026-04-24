@@ -129,6 +129,28 @@ Evidence is cleared at task start, session end, and post-compaction so each task
 
 ---
 
+### Main-Mode Auto-Pickup After Clean Restart
+
+**Applies to**: solo / main-mode sessions with `taskBoundaryReset.enabled: true` AND `taskBoundaryReset.autoPickupNextTask: true` (default true).
+
+**Rule**: After a task-boundary restart triggered by a clean task completion, the next SessionStart context injects an `AUTO-PICKUP MODE ACTIVE` block naming the next ready task. The AI MUST immediately invoke `Skill(skill="wogi-start", args="<nextReadyId>")` on the first user message regardless of message content — no "what's next?", no summary, no proposing alternatives. This is the main-mode mirror of `workspace.autoPickupChannelDispatches` and the enabler for autonomous epic execution.
+
+**Why this exists**: without it, the AI would ask "what's next?" between every task in a long autonomous run, forcing the user back into the loop. Users running multi-task epics explicitly do not want to be polled at every task boundary. The marker is a single-use file written by `consumeAndTriggerRestart()` only when Phase 2 fires after a CLEAN completion — so errored/blocked/killed tasks do not auto-cascade into the next task.
+
+**Precedence**: pending-question deferral (R-336 / `pending-question.json`) takes priority. If the prior session ended with an open question, that question wins and AUTO-PICKUP is skipped — even if all other conditions hold.
+
+**Fail-open throughout**: missing marker, unreadable `ready.json`, malformed marker, missing config → restart proceeds with the default "Proceed with the user's next instruction" message. A silent miss (no auto-pickup when the user expected it) is recoverable — the user just types the task ID. A stuck false-positive auto-pickup loop on a non-task message would be much worse, hence the marker is single-use.
+
+**Skip conditions** (any one disables AUTO-PICKUP; marker is still consumed):
+1. `pending-question.json` exists (R-336 wins)
+2. `ready.json` `ready` array is empty (nothing to pick up)
+3. `taskBoundaryReset.autoPickupNextTask: false` (explicit opt-out)
+4. Marker absent (no clean completion happened — error or fresh session)
+
+**Enforcement**: `scripts/hooks/core/task-boundary-reset.js` → `writeCleanCompletionMarker()` (write site, in `consumeAndTriggerRestart` right before SIGTERM). `scripts/hooks/core/session-context.js` → `formatContextForInjection()` (read + consume site, after the existing `endReason === 'task-boundary-restart'` branch). Marker file: `.workflow/state/task-boundary-clean-completion.json`.
+
+---
+
 ### Workspace Worker Silent-Halt Detection
 
 **Applies to**: workspace manager mode.

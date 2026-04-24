@@ -51,6 +51,7 @@ const { safeJsonParse } = require('../../flow-io');
 
 const PENDING_MARKER_FILE = 'task-just-completed';
 const LAST_TRIGGERED_FILE = 'task-boundary-last-triggered';
+const CLEAN_COMPLETION_MARKER_FILE = 'task-boundary-clean-completion.json';
 // Window during which a recentlyCompleted[0] entry is considered "fresh
 // enough" to retro-mark Phase 1 from the Stop hook. Large enough to cover
 // a slow quality-gate run; small enough that a session opened hours later
@@ -67,6 +68,31 @@ function getPendingMarkerPath() {
 
 function getLastTriggeredPath() {
   return path.join(PATHS.state, LAST_TRIGGERED_FILE);
+}
+
+function getCleanCompletionMarkerPath() {
+  return path.join(PATHS.state, CLEAN_COMPLETION_MARKER_FILE);
+}
+
+/**
+ * Write the clean-completion marker when Phase 2 successfully restarts after a
+ * cleanly-completed task. The next session's SessionStart hook reads this
+ * marker to decide whether to inject an AUTO-PICKUP block (wf-f267ea2a).
+ *
+ * Best-effort — failure here does NOT abort the restart; auto-pickup just
+ * won't fire for this restart.
+ */
+function writeCleanCompletionMarker(taskId, taskTitle) {
+  try {
+    const p = getCleanCompletionMarkerPath();
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify({
+      version: 1,
+      completedTaskId: taskId || null,
+      completedTaskTitle: taskTitle || null,
+      completedAt: new Date().toISOString()
+    }));
+  } catch (_err) { /* best effort */ }
 }
 
 function readLastTriggered() {
@@ -250,6 +276,13 @@ async function consumeAndTriggerRestart(opts = {}) {
     return { triggered: false, reason: `flag-write-failed: ${err.message}` };
   }
 
+  // Write the clean-completion marker so the NEXT session's SessionStart
+  // hook can inject the AUTO-PICKUP block (wf-f267ea2a). This is gated on
+  // config.taskBoundaryReset.autoPickupNextTask in session-context.js — the
+  // marker is always written here when Phase 2 fires (cheap, harmless), and
+  // session-context decides whether to act on it.
+  writeCleanCompletionMarker(markerPayload?.taskId, markerPayload?.taskTitle);
+
   // SIGTERM our parent (claude). The wrapper sees the flag on claude's exit
   // and restarts. If SIGTERM turns out to not shut claude down cleanly in
   // real testing, try SIGHUP or SIGINT as fallbacks (see spec wf-39e9dc09).
@@ -369,6 +402,8 @@ module.exports = {
   checkPreconditions,
   hasPendingMarker,
   getPendingMarkerPath,
+  getCleanCompletionMarkerPath,
+  writeCleanCompletionMarker,
 
   // Back-compat: earlier code calls this name. Route it to Phase 1 so existing
   // wiring in task-completed.js still does the right thing (mark the marker,

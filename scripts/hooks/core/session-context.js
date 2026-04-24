@@ -138,6 +138,12 @@ const KNOWN_STATE_FILES = new Set([
   '.routing-pending',
   '.routing-cleared',
   '.gates-passed.json',
+
+  // Task-boundary restart machinery (wf-39e9dc09, R-336, wf-f267ea2a)
+  'task-just-completed',
+  'task-boundary-last-triggered',
+  'task-boundary-clean-completion.json',
+  'pending-question.json',
 ]);
 
 /** Known directory names within state/ (not files) */
@@ -869,6 +875,56 @@ function formatContextForInjection(context) {
     }
   } catch (_err) {
     // Non-critical — history file may not exist; continue with normal context
+  }
+
+  // AUTO-PICKUP after clean completion (wf-f267ea2a).
+  // When the prior task completed cleanly AND the ready queue is non-empty AND
+  // no pending-question marker exists, instruct the AI to immediately invoke
+  // /wogi-start <nextReadyId> on the first user message rather than asking
+  // "what's next?". This is the main-mode mirror of workspace.autoPickupChannelDispatches.
+  //
+  // Marker is consumed (deleted) on every SessionStart that observes it,
+  // regardless of whether AUTO-PICKUP fires — so a stale marker can't loop
+  // across unrelated future restarts. Fail-open throughout: any error or
+  // missing config falls back to the default "proceed with next instruction".
+  try {
+    const cleanMarkerPath = path.join(PATHS.state, 'task-boundary-clean-completion.json');
+    if (fs.existsSync(cleanMarkerPath)) {
+      const config = getConfig();
+      const tbr = config.taskBoundaryReset || {};
+      const flagEnabled = tbr.autoPickupNextTask !== false; // default true
+      const pendingQuestionPath = path.join(PATHS.state, 'pending-question.json');
+      const hasPendingQuestion = fs.existsSync(pendingQuestionPath);
+
+      // Read the marker for diagnostic context (which task completed)
+      const markerPayload = safeJsonParse(cleanMarkerPath, null);
+
+      // Find next ready task (FIFO from ready.json's `ready` array)
+      let nextTaskId = null;
+      let nextTaskTitle = null;
+      try {
+        const ready = getReadyData();
+        const queue = Array.isArray(ready?.ready) ? ready.ready : [];
+        if (queue.length > 0) {
+          nextTaskId = queue[0]?.id || null;
+          nextTaskTitle = queue[0]?.title || null;
+        }
+      } catch (_err) { /* fall through — no auto-pickup if ready.json unreadable */ }
+
+      const shouldInject = flagEnabled && !hasPendingQuestion && nextTaskId;
+
+      if (shouldInject) {
+        output += `### ⚡ AUTO-PICKUP MODE ACTIVE\n`;
+        output += `Prior task **${markerPayload?.completedTaskId || 'unknown'}** (${markerPayload?.completedTaskTitle || 'no title'}) completed cleanly. The next ready task is **${nextTaskId}** — ${nextTaskTitle || '(no title)'}.\n\n`;
+        output += `**ON THE FIRST USER MESSAGE IN THIS SESSION (regardless of content): immediately invoke \`Skill(skill="wogi-start", args="${nextTaskId}")\`.**\n\n`;
+        output += `Do NOT ask "what's next?". Do NOT summarize prior work. Do NOT propose alternatives. The user has authorized autonomous continuation across this epic. If you have a question that genuinely cannot be resolved by self-challenge, use \`flow ask "<question>"\` so the next restart defers correctly (R-336).\n\n`;
+      }
+
+      // Always consume the marker (single-use), regardless of whether we injected
+      try { fs.unlinkSync(cleanMarkerPath); } catch (_err) { /* best effort */ }
+    }
+  } catch (_err) {
+    // Non-critical — fall through to default context
   }
 
   // Workspace worker auto-resume (wf-restart-handoff / 2.22.2).

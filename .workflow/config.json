@@ -7,7 +7,9 @@
   },
   "taskBoundaryReset": {
     "enabled": true,
-    "maxRestartsPerSession": 50
+    "maxRestartsPerSession": 50,
+    "_comment_autoPickupNextTask": "When true, after a clean task completion + restart, the next SessionStart injects an AUTO-PICKUP block instructing the AI to immediately invoke /wogi-start <nextReadyId> instead of asking 'what's next?'. Skipped if pending-question.json exists or ready queue is empty.",
+    "autoPickupNextTask": true
   },
   "sessionHydration": {
     "recencyWindowHours": 48
