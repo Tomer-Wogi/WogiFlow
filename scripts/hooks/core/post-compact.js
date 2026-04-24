@@ -184,10 +184,13 @@ function handlePostCompact() {
 
   // 3. Re-set routing-pending flag
   // After compaction, the AI has fresh context and may try to act without routing.
-  // Setting routing-pending ensures the next tool use goes through routing checks.
+  // resetRoutingState() first clears any stale cleared-marker from the pre-compact
+  // turn — otherwise setRoutingPending() would short-circuit on the 15s skill-chain
+  // suppression window and leave the flag unset, creating a bypass.
   let routingReArmed = false;
   try {
-    const { setRoutingPending } = require('./routing-gate');
+    const { setRoutingPending, resetRoutingState } = require('./routing-gate');
+    resetRoutingState();
     setRoutingPending();
     routingReArmed = true;
   } catch (err) {

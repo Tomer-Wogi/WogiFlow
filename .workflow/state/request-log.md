@@ -11,6 +11,15 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-344 | 2026-04-24 12:15
+**Type**: feat
+**Tags**: #task:wf-2c6c8b40 #epic:wf-34290000 #hooks #routing
+**Request**: "G2 Mid-session routing-state-reset fix — reset routing flag on PostCompact + every phase transition"
+**Result**: Added `removeRoutingFlag()` (pending only) + `resetRoutingState()` (both files) to routing-gate. PostCompact now resets before re-arming so a stale cleared-marker can't suppress the re-set. `transitionPhase()` clears stale pending flag on success while preserving the cleared-marker (skill-chain suppression intact).
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/core/post-compact.js, scripts/hooks/core/phase-gate.js, tests/flow-hooks-routing-state-reset.test.js
+
+---
+
 ### R-343 | 2026-04-24 11:30
 **Type**: feat
 **Tags**: #task:wf-b5cd0351 #task:wf-c8754819 #task:wf-8a0fc8ad #epic:wf-34290000 #workstream:G #stop-hook #worker-mode

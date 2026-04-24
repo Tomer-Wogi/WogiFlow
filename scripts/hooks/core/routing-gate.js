@@ -385,6 +385,62 @@ function incrementStopAttempts(maxAttempts = 10) {
   }
 }
 
+/**
+ * Remove the routing-pending flag file WITHOUT writing a cleared-marker.
+ *
+ * Distinct from clearRoutingPending(): that writes a 15s cleared-marker to
+ * suppress re-setting during skill chains. This helper just deletes the flag
+ * so stale pending state (e.g. from a crashed prior turn) can't block tools
+ * on the next check. The cleared-marker path is left untouched — so if a
+ * /wogi-* skill is actively executing, its suppression window is preserved.
+ *
+ * Used by phase transitions: moving between phases should not leave stale
+ * pending flags blocking tools, but must not create a bypass window either.
+ *
+ * @returns {{ removed: boolean }}
+ */
+function removeRoutingFlag() {
+  try {
+    fs.unlinkSync(ROUTING_FLAG_PATH);
+    return { removed: true };
+  } catch (err) {
+    if (err.code === 'ENOENT') return { removed: true };
+    if (process.env.DEBUG) {
+      console.error(`[routing-gate] removeRoutingFlag failed: ${err.message}`);
+    }
+    return { removed: false };
+  }
+}
+
+/**
+ * Reset routing state entirely — delete BOTH the pending flag and the
+ * cleared-marker. Leaves a clean slate so the next UserPromptSubmit re-arms
+ * the gate normally without any inherited bypass window.
+ *
+ * Used by PostCompact: compaction produces fresh context, so any in-flight
+ * skill-chain suppression or stale pending flag from the pre-compact turn
+ * is no longer relevant. Caller is responsible for re-arming via
+ * setRoutingPending() if the post-reset state needs a pending flag.
+ *
+ * @returns {{ reset: boolean }}
+ */
+function resetRoutingState() {
+  let ok = true;
+  for (const p of [ROUTING_FLAG_PATH, ROUTING_CLEARED_PATH]) {
+    try {
+      fs.unlinkSync(p);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        ok = false;
+        if (process.env.DEBUG) {
+          console.error(`[routing-gate] resetRoutingState unlink ${p} failed: ${err.message}`);
+        }
+      }
+    }
+  }
+  return { reset: ok };
+}
+
 module.exports = {
   isRoutingGateEnabled,
   hasActiveTask,
@@ -394,6 +450,8 @@ module.exports = {
   isRoutingRecentlyCleared,
   checkRoutingGate,
   incrementStopAttempts,
+  removeRoutingFlag,
+  resetRoutingState,
   ROUTING_FLAG_PATH,
   ROUTING_CLEARED_PATH
 };

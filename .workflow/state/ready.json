@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T10:29:14.365Z",
+  "lastUpdated": "2026-04-24T10:39:32.065Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -99,20 +99,6 @@
     }
   ],
   "ready": [
-    {
-      "id": "wf-2c6c8b40",
-      "title": "G2 Mid-session routing-state-reset fix",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-2c6c8b40.md"
-    },
     {
       "id": "wf-8e97ac77",
       "title": "D1 MCP OAuth manager (Cline McpHub pattern)",
@@ -301,6 +287,21 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2c6c8b40",
+      "title": "G2 Mid-session routing-state-reset fix",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "G",
+      "bundle": null,
+      "depends": [],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-2c6c8b40.md",
+      "completedAt": "2026-04-24T10:39:32.064Z"
+    },
     {
       "id": "wf-8a0fc8ad",
       "title": "G6 Tool-first turn enforcement for workers",

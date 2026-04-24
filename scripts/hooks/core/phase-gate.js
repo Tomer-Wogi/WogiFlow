@@ -186,12 +186,26 @@ function transitionPhase(from, to, taskId) {
     }
   }
 
-  return writePhaseState({
+  const wrote = writePhaseState({
     phase: to,
     taskId: taskId || current.taskId,
     updatedAt: new Date().toISOString(),
     previousPhase: from
   });
+
+  // Clear any stale routing-pending flag left over from a prior turn when
+  // crossing a phase boundary. Uses removeRoutingFlag() (not clearRoutingPending)
+  // so the cleared-marker is preserved — we don't want to open a 15s bypass
+  // window just because a phase transitioned. Fail-open if the module is
+  // unavailable (e.g. future CLI adapter without routing-gate wired).
+  if (wrote) {
+    try {
+      const { removeRoutingFlag } = require('./routing-gate');
+      removeRoutingFlag();
+    } catch (_err) { /* fail-open */ }
+  }
+
+  return wrote;
 }
 
 /**
