@@ -1513,3 +1513,49 @@ Both new L1 stories need full Architect + Logic Adversary passes (6 open design 
 - **No compromises / no deferrals** — if something is scoped in, it ships. Reordering permitted, skipping not.
 - **100% certainty bar** — if not certain, STOP and ask, do not silently work around.
 - **Spec approval gates honored** — each L1/L0 task pauses at spec_review for user approval before coding.
+
+## Session End: 2026-04-24
+
+### Completed This Session
+- **Epic wf-34290000 Phase 1+2 checkpoint**: 14 of 28 stories formally closed (Workstreams A + B complete, C1, F2)
+- R-327 through R-340 logged in request-log.md
+- Commit `d383bdb`: 68 files, +4827/−342
+- Commit `fc41ad0`: registry manifest auto-scan
+- Two CC-2.1.119 follow-up stories created (wf-ea4751fc native duration_ms; wf-04585518 statusline effort/thinking tokens)
+
+### Stories Closed
+| Workstream | Stories | R-# |
+|------------|---------|-----|
+| A (quick wins) | A1-A5 (5/5) | R-328, R-331, R-329, R-330, R-332 |
+| B (gate hardening) | B1-B7 (7/7) | R-333 through R-338, R-327 |
+| C (context eng, partial) | C1 | R-339 |
+| F (skills, partial) | F2 | R-340 |
+| G (workspace, prior) | G5 | R-323 (commit da98d44) |
+
+### Key insight
+All 14 closed stories had implementation artifacts already in-tree from prior sessions — this session's work was **verification + formal closure** (test runs, request-log entries, ready.json moves), not new code. Raw code landed across prior sessions but was never formally committed + recorded. This commit consolidates it.
+
+### In Progress
+- None — clean inProgress queue
+
+### Next Session — G1 + G4 + G6 Stop hook trio
+- **G1** wf-b5cd0351: Worker-side silent-halt prevention — block end-of-turn on dispatch-receipt turn with zero tool calls
+- **G4** wf-c8754819: Worker text-before-tool-call prevention — EVERY turn after UserPromptSubmit must start with a tool call
+- **G6** wf-8a0fc8ad: Tool-first turn enforcement for workers — first action must be a tool call, not text
+- Integration point: `scripts/hooks/core/stop.js` + worker-mode branches
+- **NOT** overlapping with `wf-d3e67abe` (manager-side overdue detection — already shipped)
+- Starting prompt: *"Continue epic wf-34290000 — pick up G1 + G4 + G6 Stop hook trio."*
+
+### Remaining in epic (11 stories after G1/G4/G6)
+- C2 (memory blocks + memory_propose tool)
+- D1 (MCP OAuth manager), D2 (execpolicy TOML)
+- E1 (parallel-worktree Auto Review — blocked by H1)
+- F1 (skill_manage tool), F3 (fuzzy-match patching)
+- G2 (routing-state-reset fix — **ambiguous scope, needs clarification next session**), G3 (SQLite IPC — highest risk, dedicated session)
+- H1 (YAML modes — 1-2 week, critical path, dedicated session), H2 (permission-ruleset-per-phase — after H1)
+
+### Notes
+- Test suite: 2055/2056 pass; 1 pre-existing phase-read-gate flake (34/34 in isolation — known issue, unrelated)
+- ready.json queue: 4 ready tasks (2 epics + 2 CC-2.1.119 follow-ups); inProgress empty; 39 in recentlyCompleted
+- Commits NOT pushed to remote — user to decide when
+- User directive for remaining sessions: "I want everything done. I don't care about order." — execution order deferred to session-level judgment
