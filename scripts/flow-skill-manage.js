@@ -19,7 +19,7 @@
  */
 
 const store = require('../lib/skill-proposal-store');
-const { success, warn, error: errorMsg, info, colors } = require('./flow-output');
+const { success, error: errorMsg, info, colors } = require('./flow-output');
 
 // ============================================================
 // Arg parsing
@@ -36,6 +36,10 @@ function parseArgs(argv) {
       flags.name = rest[++i];
     } else if (a === '--content') {
       flags.content = rest[++i];
+    } else if (a === '--find') {
+      flags.find = rest[++i];
+    } else if (a === '--replace') {
+      flags.replace = rest[++i];
     } else if (a === '--rationale') {
       flags.rationale = rest[++i];
     } else if (a === '--id') {
@@ -63,6 +67,7 @@ or rejected by the user. No auto-apply.
 Usage:
   flow skill propose --name <n> --content <file> [--rationale <text>]
   flow skill patch   --name <n> --content <file> [--rationale <text>]
+  flow skill patch   --name <n> --find <file> --replace <file> [--rationale <text>]
   flow skill remove  --name <n> [--rationale <text>]
   flow skill promote <name> [--id <proposalId>]
   flow skill reject  <name> [--id <proposalId>]
@@ -71,7 +76,10 @@ Usage:
 
 Actions:
   propose     Stage a new skill. Writes content to .claude/skills/pending/<n>.md
-  patch       Stage an edit to an existing skill.
+  patch       Stage an edit to an existing skill. Use --content for full
+              replacement, or --find + --replace for fuzzy find-replace
+              (tolerates whitespace/line-ending drift; rejects low-confidence
+              matches below skills.fuzzyPatchThreshold, default 0.85).
   remove      Stage a removal of an existing skill.
   promote     Apply a pending proposal (user-only). Moves pending → active,
               applies patch, or archives as appropriate.
@@ -132,12 +140,20 @@ function runPatch(flags) {
     action: 'patch',
     skillName: flags.name,
     contentFile: flags.content,
+    findFile: flags.find,
+    replaceFile: flags.replace,
     rationale: flags.rationale,
     proposedBy: flags.proposedBy,
   });
   success(`Staged patch '${record.skillName}' (${record.id})`);
-  console.log(`  content: ${record.contentPath}`);
-  warn('  Patch applies as a full replacement until F3 fuzzy-match lands (wf-9a969442).');
+  if (record.patchMode === 'fuzzy') {
+    console.log(`  mode:    fuzzy find/replace`);
+    console.log(`  find:    ${record.findPath}`);
+    console.log(`  replace: ${record.replacePath}`);
+  } else {
+    console.log(`  mode:    full replacement`);
+    console.log(`  content: ${record.contentPath}`);
+  }
   return 0;
 }
 

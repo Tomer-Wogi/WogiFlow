@@ -48,7 +48,9 @@
     ],
     "loadLearnings": true,
     "loadConventions": true,
-    "loadAntiPatterns": true
+    "loadAntiPatterns": true,
+    "_comment_fuzzyPatchThreshold": "Minimum similarity (0-1) for `flow skill patch --find/--replace` to apply. Below this, the patch is rejected atomically (active skill untouched). Default 0.85 tolerates whitespace/line-ending drift but rejects line reordering and semantic edits.",
+    "fuzzyPatchThreshold": 0.85
   },
   "hooks": {
     "enabled": false,

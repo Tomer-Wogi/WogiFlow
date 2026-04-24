@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Opus 4.6 audit completed: 11 HIGH, 19 MEDIUM, 29 LOW findings",
     "Phase 1 (critical): All 7 items fixed and committed",
     "Phase 2 (data integrity): In progress",
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
@@ -760,9 +759,10 @@ None
     "Completed: Enhance /wogi-story with P0 specification-quality gates",
     "Completed: Main-mode question classifier auto-defers task-boundary restart",
     "Completed: Auto-pickup next ready task at session restart",
-    "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI"
+    "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
+    "Completed: F3 Fuzzy-match patching for skill edits"
   ],
-  "lastUpdated": "2026-04-24T11:26:35.649Z",
+  "lastUpdated": "2026-04-24T11:52:11.286Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

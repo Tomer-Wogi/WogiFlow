@@ -208,6 +208,149 @@ describe('AC2 — patch round-trip', () => {
 });
 
 // ============================================================
+// AC2 extension (F3): fuzzy patch round-trip
+// ============================================================
+
+describe('AC2-F3 — fuzzy patch round-trip', () => {
+  beforeEach(setupTmpProject);
+  afterEach(teardownTmpProject);
+
+  it('stages fuzzy patch with find + replace blobs (no --content)', () => {
+    writeActiveSkill('guide', '# Guide\n\nUse `foo()` to start.\n');
+    const findFile = writeContent('find', 'Use `foo()` to start.');
+    const replFile = writeContent('repl', 'Use `bar()` to start.');
+
+    const rec = store.createProposal({
+      action: 'patch',
+      skillName: 'guide',
+      findFile,
+      replaceFile: replFile,
+    });
+
+    assert.equal(rec.action, 'patch');
+    assert.equal(rec.patchMode, 'fuzzy');
+    assert.equal(rec.contentPath, null);
+    assert.ok(rec.findPath && rec.replacePath);
+    assert.ok(fs.existsSync(store.pathFor.pendingFind('guide')));
+    assert.ok(fs.existsSync(store.pathFor.pendingReplace('guide')));
+  });
+
+  it('rejects mixing --content with --find/--replace', () => {
+    writeActiveSkill('guide', 'x');
+    const content = writeContent('c', 'x');
+    const find = writeContent('f', 'x');
+    const repl = writeContent('r', 'x');
+    assert.throws(
+      () => store.createProposal({
+        action: 'patch', skillName: 'guide',
+        contentFile: content, findFile: find, replaceFile: repl,
+      }),
+      /either --content OR --find\/--replace/
+    );
+  });
+
+  it('rejects fuzzy patch when active skill does not exist', () => {
+    const find = writeContent('f', 'x');
+    const repl = writeContent('r', 'y');
+    assert.throws(
+      () => store.createProposal({
+        action: 'patch', skillName: 'ghost',
+        findFile: find, replaceFile: repl,
+      }),
+      /no active skill/
+    );
+  });
+
+  it('promote applies fuzzy patch with whitespace drift tolerance', () => {
+    // Active skill uses CRLF; find text uses LF.
+    const activeBody = '# Guide\r\n\r\nUse `foo()` to start.\r\n\r\nFooter\r\n';
+    writeActiveSkill('guide', activeBody);
+    const findFile = writeContent('find', 'Use `foo()` to start.');
+    const replFile = writeContent('repl', 'Use `bar()` to start.');
+
+    store.createProposal({
+      action: 'patch', skillName: 'guide',
+      findFile, replaceFile: replFile,
+    });
+    store.promoteProposal({ skillName: 'guide' });
+
+    const active = fs.readFileSync(store.pathFor.activeSkill('guide'), 'utf-8');
+    assert.ok(active.includes('Use `bar()` to start.'));
+    assert.ok(!active.includes('Use `foo()` to start.'));
+    // Pending blobs cleaned up on promote.
+    assert.equal(fs.existsSync(store.pathFor.pendingFind('guide')), false);
+    assert.equal(fs.existsSync(store.pathFor.pendingReplace('guide')), false);
+  });
+
+  it('promote rejects atomically when confidence below threshold', () => {
+    const activeBody = '# Guide\n\nReal content about React hooks.\n';
+    writeActiveSkill('guide', activeBody);
+    const findFile = writeContent('find', 'Completely unrelated text about Django migrations and PostgreSQL tuning.');
+    const replFile = writeContent('repl', 'Replacement text');
+
+    store.createProposal({
+      action: 'patch', skillName: 'guide',
+      findFile, replaceFile: replFile,
+    });
+
+    assert.throws(
+      () => store.promoteProposal({ skillName: 'guide' }),
+      /fuzzy patch rejected/
+    );
+    // Atomic: active skill unchanged.
+    assert.equal(fs.readFileSync(store.pathFor.activeSkill('guide'), 'utf-8'), activeBody);
+    // Proposal remains pending for user inspection/rejection.
+    const list = store.listProposals({ status: 'pending' });
+    assert.equal(list.length, 1);
+  });
+
+  it('reject cleans up find + replace blobs', () => {
+    writeActiveSkill('guide', 'body');
+    const findFile = writeContent('find', 'body');
+    const replFile = writeContent('repl', 'new body');
+    store.createProposal({
+      action: 'patch', skillName: 'guide',
+      findFile, replaceFile: replFile,
+    });
+    assert.ok(fs.existsSync(store.pathFor.pendingFind('guide')));
+
+    store.rejectProposal({ skillName: 'guide' });
+    assert.equal(fs.existsSync(store.pathFor.pendingFind('guide')), false);
+    assert.equal(fs.existsSync(store.pathFor.pendingReplace('guide')), false);
+  });
+
+  it('threshold is read from .workflow/config.json skills.fuzzyPatchThreshold', () => {
+    const configPath = path.join(TMP_ROOT, '.workflow', 'config.json');
+    fs.writeFileSync(configPath, JSON.stringify({ skills: { fuzzyPatchThreshold: 0.5 } }), 'utf-8');
+
+    // A patch that scores ~0.7 on fuzzy: rejected at 0.85, accepted at 0.5.
+    const activeBody = 'function handleClick(event) { return event.target.value; }\n';
+    writeActiveSkill('guide', activeBody);
+    const findFile = writeContent('find', 'function handleClick(evt) { return evt.target.value; }');
+    const replFile = writeContent('repl', 'function handleClick(e) { return e.value; }');
+
+    store.createProposal({
+      action: 'patch', skillName: 'guide',
+      findFile, replaceFile: replFile,
+    });
+    // With the lowered threshold, promote should succeed.
+    assert.doesNotThrow(() => store.promoteProposal({ skillName: 'guide' }));
+  });
+
+  it('full-replace patch path still works (backwards-compat with F1)', () => {
+    writeActiveSkill('legacy', '# Old\n');
+    const contentFile = writeContent('legacy', '# New\n');
+    const rec = store.createProposal({
+      action: 'patch', skillName: 'legacy',
+      contentFile,
+    });
+    assert.equal(rec.patchMode, 'full-replace');
+    store.promoteProposal({ skillName: 'legacy' });
+    assert.equal(fs.readFileSync(store.pathFor.activeSkill('legacy'), 'utf-8'), '# New\n');
+  });
+});
+
+// ============================================================
 // AC 3: remove round-trip (soft-delete on promote)
 // ============================================================
 

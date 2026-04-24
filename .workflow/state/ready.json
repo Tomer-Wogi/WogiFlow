@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T11:26:35.644Z",
+  "lastUpdated": "2026-04-24T11:52:11.281Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -99,22 +99,6 @@
     }
   ],
   "ready": [
-    {
-      "id": "wf-9a969442",
-      "title": "F3 Fuzzy-match patching for skill edits",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "F",
-      "bundle": null,
-      "depends": [
-        "wf-2a9f179e"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-9a969442.md"
-    },
     {
       "id": "wf-26d363ce",
       "title": "H1 Structured phase definition schema (YAML)",
@@ -219,6 +203,25 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-9a969442",
+      "title": "F3 Fuzzy-match patching for skill edits",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "F",
+      "bundle": null,
+      "depends": [
+        "wf-2a9f179e"
+      ],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-9a969442.md",
+      "startedAt": "2026-04-24T11:51:59.753Z",
+      "routedAt": "2026-04-24T11:51:59.753Z",
+      "completedAt": "2026-04-24T11:52:11.281Z"
+    },
     {
       "id": "wf-2a9f179e",
       "title": "F1 Skill propose/patch/remove CLI + session-end approval UI",
@@ -351,18 +354,6 @@
       "workstream": "F",
       "completedAt": "2026-04-24T07:17:52.085Z",
       "requestLogRef": "R-340"
-    },
-    {
-      "id": "wf-f3707d2f",
-      "title": "C1 Aider-style repo map",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "C",
-      "completedAt": "2026-04-24T07:17:52.085Z",
-      "requestLogRef": "R-339"
     }
   ],
   "backlog": [
