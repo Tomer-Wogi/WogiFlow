@@ -1,0 +1,17 @@
+# WogiFlow phase metadata. Authoritative prose lives at .claude/docs/phases/02-spec.md.
+name: spec_review
+roleDefinition: |
+  Specification + approval phase. The agent generates (or refines) the task spec,
+  runs the Architect Pass and Logic Adversary Pass (when IGR is on), and waits at the
+  approval gate before any implementation begins.
+whenToUse: |
+  Entered after exploring produces enough context to write a spec. Exits to coding
+  only after the user approves the spec (or after fast-path skip for trivial tasks).
+customInstructions: |
+  - Spec must capture acceptance criteria as testable, individual statements.
+  - Item-reconciliation: every user-supplied item must map to at least one criterion.
+  - No code is written during this phase; only spec/plan artifacts.
+allowedToolGroups:
+  - read
+  - search
+  - write_spec

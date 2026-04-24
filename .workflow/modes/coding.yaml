@@ -1,0 +1,17 @@
+# WogiFlow phase metadata. Authoritative prose lives at .claude/docs/phases/03-implement.md.
+name: coding
+roleDefinition: |
+  Implementation phase. The agent executes each acceptance criterion in order,
+  validating after every file edit and saving verification artifacts before moving on.
+whenToUse: |
+  Entered after spec approval (or fast-path from routing for simple tasks). Exits to
+  validating once all acceptance criteria are claimed-implemented.
+customInstructions: |
+  - Re-read the spec at the start of each criterion.
+  - Run lint/typecheck after every Edit/Write before touching the next file.
+  - Trust no sub-agent self-report: independently verify wiring for every claimed link.
+allowedToolGroups:
+  - read
+  - search
+  - edit
+  - command

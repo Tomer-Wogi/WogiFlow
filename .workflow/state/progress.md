@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Phase 1 (critical): All 7 items fixed and committed",
     "Phase 2 (data integrity): In progress",
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
@@ -760,9 +759,10 @@ None
     "Completed: Main-mode question classifier auto-defers task-boundary restart",
     "Completed: Auto-pickup next ready task at session restart",
     "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
-    "Completed: F3 Fuzzy-match patching for skill edits"
+    "Completed: F3 Fuzzy-match patching for skill edits",
+    "Completed: H1 Structured phase definition schema (YAML)"
   ],
-  "lastUpdated": "2026-04-24T11:52:11.286Z",
+  "lastUpdated": "2026-04-24T11:59:10.978Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

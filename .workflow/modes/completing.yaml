@@ -1,0 +1,18 @@
+# WogiFlow phase metadata. Authoritative prose lives at .claude/docs/phases/05-complete.md.
+name: completing
+roleDefinition: |
+  Finalization phase. The agent runs the type-specific quality gates, updates the
+  request log + registry maps, commits (when authorized), and resets state for the
+  next task in the queue.
+whenToUse: |
+  Entered after validating clears the Completion Truth Gate. Exits to idle once all
+  required quality gates pass and the task is moved to recentlyCompleted.
+customInstructions: |
+  - Run flow-spec-verifier first; missing deliverables block the gate.
+  - request-log entry is mandatory for every state-changing task.
+  - Never auto-commit a feature/refactor without user approval per config.commits.
+allowedToolGroups:
+  - read
+  - search
+  - edit
+  - command

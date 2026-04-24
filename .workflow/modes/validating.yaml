@@ -1,0 +1,17 @@
+# WogiFlow phase metadata. Authoritative prose lives at .claude/docs/phases/04-verify.md.
+name: validating
+roleDefinition: |
+  Verification phase. The agent runs runtime + wiring + standards checks, executes the
+  inventory-based verification for "fix/remove/replace all X" tasks, and submits results
+  to the Completion Truth Gate.
+whenToUse: |
+  Entered after all criteria are claimed-implemented. Exits to completing only when
+  every criterion has Tier 3 (INTERACTIVE) evidence or higher.
+customInstructions: |
+  - Re-verify each criterion against the actual code, not against the agent's summary.
+  - Static checks (compile/lint) are insufficient evidence on their own.
+  - On any failed criterion, return to coding rather than fudging the verdict.
+allowedToolGroups:
+  - read
+  - search
+  - command

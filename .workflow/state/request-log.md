@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-346 | 2026-04-24 13:55
+**Type**: feat
+**Tags**: #task:wf-26d363ce #epic:wf-34290000 #workstream:H #phase-schema #yaml #lib
+**Request**: "H1 Structured phase definition schema (YAML)"
+**Result**: Added machine-readable phase metadata sidecar at `.workflow/modes/{exploring,spec_review,coding,validating,completing}.yaml` paired to the existing prose phase docs (untouched). New `lib/mode-schema.js` exports `loadMode(name)` + `validateMode(obj)` + `parseModeYaml(content)` + `listModeFiles()`. Schema is WogiFlow-native (no Kilo reference): required `name`/`roleDefinition`/`whenToUse`, optional `customInstructions`/`allowedToolGroups[]`. Self-contained focused YAML parser (no new dependency) handles top-level scalars, block scalars (`|`), and list-of-strings; null-prototype object output + dangerous-key rejection guard against prototype pollution per security-patterns.md §3. Malformed input throws field-specific errors with file path + line number. Downstream consumers C2 (`wf-4434851f`) + E1 (`wf-8d635d0e`) can now `require('wogiflow/lib/mode-schema').loadMode('coding')` to consume structured data. 21 new tests (7 validateMode + 7 parseModeYaml + 4 loadMode + 3 production-files); full suite 2156/2156 + quality gates 18/18.
+**Files**: lib/mode-schema.js (new), .workflow/modes/exploring.yaml (new), .workflow/modes/spec_review.yaml (new), .workflow/modes/coding.yaml (new), .workflow/modes/validating.yaml (new), .workflow/modes/completing.yaml (new), tests/mode-schema.test.js (new), package.json (wired test into npm test)
+
 ### R-345 | 2026-04-24 13:10
 **Type**: feat
 **Tags**: #task:wf-ea4751fc #module:observation-capture #module:post-tool-use #claude-code:2.1.119 #telemetry

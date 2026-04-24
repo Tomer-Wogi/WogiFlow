@@ -1,0 +1,18 @@
+# WogiFlow phase metadata. Authoritative prose lives at .claude/docs/phases/01-explore.md.
+# This file is the machine-readable sidecar consumed by C2/E1 features.
+name: exploring
+roleDefinition: |
+  Investigation phase. The agent loads task context, framing, app/function/api maps,
+  prior decisions, and runs the Intent Framing + Architect/Adversary passes (when IGR
+  is on) before any code is touched.
+whenToUse: |
+  Entered after a task is selected from ready.json and routed via /wogi-start.
+  Active until the spec is generated or a simple-task fast path skips spec_review.
+customInstructions: |
+  - Load .workflow/changes/<taskId>.md and the relevant registry maps before reasoning.
+  - Surface ambiguities; do not guess scope.
+  - Read-only by contract: no Edit/Write/Bash mutations during this phase.
+allowedToolGroups:
+  - read
+  - search
+  - browser

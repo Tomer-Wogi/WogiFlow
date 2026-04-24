@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T11:52:11.281Z",
+  "lastUpdated": "2026-04-24T11:59:10.973Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -100,20 +100,6 @@
   ],
   "ready": [
     {
-      "id": "wf-26d363ce",
-      "title": "H1 Structured phase definition schema (YAML)",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "H",
-      "bundle": "H-foundational",
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-26d363ce.md"
-    },
-    {
       "id": "wf-4434851f",
       "title": "C2 IGR artifact edit proposals via CLI + session-end approval",
       "type": "story",
@@ -203,6 +189,23 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-26d363ce",
+      "title": "H1 Structured phase definition schema (YAML)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "H",
+      "bundle": "H-foundational",
+      "depends": [],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-26d363ce.md",
+      "startedAt": "2026-04-24T11:53:39.350Z",
+      "routedAt": "2026-04-24T11:53:39.350Z",
+      "completedAt": "2026-04-24T11:59:10.972Z"
+    },
     {
       "id": "wf-9a969442",
       "title": "F3 Fuzzy-match patching for skill edits",
@@ -342,18 +345,6 @@
       "created": "2026-04-24T09:15:03.651Z",
       "specPath": ".workflow/changes/wf-191d5f6e.md",
       "completedAt": "2026-04-24T09:29:18.249Z"
-    },
-    {
-      "id": "wf-4351400c",
-      "title": "F2 Directory-per-skill with YAML frontmatter",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "F",
-      "completedAt": "2026-04-24T07:17:52.085Z",
-      "requestLogRef": "R-340"
     }
   ],
   "backlog": [
