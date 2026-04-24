@@ -1,7 +1,101 @@
 {
-  "lastUpdated": "2026-04-22T15:19:45.588Z",
+  "lastUpdated": "2026-04-23T21:08:10.494Z",
   "inProgress": [],
   "ready": [
+    {
+      "id": "wf-34290000",
+      "title": "WogiFlow Extension Finalize (pre-CLI release)",
+      "type": "epic",
+      "level": "L0",
+      "status": "ready",
+      "priority": "P0",
+      "created": "2026-04-23T18:00:00.000Z",
+      "specPath": ".workflow/epics/wf-34290000.md",
+      "stories": [
+        "wf-a346c915",
+        "wf-258f558c",
+        "wf-f64f58b0",
+        "wf-f14dcfeb",
+        "wf-d0adca72",
+        "wf-fe8ef64d",
+        "wf-10c452f7",
+        "wf-f9431ef6",
+        "wf-07046456",
+        "wf-15175dbc",
+        "wf-9c9ba324",
+        "wf-c3b5afab",
+        "wf-f3707d2f",
+        "wf-4434851f",
+        "wf-8e97ac77",
+        "wf-ac2a8074",
+        "wf-8d635d0e",
+        "wf-2a9f179e",
+        "wf-4351400c",
+        "wf-9a969442",
+        "wf-b5cd0351",
+        "wf-2c6c8b40",
+        "wf-3635574e",
+        "wf-c8754819",
+        "wf-2f49b292",
+        "wf-8a0fc8ad",
+        "wf-26d363ce",
+        "wf-c6c75841"
+      ],
+      "goal": "Land all 25 research-backed improvements + 3 pending-item fixes (pending #1/#2/#3) as one commit + one release before CLI dev starts",
+      "workstreams": {
+        "A": [
+          "wf-a346c915",
+          "wf-258f558c",
+          "wf-f64f58b0",
+          "wf-f14dcfeb",
+          "wf-d0adca72"
+        ],
+        "B": [
+          "wf-fe8ef64d",
+          "wf-10c452f7",
+          "wf-f9431ef6",
+          "wf-07046456",
+          "wf-15175dbc",
+          "wf-9c9ba324",
+          "wf-c3b5afab"
+        ],
+        "C": [
+          "wf-f3707d2f",
+          "wf-4434851f"
+        ],
+        "D": [
+          "wf-8e97ac77",
+          "wf-ac2a8074"
+        ],
+        "E": [
+          "wf-8d635d0e"
+        ],
+        "F": [
+          "wf-2a9f179e",
+          "wf-4351400c",
+          "wf-9a969442"
+        ],
+        "G": [
+          "wf-b5cd0351",
+          "wf-2c6c8b40",
+          "wf-3635574e",
+          "wf-c8754819",
+          "wf-2f49b292",
+          "wf-8a0fc8ad"
+        ],
+        "H": [
+          "wf-26d363ce",
+          "wf-c6c75841"
+        ]
+      },
+      "absorbsPending": [
+        1,
+        2,
+        3
+      ],
+      "sourceResearch": "25 CLI coding agents (Goose, Codex CLI, Crush, g3, Coro Code, IronClaw, NullClaw, PicoClaw, nanoclaw, Scrapfly CLI, Aider, Open Interpreter, OpenHands, Letta, Plandex, Cline, Neovate, Every Code, nori-cli, Hermes Agent, OpenCode, Kilo Code, Dexto, ForgeCode, Groq Code CLI)",
+      "targetRelease": "v2.27.0"
+    },
     {
       "id": "wf-94cc3b72",
       "title": "Lift WogiFlow from C+ to A (epic — close pre-IGR audit findings)",
@@ -34,6 +128,146 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2f49b292",
+      "title": "G5 Manager-side task-ID injection into worker ready.json",
+      "type": "story",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "parentEpic": "wf-34290000",
+      "workstream": "G",
+      "started": "2026-04-23T21:04:05.598Z",
+      "completed": "2026-04-23T21:08:10.494Z"
+    },
+    {
+      "id": "wf-f3707d2f",
+      "title": "C1 Aider-style repo map",
+      "type": "story",
+      "level": "L2",
+      "status": "completed",
+      "parentEpic": "wf-34290000",
+      "started": "2026-04-23T20:50:19.906Z",
+      "completed": "2026-04-23T20:52:52.068Z"
+    },
+    {
+      "id": "wf-9c9ba324",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-15175dbc",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-07046456",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-f9431ef6",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-10c452f7",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-fe8ef64d",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-d0adca72",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-258f558c",
+      "status": "completed",
+      "completed": "2026-04-23T20:46:23.767Z"
+    },
+    {
+      "id": "wf-f14dcfeb",
+      "title": "A4 Confidence-tier rubric (95/85/75)",
+      "type": "story",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P0",
+      "parentEpic": "wf-34290000",
+      "started": "2026-04-23T20:21:49.228Z",
+      "completed": "2026-04-23T20:28:07.997Z"
+    },
+    {
+      "id": "wf-f64f58b0",
+      "title": "A3 Reflect-on-5-7-sources pattern (Workstream A)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-23T20:35:00.000Z",
+      "epic": "wf-34290000",
+      "workstream": "A",
+      "specPath": ".workflow/changes/wf-f64f58b0.md",
+      "startedAt": "2026-04-23T20:00:26.219Z",
+      "completedAt": "2026-04-23T20:03:44.210Z",
+      "filesChanged": [
+        ".claude/commands/wogi-debug-hypothesis.md",
+        ".claude/commands/wogi-bug.md",
+        ".workflow/changes/wf-f64f58b0.md",
+        ".workflow/state/ready.json"
+      ],
+      "notes": "A3: Reflect-on-5-7-sources pattern inserted at Step 0.5 of wogi-debug-hypothesis.md and within Phase 2 of wogi-bug.md. Prompt-only change (no code). Downgrade clause flags N<5 sources for A4 tier rubric. Skippable for typo/obvious fixes."
+    },
+    {
+      "id": "wf-a346c915",
+      "title": "A1 AGENTS.md alias for CLAUDE.md (Workstream A)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-23T19:55:00.000Z",
+      "epic": "wf-34290000",
+      "workstream": "A",
+      "specPath": ".workflow/changes/wf-a346c915.md",
+      "startedAt": "2026-04-23T19:55:50.457Z",
+      "completedAt": "2026-04-23T19:59:12.769Z",
+      "filesChanged": [
+        ".workflow/bridges/base-bridge.js",
+        "lib/installer.js",
+        "scripts/flow-config-defaults.js",
+        "tests/agents-md-alias.test.js",
+        "package.json",
+        ".workflow/changes/wf-a346c915.md",
+        ".workflow/state/ready.json"
+      ],
+      "notes": "A1: AGENTS.md alias ships alongside CLAUDE.md by default (cli.generateAgentsMd config flag, default true). 10 tests pass, 2055/2056 suite clean (1 pre-existing phase-gate race per cap-20260422-002, confirmed unrelated by isolated run)."
+    },
+    {
+      "id": "wf-c3b5afab",
+      "title": "B7 missRate telemetry surfaced (Workstream B)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-23T18:30:00.000Z",
+      "epic": "wf-34290000",
+      "workstream": "B",
+      "specPath": ".workflow/changes/wf-c3b5afab.md",
+      "startedAt": "2026-04-23T19:43:29.517Z",
+      "completedAt": "2026-04-23T19:48:57.363Z",
+      "filesChanged": [
+        "scripts/flow-session-end.js",
+        "scripts/flow-health.js",
+        "tests/gate-telemetry-surface.test.js",
+        ".workflow/changes/wf-c3b5afab.md",
+        ".workflow/state/ready.json"
+      ],
+      "notes": "B7 baseline telemetry surfaced at /wogi-session-end + /wogi-health. 13 tests pass, 2033/2033 suite clean (2 pre-existing phase-gate race failures per cap-20260422-002)."
+    },
     {
       "id": "wf-a97af500",
       "title": "Wave F — Test coverage for scripts/hooks/core/*.js",
@@ -269,253 +503,6 @@
       "created": "2026-04-22T06:54:50.354Z",
       "specPath": ".workflow/changes/wf-e0ec7541.md",
       "completedAt": "2026-04-22T09:29:29.604Z"
-    },
-    {
-      "id": "wf-63c0f4cc",
-      "title": "Enhance /wogi-story with P0 specification-quality gates",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-04-17T07:49:21.797Z",
-      "specPath": ".workflow/changes/wf-63c0f4cc.md",
-      "startedAt": "2026-04-17T10:09:43.814Z",
-      "completedAt": "2026-04-17T10:19:04.723Z"
-    },
-    {
-      "id": "wf-d3e67abe",
-      "title": "Silent-worker-halt detection via dispatch-tracking",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-04-17T07:20:57.305Z",
-      "specPath": ".workflow/changes/wf-d3e67abe.md",
-      "startedAt": "2026-04-17T08:13:23.135Z",
-      "completedAt": "2026-04-17T09:41:23.847Z"
-    },
-    {
-      "id": "wf-75550f24",
-      "title": "Update wogiflow docs for Claude Code 2.1.111/112 alignment",
-      "type": "docs",
-      "level": "L2",
-      "status": "completed",
-      "createdAt": "2026-04-17T06:17:03.210Z",
-      "startedAt": "2026-04-17T06:17:03.210Z",
-      "criteria": [
-        "Fix stale 2.1.72 effort-level comment in wogi-start.md:194",
-        "Update Effort Level Optimization table to note xhigh option on Opus 4.7 for L0",
-        "Add Features in 2.1.111+ section to claude-code-compatibility.md",
-        "Document /ultrareview vs /wogi-peer-review distinction",
-        "Document OTEL_LOG_RAW_API_BODIES env var"
-      ],
-      "completedAt": "2026-04-17T06:23:23.739Z",
-      "filesChanged": [
-        ".claude/commands/wogi-start.md",
-        ".claude/docs/claude-code-compatibility.md"
-      ]
-    },
-    {
-      "id": "wf-2f2e63cc",
-      "title": "v2.21.0 — Remove Gap D regex bypass + add Haiku worker-question classifier at Stop hook",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-04-16T13:35:40.770Z",
-      "origin": "User critique: regex brittle; audit confirmed transcriptPath available at stop hook; remove over-engineered bypass and add real AI-logic classifier",
-      "acceptanceCriteria": [
-        "Gap D removed: isDiagnosticCurlBypass + regex deleted from routing-gate.js; its tests deleted; config.workspace.diagnosticCurlBypass removed; decisions.md probation note updated",
-        "New scripts/flow-worker-question-classifier.js mirrors flow-conclusion-classifier pattern",
-        "Classifier reads parsedInput.transcriptPath, parses JSONL, extracts last assistant message",
-        "Haiku call classifies \"is this a question to user expecting response\" with confidence",
-        "Graceful degradation: missing API key / missing transcriptPath / unparseable JSON all return safe no-op",
-        "Stop hook wiring: if isUserQuestion=true + confidence>=threshold + worker mode → block with channel-dispatch instructions",
-        "Config keys: workspace.aiWorkerQuestionClassifier.{enabled,minConfidence,model}",
-        "Tests: YES/NO/ambiguous inputs, credentials missing, transcript missing, malformed JSON, worker vs manager mode",
-        "Added to npm test script",
-        "decisions.md entry documenting G3 mechanism",
-        "All existing tests still pass"
-      ],
-      "startedAt": "2026-04-16T13:35:40.770Z",
-      "completedAt": "2026-04-16T13:49:01.357Z",
-      "filesChanged": [
-        "scripts/flow-worker-question-classifier.js (NEW)",
-        "scripts/hooks/core/routing-gate.js (Gap D removed)",
-        "scripts/hooks/entry/claude-code/stop.js (G3 classifier wired)",
-        "scripts/hooks/core/pre-tool-orchestrator.js (toolInput arg dropped)",
-        "scripts/flow-config-defaults.js",
-        ".workflow/state/decisions.md",
-        "tests/flow-worker-question-classifier.test.js (NEW)",
-        "tests/flow-workspace-autopickup.test.js (Gap D tests removed)",
-        "package.json"
-      ]
-    },
-    {
-      "id": "wf-9e16e1f1",
-      "title": "Block AskUserQuestion in workspace workers — force channel-dispatch ## QUESTION: to manager",
-      "type": "bug",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-04-16T12:38:53.350Z",
-      "origin": "v2.20.0 self-critique + user clarification: main issue was worker prompting user directly instead of escalating via ## QUESTION: to manager.",
-      "acceptanceCriteria": [
-        "New scripts/hooks/core/worker-boundary-gate.js with checkWorkerBoundary(toolName, toolInput)",
-        "PreToolUse hook blocks AskUserQuestion when WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME !== manager",
-        "Block message gives the exact curl command to channel-dispatch ## QUESTION: to manager",
-        "Config toggle workspace.blockAskUserQuestionInWorker (default true)",
-        "Wired into pre-tool-orchestrator.js + pre-tool-use.js",
-        "Tests: blocks in worker mode, allows in manager mode, allows when WOGI_WORKSPACE_ROOT unset (single-repo), respects config toggle",
-        "decisions.md entry explaining the contract",
-        "Full test suite still passes"
-      ],
-      "startedAt": "2026-04-16T12:38:53.350Z",
-      "completedAt": "2026-04-16T12:41:19.534Z",
-      "filesChanged": [
-        "scripts/hooks/core/worker-boundary-gate.js (NEW)",
-        "scripts/hooks/core/pre-tool-orchestrator.js",
-        "scripts/hooks/entry/claude-code/pre-tool-use.js",
-        "scripts/flow-config-defaults.js",
-        ".workflow/state/decisions.md",
-        "tests/flow-worker-boundary-gate.test.js (NEW)",
-        "package.json"
-      ]
-    },
-    {
-      "id": "wf-6cbd62a0",
-      "title": "Workspace worker silent-stall fix — action-after-completion contract (4 gaps + learning)",
-      "type": "bug",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-04-16T12:22:27.367Z",
-      "origin": "User-reported workspace stall, 2026-04-16. Worker introspection preserved in task spec.",
-      "acceptanceCriteria": [
-        "Gap A: task-completed hook emits additionalContext directing AI to auto-invoke /wogi-start <nextId> when queued channel dispatches exist",
-        "Gap B: Stop hook blocks end-of-turn when workspace worker has queued channel dispatches but no in-progress task",
-        "Gap C: worker-rules content strengthened with \"End-of-turn must be a deterministic action\" section (3 states: action | escalate | idle)",
-        "Gap D: routing gate narrow allowlist for curl-to-localhost:8800 during INTROSPECTION/DIAGNOSTIC channel replies starting with \"## \"",
-        "Config toggle config.workspace.autoPickupChannelDispatches (default true)",
-        "decisions.md: autonomous-mode action-after-completion contract entry",
-        "feedback-patterns.md: verbatim worker \"visibility-as-substitute-for-action\" rationalization",
-        "Tests covering Gap A context emission and Gap B block trigger, Gap D allowlist matching",
-        "All 1770 existing tests still pass"
-      ],
-      "startedAt": "2026-04-16T12:22:27.367Z",
-      "completedAt": "2026-04-16T12:29:19.285Z",
-      "filesChanged": [
-        "scripts/hooks/core/task-completed.js",
-        "scripts/hooks/core/routing-gate.js",
-        "scripts/hooks/entry/claude-code/stop.js",
-        "scripts/hooks/adapters/claude-code.js",
-        "scripts/hooks/core/pre-tool-orchestrator.js",
-        "scripts/flow-config-defaults.js",
-        "lib/workspace.js",
-        ".workflow/state/decisions.md",
-        ".workflow/state/feedback-patterns.md",
-        "tests/flow-workspace-autopickup.test.js",
-        "package.json"
-      ]
-    },
-    {
-      "id": "wf-f2c30458",
-      "title": "Lean config — new installs write only project-specific overrides, not full default dump",
-      "type": "task",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-04-16T11:17:46.943Z",
-      "scope": "lib/installer.js createWorkflowStructure writes MINIMAL config.json containing only {$schema, version, projectName, cli.type}. Runtime loader already merges defaults (flow-config-loader.js:318). Adds a `flow config compact` subcommand to shrink existing fat configs.",
-      "acceptanceCriteria": [
-        "New `flow init` writes a config.json with ≤15 lines",
-        "Runtime behavior identical — getConfig() returns the same merged object whether config is lean or fat",
-        "Existing fat configs continue to work (backwards compat via deep merge)",
-        "New `flow config compact` subcommand rewrites an existing fat config to lean form, preserving only values that differ from defaults",
-        "Test coverage for the new behavior: lean config loads + merges correctly, compact command strips defaults, round-trip (fat → compact → identical merged result)"
-      ],
-      "startedAt": "2026-04-16T11:18:08.506Z",
-      "completedAt": "2026-04-16T11:23:17.843Z",
-      "filesChanged": [
-        "scripts/flow-config-defaults.js",
-        "lib/installer.js",
-        "lib/commands/config.js",
-        "bin/flow",
-        "tests/flow-lean-config.test.js",
-        "package.json"
-      ]
-    },
-    {
-      "id": "wf-ec5edf95",
-      "title": "Flip taskBoundaryReset.enabled default to true",
-      "type": "task",
-      "level": "L3",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-04-16T11:17:46.943Z",
-      "scope": "flow-config-defaults.js line 876: flip false → true; update comments to reflect validated status (v2.17.0+ workspace-aware).",
-      "acceptanceCriteria": [
-        "scripts/flow-config-defaults.js line 876: enabled: true",
-        "Comment updated to reflect validated state (not \"verify first\")",
-        "Existing projects unaffected (they have explicit overrides)",
-        "Fresh `flow init` gets enabled: true out-of-box"
-      ],
-      "startedAt": "2026-04-16T11:17:46.943Z",
-      "completedAt": "2026-04-16T11:18:08.506Z",
-      "filesChanged": [
-        "scripts/flow-config-defaults.js"
-      ]
-    },
-    {
-      "id": "wf-9c4c4a51",
-      "title": "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, workspace coordination pattern",
-      "type": "task",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P2",
-      "created": "2026-04-16T09:12:37.336Z",
-      "origin": "Adversary critique of workspace-mode task-gate friction (session 2026-04-16). Teach patterns via block messages instead of weakening gate.",
-      "scope": "Modify generateBlockMessage() in scripts/hooks/core/task-gate.js to be context-aware. No enforcement change — pure UX fix for error messages.",
-      "acceptanceCriteria": [
-        "When blocked path matches rule/memory files (decisions.md, feedback-patterns.md, MEMORY.md), message prominently suggests /wogi-decide for rule capture",
-        "When .workspace/ directory exists at any parent of cwd, message includes /wogi-start \"coordinate wf-XXX in workspace\" option",
-        "Message always includes /wogi-capture for side thoughts as a low-friction option",
-        "Existing suggestions (/wogi-ready, /wogi-start wf-XXX, /wogi-story) preserved",
-        "Intent artifacts (domain-model.md, user-journeys.md, product.md, glossary.md) are NOT treated as rule files — they still route to /wogi-story per adversary critique attack 4",
-        "No enforcement logic changed — task-gate decisions remain identical",
-        "Tests cover: rule file path, workspace parent detected, both rule + workspace, plain file with neither"
-      ],
-      "startedAt": "2026-04-16T09:12:37.338Z",
-      "completedAt": "2026-04-16T09:14:32.868Z",
-      "filesChanged": [
-        "scripts/hooks/core/task-gate.js",
-        "tests/flow-hooks-task-gate.test.js"
-      ]
-    },
-    {
-      "id": "wf-5caa40ce",
-      "title": "Add MCP duplicate-scope check to /wogi-health",
-      "type": "task",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P2",
-      "created": "2026-04-16T07:06:44.428Z",
-      "origin": "Claude Code 2.1.110 changelog review (session 2026-04-16) — mirror /doctor warning",
-      "scope": "Detect when the same MCP server name appears in multiple settings scopes (user ~/.claude/settings.json, project .claude/settings.json, local .claude/settings.local.json) with different endpoints/args. Surface as a health finding.",
-      "acceptanceCriteria": [
-        "flow-health.js scans all three settings scopes for MCP server definitions",
-        "Reports a finding when same server name has different endpoint/args across scopes",
-        "No false positive when same server name has identical config in multiple scopes (normalize before compare)",
-        "Handles missing scope files gracefully (user has no global settings, etc.)",
-        "Finding includes: server name, which scopes conflict, and a hint to consolidate",
-        "Covered by a test in tests/hooks/ or similar — or at minimum a manual verification step documented in commit body"
-      ],
-      "startedAt": "2026-04-16T07:12:56.304Z",
-      "completedAt": "2026-04-16T07:16:47.030Z",
-      "filesChanged": [
-        "scripts/flow-health.js",
-        "tests/flow-health-mcp-scopes.test.js"
-      ]
     }
   ],
   "backlog": [

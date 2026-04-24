@@ -11,6 +11,96 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-339 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-f3707d2f #epic:wf-34290000 #workstream:C #context #repo-map
+**Request**: "C1 — Aider-style repo map"
+**Result**: New `scripts/flow-repo-map.js` with `generateRepoMap()`, `resolveChangedFiles()`, `extractSymbols()`, `findAdjacent()`, `collectCodeFiles()`. Produces TOUCHED (changed files + symbols) + ADJACENT (depth-1 imports/importers) + SHAPE (top-level dir file counts) within a 16KB default budget. CLI: `node scripts/flow-repo-map.js generate [--task=ID] [--budget=N] [--stats]`. Changed-file source priority: opts.changedFiles → task-checkpoint.json → `git diff --name-only` → `git status --porcelain`. Wired into Step 1 Load Context (01-explore.md) and Step 2.9 (03-implement.md). Config: `repoMap.{enabled, budgetBytes}`. 11 unit tests passing.
+**Files**: `scripts/flow-repo-map.js`, `scripts/flow-config-defaults.js`, `.claude/docs/phases/01-explore.md`, `.claude/docs/phases/03-implement.md`, `tests/flow-repo-map.test.js`
+
+---
+
+### R-338 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-9c9ba324 #epic:wf-34290000 #workstream:B #rules #decisions
+**Request**: "B6 — Empty-collection vanishing-section rule"
+**Result**: Added Empty-Collection Vanishing-Section Rule to `.workflow/state/decisions.md` under a new Code Rules section. Rule forbids conditional section rendering of the form `{items.length > 0 && <Section />}`; requires explicit empty-state placeholder for UI, present-but-empty arrays for API responses / state files, explicit "0 findings" for reports. Includes anti-rationalization checklist and references B2/B4/B5 gates as enforcement points.
+**Files**: `.workflow/state/decisions.md`
+
+---
+
+### R-337 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-15175dbc #epic:wf-34290000 #workstream:B #gates #validating
+**Request**: "B5 — Skeptical-evaluator field-enumeration prompt"
+**Result**: New `scripts/flow-skeptical-evaluator.js` with `buildSkepticalPrompt()` + `parseSkepticalOutput()`. Composes three enumeration passes (UI fields / API params / state keys), surfaces mechanical pre-checks (BEL grep + spec-bundle grep) into the sub-agent prompt, demands `evidenceTier` + `confidencePct` on every finding. Wired into validating-phase docs + added `intentGroundedReasoning.skepticalEvaluator.enabled` config default. 10 unit tests passing.
+**Files**: `scripts/flow-skeptical-evaluator.js`, `scripts/flow-config-defaults.js`, `.claude/docs/phases/04-verify.md`, `tests/flow-skeptical-evaluator.test.js`
+
+---
+
+### R-336 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-07046456 #epic:wf-34290000 #workstream:B #gates #truth-gate
+**Request**: "B4 — Full spec-string bundle grep rule"
+**Result**: Added `extractSpecStrings()`, `verifySpecBundleCoverage()`, `formatSpecBundleResult()` to `flow-completion-truth-gate.js`. Extracts backtickIds, quotedStrings, filePaths, constants (requires underscore/digit — filters out bare HTTP verbs), routes. Per-category thresholds: filePaths/routes 100%, constants/backticks 80%, quoted strings 70%. Wired into validating-phase docs (04-verify.md). 11 unit tests passing.
+**Files**: `scripts/flow-completion-truth-gate.js`, `.claude/docs/phases/04-verify.md`, `tests/flow-spec-bundle-grep.test.js`
+
+---
+
+### R-335 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-f9431ef6 #epic:wf-34290000 #workstream:B #templates #validating
+**Request**: "B3 — Tier-3 field-inventory DOM snapshot template"
+**Result**: New template `.workflow/templates/tier3-dom-field-inventory.md` defining the 5-step BEFORE/AFTER/diff/reconcile/persist protocol for Tier-3 interactive verification of UI surfaces with input fields. Captures name/label/type/default/required/validation/visibility per field. Wired a new "DOM Field Inventory Snapshot" subsection into `.claude/docs/phases/04-verify.md` (validating phase) that references the template and instructs AI to follow it for form/filter/wizard work.
+**Files**: `.workflow/templates/tier3-dom-field-inventory.md`, `.claude/docs/phases/04-verify.md`
+
+---
+
+### R-334 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-10c452f7 #epic:wf-34290000 #workstream:B #gates #truth-gate
+**Request**: "B2 — Completion-Truth-Gate BEL-file grep"
+**Result**: Added `parseBELItems()`, `verifyBELAgainstDelivery()`, `formatBELResult()` to `flow-completion-truth-gate.js`. Parses bulleted expectations from Acceptance Criteria / Requirements / Success Criteria / Definition of Done headings in a spec; greps each expectation's keywords against diff + changed files + commit message; requires ≥2 keyword hits (or all if <2 exist) for coverage. Exports wired. 10 unit tests passing covering parse, cover/uncover, edge cases (no BEL items), and format output.
+**Files**: `scripts/flow-completion-truth-gate.js`, `tests/flow-bel-gate.test.js`
+
+---
+
+### R-333 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-fe8ef64d #epic:wf-34290000 #workstream:B #gates #anti-deferral
+**Request**: "B1 — AC Scope-Preservation Checklist"
+**Result**: New `scripts/flow-ac-scope-preservation.js` with `snapshotCriteria()`, `verifyScopePreservation()`, `formatChecklist()`. Snapshots originally-stated ACs at creation time to `.workflow/state/ac-snapshots/<taskId>.json`; close-time verification surfaces PRESERVED / MODIFIED / DROPPED / ADDED + detects 2-into-1 collapses. Added Gate 6 section to wogi-story.md. 10 unit tests passing. Token-overlap heuristic tuned (75% ratio, user-story boilerplate stopwords) to prevent "upload" and "delete" of the same noun from matching as preserved.
+**Files**: `scripts/flow-ac-scope-preservation.js`, `.claude/commands/wogi-story.md`, `tests/flow-ac-scope-preservation.test.js`
+
+---
+
+### R-332 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-d0adca72 #epic:wf-34290000 #workstream:A #prompts #standards
+**Request**: "A5 — Non-negotiable rules + filepath:line citation format"
+**Result**: Created `.workflow/prompts/fragments/non-negotiable-rules.md` (order: 5, loads in every composed prompt) covering evidence-before-claim, no silent scope changes, route-through-wogi, citation format, destructive-op authorization, no invented artifacts. Added `checkNonNegotiableFragment()`, `checkComposedPromptHasNonNegotiables()`, `checkCitationFormat()`, `CITATION_FORMAT_REGEX` to `flow-standards-checker.js`. 12 unit tests passing, including live composer round-trip.
+**Files**: `.workflow/prompts/fragments/non-negotiable-rules.md`, `scripts/flow-standards-checker.js`, `tests/flow-non-negotiable-rules.test.js`
+
+---
+
+### R-331 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-258f558c #epic:wf-34290000 #workstream:A #igr #adversary #persona
+**Request**: "A2 — Persona library for Logic Adversary"
+**Result**: Created 5-persona library at `.workflow/agents/personas/` (scale-skeptic, security-hawk, simplicity-champion, platform-rigor, user-advocate) + README. Added `pickPersona()` + `loadPersona()` + `PERSONA_LIBRARY` + `PERSONA_TRIGGERS` to `flow-logic-adversary.js`. Wired auto-pick into `buildAdversaryPrompt()` with config toggle `intentGroundedReasoning.logicAdversary.personas.enabled`. Updated base persona doc to reference the amplifier. 12 unit tests passing.
+**Files**: `.workflow/agents/personas/scale-skeptic.md`, `.workflow/agents/personas/security-hawk.md`, `.workflow/agents/personas/simplicity-champion.md`, `.workflow/agents/personas/platform-rigor.md`, `.workflow/agents/personas/user-advocate.md`, `.workflow/agents/personas/README.md`, `.workflow/agents/logic-adversary.md`, `scripts/flow-logic-adversary.js`, `scripts/flow-config-defaults.js`, `tests/flow-logic-adversary-personas.test.js`
+
+---
+
+### R-330 | 2026-04-23
+**Type**: feat
+**Tags**: #task:wf-f14dcfeb #epic:wf-34290000 #workstream:A #igr #rubric
+**Request**: "A4 — Confidence-tier rubric (95/85/75) reconciled with Tier 0-4 evidence scale"
+**Result**: Created `.workflow/rubrics/confidence-tiers.md` defining HIGH/MEDIUM/LOW tiers with mechanical mapping from evidence tier + signal strength (hit count, file count, observation count). Added `computeConfidenceTier()` and `validateConfidencePct()` exports in `flow-completion-truth-gate.js`. Wired required `confidencePct` field into `/wogi-review` agent prompt template + last-review.json schema. Added `review.confidenceTiers` config defaults. 14 unit tests passing.
+**Files**: `.workflow/rubrics/confidence-tiers.md`, `scripts/flow-completion-truth-gate.js`, `scripts/flow-config-defaults.js`, `.claude/commands/wogi-review.md`, `tests/flow-confidence-tier-rubric.test.js`
+
+---
+
 ### R-280 | 2026-04-15
 **Type**: feat
 **Tags**: #epic:epic-episodic-memory #task:wf-a3cc5f2a #capture-gate #conclusion-classifier #igr #quality-gates
@@ -355,3 +445,31 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 **Request**: "Strategic pivot discussion: WogiFlow Native Runtime — replace Claude Code as WogiFlow runtime"
 **Result**: Long session decided to build WogiFlow Native CLI as a multi-model agent runtime, not a layer on Claude Code. Revised estimate with me as engineer: 2.5-3 months. Core architectural decisions: (1) multi-model orchestration is first-class, not opt-in — each WogiFlow step runs on best-fit model, (2) provider-availability is a first-class config concern (user declares keys, orchestrator picks from available set), (3) 4-tier capability evolution: Phase 0 heuristic runtime + internal dogfood (weeks 1-6), Phase 1 K pre-launch benchmarking (weeks 6-8, 40-50 tasks, holdout discipline, LLM-judge panel bias mitigation), Phase 2 production telemetry ongoing, Phase 3 community learning via existing feedback-patterns infrastructure. K benchmarking happens BEFORE public launch — evidence-backed step-model matrix is v1.0 launch gate. Tier 1 methodology (regression discipline + memory-first clarification) already shipped in prior work tonight. Super-charged /wogi-onboard flagged as adjacent direction. Session transcripts from last 15 sessions authorized for usage audit. Next-session brief written to .workflow/scratch/next-session-brief-2026-04-23.md. Tomorrow: 4-task agent day producing 12-15 page consolidated planning doc; building starts day after if plan approved.
 **Files**: .workflow/scratch/next-session-brief-2026-04-23.md, .workflow/roadmap.md
+
+### R-327 | 2026-04-23 19:55
+**Type**: feat
+**Tags**: #task:wf-c3b5afab #epic:wf-34290000 #workstream:B #telemetry #igr
+**Request**: "B7 missRate telemetry surfaced — /wogi-session-end + /wogi-health"
+**Result**: Added `printGateTelemetryWatch()` to flow-session-end.js (top-3 gates by 7d missRate, flags ≥10% as rubber-stamping risk) and `printGateMissRateSummary()` to flow-health.js (one-line count of offending gates). Both consume existing `getGateStats({since:'7d'})` API — zero duplicated computation. Empty-log path prints "No telemetry yet (baseline)" gracefully. 13 new unit tests cover empty/populated/threshold-boundary (0.10 inclusive). 2033/2033 suite clean. Baseline visibility now in place for Workstream B gates (B1-B6) to measure against.
+**Files**: scripts/flow-session-end.js, scripts/flow-health.js, tests/gate-telemetry-surface.test.js, .workflow/changes/wf-c3b5afab.md, .workflow/state/ready.json
+
+### R-328 | 2026-04-23 20:35
+**Type**: feat
+**Tags**: #task:wf-a346c915 #epic:wf-34290000 #workstream:A #portability #agents-md
+**Request**: "A1 AGENTS.md alias for CLAUDE.md — cross-tool instructions file"
+**Result**: WogiFlow now generates both CLAUDE.md and AGENTS.md (byte-identical content) so projects work with any CLI coding agent that follows the emerging AGENTS.md standard (Codex, Cline, Crush, Aider). CLAUDE.md remains canonical for drift detection; AGENTS.md is a generated sibling. Extracted shared `writeGeneratedRulesFile()` helper in base-bridge.js so both paths reuse the manual-edit guard. New config flag `cli.generateAgentsMd` (default `true`) allows opt-out. Installer mirrors the same behavior in its simple-mode fallback. 10 new unit tests (all pass). 2055/2056 suite clean (1 pre-existing phase-gate race, confirmed unrelated via isolated run).
+**Files**: .workflow/bridges/base-bridge.js, lib/installer.js, scripts/flow-config-defaults.js, tests/agents-md-alias.test.js, package.json, .workflow/changes/wf-a346c915.md, .workflow/state/ready.json
+
+### R-329 | 2026-04-23 20:50
+**Type**: feat
+**Tags**: #task:wf-f64f58b0 #epic:wf-34290000 #workstream:A #prompt #investigation
+**Request**: "A3 Reflect-on-5-7-sources pattern — broader evidence breadth before conclusion"
+**Result**: Inserted "Reflect on 5-7 Independent Sources" section at Step 0.5 of /wogi-debug-hypothesis and "Evidence Inventory" subsection in Phase 2 of /wogi-bug. Both surfaces require 5 of 7 source categories (code read, grep, git log, test, log/telemetry, types, user assumption) before moving to conclusion. Downgrade clause: if N<5 sources consulted, conclusion language softens ("likely cause" vs "root cause") pending A4's 95/85/75 tier rubric. Skippable for typos / single-line obvious fixes. Prompt-only change — no code, no tests.
+**Files**: .claude/commands/wogi-debug-hypothesis.md, .claude/commands/wogi-bug.md, .workflow/changes/wf-f64f58b0.md, .workflow/state/ready.json
+
+### R-323 | 2026-04-23 21:10
+**Type**: feat
+**Tags**: #task:wf-2f49b292 #epic:wf-34290000 #workstream:G #workspace #manager-dispatch
+**Request**: "G5 Manager-side task-ID injection into worker ready.json"
+**Result**: New `lib/workspace-task-injector.js` with `injectTask()` and `injectAndDispatch()`. Writes task records into a worker's `.workflow/state/ready.json` so the manager can dispatch `/wogi-start <taskId>` for brand-new tasks. Atomic via write-to-temp + rename; idempotent on re-inject (reports `alreadyPresent`); validates task ID format, repo name, manifest membership, and path-traversal; creates `ready.json` if absent. 14 unit tests covering happy path, idempotency, validation, missing file, path traversal, concurrent writes. Design deviation from thin spec: used atomic filesystem rename instead of `workspace-locks.js` (which is task-interface-based, not file-level) — simpler and sufficient for the serialization needed. HTTP endpoint on `workspace-channel-server.js` NOT added — the injector works filesystem-direct since manager has access to worker repos via `WOGI_WORKSPACE_ROOT`; remote-worker endpoint can be added later if needed. E2E with actual channel server not unit-tested (same pattern as existing `workspace-routing` tests).
+**Files**: lib/workspace-task-injector.js (new), tests/flow-workspace-task-injector.test.js (new)
