@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-347 | 2026-04-24 14:40
+**Type**: feat
+**Tags**: #task:wf-4434851f #epic:wf-34290000 #workstream:C #memory-proposals #igr-artifacts #session-end-hook
+**Request**: "C2 IGR artifact edit proposals via CLI + session-end approval"
+**Result**: Agent-proposed IGR artifact edits (`product.md` / `domain-model.md` / `user-journeys.md` / `glossary.md`) now stage to `.workflow/state/memory-proposals/<id>.json` instead of silently mutating files. New `lib/memory-proposal-store.js` exports `createProposal` / `listProposals` / `findProposal` / `approveProposal` / `rejectProposal` / `previewProposal` plus `parseSections` + `findSectionByHeading`. Three ops: `append` (end-append), `replace-section` (heading-scoped swap; rejects when heading is missing or ambiguous — 4 malformed cases tested), `replace-all` (full rewrite — requires rationale). Approval applies to target artifact + archives record to `memory-proposals/applied/`; rejection archives to `memory-proposals/rejected/` without touching artifact. `scripts/flow-memory.js` extended with 4 new subcommands (`propose` / `approve` / `reject` / `list`) alongside the existing `query|fetch|stats|tag|untag` surface. New `scripts/hooks/core/session-end-memory-proposals.js` summarizer mirrors the skill-proposal pattern; wired into `scripts/hooks/core/session-end.js` → `result.pendingMemoryProposals` with diff preview (first 6 lines) + approve/reject prompts per AC #6. 31 new tests (6 input-validation + 3 propose-round-trip + 4 section-boundary + 6 approve-round-trip + 2 reject-round-trip + 4 session-end + 6 section-parsing unit); full suite 2156/2156 + lint clean on new files. No MCP tool registration — WogiFlow has no tool-registration layer. Session-boundary-friendly: completed within single fresh-session budget.
+**Files**: lib/memory-proposal-store.js (new), scripts/flow-memory.js (extended CLI), scripts/hooks/core/session-end-memory-proposals.js (new), scripts/hooks/core/session-end.js (wired summarizer), tests/memory-propose.test.js (new)
+
 ### R-346 | 2026-04-24 13:55
 **Type**: feat
 **Tags**: #task:wf-26d363ce #epic:wf-34290000 #workstream:H #phase-schema #yaml #lib

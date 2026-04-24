@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Wogi Flow - Memory CLI (query / fetch / stats / tag)
+ * Wogi Flow - Memory CLI (query / fetch / stats / tag / propose)
  *
  * Unified query layer over WogiFlow's state-file landscape. Instead of
  * grepping across ready.json / decisions.md / feedback-patterns.md /
@@ -9,9 +9,13 @@
  * `flow memory query <filters>` or `flow memory fetch <ref>`.
  *
  * Story: wf-e64cacd0 (epic-episodic-memory, re-scoped post-pivot).
+ * Story: wf-4434851f (IGR artifact edit proposals — propose|approve|reject|list).
  *
  * Boundaries:
- *   - Does NOT modify memory file contents (read-only across all sources).
+ *   - Does NOT modify query source files.
+ *   - The propose/approve surface stages edits to IGR artifacts
+ *     (product / domain-model / user-journeys / glossary). Agents propose;
+ *     the user approves at session-end. No silent writes.
  *   - Tags are stored in a sidecar `.workflow/state/memory-tags.json` — the
  *     source memory files stay immutable.
  *
@@ -21,6 +25,10 @@
  *   flow memory stats
  *   flow memory tag <ref> <#tag>
  *   flow memory untag <ref> <#tag>
+ *   flow memory propose --block <b> --op <o> --content <file> [--section <h>] [--rationale <text>]
+ *   flow memory approve <id>
+ *   flow memory reject  <id> [--reason <text>]
+ *   flow memory list    [--status pending|approved|rejected] [--json]
  *
  * Usage (programmatic):
  *   const { queryMemory, fetchByRef, memoryStats, addTag } = require('./flow-memory');
@@ -749,15 +757,78 @@ if (require.main === module) {
       return;
     }
 
+    if (cmd === 'propose' || cmd === 'approve' || cmd === 'reject' || cmd === 'list') {
+      const store = require('../lib/memory-proposal-store');
+      try {
+        if (cmd === 'propose') {
+          const record = store.createProposal({
+            block: args.block,
+            op: args.op,
+            contentFile: args.content,
+            section: args.section,
+            rationale: args.rationale,
+            proposedBy: args['proposed-by'],
+          });
+          if (args.json) { console.log(JSON.stringify(record, null, 2)); return; }
+          console.log(`Staged ${record.op} on ${record.block} (${record.id})`);
+          console.log(`  content: ${record.contentPath}`);
+          if (record.section) console.log(`  section: ${record.section}`);
+          if (record.rationale) console.log(`  rationale: ${record.rationale}`);
+          console.log(`  review at session-end or: flow memory list`);
+          return;
+        }
+        if (cmd === 'approve') {
+          const id = args._[1] || args.id;
+          if (!id) { console.error('Usage: flow memory approve <id>'); process.exit(1); }
+          const applied = store.approveProposal({ id });
+          if (args.json) { console.log(JSON.stringify(applied, null, 2)); return; }
+          console.log(`Approved ${applied.op} on ${applied.block} (${applied.id})`);
+          return;
+        }
+        if (cmd === 'reject') {
+          const id = args._[1] || args.id;
+          if (!id) { console.error('Usage: flow memory reject <id> [--reason <text>]'); process.exit(1); }
+          const rejected = store.rejectProposal({ id, reason: args.reason });
+          if (args.json) { console.log(JSON.stringify(rejected, null, 2)); return; }
+          console.log(`Rejected ${rejected.op} on ${rejected.block} (${rejected.id})`);
+          if (rejected.reason) console.log(`  reason: ${rejected.reason}`);
+          return;
+        }
+        // list
+        const statusFilter = args.status && args.status !== true ? args.status : 'pending';
+        const list = store.listProposals({ status: statusFilter });
+        if (args.json) { console.log(JSON.stringify(list, null, 2)); return; }
+        if (list.length === 0) { console.log(`(no ${statusFilter} memory proposals)`); return; }
+        console.log(`Memory proposals (${statusFilter}, ${list.length}):`);
+        for (const r of list) {
+          const icon = r.op === 'append' ? '+' : r.op === 'replace-section' ? '~' : '!';
+          console.log(`  ${icon} ${r.block} [${r.op}] ${r.id}`);
+          console.log(`    proposedAt: ${r.proposedAt}  by: ${r.proposedBy}`);
+          if (r.section) console.log(`    section: ${r.section}`);
+          if (r.rationale) console.log(`    rationale: ${r.rationale}`);
+        }
+        return;
+      } catch (err) {
+        console.error(`[memory:${cmd}] error: ${err.message}`);
+        process.exit(1);
+      }
+    }
+
     console.log(`Usage:
-  flow memory query [--since=<dur>] [--task=<id>] [--kind=<k>] [--tag=<#t>] [--limit=N] [--json]
-  flow memory fetch <ref> [--raw] [--json]
-  flow memory stats [--json]
-  flow memory tag <ref> <#tag>
-  flow memory untag <ref> <#tag>
+  flow memory query   [--since=<dur>] [--task=<id>] [--kind=<k>] [--tag=<#t>] [--limit=N] [--json]
+  flow memory fetch   <ref> [--raw] [--json]
+  flow memory stats   [--json]
+  flow memory tag     <ref> <#tag>
+  flow memory untag   <ref> <#tag>
+  flow memory propose --block <b> --op <o> --content <file> [--section <h>] [--rationale <text>]
+  flow memory approve <id>
+  flow memory reject  <id> [--reason <text>]
+  flow memory list    [--status pending|approved|rejected] [--json]
 
 Durations: 30m, 2h, 7d, 2w
 Kinds:     ${Object.values(KINDS).join(', ')}
+Blocks:    product, domain-model, user-journeys, glossary
+Ops:       append, replace-section, replace-all (replace-all requires --rationale)
 Refs:      wf-XXXXXXXX | R-NNN | CORR-NNN | <adversary-run-filename>`);
     process.exit(cmd ? 1 : 0);
   })().catch((err) => {

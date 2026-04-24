@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T11:25:13.364Z",
+  "lastUpdated": "2026-04-24T12:31:58.442Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
   "summary": {
-    "totalTasks": 41,
+    "totalTasks": 45,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
@@ -11,9 +11,9 @@
   },
   "byModel": {
     "unknown": {
-      "taskCount": 41,
-      "totalIterations": 41,
-      "firstAttemptPasses": 41,
+      "taskCount": 45,
+      "totalIterations": 45,
+      "firstAttemptPasses": 45,
       "totalTokens": 0,
       "totalWallClockMs": 0,
       "totalRevisions": 0,
@@ -61,9 +61,9 @@
           "totalRevisions": 0
         },
         "epic": {
-          "taskCount": 6,
-          "totalIterations": 6,
-          "firstAttemptPasses": 6,
+          "taskCount": 10,
+          "totalIterations": 10,
+          "firstAttemptPasses": 10,
           "totalTokens": 0,
           "totalRevisions": 0
         }
@@ -114,9 +114,9 @@
       "firstAttemptRate": 1
     },
     "epic": {
-      "taskCount": 6,
-      "totalIterations": 6,
-      "firstAttemptPasses": 6,
+      "taskCount": 10,
+      "totalIterations": 10,
+      "firstAttemptPasses": 10,
       "avgIterations": 1,
       "firstAttemptRate": 1
     }
@@ -133,6 +133,62 @@
     "primarySuccessRate": 0
   },
   "recentTasks": [
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T12:31:58.442Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T12:30:14.755Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T12:28:54.203Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T12:27:59.402Z"
+    },
     {
       "taskId": "wf-34290000",
       "model": "unknown",

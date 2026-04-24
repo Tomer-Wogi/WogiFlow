@@ -3,6 +3,7 @@
 ## 2026-04
 
 ### Week 4 (Apr 19-25)
+- [x] wf-4434851f: C2 IGR artifact edit proposals via CLI + session-end approval (Apr 24)
 - [x] wf-26d363ce: H1 Structured phase definition schema (YAML) (Apr 24)
 - [x] wf-9a969442: F3 Fuzzy-match patching for skill edits (Apr 24)
 - [x] wf-2a9f179e: F1 Skill propose/patch/remove CLI + session-end approval UI (Apr 24)

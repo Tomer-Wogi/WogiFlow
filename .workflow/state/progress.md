@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Phase 2 (data integrity): In progress",
     "Agent Teams integration completed: auto-detection, hypothesis debugging, scoring",
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
     "Completed: Silent-worker-halt detection via dispatch-tracking",
@@ -760,9 +759,10 @@ None
     "Completed: Auto-pickup next ready task at session restart",
     "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
     "Completed: F3 Fuzzy-match patching for skill edits",
-    "Completed: H1 Structured phase definition schema (YAML)"
+    "Completed: H1 Structured phase definition schema (YAML)",
+    "Completed: C2 IGR artifact edit proposals via CLI + session-end approval"
   ],
-  "lastUpdated": "2026-04-24T11:59:10.978Z",
+  "lastUpdated": "2026-04-24T12:34:55.498Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

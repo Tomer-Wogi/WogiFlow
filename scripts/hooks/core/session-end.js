@@ -80,6 +80,19 @@ function handleSessionEnd(input) {
       // Non-critical — never block session end
     }
 
+    // Surface pending IGR-artifact memory proposals staged by `flow memory
+    // propose`. These await user approval (`flow memory approve|reject`) at
+    // session end. Story: wf-4434851f.
+    try {
+      const { summarizePendingMemoryProposals } = require('./session-end-memory-proposals');
+      const summary = summarizePendingMemoryProposals();
+      if (summary) {
+        result.pendingMemoryProposals = summary;
+      }
+    } catch (_err) {
+      // Non-critical — never block session end
+    }
+
     // Scratch directory cleanup — remove temp files created during session
     try {
       const fs = require('node:fs');
