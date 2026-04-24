@@ -2,6 +2,20 @@
 
 Automatic log of all requests that changed files. Searchable by tags.
 
+### R-346 | 2026-04-24 19:45
+**Type**: fix
+**Tags**: #feature-dossier #auto-touch #review-findings #race-safety #deduplication
+**Request**: "/wogi-review → fix all 6 findings from review of auto-touch feature"
+**Result**: Addressed all 6 findings from the post-implementation review of R-345. **F1 (git-diff window too narrow)**: widened from `HEAD~1..HEAD` to union of `git log -n 10 --name-only` + `git diff --name-only HEAD` (catches multi-commit tasks + uncommitted). Switched from `execSync` to `execFileSync` per security-patterns.md §8. **MISS-2 (duplicate-row guard)**: `autoTouchFromTask` now reads the dossier before `appendEvent` and skips when `| <taskId> |` already appears in the file — prevents duplicate rows on /wogi-done re-run. Returns `skipped[]` array of `{slug, reason: 'already-touched'}`. **MISS-3 (concurrent-write race)**: per-file `O_EXCL` lockfile (`<dossier>.lock`) around the `appendEvent` call — concurrent /wogi-done invocations targeting the same dossier now skip with `{reason: 'locked'}` instead of clobbering each other. **F2 (note duplicates taskId)**: removed the `|| taskMeta.taskId` fallback — when title is empty, note is empty (taskId already in its own column). **F3 (config doc gap)**: appended `autoTouchOnDone` description to `_comment_featureDossier`. **UX optimization**: success line now `color('cyan')` instead of `color('dim')`. 2 new tests (duplicate-row guard; empty-title note-is-empty assertion). 18/18 dossier tests pass; full suite 2229/2229. Lint clean.
+**Files**: scripts/flow-feature-dossier.js (dup guard + lockfile + note fix), scripts/flow-done.js (widened git window + execFileSync + cyan), .workflow/config.json (comment update), tests/flow-feature-dossier.test.js (+2 tests)
+
+### R-345 | 2026-04-24 19:15
+**Type**: feat
+**Tags**: #feature-dossier #auto-touch #flow-done #change-log
+**Request**: "Wire feature-dossier auto-touch into /wogi-done so every completed task that matches a dossier auto-appends a Change Log row"
+**Result**: New `autoTouchFromTask()` export in `flow-feature-dossier.js` matches the completed task (title + description + git diff HEAD~1..HEAD files) against all dossiers via existing `matchFeatures()`, filters by `featureDossier.autoMatchConfidence` threshold, and calls `appendEvent()` per matched dossier with `{taskId, type, note}`. Notes truncate at 80 chars. Wired into `flow-done.js` after successful `moveTaskAsync` — prints `📒 Updated feature dossiers: <slugs>` on match. Fail-open throughout: missing config, missing git, malformed dossier, or library import failure never blocks /wogi-done. New config toggle `featureDossier.autoTouchOnDone` (default true). 6 new tests (single match, multi-match, no-match, long-title truncation, null-input graceful, disable toggle). 16/16 dossier tests pass. Lint clean.
+**Files**: scripts/flow-feature-dossier.js (+autoTouchFromTask), scripts/flow-done.js (+auto-touch call after completion), .workflow/config.json (+autoTouchOnDone), tests/flow-feature-dossier.test.js (+6 tests)
+
 ### R-344 | 2026-04-24 14:15
 **Type**: feat
 **Tags**: #task:wf-8a0fc8ad #epic:wf-34290000 #workstream:G #bundle:stop-hook-trio #worker-contract #g6

@@ -315,3 +315,213 @@ describe('logic rules', () => {
     assert.equal(matches.length, 0);
   });
 });
+
+describe('autoTouchFromTask', () => {
+  beforeEach(() => {
+    const idx = path.join(tmpRoot, '.workflow', 'dossiers', 'index.json');
+    fs.writeFileSync(idx, JSON.stringify({ version: '1.0.0', patterns: [], slugs: {} }));
+    for (const f of fs.readdirSync(path.join(tmpRoot, '.workflow', 'dossiers'))) {
+      if (f.endsWith('.md') && f !== '_template.md') {
+        fs.unlinkSync(path.join(tmpRoot, '.workflow', 'dossiers', f));
+      }
+    }
+    fs.writeFileSync(path.join(tmpRoot, '.workflow', 'config.json'), JSON.stringify({
+      featureDossier: { enabled: true, autoMatchConfidence: 1, autoTouchOnDone: true }
+    }));
+    try {
+      require(path.join(origCwd, 'scripts', 'flow-config-loader')).invalidateConfigCache();
+    } catch (_err) { /* noop */ }
+  });
+
+  it('appends a Change Log row when a single dossier matches', () => {
+    const p = writeDossier('billing', `# Billing
+
+<!-- slug: billing -->
+<!-- status: active -->
+
+## Canonical Summary
+
+Billing feature.
+
+## Match Patterns
+
+- keyword: billing
+
+## Change Log
+
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    const result = dossierLib.autoTouchFromTask({
+      taskId: 'wf-12345678',
+      title: 'fix billing rounding bug',
+      type: 'fix'
+    });
+    assert.equal(result.touched.length, 1);
+    assert.equal(result.touched[0].slug, 'billing');
+    const after = fs.readFileSync(p, 'utf-8');
+    assert.ok(after.includes('wf-12345678'), 'task id present in dossier');
+    assert.ok(after.includes('fix billing rounding bug'), 'note present');
+    assert.ok(after.includes('| fix |'), 'type present');
+  });
+
+  it('appends a row to EACH matched dossier', () => {
+    writeDossier('alpha', `# Alpha
+<!-- slug: alpha -->
+## Match Patterns
+- keyword: shared-term
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    writeDossier('beta', `# Beta
+<!-- slug: beta -->
+## Match Patterns
+- keyword: shared-term
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    const result = dossierLib.autoTouchFromTask({
+      taskId: 'wf-abcdef01',
+      title: 'update shared-term across modules',
+      type: 'refactor'
+    });
+    assert.equal(result.touched.length, 2);
+    const slugs = result.touched.map(t => t.slug).sort();
+    assert.deepEqual(slugs, ['alpha', 'beta']);
+    const alphaContent = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'alpha.md'), 'utf-8');
+    const betaContent = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'beta.md'), 'utf-8');
+    assert.ok(alphaContent.includes('wf-abcdef01'));
+    assert.ok(betaContent.includes('wf-abcdef01'));
+  });
+
+  it('appends nothing when no dossier matches', () => {
+    writeDossier('unrelated', `# Unrelated
+<!-- slug: unrelated -->
+## Match Patterns
+- keyword: nothing-to-do-with-task
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    const before = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'unrelated.md'), 'utf-8');
+    const result = dossierLib.autoTouchFromTask({
+      taskId: 'wf-11111111',
+      title: 'completely different work',
+      type: 'feat'
+    });
+    assert.equal(result.touched.length, 0);
+    assert.equal(result.skipped, 'no-match');
+    const after = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'unrelated.md'), 'utf-8');
+    assert.equal(before, after);
+  });
+
+  it('truncates long titles to 80 chars with ellipsis', () => {
+    writeDossier('long', `# Long
+<!-- slug: long -->
+## Match Patterns
+- keyword: trigger
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    const longTitle = 'trigger ' + 'x'.repeat(200);
+    dossierLib.autoTouchFromTask({ taskId: 'wf-33333333', title: longTitle, type: 'feat' });
+    const content = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'long.md'), 'utf-8');
+    // Match the row with the note — find line containing wf-33333333
+    const row = content.split('\n').find(l => l.includes('wf-33333333'));
+    assert.ok(row, 'found inserted row');
+    assert.ok(row.includes('...'), 'note was truncated');
+    // Extract the note cell and verify length <= 80
+    const cells = row.split('|').map(s => s.trim());
+    const note = cells[4];
+    assert.ok(note.length <= 80, `note length ${note.length} should be <= 80`);
+  });
+
+  it('returns {touched:[], error} gracefully on corrupt dossier', () => {
+    assert.doesNotThrow(() => {
+      dossierLib.autoTouchFromTask(null);
+    });
+    assert.doesNotThrow(() => {
+      dossierLib.autoTouchFromTask({});
+    });
+  });
+
+  it('skips when autoTouchOnDone is false', () => {
+    fs.writeFileSync(path.join(tmpRoot, '.workflow', 'config.json'), JSON.stringify({
+      featureDossier: { enabled: true, autoTouchOnDone: false }
+    }));
+    try {
+      require(path.join(origCwd, 'scripts', 'flow-config-loader')).invalidateConfigCache();
+    } catch (_err) { /* noop */ }
+    writeDossier('x', `# X
+<!-- slug: x -->
+## Match Patterns
+- keyword: matches
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    const result = dossierLib.autoTouchFromTask({
+      taskId: 'wf-22222222',
+      title: 'matches something',
+      type: 'feat'
+    });
+    assert.equal(result.touched.length, 0);
+    assert.equal(result.skipped, 'auto-touch-disabled');
+  });
+
+  it('skips dossiers that already have a row for this taskId (duplicate guard)', () => {
+    fs.writeFileSync(path.join(tmpRoot, '.workflow', 'config.json'), JSON.stringify({
+      featureDossier: { enabled: true, autoMatchConfidence: 1, autoTouchOnDone: true }
+    }));
+    try {
+      require(path.join(origCwd, 'scripts', 'flow-config-loader')).invalidateConfigCache();
+    } catch (_err) { /* noop */ }
+    const p = writeDossier('dup', `# Dup
+<!-- slug: dup -->
+## Match Patterns
+- keyword: duplicatecheck
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+| 2026-04-24 | wf-deadbeef | feat | earlier touch |
+`);
+    const result = dossierLib.autoTouchFromTask({
+      taskId: 'wf-deadbeef',
+      title: 'duplicatecheck re-run',
+      type: 'feat'
+    });
+    assert.equal(result.touched.length, 0, 'no new touches');
+    assert.ok(result.skipped.some(s => s.slug === 'dup' && s.reason === 'already-touched'));
+    // File content is unchanged — only one row for this taskId
+    const content = fs.readFileSync(p, 'utf-8');
+    const matches = content.match(/wf-deadbeef/g) || [];
+    assert.equal(matches.length, 1, 'still exactly one row for this taskId');
+  });
+
+  it('uses empty note when title is missing — does not duplicate taskId', () => {
+    writeDossier('empty-title', `# EmptyTitle
+<!-- slug: empty-title -->
+## Match Patterns
+- keyword: empty-title-trigger
+## Change Log
+| Date | Task ID | Event | Note |
+|------|---------|-------|------|
+`);
+    dossierLib.autoTouchFromTask({
+      taskId: 'wf-99999999',
+      title: '',
+      description: 'empty-title-trigger something',
+      type: 'feat'
+    });
+    const content = fs.readFileSync(path.join(tmpRoot, '.workflow', 'dossiers', 'empty-title.md'), 'utf-8');
+    const row = content.split('\n').find(l => l.includes('wf-99999999'));
+    assert.ok(row, 'row inserted');
+    const cells = row.split('|').map(s => s.trim());
+    const note = cells[4];
+    assert.notEqual(note, 'wf-99999999', 'note MUST NOT duplicate taskId');
+    assert.equal(note, '', 'note is empty when title is missing');
+  });
+});

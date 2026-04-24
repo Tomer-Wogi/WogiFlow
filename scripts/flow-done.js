@@ -715,6 +715,38 @@ async function main() {
     if (process.env.DEBUG) console.error(`[DEBUG] Clarification learning: ${err.message}`);
   }
 
+  // Auto-touch feature dossiers matching this completed task.
+  // Appends a Change Log row to every dossier whose match-patterns match
+  // the task title/description/files. Fail-open — never blocks completion.
+  try {
+    const { autoTouchFromTask } = require('./flow-feature-dossier');
+    // Widen window to catch multi-commit tasks. execFileSync avoids shell
+    // interpretation. Union of recent commits + uncommitted working tree.
+    const fileSet = new Set();
+    try {
+      const commits = execFileSync('git', ['log', '--name-only', '--pretty=format:', '-n', '10'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+      commits.split('\n').map(s => s.trim()).filter(Boolean).forEach(f => fileSet.add(f));
+    } catch (_err) { /* no git / no history */ }
+    try {
+      const dirty = execFileSync('git', ['diff', '--name-only', 'HEAD'], { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+      dirty.split('\n').map(s => s.trim()).filter(Boolean).forEach(f => fileSet.add(f));
+    } catch (_err) { /* noop */ }
+
+    const touchResult = autoTouchFromTask({
+      taskId,
+      title: result.task?.title || '',
+      description: result.task?.description || '',
+      type: result.task?.type || 'feat',
+      files: [...fileSet]
+    });
+    if (touchResult.touched && touchResult.touched.length > 0) {
+      const slugs = touchResult.touched.map(t => t.slug).join(', ');
+      console.log(color('cyan', `📒 Updated feature dossiers: ${slugs}`));
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] dossier auto-touch: ${err.message}`);
+  }
+
   // v1.7.0: Track task completion in session state and memory blocks
   // v3.2.1: Improved error handling - don't silently swallow failures
   try {

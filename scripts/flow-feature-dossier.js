@@ -366,6 +366,94 @@ function appendEvent(slug, event = {}) {
 }
 
 /**
+ * Auto-append a Change Log row to every dossier matching a completed task.
+ * Called by flow-done.js after a task moves to recentlyCompleted.
+ * Fail-safe: never throws — returns {touched:[], skipped?, error?} on any failure.
+ * Guards: duplicate-row check (by taskId) and per-file lockfile to prevent
+ * concurrent /wogi-done corruption.
+ */
+function autoTouchFromTask(taskMeta = {}) {
+  try {
+    let config = {};
+    try {
+      const { getConfig } = require('./flow-utils');
+      config = getConfig() || {};
+    } catch (_err) { /* fail-open */ }
+
+    const fd = config.featureDossier || {};
+    if (fd.enabled === false) return { touched: [], skipped: 'dossier-disabled' };
+    if (fd.autoTouchOnDone === false) return { touched: [], skipped: 'auto-touch-disabled' };
+    const threshold = fd.autoMatchConfidence ?? 1;
+
+    const matches = matchFeatures({
+      title: taskMeta.title || '',
+      description: taskMeta.description || '',
+      files: taskMeta.files || []
+    });
+    const qualifying = matches.filter(m => m.score >= threshold);
+    if (qualifying.length === 0) return { touched: [], skipped: 'no-match' };
+
+    const rawNote = String(taskMeta.title || '').trim();
+    const note = rawNote.length > 80 ? rawNote.slice(0, 77) + '...' : rawNote;
+    const taskId = taskMeta.taskId || '-';
+    const event = {
+      taskId,
+      type: taskMeta.type || 'feat',
+      note,
+      date: taskMeta.date
+    };
+
+    const touched = [];
+    const skipped = [];
+    for (const m of qualifying) {
+      const dossier = loadDossier(m.slug);
+      if (!dossier) continue;
+
+      // Duplicate-row guard: skip if any existing row already references this taskId.
+      if (taskId !== '-') {
+        try {
+          const existing = fs.readFileSync(dossier.path, 'utf-8');
+          if (existing.includes(`| ${taskId} |`)) {
+            skipped.push({ slug: m.slug, reason: 'already-touched' });
+            continue;
+          }
+        } catch (_err) { /* fall through to attempt append */ }
+      }
+
+      // Per-file lockfile (O_EXCL atomic create) — prevents concurrent writers
+      // from clobbering each other's rows on same-second task completions.
+      const lockPath = `${dossier.path}.lock`;
+      let lockFd;
+      try {
+        lockFd = fs.openSync(lockPath, 'wx');
+      } catch (err) {
+        if (err.code === 'EEXIST') {
+          skipped.push({ slug: m.slug, reason: 'locked' });
+          if (process.env.DEBUG) console.error(`[auto-touch] ${m.slug}: locked by another writer, skipping`);
+          continue;
+        }
+        if (process.env.DEBUG) console.error(`[auto-touch] ${m.slug} lock: ${err.message}`);
+        continue;
+      }
+
+      try {
+        appendEvent(m.slug, event);
+        touched.push({ slug: m.slug, score: m.score });
+      } catch (err) {
+        if (process.env.DEBUG) console.error(`[auto-touch] ${m.slug}: ${err.message}`);
+      } finally {
+        try { fs.closeSync(lockFd); } catch (_err) { /* noop */ }
+        try { fs.unlinkSync(lockPath); } catch (_err) { /* noop */ }
+      }
+    }
+    return { touched, skipped };
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[auto-touch] error: ${err.message}`);
+    return { touched: [], error: err.message };
+  }
+}
+
+/**
  * Check a spec against a dossier's canonical claims.
  * Flags contradictions: spec mentions something listed in Rejected Alternatives
  * or reintroduces something listed in Removed Elements.
@@ -690,6 +778,7 @@ module.exports = {
   matchFeatures,
   scaffoldDossier,
   appendEvent,
+  autoTouchFromTask,
   validateSpecAgainstDossier,
   detectDrift,
   buildPhaseInjection,
