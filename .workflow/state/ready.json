@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T14:07:40.950Z",
+  "lastUpdated": "2026-04-24T14:14:23.485Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -131,6 +131,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-a346c915",
+      "title": "A1 AGENTS.md alias for CLAUDE.md",
+      "type": "feature",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "specPath": ".workflow/changes/wf-a346c915.md",
+      "created": "2026-04-23T00:00:00.000Z",
+      "startedAt": "2026-04-24T14:14:16.833Z",
+      "routedAt": "2026-04-24T14:14:16.833Z",
+      "completedAt": "2026-04-24T14:14:23.484Z"
+    },
     {
       "id": "wf-04585518",
       "title": "Surface effort.level and thinking.enabled in status line",
@@ -275,25 +289,6 @@
       "created": "2026-04-24T10:17:54.731Z",
       "specPath": ".workflow/changes/wf-2c6c8b40.md",
       "completedAt": "2026-04-24T10:39:32.064Z"
-    },
-    {
-      "id": "wf-8a0fc8ad",
-      "title": "G6 Tool-first turn enforcement for workers",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": "stop-hook-trio",
-      "depends": [
-        "wf-b5cd0351",
-        "wf-c8754819"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-8a0fc8ad.md",
-      "completedAt": "2026-04-24T10:29:14.364Z",
-      "completionNote": "G1+G4+G6 bundle — shared module scripts/hooks/core/worker-tool-first-gate.js + stop.js wiring + rule doc + template update + 23 unit tests + 2 new scenarios in flow-task-boundary-autopickup"
     }
   ],
   "backlog": [

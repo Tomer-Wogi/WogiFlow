@@ -24,10 +24,10 @@
         "wf-d705ddee"
       ],
       "features": [],
-      "status": "inProgress",
-      "progress": 0.3333333333333333,
+      "status": "ready",
+      "progress": 0,
       "createdAt": "2026-03-30T07:20:30.378Z",
-      "updatedAt": "2026-04-15T06:28:34.903Z"
+      "updatedAt": "2026-04-24T14:13:50.243Z"
     },
     "epic-enforcement-gates": {
       "id": "epic-enforcement-gates",
@@ -45,10 +45,10 @@
         "wf-ac7ea4e4"
       ],
       "features": [],
-      "status": "completed",
-      "progress": 1,
+      "status": "ready",
+      "progress": 0,
       "createdAt": "2026-04-10T18:25:36.077Z",
-      "updatedAt": "2026-04-15T06:28:34.904Z"
+      "updatedAt": "2026-04-24T14:13:50.244Z"
     },
     "epic-episodic-memory": {
       "id": "epic-episodic-memory",
@@ -80,12 +80,12 @@
         "wf-f747f993"
       ],
       "features": [],
-      "status": "inProgress",
-      "progress": 0.6190476190476191,
+      "status": "ready",
+      "progress": 0,
       "createdAt": "2026-04-15T06:31:14.234Z",
-      "updatedAt": "2026-04-15T11:05:23.291Z"
+      "updatedAt": "2026-04-24T14:13:50.245Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-04-15T10:26:30.130Z"
+  "lastUpdated": "2026-04-24T14:13:50.245Z"
 }
