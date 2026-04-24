@@ -2953,3 +2953,162 @@ User starts claude/gemini → AI detects pending setup → Conversational wizard
 **Request**: "Enhance task-gate block messages to teach /wogi-decide, /wogi-capture, and workspace coordination pattern — revision of adversary-rejected proposal"
 **Result**: Made `generateBlockMessage()` in `scripts/hooks/core/task-gate.js` context-aware. New helpers `isRuleOrMemoryFile()` (matches decisions.md, feedback-patterns.md, MEMORY.md, and Claude Code auto-memory paths) and `isInWorkspaceMode()` (walks up to 6 parents for `.workspace/`). Rule files get a prominent `/wogi-decide` suggestion; workspace-mode blocks get a `coordinate wf-XXX in workspace` suggestion; all messages get `/wogi-capture` and keep the standard /wogi-ready|start|story options. Intent artifacts (domain-model.md, user-journeys.md, glossary.md, product.md) and registry maps (app-map.md, function-map.md, api-map.md) intentionally do NOT trigger the rule-file branch per adversary critique — those remain task-gated through /wogi-story. Enforcement logic unchanged. 10 new tests (32 total), all passing.
 **Files**: `scripts/hooks/core/task-gate.js`, `tests/flow-hooks-task-gate.test.js`
+
+### R-337 | 2026-04-24 13:50
+**Type**: feat
+**Tags**: #task:wf-3635574e #epic:wf-34290000 #workstream:G #ipc #sqlite #path-b
+**Request**: "G3 SQLite-as-IPC for workspace dispatch — per-worker inbound.db + outbound.db with atomic read-and-mark"
+**Result**: Path B (pragmatic) implementation landed. New `lib/workspace-ipc-sqlite.js` exposes async per-worker SQLite index (schema: `messages(id, kind, payload, created_at, consumed_at)`) sitting on top of the existing JSON message bus which remains authoritative — eliminates the async-cascade refactor risk of Path A while delivering all 7 ACs. `readAndMarkConsumed()` provides atomic consume (AC3) with a verifier-hook pattern that prevents index leak (all examined rows get `consumed_at` set, even verifier-skipped ones). Single-writer contract (AC2) is enforced via per-worker subdirectory layout under `.workspace/state/ipc/<repoName>/{inbound,outbound}.db`. Migration script `scripts/flow-workspace-migrate-ipc.js` converts existing `.workspace/messages/*.json` and `dispatched-tasks.json` into the index; idempotent via UPSERT. AC5 fallback: `isAvailable()` returns false on sql.js failure and all callers (saveMessageIndexed, atomicConsumeFor, getOverdueDispatchesIndexed, recordDispatchIndexed) degrade to the sync JSON path silently. `workspace-messages.js` adds two new async exports (saveMessageIndexed, atomicConsumeFor); sync APIs untouched. `workspace-dispatch-tracking.js` adds recordDispatchIndexed + getOverdueDispatchesIndexed. `workspace-channel-server.js` adds fire-and-forget index write after its manager-bound JSON write. AC6 + AC7 covered by `tests/workspace-ipc-multi-worker.test.js` (3-worker no-loss/no-dup test + SIGKILL mid-write crash-safety). Full suite 2204/2204 pass (5-run stress confirmed stable). Lint clean.
+**Files**: lib/workspace-ipc-sqlite.js (new, 415 LOC), scripts/flow-workspace-migrate-ipc.js (new, 175 LOC), lib/workspace-messages.js (+91 LOC async exports), lib/workspace-dispatch-tracking.js (+55 LOC async exports), lib/workspace-channel-server.js (+18 LOC fire-and-forget index), tests/workspace-ipc-sqlite.test.js (new, 23 cases), tests/workspace-ipc-multi-worker.test.js (new, 5 cases incl. SIGKILL crash-safety), package.json (added new tests to suite)
+
+
+**Search examples:**
+```bash
+grep -A5 "#screen:login" .workflow/state/request-log.md
+grep -A5 "#component:Button" .workflow/state/request-log.md
+grep -A5 "Type: fix" .workflow/state/request-log.md
+```
+
+---
+
+### R-347 | 2026-04-24 14:40
+**Type**: feat
+**Tags**: #task:wf-4434851f #epic:wf-34290000 #workstream:C #memory-proposals #igr-artifacts #session-end-hook
+**Request**: "C2 IGR artifact edit proposals via CLI + session-end approval"
+**Result**: Agent-proposed IGR artifact edits (`product.md` / `domain-model.md` / `user-journeys.md` / `glossary.md`) now stage to `.workflow/state/memory-proposals/<id>.json` instead of silently mutating files. New `lib/memory-proposal-store.js` exports `createProposal` / `listProposals` / `findProposal` / `approveProposal` / `rejectProposal` / `previewProposal` plus `parseSections` + `findSectionByHeading`. Three ops: `append` (end-append), `replace-section` (heading-scoped swap; rejects when heading is missing or ambiguous — 4 malformed cases tested), `replace-all` (full rewrite — requires rationale). Approval applies to target artifact + archives record to `memory-proposals/applied/`; rejection archives to `memory-proposals/rejected/` without touching artifact. `scripts/flow-memory.js` extended with 4 new subcommands (`propose` / `approve` / `reject` / `list`) alongside the existing `query|fetch|stats|tag|untag` surface. New `scripts/hooks/core/session-end-memory-proposals.js` summarizer mirrors the skill-proposal pattern; wired into `scripts/hooks/core/session-end.js` → `result.pendingMemoryProposals` with diff preview (first 6 lines) + approve/reject prompts per AC #6. 31 new tests (6 input-validation + 3 propose-round-trip + 4 section-boundary + 6 approve-round-trip + 2 reject-round-trip + 4 session-end + 6 section-parsing unit); full suite 2156/2156 + lint clean on new files. No MCP tool registration — WogiFlow has no tool-registration layer. Session-boundary-friendly: completed within single fresh-session budget.
+**Files**: lib/memory-proposal-store.js (new), scripts/flow-memory.js (extended CLI), scripts/hooks/core/session-end-memory-proposals.js (new), scripts/hooks/core/session-end.js (wired summarizer), tests/memory-propose.test.js (new)
+
+### R-346 | 2026-04-24 13:55
+**Type**: feat
+**Tags**: #task:wf-26d363ce #epic:wf-34290000 #workstream:H #phase-schema #yaml #lib
+**Request**: "H1 Structured phase definition schema (YAML)"
+**Result**: Added machine-readable phase metadata sidecar at `.workflow/modes/{exploring,spec_review,coding,validating,completing}.yaml` paired to the existing prose phase docs (untouched). New `lib/mode-schema.js` exports `loadMode(name)` + `validateMode(obj)` + `parseModeYaml(content)` + `listModeFiles()`. Schema is WogiFlow-native (no Kilo reference): required `name`/`roleDefinition`/`whenToUse`, optional `customInstructions`/`allowedToolGroups[]`. Self-contained focused YAML parser (no new dependency) handles top-level scalars, block scalars (`|`), and list-of-strings; null-prototype object output + dangerous-key rejection guard against prototype pollution per security-patterns.md §3. Malformed input throws field-specific errors with file path + line number. Downstream consumers C2 (`wf-4434851f`) + E1 (`wf-8d635d0e`) can now `require('wogiflow/lib/mode-schema').loadMode('coding')` to consume structured data. 21 new tests (7 validateMode + 7 parseModeYaml + 4 loadMode + 3 production-files); full suite 2156/2156 + quality gates 18/18.
+**Files**: lib/mode-schema.js (new), .workflow/modes/exploring.yaml (new), .workflow/modes/spec_review.yaml (new), .workflow/modes/coding.yaml (new), .workflow/modes/validating.yaml (new), .workflow/modes/completing.yaml (new), tests/mode-schema.test.js (new), package.json (wired test into npm test)
+
+### R-345 | 2026-04-24 13:10
+**Type**: feat
+**Tags**: #task:wf-ea4751fc #module:observation-capture #module:post-tool-use #claude-code:2.1.119 #telemetry
+**Request**: "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook"
+**Result**: CC 2.1.119 ships `duration_ms` in PostToolUse/PostToolUseFailure payloads — real tool execution time excluding permission prompts and PreToolUse hooks. Previously, `post-tool-use.js` recorded `Date.now() - startTime` across two adjacent statements (near-zero, meaningless). Added `selectDuration(parsedInput, fallbackMs)` to `scripts/hooks/core/observation-capture.js:393` — prefers `parsedInput.duration_ms` when numeric (includes valid 0), falls back to the local delta otherwise (older CC, malformed payload, null/undefined). Entry file `scripts/hooks/entry/claude-code/post-tool-use.js:14,50` imports + uses `selectDuration` at the single capture site; `captureObservation` signature unchanged (AC3). 9 new tests cover both branches including edge cases (null/undefined/non-numeric/NaN/zero/missing `parsedInput`). Full suite: 2073 passing, 0 failures. Lint clean (0 new warnings in touched files).
+**Files**: scripts/hooks/core/observation-capture.js (added selectDuration + export), scripts/hooks/entry/claude-code/post-tool-use.js (import + wire), tests/flow-hooks-observation-capture.test.js (9 new selectDuration tests)
+
+### R-344 | 2026-04-24 12:15
+**Type**: feat
+**Tags**: #task:wf-2c6c8b40 #epic:wf-34290000 #hooks #routing
+**Request**: "G2 Mid-session routing-state-reset fix — reset routing flag on PostCompact + every phase transition"
+**Result**: Added `removeRoutingFlag()` (pending only) + `resetRoutingState()` (both files) to routing-gate. PostCompact now resets before re-arming so a stale cleared-marker can't suppress the re-set. `transitionPhase()` clears stale pending flag on success while preserving the cleared-marker (skill-chain suppression intact).
+**Files**: scripts/hooks/core/routing-gate.js, scripts/hooks/core/post-compact.js, scripts/hooks/core/phase-gate.js, tests/flow-hooks-routing-state-reset.test.js
+
+---
+
+### R-343 | 2026-04-24 11:30
+**Type**: feat
+**Tags**: #task:wf-b5cd0351 #task:wf-c8754819 #task:wf-8a0fc8ad #epic:wf-34290000 #workstream:G #stop-hook #worker-mode
+**Request**: "Epic wf-34290000 Phase 6 — G1 + G4 + G6 Stop hook trio (bundled — same integration point)"
+**Result**: Unified worker tool-first turn contract lands as one cohesive gate. New core module `scripts/hooks/core/worker-tool-first-gate.js` detects three violations under one rule name (`worker-tool-first-turn`): G1 silent-halt (zero tool_use blocks in a turn), G4 text-before-tool-call (strict mode: first assistant content block must be `tool_use`), G6 documented contract (rule named consistently in block messages + worker-rules template). Wired into `scripts/hooks/entry/claude-code/stop.js` between the Gap-B queue gate and the Haiku question classifier. Config: `workspace.toolFirstTurnGate.{enabled,strict}` (defaults `true,true`). Fail-open throughout — missing transcript / parse error / config error returns no-block. Rule documented at `.claude/rules/_internal/worker-tool-first-turn.md`. Worker-rules template (`lib/workspace.js:1217+`) updated with the contract so workers see it in every system prompt. 23 new unit tests pass covering extractCurrentTurn, checkWorkerToolFirstTurn (G1 both modes, G4 strict-only, pass cases, fail-open paths), renderBlockMessage (rule name + curl + violation heading), isWorkerMode (env gating), readTranscript (robustness). Full test suite 2064/2064 pass. Lint clean (17 pre-existing warnings unchanged).
+**Files**: scripts/hooks/core/worker-tool-first-gate.js (new), scripts/hooks/entry/claude-code/stop.js (wire gate), scripts/flow-config-defaults.js (toolFirstTurnGate default), .claude/rules/_internal/worker-tool-first-turn.md (new), lib/workspace.js (worker-rules template), tests/stop-hook-worker-tool-first.test.js (new, 23 tests), .workflow/changes/wf-b5cd0351.md (spec), .workflow/changes/wf-c8754819.md (spec), .workflow/changes/wf-8a0fc8ad.md (spec)
+
+### R-342 | 2026-04-24 11:20
+**Type**: fix
+**Tags**: #module:session-context #epic:wf-34290000 #auto-pickup #restart-loop
+**Request**: "Fix auto-pickup restart loop — queue[0] blindly picks epics, which are unworkable via /wogi-start alone"
+**Result**: `scripts/hooks/core/session-context.js:902-916` now uses `queue.find(t => t.type !== 'epic')` instead of `queue[0]`. Rationale: epics are containers whose work lives in child stories; when auto-pickup picks an epic, `/wogi-start <epic-id>` has no actionable next step, the turn ends with no tool calls, Phase-1 fallback re-marks, restart loop. Session history showed 6 consecutive `task-boundary-restart` events burning tokens without progress. Fix skips epics; when queue contains ONLY epics, no AUTO-PICKUP emitted (safer to halt than loop). Added scenarios 7 + 8 to `flow-task-boundary-autopickup.test.js` covering skip-epic + all-epics-halt. 11/11 autopickup tests pass, 2064/2064 full suite pass.
+**Files**: scripts/hooks/core/session-context.js (epic-skip filter), tests/flow-task-boundary-autopickup.test.js (new scenarios 7 + 8)
+
+### R-341 | 2026-04-24 11:15
+**Type**: chore
+**Tags**: #epic:wf-34290000 #spec-generation #ready-json
+**Request**: "Epic wf-34290000 — regenerate all remaining story specs + order ready queue for autonomous execution"
+**Result**: One-shot generator at `.workflow/scratch/generate-epic-specs.js` created 13 story specs for the epic's remaining children: wf-b5cd0351 (G1), wf-c8754819 (G4), wf-8a0fc8ad (G6), wf-2c6c8b40 (G2), wf-8e97ac77 (D1), wf-ac2a8074 (D2), wf-2a9f179e (F1), wf-9a969442 (F3), wf-26d363ce (H1), wf-c6c75841 (H2), wf-4434851f (C2), wf-8d635d0e (E1), wf-3635574e (G3). Each spec lightweight (~25 lines) — references the epic for context + declares AC + integration point + files + depends[]. Ready.json reordered: epic moved to `inProgress` (containers don't belong in ready[] per R-342 fix), 13 stories prepended to ready[] in dependency order (stop-hook trio first, G2 next, D-workstream, F-workstream, then H1 foundational + H2/C2/E1 dependents, G3 high-risk last).
+**Files**: .workflow/scratch/generate-epic-specs.js (generator, will be cleaned at session end), .workflow/changes/wf-{b5cd0351,c8754819,8a0fc8ad,2c6c8b40,8e97ac77,ac2a8074,2a9f179e,9a969442,26d363ce,c6c75841,4434851f,8d635d0e,3635574e}.md (13 specs), .workflow/state/ready.json
+
+### R-337 | 2026-04-24 11:55
+**Type**: feat
+**Tags**: #task:wf-f267ea2a #task-boundary #auto-pickup #autonomy #session-restart
+**Request**: "Auto-pickup next ready task at session restart — enabler for autonomous epic execution; user does not want to type 'what's next?' between every task in a long run."
+**Result**: New `taskBoundaryReset.autoPickupNextTask` flag (default true). `consumeAndTriggerRestart()` writes a `task-boundary-clean-completion.json` marker right before SIGTERM (only when Phase 2 fires after a clean completion). `formatContextForInjection()` reads + consumes the marker on the next session start: when (a) flag enabled, (b) no `pending-question.json` (R-336 wins), (c) ready queue non-empty → injects an "AUTO-PICKUP MODE ACTIVE" block that names the next ready task and instructs the AI to immediately invoke `Skill(skill="wogi-start", args="<nextReadyId>")` on first user message. Single-use: marker is deleted on every observation (no loop on stale markers). Fail-open: malformed marker / unreadable ready.json / missing config falls back to existing "Proceed with next instruction". Documented as "Main-Mode Auto-Pickup After Clean Restart" in `.workflow/templates/partials/methodology-rules.hbs` per Rule Placement Decision (enforcement code shipping in `scripts/hooks/` requires rule TEXT in template). 9 new scenario tests pass, all 2064 existing tests still pass, lint clean.
+**Files**: scripts/hooks/core/task-boundary-reset.js (writeCleanCompletionMarker + Phase 2 wiring + exports), scripts/hooks/core/session-context.js (AUTO-PICKUP branch ~line 870 + marker whitelist), scripts/flow-config-defaults.js (autoPickupNextTask: true default), .workflow/config.json (flag enabled in this repo), .workflow/templates/partials/methodology-rules.hbs (new product rule), tests/flow-task-boundary-autopickup.test.js (new — 9 tests), CLAUDE.md + AGENTS.md (regenerated by bridge sync)
+
+### R-301 | 2026-04-16
+**Type**: feature
+**Tags**: #config #defaults #task:wf-ec5edf95
+**Request**: "Flip taskBoundaryReset.enabled default to true"
+**Result**: `scripts/flow-config-defaults.js:876` — default flipped `false` → `true`. Comment updated to reflect v2.17.0+ workspace-mode validation and the "Sautéed worker" UX incident that motivated the flip. Existing projects with explicit overrides unaffected.
+**Files**: `scripts/flow-config-defaults.js`
+
+### R-302 | 2026-04-16
+**Type**: feature
+**Tags**: #config #installer #cli #task:wf-f2c30458
+**Request**: "Lean config — new installs write only project-specific overrides, not full default dump"
+**Result**: New installs (`flow init`) now write a lean ~5–10 line `.workflow/config.json` instead of the prior ~300-line default dump. Runtime behavior identical — `flow-config-loader.js:318` already merges CONFIG_DEFAULTS on every read. Added `computeLeanConfig()` helper to `flow-config-defaults.js` that diffs against defaults (preserves $schema, version, projectName, cli, projectType identity keys; strips `_comment*` metadata). Added `buildLeanInstallConfig()` to `lib/installer.js` used during init. New `flow config` subcommand: `show` (on-disk), `show --full` (merged), `show --diff` (overrides only), `compact` (shrink existing fat config with backup). 15 new tests covering round-trip guarantee (`mergeWithDefaults(computeLeanConfig(full)) === mergeWithDefaults(full)`) + identity-key preservation. Both new test files (lean-config + mcp-scopes) added to `npm test` script.
+**Files**: `scripts/flow-config-defaults.js`, `lib/installer.js`, `lib/commands/config.js` (NEW), `bin/flow`, `tests/flow-lean-config.test.js` (NEW), `package.json`
+
+### R-303 | 2026-04-16
+**Type**: fix
+**Tags**: #hooks #workspace #autonomous-mode #task:wf-6cbd62a0
+**Request**: "Workspace worker silent-stall fix — workers hedging after task completion instead of picking up queued dispatches"
+**Result**: Implemented all 4 gaps + 2 learning entries. **Gap A** (`task-completed.js`): new helpers `isWorkspaceWorker()`, `findQueuedChannelDispatches()`, `isChannelDispatched()` (recognizes 3 tagging conventions: `channelSource`, `dispatchedBy`, `source: "workspace:..."`), `buildAutoPickupContext()` produces imperative ACT-NOW directive. Adapter (`claude-code.js`) passes through `additionalContext` on TaskCompleted. **Gap B** (`stop.js`): blocks end-of-turn when workspace worker has queued channel dispatches but no in-progress task, with specific 3-state contract in the block message. **Gap C** (`lib/workspace.js` worker-rules template): new "End-of-Turn Must Be a Deterministic Action" section explicitly forbidding hedging language, distributed to workers via `flow workspace` regeneration. **Gap D** (`routing-gate.js`): narrow `isDiagnosticCurlBypass()` allowlist for curl-to-localhost:managerPort when body starts with "## " AND contains INTROSPECTION/DIAGNOSTIC/QUESTION/ANSWER marker; `pre-tool-orchestrator.js` updated to pass `toolInput`. Config keys `workspace.autoPickupChannelDispatches` + `workspace.diagnosticCurlBypass` (both default true). **Learning**: decisions.md gained autonomous-mode contract rule; feedback-patterns.md preserves verbatim worker introspection ("visibility-as-substitute-for-action") so future Claude instances recognize the pattern. 27 new tests (tests/flow-workspace-autopickup.test.js), all passing. Full suite: **1797/1797 pass**. Lint: 0 errors.
+**Files**: `scripts/hooks/core/task-completed.js`, `scripts/hooks/core/routing-gate.js`, `scripts/hooks/core/pre-tool-orchestrator.js`, `scripts/hooks/entry/claude-code/stop.js`, `scripts/hooks/adapters/claude-code.js`, `scripts/flow-config-defaults.js`, `lib/workspace.js`, `.workflow/state/decisions.md`, `.workflow/state/feedback-patterns.md`, `tests/flow-workspace-autopickup.test.js`, `package.json`
+
+### R-304 | 2026-04-16
+**Type**: fix
+**Tags**: #hooks #workspace #worker-boundary #task:wf-9e16e1f1
+**Request**: "Fix the real missing piece — worker prompting user in own terminal instead of channel-dispatching ## QUESTION: to manager. Also critique v2.20.0 to see what was unnecessary."
+**Result**: Self-critique acknowledged Gap D (diagnostic curl bypass) was over-engineered for a rare case; kept behind a probation note in decisions.md. Implemented Gap E (the actual missing piece): new `scripts/hooks/core/worker-boundary-gate.js` with `checkWorkerBoundary()` that blocks `AskUserQuestion` in workspace worker mode (WOGI_WORKSPACE_ROOT set + WOGI_REPO_NAME !== 'manager'). Block message gives the exact curl command to channel-dispatch `## QUESTION:` to the manager with the worker's repo name as X-Wogi-From header. Wired into pre-tool-orchestrator (parallel to manager-boundary) and pre-tool-use.js entry. Config toggle `workspace.blockAskUserQuestionInWorker` (default true). 11 new tests covering worker mode blocks, manager mode doesn't block, single-repo mode doesn't block, other tools pass through, config opt-out respected, WOGI_MANAGER_PORT override in message. **1808/1808 tests pass**. Lint clean.
+**Files**: `scripts/hooks/core/worker-boundary-gate.js` (NEW), `scripts/hooks/core/pre-tool-orchestrator.js`, `scripts/hooks/entry/claude-code/pre-tool-use.js`, `scripts/flow-config-defaults.js`, `.workflow/state/decisions.md`, `tests/flow-worker-boundary-gate.test.js` (NEW), `package.json`
+
+### R-305 | 2026-04-16
+**Type**: feature
+**Tags**: #hooks #workspace #ai-classifier #task:wf-2f2e63cc
+**Request**: "v2.21.0 — remove brittle Gap D regex bypass + add Haiku worker-question classifier at Stop hook. User explicitly asked for AI logic over regex and to research existing infrastructure before proposing."
+**Result**: Removed Gap D (`isDiagnosticCurlBypass` regex + tests + config key + probation note). Added `scripts/flow-worker-question-classifier.js` mirroring `flow-conclusion-classifier.js` pattern: reads `parsedInput.transcriptPath`, parses JSONL transcript defensively, extracts last assistant message (handles 4 format variants — role:assistant string, role:assistant array-of-blocks, type:assistant with message.content, type:assistant with text), calls Haiku via existing `flow-model-caller.js` with prompt that includes 4 examples (rhetorical vs open questions), returns `{classified, isUserQuestion, confidence, blocked}`. Fail-open throughout — missing API key / transcript / model errors / bad JSON all skip cleanly. Wired into Stop hook (worker mode only) with channel-dispatch block message. Config keys `workspace.aiWorkerQuestionClassifier.{enabled,minConfidence,model}` with sensible defaults. 22 new tests covering extractAssistantText (4 shape variants), extractLastAssistantMessage (scans backward, tolerates mid-write unparseable lines), buildClassifierPrompt (structure + caps), hasDangerousKeys (own-property via JSON.parse since `{__proto__: {}}` is syntactic sugar, not an own key), and 4 fail-open paths. Decisions.md updated with G3 rule + meta-pattern entry about "research before propose" — the anti-pattern user corrected during this session. Full suite: **1819/1819 pass**. Lint: 0 errors.
+**Files**: `scripts/flow-worker-question-classifier.js` (NEW), `scripts/hooks/core/routing-gate.js`, `scripts/hooks/entry/claude-code/stop.js`, `scripts/hooks/core/pre-tool-orchestrator.js`, `scripts/flow-config-defaults.js`, `.workflow/state/decisions.md`, `tests/flow-worker-question-classifier.test.js` (NEW), `tests/flow-workspace-autopickup.test.js`, `package.json`
+
+### R-306 | 2026-04-22
+**Type**: fix
+**Tags**: #hooks #task-boundary-reset #release:2.26.1
+**Request**: "Auto-restart not firing on task boundaries; workspace manager investigated and reported taskBoundaryReset Phase 1 marker never written — challenge the theory and fix"
+**Result**: Challenged manager's report and grounded diagnosis in actual code. Manager was partly right (Phase 1 wasn't firing) but cited a non-existent `wasTaskJustCompleted()` function in their proposed fix. Actual root cause: `.claude/docs/phases/05-complete.md` step 5.3 instructed agents to "move task to recentlyCompleted in ready.json" — a hand-edit that bypassed `flow done`. Phase 1 had two invocation sites but TaskCompleted hook doesn't fire for `/wogi-start` completions (design-doc acknowledged), and `flow-done.js:604` only fires when `flow done` runs. Result: marker never written → Phase 2 nothing to consume → no restart. Fixes: (1) phase doc now mandates `flow done <taskId>` and calls out what hand-editing silently disables (quality gates, gate latch, restart); (2) added `ensurePhase1MarkedIfRecentlyCompleted()` Stop-hook fallback in `scripts/hooks/core/task-boundary-reset.js` that reads `ready.json`, retro-marks Phase 1 if `recentlyCompleted[0].completedAt` is within 5 min AND no marker exists AND we haven't already triggered for this taskId; (3) anti-replay sentinel `task-boundary-last-triggered` prevents re-firing across SIGTERM + wrapper restart cycle. Released as v2.26.1 on npm.
+**Files**: `.claude/docs/phases/05-complete.md`, `scripts/hooks/core/task-boundary-reset.js`, `scripts/hooks/entry/claude-code/stop.js`, `package.json`
+
+### R-307 | 2026-04-22
+**Type**: fix
+**Tags**: #hooks #wogi-claude-wrapper #release:2.26.2
+**Request**: "v2.26.1 works — restart IS firing — but new bug: Claude Code's '--dangerously-load-development-channels' modal deadlocks headless workers. User wants no-compromise fix; challenged recommendation through 3 rounds"
+**Result**: Three rounds of self-challenge + Sonnet adversary on Tier 3 architectural question. Verified: no native Claude Code flag to skip dialog (per `claude --help` + decompiled-source comment in existing expect script), dialog only fires for OAuth-authenticated users. Rejected initial "flip expect default back to ON" — that repeats the v2.22.4 regression. Landed on: (1) worker-aware auto-enable in `lib/wogi-claude` — WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME != "manager" → expect ON; interactive users unchanged; (2) rewrote `lib/wogi-claude-expect.exp` with rolling buffer + ANSI strip (CSI + 8-bit CSI + OSC + ISO 2022 charset selects) + bounded elapsed-time window; (3) replaced `eval spawn` with `spawn {*}$claude_args` to eliminate Tcl bracket command injection (Sec #1 from review); (4) no blind fallback on timeout — handoff unchanged, same failure mode as running without wrapper. `/wogi-review + /wogi-audit` found 6 issues; all 6 shipped in release (no deferrals per anti-deferral rule). New `tests/flow-task-boundary-reset.test.js` with 8 cases covering the v2.26.1 state machine. Wrapper tests expanded to 19 cases covering precedence tree, auto-enable, three-way kill switch, fragmented-ANSI dismissal, OSC/8-bit/ISO 2022 dismissal, bounded-window EOF. Added `WOGI_EXPECT_NO_INTERACT=1` test hook (documented inline as production-forbidden) so node:test can verify dismissal without a TTY. Partner-versions.json refreshed to current date. All 47 restart-adjacent tests pass. Lint 0 errors. Released as v2.26.2 on npm.
+**Files**: `lib/wogi-claude`, `lib/wogi-claude-expect.exp`, `tests/flow-wogi-claude-wrapper.test.js`, `tests/flow-task-boundary-reset.test.js` (NEW), `.workflow/state/partner-versions.json`, `package.json`
+
+### R-308 | 2026-04-22 09:29
+**Type**: docs
+**Tags**: #task:wf-e0ec7541 #claude-code #compatibility #docs
+**Request**: "Review Claude Code 2.1.116 + 2.1.117 changelogs for WogiFlow compatibility"
+**Result**: Audited hooks matching Glob/Grep tool-name (no bypass — all are allow-list contexts, Bash falls through to stricter rules); audited flow-context-estimator.js for Opus 4.7 200K/1M bug (no bug — estimator is percentage-based, consumes whatever CC reports); added inline note to effort-level table in wogi-start.md clarifying why L2=medium deviates from new CC Pro/Max default=high; added Features in 2.1.116+ and 2.1.117+ sections to claude-code-compatibility.md with per-item WogiFlow impact/action; updated version-compatibility table rows for 2.27.0+/2.1.116+/2.1.117+. Design decision preserved: WogiFlow does NOT invoke bfs/ugrep directly (portability regression — npm/Windows break).
+**Files**: .claude/docs/claude-code-compatibility.md, .claude/commands/wogi-start.md, .workflow/changes/wf-e0ec7541.md
+
+### R-309 | 2026-04-22 09:52
+**Type**: docs
+**Tags**: #task:wf-33ae5671 #epic:wf-94cc3b72 #wave-a #audit:cons-c05,arch-010,td-f11,td-f09
+**Request**: "Wave A story 1 (wf-33ae5671) — re-enable strict lint + delete dead exports + .env.example + stale branch cleanup"
+**Result**: Audit-finding closure. Findings: Scenarios 1-3 were already resolved by prior sessions (cons-c05 no-unreachable:error set; arch-010 dead-constant cleanup per line 161 comment; .env.example exists covering API keys). Scenario 4: filed GitHub issue #1 to triage 2 unmerged stale branches (feature/community-knowledge + teams-removal). team-features-backup deletion deferred per user (option 2). no-unused-vars:warn intentionally held pending Story 2 (wf-f50fe4f5) cleanup of ~128 existing warnings (comment documents sequencing). Gate 0 score cap unblocked via no-unreachable:error alone.
+**Files**: .github/issues/#1
+
+### R-310 | 2026-04-22 09:59
+**Type**: refactor
+**Tags**: #task:wf-f50fe4f5 #epic:wf-94cc3b72 #wave-a #audit:cons-c01
+**Request**: "Wave A story 2 (wf-f50fe4f5) — outlier catch-variable sweep + unlock no-unused-vars upgrade"
+**Result**: Findings: cons-c01 outlier catch-variable sweep already complete (0 outliers — all 1758 catch blocks use err/_err). Bonus scope: cleared 112 of 127 no-unused-vars warnings via batch underscore-prefix rename (81 files changed). 15 warnings remain in 7 files where ESLint column pointed at last-assignment vs declaration — naive rename broke 7 files which were reverted. Those 15 require manual per-file fixes (some are actual dead-code bugs like originalLog in auto-compact-prompt.test.js never restored). Tests pass. no-unused-vars upgrade to error still blocked by the 15 remaining.
+**Files**: scripts/*, lib/*, tests/*
+
+### R-311 | 2026-04-22 11:39
+**Type**: fix
+**Tags**: #release:2.26.3 #bugfix #workspace #claude-code
+**Request**: "v2.26.3 — fix wogi-claude-expect stdin-capture deadlock that broke headless workers"
+**Result**: Root cause: v2.26.2 expect { -re ".+" {...} } watch-loop owned stdin while waiting for dialog text. If match failed (Ink ANSI variations, terminal differences, new CC versions), user keystrokes during the 30s watch window were captured by expect and never forwarded to claude — dialog appeared frozen, Enter did nothing, letters went to random positions. Reported 2026-04-22 by user trying to restart stalled BE/FE workspace workers. Fix: split script into test branch (WOGI_EXPECT_NO_INTERACT=1, preserved v2.26.2 logic for test harness) and production branch (interact -o -re pattern). Interact starts immediately after spawn — stdin forwards to claude from second zero, NEVER captured. Output trigger fires Enter injection when dialog phrase matches. Graceful fallback: on mismatch, user sees dialog, presses 1+Enter themselves, no black hole. Pattern Loading.{0,20}development.{0,20}channels tolerates ANSI codes between words without explicit stripping. Added _wogi_dismissed flag to prevent re-firing on spurious later matches. Tests: 2033 passing, 0 failing — all 10 expect-related behavioral tests green. Verified production path via nested-expect PTY test: DISMISSED=yes confirmed.
+**Files**: lib/wogi-claude-expect.exp, tests/flow-wogi-claude-wrapper.test.js, package.json
+
+### R-312 | 2026-04-22 12:11
+**Type**: refactor
+**Tags**: #task:wf-789a8cba #epic:wf-94cc3b72 #wave-b #audit:dup-001
+**Request**: "Wave B story 3 (wf-789a8cba) — consolidate duplicate config/utility implementations"
+**Result**: Audit findings: Scope much smaller than epic-stated — majority already resolved in prior sessions with principled rationale. dup-001 had 7 loadConfig refs: 4 are real wrappers with logic (caching/subsection-extraction/delegation) kept intentionally; 3 were const-aliases (removed — replaced with direct getConfig() calls in flow-skill-learn.js, flow-export-scanner.js, flow-checkpoint.js). dup-003: slugify already consolidated via canonical _slugify in flow-output.js — 4 wrappers differ by options only, not harmful dup. dup-005: flow-export-scanner local getProjectRoot returns MUTABLE module-local PROJECT_ROOT settable via setProjectRoot() — different semantics from flow-paths.js, not a duplicate. lib/utils findProjectRoot is in structurally separate layer. dup-006: already resolved with documented rationale (readConfig kept for read-modify-write paths where cached getConfig would cause mutation bugs; comment cites this story). dup-007: already resolved as documented back-compat shim. Net delivery: 3 alias removals, 3 files changed. Tests: 2033 pass 0 fail. Lint: 0 errors.
+**Files**: scripts/flow-skill-learn.js, scripts/flow-export-scanner.js, scripts/flow-checkpoint.js

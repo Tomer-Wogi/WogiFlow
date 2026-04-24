@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
     "Completed: Silent-worker-halt detection via dispatch-tracking",
     "Completed: Enhance /wogi-story with P0 specification-quality gates",
     "Completed: Main-mode question classifier auto-defers task-boundary restart",
@@ -760,9 +759,10 @@ None
     "Completed: F3 Fuzzy-match patching for skill edits",
     "Completed: H1 Structured phase definition schema (YAML)",
     "Completed: C2 IGR artifact edit proposals via CLI + session-end approval",
-    "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)"
+    "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
+    "Completed: G3 SQLite-as-IPC for workspace dispatch"
   ],
-  "lastUpdated": "2026-04-24T12:52:33.693Z",
+  "lastUpdated": "2026-04-24T13:57:57.846Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,
