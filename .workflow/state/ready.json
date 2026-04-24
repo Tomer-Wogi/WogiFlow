@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T09:29:18.251Z",
+  "lastUpdated": "2026-04-24T10:03:18.327Z",
   "inProgress": [],
   "ready": [
     {
@@ -149,6 +149,19 @@
   "blocked": [],
   "recentlyCompleted": [
     {
+      "id": "wf-f267ea2a",
+      "title": "Auto-pickup next ready task at session restart",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-24T09:50:41.654Z",
+      "specPath": ".workflow/changes/wf-f267ea2a.md",
+      "startedAt": "2026-04-24T09:54:40.893Z",
+      "routedAt": "2026-04-24T09:54:40.893Z",
+      "completedAt": "2026-04-24T10:03:18.325Z"
+    },
+    {
       "id": "wf-191d5f6e",
       "title": "Main-mode question classifier auto-defers task-boundary restart",
       "type": "story",
@@ -254,18 +267,6 @@
       "workstream": "B",
       "completedAt": "2026-04-24T07:14:57.016Z",
       "requestLogRef": "R-333"
-    },
-    {
-      "id": "wf-d0adca72",
-      "title": "A5 Non-negotiable-rules + filepath:line citation format",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "A",
-      "completedAt": "2026-04-24T07:13:24.053Z",
-      "requestLogRef": "R-332"
     }
   ],
   "backlog": [

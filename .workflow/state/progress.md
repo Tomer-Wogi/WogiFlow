@@ -758,9 +758,10 @@ None
     "Backlog: wf-3daad465 (subagent metrics aggregation) still pending",
     "Completed: Silent-worker-halt detection via dispatch-tracking",
     "Completed: Enhance /wogi-story with P0 specification-quality gates",
-    "Completed: Main-mode question classifier auto-defers task-boundary restart"
+    "Completed: Main-mode question classifier auto-defers task-boundary restart",
+    "Completed: Auto-pickup next ready task at session restart"
   ],
-  "lastUpdated": "2026-04-24T09:29:18.255Z",
+  "lastUpdated": "2026-04-24T10:03:18.333Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,
