@@ -2,6 +2,10 @@
 
 Instructions for the implementation phase. Loaded on-demand when phase transitions to `coding`.
 
+## Step 2.9: Refresh Repo Map (wf-f3707d2f / C1)
+
+At the start of each coding turn, regenerate the task-aware repo map so TOUCHED / ADJACENT reflect the latest changes: `node scripts/flow-repo-map.js generate --task=<taskId>`. The map stays within `repoMap.budgetBytes` (default 16KB) and surfaces what you just modified + what imports it. Skip if `config.repoMap.enabled === false` or the output is empty.
+
 ## Step 3: Execute Each Scenario (Loop)
 
 **When TDD is NOT active**, use this normal flow. For each acceptance criterion:

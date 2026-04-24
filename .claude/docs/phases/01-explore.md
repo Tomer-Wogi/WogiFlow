@@ -7,7 +7,8 @@ Instructions for the explore phase of task execution. Loaded on-demand when phas
 1. Read `ready.json`, move task to inProgress
 2. Load task context from `.workflow/changes/*/wf-XXXXXXXX.md`
 3. Check `app-map.md`, `function-map.md`, `api-map.md`, `decisions.md`
-4. Auto-invoke matched skills based on task context
+4. **Generate repo map** (wf-f3707d2f / C1) — auto-generated per task, refreshed per turn: `node scripts/flow-repo-map.js generate --task=<taskId>`. The map surfaces TOUCHED + ADJACENT + SHAPE sections within a bounded token budget (default 16KB ≈ 4K tokens). Config: `repoMap.enabled` (default true), `repoMap.budgetBytes`. Skip if output is empty (no touched files yet).
+5. Auto-invoke matched skills based on task context
 
 ## Step 1.15: Intent Framing Pass (when `config.intentGroundedReasoning.enabled`)
 

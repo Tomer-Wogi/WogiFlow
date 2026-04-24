@@ -774,6 +774,64 @@ function showContextHealthSummary() {
   }
 }
 
+// B7 (wf-c3b5afab): Surface gate missRate telemetry at session-end so users
+// see rubber-stamping risk without running /wogi-gate-stats. Pulls from the
+// existing getGateStats() API — no duplicated computation or thresholds.
+const MISS_RATE_THRESHOLD = 0.10;
+const MISS_WATCH_WINDOW = '7d';
+const MISS_WATCH_TOP_N = 3;
+
+function loadGateStats() {
+  let getGateStats;
+  try {
+    ({ getGateStats } = require('./flow-gate-telemetry'));
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Gate telemetry: ${err.message}`);
+    return null;
+  }
+  try {
+    return getGateStats({ since: MISS_WATCH_WINDOW });
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Gate telemetry stats: ${err.message}`);
+    return null;
+  }
+}
+
+function printGateTelemetryWatch(stats = loadGateStats()) {
+  console.log('');
+  console.log(color('yellow', 'Gate Telemetry — Miss Rate Watch (7d):'));
+
+  const perGate = stats && stats.perGate ? stats.perGate : null;
+  const gates = perGate ? Object.keys(perGate) : [];
+  if (!perGate || gates.length === 0) {
+    console.log(`  ${color('dim', 'No telemetry yet (baseline)')}`);
+    return;
+  }
+
+  const ranked = gates
+    .map(id => ({ id, ...perGate[id] }))
+    .filter(g => g.verdicts && g.verdicts.PASS > 0)
+    .sort((a, b) => b.missRate - a.missRate)
+    .slice(0, MISS_WATCH_TOP_N);
+
+  if (ranked.length === 0) {
+    console.log(`  ${color('dim', 'No PASS events yet — miss rate unmeasurable')}`);
+    return;
+  }
+
+  for (const g of ranked) {
+    const pct = (g.missRate * 100).toFixed(1);
+    const flagged = g.missRate >= MISS_RATE_THRESHOLD;
+    const line = `  ${g.id}: miss ${pct}% (${g.missedAfterPass}/${g.verdicts.PASS} PASS events)`;
+    if (flagged) {
+      console.log(color('red', `${line}  ← rubber-stamping risk`));
+    } else {
+      console.log(line);
+    }
+  }
+  console.log(`  ${color('dim', 'Threshold: miss rate ≥ 10% flags a gate as rubber-stamping. See /wogi-gate-stats for full table.')}`);
+}
+
 /**
  * v1.8.0: Automatic memory management
  * Part of automatic memory management for teams
@@ -1346,6 +1404,9 @@ async function main() {
   // v1.7.0: Show context health
   showContextHealthSummary();
 
+  // B7 (wf-c3b5afab): Surface gate miss-rate watch — rubber-stamping visibility
+  printGateTelemetryWatch();
+
   // v1.8.0: Automatic memory management
   await automaticMemoryManagement();
 
@@ -1376,7 +1437,15 @@ async function main() {
   showSummary();
 }
 
-main().catch(err => {
-  console.error('Error:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('Error:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  printGateTelemetryWatch,
+  MISS_RATE_THRESHOLD,
+  MISS_WATCH_TOP_N,
+};

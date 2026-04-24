@@ -16,9 +16,9 @@ For multi-item inputs, the command output MUST include: **"All {N} items capture
 
 This rule applies equally to deep-decomposition mode and flat stories.
 
-## Specification-Quality Gates (wf-63c0f4cc)
+## Specification-Quality Gates (wf-63c0f4cc + wf-fe8ef64d)
 
-Five P0 gates run automatically at creation time (all fail-open):
+Six P0 gates run automatically at creation time (all fail-open):
 
 | Gate | Fires When | Effect |
 |------|-----------|--------|
@@ -27,6 +27,7 @@ Five P0 gates run automatically at creation time (all fail-open):
 | 3. Consumer Impact | input contains refactor/rename/migrate/etc. | greps consumers, flags phased migration at ≥5 breaking |
 | 4. Scope-Confidence | input mentions "new X" / "existing Y" / "the Z service" | audits assumptions → "Pending Clarifications" block |
 | 5. Intent Bootstrap | IGR artifacts missing + not already scheduled | schedules background bootstrap via session-state.json |
+| 6. AC Scope-Preservation | any task with ≥1 criterion | snapshots originals to `.workflow/state/ac-snapshots/<taskId>.json`; `/wogi-done` re-verifies at close time and surfaces PRESERVED / MODIFIED / DROPPED / ADDED checklist. Blocks completion on silent drops or 2-into-1 collapses. See `scripts/flow-ac-scope-preservation.js`. |
 
 Gates enforce **specification quality at creation time**; runtime-quality gates (wiring, typecheck, tests) remain `/wogi-start`'s job.
 

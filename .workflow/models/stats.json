@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-17T09:40:37.019Z",
+  "lastUpdated": "2026-04-24T07:09:03.014Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
   "summary": {
-    "totalTasks": 26,
+    "totalTasks": 35,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
@@ -11,9 +11,9 @@
   },
   "byModel": {
     "unknown": {
-      "taskCount": 26,
-      "totalIterations": 26,
-      "firstAttemptPasses": 26,
+      "taskCount": 35,
+      "totalIterations": 35,
+      "firstAttemptPasses": 35,
       "totalTokens": 0,
       "totalWallClockMs": 0,
       "totalRevisions": 0,
@@ -54,9 +54,9 @@
           "totalRevisions": 0
         },
         "story": {
-          "taskCount": 8,
-          "totalIterations": 8,
-          "firstAttemptPasses": 8,
+          "taskCount": 17,
+          "totalIterations": 17,
+          "firstAttemptPasses": 17,
           "totalTokens": 0,
           "totalRevisions": 0
         }
@@ -100,9 +100,9 @@
       "firstAttemptRate": 1
     },
     "story": {
-      "taskCount": 8,
-      "totalIterations": 8,
-      "firstAttemptPasses": 8,
+      "taskCount": 17,
+      "totalIterations": 17,
+      "firstAttemptPasses": 17,
       "avgIterations": 1,
       "firstAttemptRate": 1
     }
@@ -119,6 +119,132 @@
     "primarySuccessRate": 0
   },
   "recentTasks": [
+    {
+      "taskId": "wf-f14dcfeb",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T07:09:03.014Z"
+    },
+    {
+      "taskId": "wf-f14dcfeb",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T07:08:58.786Z"
+    },
+    {
+      "taskId": "wf-f14dcfeb",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T07:08:58.439Z"
+    },
+    {
+      "taskId": "wf-f14dcfeb",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T07:08:58.023Z"
+    },
+    {
+      "taskId": "wf-f14dcfeb",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T07:08:57.617Z"
+    },
+    {
+      "taskId": "wf-f3707d2f",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-23T20:52:48.647Z"
+    },
+    {
+      "taskId": "wf-c3b5afab",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-23T19:47:39.110Z"
+    },
+    {
+      "taskId": "wf-c3b5afab",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-23T19:45:16.785Z"
+    },
+    {
+      "taskId": "wf-c3b5afab",
+      "model": "unknown",
+      "taskType": "story",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-23T19:44:52.453Z"
+    },
     {
       "taskId": "wf-d3e67abe",
       "model": "unknown",

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-23T21:08:10.494Z",
+  "lastUpdated": "2026-04-24T07:01:51.266Z",
   "inProgress": [],
   "ready": [
     {
@@ -124,10 +124,164 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-ea4751fc",
+      "title": "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-04-24T07:01:51.050Z",
+      "specPath": ".workflow/changes/wf-ea4751fc.md"
+    },
+    {
+      "id": "wf-04585518",
+      "title": "Surface effort.level and thinking.enabled in status line",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P3",
+      "created": "2026-04-24T07:01:51.266Z",
+      "specPath": ".workflow/changes/wf-04585518.md"
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-4351400c",
+      "title": "F2 Directory-per-skill with YAML frontmatter",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "F",
+      "completedAt": "2026-04-24T07:17:52.085Z",
+      "requestLogRef": "R-340"
+    },
+    {
+      "id": "wf-f3707d2f",
+      "title": "C1 Aider-style repo map",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "C",
+      "completedAt": "2026-04-24T07:17:52.085Z",
+      "requestLogRef": "R-339"
+    },
+    {
+      "id": "wf-9c9ba324",
+      "title": "B6 Empty-collection vanishing-section rule",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-338"
+    },
+    {
+      "id": "wf-15175dbc",
+      "title": "B5 Skeptical-evaluator field-enumeration prompt",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-337"
+    },
+    {
+      "id": "wf-07046456",
+      "title": "B4 Full spec-string bundle grep rule",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-336"
+    },
+    {
+      "id": "wf-f9431ef6",
+      "title": "B3 Tier-3 field-inventory DOM snapshot template",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-335"
+    },
+    {
+      "id": "wf-10c452f7",
+      "title": "B2 Completion-Truth-Gate BEL-file grep",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-334"
+    },
+    {
+      "id": "wf-fe8ef64d",
+      "title": "B1 AC Scope-Preservation Checklist",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "B",
+      "completedAt": "2026-04-24T07:14:57.016Z",
+      "requestLogRef": "R-333"
+    },
+    {
+      "id": "wf-d0adca72",
+      "title": "A5 Non-negotiable-rules + filepath:line citation format",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "A",
+      "completedAt": "2026-04-24T07:13:24.053Z",
+      "requestLogRef": "R-332"
+    },
+    {
+      "id": "wf-258f558c",
+      "title": "A2 Persona library at IGR Logic Adversary",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "A",
+      "completedAt": "2026-04-24T07:12:43.696Z",
+      "requestLogRef": "R-331"
+    },
+    {
+      "id": "wf-f14dcfeb",
+      "title": "A4 Confidence-tier rubric (95/85/75)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-04-24T07:07:42.087Z",
+      "parent": "wf-34290000",
+      "workstream": "A",
+      "specPath": ".workflow/rubrics/confidence-tiers.md",
+      "completedAt": "2026-04-24T07:11:54.342Z",
+      "requestLogRef": "R-330"
+    },
     {
       "id": "wf-2f49b292",
       "title": "G5 Manager-side task-ID injection into worker ready.json",

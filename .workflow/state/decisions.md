@@ -53,6 +53,36 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 
 ---
 
+## Code Rules
+<!-- PIN: code-rules -->
+
+### Empty-Collection Vanishing-Section Rule (2026-04-23)
+<!-- PIN: empty-collection-vanishing-section -->
+**Source**: wf-9c9ba324 (B6), epic wf-34290000.
+**Rule**: A UI section, list, table, report section, or API response field that renders a collection MUST NOT disappear when the collection is empty. It MUST render an explicit empty state (placeholder, "No items", "0 records", `null`-with-key, empty array `[]`) that preserves the section's presence in the output.
+
+**Why**: A vanished section is indistinguishable from a broken section. Users, QA, and verification gates cannot tell whether "no items" means "feature works correctly and today there are zero items" or "feature silently broke and the section was hidden". This failure mode has caused:
+1. False-completion claims — AI sees the section rendered in screenshots during happy-path testing, then in production the empty state causes the section to vanish and the user assumes the feature regressed.
+2. Skeptical-evaluator pass-throughs — field-enumeration sees nothing to enumerate, concludes "no UI to verify", marks PASS when the UI is actually broken.
+3. BEL grep false-positives — the spec mentions a section heading that happens to match other text, so the grep sees coverage when the actual section vanished.
+
+**How to apply**:
+
+- **UI**: every section that iterates a collection (`.map()`, `<ForEach>`, `{items && items.map(...)}`) MUST have an `else` / empty-state branch that renders a placeholder with the same container `data-testid` or heading. Conditional rendering of the form `{items.length > 0 && <Section />}` is FORBIDDEN — the section must render unconditionally; only the inner list varies.
+- **API responses**: fields that carry a collection MUST be present even when empty. Return `{ items: [] }`, never omit the key. Clients depend on key presence for `undefined` vs "empty" differentiation.
+- **State files**: JSON / YAML keys that hold arrays MUST be present when the array is empty. `{ "inProgress": [] }` is correct; omitting the key is a bug.
+- **Reports / summaries**: an "N findings" section where N=0 must say "0 findings" explicitly. Skipping the section produces ambiguity about whether the check ran.
+- **Verification gates**: the Skeptical Evaluator (see `scripts/flow-skeptical-evaluator.js`) must treat a missing section as a DIFFERENT finding than an empty section. Missing = blocker; empty with placeholder = OK.
+
+**Anti-rationalization checklist** — if you find yourself thinking any of these, STOP:
+- "The section is only useful when there's data, so hiding it is cleaner UX" → WRONG. Cleanness is not the metric; disambiguity is. Use a placeholder.
+- "The API is more efficient if it omits empty keys" → WRONG. Key presence is a client contract; efficiency is a negligible factor vs. client bugs.
+- "The test passes when there's data, so it's fine" → WRONG. Test the empty case explicitly.
+
+**Enforcement**: checked by the Skeptical Evaluator's UI-field + API-parameter passes (wf-15175dbc / B5), the BEL grep gate (wf-10c452f7 / B2), and the spec-string bundle grep (wf-07046456 / B4). Together they catch vanishing sections via three independent signals.
+
+---
+
 ## Operational Procedures
 <!-- PIN: operational-procedures -->
 

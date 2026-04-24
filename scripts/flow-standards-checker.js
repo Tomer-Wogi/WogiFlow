@@ -1215,12 +1215,87 @@ Examples:
 }
 
 // ============================================================================
+// Non-Negotiable Rules Validation (wf-d0adca72 / A5)
+// ============================================================================
+
+const NON_NEGOTIABLE_FRAGMENT_ID = 'non-negotiable-rules';
+const NON_NEGOTIABLE_FRAGMENT_PATH = '.workflow/prompts/fragments/non-negotiable-rules.md';
+const CITATION_FORMAT_REGEX = /\b[\w./-]+\.(?:js|ts|tsx|jsx|md|json|yaml|yml|py|go|rs|sh):\d+(?:-\d+)?\b/;
+
+/**
+ * Validate that the non-negotiable-rules fragment exists and is loadable.
+ * @returns {{ ok: boolean, reason?: string, path?: string }}
+ */
+function checkNonNegotiableFragment() {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const full = path.join(process.cwd(), NON_NEGOTIABLE_FRAGMENT_PATH);
+  if (!fs.existsSync(full)) {
+    return { ok: false, reason: `missing fragment: ${NON_NEGOTIABLE_FRAGMENT_PATH}`, path: full };
+  }
+  const content = fs.readFileSync(full, 'utf8');
+  const required = ['Evidence before claim', 'No silent scope changes', 'Route every request', 'filepath:line', 'Destructive operations', 'Do not invent artifacts'];
+  const missing = required.filter((r) => !content.includes(r));
+  if (missing.length > 0) {
+    return { ok: false, reason: `fragment missing required sections: ${missing.join(', ')}`, path: full };
+  }
+  return { ok: true, path: full };
+}
+
+/**
+ * Validate that a composed prompt includes the non-negotiable-rules block.
+ * @param {string} composedPrompt
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+function checkComposedPromptHasNonNegotiables(composedPrompt) {
+  if (!composedPrompt || typeof composedPrompt !== 'string') {
+    return { ok: false, reason: 'composedPrompt must be a non-empty string' };
+  }
+  if (!composedPrompt.includes('Non-Negotiable Rules')) {
+    return { ok: false, reason: 'composed prompt missing "Non-Negotiable Rules" header — fragment not loaded' };
+  }
+  if (!composedPrompt.includes('filepath:line')) {
+    return { ok: false, reason: 'composed prompt missing citation-format rule' };
+  }
+  return { ok: true };
+}
+
+/**
+ * Validate that a text body contains at least one filepath:line citation when it makes claims about code.
+ * Heuristic: if the text references code (function names with parens, paths with slashes, or quoted identifiers),
+ * it should cite at least one location in `path:line` format.
+ * @param {string} text
+ * @param {object} [opts]
+ * @param {boolean} [opts.requireCitation=true]
+ * @returns {{ ok: boolean, reason?: string, hasCitation: boolean }}
+ */
+function checkCitationFormat(text, { requireCitation = true } = {}) {
+  if (!text || typeof text !== 'string') {
+    return { ok: false, reason: 'text must be a non-empty string', hasCitation: false };
+  }
+  const hasCitation = CITATION_FORMAT_REGEX.test(text);
+  if (!requireCitation) return { ok: true, hasCitation };
+  // Make claim-about-code detection lightweight
+  const looksLikeCodeClaim = /\b(function|class|module|import|require|file|path)\b|`[^`]+`/.test(text);
+  if (looksLikeCodeClaim && !hasCitation) {
+    return { ok: false, reason: 'text references code but has no filepath:line citation', hasCitation: false };
+  }
+  return { ok: true, hasCitation };
+}
+
+// ============================================================================
 // Exports
 // ============================================================================
 
 module.exports = {
   runStandardsCheck,
   formatStandardsResults,
+  checkNonNegotiableFragment,
+  checkComposedPromptHasNonNegotiables,
+  checkCitationFormat,
+  NON_NEGOTIABLE_FRAGMENT_ID,
+  NON_NEGOTIABLE_FRAGMENT_PATH,
+  CITATION_FORMAT_REGEX,
   parseDecisions,
   parseAppMap,
   parseFunctionMap,

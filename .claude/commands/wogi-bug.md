@@ -131,6 +131,36 @@ Return:
 
 **If investigation fails to identify a clear root cause**, consider escalating to `/wogi-debug-hypothesis` which spawns parallel agents to investigate competing theories about the root cause.
 
+#### Evidence Inventory (A3 — wf-f64f58b0)
+
+Before moving to Phase 2.5, you MUST have consulted at least **5 of 7** source categories across the agent runs (or the sequential-fallback). A root cause grounded in one grep is a guess, not a diagnosis. Breadth of evidence is the strongest predictor of correct root-cause identification.
+
+**The seven source categories** (each counts once, regardless of repeat reads):
+
+1. **Code read** — actual file content examined at the relevant lines
+2. **Grep / search** — pattern search across the codebase
+3. **Git log / blame** — history of the suspect file or symbol
+4. **Test run or test file read** — what the tests exercise vs. what they miss
+5. **Log / telemetry / gate-telemetry** — runtime evidence (`/wogi-gate-stats`, browser console, server log)
+6. **Type / interface definition** — the contract-level view from a types or schema file
+7. **User-confirmed assumption or prior correction** — from `feedback-patterns.md` or user dialogue
+
+**Emit this block in the final bug report (under "Evidence inventory"):**
+
+```
+Sources consulted: N / 7
+  [✓] Code read: <file:line>
+  [✓] Grep: <pattern> → <n hits>
+  [✓] Git log: <finding>
+  [✓] Test: <test or finding>
+  [✓] <fifth source>
+  [ ] <skipped categories with one-line reason>
+```
+
+**Downgrade clause**: if N < 5, the final diagnosis/root-cause language is downgraded — say **"likely cause"** instead of "root cause", and **"probable fix"** instead of "fix". (A4 formalizes this as the 95/85/75 confidence-tier rubric — this clause is the placeholder until A4 lands.)
+
+**Skippable only when**: the bug is a typo, single-line obvious fix, or user explicitly said "skip deep investigation". Note the reason in the inventory block.
+
 ### Phase 2.5: Hypothesis Verification Gate (MANDATORY)
 <!-- PIN: hypothesis-verification-gate -->
 

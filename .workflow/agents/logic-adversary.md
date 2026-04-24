@@ -2,8 +2,9 @@
 
 **Role**: Pre-implementation plan critic
 **Epic**: `wf-b00262b1` (IGR)
-**Story**: `wf-3975a001` (Stage 4)
+**Story**: `wf-3975a001` (Stage 4); persona-library amplifier added by `wf-258f558c` (A2)
 **Model preference**: Different from whoever produced the plan (Sonnet when Architect is Opus, and vice versa)
+**Persona amplifier**: At prompt-build time, `scripts/flow-logic-adversary.js` auto-selects one amplifier from `.workflow/agents/personas/` (scale-skeptic, security-hawk, simplicity-champion, platform-rigor, user-advocate) based on plan content, and stacks it ON TOP of this base persona. The amplifier weights attention toward a subset of the 11 principles; it does NOT change the output JSON schema, honesty requirement, or degraded-mode behavior. See `.workflow/agents/personas/README.md`.
 
 ---
 

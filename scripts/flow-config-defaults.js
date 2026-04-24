@@ -165,7 +165,9 @@ const CONFIG_DEFAULTS = {
   projectName: '',
   cli: {
     type: 'claude-code',
-    autoSync: { enabled: false }
+    autoSync: { enabled: false },
+    generateAgentsMd: true,
+    _comment_generateAgentsMd: 'A1 (wf-a346c915): emit AGENTS.md (cross-tool standard used by Codex/Cline/Crush/Aider) alongside CLAUDE.md with identical content. CLAUDE.md remains canonical for drift detection. Set to false to skip AGENTS.md.'
   },
   scripts: { lint: null, typecheck: null, test: null, build: null, fix: null, coverage: null },
 
@@ -825,7 +827,27 @@ const CONFIG_DEFAULTS = {
   // inherit the full reasoning pipeline. See .claude/docs/intent-grounded-reasoning.md.
   intentGroundedReasoning: {
     enabled: true,
-    _comment: 'IGR pipeline: architect + logic adversary + truth gate. See .claude/docs/intent-grounded-reasoning.md'
+    _comment: 'IGR pipeline: architect + logic adversary + truth gate. See .claude/docs/intent-grounded-reasoning.md',
+    logicAdversary: {
+      personas: {
+        enabled: true,
+        _comment: 'Persona-library amplifier for Logic Adversary (wf-258f558c). Auto-picks one of scale-skeptic | security-hawk | simplicity-champion | platform-rigor | user-advocate based on plan content. See .workflow/agents/personas/README.md.'
+      }
+    },
+    skepticalEvaluator: {
+      enabled: true,
+      _comment: 'Validating-phase field-enumeration evaluator (wf-15175dbc). Forces UI-field / API-parameter / state-key enumeration before "done" claims are accepted. See scripts/flow-skeptical-evaluator.js.'
+    }
+  },
+
+  // --- Aider-style Repo Map (wf-f3707d2f / C1) ---
+  // Auto-generated per task at Step 1 Load Context; refreshed per turn in
+  // explore + coding phases. Surfaces TOUCHED / ADJACENT / SHAPE sections
+  // within a bounded token budget. See scripts/flow-repo-map.js.
+  repoMap: {
+    enabled: true,
+    budgetBytes: 16384,
+    _comment: 'budgetBytes ≈ 4K tokens; raise for large tasks with many touched files, lower for cheap-model executors.'
   },
 
   // --- Research Reasoning Gate ---
@@ -1018,6 +1040,8 @@ const CONFIG_DEFAULTS = {
     },
     peer: { enabled: false },
     triage: { enabled: false },
+    evidenceTiers: { enabled: true, capByTier: true },
+    confidenceTiers: { enabled: true, rubricPath: '.workflow/rubrics/confidence-tiers.md' },
     agents: REVIEW_AGENTS
   },
 

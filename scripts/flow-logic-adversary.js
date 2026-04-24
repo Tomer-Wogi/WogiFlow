@@ -55,6 +55,21 @@ const gateTelemetry = require('./flow-gate-telemetry');
 const RUBRIC_DIR = path.join(PATHS.workflow, 'rubrics');
 const DEFAULT_RUBRIC = 'logic-constitution-v3';
 const CALIBRATION_PATH = path.join(PATHS.state, 'adversary-calibration.json');
+const PERSONAS_DIR = path.join(PATHS.workflow, 'agents', 'personas');
+
+// Persona library — see .workflow/agents/personas/README.md
+// Story: wf-258f558c (A2). Keys map to .md filenames (minus extension).
+const PERSONA_LIBRARY = ['scale-skeptic', 'security-hawk', 'simplicity-champion', 'platform-rigor', 'user-advocate'];
+
+// Trigger patterns — if the plan/title/taskId mentions any of these, auto-pick the persona.
+// Order matters: earlier entries win when multiple triggers match.
+const PERSONA_TRIGGERS = [
+  { persona: 'security-hawk',      patterns: [/\bauth\b/i, /\bsecret\b/i, /\btoken\b/i, /\bcredential/i, /rm\s+-rf/i, /--force/i, /destructive/i, /\bshell\s+inject/i, /\bexecSync\b/, /\.env\b/] },
+  { persona: 'platform-rigor',     patterns: [/\bPreToolUse\b/, /\bPostToolUse\b/, /\bSessionStart\b/, /\bMCP\b/, /\bsubagent\b/i, /\bvalidator\b/i, /\bvalidateTaskId\b/, /\bconfig\s+key\b/i] },
+  { persona: 'scale-skeptic',      patterns: [/\bparallel\b/i, /\bconcurrent/i, /\bworktree/i, /\bdispatch/i, /\bqueue\b/i, /\bworker\b/i, /\brace\s+condition/i, /\bTOCTOU\b/i, /\bboundary\b/i] },
+  { persona: 'user-advocate',      patterns: [/\bUI\b/, /\buser-facing\b/i, /\bonboarding/i, /\bjourney/i, /\berror\s+message/i, /\bempty\s+state/i, /\bcli\s+output/i] },
+  { persona: 'simplicity-champion', patterns: [/\bframework\b/i, /\bpluggable/i, /\bfuture-proof/i, /\bextensibility/i, /\bgeneric\b/i, /\babstraction\b/i, /\brefactor\b/i] },
+];
 
 const VALID_OVERALL_VERDICTS = new Set([
   'PASS',
@@ -104,6 +119,50 @@ function loadCalibration() {
   if (!fileExists(CALIBRATION_PATH)) return [];
   const parsed = safeJsonParse(CALIBRATION_PATH, { examples: [] });
   return Array.isArray(parsed.examples) ? parsed.examples : [];
+}
+
+// ============================================================
+// Persona library (wf-258f558c / A2)
+// ============================================================
+
+function _getPersonasConfig() {
+  const cfg = getConfig();
+  return cfg.intentGroundedReasoning?.logicAdversary?.personas || cfg.adversary?.personas || {};
+}
+
+/**
+ * Load a persona amplifier file.
+ * @param {string} key - persona slug (must be in PERSONA_LIBRARY)
+ * @returns {string} markdown content, or empty string when missing
+ */
+function loadPersona(key) {
+  if (!key || !PERSONA_LIBRARY.includes(key)) return '';
+  const p = path.join(PERSONAS_DIR, `${key}.md`);
+  return fileExists(p) ? readFile(p) : '';
+}
+
+/**
+ * Pick a persona based on plan/title content. Falls back to taskId-hash rotation.
+ * @param {object} opts
+ * @param {string} [opts.taskId]
+ * @param {string} [opts.plan]
+ * @param {string} [opts.title]
+ * @returns {string} persona key (always one of PERSONA_LIBRARY)
+ */
+function pickPersona({ taskId, plan, title } = {}) {
+  const haystack = [title || '', plan || ''].join('\n').slice(0, 4000);
+  if (haystack.trim().length > 0) {
+    for (const trigger of PERSONA_TRIGGERS) {
+      for (const pattern of trigger.patterns) {
+        if (pattern.test(haystack)) return trigger.persona;
+      }
+    }
+  }
+  // Rotate by taskId hash to ensure library coverage over time.
+  const source = taskId || haystack || Date.now().toString();
+  let h = 0;
+  for (let i = 0; i < source.length; i++) h = (h * 31 + source.charCodeAt(i)) >>> 0;
+  return PERSONA_LIBRARY[h % PERSONA_LIBRARY.length];
 }
 
 // ============================================================
@@ -187,9 +246,21 @@ function buildAdversaryPrompt(opts) {
   const personaPath = path.join(PATHS.workflow, 'agents', 'logic-adversary.md');
   const personaContent = fileExists(personaPath) ? readFile(personaPath) : '';
 
-  // System prompt — persona + rubric + calibration + degraded-mode notes
+  // Persona-library pick (wf-258f558c / A2). An amplification layer on top of the base persona.
+  // Config toggle: adversary.personas.enabled (default true). Orchestrator may override via opts.persona.
+  const personasEnabled = _getPersonasConfig().enabled !== false;
+  const personaKey = personasEnabled
+    ? (opts.persona || pickPersona({ taskId: opts.taskId, plan: opts.plan, title: opts.title }))
+    : null;
+  const amplifierContent = personaKey ? loadPersona(personaKey) : '';
+
+  // System prompt — base persona + persona amplifier + rubric + calibration + degraded-mode notes
   const systemParts = [];
   systemParts.push(personaContent || '# Persona\nYou are the Logic Adversary. See the rubric below.');
+  if (amplifierContent) {
+    systemParts.push('\n# Persona amplifier (stacks on top of base persona)\n');
+    systemParts.push(amplifierContent);
+  }
   systemParts.push('\n# Rubric (Logic Constitution)\n');
   systemParts.push(rubric.content);
 
@@ -691,4 +762,8 @@ module.exports = {
   VALID_PRINCIPLE_VERDICTS,
   DEFAULT_RUBRIC,
   DEFAULT_MODEL_PAIRING,
+  pickPersona,
+  loadPersona,
+  PERSONA_LIBRARY,
+  PERSONA_TRIGGERS,
 };

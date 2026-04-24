@@ -170,6 +170,6 @@
   },
   "_comment_dynamicHooks": "TaskCreated (2.1.84+) and PermissionDenied (2.1.88+) are added by postinstall.js when the CC version supports them. They must NOT be committed statically — CC rejects the entire settings file if it encounters an unknown hook event name.",
   "_wogiFlowManaged": true,
-  "_wogiFlowVersion": "2.22.0",
+  "_wogiFlowVersion": "2.26.3",
   "_comment": "Shared WogiFlow hook configuration. Committed to repo for team use. User-specific overrides go in settings.local.json."
 }

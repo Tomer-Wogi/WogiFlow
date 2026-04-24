@@ -711,6 +711,29 @@ SEVERITY IS CAPPED BY TIER:
   - Tier 1: severity capped at MEDIUM (unless grep returned >=5 instances → HIGH allowed)
   - Tier 2+: severity stands as you assign it
 
+IMPORTANT: Confidence Tier (95 / 85 / 75) — see `.workflow/rubrics/confidence-tiers.md`
+
+Every finding MUST also carry:
+
+  confidencePct: exactly one of 95, 85, or 75 (no other values)
+    95 = HIGH   — tier ≥3, OR tier 2 with 2+ observations,
+                  OR tier 1 with ≥10 hits across ≥3 files
+    85 = MEDIUM — tier 2 (single obs), OR tier 1 with 5-9 hits,
+                  OR tier 1 with ≥3 hits across ≥2 files
+    75 = LOW    — tier 0, OR tier 1 with 1-4 isolated hits, OR missing evidenceNote
+                  → MUST set flagUnverified=true; severity capped at LOW
+
+  flagUnverified: boolean (auto-true for confidencePct=75)
+
+  confidenceNote: one-line justification — required ONLY if you override the
+    default mapping (e.g. tier 1 with 6 hits but flagged 75 because 5 are in
+    the same block of code). Otherwise omit.
+
+LANGUAGE by confidence tier:
+  95 → assertive ("is", "breaks", "requires")
+  85 → hedged ("likely", "appears to", "in most paths")
+  75 → speculative ("might", "could", "possibly") + propose a verification action
+
 Also respect the FRAMING ARTIFACT from Phase 0 — only report findings within
 `scopeIn`. Findings outside `scopeOut` will be moved to an appendix by the
 orchestrator.
@@ -718,7 +741,9 @@ orchestrator.
 
 **Why evidence tiers matter**: During this project's own self-review (session logs), a `code-reviewer` agent reported an F1 finding as "Critical — broken require path" without citing evidence. Manual verification via `require.resolve()` showed the path was correct — the agent's path math was flawed. With tier enforcement, F1 would have been Tier 0 (no grep, no execution), capped at LOW, and flagged UNVERIFIED — alerting the reader to verify before acting.
 
-**Config toggles**: `review.evidenceTiers.enabled` (default true), `review.evidenceTiers.capByTier` (default true — enforce severity caps).
+**Why confidence tiers matter**: Evidence tier (0–4) is mechanical ("what produced the evidence"); confidence tier (95/85/75) is judgment ("how likely is this real and actionable"). Two findings at the same evidence tier can warrant different confidence — e.g. a grep hit of 1 match vs. 14 matches across 9 files. The 95/85/75 bucket drives language, severity cap, and whether the finding is flagged UNVERIFIED. The full reconciliation table is in `.workflow/rubrics/confidence-tiers.md`.
+
+**Config toggles**: `review.evidenceTiers.enabled` (default true), `review.evidenceTiers.capByTier` (default true — enforce severity caps), `review.confidenceTiers.enabled` (default true — require 95/85/75 on every finding).
 
 **2.4. Launch ALL agents in parallel** (single message with N Task tool calls, subagent_type=Explore)
 
@@ -742,7 +767,11 @@ orchestrator.
       "issue": "Description of the issue",
       "recommendation": "How to fix it",
       "autoFixable": false,
-      "agent": "code-logic|security|architecture|performance|project-rules-[slug]"
+      "agent": "code-logic|security|architecture|performance|project-rules-[slug]",
+      "evidenceTier": 3,
+      "evidenceNote": "grep 'foo' returned 7 matches in src/api/",
+      "confidencePct": 95,
+      "flagUnverified": false
     }
   ],
   "triaged": false

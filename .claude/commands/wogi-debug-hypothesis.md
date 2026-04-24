@@ -55,6 +55,39 @@ If any assumption is **CONTRADICTED** (user refers to a component that doesn't e
 
 This catches the "investigate imaginary code" failure mode before wasting a parallel agent run.
 
+### Step 0.5: Reflect on 5-7 Independent Sources (A3 — wf-f64f58b0)
+
+Before moving to consolidation (Step 4), you MUST have consulted at least **5 of 7** source categories. A hypothesis grounded in 1-2 code reads is a hypothesis, not a diagnosis. Breadth of evidence is the single strongest predictor of correct root-cause identification across the research corpus that informed WogiFlow v2.27.
+
+**The seven source categories** (a source only counts once, even if you read it repeatedly):
+
+1. **Code read** — actual file content examined at the relevant lines
+2. **Grep / search** — pattern search across the codebase for call sites, imports, or string literals referencing the suspect area
+3. **Git log / blame** — history of the suspect file or symbol (who changed what, and when)
+4. **Test run or test file read** — what the tests exercise vs. what they miss
+5. **Log / telemetry / gate-telemetry** — runtime evidence (browser console, server log, `/wogi-gate-stats`)
+6. **Type / interface definition** — the contract-level view from a types or schema file
+7. **User-confirmed assumption or prior correction** — from Step 1 (Tier 2) or `feedback-patterns.md`
+
+**Required output before Step 2**:
+
+```
+━━━ EVIDENCE INVENTORY ━━━
+Consulted (5+ required):
+  [✓] Code read: <file:line>
+  [✓] Grep: <pattern> → <n hits in m files>
+  [✓] Git log: <file or symbol> → <key finding>
+  [✓] Test: <testfile or run result>
+  [✓] <fifth source>
+  [ ] <skipped categories with one-line reason>
+Sources consulted: N / 7
+━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Downgrade clause**: if N < 5, the final diagnosis language is downgraded — say **"likely cause"** instead of "root cause", and **"probable fix"** instead of "fix". (A4 formalizes this as the 95/85/75 tier rubric — this clause is the placeholder until A4 lands.)
+
+**Skippable only when**: the bug is a typo, single-line obvious fix, or the user explicitly said "skip deep investigation". Note the reason in the inventory block.
+
 ### Step 1: Assumption Surfacing (Tier 2 — MANDATORY unless `--no-assumptions`)
 
 Before generating ANY hypothesis, identify the domain-model assumptions your theories will depend on. Present them in a fenced block and **WAIT** for user confirmation.

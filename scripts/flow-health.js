@@ -1089,6 +1089,11 @@ function main() {
     }
   }
 
+  // B7 (wf-c3b5afab): Surface gate miss-rate summary — rubber-stamping visibility
+  console.log('');
+  printSection('Checking gate telemetry...');
+  printGateMissRateSummary();
+
   // Summary
   console.log('');
   console.log('========================');
@@ -1104,6 +1109,52 @@ function main() {
   }
 
   return { issues, warnings };
+}
+
+// B7 (wf-c3b5afab): One-line surface of gates above the miss-rate threshold.
+// Uses the same threshold as flow-session-end's watch section (>=10%).
+const GATE_MISS_RATE_THRESHOLD = 0.10;
+const GATE_MISS_WINDOW = '7d';
+
+function loadGateStatsForHealth() {
+  let getGateStats;
+  try {
+    ({ getGateStats } = require('./flow-gate-telemetry'));
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Gate telemetry: ${err.message}`);
+    return null;
+  }
+  try {
+    return getGateStats({ since: GATE_MISS_WINDOW });
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[DEBUG] Gate telemetry stats: ${err.message}`);
+    return null;
+  }
+}
+
+function printGateMissRateSummary(stats = loadGateStatsForHealth()) {
+  const perGate = stats && stats.perGate ? stats.perGate : null;
+  const gates = perGate ? Object.keys(perGate) : [];
+  if (!perGate || gates.length === 0) {
+    console.log(`  ${color('dim', 'No telemetry yet (baseline)')}`);
+    return;
+  }
+
+  const over = gates.filter(id => {
+    const g = perGate[id];
+    return g.verdicts && g.verdicts.PASS > 0 && g.missRate >= GATE_MISS_RATE_THRESHOLD;
+  });
+
+  if (over.length === 0) {
+    success(`Gate missRate: 0 gates above ${(GATE_MISS_RATE_THRESHOLD * 100).toFixed(0)}% threshold`);
+    return;
+  }
+
+  warn(`Gate missRate: ${over.length} gate(s) above ${(GATE_MISS_RATE_THRESHOLD * 100).toFixed(0)}% threshold (see /wogi-gate-stats)`);
+  for (const id of over.slice(0, 3)) {
+    const g = perGate[id];
+    console.log(`    ${color('dim', `${id}: ${(g.missRate * 100).toFixed(1)}% miss (${g.missedAfterPass}/${g.verdicts.PASS})`)}`);
+  }
 }
 
 // ============================================================
@@ -1390,4 +1441,4 @@ function checkCompletionClaimHonesty() {
   return hits;
 }
 
-module.exports = { checkMcpScopes, normalizeMcpConfig, checkAntiDeferralCompliance, checkCompletionClaimHonesty };
+module.exports = { checkMcpScopes, normalizeMcpConfig, checkAntiDeferralCompliance, checkCompletionClaimHonesty, printGateMissRateSummary, GATE_MISS_RATE_THRESHOLD };

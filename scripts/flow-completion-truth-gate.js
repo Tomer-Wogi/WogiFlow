@@ -742,6 +742,302 @@ function formatMissingClaimsMessage(result) {
 }
 
 // ============================================================
+// Spec-String Bundle Grep (wf-07046456 / B4)
+// ============================================================
+
+/**
+ * Extract the "string bundle" from a spec: every named artifact the spec promises
+ * to produce, consume, or reference. The bundle is the set of concrete strings
+ * that MUST appear somewhere in the delivery (diff, changed files, bundle output)
+ * for the spec to be honored.
+ *
+ * Bundles extracted:
+ *   - Backtick-quoted identifiers: `functionName`, `ConfigKey`, `module/path.js`
+ *   - Double-quoted string literals: "exact error message", "button label"
+ *   - File paths with extensions: foo/bar.js, .workflow/state/X.json
+ *   - ALLCAPS_CONSTANTS
+ *   - Route/URL paths: /api/v1/users, /dashboard/settings
+ *
+ * @param {string} specMarkdown
+ * @returns {{ backtickIds: string[], quotedStrings: string[], filePaths: string[], constants: string[], routes: string[], all: string[] }}
+ */
+function extractSpecStrings(specMarkdown) {
+  if (typeof specMarkdown !== 'string' || specMarkdown.length === 0) {
+    return { backtickIds: [], quotedStrings: [], filePaths: [], constants: [], routes: [], all: [] };
+  }
+  // Strip code fences first so we don't double-count bodies of code blocks
+  const withoutFences = specMarkdown.replace(/```[\s\S]*?```/g, '');
+
+  const backtickIds = [...new Set(
+    [...withoutFences.matchAll(/`([^`\n]{2,80})`/g)].map((m) => m[1].trim())
+      .filter((s) => s.length >= 2 && !/^\s*$/.test(s))
+  )];
+  const quotedStrings = [...new Set(
+    [...withoutFences.matchAll(/"([^"\n]{3,120})"/g)].map((m) => m[1].trim())
+      .filter((s) => !/^(TODO|FIXME|XXX)$/i.test(s))
+  )];
+  const filePaths = [...new Set(
+    [...withoutFences.matchAll(/\b([\w./-]+\.(?:js|ts|tsx|jsx|md|json|yaml|yml|py|go|rs|sh|toml|hbs))\b/g)].map((m) => m[1])
+  )];
+  const constants = [...new Set(
+    // Require at least one underscore or digit — excludes bare HTTP verbs (POST/GET) and common all-caps words (JSON/HTML/CSV)
+    [...withoutFences.matchAll(/\b([A-Z][A-Z0-9]*_[A-Z0-9_]{1,40}|[A-Z_]{2,}\d+[A-Z0-9_]*)\b/g)].map((m) => m[1])
+      .filter((s) => !/^(TODO|FIXME|XXX|NOTE|HACK|TBD|WIP)$/.test(s))
+  )];
+  const routes = [...new Set(
+    [...withoutFences.matchAll(/(?:^|\s|`)(\/[a-z0-9][a-z0-9./_:-]{2,80})(?=[\s`"'.,]|$)/gmi)].map((m) => m[1])
+      .filter((s) => !s.startsWith('//') && !s.startsWith('/Users/') && !s.startsWith('/home/'))
+  )];
+
+  const all = [...new Set([...backtickIds, ...quotedStrings, ...filePaths, ...constants, ...routes])];
+  return { backtickIds, quotedStrings, filePaths, constants, routes, all };
+}
+
+/**
+ * Verify spec-string coverage against delivery.
+ *
+ * @param {object} opts
+ * @param {string} opts.specMarkdown
+ * @param {string} opts.diffText - git diff
+ * @param {string[]} [opts.changedFiles]
+ * @param {string} [opts.bundleText] - built-bundle text (minified) if available
+ * @param {string[]} [opts.additionalSources] - other text sources (e.g., commit message)
+ * @param {object} [opts.categoryMins] - minimum coverage ratio per category (default 0.8)
+ * @returns {{ ok: boolean, missingByCategory: object, coverage: object, strict: boolean }}
+ */
+function verifySpecBundleCoverage({
+  specMarkdown,
+  diffText = '',
+  changedFiles = [],
+  bundleText = '',
+  additionalSources = [],
+  categoryMins = {},
+}) {
+  const bundle = extractSpecStrings(specMarkdown);
+  const haystack = [diffText, bundleText, changedFiles.join('\n'), ...additionalSources].join('\n');
+  const defaults = { backtickIds: 0.8, quotedStrings: 0.7, filePaths: 1.0, constants: 0.8, routes: 1.0 };
+  const mins = { ...defaults, ...categoryMins };
+
+  const coverage = {};
+  const missingByCategory = {};
+  for (const cat of Object.keys(mins)) {
+    const items = bundle[cat] || [];
+    if (items.length === 0) { coverage[cat] = { total: 0, hit: 0, ratio: 1, threshold: mins[cat] }; missingByCategory[cat] = []; continue; }
+    const missing = items.filter((s) => !haystack.includes(s));
+    const hit = items.length - missing.length;
+    coverage[cat] = { total: items.length, hit, ratio: hit / items.length, threshold: mins[cat], missing };
+    missingByCategory[cat] = missing;
+  }
+
+  const strict = Object.entries(coverage).every(([, v]) => v.ratio >= v.threshold);
+  return { ok: strict, missingByCategory, coverage, strict };
+}
+
+/**
+ * Format spec-bundle verification as a human-readable report.
+ * @param {object} result
+ * @returns {string|null}
+ */
+function formatSpecBundleResult(result) {
+  if (!result) return null;
+  const lines = [];
+  lines.push(result.ok ? 'Spec-bundle grep OK:' : 'Spec-bundle grep FAIL:');
+  for (const [cat, v] of Object.entries(result.coverage)) {
+    if (v.total === 0) continue;
+    const mark = v.ratio >= v.threshold ? '✓' : '✗';
+    lines.push(`  ${mark} ${cat}: ${v.hit}/${v.total} (ratio ${v.ratio.toFixed(2)}, needs ${v.threshold.toFixed(2)})`);
+    if (v.ratio < v.threshold && v.missing.length > 0) {
+      lines.push(`      missing: ${v.missing.slice(0, 6).map((s) => `"${s}"`).join(', ')}${v.missing.length > 6 ? ', ...' : ''}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+// ============================================================
+// BEL-file grep (wf-10c452f7 / B2) — Bulleted-Expectation List grep
+// ============================================================
+
+/**
+ * Parse a spec file for BEL (bulleted-expectation list) items. A BEL item is any
+ * top-level `- ` or `* ` bullet under an "Acceptance Criteria", "Expectations",
+ * "Requirements", or "Success Criteria" heading.
+ *
+ * @param {string} specMarkdown
+ * @returns {Array<{text: string, heading: string}>}
+ */
+function parseBELItems(specMarkdown) {
+  if (typeof specMarkdown !== 'string' || specMarkdown.length === 0) return [];
+  const lines = specMarkdown.split('\n');
+  const belHeadingRe = /^(#{1,6})\s+(Acceptance Criteria|Expectations|Requirements|Success Criteria|Acceptance|Definition of Done|Criteria)\b/i;
+  const anyHeadingRe = /^#{1,6}\s+/;
+  const bulletRe = /^\s*[-*]\s+(.+)$/;
+  const items = [];
+
+  let inSection = false;
+  let currentHeading = '';
+  for (const line of lines) {
+    const belMatch = line.match(belHeadingRe);
+    if (belMatch) { inSection = true; currentHeading = belMatch[2]; continue; }
+    if (inSection && anyHeadingRe.test(line) && !line.match(belHeadingRe)) { inSection = false; continue; }
+    if (!inSection) continue;
+    const b = line.match(bulletRe);
+    if (b) items.push({ text: b[1].trim(), heading: currentHeading });
+  }
+  return items;
+}
+
+/**
+ * Extract keyword tokens from a BEL item for grep-based coverage detection.
+ * Reuses the STOPWORDS heuristic used elsewhere.
+ * @param {string} text
+ * @returns {string[]}
+ */
+function _belKeywords(text) {
+  const STOPWORDS = new Set([
+    'with', 'from', 'that', 'this', 'have', 'make', 'been', 'were', 'their',
+    'they', 'them', 'will', 'should', 'would', 'could', 'there', 'into',
+    'when', 'then', 'than', 'which', 'what', 'your', 'user', 'users', 'given',
+    'able', 'must', 'shall', 'system', 'application', 'feature',
+  ]);
+  const tokens = String(text).toLowerCase().match(/\b[a-z][a-z0-9_-]{3,}\b/g) || [];
+  return [...new Set(tokens.filter((t) => !STOPWORDS.has(t)))];
+}
+
+/**
+ * Verify each BEL item's keywords appear somewhere in the delivery haystack
+ * (commit message + diff + changed-file paths).
+ *
+ * @param {object} opts
+ * @param {string} opts.specMarkdown - the spec content to parse BEL items from
+ * @param {string} opts.diffText - output of `git diff` or equivalent
+ * @param {string[]} [opts.changedFiles] - changed-file paths
+ * @param {string} [opts.commitMessage] - commit message
+ * @param {number} [opts.minKeywordHits=2] - min distinct keyword hits per item for coverage
+ * @returns {{ ok: boolean, totalItems: number, coveredItems: Array, uncoveredItems: Array }}
+ */
+function verifyBELAgainstDelivery({ specMarkdown, diffText, changedFiles = [], commitMessage = '', minKeywordHits = 2 }) {
+  const items = parseBELItems(specMarkdown);
+  if (items.length === 0) return { ok: true, totalItems: 0, coveredItems: [], uncoveredItems: [] };
+
+  const haystack = [diffText || '', commitMessage || '', changedFiles.join(' ')].join('\n').toLowerCase();
+  const covered = [];
+  const uncovered = [];
+
+  for (const item of items) {
+    const keywords = _belKeywords(item.text);
+    if (keywords.length === 0) { covered.push({ ...item, hits: 0, keywords: [] }); continue; }
+
+    const hits = keywords.filter((k) => haystack.includes(k));
+    const threshold = Math.min(minKeywordHits, keywords.length);
+    if (hits.length >= threshold) {
+      covered.push({ ...item, hits: hits.length, keywords, matchedKeywords: hits });
+    } else {
+      uncovered.push({ ...item, hits: hits.length, keywords, matchedKeywords: hits, threshold });
+    }
+  }
+
+  return {
+    ok: uncovered.length === 0,
+    totalItems: items.length,
+    coveredItems: covered,
+    uncoveredItems: uncovered,
+  };
+}
+
+/**
+ * Format BEL verification result as a human-readable report.
+ * @param {object} result
+ * @param {string} [specPath]
+ * @returns {string|null}
+ */
+function formatBELResult(result, specPath = '') {
+  if (!result || result.totalItems === 0) return null;
+  if (result.ok) {
+    return `BEL gate OK: all ${result.totalItems} expectation(s) from ${specPath || 'spec'} covered by delivery.`;
+  }
+  const lines = [`BEL gate FAIL: ${result.uncoveredItems.length}/${result.totalItems} expectation(s) not found in delivery (${specPath || 'spec'}):`];
+  for (const u of result.uncoveredItems) {
+    lines.push(`  ✗ [${u.heading}] "${u.text.slice(0, 80)}"`);
+    lines.push(`      matched ${u.hits}/${u.keywords.length} keywords (need ${u.threshold}); missing: ${u.keywords.filter((k) => !u.matchedKeywords.includes(k)).slice(0, 5).join(', ')}`);
+  }
+  lines.push('');
+  lines.push('Options: add the missing implementation, update the spec if the expectation was dropped with user approval, or force with --skip-bel.');
+  return lines.join('\n');
+}
+
+// ============================================================
+// Confidence-Tier Rubric (95 / 85 / 75)
+// See .workflow/rubrics/confidence-tiers.md for full rubric.
+// Reconciled with EVIDENCE_TIERS (0..4). Story: wf-f14dcfeb (A4).
+// ============================================================
+
+const CONFIDENCE_TIERS = { HIGH: 95, MEDIUM: 85, LOW: 75 };
+
+/**
+ * Map (evidenceTier, signal strength) → confidencePct per the rubric.
+ *
+ * @param {Object} opts
+ * @param {number} opts.evidenceTier - 0..4 (see EVIDENCE_TIERS)
+ * @param {number} [opts.hitCount] - grep/glob match count (for tier 1)
+ * @param {number} [opts.fileCount] - distinct files for tier 1 hits
+ * @param {number} [opts.observationCount] - corroborating observations (for tier 2)
+ * @param {boolean} [opts.hasEvidenceNote] - whether a concrete citation was provided
+ * @returns {{ confidencePct: 95|85|75, flagUnverified: boolean, severityCap: 'LOW'|'HIGH'|null, rationale: string }}
+ */
+function computeConfidenceTier({
+  evidenceTier,
+  hitCount = 0,
+  fileCount = 0,
+  observationCount = 0,
+  hasEvidenceNote = true,
+} = {}) {
+  const t = typeof evidenceTier === 'number' ? evidenceTier : -1;
+
+  if (t >= 3) {
+    return { confidencePct: 95, flagUnverified: false, severityCap: null, rationale: 'tier >= 3 (interactive/automated)' };
+  }
+  if (t === 2) {
+    if (observationCount >= 2) {
+      return { confidencePct: 95, flagUnverified: false, severityCap: null, rationale: 'tier 2 with 2+ corroborating observations' };
+    }
+    return { confidencePct: 85, flagUnverified: false, severityCap: 'HIGH', rationale: 'tier 2, single observation' };
+  }
+  if (t === 1) {
+    if (hitCount >= 10 && fileCount >= 3) {
+      return { confidencePct: 95, flagUnverified: false, severityCap: null, rationale: 'tier 1 with 10+ hits across 3+ files' };
+    }
+    if (hitCount >= 5) {
+      return { confidencePct: 85, flagUnverified: false, severityCap: 'HIGH', rationale: 'tier 1 with 5-9 hits' };
+    }
+    if (hitCount >= 3 && fileCount >= 2) {
+      return { confidencePct: 85, flagUnverified: false, severityCap: 'HIGH', rationale: 'tier 1 with 3+ hits across 2+ files' };
+    }
+    return { confidencePct: 75, flagUnverified: true, severityCap: 'LOW', rationale: 'tier 1, isolated hits' };
+  }
+  if (t === 0 || !hasEvidenceNote) {
+    return { confidencePct: 75, flagUnverified: true, severityCap: 'LOW', rationale: 'tier 0 (static/source-inference) or no evidenceNote' };
+  }
+  // t === -1: no evidence
+  return { confidencePct: 75, flagUnverified: true, severityCap: 'LOW', rationale: 'no evidence recorded' };
+}
+
+/**
+ * Validate a finding carries confidencePct in the allowed set.
+ * @param {Object} finding
+ * @returns {{ ok: boolean, reason?: string }}
+ */
+function validateConfidencePct(finding) {
+  const allowed = [95, 85, 75];
+  if (!finding || !allowed.includes(finding.confidencePct)) {
+    return { ok: false, reason: `confidencePct must be one of ${allowed.join('|')}; got ${finding?.confidencePct}` };
+  }
+  if (finding.confidencePct === 75 && !finding.flagUnverified) {
+    return { ok: false, reason: 'confidencePct=75 findings MUST set flagUnverified=true' };
+  }
+  return { ok: true };
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -757,6 +1053,15 @@ module.exports = {
   parseCommitMessageClaims,
   verifyCommitMessageAgainstDiff,
   formatMissingClaimsMessage,
+  computeConfidenceTier,
+  validateConfidencePct,
+  CONFIDENCE_TIERS,
+  parseBELItems,
+  verifyBELAgainstDelivery,
+  formatBELResult,
+  extractSpecStrings,
+  verifySpecBundleCoverage,
+  formatSpecBundleResult,
   TIER_NAMES,
   DONE_WORDS,
   DISAGREEMENT_WORDS,

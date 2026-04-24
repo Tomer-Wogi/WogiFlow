@@ -1,6 +1,8 @@
 {
-  "skillName": null,
-  "markedAt": null,
-  "context": null,
-  "status": "cleared"
+  "skillName": "wogi-start",
+  "markedAt": "2026-04-24T07:06:23.540Z",
+  "context": {
+    "args": "Continue work on the WogiFlow improvements epic. Session context mentions pending tasks wf-34290000 and wf-94cc3b72, and an untracked epic file at .workflow/epics/wf-34290000.md. Please load that epic, show current progress, and pick up the next task in sequence."
+  },
+  "status": "pending"
 }

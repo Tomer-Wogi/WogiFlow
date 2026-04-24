@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generatedBy": "wogiflow@2.22.0",
-  "generatedAt": "2026-04-16T19:50:01.794Z",
+  "generatedBy": "wogiflow@2.26.3",
+  "generatedAt": "2026-04-23T21:03:29.746Z",
   "files": [
     "commands/wogi-audit.md",
     "commands/wogi-bug.md",
@@ -161,6 +161,7 @@
     "rules/_internal/model-management.md",
     "rules/_internal/self-maintenance.md",
     "rules/architecture/component-reuse.md",
+    "rules/architecture/hook-three-layer.md",
     "rules/code-style/naming-conventions.md",
     "rules/operations/git-workflows.md",
     "rules/operations/scratch-directory.md",

@@ -233,6 +233,51 @@ For EACH acceptance criterion in the spec:
 
 **Minimum: Tier 2 for display criteria, Tier 3 for behavioral criteria.**
 
+#### Skeptical Evaluator (B5 — wf-15175dbc)
+
+**When to use**: every L1+ task at validating phase. Forces three enumeration passes before "done" is allowed: UI fields, API parameters, state keys.
+
+Run:
+```js
+const { buildSkepticalPrompt, parseSkepticalOutput } = require('scripts/flow-skeptical-evaluator');
+const built = buildSkepticalPrompt({ specMarkdown, diffText, changedFiles, commitMessage, taskId });
+// spawn Agent with built.systemPrompt + built.userPrompt
+const result = parseSkepticalOutput(agentResponse, { taskId });
+if (!result.ok) { /* surface blockers + unverifiedClaims to user */ }
+```
+
+The evaluator's built-in pre-checks (BEL grep + spec-bundle grep) are surfaced in the user prompt so the sub-agent is grounded in mechanical data, not vibes. Every finding the evaluator produces must carry `evidenceTier` (0–4) + `confidencePct` (95/85/75) per `.workflow/rubrics/confidence-tiers.md`. Confidence-75 findings auto-flag as `UNVERIFIED`.
+
+Config: `intentGroundedReasoning.skepticalEvaluator.enabled` (default true).
+
+#### Spec-String Bundle Grep (B4 — wf-07046456)
+
+**When to use**: every L1+ task at Tier-3 verification. Extracts the "string bundle" from the spec (backtick IDs, quoted strings, file paths, constants, route paths) and greps each against the diff + changed files + built bundle.
+
+Run: `const { extractSpecStrings, verifySpecBundleCoverage, formatSpecBundleResult } = require('scripts/flow-completion-truth-gate');`
+
+Per-category coverage thresholds (defaults):
+- File paths: 100% (every file the spec names must appear in the diff)
+- Route paths: 100%
+- Constants: 80%
+- Backtick IDs: 80%
+- Quoted strings: 70% (allows for paraphrasing of error messages that were prototypes)
+
+Report the diff: any category below threshold surfaces the missing strings. The user either adds the missing implementation or updates the spec.
+
+#### DOM Field Inventory Snapshot (B3 — wf-f9431ef6)
+
+**When to use**: Any task that modifies a form, filter, wizard step, settings panel, or other UI surface containing `<input>`, `<select>`, `<textarea>`, or custom input components.
+
+Follow the protocol in `.workflow/templates/tier3-dom-field-inventory.md`:
+
+1. **Before**: snapshot the field inventory (name, label, type, default, required, validation, visibility) → `.workflow/verifications/<taskId>/dom-inventory-before.md`
+2. **After**: re-snapshot with the new code → `.workflow/verifications/<taskId>/dom-inventory-after.md`
+3. **Diff**: classify each field as preserved / modified / vanished / added → `.workflow/verifications/<taskId>/dom-diff.md`
+4. **Reconcile** against the task spec — any vanished/modified/added field that isn't named in an AC must be surfaced to the user before proceeding.
+
+This catches "silent field vanishing" bugs (see `feedback-patterns.md`) that lint + typecheck + smoke-test all miss because the missing field has no consumer in the critical path.
+
 #### Verification Method Selection
 
 Run: `node node_modules/wogiflow/scripts/flow-runtime-verification.js method`
