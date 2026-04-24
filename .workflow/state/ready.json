@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T14:29:45.181Z",
+  "lastUpdated": "2026-04-24T18:22:10.852Z",
   "inProgress": [],
   "ready": [
     {
@@ -30,10 +30,96 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-a48fafdd",
+      "title": "Autonomous Epic Execution — end-to-end walk-away mode across solo + workspace",
+      "type": "epic",
+      "level": "L0",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-24T15:21:37.167Z",
+      "specPath": ".workflow/epics/wf-a48fafdd.md",
+      "stories": [
+        "wf-8294d960",
+        "wf-d712002e",
+        "wf-e28b6cd8",
+        "wf-ab59f0e4"
+      ],
+      "goal": "Walk-away autonomous mode across solo + workspace; 4 stories",
+      "waves": {
+        "1": [
+          "wf-8294d960"
+        ],
+        "2": [
+          "wf-d712002e",
+          "wf-e28b6cd8"
+        ],
+        "3": [
+          "wf-ab59f0e4"
+        ]
+      }
+    },
+    {
+      "id": "wf-d712002e",
+      "title": "Natural-Language Autonomous Mode (decision routing + question queue + summary)",
+      "type": "story",
+      "level": "L1",
+      "parentEpic": "wf-a48fafdd",
+      "wave": 2,
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-24T15:21:37.167Z",
+      "specPath": ".workflow/changes/wf-d712002e.md",
+      "dependencies": []
+    },
+    {
+      "id": "wf-e28b6cd8",
+      "title": "Epic Decompose-and-Run in One Pass (cascade after decomposition)",
+      "type": "story",
+      "level": "L1",
+      "parentEpic": "wf-a48fafdd",
+      "wave": 2,
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-04-24T15:21:37.167Z",
+      "specPath": ".workflow/changes/wf-e28b6cd8.md",
+      "dependencies": []
+    },
+    {
+      "id": "wf-ab59f0e4",
+      "title": "Workspace-Mode Epic Autonomy (worker cascade + manager summary aggregation)",
+      "type": "story",
+      "level": "L1",
+      "parentEpic": "wf-a48fafdd",
+      "wave": 3,
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-24T15:21:37.167Z",
+      "specPath": ".workflow/changes/wf-ab59f0e4.md",
+      "dependencies": [
+        "wf-8294d960"
+      ]
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-8294d960",
+      "title": "Worker Boot Latency Fix (Ink-readiness detection + SessionStart parallelization)",
+      "type": "story",
+      "level": "L1",
+      "parentEpic": "wf-a48fafdd",
+      "wave": 1,
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-04-24T15:21:37.167Z",
+      "specPath": ".workflow/changes/wf-8294d960.md",
+      "dependencies": [],
+      "startedAt": "2026-04-24T17:16:18.432Z",
+      "completedAt": "2026-04-24T18:22:10.850Z",
+      "result": "Phase 1 investigation + Phase 2 fix shipped. Scenario C confirmed. Worker boot: 14.5s median → 7.5s (6.2s / 46% faster). MCP-strip + init banner. Three-layer refactor deferred to separate story."
+    },
     {
       "id": "wf-34290000",
       "title": "WogiFlow Extension Finalize (pre-CLI release)",

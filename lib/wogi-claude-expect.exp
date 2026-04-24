@@ -60,6 +60,23 @@ if {[info exists env(WOGI_EXPECT_TIMEOUT)]} {
     set timeout $env(WOGI_EXPECT_TIMEOUT)
 }
 
+# wf-8294d960: env-guarded boot-latency instrumentation. No effect unless
+# WOGI_DEBUG_BOOT=1. Timestamps print to stderr so users can capture with 2>&1.
+set _wogi_boot_debug 0
+if {[info exists env(WOGI_DEBUG_BOOT)] && $env(WOGI_DEBUG_BOOT) eq "1"} {
+    set _wogi_boot_debug 1
+}
+set _wogi_boot_t0 [clock milliseconds]
+proc _wogi_boot_mark {label} {
+    global _wogi_boot_debug _wogi_boot_t0
+    if {$_wogi_boot_debug} {
+        set ms [expr {[clock milliseconds] - $_wogi_boot_t0}]
+        puts stderr [format "\[boot-latency\] +%6dms expect:%s" $ms $label]
+    }
+}
+
+_wogi_boot_mark "expect script start"
+
 # Mirror claude's output to the user's terminal during dialog watch
 log_user 1
 
@@ -77,7 +94,9 @@ set claude_args [lrange $argv 1 end]
 # arguments as Tcl script, which lets an argument containing bracket syntax
 # (e.g. `[exec attacker-cmd]`) escape to command execution. The splice form
 # expands the list without reparsing.
+_wogi_boot_mark "before spawn"
 spawn $claude_bin {*}$claude_args
+_wogi_boot_mark "after spawn (pid=$spawn_id)"
 
 # ============================================================================
 # Test-mode branch (WOGI_EXPECT_NO_INTERACT=1): use the v2.26.2 expect +
@@ -133,18 +152,21 @@ if {[info exists env(WOGI_EXPECT_NO_INTERACT)] && $env(WOGI_EXPECT_NO_INTERACT) 
 # ============================================================================
 set _wogi_dismissed 0
 
+_wogi_boot_mark "entering interact"
 interact {
     -o
     -re "Loading.{0,20}development.{0,20}channels" {
         global _wogi_dismissed
         if {!$_wogi_dismissed} {
             set _wogi_dismissed 1
+            _wogi_boot_mark "dialog pattern matched"
             # Let Ink finish rendering the SelectInput component and bind its
             # keyboard listener before injecting Enter. 500ms is generous —
             # typical Ink reconciliation is <50ms but cold startups can be
             # slower. If this fires before the listener binds, the user's
             # own Enter keystroke (which we no longer capture) still works.
             after 500
+            _wogi_boot_mark "auto-Enter injected (after 500ms wait)"
             send "\r"
         }
     }

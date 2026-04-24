@@ -14,6 +14,39 @@ const { setRoutingPending } = require('../../core/routing-gate');
 const { getConfig } = require('../../../flow-utils');
 const { runHook } = require('../shared/hook-runner');
 
+// wf-8294d960: env-guarded boot-latency instrumentation. No effect unless WOGI_DEBUG_BOOT=1.
+// Claude Code suppresses hook process stderr — we write to an append-only log file instead.
+const BOOT_DEBUG = process.env.WOGI_DEBUG_BOOT === '1';
+const _bootT0 = BOOT_DEBUG ? Date.now() : 0;
+const _bootLogFile = BOOT_DEBUG
+  ? require('path').join(require('os').tmpdir(), 'wogi-boot-latency.log')
+  : null;
+let _bootSep = false;
+function _bootWrite(line) {
+  if (!BOOT_DEBUG) return;
+  try {
+    if (!_bootSep) {
+      require('fs').appendFileSync(_bootLogFile, `\n=== SessionStart pid=${process.pid} @ ${new Date().toISOString()} ===\n`);
+      _bootSep = true;
+    }
+    require('fs').appendFileSync(_bootLogFile, line + '\n');
+  } catch (_err) { /* non-blocking */ }
+}
+function _bootMark(label) {
+  if (!BOOT_DEBUG) return;
+  const ms = Date.now() - _bootT0;
+  _bootWrite(`[boot-latency] +${String(ms).padStart(6)}ms ${label}`);
+}
+async function _bootTime(label, fn) {
+  if (!BOOT_DEBUG) return fn();
+  const t = Date.now();
+  try {
+    return await fn();
+  } finally {
+    _bootWrite(`[boot-latency]   (${String(Date.now() - t).padStart(6)}ms) ${label}`);
+  }
+}
+
 // Lazy-load bridge state to avoid circular dependencies
 let autoSyncBridge = null;
 function getAutoSyncBridge() {
@@ -28,8 +61,9 @@ function getAutoSyncBridge() {
 }
 
 runHook('SessionStart', async ({ parsedInput }) => {
+  _bootMark('SessionStart hook entered');
   // Start bridge auto-sync in parallel with other init work
-  const bridgeSyncPromise = (async () => {
+  const bridgeSyncPromise = _bootTime('bridge auto-sync', async () => {
     try {
       const syncFn = getAutoSyncBridge();
       await syncFn('claude-code', { silent: true });
@@ -38,10 +72,11 @@ runHook('SessionStart', async ({ parsedInput }) => {
         console.error(`[session-start] Bridge auto-sync failed: ${err.message}`);
       }
     }
-  })();
+  });
 
   // Wait for bridge sync to complete
   await bridgeSyncPromise;
+  _bootMark('after bridge sync');
 
   // CLAUDE.md drift detection — check if manually edited since last sync
   let driftDetected = false;
@@ -70,19 +105,22 @@ runHook('SessionStart', async ({ parsedInput }) => {
   // --- Version compatibility checks (parallelized) ---
   let versionWarning = null;
   let updateWarning = null;
-  try {
-    const { checkClaudeCodeVersionOnce, checkWogiFlowUpdateOnce } = require('../../../flow-version-check');
-    const [vw, uw] = await Promise.all([
-      (async () => { try { return await checkClaudeCodeVersionOnce(); } catch (_err) { return null; } })(),
-      (async () => { try { return await checkWogiFlowUpdateOnce(); } catch (_err) { return null; } })()
-    ]);
-    versionWarning = vw;
-    updateWarning = uw;
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Version check failed: ${err.message}`);
+  await _bootTime('version checks', async () => {
+    try {
+      const { checkClaudeCodeVersionOnce, checkWogiFlowUpdateOnce } = require('../../../flow-version-check');
+      const [vw, uw] = await Promise.all([
+        (async () => { try { return await checkClaudeCodeVersionOnce(); } catch (_err) { return null; } })(),
+        (async () => { try { return await checkWogiFlowUpdateOnce(); } catch (_err) { return null; } })()
+      ]);
+      versionWarning = vw;
+      updateWarning = uw;
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Version check failed: ${err.message}`);
+      }
     }
-  }
+  });
+  _bootMark('after version checks');
 
   // --- Batch 1: Independent pre-context operations (async + sync) ---
   let scriptWarnings = [];
@@ -173,14 +211,16 @@ runHook('SessionStart', async ({ parsedInput }) => {
   );
 
   // Gather session context concurrently with the async pre-ops
+  _bootMark('before gatherSessionContext + asyncPreOps');
   const [, coreResult] = await Promise.all([
     Promise.all(asyncPreOps),
-    gatherSessionContext({
+    _bootTime('gatherSessionContext', () => gatherSessionContext({
       includeSuspended: true,
       includeDecisions: true,
       includeActivity: true
-    })
+    }))
   ]);
+  _bootMark('after gatherSessionContext + asyncPreOps');
 
   // --- Batch 2: Post-context operations (plugin scan + community pull) ---
   const postContextOps = [];
@@ -260,7 +300,8 @@ runHook('SessionStart', async ({ parsedInput }) => {
     }
   })());
 
-  await Promise.all(postContextOps);
+  await _bootTime('postContextOps (plugin-scan + community-pull)', () => Promise.all(postContextOps));
+  _bootMark('after postContextOps');
 
   // Inject script warnings into context (if any)
   if (scriptWarnings.length > 0 && coreResult && coreResult.context) {
@@ -309,21 +350,24 @@ runHook('SessionStart', async ({ parsedInput }) => {
   // if the queue is truly empty, announce worker-ready so the manager can
   // reconcile against its dispatch log and re-dispatch anything lost during
   // the restart window. See scripts/hooks/core/session-start-worker.js.
-  try {
-    const { handleWorkerSessionStart } = require('../../core/session-start-worker');
-    const workerResult = handleWorkerSessionStart();
-    if (workerResult.context && coreResult && coreResult.context) {
-      if (workerResult.branch === 'auto-resume') {
-        coreResult.context.workerAutoResume = workerResult.context;
-      } else if (workerResult.branch === 'announce-ready') {
-        coreResult.context.workerReadyAnnounce = workerResult.context;
+  await _bootTime('worker session-start handler', async () => {
+    try {
+      const { handleWorkerSessionStart } = require('../../core/session-start-worker');
+      const workerResult = handleWorkerSessionStart();
+      if (workerResult.context && coreResult && coreResult.context) {
+        if (workerResult.branch === 'auto-resume') {
+          coreResult.context.workerAutoResume = workerResult.context;
+        } else if (workerResult.branch === 'announce-ready') {
+          coreResult.context.workerReadyAnnounce = workerResult.context;
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[session-start] Worker session-start handler failed: ${err.message}`);
       }
     }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Worker session-start handler failed: ${err.message}`);
-    }
-  }
+  });
+  _bootMark('SessionStart hook returning');
 
   return coreResult;
 }, { failMode: 'warn' });

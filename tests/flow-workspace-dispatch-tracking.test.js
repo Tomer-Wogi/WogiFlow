@@ -285,12 +285,17 @@ describe('no background processes introduced (Scenario 7)', () => {
 // ============================================================
 
 describe('methodology template contract (Scenario 8)', () => {
-  it('contains Workspace Worker Silent-Halt Detection Contract rule in the shipped template', () => {
+  it('contains Workspace Silent-Halt Detection contract in the shipped template', () => {
     const partial = fs.readFileSync(
       path.join(__dirname, '..', '.workflow', 'templates', 'partials', 'methodology-rules.hbs'),
       'utf8'
     );
-    assert.match(partial, /Workspace Worker Silent-Halt Detection/);
+    // Rule heading was consolidated 2026-04-24 (CLAUDE.md size reduction): the
+    // contract's trigger point is the manager's UserPromptSubmit hook, so the
+    // heading now reads "Workspace Manager Silent-Halt Detection" (not Worker).
+    // Both the manager-mode scoping and the dispatched-tasks.json ring-buffer
+    // architecture must remain documented in the shipped template.
+    assert.match(partial, /Workspace Manager Silent-Halt Detection/);
     assert.match(partial, /dispatched-tasks\.json/);
   });
 });

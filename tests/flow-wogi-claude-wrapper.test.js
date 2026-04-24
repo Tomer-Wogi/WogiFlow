@@ -332,6 +332,121 @@ exit 0
     }
   });
 
+  // ============================================================
+  // wf-8294d960 (Story A): Worker MCP-stripping + init banner
+  // ============================================================
+  //
+  // Root cause measured 2026-04-24: Claude Code's own init (OAuth, claude.ai
+  // MCP handshakes, LSP, plugin sync) takes 10-19s cold. WogiFlow's
+  // SessionStart hook is 128ms. Workers don't need Gmail/Slack/Atlassian/
+  // etc. to refactor code, so stripping claude.ai MCP via --strict-mcp-config
+  // saves 3-7s per boot. Measured: 14.5s median baseline → 7.5s median
+  // post-fix (46% faster). Opt-in inheritance via
+  // config.workspace.inheritClaudeAiMcpIntegrations or WOGI_WORKER_INHERIT_MCP=1.
+
+  it('worker mode: injects --strict-mcp-config + --mcp-config pointing to empty-mcp.json', () => {
+    const { log, cwd } = runWrapper('--no-wogi-restart some-arg', {
+      WOGI_WORKSPACE_ROOT: '/tmp/fake-workspace',
+      WOGI_REPO_NAME: 'frontend'
+    });
+    assert.match(log, /ARGV:.*--strict-mcp-config --mcp-config \S+worker-empty-mcp\.json.*some-arg/,
+      'worker mode must prepend strict-mcp flags before user args');
+    // Verify the config file exists and is empty-MCP
+    const emptyMcpPath = path.join(cwd, '.workflow', 'state', 'worker-empty-mcp.json');
+    // Note: cwd is cleaned up in finally; check that the command logged the file path
+    const match = log.match(/--mcp-config (\S+\.json)/);
+    assert.ok(match, 'expected --mcp-config path in argv');
+  });
+
+  it('worker mode + WOGI_WORKER_INHERIT_MCP=1: MCP-strip flags NOT injected', () => {
+    const { log } = runWrapper('--no-wogi-restart some-arg', {
+      WOGI_WORKSPACE_ROOT: '/tmp/fake-workspace',
+      WOGI_REPO_NAME: 'frontend',
+      WOGI_WORKER_INHERIT_MCP: '1'
+    });
+    assert.ok(!/--strict-mcp-config/.test(log),
+      'opt-in env var must disable MCP stripping');
+    assert.match(log, /ARGV: some-arg/);
+  });
+
+  it('solo mode (no worker env): MCP-strip flags NOT injected', () => {
+    const { log } = runWrapper('--no-wogi-restart some-arg');
+    assert.ok(!/--strict-mcp-config/.test(log),
+      'solo mode must not touch MCP config');
+    assert.match(log, /ARGV: some-arg/);
+  });
+
+  it('manager mode (WOGI_REPO_NAME=manager): MCP-strip flags NOT injected', () => {
+    const { log } = runWrapper('--no-wogi-restart some-arg', {
+      WOGI_WORKSPACE_ROOT: '/tmp/fake-workspace',
+      WOGI_REPO_NAME: 'manager'
+    });
+    assert.ok(!/--strict-mcp-config/.test(log),
+      'manager (not a worker) must not strip MCP');
+  });
+
+  it('worker mode: creates .workflow/state/worker-empty-mcp.json in workspace root', () => {
+    // Use a real tmp workspace root so file creation can be verified
+    const wsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-mcp-fs-test-'));
+    try {
+      runWrapper('--no-wogi-restart x', {
+        WOGI_WORKSPACE_ROOT: wsRoot,
+        WOGI_REPO_NAME: 'frontend'
+      });
+      const configPath = path.join(wsRoot, '.workflow', 'state', 'worker-empty-mcp.json');
+      assert.ok(fs.existsSync(configPath), 'empty-MCP config must be created in workspace root');
+      const content = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      assert.deepStrictEqual(content, { mcpServers: {} },
+        'empty-MCP config must be strictly {mcpServers: {}}');
+    } finally {
+      try { fs.rmSync(wsRoot, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+    }
+  });
+
+  it('config.workspace.inheritClaudeAiMcpIntegrations=true: disables MCP stripping', () => {
+    const wsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-mcp-cfg-test-'));
+    try {
+      fs.mkdirSync(path.join(wsRoot, '.workflow'), { recursive: true });
+      fs.writeFileSync(
+        path.join(wsRoot, '.workflow', 'config.json'),
+        JSON.stringify({ workspace: { inheritClaudeAiMcpIntegrations: true } })
+      );
+      // Have to invoke wrapper with cwd = wsRoot so the node config read resolves
+      const { fake } = makeFakeClaude();
+      const log = path.join(wsRoot, 'log.txt');
+      try {
+        execSync(`bash ${WRAPPER} --no-wogi-restart x`, {
+          cwd: wsRoot,
+          env: {
+            PATH: process.env.PATH,
+            WOGI_CLAUDE_BIN: fake,
+            WOGI_TEST_LOG: log,
+            WOGI_WORKSPACE_ROOT: wsRoot,
+            WOGI_REPO_NAME: 'frontend'
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+          timeout: 10000
+        });
+      } catch (_err) { /* non-blocking */ }
+      const logContent = fs.existsSync(log) ? fs.readFileSync(log, 'utf-8') : '';
+      assert.ok(!/--strict-mcp-config/.test(logContent),
+        'config.workspace.inheritClaudeAiMcpIntegrations=true must disable MCP stripping');
+    } finally {
+      try { fs.rmSync(wsRoot, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+    }
+  });
+
+  it('init banner: worker mode prints banner to stderr when stderr is TTY', () => {
+    // [ -t 2 ] check: banner prints only when stderr is a TTY. In this harness
+    // stderr is redirected to a file (not a TTY), so banner is correctly
+    // suppressed. Verify the wrapper has the banner code path intact.
+    const wrapperContent = fs.readFileSync(WRAPPER, 'utf-8');
+    assert.match(wrapperContent, /worker '\$\{WOGI_REPO_NAME\}' initializing/,
+      'banner message template must be present in wrapper');
+    assert.match(wrapperContent, /\[ -t 2 \]/,
+      'banner must be guarded by [ -t 2 ] TTY check');
+  });
+
   it('bounded window: does not hang forever when no dialog appears', () => {
     // Regression guard: if the matched phrase never arrives, the script must
     // still exit when the claude process exits (EOF), not loop forever on

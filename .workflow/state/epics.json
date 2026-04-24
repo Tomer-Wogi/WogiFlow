@@ -84,8 +84,26 @@
       "progress": 0,
       "createdAt": "2026-04-15T06:31:14.234Z",
       "updatedAt": "2026-04-24T14:13:50.245Z"
+    },
+    "wf-a48fafdd": {
+      "id": "wf-a48fafdd",
+      "title": "Autonomous Epic Execution — end-to-end walk-away mode across solo + workspace",
+      "description": "User can dump N items, say 'go until you finish', walk away, return to terminal summary. 4 stories (A: worker boot fix, B: workspace parity, C: NL autonomous mode, E: epic decompose-and-run). See .workflow/epics/wf-a48fafdd.md",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-8294d960",
+        "wf-d712002e",
+        "wf-e28b6cd8",
+        "wf-ab59f0e4"
+      ],
+      "features": [],
+      "status": "inProgress",
+      "progress": 0.25,
+      "createdAt": "2026-04-24T15:20:26.864Z",
+      "updatedAt": "2026-04-24T18:22:10.911Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T14:13:50.245Z"
+  "lastUpdated": "2026-04-24T18:22:10.911Z"
 }

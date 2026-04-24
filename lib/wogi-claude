@@ -70,6 +70,67 @@ if [ -n "${WOGI_WORKSPACE_ROOT:-}" ] && [ -n "${WOGI_REPO_NAME:-}" ] && \
   __wogi_is_worker=1
 fi
 
+# --- wf-8294d960 (Story A): worker MCP-stripping + init banner ---
+#
+# Root cause (measured 2026-04-24): cold-boot of claude --print in a project
+# with claude.ai OAuth + 7 integrations takes 10-20s; claude --bare --print is
+# <1s. The ~10-19s gap is Claude Code's init (OAuth + remote MCP handshakes
+# + LSP + plugin sync + CLAUDE.md discovery + background prefetches).
+# WogiFlow's SessionStart hook is ~128ms — <1% of the problem. See
+# .workflow/scratch/wf-8294d960-investigation/root-cause.md for full data.
+#
+# Workers are specialized autonomous code executors; they typically do NOT
+# need Gmail/Slack/Atlassian/etc. integrations for refactoring code. Stripping
+# claude.ai MCP from worker boot saves ~3-7s per restart. Users who genuinely
+# need these integrations per-worker can opt in via the config key below.
+#
+# Opt-in: set config.workspace.inheritClaudeAiMcpIntegrations to true in
+# .workflow/config.json (or env var WOGI_WORKER_INHERIT_MCP=1) to keep
+# claude.ai MCP integrations active in worker mode. Default: strip (fast).
+__wogi_strip_mcp=0
+if [ "$__wogi_is_worker" -eq 1 ]; then
+  __wogi_strip_mcp=1
+  # Env override wins
+  if [ "${WOGI_WORKER_INHERIT_MCP:-}" = "1" ]; then
+    __wogi_strip_mcp=0
+  elif command -v node >/dev/null 2>&1; then
+    # Check config.json; fail-open (strip on any error, matching spec non-negotiable)
+    __wogi_config_inherit="$(node -e '
+      try {
+        const cfg = require(process.cwd() + "/.workflow/config.json");
+        process.stdout.write(String(!!(cfg.workspace && cfg.workspace.inheritClaudeAiMcpIntegrations)));
+      } catch (_e) { process.stdout.write("false"); }
+    ' 2>/dev/null)"
+    if [ "$__wogi_config_inherit" = "true" ]; then
+      __wogi_strip_mcp=0
+    fi
+  fi
+fi
+
+# Resolve the empty-MCP config used for stripping. Persistent path so we don't
+# regenerate a tmpfile on every restart; living in .workflow/state/ keeps it
+# alongside other worker state.
+__wogi_empty_mcp_config=""
+if [ "$__wogi_strip_mcp" -eq 1 ]; then
+  __wogi_empty_mcp_config="${WOGI_WORKSPACE_ROOT:-$(pwd)}/.workflow/state/worker-empty-mcp.json"
+  if [ ! -f "$__wogi_empty_mcp_config" ]; then
+    mkdir -p "$(dirname "$__wogi_empty_mcp_config")" 2>/dev/null
+    printf '{"mcpServers":{}}\n' > "$__wogi_empty_mcp_config" 2>/dev/null || __wogi_strip_mcp=0
+  fi
+fi
+
+# Init banner (C-2): workers take ~5-10s even with MCP stripped; tell the user
+# it's not frozen. Interactive solo users don't see this (only workers).
+if [ "$__wogi_is_worker" -eq 1 ] && [ -t 2 ]; then
+  __wogi_banner_msg="[wogi-claude] worker '${WOGI_REPO_NAME}' initializing"
+  if [ "$__wogi_strip_mcp" -eq 1 ]; then
+    __wogi_banner_msg="$__wogi_banner_msg (claude.ai MCP integrations stripped for speed)"
+  else
+    __wogi_banner_msg="$__wogi_banner_msg (claude.ai MCP inherited — expect +3-7s boot)"
+  fi
+  echo "$__wogi_banner_msg — expected boot ~5-10s, please wait..." >&2
+fi
+
 __wogi_wants_expect=0
 if [ -z "${WOGI_NO_EXPECT:-}" ]; then
   if [ "$__wogi_is_worker" -eq 1 ] || [ "${WOGI_USE_EXPECT:-}" = "1" ]; then
@@ -107,13 +168,24 @@ if [ "$__wogi_wants_expect" -eq 1 ]; then
   fi
 fi
 
+# __wogi_claude_args — emit argv with MCP-stripping flags prepended when needed.
+# Uses bash global array so callers expand it with "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}".
+__wogi_build_argv() {
+  __wogi_claude_argv=()
+  if [ "$__wogi_strip_mcp" -eq 1 ] && [ -n "$__wogi_empty_mcp_config" ]; then
+    __wogi_claude_argv+=(--strict-mcp-config --mcp-config "$__wogi_empty_mcp_config")
+  fi
+  __wogi_claude_argv+=("$@")
+}
+
 # run_claude — invoke claude, routing through expect when we can auto-dismiss
 # the dev-channels dialog. Preserves stdin/stdout/stderr exactly.
 run_claude() {
+  __wogi_build_argv "$@"
   if [ "$__wogi_use_expect" -eq 1 ]; then
-    expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "$@"
+    expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
   else
-    "$CLAUDE_BIN" "$@"
+    "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
   fi
 }
 
@@ -124,10 +196,11 @@ for arg in "$@"; do
     filtered=()
     for a in "$@"; do [ "$a" = "--no-wogi-restart" ] || filtered+=("$a"); done
     CLAUDE_BIN="${WOGI_CLAUDE_BIN:-claude}"
+    __wogi_build_argv "${filtered[@]}"
     if [ "$__wogi_use_expect" -eq 1 ]; then
-      exec expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "${filtered[@]}"
+      exec expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
     else
-      exec "$CLAUDE_BIN" "${filtered[@]}"
+      exec "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
     fi
   fi
 done
