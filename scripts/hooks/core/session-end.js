@@ -68,6 +68,18 @@ function handleSessionEnd(input) {
       result.logged = false;
     }
 
+    // Surface pending skill proposals staged by `flow skill propose|patch|remove`.
+    // These await user approval (`flow skill promote|reject`) at session end.
+    try {
+      const { summarizePendingProposals } = require('./session-end-skill-proposals');
+      const summary = summarizePendingProposals();
+      if (summary) {
+        result.pendingSkillProposals = summary;
+      }
+    } catch (_err) {
+      // Non-critical — never block session end
+    }
+
     // Scratch directory cleanup — remove temp files created during session
     try {
       const fs = require('node:fs');

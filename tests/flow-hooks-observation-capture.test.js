@@ -26,6 +26,7 @@ const {
   isObservationCaptureEnabled,
   getMaxInputSize,
   getMaxOutputSize,
+  selectDuration,
 } = require('../scripts/hooks/core/observation-capture');
 
 // ============================================================
@@ -343,5 +344,49 @@ describe('summarizeOutput — success path', () => {
   it('no response returns "Completed (no output)"', () => {
     const s = summarizeOutput('Edit', null, true);
     assert.ok(s.includes('Completed') || s.includes('Edit applied'));
+  });
+});
+
+// ============================================================
+// selectDuration — Claude Code 2.1.119 native duration_ms vs fallback
+// ============================================================
+
+describe('selectDuration', () => {
+  it('returns native duration_ms when payload is a number (CC >= 2.1.119)', () => {
+    assert.equal(selectDuration({ duration_ms: 1234 }, 0), 1234);
+  });
+
+  it('returns native 0 when CC reports a zero-ms tool (still a number, not missing)', () => {
+    assert.equal(selectDuration({ duration_ms: 0 }, 99), 0);
+  });
+
+  it('falls back when duration_ms is absent (older CC)', () => {
+    assert.equal(selectDuration({ toolName: 'Edit' }, 42), 42);
+  });
+
+  it('falls back when duration_ms is undefined', () => {
+    assert.equal(selectDuration({ duration_ms: undefined }, 42), 42);
+  });
+
+  it('falls back when duration_ms is null (not a number)', () => {
+    assert.equal(selectDuration({ duration_ms: null }, 42), 42);
+  });
+
+  it('falls back when duration_ms is a non-numeric string', () => {
+    assert.equal(selectDuration({ duration_ms: '1234' }, 42), 42);
+  });
+
+  it('falls back when duration_ms is NaN guarded by typeof number — NaN is technically a number', () => {
+    // typeof NaN === 'number', so per the guard, NaN passes through.
+    // Documented behavior: we trust CC not to emit NaN; if it does, we surface it as-is.
+    assert.equal(Number.isNaN(selectDuration({ duration_ms: NaN }, 42)), true);
+  });
+
+  it('falls back when parsedInput itself is null', () => {
+    assert.equal(selectDuration(null, 42), 42);
+  });
+
+  it('falls back when parsedInput is undefined', () => {
+    assert.equal(selectDuration(undefined, 42), 42);
   });
 });

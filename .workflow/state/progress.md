@@ -759,9 +759,10 @@ None
     "Completed: Silent-worker-halt detection via dispatch-tracking",
     "Completed: Enhance /wogi-story with P0 specification-quality gates",
     "Completed: Main-mode question classifier auto-defers task-boundary restart",
-    "Completed: Auto-pickup next ready task at session restart"
+    "Completed: Auto-pickup next ready task at session restart",
+    "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI"
   ],
-  "lastUpdated": "2026-04-24T10:03:18.333Z",
+  "lastUpdated": "2026-04-24T11:26:35.649Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

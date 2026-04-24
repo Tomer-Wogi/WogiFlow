@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T10:39:32.065Z",
+  "lastUpdated": "2026-04-24T11:26:35.644Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -100,48 +100,6 @@
   ],
   "ready": [
     {
-      "id": "wf-8e97ac77",
-      "title": "D1 MCP OAuth manager (Cline McpHub pattern)",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "D",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-8e97ac77.md"
-    },
-    {
-      "id": "wf-ac2a8074",
-      "title": "D2 execpolicy-style declarative command policy",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "D",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-ac2a8074.md"
-    },
-    {
-      "id": "wf-2a9f179e",
-      "title": "F1 skill_manage tool for agent self-created skills",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "F",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-2a9f179e.md"
-    },
-    {
       "id": "wf-9a969442",
       "title": "F3 Fuzzy-match patching for skill edits",
       "type": "story",
@@ -159,7 +117,7 @@
     },
     {
       "id": "wf-26d363ce",
-      "title": "H1 Phase files as Kilo-schema YAML mode definitions",
+      "title": "H1 Structured phase definition schema (YAML)",
       "type": "story",
       "level": "L1",
       "status": "ready",
@@ -172,24 +130,8 @@
       "specPath": ".workflow/changes/wf-26d363ce.md"
     },
     {
-      "id": "wf-c6c75841",
-      "title": "H2 Permission-ruleset-per-phase",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "H",
-      "bundle": "H-foundational",
-      "depends": [
-        "wf-26d363ce"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-c6c75841.md"
-    },
-    {
       "id": "wf-4434851f",
-      "title": "C2 IGR artifacts as memory blocks + memory_propose tool",
+      "title": "C2 IGR artifact edit proposals via CLI + session-end approval",
       "type": "story",
       "level": "L1",
       "status": "ready",
@@ -205,7 +147,7 @@
     },
     {
       "id": "wf-8d635d0e",
-      "title": "E1 Parallel-worktree Auto Review for Completion Truth Gate",
+      "title": "E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
       "type": "story",
       "level": "L1",
       "status": "ready",
@@ -265,16 +207,6 @@
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
     },
     {
-      "id": "wf-ea4751fc",
-      "title": "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P2",
-      "created": "2026-04-24T07:01:51.050Z",
-      "specPath": ".workflow/changes/wf-ea4751fc.md"
-    },
-    {
       "id": "wf-04585518",
       "title": "Surface effort.level and thinking.enabled in status line",
       "type": "story",
@@ -287,6 +219,35 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2a9f179e",
+      "title": "F1 Skill propose/patch/remove CLI + session-end approval UI",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "F",
+      "bundle": null,
+      "depends": [],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-2a9f179e.md",
+      "startedAt": "2026-04-24T11:26:27.538Z",
+      "routedAt": "2026-04-24T11:26:27.538Z",
+      "completedAt": "2026-04-24T11:26:35.643Z"
+    },
+    {
+      "id": "wf-ea4751fc",
+      "title": "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-04-24T07:01:51.050Z",
+      "specPath": ".workflow/changes/wf-ea4751fc.md",
+      "startedAt": "2026-04-24T11:12:46.714Z",
+      "completedAt": "2026-04-24T11:15:59.966Z"
+    },
     {
       "id": "wf-2c6c8b40",
       "title": "G2 Mid-session routing-state-reset fix",
@@ -402,78 +363,6 @@
       "workstream": "C",
       "completedAt": "2026-04-24T07:17:52.085Z",
       "requestLogRef": "R-339"
-    },
-    {
-      "id": "wf-9c9ba324",
-      "title": "B6 Empty-collection vanishing-section rule",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-338"
-    },
-    {
-      "id": "wf-15175dbc",
-      "title": "B5 Skeptical-evaluator field-enumeration prompt",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-337"
-    },
-    {
-      "id": "wf-07046456",
-      "title": "B4 Full spec-string bundle grep rule",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-336"
-    },
-    {
-      "id": "wf-f9431ef6",
-      "title": "B3 Tier-3 field-inventory DOM snapshot template",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-335"
-    },
-    {
-      "id": "wf-10c452f7",
-      "title": "B2 Completion-Truth-Gate BEL-file grep",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-334"
-    },
-    {
-      "id": "wf-fe8ef64d",
-      "title": "B1 AC Scope-Preservation Checklist",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "B",
-      "completedAt": "2026-04-24T07:14:57.016Z",
-      "requestLogRef": "R-333"
     }
   ],
   "backlog": [
@@ -575,6 +464,59 @@
       "certainty": "certain",
       "capturedAt": "2026-04-22T15:19:45.588Z",
       "capturedDuring": "wf-abcd1234"
+    }
+  ],
+  "rejected": [
+    {
+      "id": "wf-8e97ac77",
+      "title": "D1 MCP OAuth manager (Cline McpHub pattern)",
+      "type": "story",
+      "level": "L1",
+      "status": "rejected",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "D",
+      "bundle": null,
+      "depends": [],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-8e97ac77.md",
+      "rejectedAt": "2026-04-24T10:58:36.488Z",
+      "rejectionReason": "Scope-confidence audit (2026-04-24): WogiFlow is not an MCP client (no @modelcontextprotocol/sdk dep; existing flow-mcp-* scripts are capability-discovery only). Cline McpHub pattern does not transfer — Claude Code is the MCP host. Claude Code 2.1+ native MCP OAuth already covers this. User chose option C: drop the story entirely."
+    },
+    {
+      "id": "wf-ac2a8074",
+      "title": "D2 execpolicy-style declarative command policy",
+      "type": "story",
+      "level": "L1",
+      "status": "rejected",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "D",
+      "bundle": null,
+      "depends": [],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-ac2a8074.md",
+      "startedAt": "2026-04-24T11:01:31.538Z",
+      "rejectedAt": "2026-04-24T11:03:50.713Z",
+      "rejectionReason": "Scope-confidence audit (2026-04-24): spec misframes WogiFlow as owner of Bash allow/deny wildcards — those belong to Claude Code (settings.local.json permissions.{allow,deny,ask}, enforced before any WogiFlow hook fires). WogiFlow Bash gates are content-aware (git-safety, deploy, strike, scope-mutation, commit-log) not wildcard lists. AC1/2/4/5 duplicate Claude Code native permission system. Only AC3 (per-phase overlay) was genuinely additive. User chose option A: drop the story entirely."
+    },
+    {
+      "id": "wf-c6c75841",
+      "title": "H2 Permission-ruleset-per-phase",
+      "type": "story",
+      "level": "L1",
+      "status": "rejected",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "H",
+      "bundle": "H-foundational",
+      "depends": [
+        "wf-26d363ce"
+      ],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-c6c75841.md",
+      "rejectedAt": "2026-04-24T11:10:45.638Z",
+      "rejectionReason": "Scope-confidence audit batch scan (2026-04-24): same root cause as wf-ac2a8074 (D2). Claude Code owns .claude/settings.json permissions.{allow,deny,ask}, enforced before any WogiFlow hook fires. Phase-scoped permissions would require Claude Code itself to be phase-aware — out of WogiFlow scope. If surface-level per-phase restrictions are wanted, extend pre-tool-orchestrator with phase-scoped content-aware checks instead."
     }
   ]
 }

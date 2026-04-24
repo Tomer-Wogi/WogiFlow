@@ -11,6 +11,13 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-345 | 2026-04-24 13:10
+**Type**: feat
+**Tags**: #task:wf-ea4751fc #module:observation-capture #module:post-tool-use #claude-code:2.1.119 #telemetry
+**Request**: "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook"
+**Result**: CC 2.1.119 ships `duration_ms` in PostToolUse/PostToolUseFailure payloads — real tool execution time excluding permission prompts and PreToolUse hooks. Previously, `post-tool-use.js` recorded `Date.now() - startTime` across two adjacent statements (near-zero, meaningless). Added `selectDuration(parsedInput, fallbackMs)` to `scripts/hooks/core/observation-capture.js:393` — prefers `parsedInput.duration_ms` when numeric (includes valid 0), falls back to the local delta otherwise (older CC, malformed payload, null/undefined). Entry file `scripts/hooks/entry/claude-code/post-tool-use.js:14,50` imports + uses `selectDuration` at the single capture site; `captureObservation` signature unchanged (AC3). 9 new tests cover both branches including edge cases (null/undefined/non-numeric/NaN/zero/missing `parsedInput`). Full suite: 2073 passing, 0 failures. Lint clean (0 new warnings in touched files).
+**Files**: scripts/hooks/core/observation-capture.js (added selectDuration + export), scripts/hooks/entry/claude-code/post-tool-use.js (import + wire), tests/flow-hooks-observation-capture.test.js (9 new selectDuration tests)
+
 ### R-344 | 2026-04-24 12:15
 **Type**: feat
 **Tags**: #task:wf-2c6c8b40 #epic:wf-34290000 #hooks #routing

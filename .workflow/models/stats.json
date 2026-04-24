@@ -1,9 +1,9 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T07:09:03.014Z",
+  "lastUpdated": "2026-04-24T11:25:13.364Z",
   "trackingSince": "2026-01-11T07:30:00.000Z",
   "summary": {
-    "totalTasks": 35,
+    "totalTasks": 41,
     "totalTokensUsed": 0,
     "totalCost": 0,
     "avgTokensPerTask": 0,
@@ -11,9 +11,9 @@
   },
   "byModel": {
     "unknown": {
-      "taskCount": 35,
-      "totalIterations": 35,
-      "firstAttemptPasses": 35,
+      "taskCount": 41,
+      "totalIterations": 41,
+      "firstAttemptPasses": 41,
       "totalTokens": 0,
       "totalWallClockMs": 0,
       "totalRevisions": 0,
@@ -57,6 +57,13 @@
           "taskCount": 17,
           "totalIterations": 17,
           "firstAttemptPasses": 17,
+          "totalTokens": 0,
+          "totalRevisions": 0
+        },
+        "epic": {
+          "taskCount": 6,
+          "totalIterations": 6,
+          "firstAttemptPasses": 6,
           "totalTokens": 0,
           "totalRevisions": 0
         }
@@ -105,6 +112,13 @@
       "firstAttemptPasses": 17,
       "avgIterations": 1,
       "firstAttemptRate": 1
+    },
+    "epic": {
+      "taskCount": 6,
+      "totalIterations": 6,
+      "firstAttemptPasses": 6,
+      "avgIterations": 1,
+      "firstAttemptRate": 1
     }
   },
   "byCapability": {},
@@ -119,6 +133,90 @@
     "primarySuccessRate": 0
   },
   "recentTasks": [
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:25:13.364Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:23:39.102Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:22:01.811Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:21:34.971Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:21:11.505Z"
+    },
+    {
+      "taskId": "wf-34290000",
+      "model": "unknown",
+      "taskType": "epic",
+      "iterations": 1,
+      "firstAttemptPass": true,
+      "tokenEstimate": 0,
+      "wallClockMs": 0,
+      "qualityGateResults": [],
+      "changedFiles": [],
+      "scenarioCount": 0,
+      "revisionCount": 0,
+      "timestamp": "2026-04-24T11:20:34.666Z"
+    },
     {
       "taskId": "wf-f14dcfeb",
       "model": "unknown",

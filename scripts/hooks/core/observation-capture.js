@@ -376,6 +376,27 @@ async function captureObservation(options) {
 // Exports
 // ============================================================
 
+/**
+ * Pick the authoritative tool-execution duration.
+ *
+ * Claude Code 2.1.119+ attaches a numeric `duration_ms` to PostToolUse /
+ * PostToolUseFailure payloads — real tool execution time, excluding
+ * permission prompts and PreToolUse hooks. Older CC versions omit it, so
+ * callers pass a locally-computed fallback (typically near-zero because
+ * the hook only measures the gap between adjacent statements, not the
+ * tool itself). Prefer native when numeric; fall back otherwise.
+ *
+ * @param {object} parsedInput - hook payload
+ * @param {number} fallbackMs - local duration to use when native is absent
+ * @returns {number}
+ */
+function selectDuration(parsedInput, fallbackMs) {
+  if (parsedInput && typeof parsedInput.duration_ms === 'number') {
+    return parsedInput.duration_ms;
+  }
+  return fallbackMs;
+}
+
 module.exports = {
   // Configuration
   isObservationCaptureEnabled,
@@ -386,6 +407,9 @@ module.exports = {
   // Summarization
   summarizeInput,
   summarizeOutput,
+
+  // Duration source selection (CC 2.1.119+ native, fallback otherwise)
+  selectDuration,
 
   // Main capture function
   captureObservation

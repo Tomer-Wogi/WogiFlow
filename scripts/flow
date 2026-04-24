@@ -670,8 +670,13 @@ case "${1:-}" in
                 node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['add', '$3', ...process.argv.slice(2)])" -- "${@:4}"
                 ;;
             remove)
-                # Remove installed skill
-                node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['remove', '$3'])"
+                # If --name is present, this is a staged-removal proposal (flow-skill-manage).
+                # Otherwise, legacy registry removal.
+                if [[ " $* " == *" --name "* ]]; then
+                    node "$SCRIPT_DIR/flow-skill-manage.js" remove "${@:3}"
+                else
+                    node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['remove', '$3'])"
+                fi
                 ;;
             update)
                 # Update skills
@@ -685,8 +690,12 @@ case "${1:-}" in
                 # List skills from registry
                 node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['list'])"
                 ;;
+            propose|patch|promote|reject|archive|pending)
+                # Agent proposal CLI (staged, user-approved at session-end)
+                node "$SCRIPT_DIR/flow-skill-manage.js" "${@:2}"
+                ;;
             *)
-                echo "Usage: flow skill [detect|list|create|add|remove|update|info|registry]"
+                echo "Usage: flow skill [detect|list|create|add|remove|update|info|registry|propose|patch|promote|reject|archive|pending]"
                 echo ""
                 echo "Local Skills:"
                 echo "  detect              Detect frameworks in project"
@@ -696,9 +705,18 @@ case "${1:-}" in
                 echo "Registry Skills:"
                 echo "  registry            List available skills from registry"
                 echo "  add <name>          Install skill from registry"
-                echo "  remove <name>       Remove installed skill"
+                echo "  remove <name>       Remove installed skill (or stage proposal with --name)"
                 echo "  update [name]       Update skill(s)"
                 echo "  info <name>         Show skill details"
+                echo ""
+                echo "Agent Proposals (staged, user-approved at session-end):"
+                echo "  propose --name <n> --content <f>  Stage new skill"
+                echo "  patch   --name <n> --content <f>  Stage edit to existing skill"
+                echo "  remove  --name <n>                Stage removal of existing skill"
+                echo "  promote <name>                    Apply pending proposal"
+                echo "  reject  <name>                    Discard pending proposal"
+                echo "  archive <name>                    Direct archive (no staging)"
+                echo "  pending [--json]                  List pending proposals"
                 ;;
         esac
         ;;

@@ -3,6 +3,7 @@
 ## 2026-04
 
 ### Week 4 (Apr 19-25)
+- [x] wf-2a9f179e: F1 Skill propose/patch/remove CLI + session-end approval UI (Apr 24)
 - [x] wf-f267ea2a: Auto-pickup next ready task at session restart (Apr 24)
 - [x] wf-191d5f6e: Main-mode question classifier auto-defers task-boundary restart (Apr 24)
 

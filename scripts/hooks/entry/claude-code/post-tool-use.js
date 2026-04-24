@@ -11,7 +11,7 @@
  */
 
 const { runValidation } = require('../../core/validation');
-const { captureObservation } = require('../../core/observation-capture');
+const { captureObservation, selectDuration } = require('../../core/observation-capture');
 const { runHook } = require('../shared/hook-runner');
 
 function extractErrorMessage(toolResponse) {
@@ -47,7 +47,7 @@ runHook('PostToolUse', async ({ parsedInput }) => {
       toolName,
       toolInput,
       toolResponse,
-      duration: Date.now() - startTime,
+      duration: selectDuration(parsedInput, Date.now() - startTime),
       explorationStatus: toolFailed ? 'rejected' : undefined,
       rejectionReason: toolFailed ? extractErrorMessage(toolResponse) : undefined
     });
