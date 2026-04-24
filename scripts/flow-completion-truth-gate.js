@@ -282,7 +282,7 @@ function auditCompletionClaim(taskId, claimedCriteria) {
   const insufficient = perCriterion.filter((p) => p.claimedDone && !p.sufficient);
   const sufficient = perCriterion.filter((p) => p.claimedDone && p.sufficient);
 
-  return {
+  const audit = {
     perCriterion,
     blocked: insufficient.length > 0 && shouldBlockOnFalseCompletion(),
     softModeWarn: insufficient.length > 0 && !shouldBlockOnFalseCompletion(),
@@ -292,6 +292,25 @@ function auditCompletionClaim(taskId, claimedCriteria) {
     totalClaimed: perCriterion.filter((p) => p.claimedDone).length,
     evidenceRecordsExisted,
   };
+
+  // wf-8d635d0e / E1: fold parallel-worktree auto-review findings into the
+  // audit. High-severity findings flip softModeWarn on so downgradeClaim
+  // rewrites language. Timeout → informational note only (AC5).
+  try {
+    const { summarizeFindingsForAudit } = require('../lib/worktree-review');
+    const summary = summarizeFindingsForAudit(taskId);
+    if (summary.present) {
+      audit.autoReview = summary;
+      if (summary.highSeverityCount > 0) {
+        audit.softModeWarn = true;
+      }
+      if (summary.timedOut) {
+        audit.softModeWarn = audit.softModeWarn || false;
+      }
+    }
+  } catch (_err) { /* fail-open — auto-review is advisory */ }
+
+  return audit;
 }
 
 function normalizeText(s) {
@@ -325,9 +344,24 @@ function downgradeClaim(originalText, audit) {
   const re = new RegExp(`\\b(${DONE_WORDS.join('|')})\\b`, 'gi');
   const rewritten = String(originalText || '').replace(re, downgradedWord);
 
-  const banner =
+  let banner =
     `\n\n⚠ Completion Truth Gate: ${sufficientCount}/${totalClaimed} criteria reach the required ${tierName} (≥ Tier ${minTier}) evidence threshold. ` +
     `${insufficientCount} criteria are implemented but unverified — recommend manual verification before announcing completion.`;
+
+  // Auto-review findings addendum (wf-8d635d0e).
+  if (audit.autoReview && audit.autoReview.present) {
+    const ar = audit.autoReview;
+    if (ar.timedOut) {
+      banner += `\n⏱ Auto-review timed out (unverified-review-timeout) — no blocking signal from background review.`;
+    } else if (ar.highSeverityCount > 0) {
+      banner += `\n🔴 Auto-review: ${ar.highSeverityCount} high-severity finding(s) on changed lines.`;
+      for (const f of ar.topHighSeverity) {
+        banner += `\n    - ${f.file || '?'}:${f.line || 0} — ${f.claim}`;
+      }
+    } else if ((ar.counts?.medium || 0) + (ar.counts?.low || 0) > 0) {
+      banner += `\n📝 Auto-review: ${ar.counts.medium} medium, ${ar.counts.low} low severity (informational).`;
+    }
+  }
 
   return {
     text: rewritten + banner,

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-04-24T12:34:55.493Z",
+  "lastUpdated": "2026-04-24T12:52:33.688Z",
   "inProgress": [
     {
       "id": "wf-34290000",
@@ -100,22 +100,6 @@
   ],
   "ready": [
     {
-      "id": "wf-8d635d0e",
-      "title": "E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "E",
-      "bundle": null,
-      "depends": [
-        "wf-26d363ce"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-8d635d0e.md"
-    },
-    {
       "id": "wf-3635574e",
       "title": "G3 SQLite-as-IPC for workspace dispatch",
       "type": "story",
@@ -173,6 +157,24 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-8d635d0e",
+      "title": "E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "E",
+      "bundle": null,
+      "depends": [
+        "wf-26d363ce"
+      ],
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-8d635d0e.md",
+      "started": "2026-04-24T12:52:27.004Z",
+      "completedAt": "2026-04-24T12:52:33.687Z"
+    },
     {
       "id": "wf-4434851f",
       "title": "C2 IGR artifact edit proposals via CLI + session-end approval",
@@ -323,19 +325,6 @@
       "specPath": ".workflow/changes/wf-b5cd0351.md",
       "completedAt": "2026-04-24T10:29:14.364Z",
       "completionNote": "G1+G4+G6 bundle — shared module scripts/hooks/core/worker-tool-first-gate.js + stop.js wiring + rule doc + template update + 23 unit tests + 2 new scenarios in flow-task-boundary-autopickup"
-    },
-    {
-      "id": "wf-f267ea2a",
-      "title": "Auto-pickup next ready task at session restart",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-04-24T09:50:41.654Z",
-      "specPath": ".workflow/changes/wf-f267ea2a.md",
-      "startedAt": "2026-04-24T09:54:40.893Z",
-      "routedAt": "2026-04-24T09:54:40.893Z",
-      "completedAt": "2026-04-24T10:03:18.325Z"
     }
   ],
   "backlog": [

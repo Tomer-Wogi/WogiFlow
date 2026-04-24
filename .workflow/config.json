@@ -122,6 +122,11 @@
       "blockFalseCompletion": true
     }
   },
+  "autoReview": {
+    "_comment": "Parallel-worktree Auto-Review (wf-8d635d0e / E1). On coding→validating phase transition, spawns a detached background review worker in an isolated git worktree. Findings write to .workflow/state/auto-review-findings.json; the Completion Truth Gate folds high-severity findings into its downgrade logic. Opt-in (enabled=false by default) because it spawns a background child process. Known limitation: the worker runs on the session's global Claude Code model — per-task model selection is a future Claude Code feature. timeoutMs controls the unverified-review-timeout threshold.",
+    "enabled": false,
+    "timeoutMs": 90000
+  },
   "externalMemory": {
     "_comment": "Externalized episodic memory (epic-episodic-memory). Routes noisy tool outputs to disk with breadcrumbs; enforces conclusion capture to state files. Default OFF until Wave E measurement. See .workflow/audits/state-coverage-2026-04-15.md.",
     "enabled": false,

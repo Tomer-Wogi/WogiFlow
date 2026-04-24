@@ -3,6 +3,7 @@
 ## 2026-04
 
 ### Week 4 (Apr 19-25)
+- [x] wf-8d635d0e: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection) (Apr 24)
 - [x] wf-4434851f: C2 IGR artifact edit proposals via CLI + session-end approval (Apr 24)
 - [x] wf-26d363ce: H1 Structured phase definition schema (YAML) (Apr 24)
 - [x] wf-9a969442: F3 Fuzzy-match patching for skill edits (Apr 24)

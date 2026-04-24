@@ -28,6 +28,15 @@ if (command === 'transition') {
   const success = transitionPhase(from, to, taskId || null);
   if (success) {
     console.log(`Phase: ${from} → ${to}`);
+    // wf-8d635d0e / E1: fire background auto-review on coding → validating.
+    // Fails open — any error here must not fail the primary transition.
+    try {
+      const { maybeStartAutoReview } = require('./hooks/core/phase-transition-auto-review');
+      const result = maybeStartAutoReview(from, to, taskId || null);
+      if (result.started && process.env.DEBUG) {
+        console.error(`[auto-review] started pid=${result.handle?.pid} task=${taskId}`);
+      }
+    } catch (_err) { /* fail-open */ }
   } else {
     console.error(`Phase transition failed: ${from} → ${to}`);
     process.exit(1);
