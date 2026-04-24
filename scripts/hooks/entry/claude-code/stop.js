@@ -315,6 +315,50 @@ runHook('Stop', async ({ parsedInput }) => {
     }
   }
 
+  // Worker Tool-First Turn Gate (G1 + G4 + G6 — epic wf-34290000, Workstream G).
+  //
+  // In worker mode, every turn after a UserPromptSubmit (channel dispatch)
+  // MUST have at least one tool call. Strict mode also requires the first
+  // assistant content block to be a tool call, not text. Pure-text worker
+  // responses are invisible to the user and violate the three-state
+  // end-of-turn contract.
+  //
+  // Gates in order: G1 (zero tool_use = silent-halt) → G4 (text-first block =
+  // text-before-tool-call). Both share the rule name "worker-tool-first-turn"
+  // (G6). Fail-open — missing transcript / parse errors / config errors
+  // return no-block.
+  try {
+    const { isWorkerMode, checkWorkerToolFirstTurn, renderBlockMessage } =
+      require('../../core/worker-tool-first-gate');
+    if (isWorkerMode() && parsedInput?.transcriptPath) {
+      const { getConfig } = require('../../../flow-utils');
+      const config = getConfig();
+      const gateCfg = config.workspace?.toolFirstTurnGate;
+      const enabled = gateCfg?.enabled !== false;  // default true
+      if (enabled) {
+        const strict = gateCfg?.strict !== false;  // default true
+        const result = checkWorkerToolFirstTurn({
+          transcriptPath: parsedInput.transcriptPath,
+          strict
+        });
+        if (result.blocked) {
+          return {
+            __raw: true,
+            continue: true,
+            stopReason: renderBlockMessage(result)
+          };
+        }
+      }
+    }
+  } catch (err) {
+    // Fail-OPEN — any error in the tool-first gate must not block legitimate
+    // stops. Silent-halt / text-first false-negatives are recoverable; a
+    // false-positive block on every turn is not.
+    if (process.env.DEBUG) {
+      console.error(`[Stop] Worker tool-first gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // G3 (v2.21.0) — AI-based worker-question classifier.
   //
   // If the worker ends a turn with a question to the user in free text (no tool

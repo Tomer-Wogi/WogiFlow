@@ -194,6 +194,34 @@ describe('session-context — AUTO-PICKUP injection', () => {
     });
   });
 
+  it('Scenario 7: skips epic at head of queue, picks first non-epic task', () => {
+    withProject((tmp, tbr, sc) => {
+      writeCleanMarker(tmp);
+      writeReady(tmp, [
+        { id: 'wf-epic0001', title: 'An epic', type: 'epic' },
+        { id: 'wf-story001', title: 'First story', type: 'story' }
+      ]);
+      const out = sc.formatContextForInjection({ context: {} });
+      assert.match(out, /AUTO-PICKUP MODE ACTIVE/);
+      assert.match(out, /wf-story001/, 'should pick story, not epic');
+      assert.doesNotMatch(out, /wf-epic0001/, 'epic should be skipped');
+    });
+  });
+
+  it('Scenario 8: queue contains only epics → no AUTO-PICKUP (prevents restart loop)', () => {
+    withProject((tmp, tbr, sc) => {
+      writeCleanMarker(tmp);
+      writeReady(tmp, [
+        { id: 'wf-epic0001', title: 'Epic one', type: 'epic' },
+        { id: 'wf-epic0002', title: 'Epic two', type: 'epic' }
+      ]);
+      const out = sc.formatContextForInjection({ context: {} });
+      assert.doesNotMatch(out, /AUTO-PICKUP MODE ACTIVE/,
+        'should not inject when all ready tasks are epics — prevents loop on unworkable epic');
+      assert.equal(markerExists(tmp), false, 'marker should still be consumed');
+    });
+  });
+
   it('handles malformed marker gracefully (fail-open to no injection)', () => {
     withProject((tmp, tbr, sc) => {
       // Write malformed JSON

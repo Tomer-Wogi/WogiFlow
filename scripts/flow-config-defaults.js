@@ -417,6 +417,11 @@ const CONFIG_DEFAULTS = {
       enabled: true,
       minConfidence: 70,
       model: 'anthropic:claude-3-5-haiku-latest'
+    },
+    _comment_toolFirstTurnGate: 'v2.27.0+ (epic wf-34290000, G1+G4+G6): In worker mode, blocks end-of-turn when the current turn (after UserPromptSubmit) had zero tool calls (silent-halt) or — in strict mode — began with a text block before any tool call (text-before-tool-call). Pure-text worker responses are invisible to the user (manager terminal only) and disqualify the three-state end-of-turn contract. Fail-open on transcript/parse/config errors. Set strict:false to allow narrate-then-act patterns (still blocks zero-tool-call turns).',
+    toolFirstTurnGate: {
+      enabled: true,
+      strict: true
     }
   },
   _comment_mainModeQuestionClassifier: 'When true, task-boundary-reset runs a Haiku classifier on the final assistant message in main/solo mode before firing the restart. If the message ends by asking the user a question (detected semantically) AND pending-question.json is absent, the classifier auto-writes the marker and defers the restart — preventing the orphaned-question bug when the AI forgot to call `flow ask` manually. Mirrors workspace.aiWorkerQuestionClassifier. Fail-open: no ANTHROPIC_API_KEY / no transcript / model error → restart proceeds normally.',

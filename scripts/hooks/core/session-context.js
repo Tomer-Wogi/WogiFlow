@@ -899,15 +899,21 @@ function formatContextForInjection(context) {
       // Read the marker for diagnostic context (which task completed)
       const markerPayload = safeJsonParse(cleanMarkerPath, null);
 
-      // Find next ready task (FIFO from ready.json's `ready` array)
+      // Find next ready task. Prefer the first non-epic task — epics are
+      // containers whose work lives in their child stories, and auto-picking an
+      // epic produces a restart loop (wogi-start on an epic has no actionable
+      // next step when its children are not yet ready-queue tasks). If the
+      // queue contains only epics, emit no auto-pickup (safer to stop the loop
+      // than to re-enter it).
       let nextTaskId = null;
       let nextTaskTitle = null;
       try {
         const ready = getReadyData();
         const queue = Array.isArray(ready?.ready) ? ready.ready : [];
-        if (queue.length > 0) {
-          nextTaskId = queue[0]?.id || null;
-          nextTaskTitle = queue[0]?.title || null;
+        const firstActionable = queue.find(t => t && t.type !== 'epic');
+        if (firstActionable) {
+          nextTaskId = firstActionable.id || null;
+          nextTaskTitle = firstActionable.title || null;
         }
       } catch (_err) { /* fall through — no auto-pickup if ready.json unreadable */ }
 

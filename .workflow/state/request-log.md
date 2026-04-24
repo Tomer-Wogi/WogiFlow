@@ -11,6 +11,27 @@ grep -A5 "Type: fix" .workflow/state/request-log.md
 
 ---
 
+### R-343 | 2026-04-24 11:30
+**Type**: feat
+**Tags**: #task:wf-b5cd0351 #task:wf-c8754819 #task:wf-8a0fc8ad #epic:wf-34290000 #workstream:G #stop-hook #worker-mode
+**Request**: "Epic wf-34290000 Phase 6 — G1 + G4 + G6 Stop hook trio (bundled — same integration point)"
+**Result**: Unified worker tool-first turn contract lands as one cohesive gate. New core module `scripts/hooks/core/worker-tool-first-gate.js` detects three violations under one rule name (`worker-tool-first-turn`): G1 silent-halt (zero tool_use blocks in a turn), G4 text-before-tool-call (strict mode: first assistant content block must be `tool_use`), G6 documented contract (rule named consistently in block messages + worker-rules template). Wired into `scripts/hooks/entry/claude-code/stop.js` between the Gap-B queue gate and the Haiku question classifier. Config: `workspace.toolFirstTurnGate.{enabled,strict}` (defaults `true,true`). Fail-open throughout — missing transcript / parse error / config error returns no-block. Rule documented at `.claude/rules/_internal/worker-tool-first-turn.md`. Worker-rules template (`lib/workspace.js:1217+`) updated with the contract so workers see it in every system prompt. 23 new unit tests pass covering extractCurrentTurn, checkWorkerToolFirstTurn (G1 both modes, G4 strict-only, pass cases, fail-open paths), renderBlockMessage (rule name + curl + violation heading), isWorkerMode (env gating), readTranscript (robustness). Full test suite 2064/2064 pass. Lint clean (17 pre-existing warnings unchanged).
+**Files**: scripts/hooks/core/worker-tool-first-gate.js (new), scripts/hooks/entry/claude-code/stop.js (wire gate), scripts/flow-config-defaults.js (toolFirstTurnGate default), .claude/rules/_internal/worker-tool-first-turn.md (new), lib/workspace.js (worker-rules template), tests/stop-hook-worker-tool-first.test.js (new, 23 tests), .workflow/changes/wf-b5cd0351.md (spec), .workflow/changes/wf-c8754819.md (spec), .workflow/changes/wf-8a0fc8ad.md (spec)
+
+### R-342 | 2026-04-24 11:20
+**Type**: fix
+**Tags**: #module:session-context #epic:wf-34290000 #auto-pickup #restart-loop
+**Request**: "Fix auto-pickup restart loop — queue[0] blindly picks epics, which are unworkable via /wogi-start alone"
+**Result**: `scripts/hooks/core/session-context.js:902-916` now uses `queue.find(t => t.type !== 'epic')` instead of `queue[0]`. Rationale: epics are containers whose work lives in child stories; when auto-pickup picks an epic, `/wogi-start <epic-id>` has no actionable next step, the turn ends with no tool calls, Phase-1 fallback re-marks, restart loop. Session history showed 6 consecutive `task-boundary-restart` events burning tokens without progress. Fix skips epics; when queue contains ONLY epics, no AUTO-PICKUP emitted (safer to halt than loop). Added scenarios 7 + 8 to `flow-task-boundary-autopickup.test.js` covering skip-epic + all-epics-halt. 11/11 autopickup tests pass, 2064/2064 full suite pass.
+**Files**: scripts/hooks/core/session-context.js (epic-skip filter), tests/flow-task-boundary-autopickup.test.js (new scenarios 7 + 8)
+
+### R-341 | 2026-04-24 11:15
+**Type**: chore
+**Tags**: #epic:wf-34290000 #spec-generation #ready-json
+**Request**: "Epic wf-34290000 — regenerate all remaining story specs + order ready queue for autonomous execution"
+**Result**: One-shot generator at `.workflow/scratch/generate-epic-specs.js` created 13 story specs for the epic's remaining children: wf-b5cd0351 (G1), wf-c8754819 (G4), wf-8a0fc8ad (G6), wf-2c6c8b40 (G2), wf-8e97ac77 (D1), wf-ac2a8074 (D2), wf-2a9f179e (F1), wf-9a969442 (F3), wf-26d363ce (H1), wf-c6c75841 (H2), wf-4434851f (C2), wf-8d635d0e (E1), wf-3635574e (G3). Each spec lightweight (~25 lines) — references the epic for context + declares AC + integration point + files + depends[]. Ready.json reordered: epic moved to `inProgress` (containers don't belong in ready[] per R-342 fix), 13 stories prepended to ready[] in dependency order (stop-hook trio first, G2 next, D-workstream, F-workstream, then H1 foundational + H2/C2/E1 dependents, G3 high-risk last).
+**Files**: .workflow/scratch/generate-epic-specs.js (generator, will be cleaned at session end), .workflow/changes/wf-{b5cd0351,c8754819,8a0fc8ad,2c6c8b40,8e97ac77,ac2a8074,2a9f179e,9a969442,26d363ce,c6c75841,4434851f,8d635d0e,3635574e}.md (13 specs), .workflow/state/ready.json
+
 ### R-337 | 2026-04-24 11:55
 **Type**: feat
 **Tags**: #task:wf-f267ea2a #task-boundary #auto-pickup #autonomy #session-restart
