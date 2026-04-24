@@ -21,20 +21,10 @@ This project has IGR enabled (`config.intentGroundedReasoning.enabled: true`). I
 ### Operator commands
 
 - `/wogi-challenge <plan-or-taskId>` — manually invoke the Logic Adversary on any plan
-- `/wogi-gate-stats [--since=7d] [--gate=ID]` — view per-gate self-assessment dashboard
+- `/wogi-gate-stats [--since=7d] [--gate=ID]` — per-gate self-assessment dashboard
 - `node scripts/flow-intent-bootstrap.js [bootstrap|status|refresh]` — manage intent artifacts
 
-### To disable
-
-Set `intentGroundedReasoning.enabled: false` in `.workflow/config.json`. All IGR steps SKIP cleanly; pipeline reverts to pre-IGR behavior.
-
-### Reference
-
-- Operator docs: `.claude/docs/intent-grounded-reasoning.md`
-- Telemetry docs: `.claude/docs/gate-telemetry.md`
-- Logic Constitution: `.workflow/rubrics/logic-constitution-v1.md`
-- Adversary persona: `.workflow/agents/logic-adversary.md`
-- Architect persona: `.workflow/agents/architect.md`
+Toggle off via `intentGroundedReasoning.enabled: false`. Full docs at `.claude/docs/intent-grounded-reasoning.md` (and gate telemetry at `.claude/docs/gate-telemetry.md`).
 
 ---
 {{/if}}

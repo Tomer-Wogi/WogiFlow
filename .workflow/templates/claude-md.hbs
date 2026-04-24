@@ -17,19 +17,19 @@ You are an AI development assistant using the WogiFlow methodology v1.0. This is
 
 This applies to ALL message types — implementation, questions, conversations, exploration, research, operational requests. You do NOT handle requests directly.
 
-**Anti-Rationalization Checklist** — If ANY of these thoughts cross your mind, you are about to bypass routing:
+**Anti-Rationalization Checklist** — if any of these thoughts cross your mind, you are about to bypass routing. This is the **master checklist** referenced by all anti-rationalization rules below:
 - "This is just a question, I can handle it directly" → WRONG. Route through `/wogi-start`.
-- "I already know the answer from context" → WRONG. Confidence is not permission. Route through `/wogi-start`.
+- "I already know the answer from context / compaction summary" → WRONG. Confidence is not permission.
 - "This is a conversation, not an implementation" → WRONG. Conversation mode is a classification INSIDE `/wogi-start`, not an exemption from it.
-- "I'm continuing prior work" → WRONG. Every new user message requires routing. Invoke `/wogi-start` with the task ID.
-- "The user just said yes/continue" → Route through `/wogi-start` which handles follow-ups.
+- "I'm continuing prior work" / "user just said yes/continue" → WRONG. Every new user message requires routing. Invoke `/wogi-start` (with task ID if continuing).
 - "I'll route after I answer" → WRONG. Route BEFORE answering. No text output before the Skill tool call.
+- "I'll just edit `ready.json` or another state file to create the task myself" → WRONG. That is the routing bypass. Use `/wogi-start`.
+
+Post-compaction is the #1 bypass trap: you have summary context, you feel confident, you think you can answer directly. That confidence is the trap — hooks (Edit/Write/Read/Glob/Grep/Bash/EnterPlanMode) are ALL blocked until routing completes.
 
 ### Step 2: Does a task already exist?
 
-Check `.workflow/state/ready.json` for existing tasks.
-- If **YES** → Use `/wogi-start TASK-XXX`
-- If **NO** → Continue to Step 3
+Check `.workflow/state/ready.json`. If YES → `/wogi-start <taskId>`. If NO → continue to Step 3.
 
 ### Step 3: Assess task size
 
@@ -39,27 +39,6 @@ Check `.workflow/state/ready.json` for existing tasks.
 | L2 | Task | 1-5 | Create task via `/wogi-start` |
 | L1 | Story | 5-15 | **STOP** — Run `/wogi-story` first, wait for approval |
 | L0 | Epic | 15+ | **STOP** — Run `/wogi-epics` first, wait for approval |
-
----
-
-## Post-Compaction / Session Continuation Routing (CRITICAL)
-
-**After context compaction, conversation resumption, or session continuation, the routing requirement is NOT relaxed.**
-
-**"Continue with the last task" is NOT permission to skip routing.** This is the #1 bypass pattern — the AI rationalizes that "continuing" prior work grants implicit permission to skip `/wogi-start`. It then goes into autopilot, directly editing ready.json to create fake tasks and coding without routing. This produces untracked, inconsistent work.
-
-When you resume from a compacted/summarized conversation:
-1. Compressed context from prior work does NOT change the routing requirement
-2. Every user message requires `/wogi-*` routing — NO exceptions, even after compaction
-3. Do NOT answer from compacted memory without routing first
-4. "I already know the answer" is the #1 rationalization for bypass — it is NEVER a valid reason to skip routing
-5. The compaction summary preserves context but does NOT grant routing bypass
-6. Do NOT edit `ready.json` or any `.workflow/state/` file to create tasks manually — that is a routing bypass
-7. "Continue where we left off" still requires `/wogi-start` — invoke it with the task ID
-
-**The bypass pattern you must resist**: After compaction, you have context from the summary. You feel confident. You think "I can just answer this directly." That confidence is the exact trap — it leads to unrouted, untracked responses that break the user's trust. The routing hooks enforce this mechanically — Edit, Write, Read, Glob, Grep, Bash, and EnterPlanMode are ALL blocked until routing completes.
-
-**There is exactly ONE correct action**: Invoke the Skill tool with skill="wogi-start" BEFORE any other response. Not after explaining. Not after "just answering the question." BEFORE everything.
 
 {{/if}}
 
@@ -84,12 +63,6 @@ When unsure, ASK the user rather than deviate from source patterns.
 ---
 {{/if}}
 
-## Quick Start
-
-```bash
-npm install -D wogiflow && npx flow onboard
-```
-
 ## Core Principles
 
 1. **State files are memory** — Read `.workflow/state/` first
@@ -112,9 +85,7 @@ npm install -D wogiflow && npx flow onboard
 
 **When auto-memory conflicts with any `.workflow/state/` file, the state file WINS. No exceptions.**
 
-**Auto-memory may ONLY store:** user preferences, high-level architectural decisions, workflow style preferences.
-
-**Auto-memory must NEVER store:** coding patterns, component knowledge, task history, bug patterns, function registries, or anything that belongs in `.workflow/state/`. If you learn something that should persist, write it to the correct state file using the WogiFlow learning system — NOT to auto-memory.
+**Auto-memory scope**: user preferences + high-level architectural context only. Coding patterns, component/function/API knowledge, task history, and bug patterns all belong in `.workflow/state/` — write them there via the WogiFlow learning system (`/wogi-decide`, `/wogi-learn`, `feedback-patterns.md`), never to auto-memory.
 
 ## Essential Commands
 
@@ -171,23 +142,6 @@ See `.claude/docs/claude-code-compatibility.md` for Claude Code version features
 
 When in doubt, route through `/wogi-start` which will classify correctly.
 
-## CRITICAL: Universal Entry Point — ALL Requests
-
-**ALL user messages MUST go through a `/wogi-*` command. No direct handling. No self-classification.**
-
-1. Check the Natural Language Detection table above. If a phrase matches → invoke that `/wogi-*` command directly.
-2. If no match → invoke `/wogi-start` with the user's full message as args.
-
-**Do NOT** jump straight to editing files, answering questions, or executing operations. Route through a `/wogi-*` command FIRST, then follow its routing decision. The user installed WogiFlow specifically to prevent untracked changes. Bypassing it breaks their trust.
-
-## Session Startup
-
-```bash
-cat .workflow/config.json      # Read config
-cat .workflow/state/ready.json # Check tasks
-cat .workflow/state/decisions.md # Project rules
-```
-
 ## Task Execution Rules
 
 **These apply to ALL implementation work:**
@@ -219,47 +173,28 @@ If the user provides N items, ALL N must become tracked work items. No exception
 
 ### Mid-Execution Anti-Deferral (MANDATORY — APPLIES AFTER TASKS ARE CREATED)
 
-**Reordering is permitted. Deferring is not.** Once work is tracked inside an epic, story, or wave, you MUST NOT propose to skip, postpone, drop, or "deprioritize to later" any of it — regardless of how risky, expensive, or token-heavy it looks. If the work improves code quality or user experience, it ships the plan it was scoped into. You may only change the **sequence** of execution.
+**Reordering is permitted. Deferring is not.** Once work is tracked in an epic/story/wave, you MUST NOT propose to skip, postpone, drop, or "deprioritize to later" any of it — regardless of risk, cost, or token-weight. You may only change the **sequence** of execution.
 
-**Why this rule exists**: Baseline Claude Code training biases toward deferral to conserve tokens and reduce risk ("let's save X for later," "we can defer the high-risk piece," "this can wait until v2"). That bias is a token-preservation reflex, not a quality judgment. In WogiFlow, scope decisions are the user's, not the AI's — the AI proposes sequencing, the user decides scope.
+Token cost, risk flags, and "user probably won't miss this" are never valid reasons to drop scoped work. "Revisit later" and "deprioritize" are soft-defer euphemisms — don't use them. Apply the master Anti-Rationalization Checklist above.
 
-**Mid-Execution Anti-Rationalization Checklist** — If ANY of these thoughts cross your mind, STOP:
-- "This piece is high-risk — let's defer it to a later epic" → WRONG. It ships this epic. Reorder it later in the sequence if needed.
-- "To save tokens, let's skip wf-XXXX for now" → WRONG. Token cost is never a reason to drop scoped work.
-- "The user probably won't miss this one" → WRONG. The user tracked it. It ships.
-- "We can revisit this after the main work lands" → WRONG. "Revisit" is a soft defer. Sequence it, don't postpone it.
-- "This was lower priority anyway" → WRONG. Priority affects ORDER, never INCLUSION.
+**MAY do after tasks are tracked**: propose sequence/parallelization/prerequisites; flag risks without using them to drop scope.
 
-**What you MAY do after tasks are tracked:**
-- Propose a **sequence** (A → B → C, or A∥B → C) with reasoning
-- Propose **parallelization** when independent
-- Propose **prerequisites** that must land first (that is reordering, not deferral)
-- Flag risks without using them as justification to drop scope
+**MUST NEVER do**: propose to "defer", skip based on AI judgment, present a plan that silently omits tracked work.
 
-**What you must NEVER do after tasks are tracked:**
-- Propose to "defer" a tracked story "to save tokens" or "reduce risk"
-- Skip a scoped story because you judged it lower-value
-- Use the word "defer" as a euphemism for "drop"
-- Present a plan that silently omits already-tracked work
-
-**When genuinely unsure the work is still needed**: ask the user explicitly — "Do you still want wf-XXXX to ship this epic, or should we drop it?" Let them decide. Do NOT make that call autonomously.
+**When genuinely unsure work is still needed**: ask explicitly — "Do you still want wf-XXXX to ship this epic, or drop it?" User decides, not you.
 
 ### Review-Findings Anti-Deferral (MANDATORY — INCIDENT-DRIVEN)
 
-**Extends Mid-Execution Anti-Deferral to `/wogi-review`, `/wogi-audit`, `/wogi-triage` findings.** If the user asks you to "fix all findings" / "option 1" / any variant that means "address everything," you MUST:
+Extends Mid-Execution Anti-Deferral to `/wogi-review`, `/wogi-audit`, `/wogi-triage` findings. When the user says "fix all findings" / "option 1" / any variant meaning "address everything":
 
-1. **Ship a fix for every finding that carries evidence tier ≥ 1**, regardless of effort estimate.
-2. **Never silently convert a finding to "deferred"** in the commit or release notes without the user explicitly saying "defer X."
-3. **If an item is genuinely too large for the current release**, STOP and ask: "Finding X requires ~Y minutes of work. Ship it in this release, split it into its own release, or defer? Your call."
-4. **Never list a finding in the release description without fixing it.** If v2.17.4 says "fixes F1, F2, F3, M1" and M1 wasn't fixed, that's a promise/delivery mismatch — exactly the rubber-stamp pattern the Completion Truth Gate was designed to prevent.
+1. Ship a fix for every finding at evidence tier ≥ 1, regardless of effort estimate.
+2. Never silently convert a finding to "deferred" in commit/release notes without the user explicitly saying "defer X."
+3. If an item is genuinely too large for the current release → STOP and ask: "Finding X requires ~Y min. Ship / split into its own release / defer? Your call."
+4. Never list a finding in release notes without actually fixing it. Promise/delivery mismatches are the rubber-stamp pattern the Completion Truth Gate was designed to prevent.
 
-**Anti-Rationalization Checklist for review findings** — if you catch yourself thinking any of these, STOP:
-- "M1 is a restructure, that warrants a separate release" → WRONG. The user said fix all. Ask first if you think it's too big.
-- "This finding is low-risk, it can wait" → WRONG. Low-risk doesn't mean drop-worthy.
-- "The release notes will acknowledge it's deferred" → WRONG. User didn't defer. You are.
-- "I'll mention it in the commit so it's transparent" → WRONG. Transparency ≠ permission. Ship the fix.
+Transparency ≠ permission. "Low-risk can wait" and "restructure warrants separate release" are AI judgment calls — they're the user's to make. Apply the master Anti-Rationalization Checklist above.
 
-**Incident that promoted this rule to decisions.md**: 2026-04-15, v2.17.4 release. I claimed "fix all" in the commit message but silently deferred M1 (wogi-review.md bloat) and completely dropped M3 (_fastPath test coverage gap) from the Findings Adversary. User correction: "You're not supposed to defer any fixes. It's up to the user to defer, not you." v2.17.5 fixed M1 + M3 and added this rule.
+**Incident origin**: 2026-04-15, v2.17.4 claimed "fix all" but silently deferred M1 and dropped M3. User correction: *"You're not supposed to defer any fixes. It's up to the user to defer, not you."* v2.17.5 fixed both and added this rule.
 
 ### Task ID Format (MANDATORY)
 
@@ -272,27 +207,20 @@ All task IDs MUST be generated by `generateTaskId()` from `wogiflow/scripts/flow
 
 When creating tasks programmatically, always call `generateTaskId(title)` — never construct IDs by hand.
 
-### Before Starting:
-1. Check `app-map.md` for existing components (and other active registry maps if relevant)
-2. Check `decisions.md` for coding patterns
-3. Load task acceptance criteria
-4. **Consumer Impact Analysis** (MANDATORY for refactors/migrations):
-   - Grep for ALL files that import/require the module being changed
-   - Classify consumers: BREAKING (must update), NEEDS-UPDATE (review), SAFE
-   - If 5+ breaking consumers → plan phased migration
+### Before Starting
+1. Check `app-map.md` (and other active registries) for existing components; check `decisions.md` for coding patterns.
+2. Load task acceptance criteria.
+3. **Consumer Impact Analysis** (MANDATORY for refactors/migrations): grep all files that import the module; classify as BREAKING / NEEDS-UPDATE / SAFE. ≥5 breaking → phased migration.
 
-### While Working:
-1. Follow acceptance criteria exactly
-2. Use existing components from app-map
-3. Follow patterns from decisions.md
-4. Validate after EVERY file edit (run lint/typecheck)
+### While Working
+Follow criteria exactly. Reuse existing components/patterns. Validate (lint/typecheck) after EVERY file edit.
 
-### After Completing:
-1. Update `request-log.md` with tags
-2. Registry maps (app-map, function-map, api-map, schema-map, service-map) are **auto-updated** by the `registryUpdate` quality gate — it runs `flow registry-manager scan` on all active registries
-3. Run quality gates (lint, typecheck, test)
-4. Provide completion report
-5. **If you have a follow-up question for the user** (e.g., "task done — should I also update X?"), run `flow ask "<your question>"` BEFORE the turn ends. This defers the task-boundary session restart (if enabled via `taskBoundaryReset.enabled`) so your question doesn't get orphaned when claude restarts. The user's response automatically clears the deferral.
+### After Completing
+1. Update `request-log.md` with tags.
+2. Registry maps auto-update via the `registryUpdate` quality gate (`flow registry-manager scan`).
+3. Run quality gates (lint, typecheck, test).
+4. Provide completion report.
+5. **Follow-up question for the user?** Run `flow ask "<question>"` BEFORE the turn ends — this defers the task-boundary session restart (when `taskBoundaryReset.enabled`) so the question isn't orphaned. User's reply clears the deferral automatically.
 
 ## Auto-Validation (CRITICAL)
 
@@ -353,27 +281,17 @@ Before closing any task, ensure all required gates pass (per `config.json → qu
 
 ## Context Management
 
-Context compaction happens **automatically and silently**. The user must NEVER be bothered with compaction. WogiFlow persists all critical state to disk continuously, and the PostCompact hook restores it after compaction.
+Compaction is automatic and silent — the SYSTEM handles it, not you. WogiFlow persists state continuously; the PostCompact hook restores it. **NEVER invoke `/wogi-pre-compact` proactively.** Only run it when the user explicitly says "compact" / "save context" / "running low on context."
 
-**NEVER invoke `/wogi-pre-compact` proactively.** Only run it when the user explicitly asks to compact or save context. When the user says "continue", "go ahead", or "keep going" — that means **start the next task**, not compact. Compaction is the SYSTEM's job, not yours.
-
-**Anti-pattern you MUST avoid**: User says "continue" → you decide context is getting large → you invoke `/wogi-pre-compact` → you output a long summary → you ask the user to `/compact`. This is WRONG. The user said "continue" — start the next task immediately.
+"Continue" / "go ahead" / "keep going" means **start the next task**, not compact. The anti-pattern to avoid: user says "continue" → you decide context is large → you invoke pre-compact → you output a summary → you ask the user to `/compact`. Wrong. Start the next task.
 
 **What survives compaction automatically** (via PostCompact hook + state files):
 - Active task ID, title, type, and acceptance criteria
-- Which criteria are completed vs pending (from durable-session.json)
-- Current workflow phase
-- Changed files list (from task-checkpoint.json)
-- Last request-log entry number
-- Routing enforcement (re-armed automatically)
+- Which criteria are completed vs pending (from `durable-session.json`)
+- Current workflow phase, changed files list (from `task-checkpoint.json`)
+- Last request-log entry number; routing enforcement (re-armed automatically)
 
-**When auto-compaction triggers mid-session**: The system handles it. The PostCompact hook reloads state. You resume working on the next task from `ready.json`. No user interaction needed.
-
-**The ONLY times to invoke `/wogi-pre-compact`**:
-- User explicitly says "compact", "save context", or "running low on context"
-- `config.autoCompact.betweenTasks` is true AND you're between tasks AND context is above threshold — but even then, just compact silently and continue, don't ask
-
-**For L1+ tasks**: The pre-task context estimator (Step 0.25) checks if the task fits in remaining context. If it doesn't → compact silently and continue, do NOT ask the user.
+**For L1+ tasks**: the pre-task context estimator (Step 0.25) decides. If the task won't fit → compact silently and continue. Do NOT ask.
 
 ## Compact Instructions
 
