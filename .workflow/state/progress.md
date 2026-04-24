@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: Silent-worker-halt detection via dispatch-tracking",
     "Completed: Enhance /wogi-story with P0 specification-quality gates",
     "Completed: Main-mode question classifier auto-defers task-boundary restart",
     "Completed: Auto-pickup next ready task at session restart",
@@ -760,9 +759,10 @@ None
     "Completed: H1 Structured phase definition schema (YAML)",
     "Completed: C2 IGR artifact edit proposals via CLI + session-end approval",
     "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
-    "Completed: G3 SQLite-as-IPC for workspace dispatch"
+    "Completed: G3 SQLite-as-IPC for workspace dispatch",
+    "Completed: Surface effort.level and thinking.enabled in status line"
   ],
-  "lastUpdated": "2026-04-24T13:57:57.846Z",
+  "lastUpdated": "2026-04-24T14:07:40.957Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

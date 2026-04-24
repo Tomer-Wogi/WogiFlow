@@ -17,6 +17,7 @@ This command helps you configure Claude Code's status line (shown at the bottom 
 
 - Claude Code v1.0.52+ (January 2026 or later) — `context_window.used_percentage` field
 - Claude Code v2.1.97+ (optional) — `refreshInterval` setting and `workspace.git_worktree` variable
+- Claude Code v2.1.119+ (optional) — `effort.level` and `thinking.enabled` fields
 
 ## Setup Instructions
 
@@ -67,6 +68,8 @@ Claude Code 2.1.97+. Omit the field or set it to 0 to disable auto-refresh.
 | `{{task.title}}` | Current task title |
 | `{{skill}}` | Currently active skill |
 | `{{workspace.git_worktree}}` | Truthy when cwd is inside a linked git worktree (2.1.97+) |
+| `{{effort.level}}` | Active reasoning effort: `low` / `medium` / `high` / `xhigh` / `max` (2.1.119+) |
+| `{{thinking.enabled}}` | Truthy when extended thinking is on (2.1.119+) |
 | `{{worktree.name}}` | Worktree name (if running in --worktree session) |
 | `{{worktree.branch}}` | Worktree branch name |
 | `{{worktree.path}}` | Worktree directory path |
@@ -100,6 +103,15 @@ branch label.
 ```json
 "format": "{{#if worktree}}[WT:{{worktree.branch}}] {{/if}}{{#if task}}[{{task.id}}] {{/if}}{{model}} | Ctx: {{context_window.used_percentage}}%"
 ```
+
+**With Effort + Thinking** (Claude Code 2.1.119+):
+```json
+"format": "{{#if task}}[{{task.id}}] {{/if}}{{model}} | Ctx: {{context_window.used_percentage}}%{{#if effort.level}} | {{effort.level}}{{/if}}{{#if thinking.enabled}} | 🧠{{/if}}"
+```
+
+The `{{#if effort.level}}` and `{{#if thinking.enabled}}` guards keep surrounding
+punctuation from collapsing on older Claude Code versions that don't emit those
+fields — Handlebars renders missing paths as empty strings without throwing.
 
 ## WogiFlow Integration
 

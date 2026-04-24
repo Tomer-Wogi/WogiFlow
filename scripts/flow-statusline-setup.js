@@ -42,6 +42,11 @@ const FORMATS = {
     name: 'Detailed',
     description: 'Full info including skill and worktree',
     format: '{{#if workspace.git_worktree}}[WT] {{/if}}{{#if task}}[{{task.id}}] {{task.title}} | {{/if}}{{model}} | {{context_window.used_percentage}}% used{{#if skill}} | {{skill}}{{/if}}'
+  },
+  advanced: {
+    name: 'Advanced',
+    description: 'Detailed + effort level and thinking state (Claude Code 2.1.119+)',
+    format: '{{#if workspace.git_worktree}}[WT] {{/if}}{{#if task}}[{{task.id}}] {{task.title}} | {{/if}}{{model}} | {{context_window.used_percentage}}%{{#if effort.level}} | {{effort.level}}{{/if}}{{#if thinking.enabled}} | thinking{{/if}}{{#if skill}} | {{skill}}{{/if}}'
   }
 };
 
@@ -157,7 +162,7 @@ async function interactiveSetup() {
   showCurrentConfig();
   showFormats();
 
-  const format = await question(`\nChoose format (minimal/compact/standard/detailed) [standard]: `);
+  const format = await question(`\nChoose format (minimal/compact/standard/detailed/advanced) [standard]: `);
   const selectedFormat = format.trim() || 'standard';
 
   if (!FORMATS[selectedFormat]) {
@@ -226,6 +231,7 @@ Formats:
   compact   - Task ID + model + context %
   standard  - Task ID + model + labeled context (recommended)
   detailed  - Worktree + task + model + context % + skill
+  advanced  - Detailed + effort level + thinking state (Claude Code 2.1.119+)
 
 Refresh interval (Claude Code 2.1.97+):
   Re-runs the status line every N seconds so live values like task ID,
@@ -281,7 +287,7 @@ Examples:
   if (formatIndex >= 0) {
     const format = args[formatIndex + 1];
     if (!format || !FORMATS[format]) {
-      errorMsg('Invalid format. Use: minimal, compact, standard, or detailed');
+      errorMsg('Invalid format. Use: minimal, compact, standard, detailed, or advanced');
       process.exit(1);
     }
 
