@@ -1,12 +1,45 @@
 {
-  "lastUpdated": "2026-04-24T14:14:23.485Z",
-  "inProgress": [
+  "lastUpdated": "2026-04-24T14:29:45.181Z",
+  "inProgress": [],
+  "ready": [
+    {
+      "id": "wf-94cc3b72",
+      "title": "Lift WogiFlow from C+ to A (epic — close pre-IGR audit findings)",
+      "type": "epic",
+      "level": "L0",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-04-15T15:49:49.165Z",
+      "specPath": ".workflow/epics/wf-94cc3b72.md",
+      "stories": [
+        "wf-5a6df88a",
+        "wf-9c4170cd",
+        "wf-7072d3ac",
+        "wf-2f6fbb12",
+        "wf-522c65da",
+        "wf-ea121852",
+        "wf-7c36aaed",
+        "wf-255e541a",
+        "wf-93b48ca1",
+        "wf-c1e892fa",
+        "wf-0f2e0f16",
+        "wf-c0d6b0c5",
+        "wf-33a0aa88",
+        "wf-d0937c83",
+        "wf-e9e31c7c"
+      ],
+      "goal": "C+ → A (90+) via 15 stories closing audit findings",
+      "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-34290000",
       "title": "WogiFlow Extension Finalize (pre-CLI release)",
       "type": "epic",
       "level": "L0",
-      "status": "in-progress",
+      "status": "completed",
       "priority": "P0",
       "created": "2026-04-23T18:00:00.000Z",
       "specPath": ".workflow/epics/wf-34290000.md",
@@ -95,42 +128,51 @@
       "sourceResearch": "25 CLI coding agents (Goose, Codex CLI, Crush, g3, Coro Code, IronClaw, NullClaw, PicoClaw, nanoclaw, Scrapfly CLI, Aider, Open Interpreter, OpenHands, Letta, Plandex, Cline, Neovate, Every Code, nori-cli, Hermes Agent, OpenCode, Kilo Code, Dexto, ForgeCode, Groq Code CLI)",
       "targetRelease": "v2.27.0",
       "note": "Executing child stories one-by-one; spec files generated 2026-04-24",
-      "executionStartedAt": "2026-04-24T10:17:54.731Z"
-    }
-  ],
-  "ready": [
+      "executionStartedAt": "2026-04-24T10:17:54.731Z",
+      "completedAt": "2026-04-24T14:29:45.179Z"
+    },
     {
-      "id": "wf-94cc3b72",
-      "title": "Lift WogiFlow from C+ to A (epic — close pre-IGR audit findings)",
-      "type": "epic",
-      "level": "L0",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-15T15:49:49.165Z",
-      "specPath": ".workflow/epics/wf-94cc3b72.md",
-      "stories": [
-        "wf-5a6df88a",
-        "wf-9c4170cd",
-        "wf-7072d3ac",
-        "wf-2f6fbb12",
-        "wf-522c65da",
-        "wf-ea121852",
-        "wf-7c36aaed",
-        "wf-255e541a",
-        "wf-93b48ca1",
-        "wf-c1e892fa",
-        "wf-0f2e0f16",
-        "wf-c0d6b0c5",
-        "wf-33a0aa88",
-        "wf-d0937c83",
-        "wf-e9e31c7c"
-      ],
-      "goal": "C+ → A (90+) via 15 stories closing audit findings",
-      "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "id": "wf-8a0fc8ad",
+      "title": "G6 Tool-first turn enforcement for workers",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "G",
+      "bundle": "stop-hook-trio",
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-8a0fc8ad.md",
+      "completedAt": "2026-04-24T14:18:57.247Z"
+    },
+    {
+      "id": "wf-c8754819",
+      "title": "G4 Worker text-before-tool-call prevention (every turn)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "G",
+      "bundle": "stop-hook-trio",
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-c8754819.md",
+      "completedAt": "2026-04-24T14:18:57.247Z"
+    },
+    {
+      "id": "wf-b5cd0351",
+      "title": "G1 Worker-side silent-halt prevention",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "parent": "wf-34290000",
+      "workstream": "G",
+      "bundle": "stop-hook-trio",
+      "created": "2026-04-24T10:17:54.731Z",
+      "specPath": ".workflow/changes/wf-b5cd0351.md",
+      "completedAt": "2026-04-24T14:18:57.247Z"
+    },
     {
       "id": "wf-a346c915",
       "title": "A1 AGENTS.md alias for CLAUDE.md",
@@ -226,69 +268,6 @@
       "startedAt": "2026-04-24T11:53:39.350Z",
       "routedAt": "2026-04-24T11:53:39.350Z",
       "completedAt": "2026-04-24T11:59:10.972Z"
-    },
-    {
-      "id": "wf-9a969442",
-      "title": "F3 Fuzzy-match patching for skill edits",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "F",
-      "bundle": null,
-      "depends": [
-        "wf-2a9f179e"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-9a969442.md",
-      "startedAt": "2026-04-24T11:51:59.753Z",
-      "routedAt": "2026-04-24T11:51:59.753Z",
-      "completedAt": "2026-04-24T11:52:11.281Z"
-    },
-    {
-      "id": "wf-2a9f179e",
-      "title": "F1 Skill propose/patch/remove CLI + session-end approval UI",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "F",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-2a9f179e.md",
-      "startedAt": "2026-04-24T11:26:27.538Z",
-      "routedAt": "2026-04-24T11:26:27.538Z",
-      "completedAt": "2026-04-24T11:26:35.643Z"
-    },
-    {
-      "id": "wf-ea4751fc",
-      "title": "Consume Claude Code 2.1.119 native duration_ms in PostToolUse hook",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P2",
-      "created": "2026-04-24T07:01:51.050Z",
-      "specPath": ".workflow/changes/wf-ea4751fc.md",
-      "startedAt": "2026-04-24T11:12:46.714Z",
-      "completedAt": "2026-04-24T11:15:59.966Z"
-    },
-    {
-      "id": "wf-2c6c8b40",
-      "title": "G2 Mid-session routing-state-reset fix",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": null,
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-2c6c8b40.md",
-      "completedAt": "2026-04-24T10:39:32.064Z"
     }
   ],
   "backlog": [

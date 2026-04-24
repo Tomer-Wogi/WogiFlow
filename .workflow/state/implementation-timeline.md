@@ -3,6 +3,7 @@
 ## 2026-04
 
 ### Week 4 (Apr 19-25)
+- [x] wf-34290000: WogiFlow Extension Finalize (pre-CLI release) (Apr 24)
 - [x] wf-a346c915: A1 AGENTS.md alias for CLAUDE.md (Apr 24)
 - [x] wf-04585518: Surface effort.level and thinking.enabled in status line (Apr 24)
 - [x] wf-3635574e: G3 SQLite-as-IPC for workspace dispatch (Apr 24)

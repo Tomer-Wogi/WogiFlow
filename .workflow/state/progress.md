@@ -751,7 +751,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: Main-mode question classifier auto-defers task-boundary restart",
     "Completed: Auto-pickup next ready task at session restart",
     "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
     "Completed: F3 Fuzzy-match patching for skill edits",
@@ -760,9 +759,10 @@ None
     "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
     "Completed: G3 SQLite-as-IPC for workspace dispatch",
     "Completed: Surface effort.level and thinking.enabled in status line",
-    "Completed: A1 AGENTS.md alias for CLAUDE.md"
+    "Completed: A1 AGENTS.md alias for CLAUDE.md",
+    "Completed: WogiFlow Extension Finalize (pre-CLI release)"
   ],
-  "lastUpdated": "2026-04-24T14:14:23.490Z",
+  "lastUpdated": "2026-04-24T14:29:45.188Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-24T14:10:13.455Z",
+  "markedAt": "2026-04-24T14:26:40.935Z",
   "context": {
-    "args": "continue"
+    "args": "wf-34290000 finalize — all 28 stories resolved (25 completed + 3 rejected via scope-confidence audits). Commit G6 state (pending-skill.json, ready.json, request-log.md), close the epic, cut v2.27.0 release per epic goal, push to origin."
   },
   "status": "pending"
 }

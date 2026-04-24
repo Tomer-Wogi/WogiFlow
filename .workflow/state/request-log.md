@@ -2,6 +2,27 @@
 
 Automatic log of all requests that changed files. Searchable by tags.
 
+### R-344 | 2026-04-24 14:15
+**Type**: feat
+**Tags**: #task:wf-8a0fc8ad #epic:wf-34290000 #workstream:G #bundle:stop-hook-trio #worker-contract #g6
+**Request**: "G6 Tool-first turn enforcement for workers — unify G1+G4 as one named worker-tool-first-turn contract"
+**Result**: Formal closure — implementation already shipped in prior session (archive R-entry at `.workflow/archive/request-log-2026-04.md:3008`). G6 consolidates G1 + G4 into one named gate `worker-tool-first-turn`. Rule documented at `.claude/rules/_internal/worker-tool-first-turn.md` (first-class rule with violation table, allowed/blocked turn shapes, fail-open rationale). Block messages in `scripts/hooks/core/worker-tool-first-gate.js:227` renderBlockMessage() reference the rule by name. Worker-rules template in `lib/workspace.js:1217+` carries the contract verbatim so workers see it in every system prompt. Full 2204-test suite passes (526 suites).
+**Files**: (formal closure only — implementation already in tree) .workflow/state/ready.json, .workflow/state/request-log.md
+
+### R-343 | 2026-04-24 14:15
+**Type**: feat
+**Tags**: #task:wf-c8754819 #epic:wf-34290000 #workstream:G #bundle:stop-hook-trio #stop-hook #worker-mode #g4
+**Request**: "G4 Worker text-before-tool-call prevention — first content block must be tool_use (strict mode)"
+**Result**: Formal closure — implementation already shipped in prior session (archive R-entry at `.workflow/archive/request-log-2026-04.md:3008`). G4 violation detection lives in `scripts/hooks/core/worker-tool-first-gate.js:77` (strict-mode check of `turn.firstBlockType === 'text'`). Passes for tool-call-first turns, mixed turns where tool-call came first, and narrate-after-act. Strict mode configurable via `workspace.toolFirstTurnGate.strict` (default true) — set false to allow narrate-then-act while still blocking silent-halt. Wired into Stop hook via `scripts/hooks/entry/claude-code/stop.js:326-340`. Tests in `tests/stop-hook-worker-tool-first.test.js` cover text-first block, tool-call-first pass, strict-off narrate-then-act, transcript fail-open.
+**Files**: (formal closure only — implementation already in tree) .workflow/state/ready.json, .workflow/state/request-log.md
+
+### R-342 | 2026-04-24 14:15
+**Type**: feat
+**Tags**: #task:wf-b5cd0351 #epic:wf-34290000 #workstream:G #bundle:stop-hook-trio #stop-hook #worker-mode #g1
+**Request**: "G1 Worker-side silent-halt prevention — block end-of-turn on dispatch-receipt turn with zero tool calls"
+**Result**: Formal closure — implementation already shipped in prior session (archive R-entry at `.workflow/archive/request-log-2026-04.md:3008`). G1 violation detection lives in `scripts/hooks/core/worker-tool-first-gate.js:67` (`turn.toolUseCount === 0` branch). Block message directs worker to ACTION / ESCALATION / REPLY per the three-state contract with embedded `curl` escalation command. Worker-mode gated via `isWorkerMode()` env check so main-mode turns unaffected. Config toggle `workspace.toolFirstTurnGate.enabled` (default true) at `scripts/flow-config-defaults.js:421`. Wired into Stop hook via `scripts/hooks/entry/claude-code/stop.js:326-340`. Tests in `tests/stop-hook-worker-tool-first.test.js` cover zero-tool-call block, tool-call pass, main-mode unaffected, transcript fail-open paths.
+**Files**: (formal closure only — implementation already in tree) .workflow/state/ready.json, .workflow/state/request-log.md
+
 ### R-313 | 2026-04-22 14:06
 **Type**: docs
 **Tags**: #methodology #product #igr #trust
