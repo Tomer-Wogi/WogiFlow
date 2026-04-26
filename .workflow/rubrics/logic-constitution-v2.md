@@ -33,7 +33,7 @@ Overall verdict:
 
 ---
 
-## The 11 principles
+## The 11 principles (with 4 sub-principles under P11)
 
 ### 1. Literal vs. intended ask
 <!-- PIN: p1-literal-vs-intended -->
@@ -340,6 +340,38 @@ For every plan that introduces a new mechanism (hook, wrapper, CLI entry point, 
 Each check produces observable evidence the plan can cite.
 
 **Meta-lesson**: WogiFlow is a big product. New mechanisms almost always have sibling features that need to compose with them. The adversary asks: *"What else already does this?"* — then *"Does your new thing play nice with it?"*
+
+---
+
+### Sub-principle 11.4 — Stacked-story integration verification
+
+**Added 2026-04-26 after the audit-channel-transport-001 incident**: Story A (wf-8294d960) added worker MCP-stripping for boot speed by writing `{"mcpServers":{}}` to disable claude.ai integrations. Story B (wf-ab59f0e4) layered task-completion summary routing on top via `workspace_send_message`. Both stories' unit tests passed. Both shipped (v2.28.0 + v2.29.0). Manager→worker dispatch silently failed in production because Story A had stripped the `wogi-workspace-channel` MCP server itself — the very transport Story B's routing relied on. Self-IGR caught Story B's local correctness but missed the cross-story dependency.
+
+P11.3 (Existing-feature compatibility) covers the **sideways** dimension — features that already exist and may interact. P11.4 covers the **vertical** dimension — features layered on top of other features in the same release/epic. The sibling check is "what else does this?"; the stack check is "what does this depend on, and is that dependency still intact for THIS usage?".
+
+**For every plan that uses, extends, or reads from output of an earlier story or commit (in the same release window or earlier), the Adversary demands:**
+
+- **V1 — Name the upstream contract.** Which prior story/commit does this plan depend on? Quote the specific contract (interface signature, file format, transport, invariant). "Reusing Story A's X" without naming X = FAIL.
+- **V2 — Show the contract is intact for THIS usage.** The upstream story has its own tests; those pin the upstream's contract. They do NOT pin your usage of that contract. Cite empirical evidence (grep, run, file inspection) that the contract still holds at HEAD for the path your plan takes through it.
+- **V3 — Mandate a Tier-3 integration test.** A unit test of the new code in isolation does not satisfy V3. The test must simulate a real run through both the prior-story code and the new-story code, with the upstream output flowing into the downstream input. Mark with `// regression-tier3` for clarity.
+- **V4 — Pre-release stacked-coverage check.** Before tagging a release that contains stacked stories, confirm a Tier-3 integration test exists for each layer. A release with stacked-but-untested layers is gated.
+
+**Examples of P11.4 violations**:
+- Story B reuses Story A's state file but only unit-tests Story B's reader against a hand-written fixture. Failure mode: Story A's writer evolves, fixture goes stale, Story B reads garbage.
+- Story B uses an MCP transport Story A configured. Failure mode: Story A strips the transport for an unrelated optimization; Story B's wire calls go to a void. (The 2026-04-26 incident.)
+- Story B emits events that Story A's listener consumes. Failure mode: Story A's listener was conditional on a flag Story B doesn't set; events fire into nothing.
+
+**How to ground it**:
+- `git log --oneline <range>` — what just shipped that this layer depends on?
+- For each upstream commit, grep its diff for the interface/contract you rely on; run a smoke test that exercises it at HEAD.
+- Write the Tier-3 test BEFORE writing the new code. If the test can't be written without scaffolding, that's a signal the architecture needs that scaffolding too.
+
+**Anti-rationalizations the Adversary must reject**:
+- *"The upstream story has its own tests"* — those pin the upstream's contract, not your usage.
+- *"Self-IGR is enough; the actual adversary subagent isn't necessary here"* — self-IGR pattern-matches on the same model that wrote the plan; cross-story dependencies are exactly the blind spot a different-model adversary catches. P11.4 violations are common precisely because they LOOK locally correct.
+- *"We can add the integration test later"* — later is "after the regression ships". P11.4's whole point is preventing that.
+
+**Enforcement**: Pre-release gate (`flow done` for `release` task type) reads the changeset against the prior release tag. For each commit, infers whether it layers on a prior commit in the same range; if yes, requires a Tier-3 marker (`// regression-tier3` or equivalent in commit message) before allowing the release to ship. Missing marker + stacked commits = block release. (Implementation work: see follow-up after this sub-principle lands.)
 
 ---
 
