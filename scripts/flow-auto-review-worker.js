@@ -68,7 +68,7 @@ function parseArgs(argv) {
       try {
         const { discardWorktree } = require('./flow-worktree');
         await discardWorktree(worktree, { force: true });
-      } catch (_e) { /* noop */ }
+      } catch (_err) { /* noop */ }
     }
   }
   // Normal exit.
