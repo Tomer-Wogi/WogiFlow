@@ -63,7 +63,12 @@ try { checkGitSafety = require('../../core/git-safety-gate').checkGitSafety; } c
 let checkManagerBoundary = _noop;
 try { checkManagerBoundary = require('../../core/manager-boundary-gate').checkManagerBoundary; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Manager boundary gate not loaded: ${_err.message}`); }
 let checkWorkerBoundary = _noop;
-try { checkWorkerBoundary = require('../../core/worker-boundary-gate').checkWorkerBoundary; } catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Worker boundary gate not loaded: ${_err.message}`); }
+let checkPathDiscipline = _noop;
+try {
+  const wbg = require('../../core/worker-boundary-gate');
+  checkWorkerBoundary = wbg.checkWorkerBoundary;
+  checkPathDiscipline = wbg.checkPathDiscipline;
+} catch (_err) { if (process.env.DEBUG) console.error(`[Hook] Worker boundary gate not loaded: ${_err.message}`); }
 
 const { claudeCodeAdapter } = require('../../adapters/claude-code');
 const { markSkillPending } = require('../../../flow-durable-session');
@@ -101,7 +106,7 @@ runHook('PreToolUse', async ({ input, parsedInput }) => {
     recordEvidenceRead, checkSpecWriteGate, clearResearchEvidence,
     checkDeployGate, checkWriteBlock,
     checkStrikeGate, checkBugfixScope, checkScopeMutation,
-    checkGitSafety, checkManagerBoundary, checkWorkerBoundary,
+    checkGitSafety, checkManagerBoundary, checkWorkerBoundary, checkPathDiscipline,
     // Side-effect helpers
     markSkillPending,
     // Config + runtime

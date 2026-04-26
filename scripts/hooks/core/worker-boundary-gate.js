@@ -99,7 +99,78 @@ function isWorkspaceWorker() {
   return true;
 }
 
+/**
+ * Path-discipline gate (Story B / wf-ab59f0e4 — Phase 4.5).
+ *
+ * Single-writer invariant: workers NEVER write into the workspace-manager
+ * tree (`<workspace>/.workspace/**`); the manager NEVER writes into worker
+ * member-repo `.workflow/state/**` paths. Cross-process state coordination
+ * happens exclusively via the channel-dispatch HTTP bus.
+ *
+ * Without this check, a confused worker (or hostile prompt-injection
+ * payload that talked the worker into editing manager state) could corrupt
+ * `dispatched-tasks.json` for ALL workers in the workspace. The check
+ * fails LOUD (block + clear error) so the boundary violation is impossible
+ * to ignore — silent corruption is the worst-case alternative.
+ *
+ * Returns the same `{ blocked, reason?, message? }` shape as
+ * `checkWorkerBoundary` so the caller can compose the two checks.
+ *
+ * @param {string} toolName
+ * @param {Object} toolInput - { file_path } for Edit/Write
+ * @returns {{ blocked: boolean, reason?: string, message?: string }}
+ */
+function checkPathDiscipline(toolName, toolInput) {
+  if (!process.env.WOGI_WORKSPACE_ROOT) return { blocked: false };
+  const writeTools = new Set(['Edit', 'Write', 'NotebookEdit']);
+  if (!writeTools.has(toolName)) return { blocked: false };
+  const filePath = toolInput && (toolInput.file_path || toolInput.notebook_path);
+  if (typeof filePath !== 'string' || !filePath) return { blocked: false };
+
+  const repo = process.env.WOGI_REPO_NAME || '';
+  const root = process.env.WOGI_WORKSPACE_ROOT;
+  const managerStateDir = `${root.replace(/\/+$/, '')}/.workspace/`;
+  const memberStateDirRegex = /\/members?\/[^/]+\/\.workflow\/state\//;
+
+  if (repo && repo !== 'manager') {
+    if (filePath.startsWith(managerStateDir)) {
+      return {
+        blocked: true,
+        reason: 'path-discipline-worker',
+        message: [
+          `PATH DISCIPLINE: workers MUST NOT write to manager-owned files.`,
+          ``,
+          `Blocked: ${filePath}`,
+          ``,
+          `${managerStateDir}** is owned by the manager process.`,
+          `Use the channel-dispatch HTTP bus to communicate with the manager;`,
+          `never edit shared workspace state directly. See Story B (wf-ab59f0e4)`,
+          `Phase 4.5 in .workflow/changes/wf-ab59f0e4.md.`
+        ].join('\n')
+      };
+    }
+  }
+
+  if (repo === 'manager' && memberStateDirRegex.test(filePath)) {
+    return {
+      blocked: true,
+      reason: 'path-discipline-manager',
+      message: [
+        `PATH DISCIPLINE: manager MUST NOT write to worker member-repo state.`,
+        ``,
+        `Blocked: ${filePath}`,
+        ``,
+        `Worker member-repos own their own .workflow/state/. Send a channel`,
+        `dispatch to the worker if state changes are needed there.`
+      ].join('\n')
+    };
+  }
+
+  return { blocked: false };
+}
+
 module.exports = {
   checkWorkerBoundary,
+  checkPathDiscipline,
   isWorkspaceWorker
 };

@@ -259,10 +259,29 @@ function buildOverdueContext(opts = {}) {
     return lostBlock;
   }
 
-  if ((!Array.isArray(overdue) || overdue.length === 0) && !lostBlock) return null;
+  // Worker completion summaries (Story B / wf-ab59f0e4): surface unseen
+  // summaries from any worker that finished an autonomous epic. Render via
+  // flow-workspace-summary.renderMultiWorker for the multi-worker block.
+  let summariesBlock = null;
+  let seenTaskIds = [];
+  try {
+    const libPath = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
+    const { readPendingCompletionSummaries, markCompletionSummariesSeen } = require(libPath);
+    const pending = readPendingCompletionSummaries(workspaceRoot);
+    if (Array.isArray(pending) && pending.length > 0) {
+      const wsSummary = require(path.resolve(__dirname, '..', '..', 'flow-workspace-summary.js'));
+      const payloads = pending.map(p => p.summary);
+      summariesBlock = wsSummary.renderMultiWorker(payloads);
+      seenTaskIds = pending.map(p => p.taskId);
+      markCompletionSummariesSeen(workspaceRoot, seenTaskIds);
+    }
+  } catch (_err) { /* fail-open — surface what we can */ }
+
+  if ((!Array.isArray(overdue) || overdue.length === 0) && !lostBlock && !summariesBlock) return null;
 
   const sections = [];
 
+  if (summariesBlock) sections.push(summariesBlock);
   if (lostBlock) sections.push(lostBlock);
 
   if (Array.isArray(overdue) && overdue.length > 0) {

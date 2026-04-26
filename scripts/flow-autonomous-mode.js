@@ -73,8 +73,48 @@ function finalize({ endReason = 'queue-drained', completed = [] } = {}) {
     adversaryInvocations: { used: adv.used || 0, cap, breakdown: adv.breakdown || {} },
     endReason
   });
+
+  // Story B / wf-ab59f0e4: when the worker finalizes an autonomous run in
+  // workspace worker mode, post the COMPLETION-SUMMARY message to the
+  // manager channel. Best-effort — the run already finalized locally; if
+  // the manager is unreachable, the summary file on disk is still
+  // recoverable and the worker can be re-dispatched later.
+  if (process.env.WOGI_WORKSPACE_ROOT && process.env.WOGI_REPO_NAME && process.env.WOGI_REPO_NAME !== 'manager') {
+    try {
+      postSummaryToManager(result.payload);
+      result.posted = true;
+    } catch (err) {
+      result.posted = false;
+      result.postError = err.message;
+    }
+  }
+
   if (mode) sessionState.deactivateAutonomousMode();
   return result;
+}
+
+/**
+ * POST one or more COMPLETION-SUMMARY lines to the manager's channel-dispatch
+ * HTTP bus. Synchronous + best-effort — finalize() must not throw if the
+ * manager is unreachable.
+ */
+function postSummaryToManager(payload) {
+  const { execFileSync } = require('node:child_process');
+  const ws = require('./flow-workspace-summary');
+  const taskId = payload.completed?.[0]?.taskId || 'unknown';
+  const enriched = { ...payload, workerId: process.env.WOGI_REPO_NAME };
+  const lines = ws.encodeMessage(enriched);
+  const port = process.env.WOGI_MANAGER_PORT || '8800';
+  const repo = process.env.WOGI_REPO_NAME;
+  for (const line of lines) {
+    execFileSync('curl', [
+      '-s', '-X', 'POST',
+      `http://127.0.0.1:${port}`,
+      '-H', `X-Wogi-From: ${repo}`,
+      '-H', `X-Wogi-TaskId: ${taskId}`,
+      '--data-binary', line
+    ], { stdio: 'ignore', timeout: 5000 });
+  }
 }
 
 module.exports = {

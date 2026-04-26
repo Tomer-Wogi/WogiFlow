@@ -261,6 +261,27 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // Path-discipline gate (Story B / wf-ab59f0e4): runs in BOTH manager and
+  // worker mode (different rules each side). Cross-process state writes are
+  // blocked fail-loud so file corruption is impossible to ignore.
+  if (process.env.WOGI_WORKSPACE_ROOT) {
+    try {
+      if (typeof deps.checkPathDiscipline === 'function') {
+        const pathResult = deps.checkPathDiscipline(toolName, toolInput);
+        if (pathResult.blocked) {
+          return {
+            allowed: false,
+            blocked: true,
+            reason: pathResult.reason,
+            message: pathResult.message,
+          };
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Path discipline gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // Commit log gate
   if (toolName === 'Bash' && toolInput.command) {
     try {
