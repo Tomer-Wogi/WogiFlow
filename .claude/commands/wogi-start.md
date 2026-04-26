@@ -29,6 +29,22 @@ If `false` OR the input is natural language → continue with the full prompt be
 
 ### Pre-Routing Checks (Automatic)
 
+**Epic Decompose-and-Run Cascade** (Story E / wf-e28b6cd8): When `/wogi-start
+<epicId>` finishes decomposing an epic into child stories, immediately call
+`node scripts/flow-epic-cascade.js resolve <epicId>`. The result indicates one
+of three actions:
+- `invoke-skill` → call `Skill(skill="wogi-start", args=<taskId>)` in the SAME
+  turn (Option A, zero-latency, used in interactive mode by default).
+- `restart-with-marker` → marker has been written; end the turn and rely on the
+  task-boundary-reset SIGTERM cascade (Option B, fresh context per story, used
+  when autonomous mode is active by default).
+- `abort` → emit a warning with the `reason` (no-children / target-missing); do
+  not cascade. The user retains control.
+
+Strategy is configurable via `autonomousMode.cascadeStrategy` (`"auto"` |
+`"direct"` | `"restart"`, default `"auto"`). Cascade only fires for epics — non-
+epic `/wogi-start` invocations are unaffected.
+
 **Autonomous Walk-Away Mode Trigger**: Before any other classification, run
 `node scripts/flow-autonomous-mode.js activate "<user-message>"`. If the message
 matches a trigger phrase (`go until you finish`, `autonomous mode`, `run this autonomously`,

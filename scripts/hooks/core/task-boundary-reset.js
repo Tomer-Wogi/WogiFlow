@@ -82,17 +82,42 @@ function getCleanCompletionMarkerPath() {
  * Best-effort — failure here does NOT abort the restart; auto-pickup just
  * won't fire for this restart.
  */
-function writeCleanCompletionMarker(taskId, taskTitle) {
+function writeCleanCompletionMarker(taskId, taskTitle, options = {}) {
+  // Durable write (Story E / wf-e28b6cd8 — Blocker M2 fix).
+  //
+  // Original failure mode: writeFileSync schedules the data; the kernel buffers
+  // it; SIGTERM is dispatched; the process exits before the buffer reaches
+  // disk. The restarted session sees no marker → cascade silently fails.
+  //
+  // Fix: write to a tmp file, fsync the FILE, atomic-rename to final, fsync
+  // the DIRECTORY. The directory fsync is what guarantees the rename itself
+  // is durable across the SIGTERM/relaunch boundary.
   try {
     const p = getCleanCompletionMarkerPath();
-    fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, JSON.stringify({
+    const dir = path.dirname(p);
+    fs.mkdirSync(dir, { recursive: true });
+    const payload = {
       version: 1,
       completedTaskId: taskId || null,
       completedTaskTitle: taskTitle || null,
-      completedAt: new Date().toISOString()
-    }));
-  } catch (_err) { /* best effort */ }
+      completedAt: new Date().toISOString(),
+      ...(options.nextTaskId ? { nextTaskId: options.nextTaskId } : {})
+    };
+    const data = JSON.stringify(payload);
+    const tmp = `${p}.tmp.${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
+    const fd = fs.openSync(tmp, 'w');
+    try {
+      fs.writeSync(fd, data);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    fs.renameSync(tmp, p);
+    try {
+      const dfd = fs.openSync(dir, 'r');
+      try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); }
+    } catch (_err) { /* directory fsync is best-effort */ }
+  } catch (_err) { /* best effort — auto-pickup just won't fire if this fails */ }
 }
 
 function readLastTriggered() {

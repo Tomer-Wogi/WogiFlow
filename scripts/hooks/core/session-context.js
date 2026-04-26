@@ -905,15 +905,30 @@ function formatContextForInjection(context) {
       // next step when its children are not yet ready-queue tasks). If the
       // queue contains only epics, emit no auto-pickup (safer to stop the loop
       // than to re-enter it).
+      //
+      // Cascade-after-decomposition (Story E / wf-e28b6cd8): when the marker
+      // carries a `nextTaskId` (set by the cascade helper after epic
+      // decomposition), use that explicitly. Verify the ID still exists in
+      // ready.json before honoring it; if missing/stale, fall back to default
+      // first-actionable resolution.
       let nextTaskId = null;
       let nextTaskTitle = null;
       try {
         const ready = getReadyData();
         const queue = Array.isArray(ready?.ready) ? ready.ready : [];
-        const firstActionable = queue.find(t => t && t.type !== 'epic');
-        if (firstActionable) {
-          nextTaskId = firstActionable.id || null;
-          nextTaskTitle = firstActionable.title || null;
+        if (markerPayload && markerPayload.nextTaskId) {
+          const explicit = queue.find(t => t && t.id === markerPayload.nextTaskId);
+          if (explicit) {
+            nextTaskId = explicit.id;
+            nextTaskTitle = explicit.title || null;
+          }
+        }
+        if (!nextTaskId) {
+          const firstActionable = queue.find(t => t && t.type !== 'epic');
+          if (firstActionable) {
+            nextTaskId = firstActionable.id || null;
+            nextTaskTitle = firstActionable.title || null;
+          }
         }
       } catch (_err) { /* fall through — no auto-pickup if ready.json unreadable */ }
 

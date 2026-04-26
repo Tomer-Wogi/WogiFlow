@@ -719,6 +719,17 @@ const CONFIG_DEFAULTS = {
   },
 
   // --- Session Features ---
+  autonomousMode: {
+    // Story C / wf-d712002e — values consumed by flow-session-state.js
+    stalenessThresholdMs: 60 * 60 * 1000,
+    maxAdversaryInvocations: 30,
+    maxQueueSize: 100,
+    // Story E / wf-e28b6cd8 — cascade-after-decomposition strategy
+    // "auto"    → restart when autonomous mode is active, direct otherwise
+    // "direct"  → always same-session Skill invocation (zero latency)
+    // "restart" → always SIGTERM+marker cascade (fresh context per story)
+    cascadeStrategy: 'auto'
+  },
   techDebt: {
     enabled: false,
     promptOnSessionEnd: true,
