@@ -246,6 +246,63 @@ function safeJsonParseString(jsonString, defaultValue = null) {
   }
 }
 
+/**
+ * Recursively strip prototype-pollution keys from a parsed object/array.
+ * Mutates in place; returns the same reference. Use when the caller wants
+ * to filter dangerous content rather than reject the whole payload.
+ *
+ * Sibling to checkForDangerousKeys (which DETECTS without modifying). This
+ * is the strip variant used by lib/* JSON parsers that want to keep
+ * structurally-valid content but defang any __proto__/constructor/prototype
+ * keys nested anywhere in the tree.
+ */
+function stripDangerousKeys(value, depth = 0) {
+  if (depth > 32) return value; // Bound recursion against pathological input
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) {
+    for (const item of value) stripDangerousKeys(item, depth + 1);
+    return value;
+  }
+  for (const key of Object.getOwnPropertyNames(value)) {
+    if (DANGEROUS_KEYS.has(key)) {
+      delete value[key];
+      continue;
+    }
+    stripDangerousKeys(value[key], depth + 1);
+  }
+  return value;
+}
+
+/**
+ * Parse a JSON string and STRIP any prototype-pollution keys recursively.
+ * Returns the sanitized parsed object (or defaultValue on parse error).
+ *
+ * Differs from safeJsonParseString: that function REJECTS the whole payload
+ * if dangerous keys are present (returns defaultValue). This function
+ * returns the parsed object with dangerous keys removed. Pick based on
+ * threat model:
+ *   - reject (safeJsonParseString)  — fail-loud, refuse hostile content
+ *   - strip (safeJsonParseStringStrip) — fail-soft, sanitize and proceed
+ *
+ * Added as part of audit dup-004 consolidation (2026-04-26): unifies the
+ * lib/utils.safeJsonParseContent / lib/workspace.safeParseJson /
+ * lib/commands/team-connection.safeParseJson trio under a single canonical
+ * helper. Preserves the lib/* "strip and proceed" semantic.
+ *
+ * @param {string} jsonString
+ * @param {*} [defaultValue=null]
+ * @returns {object|Array|*} sanitized parsed value, or defaultValue
+ */
+function safeJsonParseStringStrip(jsonString, defaultValue = null) {
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (typeof parsed !== 'object' || parsed === null) return defaultValue;
+    return stripDangerousKeys(parsed);
+  } catch (_err) {
+    return defaultValue;
+  }
+}
+
 // ============================================================
 // Text File Operations
 // ============================================================
@@ -694,6 +751,8 @@ module.exports = {
   writeJson,
   safeJsonParse,
   safeJsonParseString,
+  safeJsonParseStringStrip,
+  stripDangerousKeys,
 
   // Text File Operations
   readFile,

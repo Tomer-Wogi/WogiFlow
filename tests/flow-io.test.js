@@ -249,6 +249,60 @@ describe('safeJsonParseString', () => {
 });
 
 // ============================================================
+// Tests: safeJsonParseStringStrip + stripDangerousKeys
+// (audit dup-004 consolidation 2026-04-26)
+// ============================================================
+
+describe('safeJsonParseStringStrip', () => {
+  const { safeJsonParseStringStrip, stripDangerousKeys } = require('../scripts/flow-io');
+
+  it('parses valid JSON and returns object as-is when no dangerous keys', () => {
+    assert.deepEqual(safeJsonParseStringStrip('{"name":"test"}'), { name: 'test' });
+  });
+
+  it('strips top-level __proto__ recursively (returns sanitized object, not defaultValue)', () => {
+    const r = safeJsonParseStringStrip('{"a":1,"__proto__":"bad"}', null);
+    assert.deepEqual(r, { a: 1 });
+  });
+
+  it('strips nested constructor key recursively', () => {
+    const r = safeJsonParseStringStrip('{"a":1,"nested":{"constructor":"x","good":2}}', null);
+    assert.deepEqual(r, { a: 1, nested: { good: 2 } });
+  });
+
+  it('strips dangerous keys inside arrays', () => {
+    const r = safeJsonParseStringStrip('[{"prototype":1,"keep":2},{"__proto__":3}]', null);
+    assert.deepEqual(r, [{ keep: 2 }, {}]);
+  });
+
+  it('returns defaultValue on parse error', () => {
+    assert.equal(safeJsonParseStringStrip('not json', 'fallback'), 'fallback');
+  });
+
+  it('returns defaultValue on null/primitive (consistent with safeJsonParseString)', () => {
+    assert.equal(safeJsonParseStringStrip('null', 'fallback'), 'fallback');
+    assert.equal(safeJsonParseStringStrip('42', 'fallback'), 'fallback');
+  });
+
+  it('stripDangerousKeys mutates in place and is idempotent', () => {
+    const obj = { a: 1, __proto__: 'bad', nested: { constructor: 2, good: 3 } };
+    const r = stripDangerousKeys(obj);
+    assert.equal(r, obj);
+    assert.deepEqual(obj, { a: 1, nested: { good: 3 } });
+    stripDangerousKeys(obj); // idempotent
+    assert.deepEqual(obj, { a: 1, nested: { good: 3 } });
+  });
+
+  it('stripDangerousKeys bounded against pathological deep input', () => {
+    let deep = { good: 1 };
+    for (let i = 0; i < 50; i++) deep = { nest: deep };
+    // Should not throw — recursion bounded at depth 32
+    const r = stripDangerousKeys(deep);
+    assert.equal(typeof r, 'object');
+  });
+});
+
+// ============================================================
 // Tests: checkForDangerousKeys
 // ============================================================
 
