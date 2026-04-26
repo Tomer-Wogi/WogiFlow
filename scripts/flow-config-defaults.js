@@ -719,7 +719,6 @@ const CONFIG_DEFAULTS = {
   },
 
   // --- Session Features ---
-  morningBriefing: { enabled: false },
   techDebt: {
     enabled: false,
     promptOnSessionEnd: true,

@@ -153,7 +153,6 @@ fs.writeFileSync('.workflow/state/session-state.json', JSON.stringify(sessionSta
 Configuration in `.workflow/config.json`:
 ```json
 "morningBriefing": {
-  "enabled": true,
   "showLastSession": true,
   "showChanges": true,
   "showRecommendedTasks": 3,
@@ -166,7 +165,7 @@ Configuration in `.workflow/config.json`:
 }
 ```
 
-Set `enabled: false` to disable this command.
+`/wogi-morning` is user-invoked — there is no "enabled" toggle. Don't run the command if you don't want a briefing.
 
 ## Stale Skills Section (Implementation Details)
 

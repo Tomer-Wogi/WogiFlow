@@ -649,23 +649,6 @@ function printBriefing(briefing) {
 function main() {
   const { flags } = parseFlags(process.argv.slice(2));
 
-  // Check if morning briefing is enabled
-  const config = getConfig();
-  const morningConfig = config.morningBriefing || {};
-
-  if (morningConfig.enabled === false) {
-    if (flags.json) {
-      outputJson({
-        success: false,
-        error: 'Morning briefing is disabled in config',
-        hint: 'Set morningBriefing.enabled: true in .workflow/config.json'
-      });
-    }
-    console.log(color('yellow', 'Morning briefing is disabled.'));
-    console.log(color('dim', 'Enable it in .workflow/config.json: morningBriefing.enabled: true'));
-    process.exit(0);
-  }
-
   // v2.6.1: Clean up stale state before briefing (safety net)
   // Morning briefing also cleans up stale auto-created tasks older than 24h
   const cleanedState = cleanupStaleState({ cleanupStaleTasks: true });
