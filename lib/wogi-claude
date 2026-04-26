@@ -107,13 +107,78 @@ if [ "$__wogi_is_worker" -eq 1 ]; then
   fi
 fi
 
-# Resolve the empty-MCP config used for stripping. Persistent path so we don't
-# regenerate a tmpfile on every restart; living in .workflow/state/ keeps it
-# alongside other worker state.
+# Resolve the channel-only MCP config used for stripping. Persistent path
+# so we don't regenerate on every restart; living in .workflow/state/ keeps
+# it alongside other worker state.
+#
+# IMPORTANT — REGRESSION FIX (audit-channel-transport-001):
+#
+# The original Story A (wf-8294d960) wrote `{"mcpServers":{}}` — fully
+# empty — under the (unverified) assumption that workers don't need any
+# MCP servers in worker mode. That assumption was WRONG: it stripped
+# `wogi-workspace-channel` which IS the transport that the manager uses
+# to dispatch tasks to workers via `workspace_send_message` (the manager
+# HTTP-POSTs to the worker's channel-server port; with no MCP server,
+# there's no listener, so dispatches silently fail with "connection
+# refused"). Tier-3 evidence (end-to-end manager→worker dispatch) was
+# never collected; only boot-latency was measured. Story B
+# (wf-ab59f0e4) layered COMPLETION-SUMMARY routing on top of this
+# broken transport without auditing the dependency.
+#
+# The proper fix: extract ONLY the `wogi-workspace-channel` entry from
+# the worker's real `.mcp.json` and write a channel-only config. This
+# preserves Story A's boot-speed win (claude.ai MCP integrations stay
+# stripped) while keeping the workspace transport active. If the
+# worker's `.mcp.json` doesn't define `wogi-workspace-channel` (e.g.
+# this is not a workspace member), fall back to the empty MCP config
+# (the strip is harmless in non-workspace contexts).
 __wogi_empty_mcp_config=""
 if [ "$__wogi_strip_mcp" -eq 1 ]; then
-  __wogi_empty_mcp_config="${WOGI_WORKSPACE_ROOT:-$(pwd)}/.workflow/state/worker-empty-mcp.json"
-  if [ ! -f "$__wogi_empty_mcp_config" ]; then
+  __wogi_empty_mcp_config="${WOGI_WORKSPACE_ROOT:-$(pwd)}/.workflow/state/worker-channel-only-mcp.json"
+  __wogi_member_mcp_path="$(pwd)/.mcp.json"
+  if command -v node >/dev/null 2>&1; then
+    # Use the dedicated helper (testable; see tests/flow-worker-mcp-strip.test.js).
+    # Extracts ONLY the wogi-workspace-channel entry from the worker's real
+    # .mcp.json so manager-side workspace_send_message dispatch keeps working.
+    __wogi_strip_helper=""
+    for __wogi_candidate in \
+      "$(dirname "$0")/../scripts/flow-worker-mcp-strip.js" \
+      "$(npm root -g 2>/dev/null)/wogiflow/scripts/flow-worker-mcp-strip.js" \
+      "$(pwd)/node_modules/wogiflow/scripts/flow-worker-mcp-strip.js"; do
+      if [ -f "$__wogi_candidate" ]; then
+        __wogi_strip_helper="$__wogi_candidate"
+        break
+      fi
+    done
+    if [ -n "$__wogi_strip_helper" ]; then
+      node "$__wogi_strip_helper" "$__wogi_member_mcp_path" "$__wogi_empty_mcp_config" 2>/dev/null || __wogi_strip_mcp=0
+    else
+      # Helper not found — fall back to inline extraction (legacy code path
+      # for installs that pre-date the helper script).
+      node -e '
+        const fs = require("fs");
+        const path = require("path");
+        const [src, out] = process.argv.slice(1);
+        let channelEntry = null;
+        try {
+          if (fs.existsSync(src)) {
+            const cfg = JSON.parse(fs.readFileSync(src, "utf-8"));
+            const ws = cfg && cfg.mcpServers && cfg.mcpServers["wogi-workspace-channel"];
+            if (ws) channelEntry = ws;
+          }
+        } catch (_e) {}
+        const payload = channelEntry
+          ? { mcpServers: { "wogi-workspace-channel": channelEntry } }
+          : { mcpServers: {} };
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        const tmp = out + ".tmp." + process.pid;
+        fs.writeFileSync(tmp, JSON.stringify(payload, null, 2) + "\n");
+        fs.renameSync(tmp, out);
+      ' "$__wogi_member_mcp_path" "$__wogi_empty_mcp_config" 2>/dev/null || __wogi_strip_mcp=0
+    fi
+  else
+    # node missing — last-resort fallback. Empty config = manager dispatch
+    # will fail, but worker boot will still succeed.
     mkdir -p "$(dirname "$__wogi_empty_mcp_config")" 2>/dev/null
     printf '{"mcpServers":{}}\n' > "$__wogi_empty_mcp_config" 2>/dev/null || __wogi_strip_mcp=0
   fi

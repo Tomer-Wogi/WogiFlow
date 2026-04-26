@@ -344,16 +344,13 @@ exit 0
   // post-fix (46% faster). Opt-in inheritance via
   // config.workspace.inheritClaudeAiMcpIntegrations or WOGI_WORKER_INHERIT_MCP=1.
 
-  it('worker mode: injects --strict-mcp-config + --mcp-config pointing to empty-mcp.json', () => {
-    const { log, cwd } = runWrapper('--no-wogi-restart some-arg', {
+  it('worker mode: injects --strict-mcp-config + --mcp-config pointing to channel-only-mcp.json', () => {
+    const { log } = runWrapper('--no-wogi-restart some-arg', {
       WOGI_WORKSPACE_ROOT: '/tmp/fake-workspace',
       WOGI_REPO_NAME: 'frontend'
     });
-    assert.match(log, /ARGV:.*--strict-mcp-config --mcp-config \S+worker-empty-mcp\.json.*some-arg/,
+    assert.match(log, /ARGV:.*--strict-mcp-config --mcp-config \S+worker-channel-only-mcp\.json.*some-arg/,
       'worker mode must prepend strict-mcp flags before user args');
-    // Verify the config file exists and is empty-MCP
-    const emptyMcpPath = path.join(cwd, '.workflow', 'state', 'worker-empty-mcp.json');
-    // Note: cwd is cleaned up in finally; check that the command logged the file path
     const match = log.match(/--mcp-config (\S+\.json)/);
     assert.ok(match, 'expected --mcp-config path in argv');
   });
@@ -385,19 +382,22 @@ exit 0
       'manager (not a worker) must not strip MCP');
   });
 
-  it('worker mode: creates .workflow/state/worker-empty-mcp.json in workspace root', () => {
-    // Use a real tmp workspace root so file creation can be verified
+  it('worker mode: creates .workflow/state/worker-channel-only-mcp.json in workspace root', () => {
+    // Use a real tmp workspace root so file creation can be verified.
+    // No .mcp.json in cwd → channel-only config falls back to empty (graceful).
     const wsRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-mcp-fs-test-'));
     try {
       runWrapper('--no-wogi-restart x', {
         WOGI_WORKSPACE_ROOT: wsRoot,
         WOGI_REPO_NAME: 'frontend'
       });
-      const configPath = path.join(wsRoot, '.workflow', 'state', 'worker-empty-mcp.json');
-      assert.ok(fs.existsSync(configPath), 'empty-MCP config must be created in workspace root');
+      const configPath = path.join(wsRoot, '.workflow', 'state', 'worker-channel-only-mcp.json');
+      assert.ok(fs.existsSync(configPath), 'channel-only MCP config must be created in workspace root');
       const content = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      // No .mcp.json in cwd → fall back to empty (claude.ai stripped, no transport).
+      // The transport-preserving case is covered by tests/flow-worker-mcp-strip.test.js.
       assert.deepStrictEqual(content, { mcpServers: {} },
-        'empty-MCP config must be strictly {mcpServers: {}}');
+        'fallback config (no source .mcp.json) must be strictly {mcpServers: {}}');
     } finally {
       try { fs.rmSync(wsRoot, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
     }
