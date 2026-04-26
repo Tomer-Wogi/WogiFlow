@@ -852,6 +852,32 @@ function formatContextForInjection(context) {
   const ctx = context.context;
   let output = '## Wogi Flow Session Context\n\n';
 
+  // One-time prompt-cache flag tip (2026-04-26).
+  //
+  // Triggered when: ANTHROPIC_API_KEY is set (user is on API-key /
+  // Bedrock / Vertex / Foundry — NOT a Claude Pro/Max subscriber via
+  // OAuth) AND ENABLE_PROMPT_CACHING_1H is NOT set. These users default
+  // to a 5-min prompt-cache TTL — any pause >5min mid-session pays the
+  // full re-prompt cost on resume. Setting the env var bumps to 1h,
+  // matching what subscribers already get by default.
+  //
+  // Fires AT MOST ONCE per project (marker-cleared after first surface).
+  // ~40 tokens of one-time cost vs. potentially massive recurring savings
+  // for affected users. No surfacing for subscribers (the var is a no-op
+  // for them).
+  try {
+    const cacheTipMarker = path.join(PATHS.state, 'cache-tip-surfaced.json');
+    if (process.env.ANTHROPIC_API_KEY && !process.env.ENABLE_PROMPT_CACHING_1H && !fs.existsSync(cacheTipMarker)) {
+      output += `### 💡 Prompt-cache tip (one-time)\n`;
+      output += `Detected \`ANTHROPIC_API_KEY\` set without \`ENABLE_PROMPT_CACHING_1H=1\`. On API-key / Bedrock / Vertex / Foundry, default cache TTL is 5 min — any pause >5 min in this session pays the full re-prompt cost on resume. Subscribers (Claude Pro/Max via OAuth) already get 1h TTL by default.\n`;
+      output += `\nRecommended: \`export ENABLE_PROMPT_CACHING_1H=1\` in your shell profile. Materially reduces token cost on multi-hour WogiFlow sessions. Risk: none — silently ignored if not supported.\n\n`;
+      try {
+        fs.mkdirSync(path.dirname(cacheTipMarker), { recursive: true });
+        fs.writeFileSync(cacheTipMarker, JSON.stringify({ surfacedAt: new Date().toISOString() }));
+      } catch (_err) { /* non-critical — tip will surface again next session if marker write fails */ }
+    }
+  } catch (_err) { /* fail-open — never block session start over a tip */ }
+
   // Post-restart continuity note (wf-39e9dc09 — Stop-hook triggered restart)
   // If the most recent session in session-history.json was ended by
   // task-boundary-restart and happened very recently, surface the resume
