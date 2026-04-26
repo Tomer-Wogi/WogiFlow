@@ -29,6 +29,20 @@ If `false` OR the input is natural language → continue with the full prompt be
 
 ### Pre-Routing Checks (Automatic)
 
+**Autonomous Walk-Away Mode Trigger**: Before any other classification, run
+`node scripts/flow-autonomous-mode.js activate "<user-message>"`. If the message
+matches a trigger phrase (`go until you finish`, `autonomous mode`, `run this autonomously`,
+`don't bother me, just do it`, `walk-away mode`, `go ahead until done`, etc.), the
+helper writes `autonomousMode` to `session-state.json` (atomic) and returns the
+activation record. The flag survives task-boundary SIGTERM restarts via SessionStart
+re-hydration. While active, decision-routing in `flow-decision-authority.js` returns
+`queue-for-review` for productBehavior/ux questions instead of `owner-decides` —
+the AI MUST NOT ask the user; questions go to `flow-question-queue` and surface in
+the end-of-run summary. To exit: user says `stop`/`pause`, the ready queue drains,
+or the staleness threshold trips. Run `flow-autonomous-mode.js finalize <reason>`
+to render the completion summary and clear the flag. Detection fails closed — if
+the classifier errors, mode stays interactive (the safer default).
+
 **Long Input Detection**: If `config.longInputGate.enabled` and EITHER:
 - Prompt > `lineThreshold` (40) lines, OR
 - Prompt contains 5+ discrete items (numbered lists, bullet points, semicolon-separated requests)

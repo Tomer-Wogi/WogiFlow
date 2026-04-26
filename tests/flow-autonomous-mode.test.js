@@ -18,6 +18,8 @@ const detector = require('../scripts/flow-autonomous-detector');
 const decisionAuthority = require('../scripts/flow-decision-authority');
 const queue = require('../scripts/flow-question-queue');
 const sessionState = require('../scripts/flow-session-state');
+const completionSummary = require('../scripts/flow-completion-summary');
+const orchestrator = require('../scripts/flow-autonomous-mode');
 
 describe('flow-autonomous-detector — NL trigger detection (AC1)', () => {
   it('matches "go until you finish"', () => {
@@ -299,5 +301,197 @@ describe('flow-question-queue — dependency classifier (AC7)', () => {
   it('union of text-match + AI classifier dedupes', () => {
     const a = queue.unionDependencies(['wf-1', 'wf-2'], ['wf-2', 'wf-3'], ['wf-3']);
     assert.deepEqual(a.sort(), ['wf-1', 'wf-2', 'wf-3']);
+  });
+});
+
+describe('flow-completion-summary — terminal + JSON (AC8)', () => {
+  beforeEach(() => {
+    const dir = path.join(process.cwd(), '.workflow', 'state');
+    for (const f of fs.readdirSync(dir)) {
+      if (/^autonomous-run-summary-.*\.json$/.test(f)) {
+        try { fs.unlinkSync(path.join(dir, f)); } catch (_e) { /* ignore */ }
+      }
+    }
+  });
+
+  it('renders all 3 sections — none missing for empty state', () => {
+    const r = completionSummary.renderSummary({
+      runId: 'unit-test',
+      startedAt: new Date().toISOString(),
+      trigger: 'go until you finish',
+      completed: [],
+      queuedQuestions: [],
+      skippedTasks: [],
+      adversaryInvocations: { used: 0, cap: 30 },
+      endReason: 'queue-drained'
+    }, { writeJson: false });
+    assert.match(r.terminal, /✓ Completed \(0 tasks\)/);
+    assert.match(r.terminal, /\? Queued questions \(0\)/);
+    assert.match(r.terminal, /⊘ Skipped tasks \(0\)/);
+    assert.match(r.terminal, /\[none\]/);
+    assert.match(r.terminal, /reason: queue-drained/);
+  });
+
+  it('writes JSON payload with stable shape', () => {
+    const startedAt = new Date(Date.now() - 30_000).toISOString();
+    const r = completionSummary.renderSummary({
+      runId: 'json-shape',
+      startedAt,
+      trigger: 'autonomous mode',
+      completed: [{ taskId: 'wf-aaaaaaaa', title: 'X' }],
+      queuedQuestions: [{ id: 'q-1', text: 'Q?', dependencies: ['wf-bbbbbbbb'] }],
+      skippedTasks: [{ taskId: 'wf-bbbbbbbb', reason: 'awaiting answer', blockingQuestionId: 'q-1' }],
+      adversaryInvocations: { used: 5, cap: 30, breakdown: { autonomousLowConfidence: 5 } },
+      endReason: 'queue-drained'
+    });
+    assert.equal(typeof r.jsonPath, 'string');
+    const data = JSON.parse(fs.readFileSync(r.jsonPath, 'utf-8'));
+    assert.equal(data.runId, 'json-shape');
+    assert.equal(data.completed.length, 1);
+    assert.equal(data.adversaryInvocations.breakdown.autonomousLowConfidence, 5);
+    fs.unlinkSync(r.jsonPath);
+  });
+
+  it('formats duration in m:ss for runs under an hour', () => {
+    const startedAt = new Date(Date.now() - 125_000).toISOString();
+    const r = completionSummary.renderSummary({
+      runId: 'dur',
+      startedAt,
+      trigger: 'go until you finish',
+      adversaryInvocations: { used: 0, cap: 30 }
+    }, { writeJson: false });
+    assert.match(r.terminal, /duration: 2:0[345]/);
+  });
+});
+
+describe('flow-autonomous-mode — orchestrator (AC10)', () => {
+  beforeEach(() => {
+    sessionState._resetAutonomousCacheForTests();
+    if (sessionState.isAutonomousActive()) sessionState.deactivateAutonomousMode();
+    queue.clearQueue();
+    const dir = path.join(process.cwd(), '.workflow', 'state');
+    for (const f of fs.readdirSync(dir)) {
+      if (/^autonomous-run-summary-.*\.json$/.test(f)) {
+        try { fs.unlinkSync(path.join(dir, f)); } catch (_e) { /* ignore */ }
+      }
+    }
+  });
+
+  it('maybeActivateFromMessage — fires on trigger phrase', () => {
+    const r = orchestrator.maybeActivateFromMessage('go until you finish');
+    assert.ok(r);
+    assert.equal(r.active, true);
+    assert.equal(sessionState.isAutonomousActive(), true);
+    sessionState.deactivateAutonomousMode();
+  });
+
+  it('maybeActivateFromMessage — no-op when no trigger', () => {
+    const r = orchestrator.maybeActivateFromMessage('add a button');
+    assert.equal(r, null);
+    assert.equal(sessionState.isAutonomousActive(), false);
+  });
+
+  it('shouldDeactivate — true on stop only when active', () => {
+    assert.equal(orchestrator.shouldDeactivate('stop'), false);
+    sessionState.activateAutonomousMode({ trigger: 'go until done' });
+    assert.equal(orchestrator.shouldDeactivate('stop'), true);
+    assert.equal(orchestrator.shouldDeactivate('keep going'), false);
+    sessionState.deactivateAutonomousMode();
+  });
+
+  it('finalize — clears flag and produces terminal+JSON', () => {
+    sessionState.activateAutonomousMode({ trigger: 'autonomous mode' });
+    queue.addQuestion({ text: 'A product Q', taskContext: 'wf-aaaaaaaa' });
+    queue.skipTask({ taskId: 'wf-bbbbbbbb', reason: 'awaiting answer' });
+    const r = orchestrator.finalize({
+      endReason: 'user-interrupt',
+      completed: [{ taskId: 'wf-cccccccc', title: 'Did a thing' }]
+    });
+    assert.match(r.terminal, /reason: user-interrupt/);
+    assert.match(r.terminal, /Did a thing/);
+    assert.match(r.terminal, /A product Q/);
+    assert.match(r.terminal, /wf-bbbbbbbb/);
+    assert.equal(typeof r.jsonPath, 'string');
+    assert.equal(sessionState.isAutonomousActive(), false);
+    if (r.jsonPath) try { fs.unlinkSync(r.jsonPath); } catch (_e) { /* ignore */ }
+  });
+});
+
+describe('autonomous mode — integration: end-to-end run (AC15)', () => {
+  beforeEach(() => {
+    sessionState._resetAutonomousCacheForTests();
+    if (sessionState.isAutonomousActive()) sessionState.deactivateAutonomousMode();
+    queue.clearQueue();
+    const dir = path.join(process.cwd(), '.workflow', 'state');
+    for (const f of fs.readdirSync(dir)) {
+      if (/^autonomous-run-summary-.*\.json$/.test(f)) {
+        try { fs.unlinkSync(path.join(dir, f)); } catch (_e) { /* ignore */ }
+      }
+    }
+  });
+
+  it('full lifecycle: activate → queue product Q → skip dep task → finalize', () => {
+    const activated = orchestrator.maybeActivateFromMessage('go until you finish, walk away');
+    assert.ok(activated);
+    const runId = activated.runId;
+
+    const decision1 = decisionAuthority.classifyDecision('rename function calculateTotal');
+    assert.equal(decision1.authority, 'agent-decides');
+
+    const decision2 = decisionAuthority.classifyDecision(
+      'should we charge admin users for billing seats'
+    );
+    assert.equal(decision2.authority, 'queue-for-review');
+
+    const q = queue.addQuestion({
+      text: 'Should admins be charged for billing seats?',
+      classifiedBucket: decision2.category,
+      taskContext: 'wf-aaaaaaaa',
+      runId
+    });
+
+    const deps = queue.classifyDependencies(
+      'Should admins be charged for billing seats?',
+      [{ id: 'wf-bbbbbbbb', title: 'admin billing seats setup' }]
+    );
+    for (const dep of deps) {
+      queue.skipTask({ taskId: dep, reason: 'awaiting answer', blockingQuestionId: q.id });
+    }
+
+    sessionState.incrementAdversaryInvocation('lowConfidence');
+    sessionState.incrementAdversaryInvocation('igr');
+
+    const fin = orchestrator.finalize({
+      endReason: 'queue-drained',
+      completed: [{ taskId: 'wf-cccccccc', title: 'Engineering decision applied' }]
+    });
+
+    assert.match(fin.terminal, /Completed \(1 tasks\)/);
+    assert.match(fin.terminal, /Queued questions \(1\)/);
+    assert.match(fin.terminal, /Skipped tasks \(1\)/);
+    assert.match(fin.terminal, /Adversary invocations: 2 \/ 30/);
+
+    const data = JSON.parse(fs.readFileSync(fin.jsonPath, 'utf-8'));
+    assert.equal(data.runId, runId);
+    assert.equal(data.completed.length, 1);
+    assert.equal(data.queuedQuestions.length, 1);
+    assert.equal(data.skippedTasks.length, 1);
+    assert.equal(data.adversaryInvocations.used, 2);
+
+    assert.equal(sessionState.isAutonomousActive(), false);
+    if (fin.jsonPath) try { fs.unlinkSync(fin.jsonPath); } catch (_e) { /* ignore */ }
+  });
+
+  it('cross-session interruption: stale flag is cleared, no auto-resume (AC9)', () => {
+    sessionState.activateAutonomousMode({ trigger: 'go until done' });
+    const state = sessionState.loadSessionState();
+    state.autonomousMode.activatedAt = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
+    sessionState.saveSessionState({ autonomousMode: state.autonomousMode });
+    sessionState._resetAutonomousCacheForTests();
+
+    const r = sessionState.rehydrateAutonomousFromDisk();
+    assert.equal(r.hydrated, false);
+    assert.equal(r.reason, 'stale');
+    assert.equal(sessionState.isAutonomousActive(), false);
   });
 });

@@ -933,6 +933,37 @@ function formatContextForInjection(context) {
     // Non-critical — fall through to default context
   }
 
+  // Autonomous walk-away mode rehydration (wf-d712002e / Story C).
+  // Disk is canonical; cache evaporates at SIGTERM. SessionStart re-hydrates
+  // the cache from disk and surfaces the active-mode reminder so the AI
+  // continues to honor autonomous routing across task-boundary restarts.
+  // Stale-flag detection (older than autonomousMode.stalenessThresholdMs,
+  // default 1h) emits an interruption notice and clears the flag — no
+  // auto-resume; the user must explicitly say "continue" / "resume".
+  try {
+    const sessionState = require('../../flow-session-state');
+    const result = sessionState.rehydrateAutonomousFromDisk();
+    if (result.hydrated && result.mode) {
+      const mode = result.mode;
+      output += `### ⚡ AUTONOMOUS MODE ACTIVE\n`;
+      output += `Walk-away run \`${mode.runId}\` is in progress (trigger: "${mode.trigger}", started ${mode.activatedAt}).\n\n`;
+      output += `**Routing rules** for this run:\n`;
+      output += `- productBehavior / ux questions → \`queue-for-review\` (do NOT ask the user; \`flow-question-queue\` collects them).\n`;
+      output += `- engineering / naming / implementation → decide autonomously.\n`;
+      output += `- low-confidence technical → self-adversarial challenge to ≥90% confidence; if still uncertain after the cap, queue.\n`;
+      output += `- Blocking errors (typecheck/test/conflict) → fix autonomously; only surface if fundamentally un-fixable.\n\n`;
+      output += `**No hedging**. Forbidden phrases (per feedback-patterns.md 2026-04-16): "let me know if", "should I continue", "awaiting your signal", "standing by", "would you like me to". The user is walked away; there is no one to answer until the run ends.\n\n`;
+      output += `**Exit conditions**: ready queue drains, user types "stop"/"pause", or fatal error. On exit: render completion summary (terminal block + JSON payload at \`autonomous-run-summary-${mode.runId}.json\`).\n\n`;
+    } else if (result.reason === 'stale' && result.staleMode) {
+      const stale = result.staleMode;
+      output += `### ⚠️ Autonomous Run Interrupted\n`;
+      output += `A previous autonomous run (\`${stale.runId}\`, started ${stale.activatedAt}) exceeded the staleness threshold and has been cleared.\n\n`;
+      output += `Review \`.workflow/state/autonomous-run-summary-${stale.runId}.json\` (if present) to see what completed before the interruption. The session is now in standard interactive mode. To resume, the user must explicitly say "continue" / "resume autonomous run" — do not auto-restart.\n\n`;
+    }
+  } catch (_err) {
+    // Non-critical — autonomous-mode injection failure must not block session start
+  }
+
   // Workspace worker auto-resume (wf-restart-handoff / 2.22.2).
   // CRITICAL priority — shown at the top so the model acts on it before
   // anything else. Fires when a worker session starts with queued channel
