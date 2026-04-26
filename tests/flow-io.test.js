@@ -293,12 +293,45 @@ describe('safeJsonParseStringStrip', () => {
     assert.deepEqual(obj, { a: 1, nested: { good: 3 } });
   });
 
-  it('stripDangerousKeys bounded against pathological deep input', () => {
+  it('stripDangerousKeys bounded against pathological deep input (within cap)', () => {
     let deep = { good: 1 };
-    for (let i = 0; i < 50; i++) deep = { nest: deep };
-    // Should not throw — recursion bounded at depth 32
+    for (let i = 0; i < 100; i++) deep = { nest: deep };
+    // 100 levels < cap (256) — should walk normally, no sentinel
     const r = stripDangerousKeys(deep);
     assert.equal(typeof r, 'object');
+    // Sentinel only fires past 256
+  });
+
+  it('stripDangerousKeys returns STRIP_TOO_DEEP sentinel past depth cap (SEC-001 fix)', () => {
+    let deep = { good: 1 };
+    for (let i = 0; i < 300; i++) deep = { nest: deep };
+    const r = stripDangerousKeys(deep);
+    // Sentinel returned; caller is responsible for treating as failure
+    assert.ok(r && r.__wogiTooDeep === true, 'expected STRIP_TOO_DEEP sentinel');
+  });
+
+  it('safeJsonParseStringStrip returns defaultValue when depth cap exceeded (SEC-001 fail-safe)', () => {
+    // Build pathological JSON string with 300 levels of nesting
+    let json = '{"good":1}';
+    for (let i = 0; i < 300; i++) json = `{"nest":${json}}`;
+    const r = safeJsonParseStringStrip(json, 'fallback');
+    // Without the fix: would return partially-stripped object (HIGH severity bypass)
+    // With the fix: returns the defaultValue
+    assert.equal(r, 'fallback');
+  });
+
+  it('safeJsonParseStringStrip with __proto__ at depth >cap → defaultValue (no leak)', () => {
+    // Most important test: hostile __proto__ deep in tree must NOT survive
+    let inner = '{"polluted":true}';
+    for (let i = 0; i < 270; i++) inner = `{"a":${inner}}`;
+    const wrapped = `{"__proto__":${inner}}`;
+    const r = safeJsonParseStringStrip(wrapped, null);
+    // Either fully scrubbed object OR null — must NOT contain __proto__ anywhere reachable
+    if (r !== null) {
+      assert.equal(Object.prototype.hasOwnProperty.call(r, '__proto__'), false);
+    }
+    // Verify Object.prototype is clean
+    assert.equal(({}).polluted, undefined, 'Object.prototype must not be polluted');
   });
 });
 

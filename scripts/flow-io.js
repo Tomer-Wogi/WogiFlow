@@ -256,11 +256,27 @@ function safeJsonParseString(jsonString, defaultValue = null) {
  * structurally-valid content but defang any __proto__/constructor/prototype
  * keys nested anywhere in the tree.
  */
+// Sentinel returned when stripDangerousKeys hits the depth cap. Distinct from
+// `null` (legitimate JSON value) so callers can distinguish "hit the cap" from
+// "successfully scrubbed null".
+const STRIP_TOO_DEEP = Object.freeze({ __wogiTooDeep: true });
+
+const STRIP_MAX_DEPTH = 256;
+
 function stripDangerousKeys(value, depth = 0) {
-  if (depth > 32) return value; // Bound recursion against pathological input
+  // SEC-001 fix (2026-04-26): bound recursion AND fail-safe at the cap.
+  // Previous impl returned the partially-stripped value, which left dangerous
+  // keys live in subtrees past depth 32 — caller could then merge them and
+  // pollute Object.prototype. New behavior: return STRIP_TOO_DEEP sentinel so
+  // safeJsonParseStringStrip can fall back to defaultValue. Cap raised from
+  // 32 → 256 so legitimate nesting never trips it.
+  if (depth > STRIP_MAX_DEPTH) return STRIP_TOO_DEEP;
   if (!value || typeof value !== 'object') return value;
   if (Array.isArray(value)) {
-    for (const item of value) stripDangerousKeys(item, depth + 1);
+    for (let i = 0; i < value.length; i++) {
+      const r = stripDangerousKeys(value[i], depth + 1);
+      if (r === STRIP_TOO_DEEP) return STRIP_TOO_DEEP;
+    }
     return value;
   }
   for (const key of Object.getOwnPropertyNames(value)) {
@@ -268,7 +284,8 @@ function stripDangerousKeys(value, depth = 0) {
       delete value[key];
       continue;
     }
-    stripDangerousKeys(value[key], depth + 1);
+    const r = stripDangerousKeys(value[key], depth + 1);
+    if (r === STRIP_TOO_DEEP) return STRIP_TOO_DEEP;
   }
   return value;
 }
@@ -297,7 +314,9 @@ function safeJsonParseStringStrip(jsonString, defaultValue = null) {
   try {
     const parsed = JSON.parse(jsonString);
     if (typeof parsed !== 'object' || parsed === null) return defaultValue;
-    return stripDangerousKeys(parsed);
+    const stripped = stripDangerousKeys(parsed);
+    if (stripped === STRIP_TOO_DEEP) return defaultValue;
+    return stripped;
   } catch (_err) {
     return defaultValue;
   }

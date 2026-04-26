@@ -40,14 +40,28 @@ function encodeBase64(payload) {
   return Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64');
 }
 
+// SEC-005 + arch-006 fix (2026-04-26): decode through the canonical
+// safeJsonParseStringStrip helper instead of raw JSON.parse. Channel-dispatch
+// bytes are attacker-influenceable (any process that can POST to the manager
+// port can inject a forged ## COMPLETION-SUMMARY: line). Stripping
+// __proto__/constructor/prototype recursively defangs prototype-pollution
+// before validatePayload runs.
+const { safeJsonParseStringStrip } = require('./flow-io');
+
 function decodeBase64(s) {
+  let text;
   try {
-    const buf = Buffer.from(s, 'base64');
-    const text = buf.toString('utf-8');
-    return JSON.parse(text);
+    text = Buffer.from(s, 'base64').toString('utf-8');
   } catch (err) {
-    throw new Error(`base64-JSON decode failed: ${err.message}`);
+    throw new Error(`base64 decode failed: ${err.message}`);
   }
+  // Sentinel — distinct object identity so callers can detect parse failure.
+  const FAIL = decodeBase64.__failSentinel || (decodeBase64.__failSentinel = Symbol('decode-fail'));
+  const parsed = safeJsonParseStringStrip(text, FAIL);
+  if (parsed === FAIL) {
+    throw new Error('base64-JSON decode failed: invalid JSON or unsafe payload');
+  }
+  return parsed;
 }
 
 /**
@@ -100,6 +114,11 @@ function parseChunked(lines) {
     return { ok: false, error: 'lines must be a non-empty array' };
   }
   const fragments = [];
+  // CL-004 fix (2026-04-26): track seen indices to reject duplicate chunks.
+  // Without this, a replay or attacker-injected duplicate fragment silently
+  // overwrites fragments[n-1]; the missing-chunks check still passes (slot
+  // is non-undefined); the reassembled payload is corrupted/tampered.
+  const seen = new Set();
   let total = null;
   for (const line of lines) {
     const m = CHUNK_PREFIX_REGEX.exec(line);
@@ -111,10 +130,17 @@ function parseChunked(lines) {
     if (!Number.isInteger(n) || n < 1 || n > total) {
       return { ok: false, error: `invalid chunk index: ${m[1]}` };
     }
+    if (seen.has(n)) {
+      return { ok: false, error: `duplicate chunk index: ${n}` };
+    }
+    seen.add(n);
     fragments[n - 1] = line.replace(CHUNK_PREFIX_REGEX, '');
   }
+  // CL-004: use !==undefined instead of filter(Boolean) so empty-string
+  // fragments (legitimate edge case for short tail chunks) aren't miscounted.
   if (fragments.length !== total || fragments.some(f => f === undefined)) {
-    return { ok: false, error: `missing chunks (have ${fragments.filter(Boolean).length} of ${total})` };
+    const have = fragments.filter(f => f !== undefined).length;
+    return { ok: false, error: `missing chunks (have ${have} of ${total})` };
   }
   try {
     const payload = decodeBase64(fragments.join(''));
@@ -216,19 +242,8 @@ function renderMultiWorker(summaries) {
   return lines.join('\n');
 }
 
-function formatDuration(startedAt, endedAt) {
-  if (!startedAt || !endedAt) return '0:00';
-  const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return '0:00';
-  const sec = Math.floor(ms / 1000);
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    return `${h}:${String(m % 60).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  }
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
+// CL-006 (2026-04-26): consolidated formatDuration to flow-time-format.
+const { formatDuration } = require('./flow-time-format');
 
 module.exports = {
   SINGLE_LINE_PREFIX,
@@ -245,7 +260,11 @@ module.exports = {
 if (require.main === module) {
   const [,, cmd, ...rest] = process.argv;
   if (cmd === 'encode') {
-    const payload = JSON.parse(rest.join(' '));
+    const payload = safeJsonParseStringStrip(rest.join(' '), null);
+    if (!payload) {
+      process.stderr.write('encode: invalid JSON or unsafe payload\n');
+      process.exit(1);
+    }
     console.log(encodeMessage(payload).join('\n'));
   } else if (cmd === 'parse') {
     const r = parseMessage(rest.join(' '));

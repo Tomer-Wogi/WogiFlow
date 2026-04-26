@@ -36,15 +36,37 @@ const TRIGGER_PHRASES = [
   'do them all without asking'
 ];
 
-const STOP_PHRASES = [
+// CL-001 fix (2026-04-26): split into EXACT and EXPLICIT phrase lists.
+//
+// Previously detectStop() did a startsWith/endsWith match on every phrase,
+// which silently deactivated autonomous mode when the user said things like
+// "wait for the build then continue" or "hold on let me check, then proceed"
+// or "stop being so verbose but keep working" — common conversational words
+// at the start/end of a message would falsely trigger deactivation.
+//
+// New semantic:
+//   EXACT_STOP_PHRASES — exact match only (common short words; if the user
+//     actually means it as a stop command, they'll type just that)
+//   EXPLICIT_STOP_PHRASES — substring match (unambiguous because they
+//     mention "autonomous" by name)
+const EXACT_STOP_PHRASES = [
   'stop',
   'pause',
   'hold on',
-  'wait',
+  'wait'
+];
+
+const EXPLICIT_STOP_PHRASES = [
   'cancel autonomous',
   'exit autonomous',
-  'leave autonomous mode'
+  'leave autonomous mode',
+  'stop autonomous',
+  'pause autonomous',
+  'end autonomous'
 ];
+
+// Backwards-compat: union for any external caller that imported STOP_PHRASES.
+const STOP_PHRASES = [...EXACT_STOP_PHRASES, ...EXPLICIT_STOP_PHRASES];
 
 function normalize(s) {
   return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -66,7 +88,10 @@ function detect(message) {
 function detectStop(message) {
   const text = normalize(message);
   if (!text) return false;
-  return STOP_PHRASES.some(p => text === p || text.startsWith(p + ' ') || text.endsWith(' ' + p));
+  // EXACT phrases require equality (don't match mid-message)
+  if (EXACT_STOP_PHRASES.includes(text)) return true;
+  // EXPLICIT phrases match anywhere (unambiguous due to "autonomous" word)
+  return EXPLICIT_STOP_PHRASES.some(p => text.includes(p));
 }
 
 /**

@@ -5,6 +5,10 @@
   "cli": {
     "type": "claude-code"
   },
+  "functionRegistry": {
+    "_comment": "arch-005 (2026-04-26): wogi-flow's source lives in scripts/ + lib/, not src/. Default scanner config doesn't list scripts/, so function-map.md was empty after every scan. Override the configKey 'functionRegistry' (NOT 'functionIndex' — that's the script name, the config key is different).",
+    "directories": ["scripts", "lib"]
+  },
   "taskBoundaryReset": {
     "enabled": true,
     "maxRestartsPerSession": 50,

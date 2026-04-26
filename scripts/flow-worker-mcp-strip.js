@@ -38,6 +38,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+// arch-004 (2026-04-26): use canonical safeJsonParse — no raw JSON.parse in
+// scripts/. The .mcp.json file is user-controllable on disk; recursive
+// proto-pollution scrub is the right default.
+const { safeJsonParse } = require('./flow-io');
 
 const CHANNEL_SERVER_NAME = 'wogi-workspace-channel';
 
@@ -48,17 +52,14 @@ const CHANNEL_SERVER_NAME = 'wogi-workspace-channel';
 function extractChannelOnlyConfig(sourcePath) {
   const empty = { mcpServers: {} };
   if (!sourcePath || typeof sourcePath !== 'string') return empty;
-  try {
-    if (!fs.existsSync(sourcePath)) return empty;
-    const raw = fs.readFileSync(sourcePath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object' || !parsed.mcpServers) return empty;
-    const entry = parsed.mcpServers[CHANNEL_SERVER_NAME];
-    if (!entry || typeof entry !== 'object') return empty;
-    return { mcpServers: { [CHANNEL_SERVER_NAME]: entry } };
-  } catch (_err) {
-    return empty;
-  }
+  // safeJsonParse: returns the empty fallback on missing file, malformed
+  // JSON, or prototype-pollution attempt. Replaces the previous fs.readFileSync
+  // + JSON.parse + try/catch trio.
+  const parsed = safeJsonParse(sourcePath, null);
+  if (!parsed || typeof parsed !== 'object' || !parsed.mcpServers) return empty;
+  const entry = parsed.mcpServers[CHANNEL_SERVER_NAME];
+  if (!entry || typeof entry !== 'object') return empty;
+  return { mcpServers: { [CHANNEL_SERVER_NAME]: entry } };
 }
 
 /**

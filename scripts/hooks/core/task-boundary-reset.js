@@ -192,6 +192,19 @@ function checkPreconditions() {
       return { ready: false, reason: 'no-parent-pid' };
     }
 
+    // SEC-006 fix (2026-04-26): cross-check that WOGI_WRAPPER_PID actually
+    // refers to our parent. Without this, an attacker who can set the env
+    // var (e.g. via co-tenant on a shared CI runner, or a malicious
+    // CLAUDE.md that gets persisted into shell init) could cause the Stop
+    // hook to SIGTERM an arbitrary same-uid PID. Mismatch = abort.
+    const wrapperPidNum = parseInt(wrapperPid, 10);
+    if (!Number.isFinite(wrapperPidNum) || wrapperPidNum !== parentPid) {
+      return {
+        ready: false,
+        reason: `parent-pid-mismatch (env WOGI_WRAPPER_PID=${wrapperPid} ≠ ppid=${parentPid})`
+      };
+    }
+
     return { ready: true, flagPath, parentPid };
   } catch (err) {
     return { ready: false, reason: `config-error: ${err.message}` };

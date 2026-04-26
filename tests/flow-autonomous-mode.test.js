@@ -40,9 +40,19 @@ describe('flow-autonomous-detector — NL trigger detection (AC1)', () => {
   });
 
   it('detects stop/pause phrases', () => {
+    // EXACT phrases require equality (CL-001 fix)
     assert.equal(detector.detectStop('stop'), true);
     assert.equal(detector.detectStop('pause'), true);
-    assert.equal(detector.detectStop('stop the run'), true);
+    assert.equal(detector.detectStop('wait'), true);
+    assert.equal(detector.detectStop('hold on'), true);
+    // Mid-message common words MUST NOT deactivate (CL-001 regression)
+    assert.equal(detector.detectStop('stop the run'), false);
+    assert.equal(detector.detectStop('wait for the build then continue'), false);
+    assert.equal(detector.detectStop('hold on let me check, then proceed'), false);
+    // EXPLICIT phrases (mention "autonomous") DO deactivate anywhere in message
+    assert.equal(detector.detectStop('cancel autonomous mode'), true);
+    assert.equal(detector.detectStop('please stop autonomous now'), true);
+    assert.equal(detector.detectStop('exit autonomous'), true);
     assert.equal(detector.detectStop('continue'), false);
   });
 

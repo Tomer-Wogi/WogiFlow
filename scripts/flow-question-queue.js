@@ -26,9 +26,16 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { PATHS } = require('./flow-paths');
-const { readJson, writeJson } = require('./flow-io');
+const { readJson, writeJson, withLock } = require('./flow-io');
 
 const QUEUE_PATH = path.join(PATHS.state, 'question-queue.json');
+
+// SEC-004 caps (2026-04-26): bound disk consumption for buggy classifier
+// over-flag and prompt-injection that intentionally generates many questions.
+// Overflow rotates the current queue to an archive file, never silently drops.
+const MAX_QUESTIONS_PER_FILE = 100;
+const MAX_QUESTION_TEXT_BYTES = 4 * 1024;          // 4 KB per question text
+const MAX_QUEUE_FILE_BYTES = 1 * 1024 * 1024;      // 1 MB total queue file
 
 function emptyQueue() {
   return { questions: [], skippedTasks: [] };
@@ -50,6 +57,29 @@ function loadQueue() {
 function saveQueue(data) {
   writeJson(QUEUE_PATH, data);
   return data;
+}
+
+/**
+ * Rotate the current queue to a timestamped archive file, then return an
+ * empty queue. Used when overflow caps are hit (SEC-004).
+ */
+function rotateQueue() {
+  try {
+    if (!fs.existsSync(QUEUE_PATH)) return emptyQueue();
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    const archivePath = path.join(PATHS.state, `question-queue-archive-${ts}.json`);
+    fs.renameSync(QUEUE_PATH, archivePath);
+  } catch (_err) { /* best-effort archive */ }
+  return emptyQueue();
+}
+
+function truncateText(text) {
+  if (typeof text !== 'string') return '';
+  const buf = Buffer.from(text, 'utf-8');
+  if (buf.byteLength <= MAX_QUESTION_TEXT_BYTES) return text;
+  // Truncate by bytes, then drop last char to avoid mid-codepoint cuts.
+  const truncated = buf.slice(0, MAX_QUESTION_TEXT_BYTES - 1).toString('utf-8');
+  return truncated.replace(/.$/, '') + '… [truncated]';
 }
 
 function clearQueue() {
@@ -74,10 +104,18 @@ function shortId() {
  */
 function addQuestion(q) {
   if (!q || !q.text) throw new Error('addQuestion: text is required');
-  const queue = loadQueue();
+  // SEC-004: cap text size, count, file size with archive rotation on overflow
+  const text = truncateText(String(q.text));
+  let queue = loadQueue();
+
+  // Count cap — rotate before append if at limit
+  if (queue.questions.length >= MAX_QUESTIONS_PER_FILE) {
+    queue = rotateQueue();
+  }
+
   const entry = {
     id: `q-${shortId()}`,
-    text: q.text,
+    text,
     classifiedBucket: q.classifiedBucket || null,
     taskContext: q.taskContext || null,
     dependencies: Array.isArray(q.dependencies) ? q.dependencies : [],
@@ -86,8 +124,25 @@ function addQuestion(q) {
     answered: false
   };
   queue.questions.push(entry);
+
+  // File-size cap (defense-in-depth — covers degenerate per-question payloads).
+  const candidate = JSON.stringify(queue);
+  if (Buffer.byteLength(candidate, 'utf-8') > MAX_QUEUE_FILE_BYTES) {
+    queue = rotateQueue();
+    queue.questions.push(entry);
+  }
+
   saveQueue(queue);
   return entry;
+}
+
+/**
+ * Async variant of addQuestion that holds an inter-process lock around the
+ * read-modify-write cycle (CL-002 fix). Prefer this in concurrent contexts
+ * (autonomous worker + manager dispatch handler running in parallel).
+ */
+async function addQuestionAsync(q) {
+  return withLock(QUEUE_PATH, async () => addQuestion(q));
 }
 
 /**
@@ -113,12 +168,17 @@ function skipTask({ taskId, reason, blockingQuestionId } = {}) {
   return record;
 }
 
+async function skipTaskAsync(args) {
+  return withLock(QUEUE_PATH, async () => skipTask(args));
+}
+
 /**
  * Conservative dependency classifier — text-match only.
- * AI classifier (Haiku) fallback is intentionally NOT inlined here; callers
- * that have access to Haiku invoke `classifyDependenciesWithAi()` and merge
- * results with `unionDependencies()`. This keeps the hot path classifier-free
- * for tests and for environments without Anthropic credentials.
+ * AI classifier integration is handled by `classifyDependenciesSafe(text,
+ * tasks, aiClassifier)` below — callers pass an injected classifier
+ * function. This keeps the hot path classifier-free for tests and for
+ * environments without Anthropic credentials. (CL-008 fix 2026-04-26 —
+ * removed misleading reference to a non-existent classifyDependenciesWithAi.)
  *
  * Rules:
  * 1. Exact task ID match (wf-XXXXXXXX) → flag dependency.
@@ -216,12 +276,18 @@ function listSkippedTasks() {
 
 module.exports = {
   QUEUE_PATH,
+  MAX_QUESTIONS_PER_FILE,
+  MAX_QUESTION_TEXT_BYTES,
+  MAX_QUEUE_FILE_BYTES,
   emptyQueue,
   loadQueue,
   saveQueue,
+  rotateQueue,
   clearQueue,
   addQuestion,
+  addQuestionAsync,
   skipTask,
+  skipTaskAsync,
   classifyDependencies,
   classifyDependenciesSafe,
   unionDependencies,

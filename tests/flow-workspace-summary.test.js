@@ -254,3 +254,141 @@ describe('worker-boundary-gate — path discipline (AC11)', () => {
     assert.equal(r.blocked, false);
   });
 });
+
+describe('arch-001 Tier-3: channel-transport regression guard (P11.4 self-compliance)', () => {
+  // regression-tier3
+  // The audit-channel-transport-001 incident (v2.29.0 → v2.29.1 hotfix) was
+  // caused by Story B layering on Story A's MCP-strip without a Tier-3 test
+  // exercising the actual transport. This test pins the integration:
+  // 1. Run the channel-only MCP strip helper to produce a worker config.
+  // 2. Verify wogi-workspace-channel server entry survives the strip.
+  // 3. Encode a COMPLETION-SUMMARY through the wire format.
+  // 4. Verify a fresh manager-side parse round-trips the payload identically.
+  // The failure mode this prevents: the strip removes the channel server
+  // (Story A's bug), or the wire format breaks (Story B's risk), or the
+  // dangerous-key scrub mutates user data (SEC-005's risk).
+
+  const { extractChannelOnlyConfig, writeChannelOnlyConfig, preservesChannelTransport } =
+    require('../scripts/flow-worker-mcp-strip');
+
+  let tmpDir;
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wogi-tier3-'));
+  });
+  afterEach(() => {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_e) { /* ignore */ }
+  });
+
+  it('end-to-end: strip → channel-only config → encode summary → parse → roundtrip', () => {
+    // Step 1: simulate a worker member-repo .mcp.json with the channel server
+    const sourceMcp = path.join(tmpDir, '.mcp.json');
+    fs.writeFileSync(sourceMcp, JSON.stringify({
+      mcpServers: {
+        'wogi-workspace-channel': {
+          command: 'node',
+          args: ['/wf/lib/workspace-channel-server.js'],
+          env: {
+            WOGI_CHANNEL_PORT: '8801',
+            WOGI_REPO_NAME: 'frontend',
+            WOGI_WORKSPACE_ROOT: '/Users/x/wogi-hub',
+            WOGI_PEERS: 'backend:8802,manager:8800',
+            WOGI_MANAGER_PORT: '8800'
+          }
+        },
+        'claude.ai-gmail': { command: 'gmail-mcp' },
+        'claude.ai-slack': { command: 'slack-mcp' }
+      }
+    }, null, 2));
+
+    // Step 2: run the strip helper, verify channel transport is preserved
+    const dest = path.join(tmpDir, 'state', 'worker-channel-only-mcp.json');
+    const cfg = extractChannelOnlyConfig(sourceMcp);
+    writeChannelOnlyConfig(dest, cfg);
+    assert.equal(preservesChannelTransport(cfg), true,
+      'CRITICAL — strip must preserve wogi-workspace-channel for manager dispatch to reach worker');
+
+    // Step 3: encode a realistic COMPLETION-SUMMARY through the wire format
+    const summary = samplePayload({
+      runId: 'tier3-roundtrip',
+      completed: [
+        { taskId: 'wf-aaaaaaaa', title: 'First completed task' },
+        { taskId: 'wf-bbbbbbbb', title: 'Second completed task' }
+      ],
+      queuedQuestions: [
+        { id: 'q-tier3-1', text: 'Pricing question?', dependencies: ['wf-cccccccc'] }
+      ]
+    });
+    const lines = ws.encodeMessage(summary);
+    assert.ok(lines.length >= 1);
+
+    // Step 4: simulate manager-side parse (the original failure mode was
+    // the manager never receiving anything; here we verify that IF a line
+    // is delivered, the wire format faithfully roundtrips)
+    const parsed = lines.length === 1
+      ? ws.parseMessage(lines[0])
+      : ws.parseChunked(lines);
+    assert.equal(parsed.ok, true, `parse failed: ${parsed.error}`);
+    assert.equal(parsed.payload.runId, 'tier3-roundtrip');
+    assert.equal(parsed.payload.completed.length, 2);
+    assert.equal(parsed.payload.completed[0].title, 'First completed task');
+    assert.equal(parsed.payload.queuedQuestions[0].id, 'q-tier3-1');
+
+    // Step 5: SEC-005 regression — hostile __proto__ in payload must be
+    // stripped before the manager sees it
+    const hostileEncoded = `## COMPLETION-SUMMARY: ${
+      Buffer.from(JSON.stringify({
+        runId: 'hostile',
+        completed: [{ taskId: 'wf-12345678', title: 'ok' }],
+        queuedQuestions: [],
+        skippedTasks: [],
+        __proto__: { polluted: true },
+        nested: { constructor: 'attack' }
+      }), 'utf-8').toString('base64')
+    }`;
+    const hostileResult = ws.parseMessage(hostileEncoded);
+    assert.equal(hostileResult.ok, true);
+    assert.equal(({}).polluted, undefined,
+      'CRITICAL — Object.prototype must not be polluted by channel payload');
+    // Use hasOwnProperty — accessing nested.constructor returns Object's
+    // prototype constructor function (not undefined). What matters is that
+    // the OWN 'constructor' property was deleted from the nested object.
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(hostileResult.payload.nested, 'constructor'),
+      false,
+      'nested constructor own-property must be stripped'
+    );
+  });
+
+  it('rejects duplicate chunks (CL-004 regression — silent payload corruption)', () => {
+    // Build a chunked summary
+    const big = samplePayload({
+      completed: Array.from({ length: 5000 }, (_, i) => ({
+        taskId: `wf-${String(i).padStart(8, '0')}`,
+        title: `Task ${i} with reasonably-long title to inflate payload`
+      }))
+    });
+    const lines = ws.encodeMessage(big);
+    if (lines.length < 2) return; // skip if it accidentally fits in one line
+    // Inject duplicate chunk-1
+    const tampered = [lines[0], lines[0], ...lines.slice(1)];
+    const r = ws.parseChunked(tampered);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /duplicate chunk/);
+  });
+
+  it('SEC-005 regression: deep nested dangerous keys → fail-safe (no leak)', () => {
+    // Build payload with __proto__ at depth 270 (past the SEC-001 fix's 256 cap)
+    let inner = '{"polluted":"deep"}';
+    for (let i = 0; i < 270; i++) inner = `{"a":${inner}}`;
+    const payloadStr = `{"runId":"deep","completed":[],"queuedQuestions":[],"skippedTasks":[],"deep":${inner.replace('{"polluted":"deep"}', '{"__proto__":{"polluted":true}}')}}`;
+    const encoded = `## COMPLETION-SUMMARY: ${Buffer.from(payloadStr).toString('base64')}`;
+    const r = ws.parseMessage(encoded);
+    // Either the strip helper failed-safe (ok=false) or stripped to safety
+    if (r.ok) {
+      assert.equal(({}).polluted, undefined,
+        'Object.prototype must not be polluted even at depth past cap');
+    }
+    // Either way, no pollution should escape
+    assert.equal(({}).polluted, undefined);
+  });
+});

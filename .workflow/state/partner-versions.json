@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.26.2",
+    "version": "2.29.2",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -10,7 +10,7 @@
       "version": "0.1.0",
       "repo": "wogiflow-cloud",
       "path": "packages/server",
-      "checkedAt": "2026-04-21"
+      "checkedAt": "2026-04-26"
     },
     "wogiflow-teams-client": {
       "package": "@wogiflow/teams",
@@ -18,14 +18,18 @@
       "repo": "wogiflow-cloud",
       "path": "packages/client",
       "minCompatible": "1.5.0",
-      "checkedAt": "2026-04-21"
+      "checkedAt": "2026-04-26"
     },
     "wogiflow-portal": {
       "package": "wogiflow-portal",
       "version": "0.1.0",
       "repo": "wogiflow-portal",
-      "checkedAt": "2026-04-21"
+      "checkedAt": "2026-04-26"
     }
   },
-  "lastUpdated": "2026-04-21T00:00:00.000Z"
+  "behaviorChanges": {
+    "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
+    "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"]
+  },
+  "lastUpdated": "2026-04-26T00:00:00.000Z"
 }

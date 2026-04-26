@@ -986,6 +986,18 @@ function rehydrateAutonomousFromDisk() {
   return { hydrated: Boolean(mode && mode.active), mode };
 }
 
+/**
+ * Increment the shared adversary-invocation counter.
+ *
+ * NOTE on concurrency (CL-005, 2026-04-26): the sync variant is the original
+ * single-flight call site. It performs read-modify-write through the cache
+ * + saveSessionState, which itself uses atomic writeJson. Two parallel
+ * invocations on the same session would race (both read used=N, both write
+ * N+1, last writer wins, cap bypassed by 1). This is acceptable in
+ * single-process autonomous-mode runs, but parallel sub-agent contexts MUST
+ * use `incrementAdversaryInvocationAsync` which holds an inter-process lock
+ * and re-reads from disk inside the lock to defeat cache staleness.
+ */
 function incrementAdversaryInvocation(source = 'manual') {
   const mode = getAutonomousMode();
   if (!mode || !mode.active) return { allowed: true, used: 0, cap: 0 };
@@ -1000,6 +1012,40 @@ function incrementAdversaryInvocation(source = 'manual') {
   saveSessionState({ autonomousMode: updated });
   autonomousModeCache = updated;
   return { allowed: used <= cap, used, cap };
+}
+
+/**
+ * Concurrency-safe variant of incrementAdversaryInvocation. Wraps the
+ * read-modify-write in withLock(SESSION_PATH) and bypasses the in-process
+ * cache during the lock window so the value read is always disk-fresh.
+ * Use this from any context that may run in parallel with another adversary
+ * invocation (parallel sub-agents, IGR + manual /wogi-challenge co-firing).
+ */
+async function incrementAdversaryInvocationAsync(source = 'manual') {
+  return withLock(SESSION_PATH, async () => {
+    // Read directly from disk, bypassing the cache
+    const fresh = loadSessionState();
+    const mode = fresh.autonomousMode;
+    if (!mode || !mode.active) return { allowed: true, used: 0, cap: 0 };
+    const cap = getAutonomousConfig().maxAdversaryInvocations;
+    const used = (mode.adversaryInvocations?.used ?? 0) + 1;
+    const breakdown = { ...(mode.adversaryInvocations?.breakdown || {}) };
+    const key = source === 'igr' ? 'igrArchitect'
+      : source === 'lowConfidence' ? 'autonomousLowConfidence'
+      : 'manual';
+    breakdown[key] = (breakdown[key] || 0) + 1;
+    const updated = { ...mode, adversaryInvocations: { used, breakdown } };
+    // Write atomically via writeJson (already atomic, lock prevents
+    // overlapping read-modify-write).
+    const newState = {
+      ...fresh,
+      autonomousMode: updated,
+      lastActive: new Date().toISOString()
+    };
+    writeJson(SESSION_PATH, newState);
+    autonomousModeCache = updated;
+    return { allowed: used <= cap, used, cap };
+  });
 }
 
 function _resetAutonomousCacheForTests() {
@@ -1078,6 +1124,7 @@ module.exports = {
   isAutonomousStale,
   rehydrateAutonomousFromDisk,
   incrementAdversaryInvocation,
+  incrementAdversaryInvocationAsync,
   getAutonomousConfig,
   _resetAutonomousCacheForTests,
 

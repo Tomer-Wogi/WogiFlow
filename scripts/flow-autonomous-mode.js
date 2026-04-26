@@ -97,7 +97,15 @@ function finalize({ endReason = 'queue-drained', completed = [] } = {}) {
  * POST one or more COMPLETION-SUMMARY lines to the manager's channel-dispatch
  * HTTP bus. Synchronous + best-effort — finalize() must not throw if the
  * manager is unreachable.
+ *
+ * CL-003 fix (2026-04-26): per-call timeout reduced from 5s → 2s. On any
+ * failure, abort the remaining chunks and bubble up a coherent error
+ * (instead of looping through 5×N seconds and leaving the manager with a
+ * partial chunk set). Worst-case wall-clock cost: ~2s × 1 (first failure
+ * short-circuits) instead of unbounded N×5s for chunked payloads.
  */
+const POST_TIMEOUT_MS = 2000;
+
 function postSummaryToManager(payload) {
   const { execFileSync } = require('node:child_process');
   const ws = require('./flow-workspace-summary');
@@ -106,14 +114,26 @@ function postSummaryToManager(payload) {
   const lines = ws.encodeMessage(enriched);
   const port = process.env.WOGI_MANAGER_PORT || '8800';
   const repo = process.env.WOGI_REPO_NAME;
+  let sent = 0;
   for (const line of lines) {
-    execFileSync('curl', [
-      '-s', '-X', 'POST',
-      `http://127.0.0.1:${port}`,
-      '-H', `X-Wogi-From: ${repo}`,
-      '-H', `X-Wogi-TaskId: ${taskId}`,
-      '--data-binary', line
-    ], { stdio: 'ignore', timeout: 5000 });
+    try {
+      execFileSync('curl', [
+        '-s', '--fail', '-X', 'POST',
+        `http://127.0.0.1:${port}`,
+        '-H', `X-Wogi-From: ${repo}`,
+        '-H', `X-Wogi-TaskId: ${taskId}`,
+        '--data-binary', line
+      ], { stdio: 'ignore', timeout: POST_TIMEOUT_MS });
+      sent++;
+    } catch (err) {
+      // Short-circuit on first failure: don't waste 2s × remaining chunks.
+      // Manager already received `sent` chunks (possibly 0); throw a
+      // coherent error so finalize() can record it on result.posted.
+      const total = lines.length;
+      throw new Error(
+        `manager-unreachable after ${sent}/${total} chunks: ${err.message}`
+      );
+    }
   }
 }
 
