@@ -307,109 +307,28 @@ function autoCorrectCode(code, filePath, projectConfig = null) {
     return { corrected: code, corrections: [] };
   }
 
-  // Load project context from config if not provided
   const ctx = projectConfig?.projectContext ?? getProjectContext();
-
-  let corrected = code;
   const corrections = [];
 
-  // 1. Remove forbidden imports (from config, defaults to ['React'])
-  const doNotImport = ctx.doNotImport || ['React'];
-  for (const forbidden of doNotImport) {
-    // Case A: Default import - "import X from '...'"
-    const defaultImportRegex = new RegExp(`^import ${forbidden} from ['"][^'"]+['"];?\\s*\\n?`, 'gm');
-    if (defaultImportRegex.test(corrected)) {
-      corrected = corrected.replace(defaultImportRegex, '');
-      corrections.push(`Removed forbidden import: ${forbidden}`);
-    }
+  // Lazy-load the helpers — avoids module-load-order issues with the
+  // legacy CLI bootstrap at the bottom of this file.
+  const c = require('./flow-orchestrate-corrections');
 
-    // Case B: Combined with named imports - "import X, { y, z } from '...'"
-    const combinedImportRegex = new RegExp(`^import ${forbidden},\\s*(\\{[^}]+\\})\\s+from\\s+(['"][^'"]+['"])`, 'gm');
-    if (combinedImportRegex.test(corrected)) {
-      corrected = corrected.replace(combinedImportRegex, 'import $1 from $2');
-      corrections.push(`Removed ${forbidden} from combined import`);
-    }
-
-    // Case C: Namespace import - "import * as X from '...'"
-    const namespaceImportRegex = new RegExp(`^import \\* as ${forbidden} from ['"][^'"]+['"];?\\s*\\n?`, 'gm');
-    if (namespaceImportRegex.test(corrected)) {
-      corrected = corrected.replace(namespaceImportRegex, '');
-      corrections.push(`Removed namespace import: ${forbidden}`);
-    }
+  let corrected = code;
+  for (const step of [
+    () => c.fixForbiddenImports(corrected, ctx.doNotImport),
+    () => c.fixComponentPaths(corrected, ctx.componentPaths),
+    () => c.fixFeatureTypePaths(corrected, filePath, ctx.typePaths),
+    () => c.fixNoExternalUtils(corrected, ctx),
+    () => c.normalizeQuotes(corrected),
+    () => c.cleanupEmptyImports(corrected),
+    () => c.collapseBlankLines(corrected)
+  ]) {
+    const r = step();
+    corrected = r.corrected;
+    if (r.corrections.length) corrections.push(...r.corrections);
   }
 
-  // 2. Fix component paths based on config mappings
-  const componentPaths = ctx.componentPaths ?? {};
-
-  // Build reverse mapping from shadcn-style to project paths
-  // @/components/ui/button → project's Button path
-  const shadcnPattern = /@\/components\/ui\/(\w+)/g;
-  corrected = corrected.replace(shadcnPattern, (match, component) => {
-    const capitalName = component.charAt(0).toUpperCase() + component.slice(1);
-    const configPath = componentPaths[capitalName];
-    if (configPath) {
-      corrections.push(`Fixed import: ${match} → ${configPath}`);
-      return configPath;
-    }
-    return match; // Leave as-is if no mapping
-  });
-
-  // 3. Fix type paths for features (from config)
-  const typePaths = ctx.typePaths || { features: '../api/types' };
-  if (filePath && filePath.includes('/features/') && typePaths.features) {
-    const wrongPaths = ["'../types'", '"../types"', "'./types'", '"./types"'];
-    for (const wrong of wrongPaths) {
-      if (corrected.includes(wrong)) {
-        corrected = corrected.replace(new RegExp(wrong.replace(/['"]/g, '[\'"]'), 'g'), `'${typePaths.features}'`);
-        corrections.push('Fixed type import path');
-      }
-    }
-  }
-
-  // 4. Remove external utils if configured (noExternalUtils: true)
-  if (ctx.noExternalUtils && corrected.includes('@/lib/utils')) {
-    const hadFormatCurrency = corrected.includes('formatCurrency');
-    const hadCn = corrected.includes(' cn(') || corrected.includes(' cn`');
-
-    // Remove the import
-    corrected = corrected.replace(/^import.*from ['"]@\/lib\/utils['"];?\s*\n?/gm, '');
-    corrections.push('Removed @/lib/utils import');
-
-    // Inline formatCurrency if it was used
-    if (hadFormatCurrency) {
-      const formatCurrencyFn = `\nconst formatCurrency = (amount: number) =>\n  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);\n`;
-      // Insert after imports
-      const lastImportMatch = corrected.match(/^import[^;]+;?\s*\n/gm);
-      if (lastImportMatch) {
-        const lastImport = lastImportMatch[lastImportMatch.length - 1];
-        const insertPos = corrected.lastIndexOf(lastImport) + lastImport.length;
-        corrected = corrected.slice(0, insertPos) + formatCurrencyFn + corrected.slice(insertPos);
-      }
-      corrections.push('Inlined formatCurrency');
-    }
-
-    // Remove cn() usage - just use template literals or className directly
-    if (hadCn) {
-      corrected = corrected.replace(/cn\((['"`][^'"`]+['"`])\)/g, '$1');
-      corrections.push('Removed cn() wrapper');
-    }
-  }
-
-  // 5. Fix double-quoted imports to single quotes (style consistency)
-  const singleQuoteCount = (corrected.match(/from '/g) || []).length;
-  const doubleQuoteCount = (corrected.match(/from "/g) || []).length;
-  if (singleQuoteCount > doubleQuoteCount && doubleQuoteCount > 0) {
-    corrected = corrected.replace(/from "([^"]+)"/g, "from '$1'");
-    corrections.push('Normalized import quotes to single quotes');
-  }
-
-  // 6. Remove empty import statements (artifact of removing imports)
-  corrected = corrected.replace(/^import\s*\{\s*\}\s*from\s*['"][^'"]+['"];?\s*\n?/gm, '');
-
-  // 7. Fix multiple consecutive blank lines (cleanup)
-  corrected = corrected.replace(/\n{3,}/g, '\n\n');
-
-  // Log corrections if any
   if (corrections.length > 0 && typeof log === 'function') {
     log('dim', `   🔧 Auto-corrected: ${corrections.join(', ')}`);
   }
