@@ -31,7 +31,10 @@ const AUTHORITY_LEVELS = {
   'agent-decides': 'Agent decides autonomously, reports in completion summary',
   'agent-decides-report-after': 'Agent decides, explicitly reports the decision after',
   'owner-decides': 'Present to user, wait for answer before proceeding',
-  'auto-fix-report-after': 'Agent fixes automatically, reports what was fixed'
+  'auto-fix-report-after': 'Agent fixes automatically, reports what was fixed',
+  // Autonomous-mode buckets (Story C / wf-d712002e)
+  'queue-for-review': 'Autonomous mode: append to question queue, render in completion summary',
+  'adversary-loop': 'Autonomous mode: invoke self-adversarial challenge, then queue if still <90% confidence'
 };
 
 const DEFAULT_AUTHORITY_CONFIG = {
@@ -122,16 +125,55 @@ function getAuthorityConfig() {
 }
 
 /**
- * Classify a decision text into a category
+ * Resolve the autonomous flag. Caller may pass an explicit boolean to override
+ * the session-state lookup (used by tests and by call sites that already know
+ * the flag).
+ *
+ * Default: read from session-state cache via flow-session-state. The cache is
+ * populated by SessionStart rehydration, so hot-path callers do not pay for
+ * a disk read.
+ */
+function resolveAutonomous(autonomousArg) {
+  if (typeof autonomousArg === 'boolean') return autonomousArg;
+  try {
+    const { isAutonomousActive } = require('./flow-session-state');
+    return isAutonomousActive();
+  } catch (_err) {
+    return false;
+  }
+}
+
+/**
+ * Apply autonomous-mode overrides to a base authority decision.
+ * Applied AFTER the base classification so that batch-overflow only fires for
+ * decisions the autonomous override did not handle (Blocker 1 fix).
+ */
+function applyAutonomousOverride(baseAuthority, { category, confidence }) {
+  if (confidence === 'low') {
+    return 'adversary-loop';
+  }
+  if (baseAuthority === 'owner-decides') {
+    if (category === 'productBehavior' || category === 'ux') {
+      return 'queue-for-review';
+    }
+  }
+  return baseAuthority;
+}
+
+/**
+ * Classify a decision text into a category.
+ *
  * @param {string} decisionText - The decision to classify
+ * @param {object} [options]
+ * @param {boolean} [options.autonomous] - Force autonomous mode on/off. When
+ *   omitted, reads from session-state cache.
  * @returns {{ category: string, authority: string, confidence: string }}
  */
-function classifyDecision(decisionText) {
+function classifyDecision(decisionText, options = {}) {
   const authorityConfig = getAuthorityConfig();
-  // Patterns already use /i flag, no need for toLowerCase()
+  const autonomous = resolveAutonomous(options.autonomous);
   const text = decisionText;
 
-  // Score each category
   const scores = {};
   for (const [category, patterns] of Object.entries(CATEGORY_PATTERNS)) {
     scores[category] = 0;
@@ -142,8 +184,7 @@ function classifyDecision(decisionText) {
     }
   }
 
-  // Find highest scoring category
-  let bestCategory = 'productBehavior'; // Default to owner-decides (safest)
+  let bestCategory = 'productBehavior';
   let bestScore = 0;
 
   for (const [category, score] of Object.entries(scores)) {
@@ -153,21 +194,25 @@ function classifyDecision(decisionText) {
     }
   }
 
-  // Determine confidence
   const totalMatches = Object.values(scores).reduce((a, b) => a + b, 0);
   let confidence = 'low';
   if (bestScore >= 3) confidence = 'high';
   else if (bestScore >= 2) confidence = 'medium';
   else if (bestScore === 1 && totalMatches <= 2) confidence = 'medium';
 
-  // Low-confidence decisions default to owner-decides for safety
-  const authority = confidence === 'low'
+  const baseAuthority = confidence === 'low'
     ? 'owner-decides'
     : (authorityConfig[bestCategory] ?? 'owner-decides');
+
+  const authority = autonomous
+    ? applyAutonomousOverride(baseAuthority, { category: bestCategory, confidence })
+    : baseAuthority;
 
   return {
     category: bestCategory,
     authority,
+    baseAuthority,
+    autonomous,
     confidence,
     score: bestScore,
     description: AUTHORITY_LEVELS[authority] ?? 'Unknown authority level'
@@ -179,25 +224,26 @@ function classifyDecision(decisionText) {
  * @param {string[]} decisions - Array of decision texts
  * @returns {{ classified: Object[], ownerQuestions: Object[], agentDecisions: Object[], truncated: boolean }}
  */
-function batchClassify(decisions) {
+function batchClassify(decisions, options = {}) {
   const authorityConfig = getAuthorityConfig();
   const maxOwner = authorityConfig.maxOwnerQuestionsPerBatch ?? 5;
+  const autonomous = resolveAutonomous(options.autonomous);
 
+  // Autonomous routing is applied per-decision FIRST (Blocker 1 fix).
+  // Batch-overflow only fires for decisions still routed to owner-decides
+  // after the autonomous override pass.
   const classified = decisions.map((text, idx) => ({
     index: idx,
     text,
-    ...classifyDecision(text)
+    ...classifyDecision(text, { autonomous })
   }));
 
-  // Separate owner-decides from agent-decides
   const ownerQuestions = classified.filter(d => d.authority === 'owner-decides');
   const agentDecisions = classified.filter(d => d.authority !== 'owner-decides');
 
-  // Enforce max owner questions — overflow becomes agent-decides-report-after
   let truncated = false;
   if (ownerQuestions.length > maxOwner) {
     truncated = true;
-    // Keep the first maxOwner, downgrade the rest
     const overflow = ownerQuestions.splice(maxOwner);
     for (const decision of overflow) {
       decision.authority = 'agent-decides-report-after';
@@ -214,10 +260,13 @@ function batchClassify(decisions) {
     agentDecisions,
     truncated,
     maxOwner,
+    autonomous,
     stats: {
       total: decisions.length,
       ownerDecides: ownerQuestions.length,
       agentDecides: agentDecisions.length,
+      queued: classified.filter(d => d.authority === 'queue-for-review').length,
+      adversaryLoop: classified.filter(d => d.authority === 'adversary-loop').length,
       downgraded: truncated ? agentDecisions.filter(d => d.downgraded).length : 0
     }
   };
@@ -349,6 +398,8 @@ module.exports = {
   batchClassify,
   getAuthorityConfig,
   updateCategoryAuthority,
+  applyAutonomousOverride,
+  resolveAutonomous,
   AUTHORITY_LEVELS,
   DEFAULT_AUTHORITY_CONFIG,
   CATEGORY_PATTERNS

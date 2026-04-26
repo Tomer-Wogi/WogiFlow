@@ -94,7 +94,11 @@ function getDefaultState() {
       count: 0,           // Number of bypasses in this session
       attempts: [],       // Array of bypass attempt details
       autoCreatedTasks: [] // Tasks that were auto-created (bypasses)
-    }
+    },
+    // Autonomous walk-away mode (Story C / wf-d712002e)
+    // active=true means the AI commits to running the queue without interrupting
+    // until it drains, the user sends "stop"/"pause", or the staleness threshold trips.
+    autonomousMode: null
   };
 }
 
@@ -916,6 +920,93 @@ if (require.main === module) {
 }
 
 // ============================================================
+// Autonomous Mode (Story C / wf-d712002e)
+// ============================================================
+//
+// Disk is canonical (survives SIGTERM at task-boundary-reset); cache is read-hot.
+// Hot-path hooks (PreToolUse) MUST use the cache; never re-read the disk file.
+
+const DEFAULT_AUTONOMOUS_STALENESS_MS = 60 * 60 * 1000;
+
+let autonomousModeCache = undefined;
+
+function getAutonomousConfig() {
+  const cfg = getConfig().autonomousMode || {};
+  return {
+    stalenessThresholdMs: cfg.stalenessThresholdMs ?? DEFAULT_AUTONOMOUS_STALENESS_MS,
+    maxAdversaryInvocations: cfg.maxAdversaryInvocations ?? 30,
+    maxQueueSize: cfg.maxQueueSize ?? 100
+  };
+}
+
+function activateAutonomousMode({ trigger } = {}) {
+  const runId = `auto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const record = {
+    active: true,
+    activatedAt: new Date().toISOString(),
+    trigger: trigger || 'unspecified',
+    runId,
+    adversaryInvocations: { used: 0, breakdown: { autonomousLowConfidence: 0, igrArchitect: 0, manual: 0 } }
+  };
+  saveSessionState({ autonomousMode: record });
+  autonomousModeCache = record;
+  return record;
+}
+
+function deactivateAutonomousMode() {
+  saveSessionState({ autonomousMode: null });
+  autonomousModeCache = null;
+}
+
+function getAutonomousMode() {
+  if (autonomousModeCache !== undefined) return autonomousModeCache;
+  const state = loadSessionState();
+  autonomousModeCache = state.autonomousMode || null;
+  return autonomousModeCache;
+}
+
+function isAutonomousActive() {
+  const mode = getAutonomousMode();
+  return Boolean(mode && mode.active);
+}
+
+function isAutonomousStale(mode = getAutonomousMode()) {
+  if (!mode || !mode.activatedAt) return false;
+  const ageMs = Date.now() - new Date(mode.activatedAt).getTime();
+  return ageMs > getAutonomousConfig().stalenessThresholdMs;
+}
+
+function rehydrateAutonomousFromDisk() {
+  autonomousModeCache = undefined;
+  const mode = getAutonomousMode();
+  if (mode && mode.active && isAutonomousStale(mode)) {
+    deactivateAutonomousMode();
+    return { hydrated: false, reason: 'stale', staleMode: mode };
+  }
+  return { hydrated: Boolean(mode && mode.active), mode };
+}
+
+function incrementAdversaryInvocation(source = 'manual') {
+  const mode = getAutonomousMode();
+  if (!mode || !mode.active) return { allowed: true, used: 0, cap: 0 };
+  const cap = getAutonomousConfig().maxAdversaryInvocations;
+  const used = (mode.adversaryInvocations?.used ?? 0) + 1;
+  const breakdown = { ...(mode.adversaryInvocations?.breakdown || {}) };
+  const key = source === 'igr' ? 'igrArchitect'
+    : source === 'lowConfidence' ? 'autonomousLowConfidence'
+    : 'manual';
+  breakdown[key] = (breakdown[key] || 0) + 1;
+  const updated = { ...mode, adversaryInvocations: { used, breakdown } };
+  saveSessionState({ autonomousMode: updated });
+  autonomousModeCache = updated;
+  return { allowed: used <= cap, used, cap };
+}
+
+function _resetAutonomousCacheForTests() {
+  autonomousModeCache = undefined;
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -978,6 +1069,17 @@ module.exports = {
   hasWorkflowBypasses,
   getBypassSummary,
   clearBypassTracking,
+
+  // Autonomous mode (Story C / wf-d712002e)
+  activateAutonomousMode,
+  deactivateAutonomousMode,
+  getAutonomousMode,
+  isAutonomousActive,
+  isAutonomousStale,
+  rehydrateAutonomousFromDisk,
+  incrementAdversaryInvocation,
+  getAutonomousConfig,
+  _resetAutonomousCacheForTests,
 
   // Path
   SESSION_PATH
