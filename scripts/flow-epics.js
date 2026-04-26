@@ -79,10 +79,6 @@ function saveEpicsState(state) {
  * Load ready.json for task data
  * @returns {Object} Ready data
  */
-// loadReadyData replaced by canonical getReadyData from flow-utils (wf-7072d3ac / dup-007).
-// Kept as a thin shim for backward-compat of the module export at L812.
-function loadReadyData() { return getReadyData(); }
-
 // ============================================================
 // Epic File Operations
 // ============================================================
@@ -570,7 +566,7 @@ function updateEpicProgress(epicId) {
     return { error: `Epic ${epicId} not found` };
   }
 
-  const readyData = loadReadyData();
+  const readyData = getReadyData();
 
   let totalWeight = 0;
   let completedWeight = 0;
@@ -635,7 +631,7 @@ function buildHierarchyTree(epicId) {
   const epic = getEpic(epicId);
   if (!epic) return null;
 
-  const readyData = loadReadyData();
+  const readyData = getReadyData();
 
   const tree = {
     ...epic,
@@ -803,7 +799,6 @@ module.exports = {
   // State management
   loadEpicsState,
   saveEpicsState,
-  loadReadyData,
 
   // Epic operations
   createEpic,
