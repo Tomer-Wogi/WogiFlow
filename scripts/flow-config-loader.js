@@ -368,8 +368,9 @@ function invalidateConfigCache() {
 // Config Value Access
 // ============================================================
 
-// Dangerous property names that could lead to prototype pollution
-const DANGEROUS_CONFIG_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
+// Dangerous property names that could lead to prototype pollution.
+// Consolidated to flow-io canonical (audit dup-002 / wf-9fc4970b).
+const { DANGEROUS_KEYS: DANGEROUS_CONFIG_PROPS } = require('./flow-io');
 
 /**
  * Validate config path doesn't contain dangerous property names

@@ -16,6 +16,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { DANGEROUS_KEYS } = require('./flow-io');
 const {
   PROJECT_ROOT,
   parseFlags,
@@ -341,7 +342,7 @@ function applyTemplate(template, data) {
   }
 
   // Forbidden keys to prevent prototype pollution (case-insensitive)
-  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+  // Consolidated to flow-io canonical (audit dup-002 / wf-9fc4970b).
 
   // Simple substitution: {{key}} or {{object.key}}
   return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
@@ -351,7 +352,7 @@ function applyTemplate(template, data) {
     for (const key of keys) {
       // Prevent prototype pollution attacks (case-insensitive check)
       const keyLower = key.toLowerCase();
-      if (FORBIDDEN_KEYS.has(keyLower)) return match;
+      if (DANGEROUS_KEYS.has(keyLower)) return match;
       if (value === undefined || value === null) return match;
       // Only access own properties
       if (!Object.hasOwn(value, key)) return match;

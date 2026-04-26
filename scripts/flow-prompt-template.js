@@ -38,8 +38,9 @@ const MODEL_TEMPLATE_MAP = {
   'gemini-2-flash': 'gemini-flash.yaml'
 };
 
-// Blocked keys for security (prototype pollution prevention)
-const BLOCKED_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+// Blocked keys for security (prototype pollution prevention).
+// Consolidated to flow-io canonical (audit dup-002 / wf-9fc4970b).
+const { DANGEROUS_KEYS: BLOCKED_KEYS } = require('./flow-io');
 
 // ============================================================
 // YAML Parser (lightweight, no dependency)

@@ -16,6 +16,7 @@
  */
 
 const path = require('node:path');
+const { DANGEROUS_KEYS } = require('./flow-io');
 const {
   PATHS,
   safeJsonParse,
@@ -695,11 +696,11 @@ function loadPendingCorrections() {
 // SEC-005 fix (2026-04-13): recursive prototype-pollution check for
 // array-rooted JSON. Returns true if __proto__/constructor/prototype found.
 function hasDangerousKeys(value) {
-  const dangerous = new Set(['__proto__', 'constructor', 'prototype']);
+  // Consolidated to flow-io canonical DANGEROUS_KEYS (audit dup-002 / wf-9fc4970b).
   const visit = (node, depth) => {
     if (depth > 8 || node === null || typeof node !== 'object') return false;
     for (const key of Object.getOwnPropertyNames(node)) {
-      if (dangerous.has(key)) return true;
+      if (DANGEROUS_KEYS.has(key)) return true;
       if (visit(node[key], depth + 1)) return true;
     }
     return false;
