@@ -97,6 +97,36 @@ function isLegacyTaskId(id) {
   return /^(TASK|BUG)-\d{3,}$/i.test(id);
 }
 
+/**
+ * Coarse ID validation used at task-write time. Accepts any valid Wogi ID
+ * shape (task, sub-task, review-fix, review-finding, epic, feature, plan,
+ * slug, legacy). Returns boolean — for finer-grained format detection use
+ * `validateTaskId()`.
+ *
+ * Extracted from flow-utils.js (audit Story 12 — flow-utils decomposition,
+ * pattern-validator extraction). flow-utils.js keeps this name as a
+ * re-export for backwards compat with its 302 importers.
+ *
+ * @param {string} id
+ * @returns {boolean}
+ */
+function isValidWogiId(id) {
+  if (!id || typeof id !== 'string') return false;
+  // Standard task, sub-task, review fix (wf-cr-), review finding (wf-rv-)
+  if (/^wf-[a-f0-9]{8}(-\d{2})?$/i.test(id)) return true;
+  if (/^wf-cr-[a-f0-9]{6}$/i.test(id)) return true;
+  if (/^wf-rv-[a-f0-9]{8}$/i.test(id)) return true;
+  // Epic, feature, plan IDs
+  if (/^(ep|ft|pl)-[a-f0-9]{8}$/i.test(id)) return true;
+  // Slug format: wf-<alphanum>[<alphanum or hyphen>]*<alphanum>, 5-64 chars.
+  // For manager-dispatched descriptive IDs. Path-safe (no dots/separators).
+  // Keep this in sync with validateTaskId() 'slug' branch above.
+  if (/^wf-[a-z0-9][a-z0-9-]{0,60}[a-z0-9]$/i.test(id)) return true;
+  // Legacy format
+  if (/^(TASK|BUG)-\d{3,}$/i.test(id)) return true;
+  return false;
+}
+
 module.exports = {
   generateHashId,
   generateTaskId,
@@ -105,4 +135,5 @@ module.exports = {
   generatePlanId,
   validateTaskId,
   isLegacyTaskId,
+  isValidWogiId,
 };

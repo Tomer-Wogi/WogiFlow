@@ -129,6 +129,7 @@ const {
   generatePlanId,
   validateTaskId,
   isLegacyTaskId,
+  isValidWogiId,
 } = require('./flow-id');
 
 // ============================================================
@@ -254,22 +255,8 @@ function invalidateReadyDataCache() {
  * @param {string} id - ID to check
  * @returns {boolean}
  */
-function isValidWogiId(id) {
-  if (!id || typeof id !== 'string') return false;
-  // Standard task, sub-task, review fix (wf-cr-), review finding (wf-rv-)
-  if (/^wf-[a-f0-9]{8}(-\d{2})?$/i.test(id)) return true;
-  if (/^wf-cr-[a-f0-9]{6}$/i.test(id)) return true;
-  if (/^wf-rv-[a-f0-9]{8}$/i.test(id)) return true;
-  // Epic, feature, plan IDs
-  if (/^(ep|ft|pl)-[a-f0-9]{8}$/i.test(id)) return true;
-  // Slug format: wf-<alphanum>[<alphanum or hyphen>]*<alphanum>, 5-64 chars.
-  // For manager-dispatched descriptive IDs. Path-safe (no dots/separators).
-  // Keep this in sync with validateTaskId() 'slug' branch in flow-id.js.
-  if (/^wf-[a-z0-9][a-z0-9-]{0,60}[a-z0-9]$/i.test(id)) return true;
-  // Legacy format
-  if (/^(TASK|BUG)-\d{3,}$/i.test(id)) return true;
-  return false;
-}
+// isValidWogiId — extracted to flow-id.js (audit Story 12 partial — pattern
+// validator). Re-exported below for backwards compat with 302 importers.
 
 /**
  * Validate all task IDs in a ready.json data object before writing.
