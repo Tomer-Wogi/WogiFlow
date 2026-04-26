@@ -387,8 +387,62 @@ class BaseScanner {
         }
       });
 
-      // Pass 2: Collect all exported names
+      // Pass 2: Collect all exported names (handles BOTH ESM `export` and
+      // CommonJS `module.exports`/`exports` patterns).
+      // arch-005 fix (2026-04-26): the original Babel scanner only handled
+      // ESM. wogi-flow's source is CommonJS, so all exports were invisible
+      // and function-map.md was empty after every scan.
       const exported = new Map();
+
+      // CJS helper: handle `module.exports = { ... }` and
+      // `module.exports.x = ...` and `exports.x = ...`.
+      const handleCjsExportAssignment = (assignNode) => {
+        const left = assignNode.left;
+        const right = assignNode.right;
+        if (!left || !right) return;
+
+        // Pattern: module.exports = { foo, bar, baz }
+        // or:      exports        = { foo, bar, baz }  (rare)
+        const isModuleExports =
+          left.type === 'MemberExpression' &&
+          left.object?.name === 'module' &&
+          left.property?.name === 'exports' &&
+          !left.computed;
+        const isBareExports =
+          left.type === 'Identifier' && left.name === 'exports';
+
+        if ((isModuleExports || isBareExports) && right.type === 'ObjectExpression') {
+          for (const prop of right.properties) {
+            if (prop.type === 'ObjectProperty' || prop.type === 'Property') {
+              // Shorthand: { foo }  → key = foo (identifier), value = foo
+              // Long form: { foo: bar }  → key = foo, value = bar (identifier)
+              const keyName = prop.key?.name || prop.key?.value;
+              if (typeof keyName === 'string' && keyName) {
+                exported.set(keyName, { isDefault: false });
+              }
+            }
+          }
+          return;
+        }
+
+        // Pattern: module.exports.foo = bar
+        //          exports.foo        = bar
+        // (left is MemberExpression where the property is the export name)
+        const isModuleExportsDotX =
+          left.type === 'MemberExpression' &&
+          left.object?.type === 'MemberExpression' &&
+          left.object.object?.name === 'module' &&
+          left.object.property?.name === 'exports';
+        const isExportsDotX =
+          left.type === 'MemberExpression' &&
+          left.object?.name === 'exports';
+        if (isModuleExportsDotX || isExportsDotX) {
+          const name = left.property?.name;
+          if (typeof name === 'string' && name) {
+            exported.set(name, { isDefault: false });
+          }
+        }
+      };
 
       this.traverse(ast, {
         ExportNamedDeclaration: (nodePath) => {
@@ -415,6 +469,10 @@ class BaseScanner {
           } else if (decl.type === 'Identifier') {
             exported.set(decl.name, { isDefault: true });
           }
+        },
+        // CommonJS exports — `module.exports = { ... }`, `exports.x = ...`
+        AssignmentExpression: (nodePath) => {
+          handleCjsExportAssignment(nodePath.node);
         }
       });
 
@@ -454,6 +512,24 @@ class BaseScanner {
         const name = spec.trim().split(/\s+as\s+/)[0].trim();
         if (name) exported.add(name);
       }
+    }
+
+    // CommonJS: module.exports = { foo, bar, baz }
+    // arch-005 fix (2026-04-26): regex fallback was ESM-only, missing all
+    // CJS exports. Same gap as the Babel scanner had.
+    const cjsObjectExportRegex = /module\.exports\s*=\s*\{([^}]+)\}/g;
+    while ((match = cjsObjectExportRegex.exec(content)) !== null) {
+      const specifiers = match[1].split(',');
+      for (const spec of specifiers) {
+        const name = spec.trim().split(/[:\s]/)[0].trim();
+        if (name && /^[a-zA-Z_$][\w$]*$/.test(name)) exported.add(name);
+      }
+    }
+
+    // CommonJS: module.exports.foo = ... or exports.foo = ...
+    const cjsDotExportRegex = /(?:module\.exports|^exports)\s*\.\s*([a-zA-Z_$][\w$]*)\s*=/gm;
+    while ((match = cjsDotExportRegex.exec(content)) !== null) {
+      exported.add(match[1]);
     }
 
     return exported;

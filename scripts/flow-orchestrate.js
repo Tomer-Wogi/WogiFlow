@@ -314,17 +314,23 @@ function autoCorrectCode(code, filePath, projectConfig = null) {
   // legacy CLI bootstrap at the bottom of this file.
   const c = require('./flow-orchestrate-corrections');
 
+  // CL-007 fix (2026-04-26): non-closure data-driven form. The previous
+  // array-of-closure form worked correctly under sequential iteration but
+  // would silently break under any future parallel/lazy execution because
+  // each closure captured `corrected` by reference. Using a plain
+  // step-name + args list is equally readable and closure-trap-free.
   let corrected = code;
-  for (const step of [
-    () => c.fixForbiddenImports(corrected, ctx.doNotImport),
-    () => c.fixComponentPaths(corrected, ctx.componentPaths),
-    () => c.fixFeatureTypePaths(corrected, filePath, ctx.typePaths),
-    () => c.fixNoExternalUtils(corrected, ctx),
-    () => c.normalizeQuotes(corrected),
-    () => c.cleanupEmptyImports(corrected),
-    () => c.collapseBlankLines(corrected)
-  ]) {
-    const r = step();
+  const steps = [
+    ['fixForbiddenImports', [ctx.doNotImport]],
+    ['fixComponentPaths', [ctx.componentPaths]],
+    ['fixFeatureTypePaths', [filePath, ctx.typePaths]],
+    ['fixNoExternalUtils', [ctx]],
+    ['normalizeQuotes', []],
+    ['cleanupEmptyImports', []],
+    ['collapseBlankLines', []]
+  ];
+  for (const [fn, args] of steps) {
+    const r = c[fn](corrected, ...args);
     corrected = r.corrected;
     if (r.corrections.length) corrections.push(...r.corrections);
   }

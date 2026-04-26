@@ -120,6 +120,49 @@ function isWorkspaceWorker() {
  * @param {Object} toolInput - { file_path } for Edit/Write
  * @returns {{ blocked: boolean, reason?: string, message?: string }}
  */
+// SEC-002 fix (2026-04-26): manager-side path discipline now derives member
+// state dirs from the actual workspace registry, not a hardcoded /members?/
+// regex. Workspaces with flat-sibling layouts (member dirs directly under
+// workspace root, no /members/ prefix) are now correctly enforced.
+//
+// Discovery is cached per-process for the WOGI_WORKSPACE_ROOT lifetime —
+// PreToolUse fires often, fs.readdir on every call would add latency.
+let _memberDirsCache = null;
+let _memberDirsCacheRoot = null;
+
+function discoverMemberStateDirs(root) {
+  if (_memberDirsCache && _memberDirsCacheRoot === root) return _memberDirsCache;
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const out = [];
+  try {
+    const entries = fs.readdirSync(root, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      // Skip hidden dirs (.workspace, .git) and node_modules (mirrors
+      // discoverMembers() in lib/workspace.js).
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const stateDir = path.join(root, entry.name, '.workflow', 'state');
+      // Only include paths that actually have a .workflow/state/ subtree —
+      // these are the member repos. Other directories (e.g. shared/, docs/,
+      // dist/) are not workspace members.
+      try {
+        if (fs.existsSync(stateDir) && fs.statSync(stateDir).isDirectory()) {
+          out.push(stateDir + path.sep);
+        }
+      } catch (_e) { /* skip unreadable */ }
+    }
+  } catch (_err) { /* unreadable workspace root → empty list */ }
+  _memberDirsCache = out;
+  _memberDirsCacheRoot = root;
+  return out;
+}
+
+function _resetPathDisciplineCache() {
+  _memberDirsCache = null;
+  _memberDirsCacheRoot = null;
+}
+
 function checkPathDiscipline(toolName, toolInput) {
   if (!process.env.WOGI_WORKSPACE_ROOT) return { blocked: false };
   const writeTools = new Set(['Edit', 'Write', 'NotebookEdit']);
@@ -128,9 +171,8 @@ function checkPathDiscipline(toolName, toolInput) {
   if (typeof filePath !== 'string' || !filePath) return { blocked: false };
 
   const repo = process.env.WOGI_REPO_NAME || '';
-  const root = process.env.WOGI_WORKSPACE_ROOT;
-  const managerStateDir = `${root.replace(/\/+$/, '')}/.workspace/`;
-  const memberStateDirRegex = /\/members?\/[^/]+\/\.workflow\/state\//;
+  const root = process.env.WOGI_WORKSPACE_ROOT.replace(/\/+$/, '');
+  const managerStateDir = `${root}/.workspace/`;
 
   if (repo && repo !== 'manager') {
     if (filePath.startsWith(managerStateDir)) {
@@ -151,19 +193,27 @@ function checkPathDiscipline(toolName, toolInput) {
     }
   }
 
-  if (repo === 'manager' && memberStateDirRegex.test(filePath)) {
-    return {
-      blocked: true,
-      reason: 'path-discipline-manager',
-      message: [
-        `PATH DISCIPLINE: manager MUST NOT write to worker member-repo state.`,
-        ``,
-        `Blocked: ${filePath}`,
-        ``,
-        `Worker member-repos own their own .workflow/state/. Send a channel`,
-        `dispatch to the worker if state changes are needed there.`
-      ].join('\n')
-    };
+  if (repo === 'manager') {
+    // Match against EVERY discovered member's .workflow/state/ path —
+    // layout-independent. (SEC-002 fix; was hardcoded /members?/ regex)
+    const memberStateDirs = discoverMemberStateDirs(root);
+    for (const memberStateDir of memberStateDirs) {
+      if (filePath.startsWith(memberStateDir)) {
+        return {
+          blocked: true,
+          reason: 'path-discipline-manager',
+          message: [
+            `PATH DISCIPLINE: manager MUST NOT write to worker member-repo state.`,
+            ``,
+            `Blocked: ${filePath}`,
+            `Member: ${memberStateDir}`,
+            ``,
+            `Worker member-repos own their own .workflow/state/. Send a channel`,
+            `dispatch to the worker if state changes are needed there.`
+          ].join('\n')
+        };
+      }
+    }
   }
 
   return { blocked: false };
@@ -172,5 +222,6 @@ function checkPathDiscipline(toolName, toolInput) {
 module.exports = {
   checkWorkerBoundary,
   checkPathDiscipline,
+  _resetPathDisciplineCache,
   isWorkspaceWorker
 };

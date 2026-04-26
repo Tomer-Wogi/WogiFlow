@@ -132,9 +132,32 @@ fi
 # worker's `.mcp.json` doesn't define `wogi-workspace-channel` (e.g.
 # this is not a workspace member), fall back to the empty MCP config
 # (the strip is harmless in non-workspace contexts).
+#
+# SEC-003 fix (2026-04-26): validate WOGI_WORKSPACE_ROOT before using it as
+# a destination path. Without validation, an attacker who can set the env
+# var could redirect the channel-only MCP config write to an arbitrary
+# path. Rules:
+#   1. Must be absolute (start with /).
+#   2. Must point to an existing directory.
+#   3. Must NOT contain '..' segments (traversal guard).
+# On any validation failure, fall back to $(pwd) which is bounded by the
+# current working directory.
 __wogi_empty_mcp_config=""
 if [ "$__wogi_strip_mcp" -eq 1 ]; then
-  __wogi_empty_mcp_config="${WOGI_WORKSPACE_ROOT:-$(pwd)}/.workflow/state/worker-channel-only-mcp.json"
+  __wogi_workspace_root_raw="${WOGI_WORKSPACE_ROOT:-}"
+  __wogi_workspace_root_safe=""
+  if [ -n "$__wogi_workspace_root_raw" ] \
+     && [ "${__wogi_workspace_root_raw#/}" != "$__wogi_workspace_root_raw" ] \
+     && [ -d "$__wogi_workspace_root_raw" ] \
+     && [ "${__wogi_workspace_root_raw#*..}" = "$__wogi_workspace_root_raw" ]; then
+    __wogi_workspace_root_safe="$__wogi_workspace_root_raw"
+  else
+    __wogi_workspace_root_safe="$(pwd)"
+    if [ -n "$__wogi_workspace_root_raw" ]; then
+      echo "[wogi-claude] WARNING: WOGI_WORKSPACE_ROOT='$__wogi_workspace_root_raw' failed validation (must be absolute, exist, no '..'); falling back to $(pwd)" >&2
+    fi
+  fi
+  __wogi_empty_mcp_config="$__wogi_workspace_root_safe/.workflow/state/worker-channel-only-mcp.json"
   __wogi_member_mcp_path="$(pwd)/.mcp.json"
   if command -v node >/dev/null 2>&1; then
     # Use the dedicated helper (testable; see tests/flow-worker-mcp-strip.test.js).
