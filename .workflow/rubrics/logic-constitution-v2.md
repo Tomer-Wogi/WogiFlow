@@ -33,7 +33,7 @@ Overall verdict:
 
 ---
 
-## The 11 principles (with 4 sub-principles under P11)
+## The 11 principles (with 5 sub-principles under P11)
 
 ### 1. Literal vs. intended ask
 <!-- PIN: p1-literal-vs-intended -->
@@ -372,6 +372,46 @@ P11.3 (Existing-feature compatibility) covers the **sideways** dimension — fea
 - *"We can add the integration test later"* — later is "after the regression ships". P11.4's whole point is preventing that.
 
 **Enforcement**: Pre-release gate (`flow done` for `release` task type) reads the changeset against the prior release tag. For each commit, infers whether it layers on a prior commit in the same range; if yes, requires a Tier-3 marker (`// regression-tier3` or equivalent in commit message) before allowing the release to ship. Missing marker + stacked commits = block release. (Implementation work: see follow-up after this sub-principle lands.)
+
+---
+
+### Sub-principle 11.5 — Temporal Source Coverage
+
+**Added 2026-04-27 after the wogi-hub Customers > Services incident**: a ~50-line user spec for a UI page was compressed by the manager into a 5-bullet "owner-locked decisions" channel-dispatch message that became the contract for downstream worker dispatch. The worker built the contract correctly; the contract was wrong. 5 of 12 user-named features survived from prompt → spec → build. The Adversary couldn't catch it because the Adversary saw only the spec, not the original prompt.
+
+P11.4 catches **VERTICAL stacking** (Story B layered on Story A's broken infrastructure). P11.5 catches **TEMPORAL stacking** (today's spec layered on yesterday's user prompt, with prompt items silently dropped at the spec-authoring step).
+
+**For every spec, dispatch message, or artifact derived from a multi-item user prompt (>40 lines OR ≥5 discrete items), the Adversary demands:**
+
+- **T1 — Verbatim source preserved.** The artifact MUST contain a `## Original Request (verbatim)` block with the user's prompt unmodified. Adversary cites the line range. Missing block = HARD FAIL.
+
+- **T2 — Item manifest reconciles every source item.** Each item is either mapped to an explicit AC OR marked `defer-with-reason: <user-cited reason>`. Silent dropping is forbidden. AI-judged "low priority" is NOT a valid deferral reason — the user must have said the deferral.
+
+- **T3 — Adversary diffs source against spec.** The Adversary lists every item in the verbatim source NOT addressed by the spec. Missing items → BLOCK with citation. The Adversary's job is finding what the spec lost — same epistemology as Tier-3 evidence for the cross-story case (P11.4).
+
+- **T4 — Channel-dispatch carries source link.** Manager-to-worker dispatches that create work MUST include verbatim source OR explicit path to a spec file with verbatim source. Bare summary contracts → BLOCKED. The Adversary verifies dispatch messages have a source link before approving the dispatch.
+
+**Examples of P11.5 violations:**
+- Manager writes a 5-bullet "owner-locked decisions" message that becomes the worker's spec, with no link back to the user's original 50-line prompt. Worker builds 5 features instead of 12. **(The wogi-hub 2026-04-27 incident.)**
+- AI summarizes a Slack thread into a spec, dropping items it judged "low priority." User never sees the deferral and discovers the gap on review.
+- A long product prompt gets parsed into a feature dossier. The dossier is well-structured but loses the "rejected alternatives" the user explicitly mentioned. New stories reintroduce them.
+- Long-input gate fires and produces an item manifest, but the spec author summarizes the manifest into prose ACs instead of preserving it. Items lost in the prose-ification.
+
+**How to ground it (concrete checks):**
+- For every long-form prompt: copy verbatim into `## Original Request (verbatim)` of the resulting spec.
+- For every channel-dispatch from manager to worker: include the path to the spec file in the message body, not a paraphrase.
+- For every spec_review pass: read source + spec; for each source item, locate its corresponding AC or deferral line; if any source item has neither → flag as missed.
+
+**Enforcement (dual layer):**
+1. Methodology rule shipped via `methodology-rules.hbs` — every WogiFlow user sees it via CLAUDE.md regen.
+2. Adversary check (this principle) — runs on every L1+ spec.
+3. CLI verifier: `node scripts/flow-source-fidelity.js check <spec-file>` reports whether the spec contains the verbatim block, item manifest, and any unreconciled source items. Adversary may invoke this for Tier-2 evidence.
+
+**Anti-rationalizations the Adversary must reject:**
+- *"The summary captures the spirit of the prompt"* — spirit is interpretation; spec must address each item or explicitly defer with user-cited reason.
+- *"The user's prompt was redundant; my summary is cleaner"* — cleanliness is not authority to filter user-named items.
+- *"This is just an internal manager message; the user won't see it"* — that is exactly when the lossy step happens; verbatim preservation is more important here, not less.
+- *"The long-input gate already extracted the items"* — extraction without preservation as canonical doesn't help if downstream specs re-derive scope from the AI's interpretation.
 
 ---
 
