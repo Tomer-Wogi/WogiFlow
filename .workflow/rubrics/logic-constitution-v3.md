@@ -1,4 +1,4 @@
-<!-- PINS: overview, usage, p1-literal-vs-intended, p2-scope-boundary, p3-domain-coherence, p4-terminology-resolution, p5-prior-decision-alignment, p6-non-goal-violation, p7-existing-concept-reuse, p8-implicit-requirement-coverage, p9-user-journey-fit, p10-reversibility, p11-platform-capability-grounding, p11-4-edge-case-taxonomy, degraded-mode, output-schema, calibration, amending -->
+<!-- PINS: overview, usage, p1-literal-vs-intended, p2-scope-boundary, p3-domain-coherence, p4-terminology-resolution, p5-prior-decision-alignment, p6-non-goal-violation, p7-existing-concept-reuse, p8-implicit-requirement-coverage, p9-user-journey-fit, p10-reversibility, p11-platform-capability-grounding, p11-4-edge-case-taxonomy, p11-5-stacked-story-integration, p11-6-temporal-source-coverage, degraded-mode, output-schema, calibration, amending -->
 
 # Logic Constitution v3
 <!-- PIN: overview -->
@@ -430,6 +430,73 @@ What remains are 5 categories that are: (a) unique, (b) load-bearing for real pa
 **This principle ALWAYS runs for any mechanism that introduces behavior** (new hooks, wrappers, CLIs, state files, config keys, session-lifecycle changes). It does NOT run for pure content changes (docs, comments, formatting).
 
 **Meta-lesson for the Adversary**: pre-generation is worth slightly higher token cost because catching one architectural gap at plan-time is cheaper than debugging it post-ship. The user will always catch edge cases from their lived experience; P11.4 is about reducing those catches from "critical gap" to "small refinement on already-robust plan."
+
+### Sub-principle 11.5 — Stacked-story integration verification
+
+**Added 2026-04-26 after the audit-channel-transport-001 incident (wogi-flow v2.29.0 → v2.29.1 hotfix)**: Story A added worker MCP-stripping for boot speed by writing `{"mcpServers":{}}`. Story B layered task-completion summary routing on top via `workspace_send_message`. Both stories' unit tests passed. Both shipped. Manager→worker dispatch silently failed in production because Story A had stripped the `wogi-workspace-channel` MCP server itself — the very transport Story B's routing relied on. Self-IGR caught Story B's local correctness but missed the cross-story dependency.
+
+P11.3 (Existing-feature compatibility) covers the **sideways** dimension — features that already exist and may interact. P11.5 covers the **vertical** dimension — features layered on top of other features in the same release/epic. The sibling check is "what else does this?"; the stack check is "what does this depend on, and is that dependency still intact for THIS usage?".
+
+**For every plan that uses, extends, or reads from output of an earlier story or commit (in the same release window or earlier), the Adversary demands:**
+
+- **V1 — Name the upstream contract.** Which prior story/commit does this plan depend on? Quote the specific contract (interface signature, file format, transport, invariant). "Reusing Story A's X" without naming X = FAIL.
+- **V2 — Show the contract is intact for THIS usage.** The upstream story has its own tests; those pin the upstream's contract. They do NOT pin your usage of that contract. Cite empirical evidence (grep, run, file inspection) that the contract still holds at HEAD for the path your plan takes through it.
+- **V3 — Mandate a Tier-3 integration test.** A unit test of the new code in isolation does not satisfy V3. The test must simulate a real run through both the prior-story code and the new-story code, with the upstream output flowing into the downstream input. Mark with `// regression-tier3` for clarity.
+- **V4 — Pre-release stacked-coverage check.** Before tagging a release that contains stacked stories, confirm a Tier-3 integration test exists for each layer. A release with stacked-but-untested layers is gated.
+
+**Examples of P11.5 violations**:
+- Story B reuses Story A's state file but only unit-tests Story B's reader against a hand-written fixture. Failure mode: Story A's writer evolves, fixture goes stale, Story B reads garbage.
+- Story B uses an MCP transport Story A configured. Failure mode: Story A strips the transport for an unrelated optimization; Story B's wire calls go to a void. (The 2026-04-26 incident.)
+- Story B emits events that Story A's listener consumes. Failure mode: Story A's listener was conditional on a flag Story B doesn't set; events fire into nothing.
+
+**How to ground it**:
+- `git log --oneline <range>` — what just shipped that this layer depends on?
+- For each upstream commit, grep its diff for the interface/contract you rely on; run a smoke test that exercises it at HEAD.
+- Write the Tier-3 test BEFORE writing the new code. If the test can't be written without scaffolding, that's a signal the architecture needs that scaffolding too.
+
+**Anti-rationalizations the Adversary must reject**:
+- *"The upstream story has its own tests"* — those pin the upstream's contract, not your usage.
+- *"Self-IGR is enough; the actual adversary subagent isn't necessary here"* — self-IGR pattern-matches on the same model that wrote the plan; cross-story dependencies are exactly the blind spot a different-model adversary catches. P11.5 violations are common precisely because they LOOK locally correct.
+- *"We can add the integration test later"* — later is "after the regression ships". P11.5's whole point is preventing that.
+
+### Sub-principle 11.6 — Temporal Source Coverage
+
+**Added 2026-04-27 after the wogi-hub Customers > Services incident**: a ~50-line user spec for a UI page was compressed by the manager into a 5-bullet "owner-locked decisions" channel-dispatch message that became the contract for downstream worker dispatch. The worker built the contract correctly; the contract was wrong. 5 of 12 user-named features survived from prompt → spec → build. The Adversary couldn't catch it because the Adversary saw only the spec, not the original prompt.
+
+P11.5 catches **VERTICAL stacking** (Story B layered on Story A's broken infrastructure). P11.6 catches **TEMPORAL stacking** (today's spec layered on yesterday's user prompt, with prompt items silently dropped at the spec-authoring step).
+
+**For every spec, dispatch message, or artifact derived from a multi-item user prompt (>40 lines OR ≥5 discrete items), the Adversary demands:**
+
+- **T1 — Verbatim source preserved.** The artifact MUST contain a `## Original Request (verbatim)` block with the user's prompt unmodified. Adversary cites the line range. Missing block = HARD FAIL.
+
+- **T2 — Item manifest reconciles every source item.** Each item is either mapped to an explicit AC OR marked `defer-with-reason: <user-cited reason>`. Silent dropping is forbidden. AI-judged "low priority" is NOT a valid deferral reason — the user must have said the deferral.
+
+- **T3 — Adversary diffs source against spec.** The Adversary lists every item in the verbatim source NOT addressed by the spec. Missing items → BLOCK with citation.
+
+- **T4 — Channel-dispatch carries source link.** Manager-to-worker dispatches that create work MUST include verbatim source OR explicit path to a spec file with verbatim source. Bare summary contracts → BLOCKED.
+
+**Examples of P11.6 violations:**
+- Manager writes a 5-bullet "owner-locked decisions" message that becomes the worker's spec, with no link back to the user's original 50-line prompt. Worker builds 5 features instead of 12. **(The wogi-hub 2026-04-27 incident.)**
+- AI summarizes a Slack thread into a spec, dropping items it judged "low priority." User never sees the deferral and discovers the gap on review.
+- A long product prompt gets parsed into a feature dossier. The dossier is well-structured but loses the "rejected alternatives" the user explicitly mentioned. New stories reintroduce them.
+- Long-input gate fires and produces an item manifest, but the spec author summarizes the manifest into prose ACs instead of preserving it. Items lost in the prose-ification.
+
+**How to ground it (concrete checks):**
+- For every long-form prompt: copy verbatim into `## Original Request (verbatim)` of the resulting spec.
+- For every channel-dispatch from manager to worker: include the path to the spec file in the message body, not a paraphrase.
+- For every spec_review pass: read source + spec; for each source item, locate its corresponding AC or deferral line; if any source item has neither → flag as missed.
+
+**Enforcement (dual layer):**
+1. Methodology rule shipped via `methodology-rules.hbs` — every WogiFlow user sees it via CLAUDE.md regen.
+2. Adversary check (this principle) — runs on every L1+ spec.
+3. CLI verifier: `node scripts/flow-source-fidelity.js check <spec-file>` reports whether the spec contains the verbatim block, item manifest, and any unreconciled source items.
+4. UserPromptSubmit hook (`scripts/hooks/core/long-input-enforcement.js`) — when long-form prompt arrives without source-link AND with task signals, injects forcing instruction at top of additionalContext (worker-side fallback for the channel-dispatch failure shape).
+
+**Anti-rationalizations the Adversary must reject:**
+- *"The summary captures the spirit of the prompt"* — spirit is interpretation; spec must address each item or explicitly defer with user-cited reason.
+- *"The user's prompt was redundant; my summary is cleaner"* — cleanliness is not authority to filter user-named items.
+- *"This is just an internal manager message; the user won't see it"* — that is exactly when the lossy step happens; verbatim preservation is more important here, not less.
+- *"The long-input gate already extracted the items"* — extraction without preservation as canonical doesn't help if downstream specs re-derive scope from the AI's interpretation.
 
 ---
 

@@ -216,6 +216,82 @@ function readLongInputPending() {
   } catch (_err) { return null; }
 }
 
+/**
+ * PreToolUse gate consulting the long-input-pending marker.
+ * When the marker is present, blocks Edit/Write/Bash/Skill except for
+ * a small allowlist that's needed to either run extract-review or
+ * dismiss the marker. Returns the same `{blocked, reason?, message?}`
+ * shape as the other PreToolUse gates so it composes cleanly in
+ * pre-tool-orchestrator.
+ *
+ * Allowlist (these MUST stay reachable while the marker is present):
+ *   - Skill calls to `wogi-extract-review` (the way out)
+ *   - Skill calls to `wogi-start` only when args is `--bypass-long-input`
+ *     or `wogi-extract-review` (escape hatch routes)
+ *   - Bash calls invoking `flow long-input-pending dismiss` or the
+ *     extract-review CLI
+ *   - Read tool (no state changes)
+ *
+ * Everything else is blocked with a message redirecting to extract-review.
+ */
+function checkLongInputPendingGate(toolName, toolInput) {
+  if (!isLongInputPending()) return { blocked: false };
+
+  // Read tool is always allowed — investigation is fine while pending.
+  if (toolName === 'Read' || toolName === 'Glob' || toolName === 'Grep') {
+    return { blocked: false };
+  }
+
+  // Skill tool — allow only the way-out skills
+  if (toolName === 'Skill') {
+    const skill = (toolInput && toolInput.skill) || '';
+    const args = (toolInput && toolInput.args) || '';
+    if (skill === 'wogi-extract-review') return { blocked: false };
+    if (skill === 'wogi-start' && /(?:^|\s)(?:wogi-extract-review|--bypass-long-input)\b/.test(args)) {
+      return { blocked: false };
+    }
+    // Falls through to block
+  }
+
+  // Bash — allow the dismiss / extract-review CLI commands
+  if (toolName === 'Bash') {
+    const cmd = (toolInput && toolInput.command) || '';
+    if (/flow\s+long-input-pending\s+dismiss/.test(cmd)) return { blocked: false };
+    if (/flow\s+extract-zero-loss/.test(cmd)) return { blocked: false };
+    if (/flow\s+long-input/.test(cmd)) return { blocked: false };
+    if (/flow-source-fidelity\.js/.test(cmd)) return { blocked: false };
+    // Falls through to block for everything else
+  }
+
+  // Block Edit / Write / NotebookEdit unconditionally while pending
+  const payload = readLongInputPending();
+  const level = payload?.level || 'unknown';
+  const reason = payload?.reason || 'long-form prompt without source-link';
+  return {
+    blocked: true,
+    reason: 'long-input-pending',
+    message: [
+      '🚨 BLOCKED: long-input-pending marker is set.',
+      '',
+      `A long-form prompt was detected (level: ${level}, reason: ${reason})`,
+      'and you have not yet run /wogi-extract-review on it.',
+      '',
+      'Per P11.6 (Temporal Source Coverage), every item in the user\'s prompt',
+      'must be captured before any work begins. Compressing the prompt into a',
+      'spec or channel-dispatch is the wogi-hub failure shape — it loses items.',
+      '',
+      'To unblock:',
+      '  1. (RECOMMENDED) Invoke `Skill(skill="wogi-extract-review")` to run',
+      '     the 6-phase extraction pipeline. Marker auto-clears on completion.',
+      '  2. (ESCAPE HATCH) If this prompt genuinely does NOT create work',
+      '     (e.g., it\'s a log dump or pure question), dismiss with:',
+      '     `flow long-input-pending dismiss --reason="<concrete reason>"`',
+      '',
+      'Read/Glob/Grep tools remain available for investigation.'
+    ].join('\n')
+  };
+}
+
 module.exports = {
   PENDING_PATH,
   LONG_LINE_THRESHOLD,
@@ -230,5 +306,6 @@ module.exports = {
   clearLongInputPending,
   isLongInputPending,
   readLongInputPending,
+  checkLongInputPendingGate,
   countDiscreteItems
 };

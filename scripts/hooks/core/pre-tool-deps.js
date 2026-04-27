@@ -129,6 +129,17 @@ function loadGateDeps() {
     if (process.env.DEBUG) console.error(`[Hook] Worker boundary gate not loaded: ${_err.message}`);
   }
 
+  // Long-input-pending gate (P11.6 mechanical layer). Consults the marker
+  // file written by user-prompt-submit when a long-form prompt arrives
+  // without a source-link, and blocks mutating tools until the AI either
+  // runs /wogi-extract-review or dismisses the marker explicitly.
+  let checkLongInputPendingGate = _noop;
+  try {
+    checkLongInputPendingGate = require('./long-input-enforcement').checkLongInputPendingGate;
+  } catch (_err) {
+    if (process.env.DEBUG) console.error(`[Hook] Long-input-pending gate not loaded: ${_err.message}`);
+  }
+
   // CLI-agnostic helpers (not gates per se but consumed by the orchestrator)
   const { markSkillPending } = require('../../flow-durable-session');
   const { getConfig } = require('../../flow-utils');
@@ -161,6 +172,7 @@ function loadGateDeps() {
     checkDeployGate, checkWriteBlock,
     checkStrikeGate, checkBugfixScope, checkScopeMutation,
     checkGitSafety, checkManagerBoundary, checkWorkerBoundary, checkPathDiscipline,
+    checkLongInputPendingGate,
     // Side-effect helpers
     markSkillPending,
     // Config + runtime

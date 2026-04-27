@@ -244,3 +244,99 @@ describe('isChannelDispatchInWorker', () => {
     assert.equal(lie.isChannelDispatchInWorker('channel-dispatch', {}), false);
   });
 });
+
+describe('checkLongInputPendingGate', () => {
+  it('passes through everything when no marker is set', () => {
+    lie.clearLongInputPending();
+    assert.equal(lie.checkLongInputPendingGate('Edit', { file_path: 'foo.ts' }).blocked, false);
+    assert.equal(lie.checkLongInputPendingGate('Write', { file_path: 'foo.ts' }).blocked, false);
+    assert.equal(lie.checkLongInputPendingGate('Bash', { command: 'git status' }).blocked, false);
+  });
+
+  it('allows Read/Glob/Grep when marker is set', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(lie.checkLongInputPendingGate('Read', { file_path: 'foo.ts' }).blocked, false);
+    assert.equal(lie.checkLongInputPendingGate('Glob', { pattern: '*.ts' }).blocked, false);
+    assert.equal(lie.checkLongInputPendingGate('Grep', { pattern: 'foo' }).blocked, false);
+  });
+
+  it('allows Skill→wogi-extract-review when marker is set', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Skill', { skill: 'wogi-extract-review' }).blocked,
+      false
+    );
+  });
+
+  it('allows Skill→wogi-start with --bypass-long-input arg', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Skill', { skill: 'wogi-start', args: 'foo --bypass-long-input' }).blocked,
+      false
+    );
+  });
+
+  it('allows Skill→wogi-start that names wogi-extract-review in args', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Skill', { skill: 'wogi-start', args: 'wogi-extract-review' }).blocked,
+      false
+    );
+  });
+
+  it('blocks generic Skill→wogi-start when marker is set', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const result = lie.checkLongInputPendingGate('Skill', { skill: 'wogi-start', args: 'wf-12345678' });
+    assert.equal(result.blocked, true);
+    assert.equal(result.reason, 'long-input-pending');
+    assert.match(result.message, /BLOCKED: long-input-pending/);
+  });
+
+  it('allows Bash→flow long-input-pending dismiss', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Bash', { command: 'flow long-input-pending dismiss --reason="log dump"' }).blocked,
+      false
+    );
+  });
+
+  it('allows Bash→flow extract-zero-loss', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Bash', { command: 'flow extract-zero-loss <(cat prompt.txt)' }).blocked,
+      false
+    );
+  });
+
+  it('allows Bash→flow-source-fidelity verifier', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(
+      lie.checkLongInputPendingGate('Bash', { command: 'node scripts/flow-source-fidelity.js check spec.md' }).blocked,
+      false
+    );
+  });
+
+  it('blocks Bash→generic command', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const result = lie.checkLongInputPendingGate('Bash', { command: 'git commit -m "foo"' });
+    assert.equal(result.blocked, true);
+    assert.equal(result.reason, 'long-input-pending');
+  });
+
+  it('blocks Edit and Write when marker is set', () => {
+    lie.markLongInputPending({ level: 'strict', reason: 'channel-dispatch-without-source-link' });
+    const editResult = lie.checkLongInputPendingGate('Edit', { file_path: 'foo.ts' });
+    assert.equal(editResult.blocked, true);
+    assert.match(editResult.message, /channel-dispatch-without-source-link/);
+    const writeResult = lie.checkLongInputPendingGate('Write', { file_path: 'foo.ts', content: 'x' });
+    assert.equal(writeResult.blocked, true);
+    assert.match(writeResult.message, /strict/);
+  });
+
+  it('handles missing toolInput safely', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    assert.equal(lie.checkLongInputPendingGate('Edit', undefined).blocked, true);
+    assert.equal(lie.checkLongInputPendingGate('Bash', undefined).blocked, true);
+    assert.equal(lie.checkLongInputPendingGate('Skill', undefined).blocked, true);
+  });
+});

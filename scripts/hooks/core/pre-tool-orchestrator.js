@@ -41,6 +41,7 @@ const { parseSubagentContext, isAllGatesDisabled } = require('./pre-tool-helpers
  *   - checkDeployGate, checkWriteBlock
  *   - checkStrikeGate, checkBugfixScope, checkScopeMutation
  *   - checkGitSafety, checkManagerBoundary
+ *   - checkLongInputPendingGate
  *   - markSkillPending, getConfig, readHookStatus
  *   - getStrictAdherence
  * @returns {Object} coreResult
@@ -258,6 +259,27 @@ function runPreToolGates(ctx, deps) {
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[Hook] Worker boundary gate error (fail-open): ${err.message}`);
+    }
+  }
+
+  // Long-input-pending gate (P11.6 mechanical layer): if the prior
+  // UserPromptSubmit hook flagged this prompt as long-form-without-source-link
+  // and wrote the pending marker, block any mutating tool until extract-review
+  // runs or the user explicitly dismisses. This is the structural enforcement
+  // layer for the wogi-hub 2026-04-27 manager-compression failure.
+  if (typeof deps.checkLongInputPendingGate === 'function') {
+    try {
+      const liResult = deps.checkLongInputPendingGate(toolName, toolInput);
+      if (liResult.blocked) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: liResult.reason,
+          message: liResult.message,
+        };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Long-input-pending gate error (fail-open): ${err.message}`);
     }
   }
 

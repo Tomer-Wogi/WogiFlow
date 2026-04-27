@@ -2099,6 +2099,14 @@ async function finalizeDigestion(options = {}) {
     cleanupResult = cleanupTempFiles(activeDigest.session.digest_id);
   }
 
+  // 7. Clear the P11.6 long-input-pending marker — extraction is the
+  // documented "way out" of the gate, so finalize-success means the
+  // forcing reason is now resolved. Best-effort: a missing marker is
+  // expected when finalize was triggered without the gate firing.
+  try {
+    require('./hooks/core/long-input-enforcement').clearLongInputPending();
+  } catch (_err) { /* best-effort */ }
+
   return {
     success: true,
     approved_count: exportResult.summary.total_approved,
