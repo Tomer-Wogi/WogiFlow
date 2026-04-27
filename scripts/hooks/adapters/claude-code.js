@@ -421,11 +421,14 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       };
     }
 
-    // Compose additionalContext from up to four pieces:
-    //   1. systemReminder (research protocol) OR message (warning)
-    //   2. phasePrompt (phase-specific context)
-    //   3. overduePrompt (wf-d3e67abe — silent-halt surfacing, manager-only)
+    // Compose additionalContext from up to five pieces:
+    //   1. longInputEnforcement (P11.5 — placed FIRST so AI sees the
+    //      forcing instruction before anything else)
+    //   2. systemReminder (research protocol) OR message (warning)
+    //   3. phasePrompt (phase-specific context)
+    //   4. overduePrompt (wf-d3e67abe — silent-halt surfacing, manager-only)
     const pieces = [];
+    if (coreResult.longInputEnforcement) pieces.push(coreResult.longInputEnforcement);
     if (coreResult.systemReminder) pieces.push(coreResult.systemReminder);
     else if (coreResult.message) pieces.push(coreResult.message);
     if (coreResult.phasePrompt) pieces.push(coreResult.phasePrompt);

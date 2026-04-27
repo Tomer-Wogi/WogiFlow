@@ -14,6 +14,11 @@ const { setRoutingPending, clearRoutingPending, ROUTING_CLEARED_PATH } = require
 const { getPhaseContextPrompt } = require('../../core/phase-gate');
 const { buildOverdueContext } = require('../../core/overdue-dispatches');
 const { getDossierInjection } = require('../../core/feature-dossier-gate');
+const {
+  shouldForceExtractReview,
+  buildEnforcementMessage,
+  markLongInputPending
+} = require('../../core/long-input-enforcement');
 const { markSkillPending, loadDurableSession } = require('../../../flow-durable-session');
 const { captureCurrentPrompt } = require('../../../flow-prompt-capture');
 const { spawnBackgroundDetection } = require('../../../flow-correction-detector');
@@ -204,6 +209,34 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[Hook] Overdue dispatches check failed: ${err.message}`);
+    }
+  }
+
+  // P11.5 mechanical enforcement (2026-04-27): long-form prompts without
+  // source-link are forced through /wogi-extract-review. This is the
+  // mechanical layer that complements the methodology rule. Applies in
+  // worker mode (channel-dispatch with no source-link — wogi-hub failure
+  // shape) AND in any session that receives a long task-creating prompt
+  // without preserved source.
+  try {
+    const enforce = shouldForceExtractReview({ text: prompt, source });
+    if (enforce.forced) {
+      const msg = buildEnforcementMessage(enforce.reason, enforce.level);
+      coreResult = {
+        ...coreResult,
+        longInputEnforcement: msg
+      };
+      markLongInputPending({
+        level: enforce.level,
+        reason: enforce.reason,
+        promptPreview: typeof prompt === 'string' ? prompt.slice(0, 200) : '(non-string)',
+        source: source || null,
+        repoName: process.env.WOGI_REPO_NAME || null
+      });
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Hook] Long-input enforcement check failed: ${err.message}`);
     }
   }
 
