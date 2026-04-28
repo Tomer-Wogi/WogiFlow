@@ -1,6 +1,6 @@
 # WogiFlow
 
-A self-improving AI development workflow that learns from your feedback. Currently supports **Claude Code 2.1.33+**.
+A self-improving AI development workflow that learns from your feedback. Currently supports **Claude Code 2.1.33+**. Claude Code **2.1.121+** is recommended for native MCP startup retries (transient channel-server failures auto-recover), Bash resilience to deleted CWDs (worktree cleanup is safe mid-session), and `Always allow` permission persistence across worker restarts.
 
 ```bash
 npm install -D wogiflow
