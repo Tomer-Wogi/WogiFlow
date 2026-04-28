@@ -134,6 +134,40 @@ runHook('PostToolUse', async ({ parsedInput }) => {
     }
   }
 
+  // Deletion log (Fork C, v2.29.5): warn-only audit trail for AI
+  // deletions of user-facing UI files. Fire on Bash rm/git rm and
+  // Edit/Write that empty a UI-glob-matching path. Never blocks; just
+  // appends to .workflow/state/deletions-log.md.
+  if (!toolFailed) {
+    try {
+      const { recordDeletion } = require('../../core/deletion-log');
+      const { getConfig, PATHS } = require('../../../flow-utils');
+      const cfg = (() => {
+        try { return getConfig()?.hooks?.rules?.deletionLog || {}; }
+        catch (_err) { return {}; }
+      })();
+      // Read active task id (best-effort — not critical for the log)
+      let taskId = null;
+      try {
+        const { safeJsonParse: rj } = require('../../../flow-utils');
+        const ready = rj(require('node:path').join(PATHS.state, 'ready.json'), { inProgress: [] });
+        taskId = ready.inProgress?.[0]?.id || null;
+      } catch (_err) { /* fail-open */ }
+      recordDeletion({
+        toolName,
+        toolInput,
+        toolResponse,
+        sessionId: parsedInput.sessionId,
+        taskId,
+        config: cfg
+      });
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[post-tool-use] deletion-log: ${err.message}`);
+      }
+    }
+  }
+
   // Auto registry scan after successful git commit (fire-and-forget)
   if (toolName === 'Bash' && toolInput.command && !toolFailed) {
     const { isGitCommit } = require('../../core/commit-log-gate');
