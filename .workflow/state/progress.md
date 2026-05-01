@@ -1562,3 +1562,37 @@ All 14 closed stories had implementation artifacts already in-tree from prior se
 - ready.json queue: 4 ready tasks (2 epics + 2 CC-2.1.119 follow-ups); inProgress empty; 39 in recentlyCompleted
 - Commits NOT pushed to remote — user to decide when
 - User directive for remaining sessions: "I want everything done. I don't care about order." — execution order deferred to session-level judgment
+
+---
+
+## Session End: 2026-05-01
+
+### Completed
+- Reviewed Claude Code 2.1.126 release notes for WogiFlow impact
+- Created story wf-7d92c6be: "Extend PreToolUse Bash gates to cover PowerShell tool on Windows" (P1, L1)
+
+### In Progress
+- **wf-7d92c6be** — explore phase started, paused before Architect/Adversary
+  - Task moved to inProgress
+  - Audit completed: 13 `toolName === 'Bash'` references across **8 hook files** (initial spec assumed ~4)
+    - `pre-tool-orchestrator.js` (8 sites: 105, 181, 200, 308, 325, 359, 376, 410, 427, 448)
+    - `deletion-log.js:104`, `observation-capture.js:131,198`
+    - `strike-gate.js:281`, `routing-gate.js:296`
+    - `manager-boundary-gate.js:300`, `phase-gate.js:45,51,236`
+    - `long-input-enforcement.js:257`, `scope-mutation-gate.js:202`
+    - `post-tool-use.js:172`
+  - **Open question (Scenario 1 of spec)**: exact tool name CC emits for PowerShell — local Mach-O binary too minified to extract. Resolve via Anthropic public docs / changelog or live Windows test next session.
+  - Spec (`.workflow/changes/wf-7d92c6be.md`) needs updating to reflect 8-file audit before Architect pass.
+
+### Next Session — Resume wf-7d92c6be
+- Starting prompt: *"Resume wf-7d92c6be — explore phase. Resolve PowerShell tool name via Anthropic docs, update spec scope to 8 files, then Architect + Logic Adversary."*
+- First action: WebSearch Anthropic docs/changelog for the PowerShell tool definition (was not loaded in this session's tool budget).
+- Then: edit `.workflow/changes/wf-7d92c6be.md` to expand the audit list, run intent-framing pass, run Architect on a different model, run Logic Adversary, present spec for approval.
+
+### Other ready queue (unchanged)
+- wf-94cc3b72 (epic — Lift WogiFlow from C+ to A) — 15 stories pending
+
+### Notes
+- Claude Code 2.1.126 is installed locally (`/opt/homebrew/Caskroom/claude-code@latest/2.1.126/`)
+- Other 2.1.126 items reviewed and dismissed: fork-context fix (no fork-context skills in WogiFlow), `--dangerously-skip-permissions` expansion (orthogonal to PreToolUse hooks), `claude project purge` (doesn't touch `.workflow/`), empty-turn-hang fix (silent-halt false-positive reduction — no code change needed).
+- Commits NOT pushed to remote — user to decide.

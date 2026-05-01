@@ -1,6 +1,18 @@
 {
-  "lastUpdated": "2026-04-24T18:53:59.109Z",
-  "inProgress": [],
+  "lastUpdated": "2026-05-01T09:15:32.404Z",
+  "inProgress": [
+    {
+      "id": "wf-7d92c6be",
+      "title": "Extend PreToolUse Bash gates to cover PowerShell tool on Windows",
+      "type": "story",
+      "level": "L1",
+      "status": "in_progress",
+      "priority": "P1",
+      "created": "2026-05-01T09:03:32.443Z",
+      "specPath": ".workflow/changes/wf-7d92c6be.md",
+      "startedAt": "2026-05-01T09:15:32.403Z"
+    }
+  ],
   "ready": [
     {
       "id": "wf-94cc3b72",
@@ -30,354 +42,107 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    },
-    {
-      "id": "wf-a48fafdd",
-      "title": "Autonomous Epic Execution — end-to-end walk-away mode across solo + workspace",
-      "type": "epic",
-      "level": "L0",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-24T15:21:37.167Z",
-      "specPath": ".workflow/epics/wf-a48fafdd.md",
-      "stories": [
-        "wf-8294d960",
-        "wf-d712002e",
-        "wf-e28b6cd8",
-        "wf-ab59f0e4"
-      ],
-      "goal": "Walk-away autonomous mode across solo + workspace; 4 stories",
-      "waves": {
-        "1": [
-          "wf-8294d960"
-        ],
-        "2": [
-          "wf-d712002e",
-          "wf-e28b6cd8"
-        ],
-        "3": [
-          "wf-ab59f0e4"
-        ]
-      }
-    },
-    {
-      "id": "wf-d712002e",
-      "title": "Natural-Language Autonomous Mode (decision routing + question queue + summary)",
-      "type": "story",
-      "level": "L1",
-      "parentEpic": "wf-a48fafdd",
-      "wave": 2,
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-24T15:21:37.167Z",
-      "specPath": ".workflow/changes/wf-d712002e.md",
-      "dependencies": []
-    },
-    {
-      "id": "wf-e28b6cd8",
-      "title": "Epic Decompose-and-Run in One Pass (cascade after decomposition)",
-      "type": "story",
-      "level": "L1",
-      "parentEpic": "wf-a48fafdd",
-      "wave": 2,
-      "status": "ready",
-      "priority": "P2",
-      "created": "2026-04-24T15:21:37.167Z",
-      "specPath": ".workflow/changes/wf-e28b6cd8.md",
-      "dependencies": []
-    },
-    {
-      "id": "wf-ab59f0e4",
-      "title": "Workspace-Mode Epic Autonomy (worker cascade + manager summary aggregation)",
-      "type": "story",
-      "level": "L1",
-      "parentEpic": "wf-a48fafdd",
-      "wave": 3,
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-04-24T15:21:37.167Z",
-      "specPath": ".workflow/changes/wf-ab59f0e4.md",
-      "dependencies": [
-        "wf-8294d960"
-      ]
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
     {
-      "id": "wf-557cf08a",
-      "title": "Feature Dossier + Logic Rules System with mechanical auto-injection",
-      "type": "story",
-      "level": "L1",
+      "id": "wf-89aaab85",
+      "title": "Source Fidelity Rule (P11.5)",
+      "type": "task",
       "status": "completed",
       "priority": "P0",
-      "created": "2026-04-24T18:39:22.986Z",
-      "startedAt": "2026-04-24T18:39:22.986Z",
-      "criteria": [
-        "flow-feature-dossier.js library with matchFeatures/loadDossier/scaffoldDossier/appendEvent/validateSpec/detectDrift + CLI",
-        "flow-logic-rules.js library with listRules/matchRulesForFiles/checkPropagation/detectViolations + CLI",
-        ".workflow/features/ directory with README, index.json, _template.md, _logic-rules.md",
-        "feature-dossier-gate hook injects matching dossiers + rules into phase context on exploring/spec_review/coding",
-        "Contradiction gate blocks spec approval when spec conflicts with dossier canonical claims",
-        "Drift detector CLI subcommand greps codebase for patterns the dossier claims were removed",
-        "config.json featureDossier block added with enabled/autoMatchConfidence/blockOnContradiction/driftCheckOnSessionStart",
-        "CLAUDE.md rule section added explaining feature dossier system",
-        "Workspace-mode path resolution: .workspace/features/ for cross-repo, .workflow/features/ for per-repo",
-        "Unit tests for dossier + logic rules libraries"
-      ],
-      "notes": "User pre-authorized YOLO autonomous implementation (~1h window). Skip spec approval gate.",
-      "completedAt": "2026-04-24T18:53:59.108Z"
+      "source": "wogi-hub Customers > Services incident 2026-04-27",
+      "completedAt": "2026-04-27T07:08:59.242Z",
+      "note": "Source Fidelity Rule (P11.5) shipped: methodology rule + Logic Constitution sub-principle + CLI verifier with 18 tests + Tier-3 wogi-hub regression simulation."
     },
     {
-      "id": "wf-8294d960",
-      "title": "Worker Boot Latency Fix (Ink-readiness detection + SessionStart parallelization)",
-      "type": "story",
-      "level": "L1",
-      "parentEpic": "wf-a48fafdd",
-      "wave": 1,
+      "id": "wf-15d5be8b",
+      "title": "Fix all remaining review findings (arch-002 entry-file extractions + SEC-002/003 + CL-007 + MISS-1 + arch-005 babel scanner)",
+      "type": "task",
+      "status": "partial",
+      "priority": "P1",
+      "completedAt": "2026-04-26T14:48:08.165Z",
+      "note": "5 of 6 findings fully closed (arch-005, SEC-002, SEC-003, CL-007, Story 9 pre-tool-use). arch-002 remains 4-of-5 entry files unextracted (stop.js 424, session-start.js 373, post-tool-use.js 219, user-prompt-submit.js 217) — deferred per P11.4 supervised-IGR requirement."
+    },
+    {
+      "id": "wf-57a5b2c5",
+      "title": "Fix 17 review findings from /wogi-review",
+      "type": "task",
       "status": "completed",
       "priority": "P1",
-      "created": "2026-04-24T15:21:37.167Z",
-      "specPath": ".workflow/changes/wf-8294d960.md",
-      "dependencies": [],
-      "startedAt": "2026-04-24T17:16:18.432Z",
-      "completedAt": "2026-04-24T18:22:10.850Z",
-      "result": "Phase 1 investigation + Phase 2 fix shipped. Scenario C confirmed. Worker boot: 14.5s median → 7.5s (6.2s / 46% faster). MCP-strip + init banner. Three-layer refactor deferred to separate story."
+      "completedAt": "2026-04-26T13:18:24.390Z",
+      "note": "16 of 17 closed. arch-002 deferred to Stories 9+10 (supervised). SEC-002/SEC-003 accepted (env trust). CL-007 disputed. MISS-1 skipped (low value)."
     },
     {
-      "id": "wf-34290000",
-      "title": "WogiFlow Extension Finalize (pre-CLI release)",
-      "type": "epic",
-      "level": "L0",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-04-23T18:00:00.000Z",
-      "specPath": ".workflow/epics/wf-34290000.md",
-      "stories": [
-        "wf-a346c915",
-        "wf-258f558c",
-        "wf-f64f58b0",
-        "wf-f14dcfeb",
-        "wf-d0adca72",
-        "wf-fe8ef64d",
-        "wf-10c452f7",
-        "wf-f9431ef6",
-        "wf-07046456",
-        "wf-15175dbc",
-        "wf-9c9ba324",
-        "wf-c3b5afab",
-        "wf-f3707d2f",
-        "wf-4434851f",
-        "wf-8e97ac77",
-        "wf-ac2a8074",
-        "wf-8d635d0e",
-        "wf-2a9f179e",
-        "wf-4351400c",
-        "wf-9a969442",
-        "wf-b5cd0351",
-        "wf-2c6c8b40",
-        "wf-3635574e",
-        "wf-c8754819",
-        "wf-2f49b292",
-        "wf-8a0fc8ad",
-        "wf-26d363ce",
-        "wf-c6c75841"
-      ],
-      "goal": "Land all 25 research-backed improvements + 3 pending-item fixes (pending #1/#2/#3) as one commit + one release before CLI dev starts",
-      "workstreams": {
-        "A": [
-          "wf-a346c915",
-          "wf-258f558c",
-          "wf-f64f58b0",
-          "wf-f14dcfeb",
-          "wf-d0adca72"
-        ],
-        "B": [
-          "wf-fe8ef64d",
-          "wf-10c452f7",
-          "wf-f9431ef6",
-          "wf-07046456",
-          "wf-15175dbc",
-          "wf-9c9ba324",
-          "wf-c3b5afab"
-        ],
-        "C": [
-          "wf-f3707d2f",
-          "wf-4434851f"
-        ],
-        "D": [
-          "wf-8e97ac77",
-          "wf-ac2a8074"
-        ],
-        "E": [
-          "wf-8d635d0e"
-        ],
-        "F": [
-          "wf-2a9f179e",
-          "wf-4351400c",
-          "wf-9a969442"
-        ],
-        "G": [
-          "wf-b5cd0351",
-          "wf-2c6c8b40",
-          "wf-3635574e",
-          "wf-c8754819",
-          "wf-2f49b292",
-          "wf-8a0fc8ad"
-        ],
-        "H": [
-          "wf-26d363ce",
-          "wf-c6c75841"
-        ]
-      },
-      "absorbsPending": [
-        1,
-        2,
-        3
-      ],
-      "sourceResearch": "25 CLI coding agents (Goose, Codex CLI, Crush, g3, Coro Code, IronClaw, NullClaw, PicoClaw, nanoclaw, Scrapfly CLI, Aider, Open Interpreter, OpenHands, Letta, Plandex, Cline, Neovate, Every Code, nori-cli, Hermes Agent, OpenCode, Kilo Code, Dexto, ForgeCode, Groq Code CLI)",
-      "targetRelease": "v2.27.0",
-      "note": "Executing child stories one-by-one; spec files generated 2026-04-24",
-      "executionStartedAt": "2026-04-24T10:17:54.731Z",
-      "completedAt": "2026-04-24T14:29:45.179Z"
-    },
-    {
-      "id": "wf-8a0fc8ad",
-      "title": "G6 Tool-first turn enforcement for workers",
+      "id": "wf-d0937c83",
+      "title": "Wave E — Decompose flow-orchestrate.js autoCorrectCode",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": "stop-hook-trio",
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-8a0fc8ad.md",
-      "completedAt": "2026-04-24T14:18:57.247Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T10:21:23.466Z",
+      "note": "Extracted 7 single-responsibility helpers (fixForbiddenImports, fixComponentPaths, fixFeatureTypePaths, fixNoExternalUtils, normalizeQuotes, cleanupEmptyImports, collapseBlankLines) into flow-orchestrate-corrections.js. autoCorrectCode is now ~30 LOC (was 113). 17 characterization tests co-landed per Cross-Story Tier-3 rule."
     },
     {
-      "id": "wf-c8754819",
-      "title": "G4 Worker text-before-tool-call prevention (every turn)",
+      "id": "wf-a97af500",
+      "title": "Wave F — Test coverage for remaining legacy gates",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": "stop-hook-trio",
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-c8754819.md",
-      "completedAt": "2026-04-24T14:18:57.247Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T09:39:56.522Z",
+      "note": "research-evidence-gate covered (20 tests). Broader gate coverage requires Stories 9/10/12/13/14 to land first per spec rescope."
     },
     {
-      "id": "wf-b5cd0351",
-      "title": "G1 Worker-side silent-halt prevention",
+      "id": "wf-8308221a",
+      "title": "Wave B — Replace 137 raw JSON.parse sites",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": "stop-hook-trio",
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-b5cd0351.md",
-      "completedAt": "2026-04-24T14:18:57.247Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T09:36:03.275Z",
+      "note": "closed-by-prior-work — 0 raw JSON.parse in lib/workspace-{sync,session,messages}.js"
     },
     {
-      "id": "wf-a346c915",
-      "title": "A1 AGENTS.md alias for CLAUDE.md",
-      "type": "feature",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "specPath": ".workflow/changes/wf-a346c915.md",
-      "created": "2026-04-23T00:00:00.000Z",
-      "startedAt": "2026-04-24T14:14:16.833Z",
-      "routedAt": "2026-04-24T14:14:16.833Z",
-      "completedAt": "2026-04-24T14:14:23.484Z"
-    },
-    {
-      "id": "wf-04585518",
-      "title": "Surface effort.level and thinking.enabled in status line",
+      "id": "wf-9fc4970b",
+      "title": "Wave B — DANGEROUS_KEYS+safeJsonParse consolidation",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P3",
-      "created": "2026-04-24T07:01:51.266Z",
-      "specPath": ".workflow/changes/wf-04585518.md",
-      "completedAt": "2026-04-24T14:07:40.948Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T09:36:03.275Z",
+      "note": "4 of 8 scripts/ redefs consolidated; lib/* and intentional bootstrap+template-keys remaining (queued for cloud-compat)"
     },
     {
-      "id": "wf-3635574e",
-      "title": "G3 SQLite-as-IPC for workspace dispatch",
+      "id": "wf-789a8cba",
+      "title": "Wave B — Consolidate duplicate config/utility implementations",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "G",
-      "bundle": null,
-      "depends": [
-        "wf-8a0fc8ad"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-3635574e.md",
-      "startedAt": "2026-04-24T13:57:46.020Z",
-      "completedAt": "2026-04-24T13:57:57.840Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T09:32:12.847Z",
+      "note": "Closed: dup-007 (this session), dup-006 closed-by-design, dup-003 closed-by-prior-work, dup-001 declined-with-rationale (wrappers carry memoization/error containment), dup-005 queued for cloud-compat review."
     },
     {
-      "id": "wf-8d635d0e",
-      "title": "E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
+      "id": "wf-f50fe4f5",
+      "title": "Wave A — Outlier catch-variable sweep",
       "type": "story",
-      "level": "L1",
       "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "E",
-      "bundle": null,
-      "depends": [
-        "wf-26d363ce"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-8d635d0e.md",
-      "started": "2026-04-24T12:52:27.004Z",
-      "completedAt": "2026-04-24T12:52:33.687Z"
+      "priority": "P1",
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T08:47:29.352Z",
+      "note": "Renamed 3 outlier _e → _err in flow-auto-review-worker.js + workspace-messages.js. Other catches in target files were already err/_err."
     },
     {
-      "id": "wf-4434851f",
-      "title": "C2 IGR artifact edit proposals via CLI + session-end approval",
+      "id": "wf-33ae5671",
+      "title": "Wave A — Re-enable strict lint + delete dead exports",
       "type": "story",
-      "level": "L1",
       "status": "completed",
       "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "C",
-      "bundle": null,
-      "depends": [
-        "wf-26d363ce"
-      ],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-4434851f.md",
-      "startedAt": "2026-04-24T12:34:49.181Z",
-      "completedAt": "2026-04-24T12:34:55.492Z"
-    },
-    {
-      "id": "wf-26d363ce",
-      "title": "H1 Structured phase definition schema (YAML)",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "parent": "wf-34290000",
-      "workstream": "H",
-      "bundle": "H-foundational",
-      "depends": [],
-      "created": "2026-04-24T10:17:54.731Z",
-      "specPath": ".workflow/changes/wf-26d363ce.md",
-      "startedAt": "2026-04-24T11:53:39.350Z",
-      "routedAt": "2026-04-24T11:53:39.350Z",
-      "completedAt": "2026-04-24T11:59:10.972Z"
+      "parentEpic": "wf-94cc3b72",
+      "completedAt": "2026-04-26T08:45:50.979Z",
+      "note": "S1: no-unreachable already error (prior PR); legacy aliases removed 2026-04-15; .env.example expanded; S4 (destructive branch delete) queued for user approval."
     }
   ],
   "backlog": [

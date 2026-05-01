@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-04-24T19:07:13.613Z",
+  "markedAt": "2026-05-01T09:15:07.456Z",
   "context": {
-    "args": "\"Wire feature-dossier auto-touch into /wogi-done so every completed task that matches a dossier auto-appends a Change Log row. Match via existing feature-dossier-gate matching logic (files-touched + title/description). If 1+ dossiers match, append a row per matched dossier: Date | Task ID | Event (task type: feat/fix/refactor) | Note (task title, truncated). Fail-open if flow-feature-dossier.js unavailable. Config toggle: featureDossier.autoTouchOnDone (default true). Test coverage: match-single-dossier appends one row; match-multiple appends to each; no-match appends nothing; failing library doesn't block /wogi-done.\""
+    "args": "wf-7d92c6be"
   },
   "status": "pending"
 }

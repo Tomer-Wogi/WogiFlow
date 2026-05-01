@@ -1,32 +1,28 @@
 {
-  "reviewDate": "2026-04-16T00:00:00.000Z",
+  "reviewDate": "2026-04-26T11:00:00.000Z",
   "mode": "parallel",
+  "scope": "session 8d3b8bb..HEAD (17 commits, 52 files)",
   "agentsLaunched": 3,
-  "agentBreakdown": { "core": 3, "optional": 0, "projectRules": 0 },
-  "filesReviewed": [
-    ".claude/docs/claude-code-compatibility.md",
-    ".workflow/templates/claude-md.hbs",
-    "CLAUDE.md",
-    "lib/installer.js",
-    "scripts/flow-health.js",
-    "tests/flow-health-mcp-scopes.test.js"
-  ],
-  "findings": [
-    { "id": "SEC-001", "severity": "medium", "category": "security", "file": "scripts/flow-health.js", "line": 159, "issue": "Raw JSON.parse used instead of safeJsonParse — policy violation per security-patterns.md §2 (prototype-pollution guard). Runtime-safe on Node 20+, but violates project standard.", "recommendation": "Replace with safeJsonParse + sentinel fallback for parseError categorization.", "status": "fixed", "evidenceTier": 3, "evidenceNote": "Applied fix; 13/13 tests pass including new __proto__/top-level-array rejection test.", "adversaryAdjusted": true, "originalSeverity": "high", "agent": "security" },
-    { "id": "SEC-002", "severity": "low", "category": "security", "file": "scripts/flow-health.js", "line": 135, "issue": "os.homedir() not validated against HOME/USERPROFILE hijacking.", "recommendation": "Theoretical Tier-0 concern; if HOME is hijacked, attacker controls settings.json directly anyway.", "status": "dismissed", "evidenceTier": 0, "evidenceNote": "Static inference only; no exploit path demonstrated.", "adversaryAdjusted": true, "originalSeverity": "medium", "dismissReason": "Tier 0 + threat model — dismissed as acceptable risk.", "agent": "security" },
-    { "id": "SEC-003", "severity": "low", "category": "security", "file": "tests/flow-health-mcp-scopes.test.js", "line": 36, "issue": "os.tmpdir() without per-user isolation in test.", "recommendation": "Per-user isolation for dev-only test code.", "status": "dismissed", "evidenceTier": 0, "evidenceNote": "Matches project-wide test convention (multiple other test files use identical pattern).", "dismissReason": "Aligned with existing project test convention; consistency > micro-hardening for dev-only code.", "agent": "security" },
-    { "id": "MISS-1", "severity": "info", "category": "docs", "file": ".claude/docs/claude-code-compatibility.md", "line": 77, "issue": "Version compat row claims '2.18.0+' but package.json is 2.17.5.", "recommendation": "Forward-declaration — becomes accurate when 2.18.0 ships.", "status": "accepted", "evidenceTier": 1, "evidenceNote": "Intentional per task spec; will be accurate at release time.", "adversaryFound": true, "agent": "adversary" },
-    { "id": "MISS-2", "severity": "info", "category": "architecture", "file": "scripts/flow-health.js", "issue": "checkMcpScopes() called only in main(), not deepAudit().", "recommendation": "Deep audit is structural-only by design; MCP scope drift is runtime. Accept as design intent.", "status": "accepted", "evidenceTier": 1, "evidenceNote": "Code flow analysis confirms deepAudit() runs independently.", "adversaryFound": true, "agent": "adversary" }
+  "findingsCount": 21,
+  "bySeverity": {
+    "high": 3,
+    "medium": 9,
+    "low": 9
+  },
+  "topFindings": [
+    "arch-001 P11.4 self-violation",
+    "CL-001 detectStop common-word matching",
+    "SEC-001 strip depth-32 leak",
+    "arch-002 entry-file LOC",
+    "arch-003 partner-versions stale",
+    "arch-004 raw JSON.parse",
+    "arch-005 function-map empty"
   ],
   "enforcementGaps": [
-    { "rule": "security-patterns.md §2: Use safeJsonParse() instead of raw JSON.parse()", "violation": "SEC-001 at flow-health.js:159", "rootCause": "NO_ENFORCEMENT — no standards-gate check for JSON.parse in new code.", "resolution": "FIXED in-review. Future: add lint rule or standards check." }
+    "Cross-Story Tier-3 Rule (no mechanical gate)",
+    "Three-layer rule (Stories 9+10 unfinished)",
+    "safeJsonParse rule (new files slip through)"
   ],
-  "triaged": true,
-  "completionTruthGate": {
-    "enabled": true,
-    "fixed": 1,
-    "tier3OrHigher": 1,
-    "tier2Downgraded": 0,
-    "tier1OrLowerDowngraded": 0
-  }
+  "triaged": false,
+  "fullDetailsAt": "session transcript (out-of-band review summary)"
 }
