@@ -30,11 +30,21 @@ const EVIDENCE_FILE = path.join(PATHS.state, 'research-evidence.json');
 // Relative-to-project path prefixes that count as evidence when Read.
 // Any file whose project-relative path starts with one of these prefixes
 // increments the evidence counter.
+//
+// wf-5cd71b1f: extended to include source-code prefixes (lib/, scripts/, src/,
+// tests/, app/) — diagnostic questions ("why does X happen", "is this safe")
+// require reading the actual code, not just .workflow/state. The
+// research-required gate uses the same prefix list semantics.
 const EVIDENCE_PREFIXES = [
   '.workflow/state/',
   '.workflow/changes/',
   '.workflow/specs/',
-  '.workflow/epics/'
+  '.workflow/epics/',
+  'lib/',
+  'scripts/',
+  'src/',
+  'tests/',
+  'app/'
 ];
 
 // Path prefixes that trigger the spec-write gate when targeted by Edit/Write.

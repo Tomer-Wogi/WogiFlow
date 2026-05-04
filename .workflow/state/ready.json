@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-01T09:15:32.404Z",
+  "lastUpdated": "2026-05-04T08:54:16.463Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,45 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-5cd71b1f",
+      "title": "Mechanical research-required gate (fires on text-only answers)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-05-04T07:34:15.316Z",
+      "specPath": ".workflow/changes/wf-5cd71b1f.md",
+      "goal": "Plug the structural gap that lets the AI answer diagnostic questions without reading evidence.",
+      "startedAt": "2026-05-04T08:48:41.469Z",
+      "completedAt": "2026-05-04T08:54:16.462Z"
+    },
+    {
+      "id": "wf-f9912af6",
+      "title": "Mechanical Deferral Authorization Gate",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-05-04T08:32:00.115Z",
+      "startedAt": "2026-05-04T08:32:00.115Z",
+      "specPath": ".workflow/changes/wf-f9912af6.md",
+      "goal": "Plug the bypass that lets the AI silently write status:deferred to last-review.json/last-audit.json",
+      "completedAt": "2026-05-04T08:39:59.239Z"
+    },
+    {
+      "id": "wf-ee4e343b",
+      "title": "Fix silent auto-restart regression (SEC-006 PPID + Phase 1 chokepoint)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-05-04T07:34:15.316Z",
+      "specPath": ".workflow/changes/wf-ee4e343b.md",
+      "goal": "Restore task-boundary auto-restart for all wogi-claude wrapper users (broken by SEC-006 since 2026-04-26).",
+      "startedAt": "2026-05-04T07:37:30.511Z",
+      "completedAt": "2026-05-04T07:45:42.810Z"
+    },
     {
       "id": "wf-89aaab85",
       "title": "Source Fidelity Rule (P11.5)",

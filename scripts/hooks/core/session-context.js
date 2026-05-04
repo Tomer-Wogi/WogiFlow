@@ -903,6 +903,27 @@ function formatContextForInjection(context) {
     // Non-critical — history file may not exist; continue with normal context
   }
 
+  // wf-ee4e343b — surface silent auto-restart failures.
+  // When taskBoundaryReset is enabled and the wrapper is in the chain, but
+  // Phase 2 has been skipping with the same reason 3+ times in a row,
+  // something's broken (typical: PID mismatch from a wrapper regression,
+  // missing flag path, etc). Without this surface, the failure is invisible
+  // to users — exactly the SEC-006 silent-disable pattern this story exists
+  // to prevent recurring.
+  try {
+    const config = getConfig();
+    const tbr = config.taskBoundaryReset || {};
+    if (tbr.enabled === true && process.env.WOGI_WRAPPER_PID) {
+      const { readSkipCounter, SKIP_WARN_THRESHOLD } = require('./task-boundary-reset');
+      const skip = readSkipCounter();
+      if (skip && Number.isFinite(skip.count) && skip.count >= (SKIP_WARN_THRESHOLD || 3)) {
+        output += `### ⚠️ Auto-restart skipped ${skip.count}x (reason: \`${skip.lastReason}\`)\n`;
+        output += `Task-boundary auto-restart is enabled and the wogi-claude wrapper is detected, but the last ${skip.count} restart attempts were skipped with the same reason. This usually means a wrapper or config regression — context budget is being silently burned across tasks.\n\n`;
+        output += `**Investigate**: \`cat .workflow/state/restart-skip-counter.json\` and \`node scripts/hooks/core/task-boundary-reset.js check\`. If the reason is \`parent-pid-mismatch\`, your wogi-claude wrapper version is out of sync with the SEC-006 PID alignment fix (see wf-ee4e343b).\n\n`;
+      }
+    }
+  } catch (_err) { /* fail-open — never block session start over an observability surface */ }
+
   // AUTO-PICKUP after clean completion (wf-f267ea2a).
   // When the prior task completed cleanly AND the ready queue is non-empty AND
   // no pending-question marker exists, instruct the AI to immediately invoke

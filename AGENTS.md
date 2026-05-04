@@ -561,6 +561,80 @@ The user can dump N items, say "go until you finish" / "autonomous mode" / "run 
 
 Enforced by: `flow-autonomous-detector.js`, `flow-question-queue.js`, `flow-decision-authority.js` (autonomous param + `queue-for-review` + `adversary-loop` buckets), `flow-completion-summary.js`, and the SessionStart context injection in `scripts/hooks/core/session-context.js`.
 
+---
+
+### Mechanical Deferral Authorization Gate (wf-f9912af6)
+
+The textual "Review-Findings Anti-Deferral" rule above (incident-driven 2026-04-15) is enforced mechanically by the deferral gate. The AI cannot silently mark review/audit findings as `status: deferred*` without explicit user authorization — the PreToolUse hook intercepts every Write/Edit/Bash that targets `.workflow/state/last-review.json` or `.workflow/state/last-audit.json` and BLOCKS the write when:
+
+1. The new content introduces one or more findings whose `status` matches `/^deferred(?:[-_].*)?$|^wont-?fix$|^skipped$/i`, AND
+2. No valid authorization marker exists at `.workflow/state/deferral-authorization.json`, AND
+3. The `no-defer-pin.json` is not active (a pin overrides any auth — set when the user says "fix everything" / "no deferrals" / "I don't want tech debt").
+
+**Authorization sources** (one of):
+
+- **User-prompt classifier** (`scripts/hooks/core/deferral-classifier.js`): regex-detects explicit defer phrases in UserPromptSubmit messages — "defer X", "fix critical only", "ship as-is", "option 2"/"option 4" from the /wogi-review menu, etc. Writes auth marker with TTL 10 min by default.
+- **Explicit CLI**: `node scripts/flow-defer-auth.js grant --scope=all --reason="<verbatim user phrase>"` (or `--findings=F5,F6,...`). Used when the AI needs to record explicit authorization (e.g., user picked option 4).
+
+**Negative intent overrides positive**: phrases like "fix everything", "no deferrals", "don't defer", "I don't want tech debt" delete any existing auth and write a `no-defer-pin.json` that hard-blocks deferrals for ~30 minutes.
+
+**Bash-mutating commands** that write to the target files AND mention `deferred|wont-fix|skipped|dismissed` are blocked when no auth is active — this catches `node -e "fs.writeFileSync('.workflow/state/last-review.json', ...)"` patterns that bypass Write/Edit. Reads (`cat`/`jq`/`grep`) are not blocked.
+
+**Audit trail**: every blocked attempt logs to `.workflow/state/deferral-block-log.json` (last 100 entries) for telemetry.
+
+**Why mechanical enforcement matters:** the textual rule has been violated multiple times in incidents — the AI decides "low risk / can wait / pre-existing" and writes `status: deferred` to last-review.json based on its own judgment. The gate makes this structurally impossible without the user's word.
+
+**Anti-rationalization** (if any of these thoughts cross your mind, you are about to violate the gate):
+- *"This finding is pre-existing, not introduced by my changes"* → WRONG. Pre-existing is a reason to fix it now (continuous improvement) or to surface it to the user with an explicit "ship / fix / defer" question, not to silently `status: deferred-pre-existing`.
+- *"This is LOW severity, the user won't care"* → WRONG. Severity is the user's call, not yours.
+- *"The adversary already verified it's not a real bug"* → WRONG. If it's not a bug, mark it `dismissed-not-a-bug` only AFTER the user confirms; otherwise leave it `open`.
+- *"I'll batch deferrals into the next review cycle"* → WRONG. There is no "next cycle" — the user reads the findings now.
+
+Config: `deferralGate.{enabled,authTtlSeconds,classifyUserPrompts}` in `.workflow/config.json` (defaults: true / 600 / true).
+
+Enforced by: `scripts/hooks/core/deferral-gate.js` (core), `scripts/hooks/core/deferral-classifier.js` (intent detection), `scripts/flow-defer-auth.js` (CLI), wired into `scripts/hooks/core/pre-tool-orchestrator.js` (PreToolUse) and `scripts/hooks/entry/claude-code/user-prompt-submit.js` (UserPromptSubmit).
+
+---
+
+### Mechanical Research-Required Gate (wf-5cd71b1f)
+
+The textual rules in CLAUDE.md ("Research Before Propose," Tier 2/3 routing protocol) say the AI must read evidence before answering diagnostic questions. The research-required gate makes this mechanical: it intercepts diagnostic prompts at UserPromptSubmit and re-prompts the AI at Stop hook if the assistant turn produced text without enough Read calls against evidence paths.
+
+**How it works**:
+
+1. **UserPromptSubmit classifier** (`scripts/hooks/core/research-required-classifier.js`): regex-classifies each prompt into `command` / `factual` / `diagnostic` / `none`.
+   - `command` — task IDs, action imperatives ("add X"), follow-ups ("yes", "continue", "option N"), AI's own slash commands
+   - `factual` — Tier 1 markers ("what is", "where is", "show me", "list all")
+   - `diagnostic` — Tier 2/3 markers ("why", "should I", "what do you think", "is this correct", "explain why", "did you fix")
+   - On `diagnostic`: writes `.workflow/state/research-required-this-turn.json` with `{requiredEvidence: 2, attemptCount: 0, classifiedAt}`.
+
+2. **Override**: prompt prefix `!` skips the gate entirely. For when the user knows their question is conversational and doesn't need evidence reading.
+
+3. **Stop-hook gate** (`scripts/hooks/core/research-required-gate.js`): if marker exists, parses the JSONL transcript for the current turn (since the most recent user entry), counts:
+   - `Read` tool calls where `file_path` matches an evidence prefix
+   - `Bash` tool calls where the command starts with `cat|head|tail|grep|rg|jq|less|view|awk|sed` and targets an evidence-prefix path
+   - `Glob`/`Grep` tool calls (any pattern counts)
+
+4. **If count < requiredEvidence**:
+   - Increments `attemptCount` in the marker
+   - Returns `{continue: true, stopReason: <violation message>}` — Claude Code re-prompts the AI with the message; the AI must redo the turn with reads
+   - After `maxAttempts` (default 3): returns `{continue: false, stopReason: <hard-stop message>}` — visible to the user, marker cleared
+
+5. **If count ≥ requiredEvidence**: marker is consumed (deleted), Stop proceeds normally.
+
+**Evidence prefixes** (shared with `research-evidence-gate.js`): `.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, `.workflow/epics/`, `lib/`, `scripts/`, `src/`, `tests/`, `app/`. Reading code in answer to "why does X happen" is the legitimate path.
+
+**Why mechanical enforcement matters**: the textual Tier 2/3 protocol relies on the AI self-classifying its own question's complexity, which is the rubber-stamp pattern. The gate uses structural markers + Stop-hook redo loop — same proven architecture as `worker-tool-first-gate.js` G1/G4. The AI cannot bypass: UserPromptSubmit fires on every user message, Stop fires on every assistant turn end, and `{continue: true, stopReason}` is honored by Claude Code as a forced redo.
+
+**Anti-rationalization**:
+- *"I already know the answer from context"* → WRONG. Confidence is not evidence. The gate fires on the question's structure, not your perceived certainty.
+- *"This question is conversational, doesn't need code reading"* → WRONG. If you genuinely believe that, the user can prefix `!` next time. Within a turn, the gate is final.
+- *"I'll cite the evidence in my next answer instead of reading it now"* → WRONG. Citations require reads in the same turn. The transcript proves it.
+
+Config: `researchRequiredGate.{enabled,requiredEvidence,maxAttempts}` in `.workflow/config.json` (defaults: true / 2 / 3). The override prefix `!` is hard-coded.
+
+Enforced by: `scripts/hooks/core/research-required-classifier.js` (UserPromptSubmit), `scripts/hooks/core/research-required-gate.js` (Stop), wired into `scripts/hooks/entry/claude-code/user-prompt-submit.js` and `scripts/hooks/entry/claude-code/stop.js`.
+
 
 ---
 
@@ -607,4 +681,4 @@ This file was generated by the Wogi Flow CLI bridge.
 Edit `.workflow/templates/claude-md.hbs` to customize.
 Run `flow bridge sync` to regenerate.
 
-Last synced: 2026-04-27T07:39:51.673Z
+Last synced: 2026-05-04T09:17:55.981Z

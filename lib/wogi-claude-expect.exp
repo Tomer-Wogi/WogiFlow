@@ -90,12 +90,37 @@ set claude_bin [lindex $argv 0]
 set claude_args [lrange $argv 1 end]
 
 # Spawn claude in a pseudo-TTY so its Ink UI renders normally.
-# Use {*} list-splice rather than `eval spawn` — `eval` reparses its
-# arguments as Tcl script, which lets an argument containing bracket syntax
-# (e.g. `[exec attacker-cmd]`) escape to command execution. The splice form
-# expands the list without reparsing.
+#
+# wf-ee4e343b PID-alignment: spawn claude through `bash -c` so we can
+# re-export WOGI_WRAPPER_PID=$$ (the subshell's PID) before exec — this
+# makes claude inherit a WOGI_WRAPPER_PID equal to its own PID, satisfying
+# the SEC-006 strict-equality check in task-boundary-reset.js. Without this,
+# expect's spawn gives claude a PID different from WOGI_WRAPPER_PID and the
+# Stop-hook restart trigger silently fails.
+#
+# The bash -c form `bash -c COMMAND COMMAND_NAME ARG1 ARG2 ...` makes
+# COMMAND_NAME = $0 and the remaining args = $1..$N, so we use `exec "$0" "$@"`
+# to invoke claude with all original args — no quoting hazards.
 _wogi_boot_mark "before spawn"
-spawn $claude_bin {*}$claude_args
+
+# F4 fix (wf-ee4e343b cleanup): defensive list construction. `lrange $argv 1
+# end` already returns a clean Tcl list, and `{*}$claude_args` splices it
+# without re-parsing element contents — so brace-containing args are
+# preserved as single elements. The Sonnet review flagged this as a quoting
+# hazard; the Opus adversary verified it's safe. We rebuild the list
+# explicitly via [list ...] anyway for defense-in-depth and to make the
+# safety property obvious to future readers (no implicit dependency on
+# lrange's return contract).
+set claude_args_safe [list]
+foreach _arg $claude_args { lappend claude_args_safe $_arg }
+
+# Honor WOGI_BASH_BIN (wf-ee4e343b cleanup) for non-standard shell layouts.
+set _wogi_bash_bin "bash"
+if {[info exists env(WOGI_BASH_BIN)] && $env(WOGI_BASH_BIN) ne ""} {
+    set _wogi_bash_bin $env(WOGI_BASH_BIN)
+}
+
+spawn $_wogi_bash_bin -c "export WOGI_WRAPPER_PID=\$\$; exec \"\$0\" \"\$@\"" $claude_bin {*}$claude_args_safe
 _wogi_boot_mark "after spawn (pid=$spawn_id)"
 
 # ============================================================================

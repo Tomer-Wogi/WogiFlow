@@ -21,6 +21,12 @@
 #   WOGI_MAX_RESTARTS    — safety cap, default 50 (prevents runaway restart storms)
 #   WOGI_WRAPPER_PID     — exported to child; hook checks this to confirm wrapper is present
 #   WOGI_CLAUDE_BIN      — override path to claude binary (default: found via PATH)
+#   WOGI_BASH_BIN        — (wf-ee4e343b cleanup) override the bash binary used
+#                          by the PID-alignment subshell trick. Defaults to
+#                          `bash` on PATH. Useful on minimal containers
+#                          (Alpine, distroless) where bash lives at a
+#                          non-standard path or where the shell wrapping the
+#                          claude CLI is not bash-by-default.
 #   WOGI_USE_EXPECT      — (EXPERIMENTAL, v2.22.4+) set to 1 to opt IN to the
 #                          expect-based auto-dismiss of the "Loading development
 #                          channels" dialog. OFF BY DEFAULT because Ink's
@@ -99,7 +105,7 @@ if [ "$__wogi_is_worker" -eq 1 ]; then
       try {
         const cfg = require(process.cwd() + "/.workflow/config.json");
         process.stdout.write(String(!!(cfg.workspace && cfg.workspace.inheritClaudeAiMcpIntegrations)));
-      } catch (_e) { process.stdout.write("false"); }
+      } catch (_err) { process.stdout.write("false"); }
     ' 2>/dev/null)"
     if [ "$__wogi_config_inherit" = "true" ]; then
       __wogi_strip_mcp=0
@@ -205,7 +211,7 @@ if [ "$__wogi_strip_mcp" -eq 1 ]; then
             const ws = cfg && cfg.mcpServers && cfg.mcpServers["wogi-workspace-channel"];
             if (ws) channelEntry = ws;
           }
-        } catch (_e) {}
+        } catch (_err) {}
         const payload = channelEntry
           ? { mcpServers: { "wogi-workspace-channel": channelEntry } }
           : { mcpServers: {} };
@@ -284,12 +290,37 @@ __wogi_build_argv() {
 
 # run_claude — invoke claude, routing through expect when we can auto-dismiss
 # the dev-channels dialog. Preserves stdin/stdout/stderr exactly.
+#
+# wf-ee4e343b: PID-alignment via bash-c-exec trick. The Stop hook's SEC-006
+# check (task-boundary-reset.js:200-206) requires WOGI_WRAPPER_PID === process.ppid
+# in any hook running under claude. Plain `"$CLAUDE_BIN" ...` without `exec`
+# causes bash to fork: claude gets a NEW PID that does not match $$ (this bash
+# wrapper's PID). The check then fails silently, breaking auto-restart for
+# everyone since 2026-04-26.
+#
+# Fix: spawn claude through `bash -c '...'` which forks a fresh bash with its
+# OWN $$, sets WOGI_WRAPPER_PID to that $$, then `exec` replaces the new bash
+# with claude — preserving the same PID. Result: claude's PID equals the
+# WOGI_WRAPPER_PID it inherits, and process.ppid in any hook child of claude
+# equals that same value. The strict-equality SEC-006 check now holds.
+#
+# Why `bash -c` and not a `( ... )` subshell: in bash 3.x (macOS system bash),
+# `$$` inside a `( ... )` subshell returns the OUTER shell's PID, not the
+# subshell's own PID. Bash 4+ adds $BASHPID for that purpose, but we cannot
+# rely on bash 4+ being installed. `bash -c` always returns its own PID via
+# `$$`, regardless of version.
+#
+# Bash -c argv form: `bash -c COMMAND COMMAND_NAME ARG1 ARG2 ...` — COMMAND_NAME
+# becomes $0 inside the script and ARG1..N become $1..$N, so `exec "$0" "$@"`
+# invokes claude with all original args without quoting hazards.
+#
+# For expect mode, the same alignment is performed inside wogi-claude-expect.exp.
 run_claude() {
   __wogi_build_argv "$@"
   if [ "$__wogi_use_expect" -eq 1 ]; then
     expect "$WOGI_EXPECT_SCRIPT" "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
   else
-    "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
+    "${WOGI_BASH_BIN:-bash}" -c 'export WOGI_WRAPPER_PID=$$; exec "$0" "$@"' "$CLAUDE_BIN" "${__wogi_claude_argv[@]+"${__wogi_claude_argv[@]}"}"
   fi
 }
 

@@ -52,10 +52,17 @@ const { safeJsonParse } = require('../../flow-io');
 const PENDING_MARKER_FILE = 'task-just-completed';
 const LAST_TRIGGERED_FILE = 'task-boundary-last-triggered';
 const CLEAN_COMPLETION_MARKER_FILE = 'task-boundary-clean-completion.json';
+const SKIP_COUNTER_FILE = 'restart-skip-counter.json';
+// wf-ee4e343b: surface silently-skipped restarts after this many same-reason skips.
+const SKIP_WARN_THRESHOLD = 3;
 // Window during which a recentlyCompleted[0] entry is considered "fresh
 // enough" to retro-mark Phase 1 from the Stop hook. Large enough to cover
 // a slow quality-gate run; small enough that a session opened hours later
 // doesn't trigger a bogus restart.
+//
+// wf-ee4e343b: with the saveReadyData chokepoint in flow-utils.js arming
+// Phase 1 markers at the moment of completion, this fallback should be
+// unreachable in practice. Kept defensively for partial-deploy resilience.
 const FRESHNESS_WINDOW_MS = 5 * 60 * 1000;
 
 /**
@@ -72,6 +79,96 @@ function getLastTriggeredPath() {
 
 function getCleanCompletionMarkerPath() {
   return path.join(PATHS.state, CLEAN_COMPLETION_MARKER_FILE);
+}
+
+function getSkipCounterPath() {
+  return path.join(PATHS.state, SKIP_COUNTER_FILE);
+}
+
+/**
+ * wf-ee4e343b — track Phase 2 skip reasons so silent failures surface.
+ * Increment when consumeAndTriggerRestart returns triggered:false with a
+ * non-trivial reason; reset when triggered:true. Reasons that mean "nothing
+ * to do" (no-pending-marker, pending-question-deferred) are NOT counted —
+ * those are normal idle outcomes, not failures. Best-effort throughout.
+ */
+function readSkipCounter() {
+  try {
+    return safeJsonParse(getSkipCounterPath(), null);
+  } catch (_err) {
+    return null;
+  }
+}
+
+function writeSkipCounter(state) {
+  try {
+    // F8 fix (wf-ee4e343b cleanup): atomic write-and-rename to survive
+    // concurrent Stop hooks. Two hooks racing on read-modify-write would
+    // previously lose increments; with tmp+rename, the OS guarantees one
+    // observable file at a time. The lost-update race window shrinks from
+    // "between read and write" to "between two atomic writes" — much smaller,
+    // and the loser's increment is now strictly the older one (not corrupted).
+    const p = getSkipCounterPath();
+    const dir = path.dirname(p);
+    fs.mkdirSync(dir, { recursive: true });
+    const tmp = `${p}.tmp.${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
+    fs.writeFileSync(tmp, JSON.stringify(state));
+    fs.renameSync(tmp, p);
+  } catch (_err) { /* best effort */ }
+}
+
+function clearSkipCounter() {
+  try {
+    fs.unlinkSync(getSkipCounterPath());
+  } catch (err) {
+    // F5 fix (wf-ee4e343b cleanup): ENOENT is expected and harmless ("nothing
+    // to clear"); any other code (EACCES on read-only mount, EPERM on weird
+    // FUSE filesystems, EBUSY on Windows file lock) is a real problem that
+    // would make the next session see a stale counter and fire a false
+    // 3-strikes warning. Surface non-ENOENT errors via DEBUG so operators can
+    // diagnose; still don't throw — observability inversion is bad but
+    // crashing the Stop hook is worse.
+    if (err && err.code !== 'ENOENT' && process.env.DEBUG) {
+      console.error(`[task-boundary-reset] clearSkipCounter non-ENOENT error: ${err.code} ${err.message}`);
+    }
+  }
+}
+
+// Reasons that are silent-failure-flavored (something WOULD have triggered a
+// restart but couldn't). Contrast with no-pending-marker / no-fresh-completion
+// / pending-question-deferred — those are "nothing to restart for," not failures.
+const TRACKED_SKIP_REASONS = new Set([
+  'no-wrapper-pid',
+  'no-flag-path',
+  'no-parent-pid',
+  'config-error',
+  'marker-unlink-failed',
+  'flag-write-failed',
+  'sigterm-failed'
+]);
+
+function bumpSkipCounter(reason) {
+  if (!reason) return;
+  // Only count tracked reasons OR reasons that start with a tracked prefix
+  // (e.g. parent-pid-mismatch, config-error: ...).
+  const isTracked = TRACKED_SKIP_REASONS.has(reason)
+    || reason.startsWith('parent-pid-mismatch')
+    || reason.startsWith('config-error')
+    || reason.startsWith('marker-unlink-failed')
+    || reason.startsWith('flag-write-failed')
+    || reason.startsWith('sigterm-failed');
+  if (!isTracked) return;
+  const cur = readSkipCounter();
+  const normalized = reason.split(' (')[0]; // strip the (env=...) detail noise
+  if (cur && cur.lastReason === normalized) {
+    writeSkipCounter({
+      lastReason: normalized,
+      count: (cur.count || 1) + 1,
+      updatedAt: new Date().toISOString()
+    });
+  } else {
+    writeSkipCounter({ lastReason: normalized, count: 1, updatedAt: new Date().toISOString() });
+  }
 }
 
 /**
@@ -150,10 +247,26 @@ function writeLastTriggered(taskId) {
 function markRestartPending(ctx) {
   try {
     const markerPath = getPendingMarkerPath();
+    const taskId = ctx?.taskId || null;
+    // F6 fix (wf-ee4e343b cleanup): idempotency — if a marker already exists
+    // for the same taskId, do NOT overwrite. Multiple Phase 1 writers
+    // (saveReadyData chokepoint, flow-done.js, task-completed.js) can fire
+    // for the same completion; without this guard, the second writer would
+    // refresh markedAt, hiding the original completion timestamp from any
+    // diagnostic that uses it. The marker's existence is what matters for
+    // Phase 2; the timestamp is a diagnostic hint that should reflect the
+    // FIRST observation of the completion, not the last.
+    if (taskId && fs.existsSync(markerPath)) {
+      const existing = safeJsonParse(markerPath, null);
+      if (existing && existing.taskId === taskId) {
+        return { marked: false, reason: 'already-marked-for-same-task', markerPath };
+      }
+      // null from safeJsonParse → corrupt or unreadable; fall through to overwrite (recovery)
+    }
     fs.mkdirSync(path.dirname(markerPath), { recursive: true });
     const payload = {
       version: 1,
-      taskId: ctx?.taskId || null,
+      taskId,
       taskTitle: ctx?.taskTitle || null,
       source: ctx?.source || 'unspecified',
       markedAt: new Date().toISOString()
@@ -226,6 +339,18 @@ function checkPreconditions() {
  * @returns {Promise<{ triggered: boolean, reason?: string, flagPath?: string, parentPid?: number }>}
  */
 async function consumeAndTriggerRestart(opts = {}) {
+  const result = await _consumeAndTriggerRestartInner(opts);
+  // wf-ee4e343b: track silent skips so session-context.js can surface
+  // 3-strikes warnings. Successful restart clears the counter.
+  if (result?.triggered) {
+    clearSkipCounter();
+  } else if (result?.reason) {
+    bumpSkipCounter(result.reason);
+  }
+  return result;
+}
+
+async function _consumeAndTriggerRestartInner(opts = {}) {
   const markerPath = getPendingMarkerPath();
   if (!fs.existsSync(markerPath)) {
     return { triggered: false, reason: 'no-pending-marker' };
@@ -442,6 +567,12 @@ module.exports = {
   getPendingMarkerPath,
   getCleanCompletionMarkerPath,
   writeCleanCompletionMarker,
+
+  // wf-ee4e343b — silent-skip observability
+  readSkipCounter,
+  clearSkipCounter,
+  getSkipCounterPath,
+  SKIP_WARN_THRESHOLD,
 
   // Back-compat: earlier code calls this name. Route it to Phase 1 so existing
   // wiring in task-completed.js still does the right thing (mark the marker,

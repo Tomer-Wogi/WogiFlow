@@ -336,6 +336,7 @@ function saveReadyData(data) {
   const toSave = { ...data, lastUpdated: new Date().toISOString() };
   const result = writeJson(PATHS.ready, toSave);
   invalidateReadyDataCache(); // Invalidate AFTER write completes to avoid stale cache race
+  maybeArmTaskBoundaryRestart(previousData, toSave);
   return result;
 }
 
@@ -359,8 +360,59 @@ async function saveReadyDataAsync(data) {
     const toSave = { ...data, lastUpdated: new Date().toISOString() };
     const result = writeJson(PATHS.ready, toSave);
     invalidateReadyDataCache(); // Invalidate AFTER write completes
+    maybeArmTaskBoundaryRestart(previousData, toSave);
     return result;
   });
+}
+
+/**
+ * wf-ee4e343b — Phase 1 chokepoint for task-boundary auto-restart.
+ *
+ * Why this exists: Phase 1 marker writes were previously split across three
+ * disjoint paths (`flow done`, `task-completed.js` hook, Stop-hook fallback
+ * with a 5-min freshness window). The Stop-hook fallback misses real-world
+ * timing (user takes >5min to type next message → fallback rejects) and the
+ * other two paths are not always called. By detecting "new entry in
+ * recentlyCompleted" right here in saveReadyData — the actual chokepoint
+ * every completion goes through — we arm the marker at the moment of
+ * completion regardless of who completed the task.
+ *
+ * Gated on WOGI_WRAPPER_PID so test/CLI/non-wrapper invocations don't
+ * write spurious markers. Lazy-required to avoid circular dependency
+ * (task-boundary-reset.js → flow-utils.js).
+ */
+function maybeArmTaskBoundaryRestart(previousData, savedData) {
+  try {
+    if (!process.env.WOGI_WRAPPER_PID) return;
+    // First-save guard (F2): when ready.json doesn't yet exist, previousData
+    // is null. If savedData arrives pre-populated (fresh install seeded from
+    // backup, init script bootstrapping recentlyCompleted, etc.) we MUST NOT
+    // arm a restart marker — there's no completion event, just an initial
+    // state snapshot. Real completions always have a previousData to diff
+    // against because saveReadyData is the only writer.
+    if (!previousData) return;
+    // F7 fix (wf-ee4e343b cleanup): F2 was asymmetric — readJson returns {}
+    // (truthy) on corrupt JSON or missing top-level keys, so the !previousData
+    // guard would not catch that case. A corrupt ready.json that recovers as
+    // {} followed by a save with populated recentlyCompleted would still
+    // false-positive. Require previousData.recentlyCompleted to be an actual
+    // array for the diff to be meaningful — anything else is "we don't know
+    // the prior state," which is structurally identical to first-save and
+    // must NOT arm.
+    if (!Array.isArray(previousData.recentlyCompleted)) return;
+    const prevTop = previousData.recentlyCompleted[0];
+    const curTop = savedData?.recentlyCompleted?.[0];
+    if (!curTop || !curTop.id) return;
+    if (prevTop && prevTop.id === curTop.id) return; // no new completion
+    const { markRestartPending } = require('./hooks/core/task-boundary-reset');
+    markRestartPending({
+      taskId: curTop.id,
+      taskTitle: curTop.title,
+      source: 'saveReadyData'
+    });
+  } catch (_err) {
+    // Fail-open — never let an observability/marker write break ready.json save
+  }
 }
 
 /**

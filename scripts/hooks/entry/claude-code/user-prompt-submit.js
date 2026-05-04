@@ -81,6 +81,45 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
     }
   }
 
+  // wf-5cd71b1f: Research-required classifier — detect diagnostic prompts
+  // (Tier 2/3 from CLAUDE.md routing) that require evidence-reading before
+  // the AI answers. Writes a turn-scoped marker that the Stop hook checks;
+  // if the AI answered with text-only and no Read calls against evidence
+  // paths, the Stop hook re-prompts forcing a redo. Fail-open throughout.
+  if (typeof prompt === 'string' && prompt.trim().length > 0) {
+    try {
+      const { applyClassification: applyResearchClassification } = require('../../core/research-required-classifier');
+      const r = applyResearchClassification(prompt, hookConfig);
+      if (r.applied && process.env.DEBUG) {
+        console.error(`[Hook] Research-required classifier: category=${r.category}, match="${r.match}"`);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Research-required classifier failed: ${err.message}`);
+      }
+    }
+  }
+
+  // wf-f9912af6: Deferral-intent classifier — detect explicit defer/no-defer
+  // phrases in the user's prompt and write/clear the auth marker accordingly.
+  // Negative intent ("fix everything", "no deferrals", "I don't want tech debt")
+  // hard-pins the gate to block all deferrals; positive intent ("defer X",
+  // "fix critical only", "ship as-is") writes a time-limited auth marker.
+  // Fail-open throughout.
+  if (typeof prompt === 'string' && prompt.trim().length > 0) {
+    try {
+      const { applyClassification } = require('../../core/deferral-classifier');
+      const r = applyClassification(prompt, hookConfig);
+      if (r.applied && process.env.DEBUG) {
+        console.error(`[Hook] Deferral classifier: intent=${r.intent}, match="${r.match}"`);
+      }
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[Hook] Deferral classifier failed: ${err.message}`);
+      }
+    }
+  }
+
   // v5.1->v7.0: Detect corrections for learning system (AI-only, non-blocking)
   if (hookConfig.hooks?.rules?.intelligence?.correctionDetection?.enabled !== false) {
     if (typeof prompt === 'string' && prompt.trim().length > 0) {

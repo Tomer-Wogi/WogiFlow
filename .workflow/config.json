@@ -15,6 +15,18 @@
     "_comment_autoPickupNextTask": "When true, after a clean task completion + restart, the next SessionStart injects an AUTO-PICKUP block instructing the AI to immediately invoke /wogi-start <nextReadyId> instead of asking 'what's next?'. Skipped if pending-question.json exists or ready queue is empty.",
     "autoPickupNextTask": true
   },
+  "_comment_deferralGate": "wf-f9912af6 — mechanical Review-Findings Anti-Deferral enforcement. Blocks Write/Edit/Bash that introduce status:deferred* on review/audit findings without explicit user authorization. Authorization comes from defer-intent phrases in user prompts (handled by deferral-classifier.js) OR explicit CLI: `node scripts/flow-defer-auth.js grant`. Negative intent ('fix everything', 'no deferrals') writes a no-defer-pin that overrides any auth.",
+  "deferralGate": {
+    "enabled": true,
+    "authTtlSeconds": 600,
+    "classifyUserPrompts": true
+  },
+  "_comment_researchRequiredGate": "wf-5cd71b1f — mechanical Research-Required gate. UserPromptSubmit classifies prompts as command/factual/diagnostic via regex. Diagnostic prompts (Tier 2/3 markers: 'why', 'should I', 'what do you think', etc.) write a turn-scoped marker. Stop hook checks the transcript for Read calls against evidence paths (lib/, scripts/, src/, .workflow/state/, etc.); if below threshold, re-prompts the AI with a violation message forcing a redo. After maxAttempts, hard-stops with user-visible message. Override: prompt prefix '!' skips the gate.",
+  "researchRequiredGate": {
+    "enabled": true,
+    "requiredEvidence": 2,
+    "maxAttempts": 3
+  },
   "sessionHydration": {
     "recencyWindowHours": 48
   },

@@ -118,6 +118,64 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // wf-f9912af6: Deferral-authorization gate. Blocks Write/Edit to
+  // last-review.json / last-audit.json when the new content introduces
+  // `status: deferred*` on findings without explicit user authorization.
+  // Also blocks Bash commands that would write deferral statuses to these
+  // files when no auth marker is active. Fail-open on any error.
+  try {
+    const deferralGate = require('./deferral-gate');
+    if ((toolName === 'Write' || toolName === 'Edit') && filePath) {
+      // For Edit, the new content is in toolInput.new_string (a partial replacement),
+      // not the full file — we can't validate transitions reliably. For Write,
+      // toolInput.content is the full file. We only validate Write here; Edit
+      // on these target files is left to a separate per-Edit hook in v2.
+      // Conservative v1: block any Edit on target files unless auth exists.
+      if (deferralGate.isTargetFile(filePath)) {
+        if (toolName === 'Write' && typeof toolInput.content === 'string') {
+          const result = deferralGate.checkWriteGate(filePath, toolInput.content, config);
+          if (result.blocked) {
+            return {
+              allowed: false,
+              blocked: true,
+              reason: 'Deferral-gate: unauthorized status:deferred on review/audit findings',
+              message: result.message
+            };
+          }
+        } else if (toolName === 'Edit') {
+          // Edit can introduce a deferral via new_string. Conservative:
+          // if new_string contains a deferral status literal AND no auth,
+          // block. Otherwise allow.
+          const ns = toolInput.new_string || '';
+          if (/"status"\s*:\s*"(deferred|wont-?fix|skipped|dismissed)/i.test(ns)) {
+            const auth = deferralGate.isAuthorized([{ id: 'unspecified' }]);
+            if (!auth.authorized) {
+              return {
+                allowed: false,
+                blocked: true,
+                reason: 'Deferral-gate: Edit introduces deferral status without authorization',
+                message: `Deferral-gate BLOCKED: Edit on ${filePath} introduces a deferral status literal (\`"status": "deferred*"\`) but no authorization is active.\n\nReason: ${auth.reason}\n\nUse the Write tool with full file content for proper validation, or get explicit user authorization (see flow defer-auth).`
+              };
+            }
+          }
+        }
+      }
+    }
+    if (toolName === 'Bash' && typeof toolInput.command === 'string') {
+      const result = deferralGate.checkBashGate(toolInput.command, config);
+      if (result.blocked) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: 'Deferral-gate: Bash command writes unauthorized deferrals',
+          message: result.message
+        };
+      }
+    }
+  } catch (_err) {
+    if (process.env.DEBUG) console.error(`[Hook] Deferral gate error (fail-open): ${_err.message}`);
+  }
+
   // Research-evidence gate (spec-write): blocks Edit/Write to proposal paths
   // when the AI has not read enough evidence files this task turn.
   if ((toolName === 'Edit' || toolName === 'Write') && deps.checkSpecWriteGate) {

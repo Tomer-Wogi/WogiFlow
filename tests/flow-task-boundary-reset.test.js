@@ -63,6 +63,26 @@ function withProject(fn) {
   }
 }
 
+// F1 fix: async-aware variant of withProject. The sync version above tears
+// down the tmp directory in `finally` BEFORE awaited operations inside `fn`
+// resolve, which on Linux tmpfs (or fast APFS flushes) causes test FS
+// operations to land on a deleted directory. Use this for any test whose
+// callback contains `await`.
+async function withProjectAsync(fn) {
+  const originalCwd = process.cwd();
+  const tmp = makeProject();
+  process.chdir(tmp);
+  let tbr;
+  try {
+    tbr = loadFreshModule();
+    await fn(tmp, tbr);
+  } finally {
+    process.chdir(originalCwd);
+    try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+    evictPathCaches();
+  }
+}
+
 function writeReady(tmp, recentlyCompleted) {
   fs.writeFileSync(
     path.join(tmp, '.workflow', 'state', 'ready.json'),
@@ -180,6 +200,157 @@ describe('task-boundary-reset — Stop-hook fallback (ensurePhase1MarkedIfRecent
       const result = tbr.ensurePhase1MarkedIfRecentlyCompleted();
       assert.strictEqual(result.marked, false);
       assert.strictEqual(result.reason, 'no-fresh-completion');
+    });
+  });
+});
+
+describe('task-boundary-reset — wf-ee4e343b: SEC-006 PPID alignment in real wrapper→child→hook chain', () => {
+  // This test exists to prevent regressions like the silent-disable that SEC-006
+  // introduced (2026-04-26). The bug: lib/wogi-claude exported WOGI_WRAPPER_PID=$$
+  // (the bash wrapper's PID) but invoked claude WITHOUT exec, so claude got a
+  // new PID. Hooks running under claude saw process.ppid = claude PID, which
+  // never matched WOGI_WRAPPER_PID. checkPreconditions() returned
+  // parent-pid-mismatch and auto-restart silently failed for every user. The
+  // existing tests only verified the no-wrapper-pid early-return path; nobody
+  // tested the populated-env PPID-match path in a real spawn chain.
+  //
+  // Fix: lib/wogi-claude run_claude() now spawns claude inside a subshell
+  // ( export WOGI_WRAPPER_PID=$BASHPID; exec "$CLAUDE_BIN" ... ) so the
+  // subshell's PID becomes claude's PID after exec, and WOGI_WRAPPER_PID
+  // equals that value. This test simulates that chain end-to-end.
+  it('checkPreconditions returns ready:true when called by a child of a process spawned via the wrapper', () => {
+    const { spawnSync } = require('node:child_process');
+    const wrapperPath = path.resolve(__dirname, '..', 'lib', 'wogi-claude');
+    const tmp = makeProject();
+    const originalCwd = process.cwd();
+    process.chdir(tmp);
+    try {
+      // Fake claude shim: a bash script that runs node and prints the
+      // checkPreconditions result as JSON. The shim itself plays the role of
+      // claude — its child node process is the "hook" whose process.ppid we
+      // care about.
+      const shimPath = path.join(tmp, 'fake-claude.sh');
+      const tbrAbs = TBR_PATH.replace(/\\/g, '/');
+      fs.writeFileSync(shimPath, [
+        '#!/usr/bin/env bash',
+        'set -e',
+        // Print env so the test can confirm the alignment trick worked.
+        'echo "SHIM_PID=$$"',
+        'echo "WOGI_WRAPPER_PID=$WOGI_WRAPPER_PID"',
+        // Run the precondition check as a child of the shim. The node
+        // process's process.ppid will equal $$ (this shim's PID).
+        `node -e "const t=require('${tbrAbs}'); const r=t.checkPreconditions(); console.log('PRECHECK='+JSON.stringify(r));"`
+      ].join('\n'), { mode: 0o755 });
+
+      // Invoke the wrapper with --no-wogi-restart so it exec's once and
+      // exits cleanly (the loop is not what we're testing here; we're
+      // testing PID alignment of the spawn). The opt-out path uses
+      // `exec "$CLAUDE_BIN"` which already preserves PID — but the SAME
+      // alignment property must hold in the main-loop path. To exercise
+      // that path, drop --no-wogi-restart and let one iteration run with
+      // a shim that exits 0.
+      // F3 hardening: explicitly unset workspace env vars so the wrapper
+      // routes through the non-expect bash-c-exec path under test, even when
+      // the developer's shell has WOGI_WORKSPACE_ROOT set. WOGI_NO_EXPECT=1
+      // already forces this, but unsetting is defense-in-depth.
+      const cleanEnv = { ...process.env };
+      delete cleanEnv.WOGI_WORKSPACE_ROOT;
+      delete cleanEnv.WOGI_REPO_NAME;
+      delete cleanEnv.WOGI_USE_EXPECT;
+      cleanEnv.WOGI_CLAUDE_BIN = shimPath;
+      cleanEnv.WOGI_NO_EXPECT = '1';
+      cleanEnv.WOGI_MAX_RESTARTS = '1';
+
+      const result = spawnSync(wrapperPath, [], {
+        env: cleanEnv,
+        encoding: 'utf-8',
+        timeout: 15000
+      });
+
+      const stdout = result.stdout || '';
+      // Fail loudly if the wrapper itself errored — without this assert, a
+      // missing shim or bash error would leave stdout empty and the later
+      // regex-match assertions would mask the real failure.
+      assert.strictEqual(
+        result.status,
+        0,
+        `wrapper exited non-zero (status=${result.status}). stderr:\n${result.stderr || '(empty)'}`
+      );
+      const shimPidMatch = stdout.match(/SHIM_PID=(\d+)/);
+      const wrapperPidMatch = stdout.match(/WOGI_WRAPPER_PID=(\d+)/);
+      const precheckMatch = stdout.match(/PRECHECK=(\{[^\n]+\})/);
+
+      assert.ok(shimPidMatch, `expected SHIM_PID in output, got: ${stdout}`);
+      assert.ok(wrapperPidMatch, `expected WOGI_WRAPPER_PID in output, got: ${stdout}`);
+      assert.ok(precheckMatch, `expected PRECHECK in output, got: ${stdout}`);
+
+      const shimPid = parseInt(shimPidMatch[1], 10);
+      const wrapperPid = parseInt(wrapperPidMatch[1], 10);
+      let precheck;
+      try {
+        precheck = JSON.parse(precheckMatch[1]);
+      } catch (err) {
+        assert.fail(`failed to parse PRECHECK JSON: ${err.message}\nstdout: ${stdout}`);
+      }
+
+      // The core assertion: the wrapper aligned WOGI_WRAPPER_PID with the
+      // process the hook sees as its parent. Without the subshell-exec
+      // trick (the SEC-006 regression), wrapperPid would be the bash
+      // wrapper's outer PID — different from shimPid.
+      assert.strictEqual(
+        wrapperPid,
+        shimPid,
+        `WOGI_WRAPPER_PID (${wrapperPid}) should equal shim PID (${shimPid}) — PID alignment trick broken`
+      );
+
+      // And checkPreconditions should be ready:true. If this fails with
+      // parent-pid-mismatch, the SEC-006 regression has reappeared.
+      assert.strictEqual(
+        precheck.ready,
+        true,
+        `checkPreconditions should return ready:true, got: ${JSON.stringify(precheck)}`
+      );
+    } finally {
+      process.chdir(originalCwd);
+      try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_err) { /* ignore */ }
+      evictPathCaches();
+    }
+  });
+});
+
+describe('task-boundary-reset — wf-ee4e343b: skip-counter observability', () => {
+  it('bumps the counter on tracked skip reasons and clears it on success', async () => {
+    await withProjectAsync(async (_tmp, tbr) => {
+      // Force a tracked skip reason by writing a marker but no wrapper env.
+      delete process.env.WOGI_WRAPPER_PID;
+      delete process.env.WOGI_RESTART_FLAG;
+      tbr.markRestartPending({ taskId: 'wf-c0unter1', source: 'test' });
+      await tbr.consumeAndTriggerRestart();
+      let counter = tbr.readSkipCounter();
+      assert.ok(counter, 'counter should exist after first skip');
+      assert.strictEqual(counter.lastReason, 'no-wrapper-pid');
+      assert.strictEqual(counter.count, 1);
+
+      // Same reason again → count = 2
+      tbr.markRestartPending({ taskId: 'wf-c0unter2', source: 'test' });
+      await tbr.consumeAndTriggerRestart();
+      counter = tbr.readSkipCounter();
+      assert.strictEqual(counter.count, 2);
+
+      // Successful clear (manual call mirrors what triggered:true does)
+      tbr.clearSkipCounter();
+      counter = tbr.readSkipCounter();
+      assert.strictEqual(counter, null);
+    });
+  });
+
+  it('does NOT bump for benign idle reasons (no-pending-marker, pending-question-deferred)', async () => {
+    await withProjectAsync(async (_tmp, tbr) => {
+      tbr.clearSkipCounter();
+      // No marker present — should return no-pending-marker, not bump
+      await tbr.consumeAndTriggerRestart();
+      const counter = tbr.readSkipCounter();
+      assert.strictEqual(counter, null, 'idle no-pending-marker must not bump counter');
     });
   });
 });

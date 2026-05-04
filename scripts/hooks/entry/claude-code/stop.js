@@ -256,6 +256,32 @@ runHook('Stop', async ({ parsedInput }) => {
     // Never block Stop on restart-module errors.
   }
 
+  // wf-5cd71b1f: Research-Required Stop-Hook Gate. If the user's prompt this
+  // turn was classified as diagnostic (Tier 2/3 from CLAUDE.md), check that
+  // the AI made enough Read calls against evidence paths before answering.
+  // If not, re-prompt with a violation message forcing a redo. Fail-open.
+  try {
+    const { checkResearchRequiredGate } = require('../../core/research-required-gate');
+    const { getConfig } = require('../../../flow-utils');
+    const config = getConfig();
+    const result = checkResearchRequiredGate({
+      transcriptPath: parsedInput?.transcriptPath,
+      config
+    });
+    if (result.blocked) {
+      if (result.hardStop) {
+        // Hard-stop: AI failed N times — surface to user
+        return { __raw: true, continue: false, stopReason: result.message };
+      }
+      // Soft re-prompt: force the AI to redo with reads
+      return { __raw: true, continue: true, stopReason: result.message };
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[Stop] Research-required gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // Gap B (v2.20.0) — block end-of-turn when a workspace worker has queued
   // channel dispatches but no task in progress. This is the hedging-as-terminal-
   // state anti-pattern ("awaiting signal or will proceed"). The worker MUST
