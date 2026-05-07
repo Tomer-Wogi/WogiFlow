@@ -148,53 +148,37 @@ When in doubt, route through `/wogi-start` which will classify correctly.
 
 ### Anti-Deferral Rule (MANDATORY — ZERO TOLERANCE)
 
-**You MUST NEVER autonomously defer, skip, deprioritize, or drop items from the user's input.**
+**You MUST NEVER autonomously defer, skip, deprioritize, or drop items from the user's input.** If the user provides N items, ALL N become tracked work items. No judgment calls about "important" vs. "enhancement" vs. "long-term."
 
-If the user provides N items, ALL N must become tracked work items. No exceptions. No judgment calls about what's "important" vs. "enhancement" vs. "long-term."
+**Deferral-specific traps** (in addition to master Anti-Rationalization Checklist above):
+- "Items 6-9 are enhancements, I'll focus on fixes first" → WRONG. Create tasks for ALL items.
+- "I already created the important ones" → WRONG. Important is not your call.
+- "I'll defer these as lower priority" → WRONG. Suggest priority; every item still gets a task.
+- "The ready queue would be too large" → WRONG. A large queue is correct; a filtered queue is data loss.
+- "This one was labeled 'long-term'" → WRONG. The user decides when to execute, not you.
 
-**Anti-Deferral Checklist** — If ANY of these thoughts cross your mind, you are about to drop items:
-- "Items 6-9 are enhancements, I'll focus on the fixes first" → WRONG. Create tasks for ALL items.
-- "This one was labeled 'long-term' by the team" → WRONG. Track it. The user decides when to execute, not you.
-- "I'll defer these as lower priority" → WRONG. You may SUGGEST a priority order, but every item must be a tracked task.
-- "The ready queue would be too large" → WRONG. A large queue is correct. A filtered queue is data loss.
-- "I already created the important ones" → WRONG. Important is not your call. Create ALL of them.
+**MAY**: suggest priority order (P0/P1/P2/P3); group related items into stories (every item appears as a criterion in ≥1 story); ask the user to confirm scope.
 
-**What you MAY do:**
-- Suggest a priority order (P0/P1/P2/P3) — but ALL items get tasks regardless of priority
-- Group related items into stories — but every item must appear as a criterion in at least one story
-- Ask the user to confirm scope — but do NOT preemptively filter
+**MUST NEVER**: silently drop items based on AI judgment; create tasks for a subset without explicit user approval to defer the rest; use words like "deferred"/"skipped"/"not created" for user-provided items.
 
-**What you must NEVER do:**
-- Silently drop items because you judged them as "enhancements" or "nice-to-haves"
-- Create tasks for only a subset of items without explicit user approval to defer the rest
-- Use words like "deferred", "skipped", or "not created" for items the user provided
+Applies to `/wogi-start`, `/wogi-story`, `/wogi-epics`, `/wogi-extract-review`, and any command converting user input into tracked work.
 
-**This rule applies everywhere**: `/wogi-start`, `/wogi-story`, `/wogi-epics`, `/wogi-extract-review`, and any other command that converts user input into tracked work.
+### Mid-Execution Anti-Deferral (AFTER TASKS ARE CREATED)
 
-### Mid-Execution Anti-Deferral (MANDATORY — APPLIES AFTER TASKS ARE CREATED)
+**Reordering is permitted. Deferring is not.** Once work is tracked, you MUST NOT propose to skip, postpone, drop, or "deprioritize to later" — regardless of risk, cost, or token-weight. Only sequence changes. "Revisit later" and "deprioritize" are soft-defer euphemisms.
 
-**Reordering is permitted. Deferring is not.** Once work is tracked in an epic/story/wave, you MUST NOT propose to skip, postpone, drop, or "deprioritize to later" any of it — regardless of risk, cost, or token-weight. You may only change the **sequence** of execution.
+When genuinely unsure work is still needed: ask explicitly — "Do you still want wf-XXXX to ship this epic, or drop it?" User decides.
 
-Token cost, risk flags, and "user probably won't miss this" are never valid reasons to drop scoped work. "Revisit later" and "deprioritize" are soft-defer euphemisms — don't use them. Apply the master Anti-Rationalization Checklist above.
-
-**MAY do after tasks are tracked**: propose sequence/parallelization/prerequisites; flag risks without using them to drop scope.
-
-**MUST NEVER do**: propose to "defer", skip based on AI judgment, present a plan that silently omits tracked work.
-
-**When genuinely unsure work is still needed**: ask explicitly — "Do you still want wf-XXXX to ship this epic, or drop it?" User decides, not you.
-
-### Review-Findings Anti-Deferral (MANDATORY — INCIDENT-DRIVEN)
+### Review-Findings Anti-Deferral
 
 Extends Mid-Execution Anti-Deferral to `/wogi-review`, `/wogi-audit`, `/wogi-triage` findings. When the user says "fix all findings" / "option 1" / any variant meaning "address everything":
 
 1. Ship a fix for every finding at evidence tier ≥ 1, regardless of effort estimate.
-2. Never silently convert a finding to "deferred" in commit/release notes without the user explicitly saying "defer X."
-3. If an item is genuinely too large for the current release → STOP and ask: "Finding X requires ~Y min. Ship / split into its own release / defer? Your call."
-4. Never list a finding in release notes without actually fixing it. Promise/delivery mismatches are the rubber-stamp pattern the Completion Truth Gate was designed to prevent.
+2. Never silently convert a finding to "deferred" in commit/release notes without the user saying "defer X."
+3. If too large for the current release → STOP and ask: "Finding X requires ~Y min. Ship / split / defer?"
+4. Never list a finding in release notes without actually fixing it.
 
-Transparency ≠ permission. "Low-risk can wait" and "restructure warrants separate release" are AI judgment calls — they're the user's to make. Apply the master Anti-Rationalization Checklist above.
-
-**Incident origin**: 2026-04-15, v2.17.4 claimed "fix all" but silently deferred M1 and dropped M3. User correction: *"You're not supposed to defer any fixes. It's up to the user to defer, not you."* v2.17.5 fixed both and added this rule.
+"Low-risk can wait" and "restructure warrants separate release" are AI judgment calls — the user's to make.
 
 ### Task ID Format (MANDATORY)
 

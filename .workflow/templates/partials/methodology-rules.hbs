@@ -1,24 +1,20 @@
 ## WogiFlow Methodology Rules
 
-Product-level rules enforced by shipped hooks. Text below exists so Claude understands the contract, not as the enforcement mechanism itself.
+Rules below are enforced by shipped hooks; the prose is so Claude understands the contract. Apply the master Anti-Rationalization Checklist (top of CLAUDE.md) to any rule that doesn't list its own.
 
 ---
 
 ### Research Before Propose
 
-Before proposing a fix, plan, or spec, read 2+ files from `.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, or `.workflow/epics/` — evidence before invention. Baseline LLM training biases toward plausible-sounding solutions; in a codebase with existing infrastructure, "plausible" is frequently wrong.
+Before proposing a fix, plan, or spec, read 2+ files from `.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, or `.workflow/epics/`. Clarifying questions are a valid escape; proposing without evidence is not.
 
-You MAY ask clarifying questions (valid escape hatch). You may NOT propose without evidence.
-
-Enforced by: `research-evidence-gate.js` (blocks `→ spec_review` / `→ coding` transitions and spec-file writes until threshold met; cleared at task start, session-end, and post-compact). Config: `hooks.rules.researchEvidenceGate.{enabled,minEvidence}` (defaults `true`, `2`).
+Enforced by: `research-evidence-gate.js` (blocks `→ spec_review` / `→ coding` and spec-file writes until threshold met). Config: `hooks.rules.researchEvidenceGate.{enabled,minEvidence}` (defaults `true`, `2`).
 
 ---
 
 ### Completion-Claim Honesty Scan
 
-At session-end and `flow health`, `ready.json` entries are scanned (surfaced, not blocked) for:
-- **Status-mismatch** — free-text says "done/completed/shipped" while `status` is partial/blocked/failed.
-- **Negation-vs-evidence** — free-text says "no outages / 0 regressions" while `hotfixes[]` / `incidents[]` / `regressions[]` is non-empty.
+At session-end and `flow health`, `ready.json` entries are scanned (surfaced, not blocked) for status-mismatch (free-text says "done" while `status` is partial/blocked) and negation-vs-evidence (free-text says "no outages" while `hotfixes[]`/`incidents[]`/`regressions[]` is non-empty).
 
 Enforced by: `flow-completion-truth-gate.js → scanForClaimContradictions()`.
 
@@ -26,7 +22,7 @@ Enforced by: `flow-completion-truth-gate.js → scanForClaimContradictions()`.
 
 ### Merge-Plan Artifact Gate
 
-`/wogi-finalize` requires `.workflow/scratch/merge-plan.md` for merges >5 commits or any cross-repo merge. Every commit in `git log <base>..<branch>` must map to `port | adapt | skip-style | superseded | skip-with-reason`; SHA-line count must equal commit count. ≥20% restructure-pattern files triggers a structural warning that biases affected commits toward `adapt`.
+`/wogi-finalize` requires `.workflow/scratch/merge-plan.md` for merges >5 commits or any cross-repo merge. Every commit in `git log <base>..<branch>` must map to `port | adapt | skip-style | superseded | skip-with-reason`; SHA-line count = commit count. ≥20% restructure-pattern files biases affected commits toward `adapt`.
 
 Enforced by: `flow-structure-sensor.js`, `.claude/commands/wogi-finalize.md` Step 2.5.
 
@@ -34,58 +30,46 @@ Enforced by: `flow-structure-sensor.js`, `.claude/commands/wogi-finalize.md` Ste
 
 ### Story Creation Quality Gates
 
-`/wogi-story` runs 5 P0 spec-quality gates at creation time (not implementation-correctness gates — that's `/wogi-start`'s job):
+`/wogi-story` runs 5 P0 spec-quality gates at creation time:
 
-1. **Long Input** — ≥40 lines or ≥5 discrete items → route to `/wogi-extract-review`.
-2. **Item Reconciliation** — ≥3 items → enumerated Item Manifest; unmapped items surface as warnings.
-3. **Consumer Impact Analysis** — refactoring keywords trigger `git grep` for consumers; ≥5 breaking → phased migration recommendation.
-4. **Scope-Confidence Audit** — assumption patterns (`new <X>`, `existing <Y>`) verified against codebase; findings go to Pending Clarifications.
-5. **Intent Bootstrap Coordination** — schedules IGR artifact bootstrap so `/wogi-story` and `/wogi-start` don't both prompt.
+1. **Long Input** — ≥40 lines or ≥5 items → route to `/wogi-extract-review`.
+2. **Item Reconciliation** — ≥3 items → enumerated Item Manifest; unmapped items warn.
+3. **Consumer Impact Analysis** — refactoring keywords trigger `git grep`; ≥5 breaking → phased migration.
+4. **Scope-Confidence Audit** — assumption patterns verified against codebase; findings → Pending Clarifications.
+5. **Intent Bootstrap Coordination** — schedules IGR bootstrap once.
 
-All gates fail-open (grep/classifier unavailable → warning, story still created). Bypass for testing via `--skip-gates`. Config: `storyFlow.*`.
+All fail-open. Bypass for tests via `--skip-gates`. Config: `storyFlow.*`.
 
 ---
 
 ### Workspace Worker Contract
 
-*Applies only in workspace worker mode (`WOGI_WORKSPACE_ROOT` set + `WOGI_REPO_NAME !== 'manager'`). Ignore in solo sessions.*
+*Workspace worker mode only (`WOGI_WORKSPACE_ROOT` set + `WOGI_REPO_NAME !== 'manager'`). Skip in solo sessions.*
 
-**Tool-First Turn**: Every turn after `UserPromptSubmit` must contain ≥1 tool call. In strict mode (default), the first assistant content block must be `tool_use`, not text. Pure-text responses are invisible to the user (they only see the manager terminal) and disqualify the worker from the three-state contract below.
+- **Tool-First Turn**: every turn after `UserPromptSubmit` must contain ≥1 tool call. In strict mode (default), the first content block must be `tool_use`. Pure-text responses are invisible to the user.
+- **Three-State End-of-Turn**: exactly one of ACTION (`/wogi-start <nextId>`), ESCALATION (channel-dispatch `## QUESTION:`), or IDLE.
+- **Hedging forbidden**: "awaiting your signal", "let me know", "standing by", "should I continue".
+- **No direct user prompts**: `AskUserQuestion` is blocked; questions go through channel dispatch.
 
-**Three-State End-of-Turn**: Exactly one of:
-1. **ACTION** — start next pre-approved channel dispatch via `/wogi-start <nextId>`.
-2. **ESCALATION** — channel-dispatch `## QUESTION: ...` to the manager.
-3. **IDLE** — zero pending dispatches AND zero in-progress tasks.
-
-Hedging phrases ("awaiting your signal", "let me know", "standing by", "should I continue") are mechanically forbidden — visibility is NOT a substitute for action; the manager already pre-approved the dispatch by queuing it.
-
-**No direct user prompts**: `AskUserQuestion` is blocked; questions go through channel dispatch as `## QUESTION: ...`. Block message carries the exact `curl` command to use.
-
-**Hedging detection**: A Haiku classifier inspects the final message at Stop-hook time; confidence ≥ `minConfidence` → stop is blocked with channel-dispatch instructions. Fail-open on missing API key / transcript / classifier error.
-
-Enforced by: `worker-tool-first-gate.js` (G1/G4/Gap B), `worker-boundary-gate.js`, `flow-worker-question-classifier.js`. Config: `workspace.toolFirstTurnGate.{enabled,strict}`, `workspace.blockAskUserQuestionInWorker`, `workspace.aiWorkerQuestionClassifier.*`, `workspace.autoPickupChannelDispatches`.
+Enforced by: `worker-tool-first-gate.js` (G1/G4/Gap B), `worker-boundary-gate.js`, `flow-worker-question-classifier.js`. Config: `workspace.toolFirstTurnGate.{enabled,strict}`, `workspace.blockAskUserQuestionInWorker`, `workspace.aiWorkerQuestionClassifier.*`. Long-form: `.claude/rules/_internal/worker-tool-first-turn.md`.
 
 ---
 
 ### Workspace Manager Silent-Halt Detection
 
-*Applies only in workspace manager mode. Ignore in solo sessions.*
+*Workspace manager mode only.*
 
-Every manager→worker dispatch is tracked. A pending dispatch past its `expectedDeadline` with no `task-complete` or `worker-stopped` message = silent death, surfaced on the manager's next turn via `UserPromptSubmit` `additionalContext`. Default `expectedDurationMs = 30min`; callers override per-dispatch for long tasks.
+Every manager→worker dispatch is tracked. A pending dispatch past `expectedDeadline` with no `task-complete`/`worker-stopped` = silent halt, surfaced on next turn via `UserPromptSubmit` `additionalContext`. Default `expectedDurationMs = 30min`. Three terminal states: Completed / Graceful-stop / Silent-halt.
 
-Three terminal states: **Completed** (task-complete arrived), **Graceful-stop** (worker-stopped arrived), **Silent-halt** (no message, deadline passed).
-
-Enforced by: `lib/workspace-dispatch-tracking.js`, `.workspace/state/dispatched-tasks.json` (ring buffer, last 100 records). File-based, hook-driven, no background processes.
+Enforced by: `lib/workspace-dispatch-tracking.js`, `.workspace/state/dispatched-tasks.json` (ring buffer, last 100).
 
 ---
 
 ### Main-Mode Question Classifier
 
-*Applies in solo/main-mode sessions with `taskBoundaryReset.enabled: true`.*
+*Solo sessions with `taskBoundaryReset.enabled: true`.*
 
-Before the Stop hook fires SIGTERM for task-boundary restart, a Haiku classifier inspects the final assistant message. If the AI ended the turn with an open user-facing question AND `pending-question.json` is absent, the classifier writes the marker and defers the restart — the user's reply then lands in the same session context. Fail-open throughout.
-
-**Prefer explicit `flow ask "<question>"`** — it writes the marker directly and runs before the classifier (short-circuits with `pending-question-deferred`). The classifier is the safety net for when you forget.
+Before Stop hook fires SIGTERM, a Haiku classifier inspects the final assistant message. Open user-facing question + no `pending-question.json` → write marker, defer restart. Prefer explicit `flow ask "<question>"` (writes marker directly, short-circuits the classifier). Fail-open throughout.
 
 Enforced by: `task-boundary-reset.js → consumeAndTriggerRestart()`. Config: `mainModeQuestionClassifier.{enabled,minConfidence,model}`.
 
@@ -93,197 +77,130 @@ Enforced by: `task-boundary-reset.js → consumeAndTriggerRestart()`. Config: `m
 
 ### Main-Mode Auto-Pickup After Clean Restart
 
-*Applies in solo/main-mode sessions with `taskBoundaryReset.enabled: true` AND `taskBoundaryReset.autoPickupNextTask: true` (default).*
+*Solo sessions with `taskBoundaryReset.enabled: true` AND `autoPickupNextTask: true` (default).*
 
-After a task-boundary restart triggered by a **clean** completion (not error/blocked/killed), the next SessionStart context injects `AUTO-PICKUP MODE ACTIVE` with the next ready task ID. The first user message → invoke `Skill(skill="wogi-start", args="<nextReadyId>")` immediately, regardless of message content. No "what's next?", no summary, no proposing alternatives.
+After a clean-completion task-boundary restart, SessionStart context injects `AUTO-PICKUP MODE ACTIVE` with the next ready task ID. First user message → invoke `Skill(skill="wogi-start", args="<nextReadyId>")` immediately, regardless of message content.
 
-**Precedence**: `pending-question.json` (R-336) wins. If the prior session ended with an open question, auto-pickup is skipped even if all other conditions hold.
+Precedence: `pending-question.json` wins. Skip conditions (any disables): pending-question exists, ready empty, autoPickup off, marker absent.
 
-**Skip conditions** (any disables; marker still consumed): pending-question exists, `ready.json` empty, `autoPickupNextTask: false`, marker absent.
-
-Enforced by: `task-boundary-reset.js → writeCleanCompletionMarker()` + `session-context.js → formatContextForInjection()`. Marker: `.workflow/state/task-boundary-clean-completion.json` (single-use).
+Enforced by: `task-boundary-reset.js → writeCleanCompletionMarker()` + `session-context.js`. Marker: `.workflow/state/task-boundary-clean-completion.json` (single-use).
 
 ---
 
-### Code Quality Patterns (generic)
+### Code Quality Patterns
 
-1. **Single Source of Truth for Constants** — import from one canonical location; never duplicate model/config objects across files.
-2. **Named Constants for Magic Numbers** — define thresholds as named constants (`const COVERAGE_THRESHOLDS = { default: 0.7, comprehensive: 0.85 }`); don't inline literals.
+1. **Single source of truth for constants** — import from one canonical location.
+2. **Named constants for magic numbers** — define thresholds as named constants; don't inline literals.
 
 ---
 
 ### Regression Discipline
 
-Typecheck/lint/build gates catch code errors, NOT behavior drift. For critical user-facing flows (login, submit, approve, delete, invite, etc.):
+Typecheck/lint/build catches code errors, not behavior drift. For critical user-facing flows (login, submit, approve, delete, invite):
 
-1. **Executable scripts, not test-plan documents** — each flow gets an executable regression artifact (Playwright, Jest integration, curl-scripted e2e) at `regression-suite/<flow>.<ext>`. Test plans rot; scripts fail loudly.
-2. **Living feature inventory** — one table with `Feature | Last Verified | Commit | Regression Script | Known Issues`; update the "Known Issues" cell with the bug's task ID rather than writing separate incident docs.
-3. **Change-touch rule** — when a task modifies a file mapped to a regression script, that script must pass before task close. Enforce per-task via acceptance criteria until a native gate ships.
-4. **Audit-seeded, not human-written** — use `/wogi-audit` to produce a draft inventory from current code, then review row-by-row.
+1. Executable scripts at `regression-suite/<flow>.<ext>`, not test-plan documents.
+2. Living feature inventory: `Feature | Last Verified | Commit | Regression Script | Known Issues`.
+3. Change-touch rule: task modifying a file mapped to a regression script must pass that script before close.
+4. Audit-seeded inventory via `/wogi-audit`, then human-reviewed.
 
-Anti-rationalization: *"We don't have regression coverage but I'm confident my fix won't break it"* → WRONG. Confidence is not evidence.
+"Confident my fix won't break it" is not evidence.
 
 ---
 
 ### Memory-First Clarification
 
-Before asking the user a product-domain question (role model, business rules, product scope, terminology), check `.workflow/state/product.md`, `domain-model.md`, `user-journeys.md`, `glossary.md` first. Every redundant question costs trust.
-
-When you must ask, cite what you checked: *"I read domain-model.md §Roles; it says X — does this apply to Y too?"* — not *"what's Y?"*
-
-If artifacts don't exist yet, run `node scripts/flow-intent-bootstrap.js bootstrap` (or trigger via `/wogi-start` on any IGR-enabled task). A project without `domain-model.md` is a project where every domain question will be re-asked every session.
+Before asking a product-domain question, check `.workflow/state/{product,domain-model,user-journeys,glossary}.md`. When you must ask, cite what you read: *"I read domain-model.md §Roles; it says X — does this apply to Y too?"* not *"what's Y?"*. If artifacts don't exist, run `node scripts/flow-intent-bootstrap.js bootstrap`.
 
 ---
 
 ### Source Fidelity Rule (Verbatim Source Preservation)
 
-When a long-form user request becomes a spec, channel-dispatch message, or any artifact that downstream actors will execute, the **verbatim source MUST be preserved alongside the structured derivation**.
+When a long-form user request becomes a spec or channel-dispatch, the **verbatim source MUST be preserved alongside the structured derivation**. The lossy step is at the spec-authoring layer (manager summarizing user input); downstream actors then build the summary, missing items the user named.
 
-The lossy step in cross-session/cross-worker compression is almost always at the spec-authoring layer (manager summarizing user input into a "contract"). Downstream actors then build the summary's interpretation, missing items the user explicitly named. Adversary checks won't catch this because the adversary sees only the spec, not the original prompt.
+Mandatory structure for any spec/dispatch derived from a long user prompt (>40 lines OR ≥5 items):
 
-**Mandatory structure for any spec or dispatch derived from a long user prompt** (>40 lines OR ≥5 discrete items):
+1. **`## Original Request (verbatim)`** — user's prompt unmodified, top of spec body.
+2. **`## Item Manifest`** — enumerated list reconciling every source item to a specific AC OR an explicit `defer-with-reason: <user-cited reason>`. AI-judged "low priority" is not a valid reason.
+3. **Channel-dispatch links the spec, not summarizes it** — manager-to-worker messages MUST include verbatim source OR a path to a saved spec containing it. Bare "summary contracts" are forbidden.
 
-1. **`## Original Request (verbatim)` block** — the user's prompt unmodified. Required at the top of the spec body.
-
-2. **`## Item Manifest` block** — enumerated list reconciling every source item to either:
-   - A specific AC in the spec, OR
-   - An explicit `defer-with-reason: <user-cited reason>` entry. The deferral is the user's call, not the AI's. AI-judged "low priority" is NOT a valid reason.
-
-3. **Channel-dispatch links the spec, not summarizes it.** Manager-to-worker channel messages that create work MUST include either the verbatim source OR a path to a saved spec file containing the verbatim source. Bare "summary contracts" sent without source link are forbidden.
-
-**Why this rule exists:** the 2026-04-27 wogi-hub Customers > Services incident — user provided a ~50-line spec for a UI page; manager compressed into a 5-bullet "owner-locked decisions" channel-dispatch message; downstream FE worker built the bullet contract literally; result was 5 of 12 user-named features built. The build looked locally correct but didn't match the user's actual ask. Three existing safeguards all failed to catch it: long-input gate (output rolled up, not preserved as canonical), feature dossier (didn't exist for this feature — chicken-and-egg), anti-deferral rule (text only, no mechanical enforcement at spec-write time).
-
-**Anti-rationalization checklist** — if any of these thoughts cross your mind, you are about to violate the rule:
-- *"I've captured the key decisions in N bullets"* → WRONG. Items the user named are not yours to filter.
-- *"The downstream worker doesn't need the full prompt; the spec is enough"* → WRONG. The spec is YOUR interpretation. The worker should be able to verify against source.
-- *"The user's prompt was rambling; my summary is cleaner"* → WRONG. Cleanliness is not authority to filter user-named items.
-- *"This is just an internal manager message; the user won't see it"* → WRONG. That's exactly when the lossy step happens; verbatim preservation is more important here, not less.
-- *"The long-input gate already extracted the items"* → WRONG IF you don't pin its output as canonical and reconcile every spec against it.
-
-**Enforcement:** Logic Constitution v3 sub-principle 11.6 (Temporal Source Coverage). Adversary verifies every spec against its `Original Request (verbatim)` block before approval. Specs missing the block when source qualifies for it → BLOCKED at spec_review approval. Verifier CLI: `node scripts/flow-source-fidelity.js check <spec-file>`. Worker-side fallback: `scripts/hooks/core/long-input-enforcement.js` injects forcing instruction at UserPromptSubmit when channel-dispatch arrives long-form without source-link.
+Enforced by: Logic Constitution v3 sub-principle 11.6. Adversary blocks specs missing the block when source qualifies. Verifier: `node scripts/flow-source-fidelity.js check <spec-file>`. Worker fallback: `scripts/hooks/core/long-input-enforcement.js`.
 
 ---
 
 ### Cross-Story Integration Tier-3 Rule
 
-When Story B layers behavior on top of infrastructure shipped by Story A (or any prior commit), Story B's IGR pass MUST treat that infrastructure as an audited dependency, not as a given. Within-module unit tests that pin Story B's local behavior do NOT verify that Story A's contract holds for Story B's usage.
+When Story B layers on infrastructure shipped by Story A, Story B's IGR pass MUST treat that infrastructure as an audited dependency. Within-module unit tests don't verify Story A's contract holds for Story B's usage.
 
-**Mandatory for every layering story:**
+Mandatory for layering stories:
 
-1. **Architect output names upstream dependencies.** A "Dependencies" section lists prior stories/commits + the specific contract relied on (interface signature, file format, transport, invariant). "I'm reusing Story A's X" is not enough; quote the contract.
+1. **Architect names upstream dependencies** — "Dependencies" section listing prior stories/commits + the specific contract relied on (interface, file format, transport, invariant). Quote the contract.
+2. **Adversary challenges the dependency** — "What if Story A's invariant doesn't hold? What evidence proves the contract is intact for THIS usage?"
+3. **At least one Tier-3 integration test** exercises the chain end-to-end. Mark `// regression-tier3`.
+4. **Pre-release gate** verifies stacked coverage. Missing Tier-3 + stacked stories → block release.
 
-2. **Adversary challenges the dependency.** "What if Story A's invariant doesn't hold? What's the failure mode? What evidence proves Story A's contract is intact for THIS usage?" The adversary's job is finding the assumption Story B silently inherits.
+Apply: `git log --oneline <prior-N-commits>` to identify dependencies; for each, write the contract; `grep -r "<interface>"` to verify HEAD; write the Tier-3 test BEFORE Story B's code.
 
-3. **At least one Tier-3 integration test exercises the chain end-to-end.** Not a unit test of Story B in isolation — a test that simulates a real run through both stories' code paths. If Story A's output flows into Story B's input, the test feeds a real Story-A output through Story B and asserts the output. Mark the test `// regression-tier3` so future readers know its purpose.
-
-4. **Pre-release gate verifies stacked coverage.** Before tagging a release, identify any commits that layer on prior commits in the same release. For each, confirm a Tier-3 integration test exists. Missing Tier-3 + stacked stories → block release.
-
-**Why:** unit tests within a story boundary catch the story's own bugs but miss every regression where the story's correct behavior depends on a broken upstream. The 2026-04-26 incident (audit-channel-transport-001) was caused by exactly this gap: Story A stripped MCP servers including the workspace-channel transport itself; Story B layered task-completion routing on top; both stories' tests passed; manager dispatch silently failed in production. Self-IGR caught Story B's local correctness but missed that the upstream contract was broken.
-
-**Anti-rationalization:**
-- *"The upstream story has its own tests"* → WRONG. Their tests pin THEIR contract. Your Tier-3 test pins YOUR usage of their contract.
-- *"It's expensive to set up an integration test"* → WRONG. The 2026-04-26 incident cost a v2.29.1 hot-fix release. Set up time amortizes; regression cost compounds.
-- *"Self-IGR is enough; we don't need the actual adversary subagent"* → WRONG. Self-IGR pattern-matches on the same model that wrote the plan; the cross-story dependency is exactly the blind spot a different-model adversary catches.
-
-**How to apply** (concrete checks for any layering story):
-- `git log --oneline <prior-N-commits>` — which earlier work does this story sit on?
-- For each, write the contract you're relying on: "Story A delivers X via Y."
-- `grep -r "<Story A's interface>"` — is the contract still intact in HEAD?
-- Write the Tier-3 test BEFORE writing Story B's code. If the test cannot be written without first standing up infrastructure that makes the integration verifiable, that's a signal the architecture needs that infrastructure too.
-
-Enforced by: Logic Constitution v3 sub-principle 11.5 (Stacked-story integration verification). Pre-release gate consumes this signal before tagging.
+Enforced by: Logic Constitution v3 sub-principle 11.5. Pre-release gate consumes this signal before tagging.
 
 ---
 
 ### Autonomous Walk-Away Mode
 
-The user can dump N items, say "go until you finish" / "autonomous mode" / "run this autonomously" / "don't bother me, just do it" (or similar phrases — see `flow-autonomous-detector.js`), and walk away. While the run is active:
+User says "go until you finish" / "autonomous mode" / "run this autonomously" / "don't bother me, just do it" → flag activates, AI runs without interruption. While active:
 
-- **productBehavior / ux questions** → append to `.workflow/state/question-queue.json` (do NOT ask the user). Render in the end-of-run summary so the user resolves them in one batch.
-- **engineering / naming / implementation** → decide autonomously, report in the summary.
+- **productBehavior / ux** → append to `.workflow/state/question-queue.json` (do NOT ask). Render in end-of-run summary.
+- **engineering / naming / implementation** → decide autonomously, report in summary.
 - **infrastructure / performance** → decide autonomously, report after.
-- **security** → auto-fix-report-after (existing).
-- **low-confidence technical decisions** → self-adversarial challenge to ≥90% confidence; queue if cap hit. Counter is shared with the IGR Architect-Adversary loop (default cap 30 per run, configurable via `autonomousMode.maxAdversaryInvocations`).
-- **Blocking errors (typecheck/test/conflict)** → fix autonomously; only surface if fundamentally un-fixable.
+- **security** → auto-fix-report-after.
+- **low-confidence technical decisions** → self-adversarial challenge to ≥90% confidence; queue if cap hit. Counter shared with IGR Architect-Adversary loop (default cap 30, `autonomousMode.maxAdversaryInvocations`).
+- **Blocking errors** → fix autonomously; surface only if fundamentally un-fixable.
 
-**Persistence**: the autonomous flag is written to `session-state.json` on disk (canonical) and cached in-process (read-hot). It survives task-boundary SIGTERM restarts via SessionStart re-hydration. Staleness threshold (default 1h via `autonomousMode.stalenessThresholdMs`) covers laptop-sleep and unclean termination — stale flags do NOT auto-resume.
+Persistence: flag in `session-state.json`, survives task-boundary SIGTERM via SessionStart re-hydration. Staleness threshold (`autonomousMode.stalenessThresholdMs`, default 1h) — stale flags don't auto-resume.
 
-**Anti-hedging**: while autonomous mode is active, phrases like "let me know if", "should I continue", "awaiting your signal", "standing by", "would you like me to" are forbidden. The user has walked away.
+Anti-hedging while active: "let me know if", "should I continue", "awaiting your signal", "standing by", "would you like me to" are forbidden.
 
-**Exit conditions**: ready queue drains, user types "stop"/"pause", or fatal error. On exit, render the completion summary (terminal block + JSON payload at `.workflow/state/autonomous-run-summary-<runId>.json`) and clear the flag.
+Exit: ready drains, user types "stop"/"pause", or fatal error. On exit, render completion summary (`.workflow/state/autonomous-run-summary-<runId>.json`) and clear flag.
 
-Enforced by: `flow-autonomous-detector.js`, `flow-question-queue.js`, `flow-decision-authority.js` (autonomous param + `queue-for-review` + `adversary-loop` buckets), `flow-completion-summary.js`, and the SessionStart context injection in `scripts/hooks/core/session-context.js`.
+Enforced by: `flow-autonomous-detector.js`, `flow-question-queue.js`, `flow-decision-authority.js` (autonomous param + `queue-for-review` + `adversary-loop` buckets), `flow-completion-summary.js`, SessionStart context in `session-context.js`.
 
 ---
 
 ### Mechanical Deferral Authorization Gate (wf-f9912af6)
 
-The textual "Review-Findings Anti-Deferral" rule above (incident-driven 2026-04-15) is enforced mechanically by the deferral gate. The AI cannot silently mark review/audit findings as `status: deferred*` without explicit user authorization — the PreToolUse hook intercepts every Write/Edit/Bash that targets `.workflow/state/last-review.json` or `.workflow/state/last-audit.json` and BLOCKS the write when:
+The Review-Findings Anti-Deferral rule is enforced mechanically. The PreToolUse hook intercepts every Write/Edit/Bash that targets `.workflow/state/last-review.json` or `last-audit.json` and BLOCKS the write when:
 
-1. The new content introduces one or more findings whose `status` matches `/^deferred(?:[-_].*)?$|^wont-?fix$|^skipped$/i`, AND
-2. No valid authorization marker exists at `.workflow/state/deferral-authorization.json`, AND
-3. The `no-defer-pin.json` is not active (a pin overrides any auth — set when the user says "fix everything" / "no deferrals" / "I don't want tech debt").
+1. New content introduces a finding with `status` matching `/^deferred(?:[-_].*)?$|^wont-?fix$|^skipped$/i`, AND
+2. No valid auth marker at `.workflow/state/deferral-authorization.json`, AND
+3. `no-defer-pin.json` is not active.
 
-**Authorization sources** (one of):
+**Authorization sources**:
+- **User-prompt classifier** — regex-detects defer phrases ("defer X", "fix critical only", "ship as-is", "option 2/4"). Auth TTL 10min.
+- **Explicit CLI** — `node scripts/flow-defer-auth.js grant --scope=all --reason="<verbatim user phrase>"`.
 
-- **User-prompt classifier** (`scripts/hooks/core/deferral-classifier.js`): regex-detects explicit defer phrases in UserPromptSubmit messages — "defer X", "fix critical only", "ship as-is", "option 2"/"option 4" from the /wogi-review menu, etc. Writes auth marker with TTL 10 min by default.
-- **Explicit CLI**: `node scripts/flow-defer-auth.js grant --scope=all --reason="<verbatim user phrase>"` (or `--findings=F5,F6,...`). Used when the AI needs to record explicit authorization (e.g., user picked option 4).
+**Negative intent overrides positive**: "fix everything", "no deferrals", "I don't want tech debt" delete auth and write `no-defer-pin.json` (~30min hard-block).
 
-**Negative intent overrides positive**: phrases like "fix everything", "no deferrals", "don't defer", "I don't want tech debt" delete any existing auth and write a `no-defer-pin.json` that hard-blocks deferrals for ~30 minutes.
+**Bash-mutating commands** that target review/audit files AND mention `deferred|wont-fix|skipped|dismissed` are blocked when no auth is active. Reads (cat/jq/grep) pass.
 
-**Bash-mutating commands** that write to the target files AND mention `deferred|wont-fix|skipped|dismissed` are blocked when no auth is active — this catches `node -e "fs.writeFileSync('.workflow/state/last-review.json', ...)"` patterns that bypass Write/Edit. Reads (`cat`/`jq`/`grep`) are not blocked.
+Audit trail: `.workflow/state/deferral-block-log.json` (last 100). Config: `deferralGate.{enabled,authTtlSeconds,classifyUserPrompts}` (defaults true / 600 / true).
 
-**Audit trail**: every blocked attempt logs to `.workflow/state/deferral-block-log.json` (last 100 entries) for telemetry.
-
-**Why mechanical enforcement matters:** the textual rule has been violated multiple times in incidents — the AI decides "low risk / can wait / pre-existing" and writes `status: deferred` to last-review.json based on its own judgment. The gate makes this structurally impossible without the user's word.
-
-**Anti-rationalization** (if any of these thoughts cross your mind, you are about to violate the gate):
-- *"This finding is pre-existing, not introduced by my changes"* → WRONG. Pre-existing is a reason to fix it now (continuous improvement) or to surface it to the user with an explicit "ship / fix / defer" question, not to silently `status: deferred-pre-existing`.
-- *"This is LOW severity, the user won't care"* → WRONG. Severity is the user's call, not yours.
-- *"The adversary already verified it's not a real bug"* → WRONG. If it's not a bug, mark it `dismissed-not-a-bug` only AFTER the user confirms; otherwise leave it `open`.
-- *"I'll batch deferrals into the next review cycle"* → WRONG. There is no "next cycle" — the user reads the findings now.
-
-Config: `deferralGate.{enabled,authTtlSeconds,classifyUserPrompts}` in `.workflow/config.json` (defaults: true / 600 / true).
-
-Enforced by: `scripts/hooks/core/deferral-gate.js` (core), `scripts/hooks/core/deferral-classifier.js` (intent detection), `scripts/flow-defer-auth.js` (CLI), wired into `scripts/hooks/core/pre-tool-orchestrator.js` (PreToolUse) and `scripts/hooks/entry/claude-code/user-prompt-submit.js` (UserPromptSubmit).
+Enforced by: `scripts/hooks/core/deferral-gate.js`, `deferral-classifier.js`, `scripts/flow-defer-auth.js`, wired into `pre-tool-orchestrator.js` and `user-prompt-submit.js`.
 
 ---
 
 ### Mechanical Research-Required Gate (wf-5cd71b1f)
 
-The textual rules in CLAUDE.md ("Research Before Propose," Tier 2/3 routing protocol) say the AI must read evidence before answering diagnostic questions. The research-required gate makes this mechanical: it intercepts diagnostic prompts at UserPromptSubmit and re-prompts the AI at Stop hook if the assistant turn produced text without enough Read calls against evidence paths.
+Diagnostic prompts are intercepted at UserPromptSubmit and re-prompted at Stop hook if the assistant turn produced text without enough Read calls against evidence paths.
 
-**How it works**:
+Flow:
 
-1. **UserPromptSubmit classifier** (`scripts/hooks/core/research-required-classifier.js`): regex-classifies each prompt into `command` / `factual` / `diagnostic` / `none`.
-   - `command` — task IDs, action imperatives ("add X"), follow-ups ("yes", "continue", "option N"), AI's own slash commands
-   - `factual` — Tier 1 markers ("what is", "where is", "show me", "list all")
-   - `diagnostic` — Tier 2/3 markers ("why", "should I", "what do you think", "is this correct", "explain why", "did you fix")
-   - On `diagnostic`: writes `.workflow/state/research-required-this-turn.json` with `{requiredEvidence: 2, attemptCount: 0, classifiedAt}`.
+1. **Classifier** (`research-required-classifier.js`) classifies each prompt: `command` / `factual` / `diagnostic` / `none`. Diagnostic markers: "why", "should I", "what do you think", "is this correct", "explain why", "did you fix". On diagnostic → write `.workflow/state/research-required-this-turn.json` with `{requiredEvidence: 2, attemptCount: 0}`.
+2. **Override**: prompt prefix `!` skips the gate.
+3. **Stop-hook gate** (`research-required-gate.js`) parses the JSONL transcript, counts Read against evidence prefixes, Bash with `cat|head|tail|grep|rg|jq|less|view|awk|sed` against evidence paths, and any Glob/Grep.
+4. **count < required** → `{continue: true, stopReason: <message>}` forces redo. After `maxAttempts` (default 3) → hard-stop visible to user.
+5. **count ≥ required** → marker consumed, Stop proceeds.
 
-2. **Override**: prompt prefix `!` skips the gate entirely. For when the user knows their question is conversational and doesn't need evidence reading.
+Evidence prefixes: `.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, `.workflow/epics/`, `lib/`, `scripts/`, `src/`, `tests/`, `app/`.
 
-3. **Stop-hook gate** (`scripts/hooks/core/research-required-gate.js`): if marker exists, parses the JSONL transcript for the current turn (since the most recent user entry), counts:
-   - `Read` tool calls where `file_path` matches an evidence prefix
-   - `Bash` tool calls where the command starts with `cat|head|tail|grep|rg|jq|less|view|awk|sed` and targets an evidence-prefix path
-   - `Glob`/`Grep` tool calls (any pattern counts)
+Config: `researchRequiredGate.{enabled,requiredEvidence,maxAttempts}` (defaults true / 2 / 3). Override prefix `!` is hard-coded.
 
-4. **If count < requiredEvidence**:
-   - Increments `attemptCount` in the marker
-   - Returns `{continue: true, stopReason: <violation message>}` — Claude Code re-prompts the AI with the message; the AI must redo the turn with reads
-   - After `maxAttempts` (default 3): returns `{continue: false, stopReason: <hard-stop message>}` — visible to the user, marker cleared
-
-5. **If count ≥ requiredEvidence**: marker is consumed (deleted), Stop proceeds normally.
-
-**Evidence prefixes** (shared with `research-evidence-gate.js`): `.workflow/state/`, `.workflow/changes/`, `.workflow/specs/`, `.workflow/epics/`, `lib/`, `scripts/`, `src/`, `tests/`, `app/`. Reading code in answer to "why does X happen" is the legitimate path.
-
-**Why mechanical enforcement matters**: the textual Tier 2/3 protocol relies on the AI self-classifying its own question's complexity, which is the rubber-stamp pattern. The gate uses structural markers + Stop-hook redo loop — same proven architecture as `worker-tool-first-gate.js` G1/G4. The AI cannot bypass: UserPromptSubmit fires on every user message, Stop fires on every assistant turn end, and `{continue: true, stopReason}` is honored by Claude Code as a forced redo.
-
-**Anti-rationalization**:
-- *"I already know the answer from context"* → WRONG. Confidence is not evidence. The gate fires on the question's structure, not your perceived certainty.
-- *"This question is conversational, doesn't need code reading"* → WRONG. If you genuinely believe that, the user can prefix `!` next time. Within a turn, the gate is final.
-- *"I'll cite the evidence in my next answer instead of reading it now"* → WRONG. Citations require reads in the same turn. The transcript proves it.
-
-Config: `researchRequiredGate.{enabled,requiredEvidence,maxAttempts}` in `.workflow/config.json` (defaults: true / 2 / 3). The override prefix `!` is hard-coded.
-
-Enforced by: `scripts/hooks/core/research-required-classifier.js` (UserPromptSubmit), `scripts/hooks/core/research-required-gate.js` (Stop), wired into `scripts/hooks/entry/claude-code/user-prompt-submit.js` and `scripts/hooks/entry/claude-code/stop.js`.
+Enforced by: `research-required-classifier.js` (UserPromptSubmit), `research-required-gate.js` (Stop), wired into `user-prompt-submit.js` and `stop.js`.
