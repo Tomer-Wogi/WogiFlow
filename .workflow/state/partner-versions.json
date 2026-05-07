@@ -25,6 +25,14 @@
       "version": "0.1.0",
       "repo": "wogiflow-portal",
       "checkedAt": "2026-04-26"
+    },
+    "wogiflow-cli": {
+      "package": "wogiflow-cli",
+      "version": "0.0.1-skeleton",
+      "repo": "wogiflow-cli",
+      "role": "native-runtime-cli",
+      "language": "go",
+      "checkedAt": "2026-05-07"
     }
   },
   "behaviorChanges": {
