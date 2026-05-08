@@ -23,6 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const { PATHS } = require('./flow-paths');
 const { getConfig } = require('./flow-config-loader');
+const { safeJsonParse } = require('./flow-io');
 
 const DEFAULT_BUDGET_BYTES = 16 * 1024; // ~4k tokens
 const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.workflow', '.worktrees', 'out']);
@@ -46,12 +47,15 @@ function resolveChangedFiles(opts = {}) {
   if (Array.isArray(opts.changedFiles)) return opts.changedFiles;
 
   // Try task-checkpoint.json
+  // wf-3c968989: safeJsonParse adds DANGEROUS_KEYS protection. Returns null
+  // (the explicit default) on missing/corrupt/array — preserves the
+  // original silent-fallthrough contract via the null check below.
   const checkpointPath = path.join(PATHS.state, 'task-checkpoint.json');
   if (fs.existsSync(checkpointPath)) {
-    try {
-      const cp = JSON.parse(fs.readFileSync(checkpointPath, 'utf8'));
-      if (Array.isArray(cp.changedFiles) && cp.changedFiles.length > 0) return cp.changedFiles;
-    } catch { /* fall through */ }
+    const cp = safeJsonParse(checkpointPath, null);
+    if (cp && Array.isArray(cp.changedFiles) && cp.changedFiles.length > 0) {
+      return cp.changedFiles;
+    }
   }
 
   // Git diff

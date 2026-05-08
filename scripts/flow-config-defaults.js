@@ -1038,6 +1038,24 @@ const CONFIG_DEFAULTS = {
     claudeCode: { installPath: '.claude/settings.local.json' }
   },
 
+  // --- Standards Check (wf-00c5067b) ---
+  // Hook three-layer enforcement: entry files ≤120 LOC + ≤2 core/ imports.
+  // Exemption list documents pre-extraction violators; clear each entry as
+  // its corresponding Phase 2 task ships.
+  standardsCheck: {
+    hookThreeLayer: {
+      enabled: true,
+      maxLoc: 120,
+      maxCoreImports: 2,
+      exemptions: {
+        'scripts/hooks/entry/claude-code/stop.js': 'Phase 2 — wf-c1e892fa entry-file extraction (orchestration logic to core); remove exemption when extracted',
+        'scripts/hooks/entry/claude-code/session-start.js': 'Phase 2 — wf-c1e892fa entry-file extraction (orchestration logic to core); remove exemption when extracted',
+        'scripts/hooks/entry/claude-code/user-prompt-submit.js': 'Phase 2 — wf-c1e892fa entry-file extraction (orchestration logic to core); remove exemption when extracted',
+        'scripts/hooks/entry/claude-code/post-tool-use.js': 'Phase 2 — wf-c1e892fa entry-file extraction (orchestration logic to core); remove exemption when extracted'
+      }
+    }
+  },
+
   // --- Metrics ---
   metrics: { enabled: false },
 

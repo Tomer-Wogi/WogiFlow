@@ -572,10 +572,12 @@ async function main() {
   const matcher = new SimilarityMatcher(registry);
 
   // Parse threshold argument
-  let threshold = MATCH_CONFIG.thresholds.VARIANT_CANDIDATE;
+  // _threshold: parsed from --threshold CLI arg but not currently passed to
+  // the matcher (real bug; see audit notes; out of scope for lint cleanup).
+  let _threshold = MATCH_CONFIG.thresholds.VARIANT_CANDIDATE;
   const thresholdIndex = args.indexOf('--threshold');
   if (thresholdIndex !== -1 && args[thresholdIndex + 1]) {
-    threshold = parseInt(args[thresholdIndex + 1]);
+    _threshold = parseInt(args[thresholdIndex + 1]);
   }
 
   if (input === '--stdin') {

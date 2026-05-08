@@ -20,7 +20,8 @@ const {
   fileExists,
   readFile,
   safeJsonParse,
-  color
+  color,
+  getConfig
 } = require('./flow-utils');
 const {
   calculateCombinedSimilarity,
@@ -76,19 +77,23 @@ const MATCH_LEVEL_SEVERITY = {
 };
 
 // Task type to check type mapping for smart scoping
+// wf-00c5067b: 'hook-three-layer' added to all task types — entry-file LOC
+// + import-count rule (per .claude/rules/architecture/hook-three-layer.md)
+// is universally applicable; the exemption list in config covers known
+// pre-extraction violators (see ARCH-001, ARCH-002 in .workflow/state/last-audit.json).
 const TASK_CHECK_MAP = {
-  'component': ['naming', 'components', 'security'],
-  'utility': ['naming', 'functions', 'security'],
-  'api': ['naming', 'api', 'security'],
-  'feature': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
-  'bugfix': ['naming', 'security'],
-  'refactor': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
-  'story': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'],
-  'default': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security']
+  'component': ['naming', 'components', 'security', 'hook-three-layer'],
+  'utility': ['naming', 'functions', 'security', 'hook-three-layer'],
+  'api': ['naming', 'api', 'security', 'hook-three-layer'],
+  'feature': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
+  'bugfix': ['naming', 'security', 'hook-three-layer'],
+  'refactor': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
+  'story': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
+  'default': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer']
 };
 
 // All available check types
-const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security'];
+const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'];
 
 // ============================================================================
 // Parse Standards Files
@@ -552,6 +557,88 @@ function checkSecurityPatterns(file, _securityRules) {
  * @param {Object} matchConfig - Semantic match config — optional, auto-loaded if omitted
  * @returns {Object[]} Array of violations
  */
+/**
+ * wf-00c5067b — Hook Three-Layer enforcement.
+ *
+ * Per `.claude/rules/architecture/hook-three-layer.md`:
+ *   - Entry files (`scripts/hooks/entry/<cli>/*.js`) must be ≤120 LOC and
+ *     import from at most 2 `core/` modules (single-entry-point principle).
+ *   - Core files (`scripts/hooks/core/*.js`) should be CLI-agnostic.
+ *
+ * This check enforces the LOC + import-count rules. Core CLI-identifier
+ * grep is intentionally NOT enforced here (false-positive prone — adversary
+ * critique 2026-05-08 found 1/4 supposed violations was actually config data).
+ *
+ * Exemptions: read from config.standardsCheck.hookThreeLayer.exemptions
+ * map of `{relativePath: reason}`. Each exemption MUST cite a rationale
+ * (typically a Phase 2 task ID for entries awaiting orchestrator extraction).
+ *
+ * @param {Object} file - File with path and content
+ * @param {Object} hookThreeLayerConfig - {enabled, exemptions, maxLoc, maxCoreImports}
+ * @returns {Object[]} Array of violations
+ */
+function checkHookThreeLayer(file, hookThreeLayerConfig = {}) {
+  const violations = [];
+  const {
+    enabled = true,
+    exemptions = {},
+    maxLoc = 120,
+    maxCoreImports = 2
+  } = hookThreeLayerConfig;
+
+  if (!enabled) return violations;
+
+  // Normalize path to repo-root-relative form for exemption lookup
+  const relPath = file.path.startsWith('/')
+    ? path.relative(PATHS.root, file.path)
+    : file.path;
+
+  // Only apply to hook entry files
+  const isEntry = /^scripts\/hooks\/entry\/[^/]+\/[^/]+\.js$/.test(relPath);
+  if (!isEntry) return violations;
+
+  // Skip if exempted (with rationale)
+  if (Object.prototype.hasOwnProperty.call(exemptions, relPath)) return violations;
+
+  const content = file.content || '';
+  const lines = content.split('\n');
+
+  // Rule 1: LOC ceiling
+  if (lines.length > maxLoc) {
+    violations.push({
+      type: 'hook-three-layer',
+      severity: 'must-fix',
+      file: file.path,
+      line: null,
+      message: `Hook entry file exceeds ${maxLoc} LOC (${lines.length} lines). Extract orchestration logic to core/. Add to config.standardsCheck.hookThreeLayer.exemptions with rationale to defer.`,
+      rule: 'hook-three-layer.md'
+    });
+  }
+
+  // Rule 2: Core import count
+  // Match `require('../core/...')` or `require('../../core/...')` etc.
+  // Capture each core path; count distinct core modules imported.
+  const coreImportRegex = /require\(['"][^'"]*\/core\/([^'"/]+)['"]\)/g;
+  const coreModules = new Set();
+  let match;
+  while ((match = coreImportRegex.exec(content)) !== null) {
+    coreModules.add(match[1]);
+  }
+
+  if (coreModules.size > maxCoreImports) {
+    violations.push({
+      type: 'hook-three-layer',
+      severity: 'must-fix',
+      file: file.path,
+      line: null,
+      message: `Hook entry imports from ${coreModules.size} core/ modules (limit: ${maxCoreImports}). Single-entry-point principle violated. Refactor to dispatch through one orchestrator-core. Modules: ${[...coreModules].sort().join(', ')}`,
+      rule: 'hook-three-layer.md'
+    });
+  }
+
+  return violations;
+}
+
 function checkApiDuplication(file, existingEndpoints, matchConfig) {
   const violations = [];
   const content = file.content || '';
@@ -1009,6 +1096,16 @@ function runStandardsCheck(files, options = {}) {
   const services = checksToRun.includes('services') ? parseServiceMap() : [];
 
   const allViolations = [];
+
+  // wf-00c5067b: load hook-three-layer config (with sensible defaults if unset)
+  const config = getConfig();
+  const hookThreeLayerConfig = (config?.standardsCheck?.hookThreeLayer) || {
+    enabled: checksToRun.includes('hook-three-layer'),
+    exemptions: {},
+    maxLoc: 120,
+    maxCoreImports: 2
+  };
+
   const checksSummary = {
     'decisions.md': { checked: true, violations: 0 },
     'app-map.md': { checked: checksToRun.includes('components') && components.length > 0, violations: 0 },
@@ -1017,7 +1114,8 @@ function runStandardsCheck(files, options = {}) {
     'schema-map.md': { checked: checksToRun.includes('schemas') && schemas.length > 0, violations: 0 },
     'service-map.md': { checked: checksToRun.includes('services') && services.length > 0, violations: 0 },
     'naming-conventions': { checked: checksToRun.includes('naming'), violations: 0 },
-    'security-patterns': { checked: checksToRun.includes('security'), violations: 0 }
+    'security-patterns': { checked: checksToRun.includes('security'), violations: 0 },
+    'hook-three-layer': { checked: checksToRun.includes('hook-three-layer'), violations: 0 }
   };
 
   for (const file of files) {
@@ -1075,6 +1173,13 @@ function runStandardsCheck(files, options = {}) {
       const securityViolations = checkSecurityPatterns(file, rulesFiles);
       allViolations.push(...securityViolations);
       checksSummary['security-patterns'].violations += securityViolations.length;
+    }
+
+    // Hook three-layer architecture (wf-00c5067b)
+    if (checksToRun.includes('hook-three-layer')) {
+      const hookViolations = checkHookThreeLayer(file, hookThreeLayerConfig);
+      allViolations.push(...hookViolations);
+      checksSummary['hook-three-layer'].violations += hookViolations.length;
     }
   }
 
@@ -1309,6 +1414,7 @@ module.exports = {
   checkApiDuplication,
   checkRegistryDuplication,
   checkSecurityPatterns,
+  checkHookThreeLayer,
   extractDeclaredNames,
   discoverAllRegistries,
   collectReuseCandidates,

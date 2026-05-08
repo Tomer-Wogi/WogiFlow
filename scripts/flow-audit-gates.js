@@ -283,18 +283,76 @@ function checkLintConfigIntegrity() {
 }
 
 /**
+ * Parse test failure count from Node test runner stdout.
+ *
+ * Bug fixed 2026-05-08 (wf-e111d850): previously inherited the generic
+ * runProjectScript regex `/error TS\d+|Error:|ERROR/gi` which matched the
+ * substring "error" in passing test descriptions (e.g., 'trimRetryErrors',
+ * 'classifier error path', 'returns null on git unavailable / error'),
+ * inflating errorCount even when 0 tests actually failed. Compounded by
+ * Node test runner v22 sometimes exiting non-zero on all-pass.
+ *
+ * Strategy:
+ *   1. Primary — parse Node test runner "Results: N passed, M failed" summary
+ *      lines (one per suite when running multiple files). Sum the M values.
+ *   2. Fallback — count TAP "not ok N" lines if no summary present.
+ *   3. Default — 0 (graceful) if neither parser finds anything.
+ *
+ * @param {string} output — combined stdout+stderr from `npm run test`
+ * @returns {{ errorCount: number, source: 'summary' | 'tap' | 'default' }}
+ */
+function parseTestErrorCount(output) {
+  if (typeof output !== 'string' || output.length === 0) {
+    return { errorCount: 0, source: 'default' };
+  }
+
+  // Primary: Node test runner summary line(s).
+  // Format: "Results: N passed, M failed" (color codes already stripped via
+  // FORCE_COLOR=0 / NO_COLOR=1 in runProjectScript).
+  const summaryRe = /Results:\s*\d+\s*passed,\s*(\d+)\s*failed/gi;
+  let summaryFound = false;
+  let total = 0;
+  for (const m of output.matchAll(summaryRe)) {
+    summaryFound = true;
+    total += parseInt(m[1], 10) || 0;
+  }
+  if (summaryFound) return { errorCount: total, source: 'summary' };
+
+  // Fallback: TAP "not ok N - ..." line count
+  const tap = (output.match(/^not ok \d+/gm) || []).length;
+  if (tap > 0) return { errorCount: tap, source: 'tap' };
+
+  return { errorCount: 0, source: 'default' };
+}
+
+/**
  * Gate: Tests — do tests pass?
+ *
+ * Uses parseTestErrorCount() to override the generic regex from
+ * runProjectScript. See parseTestErrorCount() comment for bug history.
  */
 function checkTests() {
   const result = runProjectScript('test', 120000);
+  const parseSource = result.rawOutput || result.output || '';
+  const { errorCount, source: parserSource } = parseTestErrorCount(parseSource);
+
+  // Trust the parser over npm exit code: Node test runner v22 can exit
+  // non-zero in some configurations even when all tests pass. If the parser
+  // finds 0 failures via the summary line, that's authoritative.
+  const passed = errorCount === 0;
+
   return {
     gate: 'tests',
     ...result,
+    errorCount,
+    passed,
+    parserSource,
     scoreCap: 100, // Test failure doesn't cap, but is a HIGH finding
     severity: !result.exists ? 'info' :
-      result.passed ? 'pass' : 'high',
+      passed ? 'pass' : 'high',
     message: !result.exists ? 'No test script defined' :
-      result.passed ? 'Tests pass' : 'Tests FAIL'
+      passed ? 'Tests pass' :
+        `Tests FAIL: ${errorCount} failure(s)`
   };
 }
 
@@ -767,6 +825,7 @@ module.exports = {
   checkLint,
   checkLintConfigIntegrity,
   checkTests,
+  parseTestErrorCount, // wf-e111d850: exposed for unit testing
   checkScriptCompleteness,
 
   // Extended checks

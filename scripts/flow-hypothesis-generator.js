@@ -32,12 +32,13 @@ try {
   adaptiveLearning = null;
 }
 
-// Import error recovery for integration
-let errorRecovery;
+// Import error recovery for integration (currently loaded for side-effect /
+// future-use; not yet referenced — _ prefix per naming convention).
+let _errorRecovery;
 try {
-  errorRecovery = require('./flow-error-recovery');
+  _errorRecovery = require('./flow-error-recovery');
 } catch (_err) {
-  errorRecovery = null;
+  _errorRecovery = null;
 }
 
 // ============================================================

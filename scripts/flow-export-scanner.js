@@ -20,7 +20,7 @@ const { PATHS, getConfig, readJson, success } = require('./flow-utils');
 
 // Default to PATHS.root from flow-utils, can be overridden via setProjectRoot() or CLI arg
 let PROJECT_ROOT = PATHS.root;
-let CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
+let _CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
 let CACHE_PATH = path.join(PROJECT_ROOT, '.workflow/state/export-map.json');
 const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -31,7 +31,7 @@ const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
  */
 function setProjectRoot(root) {
   PROJECT_ROOT = path.resolve(root);
-  CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
+  _CONFIG_PATH = path.join(PROJECT_ROOT, '.workflow/config.json');
   CACHE_PATH = path.join(PROJECT_ROOT, '.workflow/state/export-map.json');
 }
 
@@ -700,7 +700,7 @@ function formatExportMapForTemplate(exportMap) {
   // Components
   if (Object.keys(exportMap.components).length > 0) {
     lines.push('#### Components');
-    for (const [name, info] of Object.entries(exportMap.components)) {
+    for (const [_name, info] of Object.entries(exportMap.components)) {
       const exports = info.exports.join(', ') || (info.defaultExport ? `default: ${info.defaultExport}` : '');
       if (exports) {
         lines.push(`- \`import { ${info.exports.join(', ')} } from '${info.importPath}'\``);
@@ -712,7 +712,7 @@ function formatExportMapForTemplate(exportMap) {
   // Hooks
   if (Object.keys(exportMap.hooks).length > 0) {
     lines.push('#### Hooks');
-    for (const [name, info] of Object.entries(exportMap.hooks)) {
+    for (const [_name, info] of Object.entries(exportMap.hooks)) {
       const exports = info.exports.join(', ');
       if (exports) {
         lines.push(`- \`import { ${exports} } from '${info.importPath}'\``);
@@ -724,7 +724,7 @@ function formatExportMapForTemplate(exportMap) {
   // Services
   if (Object.keys(exportMap.services).length > 0) {
     lines.push('#### Services');
-    for (const [name, info] of Object.entries(exportMap.services)) {
+    for (const [_name, info] of Object.entries(exportMap.services)) {
       const exports = info.exports.join(', ');
       if (exports) {
         lines.push(`- \`import { ${exports} } from '${info.importPath}'\``);
@@ -736,7 +736,7 @@ function formatExportMapForTemplate(exportMap) {
   // Types
   if (Object.keys(exportMap.types).length > 0) {
     lines.push('#### Types');
-    for (const [name, info] of Object.entries(exportMap.types)) {
+    for (const [_name, info] of Object.entries(exportMap.types)) {
       const types = info.types.join(', ');
       if (types) {
         lines.push(`- \`import type { ${types} } from '${info.importPath}'\``);
@@ -748,7 +748,7 @@ function formatExportMapForTemplate(exportMap) {
   // Utils
   if (Object.keys(exportMap.utils).length > 0) {
     lines.push('#### Utilities');
-    for (const [name, info] of Object.entries(exportMap.utils)) {
+    for (const [_name, info] of Object.entries(exportMap.utils)) {
       const exports = info.exports.join(', ');
       if (exports) {
         lines.push(`- \`import { ${exports} } from '${info.importPath}'\``);
@@ -784,7 +784,7 @@ function validateComponentUsage(code, exportMap = null) {
 
   // Collect all array exports from components
   const arrayExports = new Set();
-  for (const [name, info] of Object.entries(exportMap.components || {})) {
+  for (const [_name, info] of Object.entries(exportMap.components || {})) {
     if (info.arrayExports) {
       info.arrayExports.forEach(e => arrayExports.add(e));
     }
@@ -841,7 +841,7 @@ function validateComponentUsage(code, exportMap = null) {
       // Check if the actual export exists
       const wrongName = pattern.source.replace(/\\/g, '').replace(/\(\)/g, '');
       let found = false;
-      for (const [name, info] of Object.entries(exportMap.hooks || {})) {
+      for (const [_name, info] of Object.entries(exportMap.hooks || {})) {
         if (info.exports?.includes(wrongName)) {
           found = true;
           break;

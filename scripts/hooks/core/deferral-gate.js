@@ -192,7 +192,7 @@ function isAuthorized(deferralChanges) {
   return { authorized: false, reason: 'auth-malformed-scope' };
 }
 
-function consumeAuth(deferralChanges) {
+function consumeAuth(_deferralChanges) {
   // Auth is single-use: once a deferral write succeeds, the marker is removed
   // to prevent reuse on subsequent unrelated deferrals.
   clearAuth();

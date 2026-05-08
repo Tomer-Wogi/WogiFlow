@@ -46,6 +46,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { PATHS } = require('../../flow-utils');
+const { safeJsonParse } = require('../../flow-io');
 
 const PENDING_PATH = path.join(PATHS.state, 'long-input-pending.json');
 
@@ -210,10 +211,10 @@ function isLongInputPending() {
 }
 
 function readLongInputPending() {
-  try {
-    if (!fs.existsSync(PENDING_PATH)) return null;
-    return JSON.parse(fs.readFileSync(PENDING_PATH, 'utf-8'));
-  } catch (_err) { return null; }
+  // wf-3c968989: safeJsonParse adds DANGEROUS_KEYS protection. Returns null
+  // on missing/corrupt/array input — exact behavior match for the prior
+  // try/catch + return-null contract.
+  return safeJsonParse(PENDING_PATH, null);
 }
 
 /**

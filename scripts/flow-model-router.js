@@ -38,10 +38,10 @@ const { loadRegistry, loadStats } = require('./flow-model-types');
 
 // Smart Context System integration
 let contextGatherer = null;
-let instructionRichness = null;
+let _instructionRichness = null;
 try {
   contextGatherer = require('./flow-context-gatherer');
-  instructionRichness = require('./flow-instruction-richness');
+  _instructionRichness = require('./flow-instruction-richness');
 } catch (_err) {
   // Smart Context modules not available
 }

@@ -17,8 +17,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {
   getConfig,
-  PATHS,
-  fileExists
+  PATHS
 } = require('./flow-utils');
 
 // ============================================================
@@ -59,7 +58,7 @@ function parseSimpleYaml(content) {
   const lines = content.split('\n');
   let currentKey = null;
   let currentSection = null;
-  let currentList = null;
+  let _currentList = null;
   let indentLevel = 0;
   let multilineValue = '';
   let inMultiline = false;
@@ -100,7 +99,7 @@ function parseSimpleYaml(content) {
       if (BLOCKED_KEYS.has(key)) continue;
 
       currentSection = null;
-      currentList = null;
+      _currentList = null;
 
       if (value === '' || value === '|') {
         // Start of nested section or multi-line
@@ -128,7 +127,7 @@ function parseSimpleYaml(content) {
 
       if (BLOCKED_KEYS.has(key)) continue;
 
-      currentList = null;
+      _currentList = null;
       currentKey = key;
 
       if (value === '|') {

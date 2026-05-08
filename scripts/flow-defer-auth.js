@@ -14,7 +14,6 @@
  *   flow defer-auth status
  */
 
-const path = require('node:path');
 const gate = require('./hooks/core/deferral-gate');
 
 function parseArgs(argv) {

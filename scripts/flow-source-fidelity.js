@@ -39,7 +39,6 @@
 'use strict';
 
 const fs = require('node:fs');
-const path = require('node:path');
 
 const VERBATIM_HEADER_REGEX = /^##\s+Original Request \(verbatim\)\s*$/m;
 const MANIFEST_HEADER_REGEX = /^##\s+Item Manifest\s*$/m;

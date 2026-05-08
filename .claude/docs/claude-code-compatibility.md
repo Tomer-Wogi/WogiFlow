@@ -78,6 +78,23 @@ flow parallel check  # See available parallel tasks
 | 2.27.0+ | 2.1.116+ | Sandbox dangerous-path safety on auto-allow, agent frontmatter hooks for `--agent`, `/resume` large-session speedup, MCP stdio concurrent startup |
 | 2.27.0+ | 2.1.117+ | Native bfs/ugrep via Bash (hook audit documented), Opus 4.7 /context fix (estimator already percentage-based), Pro/Max effort default shift (advisory delta documented), agent frontmatter `mcpServers` for `--agent`, subagent model-mismatch malware-warning fix, managed-settings plugin marketplace enforcement |
 | 2.29.6+ | 2.1.132+ | Statusline `context_window` token-count accuracy fix (release notes: was reporting cumulative session totals — may have affected `wogi-statusline-setup` percentage presets if percentage was derived from cumulative tokens), Bedrock/Vertex `ENABLE_PROMPT_CACHING_1H` 400-error fix (recommendation now safe on those providers), `CLAUDE_CODE_SESSION_ID` available in Bash subprocess env |
+| 2.29.7+ | 2.1.133+ | **Subagent skill discovery fix** (CRITICAL for IGR — Architect/Adversary/Skeptical-Evaluator are subagents; if they were missing skills, IGR was silently impaired across versions 2.1.128–2.1.132); **`worktree.baseRef` setting (fresh\|head) reverted to `origin/<default>` default** (was local HEAD since 2.1.128) — wogi-flow's `scripts/flow-worktree.js` users with unpushed local commits should set `worktree.baseRef: "head"` in `.claude/settings.json` to preserve prior behavior; **hooks now receive `effort.level` JSON field + `$CLAUDE_EFFORT` env var** (opportunity for wogi-flow gates to adjust thresholds based on effort — not yet wired); `/effort` no longer leaks across concurrent sessions (workspace-mode benefit); Edit/Write allow rules at drive-root fixed; `sandbox.bwrapPath`/`sandbox.socatPath` managed settings (Linux/WSL); `parentSettingsBehavior` admin-tier key |
+| 2.29.7+ | 2.1.136+ | **`AskUserQuestion` multi-select array discard fixed** (wogi-flow uses AskUserQuestion extensively across skills — automatic fix); **`settings.autoMode.hard_deny`** new unconditional-block mechanism (potential future wogi-flow use for non-bypassable gates like routing/deferral); extended-thinking redacted-block API 400 fixed (wogi-flow's IGR Architect on Opus benefits); MCP servers no longer silently disappear after `/clear`; OAuth refresh-token races fixed (better stability for multi-MCP users); `--resume`/`--continue` no longer fails on underscored project paths; plan mode now correctly blocks file writes when matching Edit allow rule exists; subagent file pickers find files in dirs with >100 entries; many TUI cosmetic fixes (CJK rendering, autocomplete, color artifacts) |
+
+### Worktree-baseRef recommendation (2.1.133+)
+
+If you use wogi-flow's worktree feature for parallel task execution AND have unpushed local commits you want available in new worktrees:
+
+```json
+// .claude/settings.json
+{
+  "worktree": {
+    "baseRef": "head"
+  }
+}
+```
+
+Without this, new worktrees branch from `origin/<default>` (the 2.1.133 default) and your unpushed commits won't be available in them. wogi-flow's `scripts/flow-worktree.js` doesn't currently configure this — it inherits whatever Claude Code's default is.
 
 ### Environment Variables (2.1.19+)
 

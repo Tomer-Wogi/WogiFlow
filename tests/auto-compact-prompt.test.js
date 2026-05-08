@@ -93,9 +93,11 @@ describe('compactionStrategies', () => {
 
 describe('autoCompactPrompt', () => {
   // Suppress console.log during tests
-  let originalLog;
+  // _originalLog: captured for parity with afterEach restore (currently
+  // restore happens via test-isolated mock; left intentionally for future).
+  let _originalLog;
   beforeEach(() => {
-    originalLog = console.log;
+    _originalLog = console.log;
     console.log = () => {};
   });
 
