@@ -34,6 +34,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { PATHS, safeJsonParse } = require('./flow-utils');
+const { safeJsonParseString } = require('./flow-io');
 
 // ============================================================
 // Score Cap Thresholds
@@ -642,6 +643,114 @@ function compareTrend(currentResults, previousAudit) {
 // ============================================================
 
 /**
+ * Gate: Feature Output Health (wf-6c58953a)
+ *
+ * Inspects DATA produced by features, not just CODE that produces it.
+ * Catches "silent feature no-op" — feature runs without errors, persists
+ * data, but the persisted data has all-null structured fields. This class
+ * is invisible to traditional code review/lint/typecheck/tests.
+ *
+ * Discovered 2026-05-09 when wogiflow-cli investigation found the
+ * correction-extractor was capturing user frustration but writing null
+ * structured fields. The /wogi-audit ran B+ and missed it because every
+ * agent inspects code, not output.
+ *
+ * Rule registry — explicit per-file checks, NOT a generic walker (per
+ * challenge round: blanket "all-null is bug" is false-positive city).
+ *
+ * @param {string} [projectRoot=PATHS.root] — project to inspect (default: current)
+ * @returns {Object} gate result with severity + findings
+ */
+function checkFeatureOutputHealth(projectRoot = PATHS.root) {
+  const findings = [];
+  const stateDir = path.join(projectRoot, '.workflow', 'state');
+  const corrDir = path.join(projectRoot, '.workflow', 'corrections');
+
+  // ---- Rule 1: pending-corrections.json null-fields ratio ----
+  // Note: pending-corrections.json is a top-level ARRAY, so safeJsonParse
+  // (which rejects arrays) won't work. Use file-read + safeJsonParseString.
+  const pcPath = path.join(stateDir, 'pending-corrections.json');
+  if (fs.existsSync(pcPath)) {
+    let records = [];
+    try {
+      const content = fs.readFileSync(pcPath, 'utf-8');
+      records = safeJsonParseString(content, []);
+    } catch (_err) { /* fail-open */ }
+    const arr = Array.isArray(records) ? records : [];
+    if (arr.length > 0) {
+      const nullCount = arr.filter(r =>
+        r && typeof r === 'object' &&
+        (r.whatWasWrong == null) &&
+        (r.whatUserWants == null)
+      ).length;
+      const ratio = nullCount / arr.length;
+      if (ratio >= 0.5) {
+        findings.push({
+          rule: 'pending-corrections-null-fields',
+          severity: ratio === 1 ? 'high' : 'medium',
+          message: `${nullCount}/${arr.length} (${Math.round(ratio * 100)}%) pending-corrections records have null structured fields. Likely correction-detector extraction failure. Run \`flow-correction-backfill\` or restore via Layer 2 enrichment.`,
+          evidence: `${path.relative(projectRoot, pcPath)}: ${arr.length} records analyzed; ${nullCount} fully null`
+        });
+      }
+    }
+  }
+
+  // ---- Rule 2: prompt-history × corrections cross-reference ----
+  // prompt-history.json is also typically a top-level array.
+  const phPath = path.join(stateDir, 'prompt-history.json');
+  if (fs.existsSync(phPath)) {
+    let ph = [];
+    try {
+      const content = fs.readFileSync(phPath, 'utf-8');
+      ph = safeJsonParseString(content, []);
+    } catch (_err) { /* fail-open */ }
+    const phArr = Array.isArray(ph) ? ph : (ph && Array.isArray(ph.prompts) ? ph.prompts : []);
+
+    // Frustration markers (regex per known-pattern set)
+    const frustrationRe = /\b(don'?t|stop|wait|actually|why did|why is|you keep|you always|fucking|seriously)\b/i;
+    let frustrationCount = 0;
+    for (const entry of phArr) {
+      if (!entry || typeof entry !== 'object') continue;
+      const text = entry.prompt || entry.text || entry.userMessage || '';
+      if (typeof text === 'string' && frustrationRe.test(text)) frustrationCount++;
+    }
+
+    let corrCount = 0;
+    if (fs.existsSync(corrDir)) {
+      try {
+        corrCount = fs.readdirSync(corrDir).filter(f => f.endsWith('.md')).length;
+      } catch (_err) { /* fail-open */ }
+    }
+
+    if (frustrationCount >= 3 && corrCount === 0) {
+      findings.push({
+        rule: 'prompt-history-vs-corrections-mismatch',
+        severity: 'high',
+        message: `prompt-history.json has ${frustrationCount} frustration markers but corrections/ is empty. Correction-extractor pipeline appears non-functional (captures input, fails to materialize records).`,
+        evidence: `prompt-history: ${frustrationCount} matches across ${phArr.length} entries; corrections/: ${corrCount} files`
+      });
+    }
+  }
+
+  // Determine overall gate severity
+  const hasHigh = findings.some(f => f.severity === 'high');
+  const hasMed = findings.some(f => f.severity === 'medium');
+  const severity = hasHigh ? 'high' : hasMed ? 'medium' : 'pass';
+
+  return {
+    gate: 'feature-output-health',
+    exists: true,
+    passed: findings.length === 0,
+    findings,
+    severity,
+    scoreCap: 100, // doesn't cap score directly; surfaces as audit findings
+    message: findings.length === 0
+      ? 'Feature output health: no issues detected'
+      : `Feature output health: ${findings.length} finding(s) — ${findings.map(f => f.rule).join(', ')}`
+  };
+}
+
+/**
  * Run all Gate 0 checks and return consolidated results.
  * @returns {Object} gate results with score cap
  */
@@ -654,6 +763,7 @@ function runAllGates() {
   gates.push(checkLintConfigIntegrity());
   gates.push(checkTests());
   gates.push(checkScriptCompleteness());
+  gates.push(checkFeatureOutputHealth());
 
   const cap = calculateScoreCap(gates);
   const framework = detectFramework();
@@ -715,6 +825,14 @@ function main() {
     case 'scripts':
       console.log(JSON.stringify(checkScriptCompleteness(), null, 2));
       break;
+
+    case 'feature-output-health': {
+      // Optional --project=<path> argument for cross-project audit
+      const projArg = process.argv.find(a => a.startsWith('--project='));
+      const projectRoot = projArg ? projArg.slice('--project='.length) : PATHS.root;
+      console.log(JSON.stringify(checkFeatureOutputHealth(projectRoot), null, 2));
+      break;
+    }
 
     case 'eslint-disable':
       console.log(JSON.stringify(countEslintDisables(), null, 2));
@@ -827,6 +945,7 @@ module.exports = {
   checkTests,
   parseTestErrorCount, // wf-e111d850: exposed for unit testing
   checkScriptCompleteness,
+  checkFeatureOutputHealth, // wf-6c58953a: feature output health gate
 
   // Extended checks
   countEslintDisables,

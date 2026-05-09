@@ -330,13 +330,105 @@ function recordHybridTelemetry(verdict, runCtx = {}) {
 }
 
 // ============================================================================
+// Layer 1 + Layer 2 Reconciliation (wf-6c58953a)
+// ============================================================================
+
+/**
+ * Deterministic fallback for `whatWasWrong` — preserves the user's literal
+ * frustration text when LLM extraction is unavailable or fails. Better than
+ * null: a 200-char excerpt is honest signal; null is data loss.
+ *
+ * @param {string} message — user message
+ * @returns {string|null}
+ */
+function deterministicWhatWasWrong(message) {
+  if (typeof message !== 'string') return null;
+  const trimmed = message.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, 200);
+}
+
+/**
+ * Reconcile Layer 1 (keyword classifier) + Layer 2 (Haiku LLM) results.
+ *
+ * Pre-fix bug: Layer 1 returned `{whatWasWrong: null, whatUserWants: null}`
+ * when keyword matched, never calling Layer 2. The user's actual frustration
+ * was captured but structured fields stayed null — silent feature no-op.
+ *
+ * Post-fix design:
+ *   - Layer 1 hit + Layer 2 success: trust Layer 1's classification (high-
+ *     precision keyword match), use Layer 2's strings if non-null else
+ *     deterministic fallback. Record `llmDisagreed` if Layer 2 said
+ *     `isCorrection: false` (e.g., user said "I'm just asking a question").
+ *   - Layer 1 hit + Layer 2 fail/skip: deterministic fallback for `whatWasWrong`
+ *     (first 200 chars). `whatUserWants` stays null (intent inference is an
+ *     LLM job; honest null > wrong guess).
+ *   - Layer 1 miss + Layer 2 success: Layer 2 is primary classifier (existing path).
+ *   - Both miss: not a correction.
+ *
+ * Pure function — testable in isolation, no LLM mock needed.
+ *
+ * @param {Object|null} layer1 — Layer 1 result {isCorrection, confidence, correctionType, method, matchedPattern}
+ * @param {Object|null} layer2 — Layer 2 (LLM) result {isCorrection, confidence, correctionType, whatWasWrong, whatUserWants}
+ * @param {string} trimmed — trimmed user message (for deterministic fallback)
+ * @returns {Object|null} reconciled record OR null if not a correction
+ */
+function reconcileExtraction(layer1, layer2, trimmed) {
+  // Both layers ran
+  if (layer1 && layer2) {
+    const what = layer2.whatWasWrong || deterministicWhatWasWrong(trimmed);
+    const wants = layer2.whatUserWants || null;
+    return {
+      isCorrection: true, // Layer 1 high-precision keyword match wins binary
+      confidence: layer1.confidence,
+      correctionType: layer1.correctionType || layer2.correctionType || 'behavior',
+      whatWasWrong: what,
+      whatUserWants: wants,
+      method: 'keyword+ai',
+      matchedPattern: layer1.matchedPattern,
+      enrichmentSource: layer2.whatWasWrong ? 'haiku' : 'deterministic-fallback',
+      llmDisagreed: layer2.isCorrection === false,
+    };
+  }
+  // Layer 1 only (Layer 2 unavailable: no API key, network error, etc.)
+  if (layer1) {
+    return {
+      isCorrection: true,
+      confidence: layer1.confidence,
+      correctionType: layer1.correctionType || 'behavior',
+      whatWasWrong: deterministicWhatWasWrong(trimmed),
+      whatUserWants: null,
+      method: layer1.method,
+      matchedPattern: layer1.matchedPattern,
+      enrichmentSource: 'deterministic-fallback',
+    };
+  }
+  // Layer 2 only (Layer 1 missed)
+  if (layer2 && layer2.isCorrection) {
+    return {
+      isCorrection: true,
+      confidence: layer2.confidence,
+      correctionType: layer2.correctionType || null,
+      whatWasWrong: layer2.whatWasWrong || null,
+      whatUserWants: layer2.whatUserWants || null,
+      method: 'ai',
+      enrichmentSource: 'haiku',
+    };
+  }
+  // Both missed → not a correction
+  return null;
+}
+
+// ============================================================================
 // AI-Based Detection (Haiku — language-agnostic)
 // ============================================================================
 
 /**
  * Detect if a message is a correction using Claude Haiku.
- * This is the ONLY detection method — no regex fallback.
- * Works in any language.
+ * Hybrid: Layer 1 keyword classifier (fast) + Layer 2 Haiku enrichment.
+ *
+ * wf-6c58953a (2026-05-09): Layer 1 hit no longer short-circuits structured
+ * extraction. See reconcileExtraction() for the post-fix design rationale.
  *
  * @param {string} userMessage - The user's message
  * @param {string} previousContext - Summary of what the AI was doing
@@ -354,8 +446,12 @@ async function detectCorrection(userMessage, previousContext = '') {
     return { isCorrection: false, confidence: 0, method: 'skipped', reason: 'length-filter' };
   }
 
-  // Layer 1 (wf-e6d65edf) — keyword pre-classifier. Skips Haiku entirely on a hit.
+  // Layer 1 (wf-e6d65edf) — keyword pre-classifier.
+  // wf-6c58953a: NO longer short-circuits structured extraction. Layer 1's
+  // classification is captured; reconcile with Layer 2 (or deterministic
+  // fallback when Layer 2 unavailable) at end.
   const hybridCfg = getHybridConfig();
+  let layer1Result = null;
   if (hybridCfg.hybridEnabled) {
     const matched = findKeywordMatch(trimmed);
     if (matched) {
@@ -368,12 +464,10 @@ async function detectCorrection(userMessage, previousContext = '') {
         confidence: conf,
         durationMs: Date.now() - start,
       });
-      return {
+      layer1Result = {
         isCorrection: true,
         confidence: conf,
         correctionType: 'behavior',
-        whatWasWrong: null,
-        whatUserWants: null,
         method: 'keyword',
         matchedPattern: matched.phrase,
       };
@@ -383,6 +477,10 @@ async function detectCorrection(userMessage, previousContext = '') {
   // Check if API key is available
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    // wf-6c58953a: Layer 1 hit + no API key → deterministic fallback (not null)
+    if (layer1Result) {
+      return reconcileExtraction(layer1Result, null, trimmed);
+    }
     return { isCorrection: false, confidence: 0, method: 'skipped', reason: 'no-api-key' };
   }
 
@@ -492,10 +590,18 @@ Respond with JSON only (no markdown, no explanation):
       durationMs: Date.now() - start,
     });
 
+    // wf-6c58953a: reconcile Layer 1 + Layer 2 (or just Layer 2 if Layer 1 missed)
+    const reconciled = reconcileExtraction(layer1Result, aiResult, trimmed);
+    if (reconciled) return reconciled;
+    // Both layers say no-correction
     return aiResult;
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[DEBUG] AI correction detection failed: ${err.message}`);
+    }
+    // wf-6c58953a: Layer 2 failure with Layer 1 hit → deterministic fallback
+    if (layer1Result) {
+      return reconcileExtraction(layer1Result, null, trimmed);
     }
     return { isCorrection: false, confidence: 0, method: 'ai', reason: err.message };
   }
@@ -1295,10 +1401,14 @@ function correlateWithPriorGates(correction) {
 // ============================================================================
 
 module.exports = {
-  // Detection (AI-only)
+  // Detection (hybrid Layer 1 + Layer 2)
   detectCorrection,
   batchAnalyzePrompts,
   spawnBackgroundDetection,
+
+  // wf-6c58953a: reconciliation helpers exposed for unit testing + backfill
+  reconcileExtraction,
+  deterministicWhatWasWrong,
 
   // Queue management
   loadPendingCorrections,
