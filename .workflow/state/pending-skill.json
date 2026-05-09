@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-05-05T19:36:23.571Z",
+  "markedAt": "2026-05-08T20:14:26.034Z",
   "context": {
-    "args": "Optimize CLAUDE.md — currently 46.8k chars, exceeds the 40k performance threshold. Need to reduce size while preserving enforcement-critical rules. CLAUDE.md is generated from .workflow/templates/claude-md.hbs (and partials), so edits must go through templates per .claude/rules/_internal/self-maintenance.md. Strategy options: move verbose rule explanations to .claude/rules/ files (auto-loaded contextually), tighten redundant prose, collapse multiple anti-rationalization checklists that share the master, drop incident-history paragraphs that aren't load-bearing for current behavior. Need to identify which sections are heaviest and which are safe to externalize without breaking enforcement."
+    "args": "Phase 1 v2.29.8 stabilization — task 2 of 5: Replace raw JSON.parse(fs.readFileSync()) sites with safe handlers, per-site classification. Audit finding DUP-001 / CONS-002 + 3 lint warnings. Sites currently flagged by ESLint no-restricted-syntax: (1) lib/workspace-task-injector.js:47 (manifest read — state file), (2) scripts/flow-repo-map.js:52, (3) scripts/hooks/core/long-input-enforcement.js:215. Plus possible additional sites from audit Agent 3 (DUP-001 noted 6+). Per challenge round in plan: NOT a blanket find/replace. Each site classified BEFORE replacement: (a) state files (ready.json, decisions.md, etc.) → use safeJsonParse with appropriate default; (b) untrusted sources (LLM responses in flow-providers.js) → keep explicit try/catch (silent default would mask corruption); (c) configuration → safeJsonParse with empty-object default. After replacement: lint should report 0 no-restricted-syntax warnings (down from 3). L2 single-PR scope, ~2h. Foundational for v2.29.8."
   },
   "status": "pending"
 }

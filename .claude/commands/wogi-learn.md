@@ -174,6 +174,7 @@ Given a pattern to promote:
    - Correction examples → Verification criteria
 
 3. **Delegate duplicate checking to `/wogi-decide --from-pattern`** which handles duplicate detection and the full rule-writing flow. This ensures a single source of truth for all rule-creation logic.
+   - **Note (wf-037f8d66)**: `/wogi-decide` Step 2.5 will require declaring the rule's enforcement type (mechanical gate / test / schema constraint / vibes-only). Patterns being promoted to rules MUST answer "what's the gate?" — if no mechanical enforcement exists, the rule is vibes-only and will not reliably enforce. The fact that this pattern recurred enough to be promoted is itself evidence that vibes-only didn't work.
 
 4. **Ask user for any additions:**
 

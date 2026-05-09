@@ -479,6 +479,20 @@ function recordTelemetry({ taskId, parseResult, gateResult, runCtx = {} }) {
       sessionId: runCtx.sessionId ?? null,
     },
   });
+
+  // wf-037f8d66: Write Architect-run marker for the architect-required PreToolUse gate.
+  // Marker proves Architect ran for this task — gate consults it before allowing
+  // Edit/Write/Bash in coding phase for L1+ tasks. Fail-open on any error.
+  if (taskId && (telemetryVerdict === 'PASS' || telemetryVerdict === 'PASS_WITH_NOTES')) {
+    try {
+      const archGate = require('./hooks/core/architect-required-gate');
+      archGate.writeArchitectRunMarker({
+        taskId,
+        model: runCtx.model || null,
+        plan: parseResult?.plan ? { sections: sectionsPresent } : null,
+      });
+    } catch (_err) { /* fail-open */ }
+  }
 }
 
 // ============================================================

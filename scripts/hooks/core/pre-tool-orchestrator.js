@@ -118,6 +118,51 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // Architect-required gate (wf-037f8d66)
+  // L1+ tasks in coding phase must have run Architect/Adversary before any Edit/Write/Bash.
+  // L2/L3 tasks bypass spec_review entirely (correctly), so the gate is a no-op there.
+  // Fail-open on any error.
+  if (typeof deps.checkArchitectRequired === 'function' &&
+      (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash' || toolName === 'TodoWrite')) {
+    try {
+      // Resolve current phase + task meta from active state
+      const flowUtils = require('../../flow-utils');
+      const flowIo = require('../../flow-io');
+      let phase = 'idle';
+      let taskId = null;
+      let taskMeta = null;
+      try {
+        const phaseStatePath = path.join(flowUtils.PATHS.state, 'workflow-phase.json');
+        const ps = flowIo.safeJsonParse(phaseStatePath, null);
+        if (ps) {
+          phase = ps.phase || 'idle';
+          taskId = ps.taskId || null;
+        }
+      } catch (_err) { /* fail-open */ }
+      if (taskId) {
+        try {
+          const ready = flowUtils.getReadyData ? flowUtils.getReadyData() : null;
+          const inProgress = (ready && Array.isArray(ready.inProgress)) ? ready.inProgress : [];
+          taskMeta = inProgress.find(t => t && t.id === taskId) || null;
+        } catch (_err) { /* fail-open */ }
+      }
+
+      const archResult = deps.checkArchitectRequired({
+        phase, taskId, taskMeta, config, toolName
+      });
+      if (archResult.blocked) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: archResult.reason || 'architect-required',
+          message: archResult.message,
+        };
+      }
+    } catch (_err) {
+      if (process.env.DEBUG) console.error(`[Hook] Architect-required gate error (fail-open): ${_err.message}`);
+    }
+  }
+
   // wf-f9912af6: Deferral-authorization gate. Blocks Write/Edit to
   // last-review.json / last-audit.json when the new content introduces
   // `status: deferred*` on findings without explicit user authorization.

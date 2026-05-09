@@ -58,6 +58,15 @@ function loadGateDeps() {
     if (process.env.DEBUG) console.error(`[Hook] Phase-read gate not loaded: ${_err.message}`);
   }
 
+  // wf-037f8d66: Architect-required gate (mechanical Layer 2 enforcement)
+  let checkArchitectRequired = () => ({ blocked: false });
+  try {
+    const arg = require('./architect-required-gate');
+    checkArchitectRequired = arg.checkArchitectRequired;
+  } catch (_err) {
+    if (process.env.DEBUG) console.error(`[Hook] Architect-required gate not loaded: ${_err.message}`);
+  }
+
   let recordEvidenceRead = () => {};
   let checkSpecWriteGate = _phaseNoop;
   let clearResearchEvidence = () => {};
@@ -168,6 +177,7 @@ function loadGateDeps() {
     checkRoutingGate, clearRoutingPending, hasActiveTask,
     checkPhaseGate, checkCommitLogGate,
     recordPhaseRead, checkPhaseReadGate, clearPhaseReads,
+    checkArchitectRequired, // wf-037f8d66
     recordEvidenceRead, checkSpecWriteGate, clearResearchEvidence,
     checkDeployGate, checkWriteBlock,
     checkStrikeGate, checkBugfixScope, checkScopeMutation,

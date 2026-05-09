@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-04T08:54:16.463Z",
+  "lastUpdated": "2026-05-09T07:30:00.000Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,84 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-037f8d66",
+      "title": "Mechanical enforcement for vibes-rules",
+      "type": "feat",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-09T10:00:00.000Z",
+      "startedAt": "2026-05-09T06:43:26.344Z",
+      "routedAt": "2026-05-09T06:43:26.345Z",
+      "specPath": ".workflow/changes/wf-037f8d66.md",
+      "completedAt": "2026-05-09T07:30:00.000Z"
+    },
+    {
+      "id": "wf-6c58953a",
+      "title": "Fix correction-detector + backfill + new feature-output-health audit",
+      "type": "feat",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-09T08:00:00.000Z",
+      "startedAt": "2026-05-09T06:20:21.647Z",
+      "routedAt": "2026-05-09T06:20:21.648Z",
+      "specPath": ".workflow/changes/wf-6c58953a.md",
+      "completedAt": "2026-05-09T06:27:32.683Z"
+    },
+    {
+      "id": "wf-00c5067b",
+      "title": "Hook three-layer enforcement in standards-checker",
+      "type": "feat",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-08T17:00:00.000Z",
+      "startedAt": "2026-05-08T20:49:33.988Z",
+      "routedAt": "2026-05-08T20:49:33.989Z",
+      "completedAt": "2026-05-08T20:49:33.989Z",
+      "specPath": ".workflow/changes/wf-00c5067b.md"
+    },
+    {
+      "id": "wf-518345da",
+      "title": "Clear 19 lint no-unused-vars warnings",
+      "type": "chore",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-05-08T16:00:00.000Z",
+      "startedAt": "2026-05-08T20:30:52.674Z",
+      "routedAt": "2026-05-08T20:30:52.675Z",
+      "specPath": ".workflow/changes/wf-518345da.md",
+      "completedAt": "2026-05-08T20:35:22.155Z"
+    },
+    {
+      "id": "wf-3c968989",
+      "title": "Replace 3 lint-flagged raw JSON.parse sites with safeJsonParse",
+      "type": "refactor",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-08T15:30:00.000Z",
+      "startedAt": "2026-05-08T20:18:29.966Z",
+      "routedAt": "2026-05-08T20:18:29.967Z",
+      "specPath": ".workflow/changes/wf-3c968989.md",
+      "completedAt": "2026-05-08T20:20:44.453Z"
+    },
+    {
+      "id": "wf-e111d850",
+      "title": "Fix Gate 0 regex bug — false-positive errorCount on test descriptions",
+      "type": "bug",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-08T15:00:00.000Z",
+      "startedAt": "2026-05-08T15:44:30.214Z",
+      "routedAt": "2026-05-08T15:44:30.214Z",
+      "specPath": ".workflow/changes/wf-e111d850.md",
+      "completedAt": "2026-05-08T15:50:32.376Z"
+    },
     {
       "id": "wf-5cd71b1f",
       "title": "Mechanical research-required gate (fires on text-only answers)",

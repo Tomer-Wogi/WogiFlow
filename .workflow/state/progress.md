@@ -765,7 +765,11 @@ None
 <!-- MEMORY-BLOCKS-START -->
 ```json
 {
-  "currentTask": null,
+  "currentTask": {
+    "id": "wf-7d92c6be",
+    "title": "Extend PreToolUse Bash gates to cover PowerShell tool on Windows",
+    "startedAt": "2026-05-09T06:56:38.732Z"
+  },
   "sessionContext": {
     "filesModified": [
       "scripts/flow",
@@ -799,7 +803,7 @@ None
     "Completed: A1 AGENTS.md alias for CLAUDE.md",
     "Completed: WogiFlow Extension Finalize (pre-CLI release)"
   ],
-  "lastUpdated": "2026-04-24T14:29:45.188Z",
+  "lastUpdated": "2026-05-09T06:56:38.732Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

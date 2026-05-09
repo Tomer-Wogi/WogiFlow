@@ -105,6 +105,34 @@ Options:
 
 Use `AskUserQuestion` to present these options.
 
+### Step 2.5: Mechanical-Enforcement Check (wf-037f8d66)
+
+**Rules without mechanical enforcement are vibes.** Before writing any new rule, classify how it will be enforced:
+
+| Enforcement type | Examples | Reliability |
+|---|---|---|
+| **Mechanical gate** (PreToolUse/Stop hook, type system, lint rule, standards-checker pattern) | deferral-gate, research-evidence-gate, phase-read-gate, hook-three-layer LOC check, forbidden-patterns | High — agent cannot skip |
+| **Test assertion** (unit/integration test that fails on violation) | architectural test asserting no hardcoded paths | High — fails CI |
+| **Schema constraint** (config schema, JSON schema, Go type) | required fields, enum values | High — fails parse/compile |
+| **Vibes-only** (rule text in CLAUDE.md, decisions.md, or rule file with no mechanical check) | "use kebab-case", "prefer composition over inheritance", "always X / never Y" | **Low — agent skips it** |
+
+**The rule must declare its enforcement type.** If "vibes-only," call it out explicitly:
+
+> ⚠ This rule has no mechanical gate. It will be inconsistently enforced. To make it stick, propose one of:
+> - A standards-checker pattern in `.workflow/state/forbidden-patterns.json`
+> - A new gate in `scripts/hooks/core/`
+> - A unit test in `tests/`
+> - A type-system constraint
+>
+> Without one of those, expect the same class of violation to recur.
+
+**Anti-rationalization**:
+- "I'll just trust the AI to follow it" → WRONG. The reason this rule exists is the AI didn't follow it last time.
+- "It's documented in CLAUDE.md" → Documentation ≠ enforcement. Both can coexist.
+- "We can add the gate later" → "Later" is "never" for vibes-rules. Either commit to a gate now, or accept inconsistent enforcement.
+
+If user accepts vibes-only, proceed with the rule but tag it `enforcementType: "vibes-only"` in decisions.md so future audits surface it.
+
 ### Step 3: Assess Clarity
 
 Evaluate if the rule needs clarification. **Skip questions if the rule is already clear and specific.**

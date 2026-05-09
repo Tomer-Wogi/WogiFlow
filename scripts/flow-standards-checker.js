@@ -77,23 +77,23 @@ const MATCH_LEVEL_SEVERITY = {
 };
 
 // Task type to check type mapping for smart scoping
-// wf-00c5067b: 'hook-three-layer' added to all task types — entry-file LOC
-// + import-count rule (per .claude/rules/architecture/hook-three-layer.md)
-// is universally applicable; the exemption list in config covers known
-// pre-extraction violators (see ARCH-001, ARCH-002 in .workflow/state/last-audit.json).
+// wf-00c5067b: 'hook-three-layer' added — entry-file LOC + import-count rule.
+// wf-037f8d66: 'forbidden-patterns' added — declarative project-specific
+// patterns (agnosticism rules, no-hardcoding rules, etc.) loaded from
+// .workflow/state/forbidden-patterns.json. Empty file = no-op.
 const TASK_CHECK_MAP = {
-  'component': ['naming', 'components', 'security', 'hook-three-layer'],
-  'utility': ['naming', 'functions', 'security', 'hook-three-layer'],
-  'api': ['naming', 'api', 'security', 'hook-three-layer'],
-  'feature': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
-  'bugfix': ['naming', 'security', 'hook-three-layer'],
-  'refactor': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
-  'story': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'],
-  'default': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer']
+  'component': ['naming', 'components', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'utility': ['naming', 'functions', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'api': ['naming', 'api', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'feature': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'bugfix': ['naming', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'refactor': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'story': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer', 'forbidden-patterns'],
+  'default': ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer', 'forbidden-patterns']
 };
 
 // All available check types
-const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer'];
+const ALL_CHECK_TYPES = ['naming', 'components', 'functions', 'api', 'schemas', 'services', 'security', 'hook-three-layer', 'forbidden-patterns'];
 
 // ============================================================================
 // Parse Standards Files
@@ -639,6 +639,140 @@ function checkHookThreeLayer(file, hookThreeLayerConfig = {}) {
   return violations;
 }
 
+/**
+ * wf-037f8d66 — Check forbidden patterns from project's declarative rule pack.
+ *
+ * Projects declare their forbidden patterns in `.workflow/state/forbidden-patterns.json`.
+ * This is the GENERIC, DATA-DRIVEN counterpart to checkSecurityPatterns (which is
+ * source-coded). Projects can encode "agnosticism" rules, "no-hardcoding" rules,
+ * "no-claude-code-literal-outside-docs" rules, etc., without modifying the checker.
+ *
+ * Format (forbidden-patterns.json):
+ *   [
+ *     {
+ *       "id": "no-claude-code-literal",
+ *       "pattern": "['\"]claude-code['\"]",      // RegExp source string
+ *       "flags": "g",                             // optional, defaults to 'g'
+ *       "exemptions": ["docs/**", "*.md", "reference/**"],
+ *       "severity": "must-fix",                   // 'must-fix' | 'warning'
+ *       "message": "wogiflow-cli is agnostic; ..."
+ *     }
+ *   ]
+ *
+ * @param {Object} file — { path, content }
+ * @param {Object[]} patterns — array of pattern entries
+ * @returns {Object[]} violations
+ */
+function checkForbiddenPatterns(file, patterns) {
+  const violations = [];
+  if (!Array.isArray(patterns) || patterns.length === 0) return violations;
+
+  const content = file.content || '';
+  const relPath = file.path.startsWith('/')
+    ? path.relative(PATHS.root, file.path)
+    : file.path;
+
+  for (const entry of patterns) {
+    if (!entry || typeof entry !== 'object') continue;
+    if (!entry.pattern || typeof entry.pattern !== 'string') continue;
+
+    // Exemption check (glob match against relative path)
+    const exemptions = Array.isArray(entry.exemptions) ? entry.exemptions : [];
+    const exempted = exemptions.some(glob => globMatch(relPath, glob));
+    if (exempted) continue;
+
+    // Compile regex
+    let re;
+    try {
+      const flags = entry.flags && typeof entry.flags === 'string' ? entry.flags : 'g';
+      re = new RegExp(entry.pattern, flags);
+    } catch (_err) {
+      // Invalid regex — skip (don't crash check)
+      continue;
+    }
+
+    // Match
+    let match;
+    re.lastIndex = 0;
+    while ((match = re.exec(content)) !== null) {
+      const before = content.substring(0, match.index);
+      const lineNumber = (before.match(/\n/g) || []).length + 1;
+      violations.push({
+        type: 'forbidden-pattern',
+        severity: entry.severity === 'warning' ? 'warning' : 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message: entry.message || `Forbidden pattern matched: ${entry.id || entry.pattern}`,
+        rule: `forbidden-patterns.json: ${entry.id || '(unnamed)'}`
+      });
+
+      // Avoid infinite loop on zero-length matches
+      if (match.index === re.lastIndex) re.lastIndex++;
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Minimal glob-to-regex matcher for forbidden-pattern exemptions.
+ * Supports: `**` (any depth), `*` (no path separator), exact match.
+ * Per security-patterns.md §4: use `[^/]*` not `.*` to prevent path
+ * separator matching in `*` (only `**` should cross directories).
+ */
+function globMatch(filePath, glob) {
+  const normalized = filePath.replace(/\\/g, '/');
+  // Build regex from glob
+  let re = '^';
+  let i = 0;
+  while (i < glob.length) {
+    const c = glob[i];
+    if (c === '*' && glob[i + 1] === '*') {
+      // ** matches anything including separators
+      re += '.*';
+      i += 2;
+      // Skip a following / so '**/foo' matches both 'foo' and 'a/b/foo'
+      if (glob[i] === '/') i++;
+    } else if (c === '*') {
+      re += '[^/]*';
+      i++;
+    } else if (c === '?') {
+      re += '[^/]';
+      i++;
+    } else if ('.^$+(){}[]|\\'.includes(c)) {
+      re += '\\' + c;
+      i++;
+    } else {
+      re += c;
+      i++;
+    }
+  }
+  re += '$';
+  try {
+    return new RegExp(re).test(normalized);
+  } catch (_err) {
+    return false;
+  }
+}
+
+/**
+ * Load forbidden-patterns.json from project state dir.
+ * @returns {Object[]} pattern entries (empty array if missing/invalid)
+ */
+function loadForbiddenPatterns(projectRoot) {
+  const root = projectRoot || PATHS.root;
+  const filePath = path.join(root, '.workflow', 'state', 'forbidden-patterns.json');
+  if (!fs.existsSync(filePath)) return [];
+  try {
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed;
+  } catch (_err) {
+    return [];
+  }
+}
+
 function checkApiDuplication(file, existingEndpoints, matchConfig) {
   const violations = [];
   const content = file.content || '';
@@ -1090,6 +1224,8 @@ function runStandardsCheck(files, options = {}) {
   const functions = checksToRun.includes('functions') ? parseFunctionMap() : [];
   const endpoints = checksToRun.includes('api') ? parseApiMap() : [];
   const rulesFiles = checksToRun.includes('security') ? loadRulesDir() : [];
+  // wf-037f8d66: load forbidden-patterns.json (empty array if missing)
+  const forbiddenPatterns = checksToRun.includes('forbidden-patterns') ? loadForbiddenPatterns() : [];
 
   // Load schema/service registries if needed
   const schemas = checksToRun.includes('schemas') ? parseSchemaMap() : [];
@@ -1115,7 +1251,8 @@ function runStandardsCheck(files, options = {}) {
     'service-map.md': { checked: checksToRun.includes('services') && services.length > 0, violations: 0 },
     'naming-conventions': { checked: checksToRun.includes('naming'), violations: 0 },
     'security-patterns': { checked: checksToRun.includes('security'), violations: 0 },
-    'hook-three-layer': { checked: checksToRun.includes('hook-three-layer'), violations: 0 }
+    'hook-three-layer': { checked: checksToRun.includes('hook-three-layer'), violations: 0 },
+    'forbidden-patterns': { checked: checksToRun.includes('forbidden-patterns') && forbiddenPatterns.length > 0, violations: 0 }
   };
 
   for (const file of files) {
@@ -1180,6 +1317,13 @@ function runStandardsCheck(files, options = {}) {
       const hookViolations = checkHookThreeLayer(file, hookThreeLayerConfig);
       allViolations.push(...hookViolations);
       checksSummary['hook-three-layer'].violations += hookViolations.length;
+    }
+
+    // Forbidden patterns from project rule pack (wf-037f8d66)
+    if (checksToRun.includes('forbidden-patterns') && forbiddenPatterns.length > 0) {
+      const fpViolations = checkForbiddenPatterns(file, forbiddenPatterns);
+      allViolations.push(...fpViolations);
+      checksSummary['forbidden-patterns'].violations += fpViolations.length;
     }
   }
 
@@ -1415,6 +1559,9 @@ module.exports = {
   checkRegistryDuplication,
   checkSecurityPatterns,
   checkHookThreeLayer,
+  checkForbiddenPatterns, // wf-037f8d66: declarative project rule pack
+  loadForbiddenPatterns, // wf-037f8d66: exposed for tests + external use
+  globMatch, // wf-037f8d66: exposed for unit testing
   extractDeclaredNames,
   discoverAllRegistries,
   collectReuseCandidates,
