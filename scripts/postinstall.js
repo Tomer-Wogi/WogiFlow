@@ -148,6 +148,31 @@ function createMinimalStructure() {
       }, null, 2), { mode: FILE_MODE });
     }
   }
+
+  // wf-2eafdab0 (AC2/H2): Create forbidden-patterns.json from template on fresh
+  // installs. Idempotent — never overwrites an existing file. Without this, the
+  // declarative-forbidden-pattern feature ships as a silent no-op (the v2.30.0
+  // bug this commit fixes).
+  const forbiddenPatternsPath = path.join(STATE_DIR, 'forbidden-patterns.json');
+  if (!fs.existsSync(forbiddenPatternsPath)) {
+    const fpTemplate = path.join(STATE_DIR, 'forbidden-patterns.json.template');
+    try {
+      const rawContent = fs.existsSync(fpTemplate)
+        ? fs.readFileSync(fpTemplate, 'utf-8')
+        : '[]';
+      const parsed = safeJsonParseString(rawContent, []);
+      fs.writeFileSync(
+        forbiddenPatternsPath,
+        JSON.stringify(parsed, null, 2),
+        { mode: FILE_MODE }
+      );
+    } catch (err) {
+      if (process.env.DEBUG) {
+        console.error(`[postinstall] forbidden-patterns template error: ${err.message}`);
+      }
+      fs.writeFileSync(forbiddenPatternsPath, '[]\n', { mode: FILE_MODE });
+    }
+  }
 }
 
 /**

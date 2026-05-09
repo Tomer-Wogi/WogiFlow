@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-09T07:30:00.000Z",
+  "lastUpdated": "2026-05-09T07:32:26.418Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-2eafdab0",
+      "title": "Fix 17 review findings from v2.30.0 — v2.30.1 patch",
+      "type": "feat",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-09T07:12:36.577Z",
+      "startedAt": "2026-05-09T07:12:36.579Z",
+      "routedAt": "2026-05-09T07:12:36.579Z",
+      "specPath": ".workflow/changes/wf-2eafdab0.md",
+      "parentReview": ".workflow/state/last-review.json",
+      "completedAt": "2026-05-09T07:32:26.418Z"
+    },
     {
       "id": "wf-037f8d66",
       "title": "Mechanical enforcement for vibes-rules",

@@ -118,35 +118,17 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
-  // Architect-required gate (wf-037f8d66)
+  // Architect-required gate (wf-037f8d66, hardened wf-2eafdab0)
   // L1+ tasks in coding phase must have run Architect/Adversary before any Edit/Write/Bash.
+  // TodoWrite removed from gate set (review M8 fix — planning-tool chicken-and-egg).
   // L2/L3 tasks bypass spec_review entirely (correctly), so the gate is a no-op there.
+  // Task context resolution extracted to resolveCurrentTaskContext (review L3 fix).
   // Fail-open on any error.
   if (typeof deps.checkArchitectRequired === 'function' &&
-      (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash' || toolName === 'TodoWrite')) {
+      (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash')) {
     try {
-      // Resolve current phase + task meta from active state
-      const flowUtils = require('../../flow-utils');
-      const flowIo = require('../../flow-io');
-      let phase = 'idle';
-      let taskId = null;
-      let taskMeta = null;
-      try {
-        const phaseStatePath = path.join(flowUtils.PATHS.state, 'workflow-phase.json');
-        const ps = flowIo.safeJsonParse(phaseStatePath, null);
-        if (ps) {
-          phase = ps.phase || 'idle';
-          taskId = ps.taskId || null;
-        }
-      } catch (_err) { /* fail-open */ }
-      if (taskId) {
-        try {
-          const ready = flowUtils.getReadyData ? flowUtils.getReadyData() : null;
-          const inProgress = (ready && Array.isArray(ready.inProgress)) ? ready.inProgress : [];
-          taskMeta = inProgress.find(t => t && t.id === taskId) || null;
-        } catch (_err) { /* fail-open */ }
-      }
-
+      const { resolveCurrentTaskContext } = require('./pre-tool-helpers');
+      const { phase, taskId, taskMeta } = resolveCurrentTaskContext();
       const archResult = deps.checkArchitectRequired({
         phase, taskId, taskMeta, config, toolName
       });

@@ -36,6 +36,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { PATHS, safeJsonParse } = require('./flow-utils');
+const { globToRegex: _gtr } = require('./flow-glob');
+// Local convenience: case-insensitive glob (this module's historical default)
+const globToRegex = (pat) => _gtr(pat, 'i');
 
 const DOSSIER_DIRNAME = 'dossiers';
 const INDEX_FILENAME = 'index.json';
@@ -254,15 +257,6 @@ function matchFeatures(input = {}) {
   return Object.values(scores).sort((a, b) => b.score - a.score);
 }
 
-function globToRegex(pat) {
-  const escaped = pat
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '.__DBLSTAR__')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\.__DBLSTAR__/g, '.*')
-    .replace(/\?/g, '[^/]');
-  return new RegExp(`^${escaped}$`, 'i');
-}
 
 function scaffoldDossier(slug, meta = {}) {
   if (RESERVED_SLUGS.has(slug)) {

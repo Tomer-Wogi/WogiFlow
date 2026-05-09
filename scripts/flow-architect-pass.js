@@ -480,16 +480,19 @@ function recordTelemetry({ taskId, parseResult, gateResult, runCtx = {} }) {
     },
   });
 
-  // wf-037f8d66: Write Architect-run marker for the architect-required PreToolUse gate.
-  // Marker proves Architect ran for this task — gate consults it before allowing
-  // Edit/Write/Bash in coding phase for L1+ tasks. Fail-open on any error.
+  // wf-037f8d66 / wf-2eafdab0: Write Architect-run marker for the architect-required
+  // PreToolUse gate. Marker proves Architect ran for this task — gate consults it
+  // before allowing Edit/Write/Bash in coding phase for L1+ tasks. Fail-open on any
+  // error. Imports from flow-architect-runs.js (neutral location — review M5 fix:
+  // hooks/core no longer owns the marker store, killing the cross-direction dep).
   if (taskId && (telemetryVerdict === 'PASS' || telemetryVerdict === 'PASS_WITH_NOTES')) {
     try {
-      const archGate = require('./hooks/core/architect-required-gate');
-      archGate.writeArchitectRunMarker({
+      const archRuns = require('./flow-architect-runs');
+      archRuns.writeArchitectRunMarker({
         taskId,
         model: runCtx.model || null,
         plan: parseResult?.plan ? { sections: sectionsPresent } : null,
+        specPath: runCtx.specPath || null, // AC15: enables specHash staleness detection
       });
     } catch (_err) { /* fail-open */ }
   }

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "no-claude-code-literal-in-core",
+    "pattern": "claude-code|tool_name|tool_input",
+    "flags": "i",
+    "severity": "must-fix",
+    "message": "Hooks/core files must not reference CLI-specific identifiers (claude-code, tool_name, tool_input). Use the normalized toolName / toolInput parameters from the orchestrator (CLI-agnostic). See .claude/rules/architecture/hook-three-layer.md.",
+    "exemptions": [
+      "scripts/hooks/entry/**",
+      "scripts/hooks/adapters/**",
+      "tests/**",
+      "**/*.test.js"
+    ]
+  }
+]

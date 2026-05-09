@@ -68,6 +68,18 @@ function handleSessionEnd(input) {
       result.logged = false;
     }
 
+    // wf-2eafdab0 (AC8): GC stale architect-run markers for completed tasks.
+    // Markers in `.workflow/state/architect-runs/` accumulate forever otherwise;
+    // task-id collision (re-used fixtures, manual ID re-use) bypasses the gate.
+    // Fail-open everywhere — never block session end.
+    try {
+      const { gcStaleMarkers } = require('../../flow-architect-runs');
+      const gc = gcStaleMarkers(); // default 7-day retention for completed tasks
+      if (gc && gc.removed && gc.removed.length > 0) {
+        result.architectMarkerGc = { removed: gc.removed.length };
+      }
+    } catch (_err) { /* non-critical */ }
+
     // Surface pending skill proposals staged by `flow skill propose|patch|remove`.
     // These await user approval (`flow skill promote|reject`) at session end.
     try {

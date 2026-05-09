@@ -117,7 +117,7 @@ test('checkArchitectRequired — no taskId → not blocked', () => {
 test('checkArchitectRequired — L1 + coding + IGR + no Architect run → BLOCKED', () => {
   const r = gate.checkArchitectRequired({
     phase: 'coding',
-    taskId: 'wf-NOMARKER12345',
+    taskId: 'wf-deadbeef', // valid task-id format (validateTaskId-compliant)
     taskMeta: { level: 'L1' },
     config: baseConfig,
     toolName: 'Edit'
@@ -125,7 +125,30 @@ test('checkArchitectRequired — L1 + coding + IGR + no Architect run → BLOCKE
   assert.equal(r.blocked, true);
   assert.equal(r.reason, 'architect-required');
   assert.match(r.message, /ARCHITECT-REQUIRED/);
-  assert.match(r.message, /wf-NOMARKER12345/);
+  assert.match(r.message, /wf-deadbeef/);
+});
+
+// AC4: type=story/epic with missing level → fail-closed (require Architect)
+test('requiresArchitect — type=story missing level → true (fail-closed)', () => {
+  assert.equal(gate.requiresArchitect({ type: 'story' }), true);
+});
+test('requiresArchitect — type=epic missing level → true (fail-closed)', () => {
+  assert.equal(gate.requiresArchitect({ type: 'epic' }), true);
+});
+test('requiresArchitect — type=story explicit L2 → false (level wins over type)', () => {
+  assert.equal(gate.requiresArchitect({ type: 'story', level: 'L2' }), false);
+});
+test('requiresArchitect — type=feat missing level → false (not story/epic)', () => {
+  assert.equal(gate.requiresArchitect({ type: 'feat' }), false);
+});
+
+// AC10: TodoWrite NOT in mutation-block set
+test('checkArchitectRequired — TodoWrite NOT blocked (planning tool)', () => {
+  const r = gate.checkArchitectRequired({
+    phase: 'coding', taskId: 'wf-deadbeef', taskMeta: { level: 'L1' },
+    config: baseConfig, toolName: 'TodoWrite'
+  });
+  assert.equal(r.blocked, false);
 });
 
 // ============================================================
@@ -133,7 +156,7 @@ test('checkArchitectRequired — L1 + coding + IGR + no Architect run → BLOCKE
 // ============================================================
 
 test('writeArchitectRunMarker — writes file; hasArchitectRun returns true', () => {
-  const taskId = 'wf-TESTMARKER' + Date.now();
+  const taskId = 'wf-' + (Date.now() % 0xffffffff).toString(16).padStart(8, '0').slice(0, 8);
   try {
     const result = gate.writeArchitectRunMarker({
       taskId, model: 'opus', plan: { sections: 8 }
@@ -156,8 +179,36 @@ test('writeArchitectRunMarker — null/missing taskId → no write', () => {
   assert.equal(r.written, false);
 });
 
+// AC11: invalid taskId format → no write (path-traversal defense)
+test('writeArchitectRunMarker — invalid taskId (path traversal attempt) → no write', () => {
+  const r = gate.writeArchitectRunMarker({ taskId: '../../etc/passwd' });
+  assert.equal(r.written, false);
+});
+
+test('getArchitectRunPath — invalid taskId → null', () => {
+  assert.equal(gate.getArchitectRunPath('../../foo'), null);
+  assert.equal(gate.getArchitectRunPath('not-a-task-id'), null);
+});
+
 test('hasArchitectRun — non-existent task → false', () => {
-  assert.equal(gate.hasArchitectRun('wf-NEVER12345'), false);
+  assert.equal(gate.hasArchitectRun('wf-deadbeef'), false);
+});
+
+// AC9: hasArchitectRun validates content (not just existsSync)
+test('hasArchitectRun — corrupted/empty marker file → false', () => {
+  const taskId = 'wf-' + ((Date.now() + 1) % 0xffffffff).toString(16).padStart(8, '0').slice(0, 8);
+  const p = gate.getArchitectRunPath(taskId);
+  try {
+    fs.mkdirSync(require('node:path').dirname(p), { recursive: true });
+    fs.writeFileSync(p, ''); // empty file
+    assert.equal(gate.hasArchitectRun(taskId), false);
+    fs.writeFileSync(p, '{not valid json'); // corrupted
+    assert.equal(gate.hasArchitectRun(taskId), false);
+    fs.writeFileSync(p, JSON.stringify({ taskId: 'wf-different' })); // wrong taskId
+    assert.equal(gate.hasArchitectRun(taskId), false);
+  } finally {
+    if (p && fs.existsSync(p)) fs.unlinkSync(p);
+  }
 });
 
 // ============================================================
@@ -165,7 +216,7 @@ test('hasArchitectRun — non-existent task → false', () => {
 // ============================================================
 
 test('end-to-end — write marker then gate passes', () => {
-  const taskId = 'wf-E2E' + Date.now();
+  const taskId = 'wf-' + ((Date.now() + 2) % 0xffffffff).toString(16).padStart(8, '0').slice(0, 8);
   try {
     gate.writeArchitectRunMarker({ taskId, model: 'opus' });
     const r = gate.checkArchitectRequired({

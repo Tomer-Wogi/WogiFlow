@@ -64,9 +64,47 @@ function isAllGatesDisabled(hookStatus) {
   );
 }
 
+/**
+ * Resolve the current workflow phase + task meta from state files.
+ *
+ * Reads `.workflow/state/workflow-phase.json` for { phase, taskId }, then
+ * looks up the matching task in `ready.json.inProgress` for full taskMeta.
+ *
+ * Fail-open everywhere: any read/parse error → returns the partial state
+ * resolved so far. Multiple gates may need this context; centralizing here
+ * stops the inline-block proliferation flagged by review L3.
+ *
+ * @returns {{phase: string, taskId: string|null, taskMeta: object|null}}
+ */
+function resolveCurrentTaskContext() {
+  const path = require('node:path');
+  const flowUtils = require('../../flow-utils');
+  const flowIo = require('../../flow-io');
+  let phase = 'idle';
+  let taskId = null;
+  let taskMeta = null;
+  try {
+    const phaseStatePath = path.join(flowUtils.PATHS.state, 'workflow-phase.json');
+    const ps = flowIo.safeJsonParse(phaseStatePath, null);
+    if (ps) {
+      phase = ps.phase || 'idle';
+      taskId = ps.taskId || null;
+    }
+  } catch (_err) { /* fail-open */ }
+  if (taskId) {
+    try {
+      const ready = flowUtils.getReadyData ? flowUtils.getReadyData() : null;
+      const inProgress = (ready && Array.isArray(ready.inProgress)) ? ready.inProgress : [];
+      taskMeta = inProgress.find(t => t && t.id === taskId) || null;
+    } catch (_err) { /* fail-open */ }
+  }
+  return { phase, taskId, taskMeta };
+}
+
 module.exports = {
   VALID_AGENT_TYPES,
   READ_ONLY_AGENT_TYPES,
   parseSubagentContext,
   isAllGatesDisabled,
+  resolveCurrentTaskContext,
 };

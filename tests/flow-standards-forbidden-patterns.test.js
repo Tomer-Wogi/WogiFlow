@@ -159,3 +159,38 @@ test('checkForbiddenPatterns — absolute path detection (agnosticism scenario)'
   const v = checkForbiddenPatterns(baseFile('cmd/wogi/main.go', 'const path = "/Users/tomergilboa/.cache"'), patterns);
   assert.equal(v.length, 1);
 });
+
+// AC3 — ReDoS guard: nested-quantifier patterns rejected pre-compile, completes fast
+test('checkForbiddenPatterns — nested-quantifier rejected pre-compile, completes fast', () => {
+  const patterns = [
+    {
+      id: 'evil-redos',
+      pattern: '^(a+)+$',
+      severity: 'must-fix',
+      message: 'should never run'
+    }
+  ];
+  // 30+ a's would lock a vulnerable matcher for ~50s. Pre-compile reject = fast.
+  const evilContent = 'a'.repeat(30) + 'b';
+  const start = Date.now();
+  const v = checkForbiddenPatterns(baseFile('src/foo.js', evilContent), patterns);
+  const elapsed = Date.now() - start;
+  assert.equal(v.length, 1);
+  assert.equal(v[0].type, 'forbidden-pattern-malformed');
+  assert.ok(elapsed < 1000, `expected <1000ms, got ${elapsed}ms`);
+});
+
+// AC3 — content over 1MB cap is skipped silently
+test('checkForbiddenPatterns — content over 1MB cap is skipped', () => {
+  const patterns = [
+    {
+      id: 'find-foo',
+      pattern: 'foo',
+      severity: 'must-fix',
+      message: 'foo found'
+    }
+  ];
+  const huge = 'foo'.repeat(400_000); // ~1.2MB
+  const v = checkForbiddenPatterns(baseFile('src/huge.js', huge), patterns);
+  assert.equal(v.length, 0); // skipped due to size cap
+});

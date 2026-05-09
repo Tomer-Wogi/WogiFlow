@@ -1,130 +1,40 @@
 {
-  "reviewDate": "2026-05-04T08:10:38.823Z",
-  "taskId": "wf-ee4e343b",
-  "mode": "parallel",
-  "posture": "pre-ship",
-  "agentsLaunched": 1,
-  "adversaryRun": {
-    "model": "opus",
-    "verdict": "ACCEPT_WITH_ADJUSTMENTS"
-  },
+  "reviewDate": "2026-05-09T07:35:00.000Z",
+  "commit": "744d615",
+  "version": "2.30.0",
+  "task": "wf-037f8d66",
+  "mode": "multi-pass",
+  "agentsLaunched": 3,
   "filesReviewed": [
-    "lib/wogi-claude",
-    "lib/wogi-claude-expect.exp",
-    "scripts/flow-utils.js",
-    "scripts/hooks/core/task-boundary-reset.js",
-    "scripts/hooks/core/session-context.js",
-    "tests/flow-task-boundary-reset.test.js"
+    "scripts/hooks/core/architect-required-gate.js",
+    "scripts/hooks/core/pre-tool-deps.js",
+    "scripts/hooks/core/pre-tool-orchestrator.js",
+    "scripts/flow-architect-pass.js",
+    "scripts/flow-standards-checker.js",
+    "tests/flow-hooks-architect-required-gate.test.js",
+    "tests/flow-standards-forbidden-patterns.test.js"
   ],
   "findings": [
-    {
-      "id": "F1",
-      "severity": "high",
-      "category": "code-logic",
-      "file": "tests/flow-task-boundary-reset.test.js",
-      "issue": "withProject discarded async fn promise; tmp dir torn down before awaits resolved",
-      "status": "fixed",
-      "evidenceTier": 3,
-      "confidencePct": 95
-    },
-    {
-      "id": "F2",
-      "severity": "medium",
-      "category": "code-logic",
-      "file": "scripts/flow-utils.js",
-      "issue": "maybeArmTaskBoundaryRestart false-positive on first save when previousData is null",
-      "status": "fixed",
-      "evidenceTier": 3,
-      "confidencePct": 95
-    },
-    {
-      "id": "F3",
-      "severity": "medium",
-      "category": "code-logic",
-      "file": "tests/flow-task-boundary-reset.test.js",
-      "issue": "regression test routes through expect mode if dev shell has WOGI_WORKSPACE_ROOT set; missing exit-status assertion",
-      "status": "fixed",
-      "evidenceTier": 3,
-      "confidencePct": 95
-    },
-    {
-      "id": "F4",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "lib/wogi-claude-expect.exp",
-      "issue": "Tcl {*} list-expansion brace handling — adversary-adjusted from HIGH to LOW (pre-existing in v2.26.3 baseline)",
-      "status": "fixed",
-      "evidenceTier": 2,
-      "confidencePct": 85,
-      "adversaryAdjusted": true,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    },
-    {
-      "id": "F5",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "scripts/hooks/core/task-boundary-reset.js",
-      "issue": "clearSkipCounter swallows EACCES alongside ENOENT",
-      "status": "fixed",
-      "evidenceTier": 1,
-      "confidencePct": 75,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    },
-    {
-      "id": "F6",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "scripts/hooks/core/task-boundary-reset.js",
-      "issue": "markRestartPending overwrites markedAt on duplicate calls",
-      "status": "fixed",
-      "evidenceTier": 2,
-      "confidencePct": 75,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    },
-    {
-      "id": "F7",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "scripts/flow-utils.js",
-      "issue": "F2 guard asymmetric — corrupt JSON returns {} not null, false-positive still possible (anti-replay absorbs)",
-      "status": "fixed",
-      "evidenceTier": 2,
-      "confidencePct": 75,
-      "adversaryFound": true,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    },
-    {
-      "id": "F8",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "scripts/hooks/core/task-boundary-reset.js",
-      "issue": "skip-counter read-modify-write is non-atomic; concurrent Stop hooks race",
-      "status": "fixed",
-      "evidenceTier": 2,
-      "confidencePct": 75,
-      "adversaryFound": true,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    },
-    {
-      "id": "F9",
-      "severity": "low",
-      "category": "code-logic",
-      "file": "lib/wogi-claude",
-      "issue": "bash binary hardcoded; consider WOGI_BASH_BIN env knob for non-standard layouts",
-      "status": "fixed",
-      "evidenceTier": 1,
-      "confidencePct": 75,
-      "adversaryFound": true,
-      "fixedAt": "2026-05-04T08:23:21.272Z"
-    }
+    {"id":"H1","severity":"high","category":"architecture","file":"scripts/flow-standards-checker.js","line":768,"issue":"loadForbiddenPatterns uses raw JSON.parse despite importing safeJsonParse — violates security-patterns.md §2 (the rule the standards-checker itself enforces). ENFORCEMENT_GAP.","recommendation":"Replace JSON.parse(raw) with safeJsonParse(filePath, []). Validate result is array.","evidenceTier":4,"evidenceNote":"Read line 768; confirmed safeJsonParse already imported at line 22.","confidencePct":95,"flagUnverified":false,"agent":"architecture+security"},
+    {"id":"H2","severity":"high","category":"architecture","file":"scripts/flow-standards-checker.js","line":763,"issue":"forbidden-patterns rule pack does not exist on disk and no installer scaffolding ships. Commit message advertises `.workflow/standards/forbidden-patterns.json`; loader reads `.workflow/state/forbidden-patterns.json`. Neither path nor parent dir exists. Feature is silent no-op.","recommendation":"Ship `.workflow/state/forbidden-patterns.json.template` + add to lib/installer.js. Reconcile commit-message path with code. Add stderr warning when loader returns [] but state/ dir exists.","evidenceTier":4,"evidenceNote":"ls .workflow/standards/ → ENOENT; ls .workflow/state/forbidden-patterns* → no match.","confidencePct":95,"flagUnverified":false,"agent":"architecture"},
+    {"id":"M1","severity":"medium","category":"security","file":"scripts/flow-standards-checker.js","line":686,"issue":"ReDoS — checkForbiddenPatterns compiles arbitrary regex from JSON config, no timeout, no input cap. `^(a+)+$` × 26 chars empirically takes 3.3s.","recommendation":"Add ReDoS pre-compile linter (reject nested quantifiers), 200ms wall-clock budget per file, content.length cap.","evidenceTier":4,"evidenceNote":"Empirically reproduced: node -e 'new RegExp(\"^(a+)+$\").test(\"a\".repeat(26)+\"b\")' = 3339ms.","confidencePct":95,"flagUnverified":false,"agent":"security"},
+    {"id":"M2","severity":"medium","category":"code-logic","file":"scripts/hooks/core/architect-required-gate.js","line":79,"issue":"requiresArchitect bypasses gate when taskMeta.level is missing/empty. No fail-closed for stories without level field.","recommendation":"Treat missing level as L1 when type='story'/'epic'. Fail-closed.","evidenceTier":2,"evidenceNote":"Read lines 79-87.","confidencePct":85,"flagUnverified":false,"agent":"code-logic"},
+    {"id":"M3","severity":"medium","category":"code-logic","file":"scripts/flow-standards-checker.js","line":723,"issue":"globMatch ** edge cases: `dir/**` does NOT match `dir`; `**/foo` matches `xfoo` (no directory boundary).","recommendation":"Add explicit cases for dir/** matching dir; `**/foo` requires path separator.","evidenceTier":2,"evidenceNote":"Manual regex tracing of globMatch implementation lines 723-757.","confidencePct":85,"flagUnverified":false,"agent":"code-logic+adversary-confirmed"},
+    {"id":"M4","severity":"medium","category":"architecture","file":"scripts/flow-standards-checker.js","line":723,"issue":"globMatch is the 3rd implementation of glob-to-regex (also in flow-feature-dossier.js:257, flow-logic-rules.js:136).","recommendation":"Extract shared globToRegex helper.","evidenceTier":4,"evidenceNote":"grep -n 'globToRegex\\|globMatch' returned 3 implementations.","confidencePct":95,"flagUnverified":false,"agent":"architecture"},
+    {"id":"M5","severity":"medium","category":"architecture","file":"scripts/flow-architect-pass.js","line":489,"issue":"Cross-direction dependency: scripts/flow-architect-pass.js requires from scripts/hooks/core/. Inverts established convention (hooks/core depends on scripts/, not vice versa).","recommendation":"Move writeArchitectRunMarker to scripts/flow-architect-runs.js (neutral location); both gate and architect-pass require from there.","evidenceTier":4,"evidenceNote":"No other script-to-hooks-core require exists in scripts/flow-*.js (verified).","confidencePct":95,"flagUnverified":false,"agent":"architecture"},
+    {"id":"M6","severity":"medium","category":"code-logic","file":"scripts/hooks/core/architect-required-gate.js","line":150,"issue":"Architect-runs markers never garbage-collected. Stale markers from completed tasks accumulate; task-ID collision bypasses gate.","recommendation":"Add GC on session-end (configurable retention) or include createdAt + age check in hasArchitectRun.","evidenceTier":2,"evidenceNote":"Adversary NEW-2; no cleanup logic in module.","confidencePct":85,"flagUnverified":false,"agent":"adversary"},
+    {"id":"M7","severity":"medium","category":"code-logic","file":"scripts/hooks/core/architect-required-gate.js","line":150,"issue":"hasArchitectRun checks fs.existsSync only — empty/zero-byte file with right name bypasses gate.","recommendation":"Validate JSON parse + taskId field match.","evidenceTier":2,"evidenceNote":"Adversary NEW-3; existsSync-only check.","confidencePct":85,"flagUnverified":false,"agent":"adversary"},
+    {"id":"M8","severity":"medium","category":"code-logic","file":"scripts/hooks/core/architect-required-gate.js","line":92,"issue":"TodoWrite is in mutation-block set. Blocks planning before architect run; chicken-and-egg if agent uses todos to track architect-pass progress.","recommendation":"Reconsider including TodoWrite in the gate — Edit/Write/Bash are sufficient.","evidenceTier":2,"evidenceNote":"Adversary NEW-1; gate fires on toolName === 'TodoWrite'.","confidencePct":85,"flagUnverified":false,"agent":"adversary"},
+    {"id":"L1","severity":"low","category":"security","file":"scripts/hooks/core/architect-required-gate.js","line":34,"issue":"Path traversal: taskId not validated against /^wf-[a-f0-9]{8}$/i before path.join. Realistic exploit requires already-compromised state file.","recommendation":"Import validateTaskId from flow-utils; reject in getArchitectRunPath.","evidenceTier":2,"evidenceNote":"Code-read confirms only typeof check. Adversary downgraded from MED to LOW.","confidencePct":85,"flagUnverified":false,"agent":"security"},
+    {"id":"L2","severity":"low","category":"code-logic","file":"scripts/flow-standards-checker.js","line":763,"issue":"loadForbiddenPatterns silently swallows JSON syntax errors. Malformed JSON → returns [] silently.","recommendation":"Stderr warn or push synthetic violation when parse fails.","evidenceTier":2,"evidenceNote":"Code-read.","confidencePct":85,"flagUnverified":false,"agent":"code-logic"},
+    {"id":"L3","severity":"low","category":"architecture","file":"scripts/hooks/core/pre-tool-orchestrator.js","line":121,"issue":"Inline 30-line phase+taskMeta resolution duplicates logic that should be a shared helper.","recommendation":"Extract resolveCurrentTaskContext() — gate becomes a 3-line dispatch.","evidenceTier":3,"evidenceNote":"grep workflow-phase.json across hooks/core/ → 6 hits.","confidencePct":95,"flagUnverified":false,"agent":"architecture"},
+    {"id":"L4","severity":"low","category":"code-logic","file":"scripts/hooks/core/architect-required-gate.js","line":58,"issue":"writeArchitectRunMarker leaks tmp files on rename failure (tmp-${pid}).","recommendation":"Add fs.unlinkSync(tmpPath) in catch (wrapped in own try/catch).","evidenceTier":2,"evidenceNote":"Code-read.","confidencePct":85,"flagUnverified":false,"agent":"code-logic"},
+    {"id":"L5","severity":"low","category":"code-logic","file":"scripts/flow-architect-pass.js","line":486,"issue":"Marker write happens unconditionally on PASS even when IGR disabled. Stale markers if config flips back later.","recommendation":"Guard with isGateEnabled check OR include specHash in marker for staleness detection.","evidenceTier":1,"evidenceNote":"Code-read inference; not observed in incident.","confidencePct":75,"flagUnverified":true,"agent":"code-logic"},
+    {"id":"L6","severity":"low","category":"architecture","file":"scripts/hooks/core/architect-required-gate.js","line":167,"issue":"Speculative exports never consumed externally (getArchitectRunPath, requiresArchitect, isGateEnabled, ARCHITECT_RUNS_DIR).","recommendation":"Drop unused exports or keep only test-exercised ones.","evidenceTier":2,"evidenceNote":"pre-tool-deps.js only imports checkArchitectRequired; flow-architect-pass.js only imports writeArchitectRunMarker.","confidencePct":85,"flagUnverified":false,"agent":"architecture"},
+    {"id":"L7","severity":"low","category":"architecture","file":"scripts/flow-standards-checker.js","line":763,"issue":"Path discrepancy: commit message says .workflow/standards/forbidden-patterns.json; code reads .workflow/state/forbidden-patterns.json.","recommendation":"Pick one; update either commit message or code/docstring. (Subset of H2.)","evidenceTier":4,"evidenceNote":"Direct cross-reference of commit message vs loader.","confidencePct":95,"flagUnverified":false,"agent":"adversary"}
   ],
-  "triaged": true,
-  "truthGate": {
-    "findingsMarkedFixed": 9,
-    "tier3Plus": 9,
-    "tier2Downgraded": 0,
-    "tier01Downgraded": 0
-  },
-  "allFindingsFixed": true,
-  "cleanupCommit": "wf-ee4e343b cleanup pass — anti-deferral compliance"
+  "patternsTracked": [
+    {"id":"raw-json-parse-when-safe-available","occurrences":2,"firstSeen":"wf-3c968989","secondSeen":"wf-037f8d66","status":"ENFORCEMENT_GAP","recommendation":"Add a regex-based standards-check rule (the irony: forbidden-patterns.json itself would catch this if it shipped)"}
+  ],
+  "triaged": false
 }

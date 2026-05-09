@@ -33,6 +33,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { PATHS } = require('./flow-utils');
+const { globToRegex: _gtr } = require('./flow-glob');
+// Local convenience: case-insensitive glob (this module's historical default)
+const globToRegex = (pat) => _gtr(pat, 'i');
 const { getDossierRoots, DOSSIER_DIRNAME: _DOSSIER_DIRNAME } = require('./flow-feature-dossier');
 
 const LOGIC_RULES_FILENAME = '_logic-rules.md';
@@ -133,15 +136,6 @@ function listRules() {
   return all;
 }
 
-function globToRegex(pat) {
-  const escaped = pat
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*\*/g, '.__DBLSTAR__')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\.__DBLSTAR__/g, '.*')
-    .replace(/\?/g, '[^/]');
-  return new RegExp(`^${escaped}$`, 'i');
-}
 
 function matchRulesForFiles(files = [], extraKeywords = []) {
   if (!Array.isArray(files)) files = [files];

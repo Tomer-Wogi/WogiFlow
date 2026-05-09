@@ -23,6 +23,7 @@ const {
   color,
   getConfig
 } = require('./flow-utils');
+const { globMatch } = require('./flow-glob');
 const {
   calculateCombinedSimilarity,
   getMatchLevel,
@@ -672,6 +673,12 @@ function checkForbiddenPatterns(file, patterns) {
     ? path.relative(PATHS.root, file.path)
     : file.path;
 
+  // AC3 (M1 fix): per-file content size cap. Skip files that exceed the cap;
+  // attacker-supplied or accidentally-huge inputs can't lock the matcher.
+  if (content.length > DEFAULT_MAX_CONTENT_BYTES) {
+    return violations; // silently skip — large file, no scan
+  }
+
   for (const entry of patterns) {
     if (!entry || typeof entry !== 'object') continue;
     if (!entry.pattern || typeof entry.pattern !== 'string') continue;
@@ -680,6 +687,20 @@ function checkForbiddenPatterns(file, patterns) {
     const exemptions = Array.isArray(entry.exemptions) ? entry.exemptions : [];
     const exempted = exemptions.some(glob => globMatch(relPath, glob));
     if (exempted) continue;
+
+    // AC3 (M1 fix): pre-compile reject of catastrophic-backtracking patterns.
+    const catRisk = detectCatastrophicPattern(entry.pattern);
+    if (catRisk) {
+      violations.push({
+        type: 'forbidden-pattern-malformed',
+        severity: 'warning',
+        file: file.path,
+        line: 1,
+        message: `Pattern "${entry.id || entry.pattern}" rejected pre-compile: ${catRisk}`,
+        rule: `forbidden-patterns.json: ${entry.id || '(unnamed)'}`
+      });
+      continue; // don't compile or run the dangerous pattern
+    }
 
     // Compile regex
     let re;
@@ -691,10 +712,25 @@ function checkForbiddenPatterns(file, patterns) {
       continue;
     }
 
-    // Match
+    // Match — with wall-clock budget (AC3/M1 fix).
     let match;
     re.lastIndex = 0;
+    const deadline = Date.now() + DEFAULT_MATCH_BUDGET_MS;
     while ((match = re.exec(content)) !== null) {
+      // Budget check: bail out gracefully if the matcher takes too long.
+      // Acceptable to drop late matches — defends against ReDoS, not a
+      // correctness guarantee.
+      if (Date.now() > deadline) {
+        violations.push({
+          type: 'forbidden-pattern-timeout',
+          severity: 'warning',
+          file: file.path,
+          line: 1,
+          message: `Pattern "${entry.id || entry.pattern}" exceeded ${DEFAULT_MATCH_BUDGET_MS}ms budget on this file — partial results, scan aborted.`,
+          rule: `forbidden-patterns.json: ${entry.id || '(unnamed)'}`
+        });
+        break;
+      }
       const before = content.substring(0, match.index);
       const lineNumber = (before.match(/\n/g) || []).length + 1;
       violations.push({
@@ -714,63 +750,69 @@ function checkForbiddenPatterns(file, patterns) {
   return violations;
 }
 
+// Note: globMatch was extracted to scripts/flow-glob.js (review M4 fix —
+// kills 3 separate inline implementations). Imported at top of this file.
+
 /**
- * Minimal glob-to-regex matcher for forbidden-pattern exemptions.
- * Supports: `**` (any depth), `*` (no path separator), exact match.
- * Per security-patterns.md §4: use `[^/]*` not `.*` to prevent path
- * separator matching in `*` (only `**` should cross directories).
+ * Detect catastrophic-backtracking regex patterns BEFORE compilation.
+ * Returns a reason string if the pattern looks ReDoS-prone, null otherwise.
+ *
+ * Heuristic: nested quantifiers like (a+)+, (.*)*, ([a-z]+)+ are the canonical
+ * shape. We don't claim to catch every adversarial pattern — just the common
+ * ones. Per AC3 (review M1 fix).
  */
-function globMatch(filePath, glob) {
-  const normalized = filePath.replace(/\\/g, '/');
-  // Build regex from glob
-  let re = '^';
-  let i = 0;
-  while (i < glob.length) {
-    const c = glob[i];
-    if (c === '*' && glob[i + 1] === '*') {
-      // ** matches anything including separators
-      re += '.*';
-      i += 2;
-      // Skip a following / so '**/foo' matches both 'foo' and 'a/b/foo'
-      if (glob[i] === '/') i++;
-    } else if (c === '*') {
-      re += '[^/]*';
-      i++;
-    } else if (c === '?') {
-      re += '[^/]';
-      i++;
-    } else if ('.^$+(){}[]|\\'.includes(c)) {
-      re += '\\' + c;
-      i++;
-    } else {
-      re += c;
-      i++;
-    }
+function detectCatastrophicPattern(patternSrc) {
+  if (typeof patternSrc !== 'string') return null;
+  // Match: ( ... <quantifier> ) <quantifier>
+  // Where quantifier is one of: +, *, {n,m}
+  const NESTED = /\([^()]*[+*][^()]*\)\s*[+*]/;
+  if (NESTED.test(patternSrc)) {
+    return 'nested-quantifier (e.g., (a+)+, (.*)*, ([a-z]+)+) — catastrophic backtracking risk';
   }
-  re += '$';
-  try {
-    return new RegExp(re).test(normalized);
-  } catch (_err) {
-    return false;
-  }
+  return null;
 }
+
+const DEFAULT_MAX_CONTENT_BYTES = 1_000_000; // 1MB
+const DEFAULT_MATCH_BUDGET_MS = 200;
 
 /**
  * Load forbidden-patterns.json from project state dir.
+ * Uses safeJsonParse (per security-patterns.md §2 — review H1 fix).
+ * Emits stderr warning when state dir exists but file does NOT (AC2/H2 — silent
+ * no-op detection) and when file exists but parse fails (AC12/L2).
  * @returns {Object[]} pattern entries (empty array if missing/invalid)
  */
 function loadForbiddenPatterns(projectRoot) {
   const root = projectRoot || PATHS.root;
-  const filePath = path.join(root, '.workflow', 'state', 'forbidden-patterns.json');
-  if (!fs.existsSync(filePath)) return [];
-  try {
-    const raw = fs.readFileSync(filePath, 'utf-8');
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch (_err) {
+  const stateDir = path.join(root, '.workflow', 'state');
+  const filePath = path.join(stateDir, 'forbidden-patterns.json');
+  if (!fs.existsSync(filePath)) {
+    // AC2/H2: warn when state dir is initialized but pack is missing.
+    // Mirrors the CL-004 stderr-warn pattern in pre-tool-deps.js — silently
+    // shimming a missing rule pack masks broken installs.
+    if (fs.existsSync(stateDir) && process.env.WOGI_QUIET !== '1') {
+      console.error(
+        '[Standards] forbidden-patterns.json not found at .workflow/state/ — feature ' +
+        'inactive this run. Run `flow init --force` or copy from ' +
+        '.workflow/state/forbidden-patterns.json.template to enable.'
+      );
+    }
     return [];
   }
+  // AC1/H1 fix: use safeJsonParse instead of raw JSON.parse(fs.readFileSync(...))
+  const parsed = safeJsonParse(filePath, null);
+  if (parsed === null) {
+    // AC12/L2: warn when the file exists but parse failed (syntax error).
+    if (process.env.WOGI_QUIET !== '1') {
+      console.error(
+        '[Standards] forbidden-patterns.json failed to parse — feature disabled this run. ' +
+        'Check for trailing commas / mismatched braces.'
+      );
+    }
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed;
 }
 
 function checkApiDuplication(file, existingEndpoints, matchConfig) {
