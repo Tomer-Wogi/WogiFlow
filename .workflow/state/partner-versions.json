@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.30.4",
+    "version": "2.31.0",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -38,6 +38,10 @@
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
     "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.31.0": [
+      "NEW: self-adversary decision loop (Self-Refine + Reflexion pattern with different-model adversary). When AI is about to AskUserQuestion about implementation/code-structure/library-choice, PreToolUse gate intercepts and requires AI to iterate generator (Sonnet) <-> adversary (Haiku) up to 8 rounds reaching >=95% confidence first. Only escalates to user if confidence stays low after the loop. Product/architecture/sensitive questions pass through unchanged. New files: scripts/flow-self-adversary-loop.js, scripts/flow-impl-question-classifier.js, scripts/hooks/core/self-adversary-gate.js, .claude/commands/wogi-self-adversary.md. Wired into pre-tool-orchestrator.js + pre-tool-deps.js. 49 new tests across 3 test files. wf-e399bd8d.",
+      "package.json: test glob updated to include recently-added test files (flow-deferral-classifier-ai, flow-no-defer-policy, flow-installer-forbidden-patterns, flow-self-adversary-* x3) that were previously not registered in the npm test list."
+    ],
     "2.30.4": [
       "scripts/hooks/core/deferral-gate.js: checkBashGate rewritten. Prior version over-triggered on commands that merely REFERENCED the target file and the word 'deferred' as text content (markdown blockquotes inside heredoc release notes, commit messages, etc.). New version: (1) strips quoted/heredoc content before structural shell-redirect check, (2) tightens mutation patterns to require target file as WRITE DESTINATION not just mention, (3) tests against BOTH stripped and original command. wf-4a5b7a6f."
     ],
