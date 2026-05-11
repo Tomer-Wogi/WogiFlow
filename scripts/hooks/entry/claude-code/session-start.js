@@ -1,21 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Wogi Flow - Claude Code SessionStart Hook
+ * Wogi Flow - Claude Code SessionStart Hook (thin entry)
  *
- * Called when a Claude Code session starts.
- * Injects context (suspended tasks, decisions, recent activity).
+ * All SessionStart business logic lives in
+ * scripts/hooks/core/session-start-orchestrator.js. This entry dispatches.
+ *
+ * Per .claude/rules/architecture/hook-three-layer.md: entry files ≤ 120 LOC,
+ * ≤ 2 core/ imports, no inline business logic. wf-6e31850e A-3 extracted
+ * the prior 387-LOC body into core/session-start-orchestrator.js.
+ *
+ * Boot-latency instrumentation (env-guarded, no effect unless WOGI_DEBUG_BOOT=1)
+ * stays here because it wraps the call.
  */
 
-const { gatherSessionContext } = require('../../core/session-context');
-const { setCliSessionId, clearStaleCurrentTaskAsync, resetSessionTaskCounter } = require('../../../flow-session-state');
-const { checkAndResetStalePhase } = require('../../core/phase-gate');
-const { setRoutingPending } = require('../../core/routing-gate');
-const { getConfig } = require('../../../flow-utils');
+const { orchestrateSessionStart } = require('../../core/session-start-orchestrator');
 const { runHook } = require('../shared/hook-runner');
 
-// wf-8294d960: env-guarded boot-latency instrumentation. No effect unless WOGI_DEBUG_BOOT=1.
-// Claude Code suppresses hook process stderr — we write to an append-only log file instead.
+// wf-8294d960: env-guarded boot-latency instrumentation.
 const BOOT_DEBUG = process.env.WOGI_DEBUG_BOOT === '1';
 const _bootT0 = BOOT_DEBUG ? Date.now() : 0;
 const _bootLogFile = BOOT_DEBUG
@@ -34,354 +36,19 @@ function _bootWrite(line) {
 }
 function _bootMark(label) {
   if (!BOOT_DEBUG) return;
-  const ms = Date.now() - _bootT0;
-  _bootWrite(`[boot-latency] +${String(ms).padStart(6)}ms ${label}`);
+  _bootWrite(`[boot-latency] +${String(Date.now() - _bootT0).padStart(6)}ms ${label}`);
 }
 async function _bootTime(label, fn) {
   if (!BOOT_DEBUG) return fn();
   const t = Date.now();
-  try {
-    return await fn();
-  } finally {
-    _bootWrite(`[boot-latency]   (${String(Date.now() - t).padStart(6)}ms) ${label}`);
-  }
-}
-
-// Lazy-load bridge state to avoid circular dependencies
-let autoSyncBridge = null;
-function getAutoSyncBridge() {
-  if (!autoSyncBridge) {
-    try {
-      autoSyncBridge = require('../../../flow-bridge-state').autoSyncBridge;
-    } catch (_err) {
-      autoSyncBridge = async () => ({ synced: false, reason: 'unavailable' });
-    }
-  }
-  return autoSyncBridge;
+  try { return await fn(); }
+  finally { _bootWrite(`[boot-latency]   (${String(Date.now() - t).padStart(6)}ms) ${label}`); }
 }
 
 runHook('SessionStart', async ({ parsedInput }) => {
-  _bootMark('SessionStart hook entered');
-  // Start bridge auto-sync in parallel with other init work
-  const bridgeSyncPromise = _bootTime('bridge auto-sync', async () => {
-    try {
-      const syncFn = getAutoSyncBridge();
-      await syncFn('claude-code', { silent: true });
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Bridge auto-sync failed: ${err.message}`);
-      }
-    }
+  return await orchestrateSessionStart({
+    parsedInput,
+    bootMark: _bootMark,
+    bootTime: _bootTime
   });
-
-  // Wait for bridge sync to complete
-  await bridgeSyncPromise;
-  _bootMark('after bridge sync');
-
-  // wf-b8839d99: Refresh standing no-defer pin from decisions.md if a policy
-  // section is present. Fail-open — never blocks session start.
-  try {
-    const { refreshFromPolicy } = require('../../core/no-defer-policy');
-    const r = refreshFromPolicy();
-    if (r.refreshed && process.env.DEBUG) {
-      console.error(`[session-start] Refreshed no-defer pin from policy: ${r.header}`);
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] no-defer policy refresh failed: ${err.message}`);
-    }
-  }
-
-  // CLAUDE.md drift detection — check if manually edited since last sync
-  let driftDetected = false;
-  let driftMarkerMissing = false;
-  try {
-    const { checkClaudeMdDrift } = require('../../../flow-bridge-state');
-    const drift = checkClaudeMdDrift();
-    if (drift.drifted && drift.reason === 'content-changed') {
-      if (process.env.DEBUG) {
-        console.error('[session-start] CLAUDE.md drift detected — content changed since last sync');
-      }
-      driftDetected = true;
-    } else if (drift.drifted && drift.reason === 'marker-missing') {
-      if (process.env.DEBUG) {
-        console.error('[session-start] CLAUDE.md appears manually maintained (no generation marker)');
-      }
-      driftDetected = true;
-      driftMarkerMissing = true;
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Drift detection failed: ${err.message}`);
-    }
-  }
-
-  // --- Version compatibility checks (parallelized) ---
-  let versionWarning = null;
-  let updateWarning = null;
-  await _bootTime('version checks', async () => {
-    try {
-      const { checkClaudeCodeVersionOnce, checkWogiFlowUpdateOnce } = require('../../../flow-version-check');
-      const [vw, uw] = await Promise.all([
-        (async () => { try { return await checkClaudeCodeVersionOnce(); } catch (_err) { return null; } })(),
-        (async () => { try { return await checkWogiFlowUpdateOnce(); } catch (_err) { return null; } })()
-      ]);
-      versionWarning = vw;
-      updateWarning = uw;
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Version check failed: ${err.message}`);
-      }
-    }
-  });
-  _bootMark('after version checks');
-
-  // --- Batch 1: Independent pre-context operations (async + sync) ---
-  let scriptWarnings = [];
-  try {
-    const wasReset = checkAndResetStalePhase();
-    if (wasReset && process.env.DEBUG) {
-      console.error('[session-start] Reset stale workflow phase to idle');
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Failed to check stale phase: ${err.message}`);
-    }
-  }
-
-  // Reset session task counter so first task uses full prompt
-  try {
-    resetSessionTaskCounter();
-  } catch (_err) {
-    // Non-blocking
-  }
-
-  try {
-    const routingResult = setRoutingPending();
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Set routing-pending: ${routingResult.reason}`);
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Failed to set routing-pending: ${err.message}`);
-    }
-  }
-
-  try {
-    const { validateScripts } = require('../../../flow-script-resolver');
-    scriptWarnings = validateScripts();
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Script validation failed: ${err.message}`);
-    }
-  }
-
-  // BUG-005 fix: Create durable-session.json for active tasks on session start.
-  try {
-    const { getReadyData } = require('../../../flow-utils');
-    const readyData = getReadyData();
-    if (Array.isArray(readyData.inProgress) && readyData.inProgress.length > 0) {
-      const task = readyData.inProgress[0];
-      const taskId = task && task.id;
-      if (taskId) {
-        const { loadDurableSession, createDurableSession } = require('../../../flow-durable-session');
-        const existing = loadDurableSession();
-        if (!existing || existing.taskId !== taskId) {
-          const criteria = task.acceptanceCriteria || task.scenarios || [];
-          const steps = Array.isArray(criteria) ? criteria : [];
-          const sessionSteps = steps.length > 0 ? steps : [task.title || taskId];
-          createDurableSession(taskId, 'task', sessionSteps);
-          if (process.env.DEBUG) {
-            console.error(`[session-start] Created durable session for active task ${taskId}`);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    if (process.env.DEBUG) {
-      console.error(`[session-start] Durable session init failed: ${err.message}`);
-    }
-  }
-
-  // Async operations — batch with Promise.all
-  const asyncPreOps = [];
-
-  if (parsedInput.sessionId) {
-    asyncPreOps.push(
-      setCliSessionId(parsedInput.sessionId).catch(err => {
-        if (process.env.DEBUG) {
-          console.error(`[session-start] Failed to store session ID: ${err.message}`);
-        }
-      })
-    );
-  }
-
-  asyncPreOps.push(
-    clearStaleCurrentTaskAsync().catch(err => {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Failed to clear stale task: ${err.message}`);
-      }
-    })
-  );
-
-  // Gather session context concurrently with the async pre-ops
-  _bootMark('before gatherSessionContext + asyncPreOps');
-  const [, coreResult] = await Promise.all([
-    Promise.all(asyncPreOps),
-    _bootTime('gatherSessionContext', () => gatherSessionContext({
-      includeSuspended: true,
-      includeDecisions: true,
-      includeActivity: true
-    }))
-  ]);
-  _bootMark('after gatherSessionContext + asyncPreOps');
-
-  // --- Batch 2: Post-context operations (plugin scan + community pull) ---
-  const postContextOps = [];
-
-  // Plugin auto-scan (non-blocking)
-  postContextOps.push((async () => {
-    try {
-      const config = getConfig();
-      if (config.plugins?.enabled && config.plugins?.autoScanOnSessionStart) {
-        const { scanUnregisteredMcpServers, registerPlugin, deactivateStaleMcpPlugins, listPlugins } = require('../../../flow-plugin-registry');
-
-        const unregistered = scanUnregisteredMcpServers();
-        for (const server of unregistered) {
-          registerPlugin({
-            name: server.serverName,
-            description: `Auto-discovered MCP server: ${server.serverName}`,
-            source: 'auto-scan',
-            triggers: [`use ${server.serverName}`, `send to ${server.serverName}`, server.serverName],
-            capabilities: [],
-            metadata: { mcpServer: server.serverName }
-          });
-          if (process.env.DEBUG) {
-            console.error(`[session-start] Auto-registered plugin: ${server.serverName}`);
-          }
-        }
-
-        const deactivated = deactivateStaleMcpPlugins();
-        if (deactivated.length > 0 && process.env.DEBUG) {
-          console.error(`[session-start] Deactivated ${deactivated.length} stale plugin(s): ${deactivated.join(', ')}`);
-        }
-
-        if (coreResult && coreResult.context) {
-          const activePlugins = listPlugins({ activeOnly: true });
-          if (unregistered.length > 0 || activePlugins.length > 0) {
-            coreResult.context.pluginScan = {
-              newlyRegistered: unregistered.map(s => s.serverName),
-              activePlugins: activePlugins.map(p => ({ name: p.name, capabilities: (p.capabilities || []).length }))
-            };
-          }
-        }
-      }
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Plugin auto-scan failed: ${err.message}`);
-      }
-    }
-  })());
-
-  // Community knowledge pull + suggestion retry (non-blocking)
-  postContextOps.push((async () => {
-    try {
-      const communityConfig = getConfig();
-      if (communityConfig.community?.enabled) {
-        const community = require('../../../flow-community');
-
-        community.retryPendingSuggestions(communityConfig).catch(() => {});
-
-        if (communityConfig.community?.pullOnSessionStart !== false) {
-          const knowledge = await community.pullFromServer(communityConfig);
-          if (knowledge && coreResult && coreResult.context) {
-            coreResult.context.communityKnowledge = knowledge;
-
-            try {
-              community.mergeCommunityKnowledge(knowledge, communityConfig);
-            } catch (err) {
-              if (process.env.DEBUG) {
-                console.error(`[session-start] Community merge failed: ${err.message}`);
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Community pull failed: ${err.message}`);
-      }
-    }
-  })());
-
-  await _bootTime('postContextOps (plugin-scan + community-pull)', () => Promise.all(postContextOps));
-  _bootMark('after postContextOps');
-
-  // Inject script warnings into context (if any)
-  if (scriptWarnings.length > 0 && coreResult && coreResult.context) {
-    coreResult.context.scriptWarnings = scriptWarnings.map(w => w.message);
-  }
-
-  // Inject version compatibility warning (if any)
-  if (versionWarning && coreResult && coreResult.context) {
-    coreResult.context.versionWarning = versionWarning;
-  }
-
-  // Inject WogiFlow update warning (if any)
-  if (updateWarning && coreResult && coreResult.context) {
-    coreResult.context.updateWarning = updateWarning;
-  }
-
-  // Inject drift detection results (if any)
-  if (driftDetected && coreResult && coreResult.context) {
-    if (driftMarkerMissing) {
-      coreResult.context.driftWarning = 'CLAUDE.md appears to have been manually edited (generation marker missing). Was this intentional? If yes, WogiFlow will respect your custom CLAUDE.md. If not, run `flow bridge sync` to regenerate from template.';
-    } else {
-      coreResult.context.driftWarning = 'CLAUDE.md content has changed since the last bridge sync. Was this intentional? If yes, WogiFlow will preserve your changes. If not, run `flow bridge sync` to regenerate from template.';
-    }
-  }
-
-  // State file drift detection (Claude Code 2.1.105+ — also works on older versions)
-  // Detects when .workflow/state/ files were modified externally between sessions
-  try {
-    const { detectDrift, saveSnapshot, formatDriftReport } = require('../../../flow-state-drift-detector');
-    const driftResult = detectDrift();
-    if (driftResult.hasDrift && coreResult && coreResult.context) {
-      coreResult.context.stateDriftWarning = formatDriftReport(driftResult);
-    }
-    // Always save a fresh snapshot at session start for next comparison
-    saveSnapshot();
-  } catch (_err) {
-    // State drift detection failure is non-fatal
-    if (process.env.DEBUG) {
-      console.error(`[session-start] State drift detection failed: ${_err.message}`);
-    }
-  }
-
-  // Workspace worker restart-handoff (wf-restart-handoff / 2.22.2).
-  // When the wogi-claude wrapper restarts a worker (via task-boundary-reset),
-  // queued dispatches from the PRIOR session are picked up by auto-resume;
-  // if the queue is truly empty, announce worker-ready so the manager can
-  // reconcile against its dispatch log and re-dispatch anything lost during
-  // the restart window. See scripts/hooks/core/session-start-worker.js.
-  await _bootTime('worker session-start handler', async () => {
-    try {
-      const { handleWorkerSessionStart } = require('../../core/session-start-worker');
-      const workerResult = handleWorkerSessionStart();
-      if (workerResult.context && coreResult && coreResult.context) {
-        if (workerResult.branch === 'auto-resume') {
-          coreResult.context.workerAutoResume = workerResult.context;
-        } else if (workerResult.branch === 'announce-ready') {
-          coreResult.context.workerReadyAnnounce = workerResult.context;
-        }
-      }
-    } catch (err) {
-      if (process.env.DEBUG) {
-        console.error(`[session-start] Worker session-start handler failed: ${err.message}`);
-      }
-    }
-  });
-  _bootMark('SessionStart hook returning');
-
-  return coreResult;
 }, { failMode: 'warn' });

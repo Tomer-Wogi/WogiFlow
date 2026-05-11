@@ -208,9 +208,11 @@ function runTaskStandardsCheck(taskContext, files, options = {}) {
   }
 
   // Determine task type (infer if needed)
+  // wf-6e31850e (L-5): filter undefined paths so inferTaskType's `.some(f => f.includes(...))`
+  // never sees undefined values (defensive — normalization at top should catch most cases).
   const taskType = inferTaskType(
     taskContext?.type || options.taskType || 'feature',
-    files.map(f => f.path)
+    files.map(f => f.path).filter(p => typeof p === 'string' && p.length > 0)
   );
 
   // Get changed paths for targeted checks

@@ -765,7 +765,11 @@ None
 <!-- MEMORY-BLOCKS-START -->
 ```json
 {
-  "currentTask": null,
+  "currentTask": {
+    "id": "wf-6e31850e",
+    "title": "v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
+    "startedAt": "2026-05-11T16:16:27.199Z"
+  },
   "sessionContext": {
     "filesModified": [
       "scripts/flow",
@@ -799,7 +803,7 @@ None
     "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)",
     "Completed: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)"
   ],
-  "lastUpdated": "2026-05-11T15:44:07.701Z",
+  "lastUpdated": "2026-05-11T16:16:27.199Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

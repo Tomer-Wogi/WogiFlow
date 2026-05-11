@@ -32,17 +32,48 @@ function parseArgs(argv) {
 }
 
 function cmdGrant(args) {
-  // wf-b8839d99: Refuse to grant when invoked from a non-TTY context (i.e.,
-  // from Claude Code's Bash tool or any subprocess pipeline). The AI cannot
-  // self-issue deferral authorization — the gate exists precisely to prevent
-  // that. A human running this CLI from a terminal has stdin.isTTY === true;
-  // an AI subprocess does not.
+  // wf-b8839d99: Refuse to grant when invoked from a non-TTY context.
+  // wf-6e31850e (S-5): Defense-in-depth — also check parent process name.
+  // PTY allocation can fake TTY; checking parent process binds the gate to
+  // an actual shell. Falls back gracefully if /proc isn't queryable (macOS,
+  // restricted environments) — keeps the TTY check as primary signal.
   //
-  // Override: --i-am-human bypasses the TTY check. Provided so out-of-band
-  // automation (CI scripts, etc.) can still grant deliberately; the flag
-  // signals intent. Caveat: if the AI passes this flag, that's an explicit
-  // policy violation that shows up in shell history / commit logs.
-  const isHuman = Boolean(process.stdin.isTTY) || args['i-am-human'] === true;
+  // Override: --i-am-human bypasses both checks. Logged to shell history;
+  // CI pipelines that need to grant must explicitly opt in.
+  function detectParentShell() {
+    try {
+      const ppid = process.ppid;
+      if (!ppid) return null;
+      // Linux: /proc/<ppid>/comm contains the parent process name
+      const fs = require('node:fs');
+      try {
+        const comm = fs.readFileSync(`/proc/${ppid}/comm`, 'utf-8').trim();
+        if (/^(bash|zsh|fish|sh|ksh|dash|tcsh)$/.test(comm)) return comm;
+        return `not-a-shell:${comm}`;
+      } catch (_err) {
+        // macOS / Windows / restricted: fall back to ps
+        const { execSync } = require('node:child_process');
+        try {
+          const out = execSync(`ps -p ${ppid} -o comm=`, { encoding: 'utf-8', timeout: 1000 }).trim();
+          const base = require('node:path').basename(out);
+          if (/^(-?bash|-?zsh|-?fish|-?sh|-?ksh|-?dash|-?tcsh)$/.test(base)) return base;
+          return `not-a-shell:${base}`;
+        } catch (_err2) {
+          return null; // ps unavailable — fall back to TTY check only
+        }
+      }
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  const ttySignal = Boolean(process.stdin.isTTY);
+  const parentShell = detectParentShell();
+  const parentIsShell = parentShell && !parentShell.startsWith('not-a-shell:');
+  const parentSignal = parentShell === null ? null : parentIsShell; // null = couldn't detect
+  // Human if: explicit --i-am-human OR (TTY AND (parent is shell OR parent undetectable))
+  const isHuman = args['i-am-human'] === true ||
+                  (ttySignal && parentSignal !== false);
   if (!isHuman) {
     console.error('grant: refused — non-TTY invocation detected.');
     console.error('');

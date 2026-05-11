@@ -95,10 +95,35 @@ function selectAndRender(gateMap) {
   return renderRemediation(top, queued);
 }
 
+/**
+ * wf-6e31850e (A-1, A-6): Stop-hook coordinator. Same priority logic as
+ * selectAndRender() but takes BOOLEAN ACTIVE FLAGS (not message strings) and
+ * returns `{ topGateId, queued }`. Used by stop.js to decide which gate
+ * should fire instead of running multiple gates in cascade.
+ *
+ * Inputs map gateId -> active boolean. Caller passes flags computed from
+ * marker state (isLongInputPending, isRoutingPending, etc.). Return value
+ * tells the caller WHICH GATE to delegate to; the gate itself produces the
+ * actual stopReason message.
+ *
+ * @param {Object<string, boolean>} activeFlags
+ * @returns {{ topGateId: string|null, queued: string[] }}
+ */
+function pickStopHookGate(activeFlags) {
+  if (!activeFlags || typeof activeFlags !== 'object') return { topGateId: null, queued: [] };
+  const active = REMEDIATION_PRIORITY.filter(id => activeFlags[id] === true);
+  if (active.length === 0) return { topGateId: null, queued: [] };
+  return {
+    topGateId: active[0],
+    queued: active.slice(1)
+  };
+}
+
 module.exports = {
   REMEDIATION_PRIORITY,
   REMEDIATION_LABELS,
   pickTopRemediation,
   renderRemediation,
-  selectAndRender
+  selectAndRender,
+  pickStopHookGate
 };

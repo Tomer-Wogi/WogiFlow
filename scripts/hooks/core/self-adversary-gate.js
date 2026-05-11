@@ -58,7 +58,10 @@ function getEscalationPath() { return path.join(PATHS.state, ESCALATION_FILE); }
 
 function hashQuestion(text) {
   if (typeof text !== 'string') return '';
-  return crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
+  // wf-6e31850e (S-4): use 32-char (128-bit) instead of 16-char (64-bit).
+  // 64-bit was below NIST collision-resistance recommendation; 128-bit is
+  // standard. Birthday-bound collision moves from ~2^32 to ~2^64 questions.
+  return crypto.createHash('sha256').update(text).digest('hex').slice(0, 32);
 }
 
 function isGateEnabled(config) {

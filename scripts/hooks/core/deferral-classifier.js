@@ -49,6 +49,9 @@ async function applyClassification(prompt, config) {
       return { applied: false, reason: 'classifier-disabled' };
     }
 
+    // wf-6e31850e (L-4): lazy require inside function body to break any
+    // theoretical circular-require risk if flow-deferral-classifier-ai ever
+    // imports back. require.cache makes this O(1) on subsequent calls.
     const { classifyUserDeferralIntent } = require('../../flow-deferral-classifier-ai');
     const result = await classifyUserDeferralIntent(prompt, {
       minConfidence: config?.deferralGate?.minClassifierConfidence

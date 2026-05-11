@@ -169,7 +169,9 @@ async function classifyUserDeferralIntent(userPrompt, options = {}) {
     });
   } catch (err) {
     if (process.env.DEBUG) {
-      console.error(`[deferral-classifier-ai] model call failed: ${err.message}`);
+      // wf-6e31850e (S-2): sanitize potential API-key leakage in error messages.
+      const safe = String(err.message || '').replace(/sk-[A-Za-z0-9_-]{10,}/g, 'sk-***');
+      console.error(`[deferral-classifier-ai] model call failed: ${safe}`);
     }
     return { classified: false, reason: 'model-error' };
   }

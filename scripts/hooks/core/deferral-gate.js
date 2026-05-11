@@ -326,9 +326,12 @@ function checkWriteGate(filePath, newContentRaw, config) {
 function stripQuotedContent(cmd) {
   if (typeof cmd !== 'string') return '';
   let stripped = cmd;
-  // Heredocs first (multiline) — replace body with a sentinel
-  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\s*$/gm, ' <<HEREDOC>> ');
-  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\b/g, ' <<HEREDOC>> ');
+  // wf-6e31850e (S-1, L-2): bounded heredoc body to prevent quadratic backtracking
+  // on malformed/unterminated heredocs. 8000-char cap is well above any sensible
+  // heredoc; longer than that, the gate fails open (no strip) which is safer than
+  // ReDoS. Single unified terminator regex covers both EOL-anchored and word-
+  // boundary cases; tolerates optional trailing whitespace/punctuation.
+  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]{0,8000}?\n\1(?:\s*[;)]?\s*$|\b)/gm, ' <<HEREDOC>> ');
   // Single-quoted strings
   stripped = stripped.replace(/'[^']*'/g, "''");
   // Backtick command substitution

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T15:44:07.663Z",
+  "lastUpdated": "2026-05-11T20:05:54.176Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -11,6 +11,19 @@
       "created": "2026-05-01T09:03:32.443Z",
       "specPath": ".workflow/changes/wf-7d92c6be.md",
       "startedAt": "2026-05-01T09:15:32.403Z"
+    },
+    {
+      "id": "wf-6e31850e",
+      "title": "v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-e399bd8d",
+      "status": "in_progress",
+      "createdAt": "2026-05-11T16:16:21.788Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6e31850e.md",
+      "startedAt": "2026-05-11T16:16:27.198Z",
+      "routedAt": "2026-05-11T16:16:27.198Z"
     }
   ],
   "ready": [
@@ -42,6 +55,17 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-e8851cfc",
+      "title": "Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-6e31850e",
+      "status": "ready",
+      "createdAt": "2026-05-11T16:21:06.394Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-e8851cfc.md"
     }
   ],
   "blocked": [],

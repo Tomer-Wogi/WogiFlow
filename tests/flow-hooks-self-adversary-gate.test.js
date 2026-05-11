@@ -28,12 +28,12 @@ function withProject(fn) {
 }
 
 describe('self-adversary-gate — hashQuestion', () => {
-  it('produces stable 16-char hash', () => {
+  it('produces stable 32-char hash (128-bit per wf-6e31850e S-4)', () => {
     withProject((_tmp, gate) => {
       const a = gate.hashQuestion('Should I use map() or for?');
       const b = gate.hashQuestion('Should I use map() or for?');
       assert.equal(a, b);
-      assert.equal(a.length, 16);
+      assert.equal(a.length, 32);
     });
   });
   it('differs for different inputs', () => {
