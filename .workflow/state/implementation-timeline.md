@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-f7d58760: long-input-pending gate misfires on sub-agent task-notifications (May 11)
 - [x] wf-12271e82: Research-required gate false-positives on the word 'recommend' (May 11)
 
 ## 2026-04

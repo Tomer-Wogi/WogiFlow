@@ -109,6 +109,59 @@ describe('shouldForceExtractReview — happy paths', () => {
   });
 });
 
+describe('wf-f7d58760 — system-originated content does not trip the gate', () => {
+  it('isSystemOriginatedContent flags task-notification, system-reminder, command-* prefixes', () => {
+    assert.equal(lie.isSystemOriginatedContent('<task-notification>blah'), true);
+    assert.equal(lie.isSystemOriginatedContent('  <task-notification>blah'), true);
+    assert.equal(lie.isSystemOriginatedContent('<system-reminder>some reminder'), true);
+    assert.equal(lie.isSystemOriginatedContent('<command-message>foo'), true);
+    assert.equal(lie.isSystemOriginatedContent('<local-command-stdout>output'), true);
+    assert.equal(lie.isSystemOriginatedContent('<bash-input>ls -la'), true);
+
+    // Negative: tag-like text mid-string is NOT a system prefix.
+    assert.equal(lie.isSystemOriginatedContent('Hello <task-notification>'), false);
+    assert.equal(lie.isSystemOriginatedContent('Add a button'), false);
+    assert.equal(lie.isSystemOriginatedContent(''), false);
+    assert.equal(lie.isSystemOriginatedContent(null), false);
+  });
+
+  it('shouldForceExtractReview returns pass on long sub-agent task-notification', () => {
+    // Simulates the exact bug: a background sub-agent completes and emits a
+    // task-notification block long enough + imperative-laden enough to clear
+    // every other gate check. Pre-fix, this tripped the gate and force-blocked
+    // the parent session.
+    const taskNotification = [
+      '<task-notification>',
+      'Sub-agent wf-XXXXXXXX completed successfully.',
+      '',
+      '## Summary',
+      'Implemented the feature. Files changed:',
+      '  - scripts/foo.js: add helper',
+      '  - scripts/bar.js: refactor consumer',
+      '  - scripts/baz.js: remove dead code',
+      '  - scripts/qux.js: update tests',
+      '  - scripts/quux.js: fix lint',
+      '',
+      Array.from({ length: 40 }, (_, i) => `Detail line ${i}: more output that pads the message past the 40-line threshold`).join('\n'),
+      '</task-notification>'
+    ].join('\n');
+
+    const r = lie.shouldForceExtractReview({ text: taskNotification });
+    assert.equal(r.forced, false);
+    assert.equal(r.reason, 'system-originated-content');
+  });
+
+  it('still forces on a real long-form user prompt without source-link', () => {
+    // Sanity: the new gate doesn't break the actual P11.5 enforcement.
+    const realUserPrompt = Array.from({ length: 50 }, (_, i) =>
+      `${i + 1}. Implement feature ${i} — add the X component and integrate with Y`
+    ).join('\n');
+    const r = lie.shouldForceExtractReview({ text: realUserPrompt });
+    assert.equal(r.forced, true);
+    assert.equal(r.reason, 'long-form-task-without-source-link');
+  });
+});
+
 describe('shouldForceExtractReview — wogi-hub regression case', () => {
   // regression-tier3
   // The exact failure shape: long task-creating prompt arrives via

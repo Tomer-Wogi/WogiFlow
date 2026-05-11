@@ -94,6 +94,47 @@ function hasSourceLink(text) {
   return SOURCE_LINK_PATTERNS.some(re => re.test(text));
 }
 
+// Known system-content tag prefixes that arrive via UserPromptSubmit but are
+// NOT user-typed input. Sub-agent task-notifications, system reminders, and
+// slash-command framings all flow through the same hook. Treating them as
+// user prompts is the wf-f7d58760 false-positive shape — sub-agent
+// completions tripped the long-input gate and force-blocked the parent
+// session with no recoverable path (catch-22 documented in the bug).
+const SYSTEM_CONTENT_PREFIXES = [
+  '<task-notification>',
+  '<system-reminder>',
+  '<command-message>',
+  '<command-name>',
+  '<command-args>',
+  '<command-output>',
+  '<command-stderr>',
+  '<local-command-stdout>',
+  '<local-command-stderr>',
+  '<user-prompt-submit-hook>',
+  '<bash-input>',
+  '<bash-stdout>',
+  '<bash-stderr>'
+];
+
+/**
+ * Detect content that originates from the system (tool results, sub-agent
+ * notifications, slash-command framings) rather than user typing. These
+ * arrive via UserPromptSubmit in some Claude Code paths but should never
+ * trip the long-input gate — they aren't requests, and the user can't
+ * "preserve their verbatim source" because the user didn't author them.
+ *
+ * Detection: leading non-whitespace begins with a known system tag prefix.
+ * Conservative — only matches if the tag is the FIRST thing in the text.
+ */
+function isSystemOriginatedContent(text) {
+  if (typeof text !== 'string') return false;
+  const lead = text.trimStart().slice(0, 64);
+  for (const prefix of SYSTEM_CONTENT_PREFIXES) {
+    if (lead.startsWith(prefix)) return true;
+  }
+  return false;
+}
+
 function hasTaskSignals(text) {
   if (typeof text !== 'string') return false;
   let imperativeHits = 0;
@@ -129,6 +170,12 @@ function isChannelDispatchInWorker(source, env = process.env) {
  * @returns {{forced: boolean, level: 'strict'|'force'|'suggest'|'pass', reason: string}}
  */
 function shouldForceExtractReview({ text, source, env = process.env } = {}) {
+  // wf-f7d58760: system-originated content (sub-agent task-notifications,
+  // tool-result echoes, slash-command framings) flows through the same
+  // UserPromptSubmit pipe but is NOT a user prompt. Skip the gate entirely.
+  if (isSystemOriginatedContent(text)) {
+    return { forced: false, level: 'pass', reason: 'system-originated-content' };
+  }
   if (!detectLongFormPrompt(text)) {
     return { forced: false, level: 'pass', reason: 'below-long-input-threshold' };
   }
@@ -297,9 +344,11 @@ module.exports = {
   PENDING_PATH,
   LONG_LINE_THRESHOLD,
   LONG_ITEM_THRESHOLD,
+  SYSTEM_CONTENT_PREFIXES,
   detectLongFormPrompt,
   hasSourceLink,
   hasTaskSignals,
+  isSystemOriginatedContent,
   isChannelDispatchInWorker,
   shouldForceExtractReview,
   buildEnforcementMessage,

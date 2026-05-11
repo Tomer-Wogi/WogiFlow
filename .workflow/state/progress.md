@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
     "Completed: F3 Fuzzy-match patching for skill edits",
     "Completed: H1 Structured phase definition schema (YAML)",
     "Completed: C2 IGR artifact edit proposals via CLI + session-end approval",
@@ -797,9 +796,10 @@ None
     "Completed: Surface effort.level and thinking.enabled in status line",
     "Completed: A1 AGENTS.md alias for CLAUDE.md",
     "Completed: WogiFlow Extension Finalize (pre-CLI release)",
-    "Completed: Research-required gate false-positives on the word 'recommend'"
+    "Completed: Research-required gate false-positives on the word 'recommend'",
+    "Completed: long-input-pending gate misfires on sub-agent task-notifications"
   ],
-  "lastUpdated": "2026-05-11T07:42:16.695Z",
+  "lastUpdated": "2026-05-11T07:45:47.211Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

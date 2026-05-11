@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T07:42:16.670Z",
+  "lastUpdated": "2026-05-11T07:45:47.190Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -44,17 +44,6 @@
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
     },
     {
-      "id": "wf-f7d58760",
-      "title": "long-input-pending gate misfires on sub-agent task-notifications",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "high",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "ready",
-      "createdAt": "2026-05-11T07:21:54.647Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-f7d58760.md"
-    },
-    {
       "id": "wf-88a08fd4",
       "title": "flow-phase.js transition CLI silently no-ops",
       "type": "bug",
@@ -90,6 +79,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-f7d58760",
+      "title": "long-input-pending gate misfires on sub-agent task-notifications",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "completed",
+      "createdAt": "2026-05-11T07:21:54.647Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-f7d58760.md",
+      "startedAt": "2026-05-11T07:42:47.700Z",
+      "routedAt": "2026-05-11T07:42:47.700Z",
+      "completedAt": "2026-05-11T07:45:47.189Z"
+    },
     {
       "id": "wf-12271e82",
       "title": "Research-required gate false-positives on the word 'recommend'",
@@ -208,19 +211,6 @@
       "goal": "Plug the structural gap that lets the AI answer diagnostic questions without reading evidence.",
       "startedAt": "2026-05-04T08:48:41.469Z",
       "completedAt": "2026-05-04T08:54:16.462Z"
-    },
-    {
-      "id": "wf-f9912af6",
-      "title": "Mechanical Deferral Authorization Gate",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-05-04T08:32:00.115Z",
-      "startedAt": "2026-05-04T08:32:00.115Z",
-      "specPath": ".workflow/changes/wf-f9912af6.md",
-      "goal": "Plug the bypass that lets the AI silently write status:deferred to last-review.json/last-audit.json",
-      "completedAt": "2026-05-04T08:39:59.239Z"
     }
   ],
   "backlog": [
