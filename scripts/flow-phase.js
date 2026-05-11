@@ -22,12 +22,17 @@ if (command === 'transition') {
     console.error('Usage: flow-phase.js transition <from> <to> [taskId]');
     process.exit(1);
   }
-  if (!isPhaseGateEnabled()) {
-    process.exit(0); // Silent no-op when disabled
-  }
+  // wf-88a08fd4: previously this exited silently when `phaseGate.enabled` was
+  // false, which is the default. The CLI is an explicit caller action — honor
+  // it even when gate enforcement is off. State tracking (workflow-phase.json)
+  // is independent of gate enforcement (blocking Edit/Write until phase file
+  // is read). Callers that depend on phase state always need the write; the
+  // gate flag only controls whether PreToolUse blocks tools.
+  const gateActive = isPhaseGateEnabled();
   const success = transitionPhase(from, to, taskId || null);
   if (success) {
-    console.log(`Phase: ${from} → ${to}`);
+    const suffix = gateActive ? '' : ' (gate enforcement disabled — state updated only)';
+    console.log(`Phase: ${from} → ${to}${suffix}`);
     // wf-8d635d0e / E1: fire background auto-review on coding → validating.
     // Fails open — any error here must not fail the primary transition.
     try {

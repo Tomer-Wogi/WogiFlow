@@ -324,3 +324,47 @@ describe('resetPhase', () => {
     assert.equal(typeof r, 'boolean');
   });
 });
+
+// ============================================================
+// wf-88a08fd4: flow-phase.js CLI must write state even when gate disabled
+// ============================================================
+
+describe('wf-88a08fd4: flow-phase.js transition CLI writes state regardless of gate flag', () => {
+  it('transition writes workflow-phase.json even when phaseGate.enabled is false (default)', () => {
+    const { execFileSync } = require('node:child_process');
+    const CLI = path.resolve(__dirname, '..', 'scripts', 'flow-phase.js');
+
+    // Reset to a known starting state (idle).
+    fs.writeFileSync(PHASE_FILE, JSON.stringify({
+      phase: 'idle',
+      taskId: null,
+      updatedAt: new Date().toISOString(),
+      previousPhase: null
+    }, null, 2));
+
+    // Invoke the CLI directly — same shape /wogi-start uses. We do NOT pass
+    // any extra env or config; the live config is used. The repo's own config
+    // does not set phaseGate.enabled=true, so this is the disabled-gate path
+    // that previously silently no-op'd.
+    let stdout = '';
+    let exitCode = 0;
+    try {
+      stdout = execFileSync('node', [CLI, 'transition', 'idle', 'routing', 'wf-test4567'], {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
+    } catch (err) {
+      exitCode = err.status ?? 1;
+      stdout = err.stdout?.toString() || '';
+    }
+
+    assert.equal(exitCode, 0, 'CLI should exit 0 on a valid transition');
+    assert.match(stdout, /Phase:\s*idle\s*→\s*routing/, 'CLI should announce the transition');
+
+    // Most importantly: the state file MUST be updated.
+    const after = JSON.parse(fs.readFileSync(PHASE_FILE, 'utf-8'));
+    assert.equal(after.phase, 'routing', 'phase must transition to routing');
+    assert.equal(after.taskId, 'wf-test4567', 'taskId must be recorded');
+    assert.equal(after.previousPhase, 'idle', 'previousPhase must be recorded');
+  });
+});

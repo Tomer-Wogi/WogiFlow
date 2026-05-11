@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-11 | wf-88a08fd4 | bug | flow-phase.js transition CLI silently no-ops |
 | 2026-05-11 | wf-f7d58760 | bug | long-input-pending gate misfires on sub-agent task-notifications |
 | 2026-05-11 | wf-12271e82 | bug | Research-required gate false-positives on the word 'recommend' |
 | 2026-04-24 | wf-557cf08a | implemented | Full v1 ship: library + gate + hook + tests + CLAUDE.md rule |

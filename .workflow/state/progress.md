@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: F3 Fuzzy-match patching for skill edits",
     "Completed: H1 Structured phase definition schema (YAML)",
     "Completed: C2 IGR artifact edit proposals via CLI + session-end approval",
     "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
@@ -797,9 +796,10 @@ None
     "Completed: A1 AGENTS.md alias for CLAUDE.md",
     "Completed: WogiFlow Extension Finalize (pre-CLI release)",
     "Completed: Research-required gate false-positives on the word 'recommend'",
-    "Completed: long-input-pending gate misfires on sub-agent task-notifications"
+    "Completed: long-input-pending gate misfires on sub-agent task-notifications",
+    "Completed: flow-phase.js transition CLI silently no-ops"
   ],
-  "lastUpdated": "2026-05-11T07:45:47.211Z",
+  "lastUpdated": "2026-05-11T07:48:38.498Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

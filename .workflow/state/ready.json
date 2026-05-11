@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T07:45:47.190Z",
+  "lastUpdated": "2026-05-11T07:48:38.469Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -44,17 +44,6 @@
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
     },
     {
-      "id": "wf-88a08fd4",
-      "title": "flow-phase.js transition CLI silently no-ops",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "medium",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "ready",
-      "createdAt": "2026-05-11T07:21:55.404Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-88a08fd4.md"
-    },
-    {
       "id": "wf-c573961f",
       "title": "Task-gating gate consults 5+ drifting state sources",
       "type": "bug",
@@ -79,6 +68,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-88a08fd4",
+      "title": "flow-phase.js transition CLI silently no-ops",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "completed",
+      "createdAt": "2026-05-11T07:21:55.404Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-88a08fd4.md",
+      "startedAt": "2026-05-11T07:45:52.577Z",
+      "routedAt": "2026-05-11T07:45:52.577Z",
+      "completedAt": "2026-05-11T07:48:38.467Z"
+    },
     {
       "id": "wf-f7d58760",
       "title": "long-input-pending gate misfires on sub-agent task-notifications",
@@ -198,19 +201,6 @@
       "routedAt": "2026-05-08T15:44:30.214Z",
       "specPath": ".workflow/changes/wf-e111d850.md",
       "completedAt": "2026-05-08T15:50:32.376Z"
-    },
-    {
-      "id": "wf-5cd71b1f",
-      "title": "Mechanical research-required gate (fires on text-only answers)",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-05-04T07:34:15.316Z",
-      "specPath": ".workflow/changes/wf-5cd71b1f.md",
-      "goal": "Plug the structural gap that lets the AI answer diagnostic questions without reading evidence.",
-      "startedAt": "2026-05-04T08:48:41.469Z",
-      "completedAt": "2026-05-04T08:54:16.462Z"
     }
   ],
   "backlog": [
