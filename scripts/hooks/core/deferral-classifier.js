@@ -1,129 +1,148 @@
 #!/usr/bin/env node
 
 /**
- * Wogi Flow — Deferral Intent Classifier (wf-f9912af6)
+ * Wogi Flow — Deferral Intent Classifier — Hook Wrapper (wf-b8839d99)
  *
- * Regex-based detector for explicit user deferral intent in UserPromptSubmit
- * messages. Cheap (no Haiku call), deterministic, runs every prompt.
+ * Thin wrapper around the AI-based classifier (scripts/flow-deferral-classifier-ai.js).
+ * Originally regex-based; replaced 2026-05-11 after the user surfaced the
+ * "fix all" miss + false-attribution incident.
  *
- * NEGATIVE intent takes precedence over POSITIVE — if the user says both
- * "fix everything" and "skip Y" in the same message, we assume they want
- * everything fixed (the defer-everything pattern is the dangerous one this
- * gate exists to stop).
+ * User's instruction (2026-05-11):
+ *   "Regex is prone to mistakes. I don't want regex or matching when I
+ *    answer things like that. AI needs to get my responses and analyze them."
  *
- * Negative match → write `no-defer-pin.json` (HARD block, overrides any auth)
- * Positive match → write `deferral-authorization.json` (allows specific scope)
- * Neither → no-op
+ * Flow at UserPromptSubmit:
+ *   1. Call AI classifier (Haiku, cheap, ~500ms)
+ *   2. If actionable + negative → write no-defer-pin (clear any auth)
+ *   3. If actionable + positive → write auth marker
+ *   4. None/low-confidence/classifier-error → no state change (fail-open)
  *
- * Fail-open: any error in classification falls through silently.
+ * The marker source field is now the AI's structured interpretation, NOT
+ * a free-form string the AI invents. The classifier returns {intent,
+ * confidence, interpretation} as a triple; we record all three plus the
+ * verbatim user-message excerpt in the marker. Audit trails can then
+ * distinguish "user said X" from "AI interpreted Y".
+ *
+ * The synchronous regex API used to be the entry point. We keep the same
+ * name and return shape but the implementation is now an async call to
+ * the AI classifier. Callers in user-prompt-submit.js are already async.
  */
 
-// Negative phrases (HIGH PRIORITY — clear auth, write no-defer pin)
-const NEGATIVE_PATTERNS = [
-  /\bfix\s+(everything|all\s+of\s+(them|it)|all\s+findings?)\b/i,
-  /\bno\s+deferr?als?\b/i,
-  /\b(don'?t|do\s+not)\s+defer\b/i,
-  /\bi\s+don'?t\s+(want|like)\s+(tech\s*-?\s*debt|technical\s*-?\s*debt|deferr?al)/i,
-  /\bnever\s+defer\b/i,
-  /\balways\s+fix\s+(what'?s\s+broken|what\s+needs?\s+fixing)/i,
-  /\bnothing\s+(should\s+be|gets)\s+deferr?ed\b/i,
-];
-
-// Positive phrases (MEDIUM PRIORITY — write auth marker)
-// We're conservative: require defer/skip phrasing to be coupled with finding
-// context (this/that/those/it/option N/F\d+/severity word) to avoid catching
-// unrelated mentions like "let's defer the meeting".
-const POSITIVE_PATTERNS = [
-  // "defer X" / "skip X" with a referent
-  /\b(defer|skip|ignore|drop)\s+(this|that|those|it|them|f\d+|finding\s+\w+)\b/i,
-  /\bleave\s+(this|that|those|f\d+|.*?)\s+(for\s+)?later\b/i,
-
-  // /wogi-review menu options that mean defer
-  /\boption\s*[24]\b/i, // option 2 = "fix critical only"; option 4 = "create tasks for all (defer)"
-  /\bcreate\s+tasks?\s+for\s+(all|the\s+rest|remaining)\b/i,
-
-  // Severity-scoped deferrals
-  /\bfix\s+(only\s+)?(critical|high)\s*(\s*\/\s*high)?\s+only\b/i,
-  /\bfix\s+(critical|high)\s+(only|first)\b/i,
-  /\bskip\s+(low|medium|low\s*\/\s*medium)\b/i,
-
-  // Ship-as-is style
-  /\bship\s+(it\s+)?as\s*-?\s*is\b/i,
-  /\bgood\s+enough\s+(as\s*-?\s*is|for\s+now)\b/i,
-  /\bcall\s+it\s+(done|good)\b/i,
-];
+const NEGATIVE_INTENT = 'negative';
+const POSITIVE_INTENT = 'positive';
 
 /**
- * Classify a user prompt for deferral intent.
+ * Apply deferral-intent classification at UserPromptSubmit time.
  *
- * @param {string} prompt - the user's UserPromptSubmit text
- * @returns {{ intent: 'negative'|'positive'|'none', match?: string, scope?: string|string[] }}
+ * @param {string} prompt - The user's message
+ * @param {Object} config - Loaded WogiFlow config
+ * @returns {Promise<{
+ *   applied: boolean,
+ *   intent?: 'negative'|'positive'|'none',
+ *   match?: string,
+ *   reason?: string
+ * }>}
  */
-function classifyDeferralIntent(prompt) {
-  if (!prompt || typeof prompt !== 'string') return { intent: 'none' };
+async function applyClassification(prompt, config) {
+  try {
+    if (config?.deferralGate?.classifyUserPrompts === false) {
+      return { applied: false, reason: 'classifier-disabled' };
+    }
 
-  // Negative first — overrides positive
-  for (const rx of NEGATIVE_PATTERNS) {
-    const m = prompt.match(rx);
-    if (m) return { intent: 'negative', match: m[0] };
-  }
+    const { classifyUserDeferralIntent } = require('../../flow-deferral-classifier-ai');
+    const result = await classifyUserDeferralIntent(prompt, {
+      minConfidence: config?.deferralGate?.minClassifierConfidence
+    });
 
-  // Positive
-  for (const rx of POSITIVE_PATTERNS) {
-    const m = prompt.match(rx);
-    if (m) {
-      // Try to extract scope — look for F\d+ ids in the prompt
-      const findingIds = Array.from(prompt.matchAll(/\bF\d+\b/g)).map(x => x[0]);
+    if (!result.classified) {
+      // Fail-open — no state change on classifier error. Status quo holds.
+      if (process.env.DEBUG) {
+        console.error(`[deferral-classifier] classifier skipped: ${result.reason}`);
+      }
+      return { applied: false, reason: `classifier-skipped: ${result.reason}` };
+    }
+
+    if (!result.actionable) {
       return {
-        intent: 'positive',
-        match: m[0],
-        scope: findingIds.length > 0 ? findingIds : 'all'
+        applied: false,
+        intent: result.intent,
+        reason: `below-threshold (confidence ${result.confidence} < ${result.minConfidence})`
       };
     }
-  }
 
-  return { intent: 'none' };
-}
-
-/**
- * Apply classification result to the gate's state files. Wired into
- * UserPromptSubmit. Fail-open throughout.
- */
-function applyClassification(prompt, config) {
-  try {
-    if (config?.deferralGate?.classifyUserPrompts === false) return { applied: false, reason: 'classifier-disabled' };
-
-    const result = classifyDeferralIntent(prompt);
-    if (result.intent === 'none') return { applied: false, reason: 'no-match' };
-
-    // Lazy-require to avoid load-order coupling
     const gate = require('./deferral-gate');
 
-    if (result.intent === 'negative') {
-      gate.writeNoDeferPin({ source: result.match });
-      return { applied: true, intent: 'negative', match: result.match };
+    if (result.intent === NEGATIVE_INTENT) {
+      // wf-b8839d99 fix #5: if there was a prior auth marker, the user's
+      // negative is likely a correction ("I did not authorize"). Write a
+      // brief routing-recovery grace window so the AI can act on the
+      // correction without re-routing through /wogi-start first.
+      let priorAuthExisted = false;
+      try { priorAuthExisted = Boolean(gate.loadAuth()); } catch (_err) { /* fine */ }
+
+      gate.writeNoDeferPin({
+        source: result.interpretation,
+        userPromptExcerpt: typeof prompt === 'string' ? prompt.slice(0, 300) : '',
+        confidence: result.confidence,
+        grantedBy: 'ai-classifier',
+        standing: result.standing
+      });
+
+      if (priorAuthExisted) {
+        try {
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { PATHS } = require('../../flow-utils');
+          const gracePath = path.join(PATHS.state, 'routing-recovery-grace.json');
+          const now = Date.now();
+          fs.writeFileSync(gracePath, JSON.stringify({
+            grantedAt: new Date(now).toISOString(),
+            expiresAt: new Date(now + 60 * 1000).toISOString(),
+            reason: 'user-correction-after-prior-defer-auth',
+            userPromptExcerpt: typeof prompt === 'string' ? prompt.slice(0, 300) : ''
+          }, null, 2));
+        } catch (_err) { /* fail-open */ }
+      }
+
+      return {
+        applied: true,
+        intent: 'negative',
+        match: result.interpretation,
+        confidence: result.confidence,
+        standing: result.standing,
+        correctionGrace: priorAuthExisted
+      };
     }
 
-    if (result.intent === 'positive') {
+    if (result.intent === POSITIVE_INTENT) {
       gate.writeAuth({
-        scope: result.scope,
-        source: result.match,
-        grantedBy: 'user-prompt',
+        scope: result.scope || 'all',
+        source: result.interpretation,
+        userPromptExcerpt: typeof prompt === 'string' ? prompt.slice(0, 300) : '',
+        confidence: result.confidence,
+        grantedBy: 'ai-classifier',
         config
       });
-      return { applied: true, intent: 'positive', match: result.match, scope: result.scope };
+      return {
+        applied: true,
+        intent: 'positive',
+        match: result.interpretation,
+        scope: result.scope || 'all',
+        confidence: result.confidence
+      };
     }
 
-    return { applied: false, reason: 'unhandled-intent' };
+    return { applied: false, intent: result.intent, reason: 'none-intent' };
   } catch (err) {
-    if (process.env.DEBUG) console.error(`[deferral-classifier] applyClassification error (fail-open): ${err.message}`);
+    if (process.env.DEBUG) {
+      console.error(`[deferral-classifier] applyClassification error (fail-open): ${err.message}`);
+    }
     return { applied: false, reason: `error: ${err.message}` };
   }
 }
 
 module.exports = {
-  classifyDeferralIntent,
   applyClassification,
-  NEGATIVE_PATTERNS,
-  POSITIVE_PATTERNS
+  NEGATIVE_INTENT,
+  POSITIVE_INTENT
 };

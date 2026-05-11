@@ -279,76 +279,8 @@ describe('deferral-gate — checkBashGate', () => {
   });
 });
 
-describe('deferral-classifier — intent detection', () => {
-  it('detects negative intent: "fix everything"', () => {
-    withProject((_tmp, _gate, clf) => {
-      const r = clf.classifyDeferralIntent('please fix everything in the review');
-      assert.strictEqual(r.intent, 'negative');
-    });
-  });
-
-  it('detects negative intent: "no deferrals"', () => {
-    withProject((_tmp, _gate, clf) => {
-      assert.strictEqual(clf.classifyDeferralIntent('I want no deferrals on this').intent, 'negative');
-      assert.strictEqual(clf.classifyDeferralIntent("don't defer anything").intent, 'negative');
-      assert.strictEqual(clf.classifyDeferralIntent("I don't like tech debt").intent, 'negative');
-    });
-  });
-
-  it('detects positive intent: "defer this"', () => {
-    withProject((_tmp, _gate, clf) => {
-      const r = clf.classifyDeferralIntent('please defer this finding for now');
-      assert.strictEqual(r.intent, 'positive');
-    });
-  });
-
-  it('detects positive intent: option N from review menu', () => {
-    withProject((_tmp, _gate, clf) => {
-      assert.strictEqual(clf.classifyDeferralIntent('option 4').intent, 'positive');
-      assert.strictEqual(clf.classifyDeferralIntent('option 2 please').intent, 'positive');
-    });
-  });
-
-  it('detects positive intent: severity-scoped defer', () => {
-    withProject((_tmp, _gate, clf) => {
-      assert.strictEqual(clf.classifyDeferralIntent('fix critical only').intent, 'positive');
-      assert.strictEqual(clf.classifyDeferralIntent('fix high first').intent, 'positive');
-    });
-  });
-
-  it('returns none for unrelated prompts', () => {
-    withProject((_tmp, _gate, clf) => {
-      assert.strictEqual(clf.classifyDeferralIntent('add a button to the login page').intent, 'none');
-      assert.strictEqual(clf.classifyDeferralIntent('what is the meaning of life').intent, 'none');
-    });
-  });
-
-  it('negative takes precedence over positive in mixed prompt', () => {
-    withProject((_tmp, _gate, clf) => {
-      const r = clf.classifyDeferralIntent('fix everything, also defer F5');
-      assert.strictEqual(r.intent, 'negative');
-    });
-  });
-
-  it('applyClassification writes auth on positive', () => {
-    withProject((_tmp, gate, clf) => {
-      const r = clf.applyClassification('option 4 please', DUMMY_CONFIG);
-      assert.strictEqual(r.applied, true);
-      assert.strictEqual(r.intent, 'positive');
-      const auth = gate.loadAuth();
-      assert.ok(auth, 'auth marker must exist after positive classification');
-    });
-  });
-
-  it('applyClassification writes no-defer-pin on negative AND clears any prior auth', () => {
-    withProject((_tmp, gate, clf) => {
-      gate.writeAuth({ scope: 'all', source: 'prior', config: DUMMY_CONFIG });
-      assert.ok(gate.loadAuth());
-      const r = clf.applyClassification('I want fix everything, no deferrals', DUMMY_CONFIG);
-      assert.strictEqual(r.applied, true);
-      assert.strictEqual(r.intent, 'negative');
-      assert.strictEqual(gate.loadAuth(), null, 'prior auth must be cleared');
-      assert.ok(gate.loadNoDeferPin(), 'no-defer-pin must be written');
-    });
-  });
-});
+// wf-b8839d99 (2026-05-11): the prior regex-based intent-detection block was
+// removed. Intent-classification accuracy is now tested in
+// tests/flow-deferral-classifier-ai.test.js (prompt-building + fail-open
+// paths). Live-API accuracy is verified via separate regression-style
+// integration tests. See the spec for rationale.

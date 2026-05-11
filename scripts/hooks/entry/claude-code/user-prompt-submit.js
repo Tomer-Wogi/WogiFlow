@@ -100,18 +100,22 @@ runHook('UserPromptSubmit', async ({ input, parsedInput }) => {
     }
   }
 
-  // wf-f9912af6: Deferral-intent classifier — detect explicit defer/no-defer
-  // phrases in the user's prompt and write/clear the auth marker accordingly.
-  // Negative intent ("fix everything", "no deferrals", "I don't want tech debt")
-  // hard-pins the gate to block all deferrals; positive intent ("defer X",
-  // "fix critical only", "ship as-is") writes a time-limited auth marker.
-  // Fail-open throughout.
+  // wf-b8839d99 (replaces wf-f9912af6 regex classifier): AI-based deferral-
+  // intent classifier. Calls Haiku to interpret the user's prompt. NEGATIVE
+  // ("fix all", "I don't like tech debt", any phrasing) writes a no-defer-pin;
+  // POSITIVE ("defer F5", "option 2", "ship as-is") writes a scoped auth
+  // marker. The marker now captures the verbatim user excerpt SEPARATELY from
+  // the AI's interpretation — ending the false-attribution failure shape.
+  // Fail-open throughout: classifier errors / missing API key → no state
+  // change (status quo holds; gate's default-restrictive behavior preserved).
   if (typeof prompt === 'string' && prompt.trim().length > 0) {
     try {
       const { applyClassification } = require('../../core/deferral-classifier');
-      const r = applyClassification(prompt, hookConfig);
+      const r = await applyClassification(prompt, hookConfig);
       if (r.applied && process.env.DEBUG) {
-        console.error(`[Hook] Deferral classifier: intent=${r.intent}, match="${r.match}"`);
+        console.error(`[Hook] Deferral classifier (AI): intent=${r.intent}, confidence=${r.confidence}, standing=${r.standing}, scope=${JSON.stringify(r.scope)}`);
+      } else if (process.env.DEBUG && r.reason) {
+        console.error(`[Hook] Deferral classifier (AI): no-op — ${r.reason}`);
       }
     } catch (err) {
       if (process.env.DEBUG) {

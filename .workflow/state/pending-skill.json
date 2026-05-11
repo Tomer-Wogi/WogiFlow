@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-05-11T07:40:07.806Z",
+  "markedAt": "2026-05-11T10:43:10.453Z",
   "context": {
-    "args": "wf-12271e82"
+    "args": "\"Explain how the unauthorized-deferral incident in the pasted transcript happens. User question is a meta/diagnostic analysis of WogiFlow gate behavior — they want to understand why the AI in a SEPARATE session claimed '7 user-authorized deferrals' when the user had said 'fix all' and never authorized any deferrals. Conversation mode / read-only analysis, no code changes. Focus on the deferral-authorization gate (wf-f9912af6), the autonomous-decision pathways in flow-decision-authority.js, and the anti-deferral rule chain in CLAUDE.md. The transcript also shows the routing-enforcement gate firing on the AI's recovery attempt — that's a SEPARATE failure mode worth touching.\""
   },
   "status": "pending"
 }

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T10:36:09.132Z",
+  "lastUpdated": "2026-05-11T14:04:59.971Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-b8839d99",
+      "title": "Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "critical",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-05-11T13:55:24.782Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-b8839d99.md",
+      "startedAt": "2026-05-11T13:55:32.149Z",
+      "routedAt": "2026-05-11T13:55:32.149Z",
+      "completedAt": "2026-05-11T14:04:59.969Z"
+    },
     {
       "id": "wf-d5fcb880",
       "title": "Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack",
@@ -170,19 +184,6 @@
       "routedAt": "2026-05-09T06:43:26.345Z",
       "specPath": ".workflow/changes/wf-037f8d66.md",
       "completedAt": "2026-05-09T07:30:00.000Z"
-    },
-    {
-      "id": "wf-6c58953a",
-      "title": "Fix correction-detector + backfill + new feature-output-health audit",
-      "type": "feat",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-05-09T08:00:00.000Z",
-      "startedAt": "2026-05-09T06:20:21.647Z",
-      "routedAt": "2026-05-09T06:20:21.648Z",
-      "specPath": ".workflow/changes/wf-6c58953a.md",
-      "completedAt": "2026-05-09T06:27:32.683Z"
     }
   ],
   "backlog": [

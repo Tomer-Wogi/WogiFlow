@@ -32,6 +32,32 @@ function parseArgs(argv) {
 }
 
 function cmdGrant(args) {
+  // wf-b8839d99: Refuse to grant when invoked from a non-TTY context (i.e.,
+  // from Claude Code's Bash tool or any subprocess pipeline). The AI cannot
+  // self-issue deferral authorization — the gate exists precisely to prevent
+  // that. A human running this CLI from a terminal has stdin.isTTY === true;
+  // an AI subprocess does not.
+  //
+  // Override: --i-am-human bypasses the TTY check. Provided so out-of-band
+  // automation (CI scripts, etc.) can still grant deliberately; the flag
+  // signals intent. Caveat: if the AI passes this flag, that's an explicit
+  // policy violation that shows up in shell history / commit logs.
+  const isHuman = Boolean(process.stdin.isTTY) || args['i-am-human'] === true;
+  if (!isHuman) {
+    console.error('grant: refused — non-TTY invocation detected.');
+    console.error('');
+    console.error('Per wf-b8839d99: AI subprocesses cannot self-issue deferral authorization.');
+    console.error('The auth marker may only be written by:');
+    console.error('  1. The UserPromptSubmit AI classifier interpreting the user\'s message, OR');
+    console.error('  2. A human running this CLI from a terminal directly.');
+    console.error('');
+    console.error('If the user authorized deferral, surface it back through the conversation —');
+    console.error('the classifier will detect it and write the marker on the next prompt.');
+    console.error('');
+    console.error('Override (genuine automation): pass --i-am-human (logged in audit trail).');
+    process.exit(3);
+  }
+
   let scope = 'all';
   if (args.findings) {
     scope = String(args.findings)
@@ -53,6 +79,8 @@ function cmdGrant(args) {
   const payload = gate.writeAuth({
     scope,
     source: reason,
+    userPromptExcerpt: '(out-of-band CLI grant — no user prompt)',
+    confidence: 100,
     grantedBy: 'explicit-cli',
     ttlSec
   });

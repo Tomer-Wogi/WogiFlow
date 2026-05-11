@@ -121,17 +121,43 @@ function clearNoDeferPin() {
   try { fs.unlinkSync(getNoDeferPinPath()); } catch (_err) { /* fine if absent */ }
 }
 
-function writeAuth({ scope = 'all', source = 'unspecified', grantedBy = 'user-prompt', ttlSec, config } = {}) {
+/**
+ * wf-b8839d99 — Marker shape now captures the verbatim user prompt excerpt
+ * SEPARATELY from the AI's interpretation. Prior shape had only a single
+ * `source` string the AI could fill with anything, enabling the false-
+ * attribution failure ("user-authorized" with a fabricated quote).
+ *
+ * Fields:
+ *   source                — AI's structured interpretation (what it understood)
+ *   userPromptExcerpt     — Verbatim user message excerpt (≤300 chars)
+ *   confidence            — AI classifier confidence (0-100)
+ *   grantedBy             — One of: 'ai-classifier', 'explicit-cli', 'user-prompt' (legacy)
+ *   standing              — true if this represents a standing/permanent rule
+ *
+ * Auditors can compare `source` (AI claim) against `userPromptExcerpt`
+ * (actual user words) to detect over-interpretation.
+ */
+function writeAuth({
+  scope = 'all',
+  source = 'unspecified',
+  userPromptExcerpt = '',
+  confidence = 0,
+  grantedBy = 'user-prompt',
+  ttlSec,
+  config
+} = {}) {
   try {
     const ttl = Number.isFinite(ttlSec) ? ttlSec : getAuthTtlSeconds(config);
     const now = Date.now();
     const payload = {
-      version: 1,
+      version: 2,
       grantedAt: new Date(now).toISOString(),
       expiresAt: new Date(now + ttl * 1000).toISOString(),
       scope,
       grantedBy,
-      source: typeof source === 'string' ? source.slice(0, 1000) : 'unspecified'
+      source: typeof source === 'string' ? source.slice(0, 1000) : 'unspecified',
+      userPromptExcerpt: typeof userPromptExcerpt === 'string' ? userPromptExcerpt.slice(0, 500) : '',
+      confidence: Number.isFinite(confidence) ? Math.round(confidence) : 0
     };
     fs.mkdirSync(path.dirname(getAuthPath()), { recursive: true });
     const tmp = `${getAuthPath()}.tmp.${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
@@ -144,14 +170,32 @@ function writeAuth({ scope = 'all', source = 'unspecified', grantedBy = 'user-pr
   }
 }
 
-function writeNoDeferPin({ source = 'unspecified', ttlSec = 1800 } = {}) {
+function writeNoDeferPin({
+  source = 'unspecified',
+  userPromptExcerpt = '',
+  confidence = 0,
+  grantedBy = 'ai-classifier',
+  standing = false,
+  ttlSec
+} = {}) {
   try {
+    // wf-b8839d99: standing pins (e.g., "I don't like tech debt" as a rule)
+    // get a much longer TTL — 7 days — so a standing preference doesn't
+    // silently expire after 30 min and re-open the deferral door. The pin
+    // is also refreshed at SessionStart from decisions.md.
+    const effectiveTtl = Number.isFinite(ttlSec)
+      ? ttlSec
+      : (standing ? 7 * 24 * 3600 : 1800);
     const now = Date.now();
     const payload = {
-      version: 1,
+      version: 2,
       pinnedAt: new Date(now).toISOString(),
-      expiresAt: new Date(now + ttlSec * 1000).toISOString(),
-      source: typeof source === 'string' ? source.slice(0, 1000) : 'unspecified'
+      expiresAt: new Date(now + effectiveTtl * 1000).toISOString(),
+      source: typeof source === 'string' ? source.slice(0, 1000) : 'unspecified',
+      userPromptExcerpt: typeof userPromptExcerpt === 'string' ? userPromptExcerpt.slice(0, 500) : '',
+      confidence: Number.isFinite(confidence) ? Math.round(confidence) : 0,
+      grantedBy,
+      standing: Boolean(standing)
     };
     fs.mkdirSync(path.dirname(getNoDeferPinPath()), { recursive: true });
     const tmp = `${getNoDeferPinPath()}.tmp.${process.pid}.${Math.random().toString(36).slice(2, 8)}`;

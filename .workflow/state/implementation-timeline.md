@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-b8839d99: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing) (May 11)
 - [x] wf-d5fcb880: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack (May 11)
 - [x] wf-6c9ed721: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance) (May 11)
 - [x] wf-c573961f: Task-gating gate consults 5+ drifting state sources (May 11)

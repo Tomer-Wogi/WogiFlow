@@ -78,6 +78,20 @@ runHook('SessionStart', async ({ parsedInput }) => {
   await bridgeSyncPromise;
   _bootMark('after bridge sync');
 
+  // wf-b8839d99: Refresh standing no-defer pin from decisions.md if a policy
+  // section is present. Fail-open — never blocks session start.
+  try {
+    const { refreshFromPolicy } = require('../../core/no-defer-policy');
+    const r = refreshFromPolicy();
+    if (r.refreshed && process.env.DEBUG) {
+      console.error(`[session-start] Refreshed no-defer pin from policy: ${r.header}`);
+    }
+  } catch (err) {
+    if (process.env.DEBUG) {
+      console.error(`[session-start] no-defer policy refresh failed: ${err.message}`);
+    }
+  }
+
   // CLAUDE.md drift detection — check if manually edited since last sync
   let driftDetected = false;
   let driftMarkerMissing = false;

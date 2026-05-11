@@ -31,12 +31,35 @@ runHook('Stop', async ({ parsedInput }) => {
     longInputActive = isLongInputPending();
   } catch (_err) { /* fail-open */ }
 
+  // wf-b8839d99 fix #5 — Routing-recovery grace window. If the user just
+  // corrected a prior AI defer-auth ("I did not authorize..."), the deferral
+  // classifier wrote a 60-second grace marker. During that window, the AI
+  // should be able to undo/revoke without bouncing through /wogi-start first.
+  // Routing-enforcement softens to a single warning instead of hard-blocking.
+  let recoveryGraceActive = false;
+  try {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const { PATHS } = require('../../../flow-utils');
+    const gracePath = path.join(PATHS.state, 'routing-recovery-grace.json');
+    if (fs.existsSync(gracePath)) {
+      const raw = fs.readFileSync(gracePath, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data?.expiresAt && Date.parse(data.expiresAt) > Date.now()) {
+        recoveryGraceActive = true;
+      } else {
+        // Expired — clean up
+        try { fs.unlinkSync(gracePath); } catch (_err) { /* fine */ }
+      }
+    }
+  } catch (_err) { /* fail-open */ }
+
   // v6.2: Routing enforcement check — catches text-only response bypass
   // If routing-pending flag is still set when the AI tries to stop, it means
   // the AI responded to the user's message without ever invoking a /wogi-* command.
   // This is the exact bypass we need to prevent (especially after context compaction).
   try {
-    if (isRoutingPending() && !longInputActive) {
+    if (isRoutingPending() && !longInputActive && !recoveryGraceActive) {
       // Use counter-based approach instead of clearing immediately.
       // This gives the AI multiple chances to comply before giving up.
       // Gap 4 fix: clearing immediately made this single-shot protection.
