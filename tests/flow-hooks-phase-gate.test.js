@@ -331,40 +331,57 @@ describe('resetPhase', () => {
 
 describe('wf-88a08fd4: flow-phase.js transition CLI writes state regardless of gate flag', () => {
   it('transition writes workflow-phase.json even when phaseGate.enabled is false (default)', () => {
+    // Use an isolated tmp project so we don't race other parallel tests
+    // touching the live `.workflow/state/workflow-phase.json`. The CLI uses
+    // `WOGIFLOW_PROJECT_ROOT` env var (bin/flow path) AND falls back to
+    // cwd-based discovery, so spawn with both set to the tmp dir.
     const { execFileSync } = require('node:child_process');
+    const os = require('node:os');
     const CLI = path.resolve(__dirname, '..', 'scripts', 'flow-phase.js');
 
-    // Reset to a known starting state (idle).
-    fs.writeFileSync(PHASE_FILE, JSON.stringify({
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-phase-cli-'));
+    const stateDir = path.join(tmpRoot, '.workflow', 'state');
+    fs.mkdirSync(stateDir, { recursive: true });
+    const tmpPhaseFile = path.join(stateDir, 'workflow-phase.json');
+    fs.writeFileSync(tmpPhaseFile, JSON.stringify({
       phase: 'idle',
       taskId: null,
       updatedAt: new Date().toISOString(),
       previousPhase: null
     }, null, 2));
+    // Minimal config so getConfig() doesn't hit live config.
+    fs.writeFileSync(path.join(tmpRoot, '.workflow', 'config.json'), JSON.stringify({}));
 
-    // Invoke the CLI directly — same shape /wogi-start uses. We do NOT pass
-    // any extra env or config; the live config is used. The repo's own config
-    // does not set phaseGate.enabled=true, so this is the disabled-gate path
-    // that previously silently no-op'd.
     let stdout = '';
     let exitCode = 0;
+    let stateAfter = null;
     try {
       stdout = execFileSync('node', [CLI, 'transition', 'idle', 'routing', 'wf-test4567'], {
+        cwd: tmpRoot,
         encoding: 'utf-8',
-        stdio: ['ignore', 'pipe', 'pipe']
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          // flow-paths.js consults WOGI_PROJECT_ROOT (not WOGIFLOW_PROJECT_ROOT).
+          // Set both for belt-and-suspenders.
+          WOGI_PROJECT_ROOT: tmpRoot,
+          WOGIFLOW_PROJECT_ROOT: tmpRoot
+        }
       });
+      // Read state file BEFORE cleanup.
+      stateAfter = JSON.parse(fs.readFileSync(tmpPhaseFile, 'utf-8'));
     } catch (err) {
       exitCode = err.status ?? 1;
       stdout = err.stdout?.toString() || '';
+    } finally {
+      try { fs.rmSync(tmpRoot, { recursive: true, force: true }); } catch (_err) { /* */ }
     }
 
     assert.equal(exitCode, 0, 'CLI should exit 0 on a valid transition');
     assert.match(stdout, /Phase:\s*idle\s*→\s*routing/, 'CLI should announce the transition');
-
-    // Most importantly: the state file MUST be updated.
-    const after = JSON.parse(fs.readFileSync(PHASE_FILE, 'utf-8'));
-    assert.equal(after.phase, 'routing', 'phase must transition to routing');
-    assert.equal(after.taskId, 'wf-test4567', 'taskId must be recorded');
-    assert.equal(after.previousPhase, 'idle', 'previousPhase must be recorded');
+    assert.ok(stateAfter, 'state file should exist after transition');
+    assert.equal(stateAfter.phase, 'routing', 'phase must transition to routing');
+    assert.equal(stateAfter.taskId, 'wf-test4567', 'taskId must be recorded');
+    assert.equal(stateAfter.previousPhase, 'idle', 'previousPhase must be recorded');
   });
 });

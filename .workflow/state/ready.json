@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T07:54:18.411Z",
+  "lastUpdated": "2026-05-11T08:08:13.672Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6c9ed721",
+      "title": "Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-c573961f",
+      "status": "completed",
+      "createdAt": "2026-05-11T08:07:39.428Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6c9ed721.md",
+      "startedAt": "2026-05-11T08:07:44.868Z",
+      "routedAt": "2026-05-11T08:07:44.868Z",
+      "completedAt": "2026-05-11T08:08:13.671Z"
+    },
     {
       "id": "wf-c573961f",
       "title": "Task-gating gate consults 5+ drifting state sources",
@@ -168,19 +182,6 @@
       "routedAt": "2026-05-08T20:49:33.989Z",
       "completedAt": "2026-05-08T20:49:33.989Z",
       "specPath": ".workflow/changes/wf-00c5067b.md"
-    },
-    {
-      "id": "wf-518345da",
-      "title": "Clear 19 lint no-unused-vars warnings",
-      "type": "chore",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P2",
-      "created": "2026-05-08T16:00:00.000Z",
-      "startedAt": "2026-05-08T20:30:52.674Z",
-      "routedAt": "2026-05-08T20:30:52.675Z",
-      "specPath": ".workflow/changes/wf-518345da.md",
-      "completedAt": "2026-05-08T20:35:22.155Z"
     }
   ],
   "backlog": [

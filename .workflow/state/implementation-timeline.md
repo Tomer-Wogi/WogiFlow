@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-6c9ed721: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance) (May 11)
 - [x] wf-c573961f: Task-gating gate consults 5+ drifting state sources (May 11)
 - [x] wf-35742353: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations (May 11)
 - [x] wf-88a08fd4: flow-phase.js transition CLI silently no-ops (May 11)

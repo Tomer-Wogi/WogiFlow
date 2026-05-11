@@ -169,6 +169,21 @@ function inferTaskType(taskType, changedFiles) {
  * @returns {Object} Check results with feedback for retry loop
  */
 function runTaskStandardsCheck(taskContext, files, options = {}) {
+  // Defensive normalization: callers (flow-done-gates.js → ctx.getModifiedFiles())
+  // pass a string[] of file paths; this function documents Object[] with
+  // {path, content}. Pre-fix, `files.map(f => f.path)` returned [undefined,...]
+  // which then crashed downstream `.includes()` on undefined. The crash was
+  // swallowed by the caller's try/catch and surfaced as "checker error —
+  // degraded to manual check" on every `flow done`. Normalize here so both
+  // shapes work; content-dependent checks skip strings gracefully (downstream
+  // already does `if (!file.content) continue;`).
+  if (!Array.isArray(files)) {
+    files = [];
+  } else {
+    files = files.map(f => (typeof f === 'string' ? { path: f, content: undefined } : f))
+      .filter(f => f && typeof f.path === 'string');
+  }
+
   const config = getConfig();
   const standardsConfig = config.standardsCompliance || {};
   const gateStartMs = Date.now();
