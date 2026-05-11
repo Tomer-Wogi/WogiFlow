@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.30.3",
+    "version": "2.30.4",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -38,6 +38,9 @@
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
     "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.30.4": [
+      "scripts/hooks/core/deferral-gate.js: checkBashGate rewritten. Prior version over-triggered on commands that merely REFERENCED the target file and the word 'deferred' as text content (markdown blockquotes inside heredoc release notes, commit messages, etc.). New version: (1) strips quoted/heredoc content before structural shell-redirect check, (2) tightens mutation patterns to require target file as WRITE DESTINATION not just mention, (3) tests against BOTH stripped and original command. wf-4a5b7a6f."
+    ],
     "2.30.3": [
       "scripts/flow-deferral-classifier-ai.js (NEW): AI/Haiku-based deferral-intent classifier replaces regex. Closes the 'fix all' miss + handles unbounded English phrasings the regex couldn't. wf-b8839d99.",
       "scripts/hooks/core/deferral-classifier.js: refactored to thin async wrapper around the AI classifier. Regex patterns deleted entirely (per user instruction 2026-05-11: 'I don't want regex or matching when I answer things like that').",
