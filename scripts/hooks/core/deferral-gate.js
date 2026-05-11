@@ -315,33 +315,100 @@ function checkWriteGate(filePath, newContentRaw, config) {
 }
 
 /**
- * Validate a Bash command against the deferral gate. Two-stage:
- *   Stage 1: does the command mention any target file basename?
- *   Stage 2: does the command also mention `deferred` literal substring?
- * If both → fail SAFE (block) unless we can parse the content and prove auth.
+ * Strip quoted regions + heredoc bodies from a Bash command so the structural
+ * regex below only sees actual shell tokens. Released v2.30.3 over-triggered
+ * because the previous regex matched markdown blockquote `> "text"` inside
+ * heredoc bodies of `gh release create --notes "$(cat <<'EOF'...EOF)"`.
  *
- * For v1 we don't deep-parse the bash command; we conservatively block any
- * Bash that touches a target file AND contains a deferral status literal,
- * pointing the AI at the Write/Edit path (which can be properly inspected).
+ * Best-effort: handles single-quoted, double-quoted, backtick, and heredoc
+ * patterns. Doesn't attempt full shell parsing.
+ */
+function stripQuotedContent(cmd) {
+  if (typeof cmd !== 'string') return '';
+  let stripped = cmd;
+  // Heredocs first (multiline) — replace body with a sentinel
+  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\s*$/gm, ' <<HEREDOC>> ');
+  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]*?\n\1\b/g, ' <<HEREDOC>> ');
+  // Single-quoted strings
+  stripped = stripped.replace(/'[^']*'/g, "''");
+  // Backtick command substitution
+  stripped = stripped.replace(/`[^`]*`/g, '``');
+  // Double-quoted strings (allow escaped quotes inside)
+  stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  return stripped;
+}
+
+/**
+ * Validate a Bash command against the deferral gate.
+ *
+ * wf-4a5b7a6f rewrite (2026-05-11): previously this used three independent
+ * regex checks AND'd together, which over-triggered on commands that merely
+ * REFERENCED the target file and the word "deferred" as text content
+ * (markdown blockquotes, commit messages, gh release notes). The
+ * `>\s*[^&|]` part of `mutates` matched markdown blockquote syntax inside
+ * heredocs. The bare-word `\bdeferred\b` part of `mentionsDeferral` matched
+ * any prose mention of "deferred".
+ *
+ * Fix:
+ *   1. Run the structural mutation check on a QUOTE-STRIPPED command —
+ *      a `>` inside `"..."` or `'...'` is not a shell redirect.
+ *   2. Tighten the mutation check to require the target file be the WRITE
+ *      DESTINATION, not merely mentioned anywhere.
+ *   3. Tighten deferral-content detection to the JSON-shape pattern only;
+ *      drop the bare-word match.
+ *
+ * If the AI tries to actually mutate the file via Bash with deferred
+ * content, the gate still catches it. Prose mentions pass through.
  */
 function checkBashGate(command, config) {
   try {
     if (!isGateEnabled(config)) return { blocked: false };
     if (typeof command !== 'string' || !command) return { blocked: false };
 
-    const mentionsTarget = /last-(review|audit)\.json/.test(command);
-    if (!mentionsTarget) return { blocked: false };
+    // Step 1: strip quoted/heredoc content for the SHELL-LEVEL structural
+    // check (catches `>`, `tee` in actual shell positions, not inside markdown).
+    const stripped = stripQuotedContent(command);
 
-    // Heuristic: only block when the command appears to MUTATE the file
-    // (writeFileSync, redirection >, sed -i, etc.). Pure reads (cat, jq, grep)
-    // are allowed.
-    const mutates = /(?:writeFileSync|>\s*[^&|]|>>\s*[^&|]|sed\s+-i|tee\s+|fs\.write|rename(?:Sync)?)/.test(command);
-    if (!mutates) return { blocked: false };
+    // Step 2: detect a mutation operation targeting the review/audit file
+    // SPECIFICALLY. The patterns require the target file to be the WRITE
+    // DESTINATION — not merely mentioned. We test against BOTH the stripped
+    // command (catches shell-level redirects) AND the original command
+    // (catches in-language constructs like `node -e "fs.writeFileSync(...)"`
+    // where the JS payload is inside double-quotes and would be stripped).
+    // The patterns themselves are tight enough that running on the original
+    // doesn't re-introduce the prose-mention false positives — they require
+    // a write-verb token (writeFileSync, tee, etc.) IMMEDIATELY before the
+    // file path.
+    const writeToTargetPatterns = [
+      /(?:>>?|>\|)\s+['"]?[^\s'"`|&;]*last-(?:review|audit)\.json/,
+      /\btee\b(?:\s+-[a-zA-Z]+)*\s+['"]?[^\s'"`|&;]*last-(?:review|audit)\.json/,
+      /\b(?:fs\.)?writeFileSync\s*\(\s*[`'"][^`'"]*last-(?:review|audit)\.json/,
+      /\bfs\.write[A-Z][a-zA-Z]*\s*\(\s*[`'"][^`'"]*last-(?:review|audit)\.json/,
+      /\bsed\s+-i\b[^|;&]*\blast-(?:review|audit)\.json/,
+      /\b(?:mv|cp|rename(?:Sync)?)\s+\S+\s+['"]?[^\s'"`|&;]*last-(?:review|audit)\.json/
+    ];
+    const mutatesTarget = writeToTargetPatterns.some(re => re.test(stripped) || re.test(command));
+    if (!mutatesTarget) return { blocked: false };
 
-    const mentionsDeferral = /\bdeferred[-_a-zA-Z0-9]*\b|"status"\s*:\s*"(deferred|wont-?fix|skipped|dismissed)/i.test(command);
+    // Step 3: check the ORIGINAL command for deferred-status content. We
+    // accept TWO signals:
+    //   - Quoted value: "deferred" / 'deferred' / `deferred` — JSON, JS,
+    //     template-literal styles.
+    //   - Bare word `\bdeferred\b` (or wont-?fix, skipped, dismissed) — fallback
+    //     for cases where escaping mangles the quote chars (e.g. shell-escaped
+    //     `\"deferred\"` inside a `node -e` payload where the quote becomes
+    //     non-adjacent to the word).
+    //
+    // The earlier false-positive case (prose mentions in release notes) is
+    // already closed by the tightened mutation check above — we only reach
+    // this step when the command demonstrably writes TO the target file.
+    // At that point, ANY mention of the deferral keyword is genuinely
+    // suspicious; the gate should err on the side of blocking.
+    const quotedDeferral = /['"`](deferred(?:[-_][a-zA-Z0-9]+)?|wont-?fix|won-?t-?fix|skipped|dismissed)['"`]/i;
+    const bareDeferral = /\b(deferred(?:[-_][a-zA-Z0-9]+)?|wont-?fix|won-?t-?fix|skipped|dismissed)\b/i;
+    const mentionsDeferral = quotedDeferral.test(command) || bareDeferral.test(command);
     if (!mentionsDeferral) return { blocked: false };
 
-    // We can't easily extract and validate the new content from arbitrary bash.
     // Check auth: if the user has authorized deferrals, allow. Otherwise block.
     const authResult = isAuthorized([{ id: 'unspecified' }]);
     if (authResult.authorized) return { blocked: false };
@@ -393,6 +460,7 @@ module.exports = {
   // Core checks
   checkWriteGate,
   checkBashGate,
+  stripQuotedContent,
 
   // Auth API (used by classifier + CLI helper)
   loadAuth,

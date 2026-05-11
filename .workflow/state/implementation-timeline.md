@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-4a5b7a6f: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes) (May 11)
 - [x] wf-b8839d99: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing) (May 11)
 - [x] wf-d5fcb880: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack (May 11)
 - [x] wf-6c9ed721: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance) (May 11)

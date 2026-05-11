@@ -279,6 +279,119 @@ describe('deferral-gate — checkBashGate', () => {
   });
 });
 
+// wf-4a5b7a6f (2026-05-11): the prior implementation false-positively blocked
+// any Bash command that contained both the literal string "last-review.json"
+// AND the bare word "deferred" anywhere — including in heredoc release notes,
+// commit messages, and markdown blockquotes. Fix: structural tokenizer +
+// JSON-shape-only deferral-content check.
+describe('wf-4a5b7a6f — checkBashGate over-trigger regressions', () => {
+  it('does NOT block `gh release create` with notes that mention both terms as text', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `gh release create v2.30.3 --title "release" --notes "see last-review.json for the 7 deferred findings we addressed"`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, false, 'mere mentions in --notes text must not trigger the gate');
+    });
+  });
+
+  it('does NOT block heredoc release notes containing markdown blockquote `>`', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `gh release create v2.30.3 --notes "$(cat <<'EOF'
+> "I don't like tech debt"
+
+See last-review.json for the deferred items.
+EOF
+)"`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, false, 'markdown blockquote `>` inside heredoc must not match shell redirect');
+    });
+  });
+
+  it('does NOT block git commit with message mentioning both terms', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `git commit -m "fix: close deferred findings in last-review.json"`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, false, 'commit messages are not mutations of the target');
+    });
+  });
+
+  it('does NOT block bare-word "deferred" in prose with a write to a DIFFERENT file', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `echo "the deferred work is logged" > /tmp/notes.txt`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, false);
+    });
+  });
+
+  it('STILL blocks a shell redirect of deferred JSON content into the target file', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `echo '{"findings":[{"id":"F1","status":"deferred"}]}' > .workflow/state/last-review.json`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, true, 'genuine shell redirect of deferred JSON must still block');
+    });
+  });
+
+  it('STILL blocks tee writes of deferred content to the target file', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `echo '{"findings":[{"id":"F1","status":"deferred"}]}' | tee .workflow/state/last-review.json`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, true);
+    });
+  });
+
+  it('STILL blocks node writeFileSync to target with deferred status', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `node -e "require('fs').writeFileSync('.workflow/state/last-review.json', '{\\"findings\\":[{\\"status\\":\\"deferred\\"}]}')"`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, true);
+    });
+  });
+
+  it('does NOT block prose with "wont-fix" / "skipped" as text (JSON-shape required)', () => {
+    withProject((_tmp, gate) => {
+      const cmd = `gh release create --notes "this PR is wont-fix and we skipped F5. last-review.json is updated."`;
+      const r = gate.checkBashGate(cmd, DUMMY_CONFIG);
+      assert.strictEqual(r.blocked, false, 'mere mention of wont-fix/skipped as prose must not block');
+    });
+  });
+});
+
+describe('wf-4a5b7a6f — stripQuotedContent helper', () => {
+  it('removes content inside single quotes', () => {
+    const { stripQuotedContent } = require('../scripts/hooks/core/deferral-gate');
+    const out = stripQuotedContent(`echo 'hello world' > file`);
+    assert.match(out, /^echo\s+''\s+>\s+file$/);
+  });
+
+  it('removes content inside double quotes (including escapes)', () => {
+    const { stripQuotedContent } = require('../scripts/hooks/core/deferral-gate');
+    const out = stripQuotedContent(`echo "hello \\"world\\"" > file`);
+    assert.match(out, /^echo\s+""\s+>\s+file$/);
+  });
+
+  it('removes backtick content', () => {
+    const { stripQuotedContent } = require('../scripts/hooks/core/deferral-gate');
+    const out = stripQuotedContent('echo `date` > file');
+    assert.match(out, /^echo\s+``\s+>\s+file$/);
+  });
+
+  it('removes heredoc body', () => {
+    const { stripQuotedContent } = require('../scripts/hooks/core/deferral-gate');
+    const cmd = `cat <<'EOF' > file
+some > "blockquote"
+last-review.json
+EOF`;
+    const out = stripQuotedContent(cmd);
+    assert.equal(out.includes('blockquote'), false);
+    assert.equal(out.includes('last-review.json'), false);
+  });
+
+  it('preserves shell redirects OUTSIDE quotes', () => {
+    const { stripQuotedContent } = require('../scripts/hooks/core/deferral-gate');
+    const out = stripQuotedContent(`echo 'x' > target.json`);
+    assert.match(out, />\s+target\.json/);
+  });
+});
+
 // wf-b8839d99 (2026-05-11): the prior regex-based intent-detection block was
 // removed. Intent-classification accuracy is now tested in
 // tests/flow-deferral-classifier-ai.test.js (prompt-building + fail-open

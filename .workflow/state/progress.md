@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: A1 AGENTS.md alias for CLAUDE.md",
     "Completed: WogiFlow Extension Finalize (pre-CLI release)",
     "Completed: Research-required gate false-positives on the word 'recommend'",
     "Completed: long-input-pending gate misfires on sub-agent task-notifications",
@@ -797,9 +796,10 @@ None
     "Completed: Task-gating gate consults 5+ drifting state sources",
     "Completed: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
     "Completed: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack",
-    "Completed: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)"
+    "Completed: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)",
+    "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)"
   ],
-  "lastUpdated": "2026-05-11T14:05:00.002Z",
+  "lastUpdated": "2026-05-11T14:46:06.058Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

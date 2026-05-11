@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T14:04:59.971Z",
+  "lastUpdated": "2026-05-11T14:46:06.025Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-4a5b7a6f",
+      "title": "deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-b8839d99",
+      "status": "completed",
+      "createdAt": "2026-05-11T14:38:27.528Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-4a5b7a6f.md",
+      "startedAt": "2026-05-11T14:38:32.672Z",
+      "routedAt": "2026-05-11T14:38:32.672Z",
+      "completedAt": "2026-05-11T14:46:06.024Z"
+    },
     {
       "id": "wf-b8839d99",
       "title": "Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)",
@@ -171,19 +185,6 @@
       "specPath": ".workflow/changes/wf-2eafdab0.md",
       "parentReview": ".workflow/state/last-review.json",
       "completedAt": "2026-05-09T07:32:26.418Z"
-    },
-    {
-      "id": "wf-037f8d66",
-      "title": "Mechanical enforcement for vibes-rules",
-      "type": "feat",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-05-09T10:00:00.000Z",
-      "startedAt": "2026-05-09T06:43:26.344Z",
-      "routedAt": "2026-05-09T06:43:26.345Z",
-      "specPath": ".workflow/changes/wf-037f8d66.md",
-      "completedAt": "2026-05-09T07:30:00.000Z"
     }
   ],
   "backlog": [
