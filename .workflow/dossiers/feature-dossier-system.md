@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-11 | wf-d5fcb880 | bug | Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing... |
 | 2026-05-11 | wf-6c9ed721 | bug | Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolatio... |
 | 2026-05-11 | wf-c573961f | bug | Task-gating gate consults 5+ drifting state sources |
 | 2026-05-11 | wf-35742353 | bug | Gate cascade: Stop hook + research-required + long-input-pending fire same tu... |

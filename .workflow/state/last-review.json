@@ -27,7 +27,11 @@
       "evidenceNote": "Read line 768; confirmed safeJsonParse already imported at line 22.",
       "confidencePct": 95,
       "flagUnverified": false,
-      "agent": "architecture+security"
+      "agent": "architecture+security",
+      "status": "resolved",
+      "resolvedAt": "2026-05-11T10:36:04.840Z",
+      "resolvedBy": "wf-d5fcb880",
+      "resolutionNote": "safeJsonParse already used at line 803 of flow-standards-checker.js; finding verified closed during pre-release v2.30.2 check."
     },
     {
       "id": "H2",
@@ -41,7 +45,11 @@
       "evidenceNote": "ls .workflow/standards/ → ENOENT; ls .workflow/state/forbidden-patterns* → no match.",
       "confidencePct": 95,
       "flagUnverified": false,
-      "agent": "architecture"
+      "agent": "architecture",
+      "status": "resolved",
+      "resolvedAt": "2026-05-11T10:36:04.840Z",
+      "resolvedBy": "wf-d5fcb880",
+      "resolutionNote": "installer.js now scaffolds .workflow/state/forbidden-patterns.json from the shipped template. Stderr warning still fires when state dir exists but file is missing — fail-loud per pre-tool-deps.js precedent."
     },
     {
       "id": "M1",

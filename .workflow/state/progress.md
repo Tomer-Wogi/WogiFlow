@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: G3 SQLite-as-IPC for workspace dispatch",
     "Completed: Surface effort.level and thinking.enabled in status line",
     "Completed: A1 AGENTS.md alias for CLAUDE.md",
     "Completed: WogiFlow Extension Finalize (pre-CLI release)",
@@ -797,9 +796,10 @@ None
     "Completed: flow-phase.js transition CLI silently no-ops",
     "Completed: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
     "Completed: Task-gating gate consults 5+ drifting state sources",
-    "Completed: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)"
+    "Completed: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
+    "Completed: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack"
   ],
-  "lastUpdated": "2026-05-11T08:08:13.699Z",
+  "lastUpdated": "2026-05-11T10:36:09.163Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T08:08:13.672Z",
+  "lastUpdated": "2026-05-11T10:36:09.132Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -46,6 +46,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-d5fcb880",
+      "title": "Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "high",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-05-11T10:33:50.894Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-d5fcb880.md",
+      "startedAt": "2026-05-11T10:33:55.003Z",
+      "routedAt": "2026-05-11T10:33:55.003Z",
+      "completedAt": "2026-05-11T10:36:09.131Z"
+    },
     {
       "id": "wf-6c9ed721",
       "title": "Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
@@ -169,19 +183,6 @@
       "routedAt": "2026-05-09T06:20:21.648Z",
       "specPath": ".workflow/changes/wf-6c58953a.md",
       "completedAt": "2026-05-09T06:27:32.683Z"
-    },
-    {
-      "id": "wf-00c5067b",
-      "title": "Hook three-layer enforcement in standards-checker",
-      "type": "feat",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-05-08T17:00:00.000Z",
-      "startedAt": "2026-05-08T20:49:33.988Z",
-      "routedAt": "2026-05-08T20:49:33.989Z",
-      "completedAt": "2026-05-08T20:49:33.989Z",
-      "specPath": ".workflow/changes/wf-00c5067b.md"
     }
   ],
   "backlog": [
