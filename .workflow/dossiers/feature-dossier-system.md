@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-11 | wf-c573961f | bug | Task-gating gate consults 5+ drifting state sources |
 | 2026-05-11 | wf-35742353 | bug | Gate cascade: Stop hook + research-required + long-input-pending fire same tu... |
 | 2026-05-11 | wf-88a08fd4 | bug | flow-phase.js transition CLI silently no-ops |
 | 2026-05-11 | wf-f7d58760 | bug | long-input-pending gate misfires on sub-agent task-notifications |

@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: C2 IGR artifact edit proposals via CLI + session-end approval",
     "Completed: E1 Parallel-worktree Auto Review for Completion Truth Gate (no per-task model selection)",
     "Completed: G3 SQLite-as-IPC for workspace dispatch",
     "Completed: Surface effort.level and thinking.enabled in status line",
@@ -797,9 +796,10 @@ None
     "Completed: Research-required gate false-positives on the word 'recommend'",
     "Completed: long-input-pending gate misfires on sub-agent task-notifications",
     "Completed: flow-phase.js transition CLI silently no-ops",
-    "Completed: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations"
+    "Completed: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
+    "Completed: Task-gating gate consults 5+ drifting state sources"
   ],
-  "lastUpdated": "2026-05-11T07:52:16.322Z",
+  "lastUpdated": "2026-05-11T07:54:18.437Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

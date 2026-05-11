@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T07:52:16.297Z",
+  "lastUpdated": "2026-05-11T07:54:18.411Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -42,7 +42,10 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    },
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-c573961f",
       "title": "Task-gating gate consults 5+ drifting state sources",
@@ -50,13 +53,13 @@
       "priority": "P1",
       "severity": "high",
       "discoveredFrom": "wf-abcd1234",
-      "status": "ready",
+      "status": "completed",
       "createdAt": "2026-05-11T07:21:56.170Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-c573961f.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-c573961f.md",
+      "startedAt": "2026-05-11T07:52:24.730Z",
+      "routedAt": "2026-05-11T07:52:24.730Z",
+      "completedAt": "2026-05-11T07:54:18.410Z"
+    },
     {
       "id": "wf-35742353",
       "title": "Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
@@ -178,19 +181,6 @@
       "routedAt": "2026-05-08T20:30:52.675Z",
       "specPath": ".workflow/changes/wf-518345da.md",
       "completedAt": "2026-05-08T20:35:22.155Z"
-    },
-    {
-      "id": "wf-3c968989",
-      "title": "Replace 3 lint-flagged raw JSON.parse sites with safeJsonParse",
-      "type": "refactor",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-05-08T15:30:00.000Z",
-      "startedAt": "2026-05-08T20:18:29.966Z",
-      "routedAt": "2026-05-08T20:18:29.967Z",
-      "specPath": ".workflow/changes/wf-3c968989.md",
-      "completedAt": "2026-05-08T20:20:44.453Z"
     }
   ],
   "backlog": [

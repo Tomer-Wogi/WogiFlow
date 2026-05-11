@@ -7,6 +7,45 @@
  * Checks if there's an active task before allowing implementation actions.
  *
  * Returns a standardized result that adapters transform for specific CLIs.
+ *
+ * --------------------------------------------------------------------------
+ * "Active task" state-source contract (wf-c573961f, 2026-05-11)
+ * --------------------------------------------------------------------------
+ *
+ * The task-gate consults FOUR state sources to determine if a task is active.
+ * External tooling that mutates task state MUST satisfy this contract or the
+ * gate will reject Edits/Writes with `no_active_task` or `task_missing_routing_proof`.
+ *
+ *   1. `.workflow/state/ready.json` → `inProgress[]`
+ *      The task object must be the first element of inProgress, with a valid
+ *      `wf-XXXXXXXX` id (validateTaskId).
+ *
+ *   2. `.workflow/state/durable-session.json` → `{ taskId, status: 'active' }`
+ *      Fallback path when inProgress is empty. Also requires routing proof.
+ *
+ *   3. Task object `routedAt` field (ISO timestamp)
+ *      Set automatically by `flow start` / `createQuickTask` / `moveTaskAsync`
+ *      when a task legitimately enters inProgress.
+ *
+ *   4. `.workflow/state/.routing-receipt-<taskId>` (dotfile, JSON)
+ *      Anti-bypass receipt written by the same callers that set `routedAt`.
+ *      The dual mechanism is defense-in-depth: AI editing ready.json directly
+ *      can spoof `routedAt`, but the receipt file is harder to forge silently.
+ *
+ * The gate accepts the task if EITHER (3) routedAt is set, OR (4) the
+ * receipt file exists, OR the task has a legacy `startedAt` field (pre-
+ * routedAt migration). One of these MUST be true; otherwise the task is
+ * rejected as "manually inserted".
+ *
+ * Documented helpers for external tooling:
+ *   - `writeRoutingReceipt(taskId, options)` — produces a valid receipt for
+ *     a task that's already in inProgress (e.g., after `flow bug` then a
+ *     manual move). This is the documented "I know what I'm doing" escape
+ *     hatch that closes the 2026-05-10 wogiflow-cli bug-report issue.
+ *
+ * Single source of truth in the future: see the deferred follow-up epic
+ * referenced in wf-c573961f's bug spec ("Approach 1 / consolidate to
+ * .workflow/state/active-task.json"). That work is out of L2 scope.
  */
 
 const fs = require('node:fs');
@@ -314,7 +353,7 @@ function checkTaskGate(options = {}, config) {
         return {
           allowed: false,
           blocked: true,
-          message: `Task ${taskId} is in inProgress but has no routing proof (missing routedAt and no routing receipt file).\n\nThis usually means the task was inserted into ready.json manually instead of through /wogi-start.\n\nTo fix:\n1. Use /wogi-start ${taskId} to properly route this task\n2. Or remove it from inProgress and start fresh: /wogi-ready`,
+          message: `Task ${taskId} is in inProgress but has no routing proof (missing routedAt and no routing receipt file).\n\nThis usually means the task was inserted into ready.json manually instead of through /wogi-start.\n\nTo fix:\n1. RECOMMENDED — Use /wogi-start ${taskId} to properly route this task.\n2. Or remove it from inProgress and start fresh: /wogi-ready\n3. Or, if you know what you're doing (e.g. after \`flow bug\` + manual move), write a routing receipt:\n     node -e "require('./scripts/hooks/core/task-gate').writeRoutingReceipt('${taskId}', { via: 'manual' })"\n\nSee scripts/hooks/core/task-gate.js header for the "active task" state-source contract.`,
           reason: 'task_missing_routing_proof'
         };
       }
@@ -408,6 +447,42 @@ function checkTaskGate(options = {}, config) {
     message: generateBlockMessage(operation, filePath),
     reason: 'no_active_task'
   };
+}
+
+/**
+ * Write a routing receipt for a task. This is the documented external API
+ * for satisfying the routing-proof requirement (state source #4) when the
+ * task is in inProgress but was placed there by a caller that didn't write
+ * a receipt (e.g., manual edit, or `flow bug` then move).
+ *
+ * Returns `{ ok: true, path }` on success or `{ ok: false, reason }` on
+ * failure. Validates taskId format before writing.
+ *
+ * wf-c573961f: previously this functionality was inlined in createQuickTask
+ * and not exported, leaving external tooling no documented way to satisfy
+ * the gate. The bug-report author hit exactly this — they updated four
+ * state files but couldn't discover the receipt-file requirement.
+ *
+ * @param {string} taskId - wf-XXXXXXXX format
+ * @param {Object} [options]
+ * @param {string} [options.via='external'] - audit field stored in the receipt
+ * @returns {{ok: boolean, path?: string, reason?: string}}
+ */
+function writeRoutingReceipt(taskId, options = {}) {
+  if (typeof taskId !== 'string' || !validateTaskId(taskId).valid) {
+    return { ok: false, reason: `invalid taskId format: ${taskId}` };
+  }
+  try {
+    const receiptPath = path.join(PATHS.state, `.routing-receipt-${taskId}`);
+    fs.writeFileSync(receiptPath, JSON.stringify({
+      taskId,
+      routedAt: new Date().toISOString(),
+      via: options.via || 'external'
+    }, null, 2));
+    return { ok: true, path: receiptPath };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
 }
 
 /**
@@ -523,6 +598,7 @@ module.exports = {
   getActiveTask,
   checkTaskGate,
   createQuickTask,
+  writeRoutingReceipt,
   generateBlockMessage,
   generateWarningMessage
 };

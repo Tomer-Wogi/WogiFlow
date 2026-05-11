@@ -272,9 +272,64 @@ describe('module exports', () => {
     const mod = require('../scripts/hooks/core/task-gate');
     for (const name of [
       'isTaskGatingEnabled', 'getActiveTask', 'checkTaskGate',
-      'createQuickTask', 'generateBlockMessage', 'generateWarningMessage',
+      'createQuickTask', 'writeRoutingReceipt', 'generateBlockMessage', 'generateWarningMessage',
     ]) {
       assert.equal(typeof mod[name], 'function', `${name} should be a function`);
+    }
+  });
+});
+
+// ============================================================
+// wf-c573961f: writeRoutingReceipt — documented external API for satisfying
+// the routing-proof requirement (5th state source)
+// ============================================================
+
+describe('wf-c573961f: writeRoutingReceipt', () => {
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+
+  it('rejects invalid taskId format', () => {
+    const { writeRoutingReceipt } = require('../scripts/hooks/core/task-gate');
+    const r1 = writeRoutingReceipt('not-a-valid-id');
+    assert.equal(r1.ok, false);
+    assert.match(r1.reason, /invalid taskId/i);
+
+    const r2 = writeRoutingReceipt(null);
+    assert.equal(r2.ok, false);
+  });
+
+  it('writes a receipt file in the state dir for a valid task id', () => {
+    // Use a tmp project so we don't pollute the live state dir.
+    const originalCwd = process.cwd();
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-routing-receipt-'));
+    fs.mkdirSync(path.join(tmp, '.workflow', 'state'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.workflow', 'config.json'), JSON.stringify({}));
+    process.chdir(tmp);
+    try {
+      // Evict cache so flow-paths picks up the new cwd.
+      delete require.cache[require.resolve('../scripts/flow-paths')];
+      delete require.cache[require.resolve('../scripts/flow-utils')];
+      delete require.cache[require.resolve('../scripts/hooks/core/task-gate')];
+
+      const { writeRoutingReceipt } = require('../scripts/hooks/core/task-gate');
+      const taskId = 'wf-abc12345';
+      const r = writeRoutingReceipt(taskId, { via: 'unit-test' });
+      assert.equal(r.ok, true);
+      assert.ok(r.path);
+      assert.ok(fs.existsSync(r.path), 'receipt file should exist on disk');
+
+      const body = JSON.parse(fs.readFileSync(r.path, 'utf-8'));
+      assert.equal(body.taskId, taskId);
+      assert.equal(body.via, 'unit-test');
+      assert.match(body.routedAt, /\d{4}-\d{2}-\d{2}T/);
+    } finally {
+      process.chdir(originalCwd);
+      fs.rmSync(tmp, { recursive: true, force: true });
+      // Evict again so subsequent tests see fresh state.
+      delete require.cache[require.resolve('../scripts/flow-paths')];
+      delete require.cache[require.resolve('../scripts/flow-utils')];
+      delete require.cache[require.resolve('../scripts/hooks/core/task-gate')];
     }
   });
 });
