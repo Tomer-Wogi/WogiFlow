@@ -765,11 +765,7 @@ None
 <!-- MEMORY-BLOCKS-START -->
 ```json
 {
-  "currentTask": {
-    "id": "wf-7d92c6be",
-    "title": "Extend PreToolUse Bash gates to cover PowerShell tool on Windows",
-    "startedAt": "2026-05-09T06:56:38.732Z"
-  },
+  "currentTask": null,
   "sessionContext": {
     "filesModified": [
       "scripts/flow",
@@ -792,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: Auto-pickup next ready task at session restart",
     "Completed: F1 Skill propose/patch/remove CLI + session-end approval UI",
     "Completed: F3 Fuzzy-match patching for skill edits",
     "Completed: H1 Structured phase definition schema (YAML)",
@@ -801,9 +796,10 @@ None
     "Completed: G3 SQLite-as-IPC for workspace dispatch",
     "Completed: Surface effort.level and thinking.enabled in status line",
     "Completed: A1 AGENTS.md alias for CLAUDE.md",
-    "Completed: WogiFlow Extension Finalize (pre-CLI release)"
+    "Completed: WogiFlow Extension Finalize (pre-CLI release)",
+    "Completed: Research-required gate false-positives on the word 'recommend'"
   ],
-  "lastUpdated": "2026-05-09T06:56:38.732Z",
+  "lastUpdated": "2026-05-11T07:42:16.695Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

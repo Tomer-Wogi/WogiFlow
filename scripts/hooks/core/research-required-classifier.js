@@ -47,7 +47,11 @@ const DIAGNOSTIC_PATTERNS = [
   /\bwhich\s+(approach|option|way|one)\s+(is\s+better|should|do\s+you)\b/i,
   /\bis\s+it\s+better\s+to\b/i,
   /\bwhat'?s?\s+the\s+(right|best|correct)\s+(approach|way)\b/i,
-  /\brecommend\b/i,
+  // Imperative "recommend" — anchored to prompt start or after sentence end.
+  // Prior version `/\brecommend\b/i` matched ANY occurrence and false-fired on
+  // "the recommendation system is broken" / "I recommend doing X" (statements,
+  // not questions). See wf-12271e82.
+  /(?:^|[.?!]\s+)\s*(please\s+|can\s+you\s+|could\s+you\s+|would\s+you\s+)?recommend\b/i,
   /\bdid\s+you\s+(fix|address|verify|check|test|handle)\b/i,
   /\bdo\s+you\s+(think|recommend|suggest)\b/i,
 ];

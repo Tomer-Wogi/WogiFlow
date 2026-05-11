@@ -1,5 +1,10 @@
 # Implementation Timeline
 
+## 2026-05
+
+### Week 3 (May 10-16)
+- [x] wf-12271e82: Research-required gate false-positives on the word 'recommend' (May 11)
+
 ## 2026-04
 
 ### Week 4 (Apr 19-25)

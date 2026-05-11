@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-09T07:32:26.418Z",
+  "lastUpdated": "2026-05-11T07:42:16.670Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -42,10 +42,68 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-f7d58760",
+      "title": "long-input-pending gate misfires on sub-agent task-notifications",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "ready",
+      "createdAt": "2026-05-11T07:21:54.647Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-f7d58760.md"
+    },
+    {
+      "id": "wf-88a08fd4",
+      "title": "flow-phase.js transition CLI silently no-ops",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "ready",
+      "createdAt": "2026-05-11T07:21:55.404Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-88a08fd4.md"
+    },
+    {
+      "id": "wf-c573961f",
+      "title": "Task-gating gate consults 5+ drifting state sources",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "ready",
+      "createdAt": "2026-05-11T07:21:56.170Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-c573961f.md"
+    },
+    {
+      "id": "wf-35742353",
+      "title": "Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "ready",
+      "createdAt": "2026-05-11T07:21:57.644Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-35742353.md"
     }
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-12271e82",
+      "title": "Research-required gate false-positives on the word 'recommend'",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-abcd1234",
+      "status": "completed",
+      "createdAt": "2026-05-11T07:21:56.932Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-12271e82.md",
+      "startedAt": "2026-05-11T07:40:59.428Z",
+      "routedAt": "2026-05-11T07:40:59.428Z",
+      "completedAt": "2026-05-11T07:42:16.668Z"
+    },
     {
       "id": "wf-2eafdab0",
       "title": "Fix 17 review findings from v2.30.0 — v2.30.1 patch",
@@ -163,117 +221,6 @@
       "specPath": ".workflow/changes/wf-f9912af6.md",
       "goal": "Plug the bypass that lets the AI silently write status:deferred to last-review.json/last-audit.json",
       "completedAt": "2026-05-04T08:39:59.239Z"
-    },
-    {
-      "id": "wf-ee4e343b",
-      "title": "Fix silent auto-restart regression (SEC-006 PPID + Phase 1 chokepoint)",
-      "type": "story",
-      "level": "L1",
-      "status": "completed",
-      "priority": "P0",
-      "created": "2026-05-04T07:34:15.316Z",
-      "specPath": ".workflow/changes/wf-ee4e343b.md",
-      "goal": "Restore task-boundary auto-restart for all wogi-claude wrapper users (broken by SEC-006 since 2026-04-26).",
-      "startedAt": "2026-05-04T07:37:30.511Z",
-      "completedAt": "2026-05-04T07:45:42.810Z"
-    },
-    {
-      "id": "wf-89aaab85",
-      "title": "Source Fidelity Rule (P11.5)",
-      "type": "task",
-      "status": "completed",
-      "priority": "P0",
-      "source": "wogi-hub Customers > Services incident 2026-04-27",
-      "completedAt": "2026-04-27T07:08:59.242Z",
-      "note": "Source Fidelity Rule (P11.5) shipped: methodology rule + Logic Constitution sub-principle + CLI verifier with 18 tests + Tier-3 wogi-hub regression simulation."
-    },
-    {
-      "id": "wf-15d5be8b",
-      "title": "Fix all remaining review findings (arch-002 entry-file extractions + SEC-002/003 + CL-007 + MISS-1 + arch-005 babel scanner)",
-      "type": "task",
-      "status": "partial",
-      "priority": "P1",
-      "completedAt": "2026-04-26T14:48:08.165Z",
-      "note": "5 of 6 findings fully closed (arch-005, SEC-002, SEC-003, CL-007, Story 9 pre-tool-use). arch-002 remains 4-of-5 entry files unextracted (stop.js 424, session-start.js 373, post-tool-use.js 219, user-prompt-submit.js 217) — deferred per P11.4 supervised-IGR requirement."
-    },
-    {
-      "id": "wf-57a5b2c5",
-      "title": "Fix 17 review findings from /wogi-review",
-      "type": "task",
-      "status": "completed",
-      "priority": "P1",
-      "completedAt": "2026-04-26T13:18:24.390Z",
-      "note": "16 of 17 closed. arch-002 deferred to Stories 9+10 (supervised). SEC-002/SEC-003 accepted (env trust). CL-007 disputed. MISS-1 skipped (low value)."
-    },
-    {
-      "id": "wf-d0937c83",
-      "title": "Wave E — Decompose flow-orchestrate.js autoCorrectCode",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T10:21:23.466Z",
-      "note": "Extracted 7 single-responsibility helpers (fixForbiddenImports, fixComponentPaths, fixFeatureTypePaths, fixNoExternalUtils, normalizeQuotes, cleanupEmptyImports, collapseBlankLines) into flow-orchestrate-corrections.js. autoCorrectCode is now ~30 LOC (was 113). 17 characterization tests co-landed per Cross-Story Tier-3 rule."
-    },
-    {
-      "id": "wf-a97af500",
-      "title": "Wave F — Test coverage for remaining legacy gates",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T09:39:56.522Z",
-      "note": "research-evidence-gate covered (20 tests). Broader gate coverage requires Stories 9/10/12/13/14 to land first per spec rescope."
-    },
-    {
-      "id": "wf-8308221a",
-      "title": "Wave B — Replace 137 raw JSON.parse sites",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T09:36:03.275Z",
-      "note": "closed-by-prior-work — 0 raw JSON.parse in lib/workspace-{sync,session,messages}.js"
-    },
-    {
-      "id": "wf-9fc4970b",
-      "title": "Wave B — DANGEROUS_KEYS+safeJsonParse consolidation",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T09:36:03.275Z",
-      "note": "4 of 8 scripts/ redefs consolidated; lib/* and intentional bootstrap+template-keys remaining (queued for cloud-compat)"
-    },
-    {
-      "id": "wf-789a8cba",
-      "title": "Wave B — Consolidate duplicate config/utility implementations",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T09:32:12.847Z",
-      "note": "Closed: dup-007 (this session), dup-006 closed-by-design, dup-003 closed-by-prior-work, dup-001 declined-with-rationale (wrappers carry memoization/error containment), dup-005 queued for cloud-compat review."
-    },
-    {
-      "id": "wf-f50fe4f5",
-      "title": "Wave A — Outlier catch-variable sweep",
-      "type": "story",
-      "status": "completed",
-      "priority": "P1",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T08:47:29.352Z",
-      "note": "Renamed 3 outlier _e → _err in flow-auto-review-worker.js + workspace-messages.js. Other catches in target files were already err/_err."
-    },
-    {
-      "id": "wf-33ae5671",
-      "title": "Wave A — Re-enable strict lint + delete dead exports",
-      "type": "story",
-      "status": "completed",
-      "priority": "P0",
-      "parentEpic": "wf-94cc3b72",
-      "completedAt": "2026-04-26T08:45:50.979Z",
-      "note": "S1: no-unreachable already error (prior PR); legacy aliases removed 2026-04-15; .env.example expanded; S4 (destructive branch delete) queued for user approval."
     }
   ],
   "backlog": [

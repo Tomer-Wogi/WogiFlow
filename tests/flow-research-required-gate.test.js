@@ -89,6 +89,24 @@ describe('research-required-classifier — intent detection', () => {
     });
   });
 
+  it('wf-12271e82: bare "recommend" no longer over-triggers; question-shape still does', () => {
+    withProject((_tmp, clf) => {
+      // Diagnostic: imperative or question-shape recommend at sentence start
+      assert.strictEqual(clf.classifyPrompt('Recommend a library for parsing dates').category, 'diagnostic');
+      assert.strictEqual(clf.classifyPrompt('Please recommend an approach').category, 'diagnostic');
+      assert.strictEqual(clf.classifyPrompt('Can you recommend a fix').category, 'diagnostic');
+      assert.strictEqual(clf.classifyPrompt('What do you recommend for this case').category, 'diagnostic');
+      assert.strictEqual(clf.classifyPrompt('Do you recommend keeping the old API').category, 'diagnostic');
+      // After sentence boundary still counts
+      assert.strictEqual(clf.classifyPrompt('I tried option A. Recommend something else.').category, 'diagnostic');
+
+      // NOT diagnostic: bare "recommend" mid-sentence in declarative / mid-clause use
+      assert.notStrictEqual(clf.classifyPrompt('The recommendation system is broken').category, 'diagnostic');
+      assert.notStrictEqual(clf.classifyPrompt('I recommend doing X tomorrow').category, 'diagnostic');
+      assert.notStrictEqual(clf.classifyPrompt('She wrote a recommendation letter').category, 'diagnostic');
+    });
+  });
+
   it('override prefix `!` classifies as command (skips gate)', () => {
     withProject((_tmp, clf) => {
       const r = clf.classifyPrompt('! why did this happen');
