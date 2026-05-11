@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.29.2",
+    "version": "2.30.2",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -37,7 +37,16 @@
   },
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
-    "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"]
+    "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.30.2": [
+      "scripts/hooks/core/research-required-classifier.js: bare /\\brecommend\\b/ replaced with anchored pattern (requires sentence-start). Mid-clause 'recommend' no longer triggers the diagnostic gate. wf-12271e82.",
+      "scripts/hooks/core/long-input-enforcement.js: isSystemOriginatedContent() exempts <task-notification>, <system-reminder>, and other tool-result echoes from the long-input gate. wf-f7d58760.",
+      "scripts/flow-phase.js: transition CLI now writes workflow-phase.json regardless of phaseGate.enabled. Previously silent no-op when gate was off. wf-88a08fd4.",
+      "scripts/hooks/core/gate-orchestrator.js: NEW. Priority-orders competing remediations across UserPromptSubmit and Stop hooks; only the top-priority gate surfaces its message, others queue. wf-35742353.",
+      "scripts/hooks/core/task-gate.js: documented 4-source 'active task' contract in header; exported writeRoutingReceipt() for external tooling. wf-c573961f.",
+      "scripts/flow-standards-gate.js: runTaskStandardsCheck tolerates string[] file lists (was crashing with undefined.includes on every flow done). wf-6c9ed721.",
+      "lib/installer.js: scaffolds .workflow/state/forbidden-patterns.json from template on fresh installs (closes H2 from v2.30.0 review). wf-d5fcb880."
+    ]
   },
-  "lastUpdated": "2026-04-26T00:00:00.000Z"
+  "lastUpdated": "2026-05-11T00:00:00.000Z"
 }
