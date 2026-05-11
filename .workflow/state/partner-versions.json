@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.30.2",
+    "version": "2.30.3",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -38,6 +38,15 @@
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
     "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.30.3": [
+      "scripts/flow-deferral-classifier-ai.js (NEW): AI/Haiku-based deferral-intent classifier replaces regex. Closes the 'fix all' miss + handles unbounded English phrasings the regex couldn't. wf-b8839d99.",
+      "scripts/hooks/core/deferral-classifier.js: refactored to thin async wrapper around the AI classifier. Regex patterns deleted entirely (per user instruction 2026-05-11: 'I don't want regex or matching when I answer things like that').",
+      "scripts/hooks/core/deferral-gate.js: marker shape v2 — separates AI's interpretation (`source`) from verbatim user excerpt (`userPromptExcerpt`). Adds `grantedBy`, `confidence`, `standing` fields. Standing pins get 7-day TTL.",
+      "scripts/flow-defer-auth.js: `grant` subcommand refuses non-TTY invocation. AI subprocesses can no longer self-issue deferral authorization. Override: --i-am-human.",
+      "scripts/hooks/core/no-defer-policy.js (NEW): SessionStart reads decisions.md for an explicit no-defer policy section; refreshes pin with 30-day TTL if found.",
+      "scripts/hooks/entry/claude-code/stop.js: routing-recovery grace window — when the AI classifier detects a NEGATIVE correction after a prior auth marker, routing-enforcement softens for 60s so the AI can act on the correction without re-routing.",
+      "wf-b8839d99."
+    ],
     "2.30.2": [
       "scripts/hooks/core/research-required-classifier.js: bare /\\brecommend\\b/ replaced with anchored pattern (requires sentence-start). Mid-clause 'recommend' no longer triggers the diagnostic gate. wf-12271e82.",
       "scripts/hooks/core/long-input-enforcement.js: isSystemOriginatedContent() exempts <task-notification>, <system-reminder>, and other tool-result echoes from the long-input gate. wf-f7d58760.",
