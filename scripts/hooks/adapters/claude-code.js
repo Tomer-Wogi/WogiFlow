@@ -421,16 +421,31 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       };
     }
 
-    // Compose additionalContext from up to five pieces:
-    //   1. longInputEnforcement (P11.5 — placed FIRST so AI sees the
-    //      forcing instruction before anything else)
-    //   2. systemReminder (research protocol) OR message (warning)
-    //   3. phasePrompt (phase-specific context)
-    //   4. overduePrompt (wf-d3e67abe — silent-halt surfacing, manager-only)
+    // wf-35742353 — Gate-orchestrator integration.
+    //
+    // Previously this concatenated up to five pieces blindly, producing a
+    // wall of competing system-reminder text ("invoke /wogi-extract-review"
+    // + "research protocol" + phase context, etc.) that the AI/user could
+    // not triage. Now: REMEDIATIONS (gates demanding action) go through
+    // the gate-orchestrator which picks the highest-priority one and lists
+    // the rest as a one-line "queued" footer. INFO pieces (phase context,
+    // overdue dispatches) pass through unchanged alongside the top
+    // remediation. Fail-open: any error falls back to the prior concat.
     const pieces = [];
-    if (coreResult.longInputEnforcement) pieces.push(coreResult.longInputEnforcement);
-    if (coreResult.systemReminder) pieces.push(coreResult.systemReminder);
-    else if (coreResult.message) pieces.push(coreResult.message);
+    try {
+      const { selectAndRender } = require('../core/gate-orchestrator');
+      const remediation = selectAndRender({
+        'long-input-pending': coreResult.longInputEnforcement,
+        'research-required': coreResult.systemReminder || coreResult.message
+      });
+      if (remediation) pieces.push(remediation);
+    } catch (_err) {
+      // Fallback to prior concat shape if orchestrator misfires.
+      if (coreResult.longInputEnforcement) pieces.push(coreResult.longInputEnforcement);
+      if (coreResult.systemReminder) pieces.push(coreResult.systemReminder);
+      else if (coreResult.message) pieces.push(coreResult.message);
+    }
+    // Info pieces always pass through.
     if (coreResult.phasePrompt) pieces.push(coreResult.phasePrompt);
     if (coreResult.overduePrompt) pieces.push(coreResult.overduePrompt);
 

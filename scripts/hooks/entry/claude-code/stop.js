@@ -17,12 +17,26 @@ const { isRoutingPending, incrementStopAttempts } = require('../../core/routing-
 const { runHook } = require('../shared/hook-runner');
 
 runHook('Stop', async ({ parsedInput }) => {
+  // wf-35742353 — Gate priority: if long-input-pending is active, it is the
+  // top-priority remediation. The UserPromptSubmit hook already surfaced the
+  // full long-input message on prompt arrival; firing routing-enforcement
+  // and research-required gates now would issue conflicting "do this NOW"
+  // instructions in the same turn. Defer the lower-priority Stop-hook gates
+  // until long-input-pending is resolved.
+  //
+  // Fail-open: any error reading the marker falls through to normal gate flow.
+  let longInputActive = false;
+  try {
+    const { isLongInputPending } = require('../../core/long-input-enforcement');
+    longInputActive = isLongInputPending();
+  } catch (_err) { /* fail-open */ }
+
   // v6.2: Routing enforcement check — catches text-only response bypass
   // If routing-pending flag is still set when the AI tries to stop, it means
   // the AI responded to the user's message without ever invoking a /wogi-* command.
   // This is the exact bypass we need to prevent (especially after context compaction).
   try {
-    if (isRoutingPending()) {
+    if (isRoutingPending() && !longInputActive) {
       // Use counter-based approach instead of clearing immediately.
       // This gives the AI multiple chances to comply before giving up.
       // Gap 4 fix: clearing immediately made this single-shot protection.
@@ -260,7 +274,15 @@ runHook('Stop', async ({ parsedInput }) => {
   // turn was classified as diagnostic (Tier 2/3 from CLAUDE.md), check that
   // the AI made enough Read calls against evidence paths before answering.
   // If not, re-prompt with a violation message forcing a redo. Fail-open.
+  //
+  // wf-35742353 — Skip this gate when long-input-pending is active. The user's
+  // prompt isn't yet captured, so demanding evidence-reading would issue a
+  // conflicting remediation. The diagnostic marker will still be present when
+  // long-input resolves; the gate fires correctly then.
   try {
+    if (longInputActive) {
+      // skip — defer to long-input remediation
+    } else {
     const { checkResearchRequiredGate } = require('../../core/research-required-gate');
     const { getConfig } = require('../../../flow-utils');
     const config = getConfig();
@@ -276,6 +298,7 @@ runHook('Stop', async ({ parsedInput }) => {
       // Soft re-prompt: force the AI to redo with reads
       return { __raw: true, continue: true, stopReason: result.message };
     }
+    } // end else (wf-35742353 long-input-active skip)
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[Stop] Research-required gate error (fail-open): ${err.message}`);

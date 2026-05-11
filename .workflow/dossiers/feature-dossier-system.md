@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-11 | wf-35742353 | bug | Gate cascade: Stop hook + research-required + long-input-pending fire same tu... |
 | 2026-05-11 | wf-88a08fd4 | bug | flow-phase.js transition CLI silently no-ops |
 | 2026-05-11 | wf-f7d58760 | bug | long-input-pending gate misfires on sub-agent task-notifications |
 | 2026-05-11 | wf-12271e82 | bug | Research-required gate false-positives on the word 'recommend' |

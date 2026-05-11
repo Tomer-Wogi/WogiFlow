@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T07:48:38.469Z",
+  "lastUpdated": "2026-05-11T07:52:16.297Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -53,7 +53,10 @@
       "status": "ready",
       "createdAt": "2026-05-11T07:21:56.170Z",
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-c573961f.md"
-    },
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-35742353",
       "title": "Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
@@ -61,13 +64,13 @@
       "priority": "P1",
       "severity": "medium",
       "discoveredFrom": "wf-abcd1234",
-      "status": "ready",
+      "status": "completed",
       "createdAt": "2026-05-11T07:21:57.644Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-35742353.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-35742353.md",
+      "startedAt": "2026-05-11T07:48:52.590Z",
+      "routedAt": "2026-05-11T07:48:52.590Z",
+      "completedAt": "2026-05-11T07:52:16.296Z"
+    },
     {
       "id": "wf-88a08fd4",
       "title": "flow-phase.js transition CLI silently no-ops",
@@ -188,19 +191,6 @@
       "routedAt": "2026-05-08T20:18:29.967Z",
       "specPath": ".workflow/changes/wf-3c968989.md",
       "completedAt": "2026-05-08T20:20:44.453Z"
-    },
-    {
-      "id": "wf-e111d850",
-      "title": "Fix Gate 0 regex bug — false-positive errorCount on test descriptions",
-      "type": "bug",
-      "level": "L2",
-      "status": "completed",
-      "priority": "P1",
-      "created": "2026-05-08T15:00:00.000Z",
-      "startedAt": "2026-05-08T15:44:30.214Z",
-      "routedAt": "2026-05-08T15:44:30.214Z",
-      "specPath": ".workflow/changes/wf-e111d850.md",
-      "completedAt": "2026-05-08T15:50:32.376Z"
     }
   ],
   "backlog": [
