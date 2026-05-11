@@ -347,6 +347,27 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
+  // wf-e399bd8d — Self-adversary gate. If the AI is about to invoke
+  // AskUserQuestion with an implementation-class question, block it
+  // and require the self-adversary loop to run first. Product /
+  // architecture / sensitive questions pass through. Fail-open: any
+  // error allows the call.
+  if (toolName === 'AskUserQuestion' && typeof deps.checkSelfAdversaryGate === 'function') {
+    try {
+      const saResult = deps.checkSelfAdversaryGate(toolName, toolInput, config);
+      if (saResult.blocked) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: saResult.reason,
+          message: saResult.message,
+        };
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[Hook] Self-adversary gate error (fail-open): ${err.message}`);
+    }
+  }
+
   // Long-input-pending gate (P11.6 mechanical layer): if the prior
   // UserPromptSubmit hook flagged this prompt as long-form-without-source-link
   // and wrote the pending marker, block any mutating tool until extract-review

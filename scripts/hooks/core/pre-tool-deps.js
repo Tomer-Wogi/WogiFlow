@@ -149,6 +149,16 @@ function loadGateDeps() {
     if (process.env.DEBUG) console.error(`[Hook] Long-input-pending gate not loaded: ${_err.message}`);
   }
 
+  // wf-e399bd8d — Self-adversary gate. Intercepts AskUserQuestion for
+  // implementation-class questions, requires the AI to run a self-adversary
+  // loop first. Fail-open via _noop if module fails to load.
+  let checkSelfAdversaryGate = _noop;
+  try {
+    checkSelfAdversaryGate = require('./self-adversary-gate').checkSelfAdversaryGate;
+  } catch (_err) {
+    if (process.env.DEBUG) console.error(`[Hook] Self-adversary gate not loaded: ${_err.message}`);
+  }
+
   // CLI-agnostic helpers (not gates per se but consumed by the orchestrator)
   const { markSkillPending } = require('../../flow-durable-session');
   const { getConfig } = require('../../flow-utils');
@@ -183,6 +193,7 @@ function loadGateDeps() {
     checkStrikeGate, checkBugfixScope, checkScopeMutation,
     checkGitSafety, checkManagerBoundary, checkWorkerBoundary, checkPathDiscipline,
     checkLongInputPendingGate,
+    checkSelfAdversaryGate,
     // Side-effect helpers
     markSkillPending,
     // Config + runtime

@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: WogiFlow Extension Finalize (pre-CLI release)",
     "Completed: Research-required gate false-positives on the word 'recommend'",
     "Completed: long-input-pending gate misfires on sub-agent task-notifications",
     "Completed: flow-phase.js transition CLI silently no-ops",
@@ -797,9 +796,10 @@ None
     "Completed: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
     "Completed: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack",
     "Completed: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)",
-    "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)"
+    "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)",
+    "Completed: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)"
   ],
-  "lastUpdated": "2026-05-11T14:46:06.058Z",
+  "lastUpdated": "2026-05-11T15:44:07.701Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,
