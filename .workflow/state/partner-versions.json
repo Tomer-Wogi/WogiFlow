@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.31.0",
+    "version": "2.31.1",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -38,6 +38,20 @@
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
     "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.31.1": [
+      "Closes 16 review findings from 2026-05-11 post-v2.31.0 review (6 HIGH + 7 MEDIUM + 3 LOW). wf-6e31850e.",
+      "ENTRY-FILE REFACTOR (A-3): extracted 1098 LOC out of 3 entry hook files into 6 new core modules. stop.js 518→21, user-prompt-submit.js 293→25, session-start.js 387→54. All entries now within 120-LOC budget per hook-three-layer.md.",
+      "NEW core/stop-orchestrator.js, core/workspace-stop-notify.js, core/task-boundary-restart-coordinator.js, core/workspace-stop-gates.js, core/user-prompt-orchestrator.js, core/session-start-orchestrator.js.",
+      "Gate-orchestrator now exports pickStopHookGate() for Stop-hook priority decisions (A-1, A-6).",
+      "Self-adversary loop: tracks consecutive malformed-JSON iterations, bails after 2 in a row instead of silently defaulting (L-1). Adversary prompt has explicit instruction-injection defense (S-3). adjustedConfidence capped at generator.confidence+10.",
+      "Routing-enforcement max-attempts case now returns explicit continue:false with stopReason (L-3, was silent fall-through).",
+      "self-adversary-gate hashQuestion 32-char (128-bit) — was 16-char/64-bit (S-4).",
+      "flow-defer-auth TTY check augmented with parent-process check via /proc/<ppid>/comm or ps fallback (S-5).",
+      "NEW .workflow/state/SCHEMAS.md documents every state file's owner/schema/lifecycle/TTL (A-2).",
+      "NEW .claude/docs/config-schema.md documents all gate-specific config keys (A-5).",
+      "flow-standards-gate filters undefined paths (L-5); deferral-gate heredoc regex unified with 8000-char bounded body (L-2 + S-1).",
+      "deferral-classifier lazy-loads classifier-ai (L-4); 3 AI classifier modules sanitize sk-* in debug logs (S-2)."
+    ],
     "2.31.0": [
       "NEW: self-adversary decision loop (Self-Refine + Reflexion pattern with different-model adversary). When AI is about to AskUserQuestion about implementation/code-structure/library-choice, PreToolUse gate intercepts and requires AI to iterate generator (Sonnet) <-> adversary (Haiku) up to 8 rounds reaching >=95% confidence first. Only escalates to user if confidence stays low after the loop. Product/architecture/sensitive questions pass through unchanged. New files: scripts/flow-self-adversary-loop.js, scripts/flow-impl-question-classifier.js, scripts/hooks/core/self-adversary-gate.js, .claude/commands/wogi-self-adversary.md. Wired into pre-tool-orchestrator.js + pre-tool-deps.js. 49 new tests across 3 test files. wf-e399bd8d.",
       "package.json: test glob updated to include recently-added test files (flow-deferral-classifier-ai, flow-no-defer-policy, flow-installer-forbidden-patterns, flow-self-adversary-* x3) that were previously not registered in the npm test list."
