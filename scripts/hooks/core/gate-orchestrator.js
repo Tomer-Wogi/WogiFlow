@@ -47,6 +47,22 @@ const REMEDIATION_LABELS = Object.freeze({
 });
 
 /**
+ * Internal: rank gate IDs by REMEDIATION_PRIORITY. Unknown gates sort to
+ * the bottom. Returns the IDs in priority order. wf-740f47e4 (DUAL API):
+ * extracted from pickTopRemediation + pickStopHookGate so the priority
+ * source-of-truth is single.
+ */
+function _rankByPriority(gateIds) {
+  return [...gateIds].sort((a, b) => {
+    const ia = REMEDIATION_PRIORITY.indexOf(a);
+    const ib = REMEDIATION_PRIORITY.indexOf(b);
+    const na = ia === -1 ? Number.POSITIVE_INFINITY : ia;
+    const nb = ib === -1 ? Number.POSITIVE_INFINITY : ib;
+    return na - nb;
+  });
+}
+
+/**
  * Pick the top-priority active remediation from a set of (gateId, message) pairs.
  *
  * @param {Array<{id: string, message: string}>} active - gates currently demanding action
@@ -58,16 +74,13 @@ function pickTopRemediation(active) {
   if (!Array.isArray(active) || active.length === 0) {
     return { top: null, queued: [] };
   }
-  // Filter to valid entries and sort by priority index.
   const valid = active.filter(g => g && typeof g.id === 'string' && typeof g.message === 'string' && g.message.trim().length > 0);
   if (valid.length === 0) return { top: null, queued: [] };
 
-  const indexed = valid.map(g => ({ ...g, idx: REMEDIATION_PRIORITY.indexOf(g.id) }))
-    .map(g => ({ ...g, idx: g.idx === -1 ? Number.POSITIVE_INFINITY : g.idx }));
-  indexed.sort((a, b) => a.idx - b.idx);
-
-  const top = { id: indexed[0].id, message: indexed[0].message };
-  const queued = indexed.slice(1).map(g => g.id);
+  const byId = new Map(valid.map(g => [g.id, g.message]));
+  const ranked = _rankByPriority(valid.map(g => g.id));
+  const top = { id: ranked[0], message: byId.get(ranked[0]) };
+  const queued = ranked.slice(1);
   return { top, queued };
 }
 
@@ -111,12 +124,12 @@ function selectAndRender(gateMap) {
  */
 function pickStopHookGate(activeFlags) {
   if (!activeFlags || typeof activeFlags !== 'object') return { topGateId: null, queued: [] };
-  const active = REMEDIATION_PRIORITY.filter(id => activeFlags[id] === true);
-  if (active.length === 0) return { topGateId: null, queued: [] };
-  return {
-    topGateId: active[0],
-    queued: active.slice(1)
-  };
+  // wf-740f47e4 (DUAL API): use the shared _rankByPriority helper so this
+  // and pickTopRemediation can never disagree on priority order.
+  const activeIds = Object.keys(activeFlags).filter(id => activeFlags[id] === true);
+  if (activeIds.length === 0) return { topGateId: null, queued: [] };
+  const ranked = _rankByPriority(activeIds);
+  return { topGateId: ranked[0], queued: ranked.slice(1) };
 }
 
 module.exports = {

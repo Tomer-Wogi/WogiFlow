@@ -886,6 +886,33 @@ const CONFIG_DEFAULTS = {
     }
   },
 
+  // --- Deferral Gate (wf-f9912af6 + wf-b8839d99) ---
+  // wf-740f47e4 (DOCS-DRIFT): explicit defaults so config-schema.md isn't lying.
+  // The gate worked via inline fallbacks before, but config consumers couldn't
+  // discover the keys through the defaults loader.
+  deferralGate: {
+    enabled: true,
+    authTtlSeconds: 600,
+    classifyUserPrompts: true,
+    minClassifierConfidence: 75
+  },
+
+  // --- Self-Adversary Gate (wf-e399bd8d) ---
+  selfAdversaryGate: {
+    enabled: true,
+    targetConfidence: 95,
+    maxIterations: 8,
+    generatorModel: 'anthropic:claude-sonnet-4-6',
+    adversaryModel: 'anthropic:claude-3-5-haiku-latest'
+  },
+
+  // --- Research-Required Gate (wf-5cd71b1f) ---
+  researchRequiredGate: {
+    enabled: true,
+    requiredEvidence: 2,
+    maxAttempts: 3
+  },
+
   // --- Long Input Gate ---
   longInputGate: {
     enabled: true,

@@ -359,17 +359,22 @@ async function runSelfAdversaryLoop(opts = {}) {
       verdict
     });
 
-    // Termination checks
+    // Termination checks. wf-740f47e4 (L-1-RESIDUAL): adversary VERDICT is
+    // authoritative — confidence threshold alone cannot override 'revise'.
+    // Previously a second unconditional `if (adjustedConfidence >= target)`
+    // bypassed the verdict, accepting decisions the adversary explicitly
+    // wanted refined. The S-3 confidence-cap (+10 ceiling) limited damage
+    // but the verdict contract was still violated.
     if (verdict === 'needs-user') {
       return buildEscalate(candidate, iterationMemory, targetConfidence, 'adversary-says-needs-user');
     }
     if (verdict === 'accept' && adjustedConfidence >= targetConfidence) {
       return buildSuccess({ ...candidate, confidence: adjustedConfidence }, iterationMemory, targetConfidence);
     }
-    if (adjustedConfidence >= targetConfidence) {
-      return buildSuccess({ ...candidate, confidence: adjustedConfidence }, iterationMemory, targetConfidence);
-    }
-    // Otherwise loop again with the critique in memory
+    // verdict === 'revise' or any other value → continue iterating, even if
+    // adjustedConfidence is high. The adversary explicitly said "not yet";
+    // honor it. Only the loop-exhausted path (below) can ship a 'revise'
+    // decision — and even then it surfaces via buildEscalate, not Success.
   }
 
   // Max iterations exhausted without reaching threshold

@@ -42,10 +42,13 @@ async function orchestrateStop({ parsedInput }) {
   let orchestratorTopGate = null;
   try {
     const { pickStopHookGate } = require('./gate-orchestrator');
-    const { topGateId } = pickStopHookGate({
+    // wf-740f47e4 (NULL-CHECK): guard against malformed return shape.
+    const result = pickStopHookGate({
       'long-input-pending': activeGates['long-input-pending'] === true
     });
-    orchestratorTopGate = topGateId;
+    orchestratorTopGate = (result && typeof result === 'object' && typeof result.topGateId === 'string')
+      ? result.topGateId
+      : null;
   } catch (_err) { /* fail-open */ }
   const longInputActive = orchestratorTopGate === 'long-input-pending';
 

@@ -331,7 +331,9 @@ function stripQuotedContent(cmd) {
   // heredoc; longer than that, the gate fails open (no strip) which is safer than
   // ReDoS. Single unified terminator regex covers both EOL-anchored and word-
   // boundary cases; tolerates optional trailing whitespace/punctuation.
-  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]{0,8000}?\n\1(?:\s*[;)]?\s*$|\b)/gm, ' <<HEREDOC>> ');
+  // wf-740f47e4 (CRLF): accept both \n and \r\n terminators so Windows-style
+  // line endings in fixtures or test inputs don't bypass the strip.
+  stripped = stripped.replace(/<<-?\s*['"]?(\w+)['"]?[\s\S]{0,8000}?\r?\n\1(?:\s*[;)]?\s*$|\b)/gm, ' <<HEREDOC>> ');
   // Single-quoted strings
   stripped = stripped.replace(/'[^']*'/g, "''");
   // Backtick command substitution

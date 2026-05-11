@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.31.1",
+    "version": "2.31.2",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -38,6 +38,15 @@
   "behaviorChanges": {
     "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
     "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.31.2": [
+      "Closes 5 review findings from post-v2.31.1 review (2 MED + 3 LOW). wf-740f47e4.",
+      "L-1-RESIDUAL: scripts/flow-self-adversary-loop.js — adversary verdict 'revise' now authoritative; the unconditional accept on confidence-threshold-only (a latent bug introduced in v2.31.1's L-1 fix) was removed. Only verdict==='accept' AND adjustedConfidence>=target accepts a decision now.",
+      "DOCS-DRIFT: flow-config-defaults.js gains explicit deferralGate.*, selfAdversaryGate.*, researchRequiredGate.* defaults. Config-schema.md is no longer documenting keys absent from the defaults loader.",
+      "NULL-CHECK: stop-orchestrator.js validates pickStopHookGate return shape before destructuring.",
+      "DUAL-API: gate-orchestrator.js extracts shared _rankByPriority helper. pickTopRemediation and pickStopHookGate can no longer disagree on priority order.",
+      "CRLF: deferral-gate.js stripQuotedContent heredoc regex accepts \\r?\\n terminator.",
+      "Review also flagged 4 adversary-rejected false positives — documented in last-review.json with status:disputed-false-positive."
+    ],
     "2.31.1": [
       "Closes 16 review findings from 2026-05-11 post-v2.31.0 review (6 HIGH + 7 MEDIUM + 3 LOW). wf-6e31850e.",
       "ENTRY-FILE REFACTOR (A-3): extracted 1098 LOC out of 3 entry hook files into 6 new core modules. stop.js 518→21, user-prompt-submit.js 293→25, session-start.js 387→54. All entries now within 120-LOC budget per hook-three-layer.md.",

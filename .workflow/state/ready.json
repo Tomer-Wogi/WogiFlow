@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T20:05:54.176Z",
+  "lastUpdated": "2026-05-11T20:20:48.637Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -24,6 +24,19 @@
       "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6e31850e.md",
       "startedAt": "2026-05-11T16:16:27.198Z",
       "routedAt": "2026-05-11T16:16:27.198Z"
+    },
+    {
+      "id": "wf-740f47e4",
+      "title": "v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-6e31850e",
+      "status": "in_progress",
+      "createdAt": "2026-05-11T20:18:48.325Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-740f47e4.md",
+      "startedAt": "2026-05-11T20:18:54.190Z",
+      "routedAt": "2026-05-11T20:18:54.190Z"
     }
   ],
   "ready": [
