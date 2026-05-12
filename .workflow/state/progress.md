@@ -765,11 +765,7 @@ None
 <!-- MEMORY-BLOCKS-START -->
 ```json
 {
-  "currentTask": {
-    "id": "wf-740f47e4",
-    "title": "v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
-    "startedAt": "2026-05-11T20:18:54.191Z"
-  },
+  "currentTask": null,
   "sessionContext": {
     "filesModified": [
       "scripts/flow",
@@ -792,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: Research-required gate false-positives on the word 'recommend'",
     "Completed: long-input-pending gate misfires on sub-agent task-notifications",
     "Completed: flow-phase.js transition CLI silently no-ops",
     "Completed: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
@@ -801,9 +796,10 @@ None
     "Completed: Close pre-release HIGH findings H1+H2: safeJsonParse self-violation + missing forbidden-patterns rule pack",
     "Completed: Replace regex deferral-classifier with AI classifier + close architectural gaps (false-attribution, standing-pref persistence, recovery-routing)",
     "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)",
-    "Completed: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)"
+    "Completed: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)",
+    "Completed: v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)"
   ],
-  "lastUpdated": "2026-05-11T20:18:54.191Z",
+  "lastUpdated": "2026-05-12T07:46:59.780Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

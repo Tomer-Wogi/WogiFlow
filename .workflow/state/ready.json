@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-11T20:20:48.637Z",
+  "lastUpdated": "2026-05-12T07:46:59.736Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -11,19 +11,6 @@
       "created": "2026-05-01T09:03:32.443Z",
       "specPath": ".workflow/changes/wf-7d92c6be.md",
       "startedAt": "2026-05-01T09:15:32.403Z"
-    },
-    {
-      "id": "wf-6e31850e",
-      "title": "v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "high",
-      "discoveredFrom": "wf-e399bd8d",
-      "status": "in_progress",
-      "createdAt": "2026-05-11T16:16:21.788Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6e31850e.md",
-      "startedAt": "2026-05-11T16:16:27.198Z",
-      "routedAt": "2026-05-11T16:16:27.198Z"
     },
     {
       "id": "wf-740f47e4",
@@ -83,6 +70,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-6e31850e",
+      "title": "v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "discoveredFrom": "wf-e399bd8d",
+      "status": "completed",
+      "createdAt": "2026-05-11T16:16:21.788Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-6e31850e.md",
+      "startedAt": "2026-05-11T16:16:27.198Z",
+      "routedAt": "2026-05-11T16:16:27.198Z",
+      "completedAt": "2026-05-12T07:46:59.735Z"
+    },
     {
       "id": "wf-e399bd8d",
       "title": "Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)",
@@ -208,20 +209,6 @@
       "startedAt": "2026-05-11T07:42:47.700Z",
       "routedAt": "2026-05-11T07:42:47.700Z",
       "completedAt": "2026-05-11T07:45:47.189Z"
-    },
-    {
-      "id": "wf-12271e82",
-      "title": "Research-required gate false-positives on the word 'recommend'",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "medium",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "completed",
-      "createdAt": "2026-05-11T07:21:56.932Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-12271e82.md",
-      "startedAt": "2026-05-11T07:40:59.428Z",
-      "routedAt": "2026-05-11T07:40:59.428Z",
-      "completedAt": "2026-05-11T07:42:16.668Z"
     }
   ],
   "backlog": [

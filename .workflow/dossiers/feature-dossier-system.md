@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-12 | wf-6e31850e | bug | v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (... |
 | 2026-05-11 | wf-e399bd8d | bug | Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self... |
 | 2026-05-11 | wf-4a5b7a6f | bug | deferral-gate checkBashGate over-triggers on commands that merely reference '... |
 | 2026-05-11 | wf-b8839d99 | bug | Replace regex deferral-classifier with AI classifier + close architectural ga... |
