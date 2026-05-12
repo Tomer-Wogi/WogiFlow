@@ -1,7 +1,7 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.31.2",
+    "version": "2.32.0",
     "repo": "wogi-flow"
   },
   "partners": {
@@ -36,8 +36,12 @@
     }
   },
   "behaviorChanges": {
-    "2.29.0": ["lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"],
-    "2.29.2": ["lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"],
+    "2.29.0": [
+      "lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"
+    ],
+    "2.29.2": [
+      "lib/utils.safeJsonParseContent + lib/workspace.safeParseJson + lib/commands/team-connection.safeParseJson all delegate to flow-io.safeJsonParseStringStrip; recursive scrub semantics consolidated"
+    ],
     "2.31.2": [
       "Closes 5 review findings from post-v2.31.1 review (2 MED + 3 LOW). wf-740f47e4.",
       "L-1-RESIDUAL: scripts/flow-self-adversary-loop.js — adversary verdict 'revise' now authoritative; the unconditional accept on confidence-threshold-only (a latent bug introduced in v2.31.1's L-1 fix) was removed. Only verdict==='accept' AND adjustedConfidence>=target accepts a decision now.",
@@ -85,7 +89,12 @@
       "scripts/hooks/core/task-gate.js: documented 4-source 'active task' contract in header; exported writeRoutingReceipt() for external tooling. wf-c573961f.",
       "scripts/flow-standards-gate.js: runTaskStandardsCheck tolerates string[] file lists (was crashing with undefined.includes on every flow done). wf-6c9ed721.",
       "lib/installer.js: scaffolds .workflow/state/forbidden-patterns.json from template on fresh installs (closes H2 from v2.30.0 review). wf-d5fcb880."
+    ],
+    "2.32.0": [
+      "Research-required gate now catches PROJECT-SPECIFIC FACTUAL/LOCATIONAL questions (where is X / which file handles Y / how does the Z work / show me / list all), not just diagnostic ones. New classifier category \"locational\" writes the evidence marker; Stop-hook re-prompts if the model answered without a Read; an upfront nudge is surfaced at UserPromptSubmit telling the model to grep/Read before answering and cite file:line. wf-1bcc67d5 (wogiflow-cli incident: model answered \"where do API keys get saved\" from prior, doubled down twice). FACTUAL_PATTERNS narrowed to truly-generic only.",
+      ".claude/commands/wogi-start.md Research Reasoning Gate tier table split: Tier 1a (generic factual, answer directly) vs Tier 1b (project-specific factual/locational, MUST Read+cite first).",
+      "BEHAVIOR CHANGE for consumers: a conversational \"where/which/how-does-the-X-work\" question now triggers the research-required gate. Override: prefix the prompt with ! to skip."
     ]
   },
-  "lastUpdated": "2026-05-11T00:00:00.000Z"
+  "lastUpdated": "2026-05-12T08:25:07.318Z"
 }
