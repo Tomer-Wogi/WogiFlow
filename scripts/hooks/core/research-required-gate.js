@@ -196,23 +196,33 @@ function checkResearchRequiredGate(opts = {}) {
       };
     }
 
+    // wf-1bcc67d5: the marker now carries category 'diagnostic' OR 'locational'.
+    // For locational ("where does X live", "which file handles Y"), the message
+    // is sharper — answering from prior knowledge is the precise failure shape.
+    const isLocational = marker.category === 'locational';
+    const kind = isLocational ? 'project-specific locational question' : 'diagnostic question';
     return {
       blocked: true,
       hardStop: false,
       evidenceCount,
       requiredEvidence,
       message:
-        `RESEARCH-REQUIRED VIOLATION: the user asked a diagnostic question (matched "${marker.match}") ` +
+        `RESEARCH-REQUIRED VIOLATION: the user asked a ${kind} (matched "${marker.match}") ` +
         `but you produced an answer with only ${evidenceCount} evidence read${evidenceCount === 1 ? '' : 's'} ` +
         `(minimum required: ${requiredEvidence}).\n\n` +
+        (isLocational
+          ? `You answered "${kind === 'project-specific locational question' ? 'where/which/how X works in this project' : '...'}" WITHOUT opening a file. That is the exact failure wf-1bcc67d5 exists to stop: a confident model pattern-matching to industry defaults instead of checking THIS codebase, then doubling down. Do NOT answer from prior knowledge.\n\n`
+          : '') +
         `Re-do this turn:\n` +
-        `  1. Identify the relevant code/state files for the question.\n` +
-        `  2. Read at least ${requiredEvidence} of them via the Read tool. Bash with cat/head/grep/rg ` +
+        `  1. Identify the relevant code/state files for the question (grep first if you're not sure where).\n` +
+        `  2. Read at least ${requiredEvidence} of them via the Read tool. Bash with cat/head/grep/rg/Glob/Grep ` +
         `against evidence paths also counts.\n` +
-        `  3. THEN answer with citations (file:line where appropriate).\n\n` +
+        `  3. THEN answer — and the answer MUST cite the file:line(s) you actually read. An uncited answer to a ` +
+        `${kind} is not acceptable.\n\n` +
         `Evidence prefixes that count: .workflow/state/, .workflow/changes/, lib/, scripts/, src/, tests/, app/.\n\n` +
-        `If you genuinely don't know which files to read, ask the user via \`flow ask "<question>"\`.\n` +
-        `If you believe this is a factual question that doesn't need research, the user can prefix their ` +
+        `If you genuinely cannot find the relevant files after grepping, say so explicitly and ask the user via ` +
+        `\`flow ask "<question>"\` — do NOT guess.\n` +
+        `If this is genuinely a generic-knowledge question (not about this project), the user can prefix their ` +
         `next prompt with \`!\` to skip the gate.\n\n` +
         `Attempt ${next.attemptCount}/${maxAttempts}.`
     };

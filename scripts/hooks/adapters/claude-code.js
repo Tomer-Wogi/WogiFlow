@@ -446,6 +446,9 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       else if (coreResult.message) pieces.push(coreResult.message);
     }
     // Info pieces always pass through.
+    // wf-1bcc67d5: research-required nudge — placed FIRST among info pieces
+    // because it's a "do this BEFORE you answer" instruction, not background.
+    if (coreResult.researchRequiredNudge) pieces.push(coreResult.researchRequiredNudge);
     if (coreResult.phasePrompt) pieces.push(coreResult.phasePrompt);
     if (coreResult.overduePrompt) pieces.push(coreResult.overduePrompt);
 

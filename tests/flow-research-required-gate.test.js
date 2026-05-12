@@ -58,12 +58,27 @@ function writeTranscript(tmp, entries) {
 }
 
 describe('research-required-classifier — intent detection', () => {
-  it('classifies factual prompts: "what is", "where is", "show me"', () => {
+  it('classifies generic-factual prompts (NO marker): "what is a X", "what does X mean"', () => {
     withProject((_tmp, clf) => {
-      assert.strictEqual(clf.classifyPrompt('what is the meaning of life').category, 'factual');
-      assert.strictEqual(clf.classifyPrompt('where is the config file').category, 'factual');
-      assert.strictEqual(clf.classifyPrompt('show me the test results').category, 'factual');
-      assert.strictEqual(clf.classifyPrompt('list all the routes').category, 'factual');
+      assert.strictEqual(clf.classifyPrompt('what is a closure').category, 'factual');
+      assert.strictEqual(clf.classifyPrompt('what does idempotent mean').category, 'factual');
+      assert.strictEqual(clf.classifyPrompt('how many days in a year').category, 'factual');
+    });
+  });
+
+  it('wf-1bcc67d5: project-specific factual/locational prompts classify as "locational" (gated)', () => {
+    withProject((_tmp, clf) => {
+      // The reported failure case + siblings:
+      assert.strictEqual(clf.classifyPrompt('where do API keys get saved in this project').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('where is the config file').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('where are the secrets stored').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('which file handles routing').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('which module defines the deferral gate').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('how does the deferral gate work').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('how is the routing flag configured').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('show me the routes').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('list all the gates').category, 'locational');
+      assert.strictEqual(clf.classifyPrompt('what file handles the stop hook').category, 'locational');
     });
   });
 
@@ -146,6 +161,27 @@ describe('research-required-classifier — applyClassification', () => {
       const r = clf.applyClassification('why is X broken', { researchRequiredGate: { enabled: false } });
       assert.strictEqual(r.applied, false);
       assert.strictEqual(clf.loadMarker(), null);
+    });
+  });
+
+  it('wf-1bcc67d5: locational question writes marker with category=locational + returns a nudge', () => {
+    withProject((_tmp, clf) => {
+      const r = clf.applyClassification('where do API keys get saved in this project', { researchRequiredGate: { enabled: true } });
+      assert.strictEqual(r.applied, true);
+      assert.strictEqual(r.category, 'locational');
+      assert.ok(typeof r.nudge === 'string' && r.nudge.includes('Read/Grep/Glob'), 'nudge should instruct to grep/read');
+      const marker = clf.loadMarker();
+      assert.ok(marker);
+      assert.strictEqual(marker.category, 'locational');
+    });
+  });
+
+  it('wf-1bcc67d5: GATED_CATEGORIES contains both diagnostic and locational', () => {
+    withProject((_tmp, clf) => {
+      assert.ok(clf.GATED_CATEGORIES.has('diagnostic'));
+      assert.ok(clf.GATED_CATEGORIES.has('locational'));
+      assert.equal(clf.GATED_CATEGORIES.has('factual'), false);
+      assert.equal(clf.GATED_CATEGORIES.has('command'), false);
     });
   });
 });

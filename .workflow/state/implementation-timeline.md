@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-1bcc67d5: Research-required gate misses project-specific factual/locational questions — 'where does X live in this project' classified Tier-1 'answer directly', no Read forced, model answers from prior and doubles down (wogiflow-cli incident 2026-05-12) (May 12)
 - [x] wf-e8851cfc: Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1) (May 12)
 - [x] wf-740f47e4: v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc) (May 12)
 - [x] wf-6e31850e: v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW) (May 12)

@@ -135,9 +135,12 @@ When a local `/wogi-*` CLI command fails (error in output, "Unknown skill", comm
 
 | Tier | Marker phrases | What you do |
 |------|---------------|-------------|
-| **Tier 1 — Factual** | "what is", "how many", "show me", "list all", "which file", "where does" | Answer directly from code/docs. No gate. |
+| **Tier 1a — Generic factual** | "what is a/an &lt;concept&gt;", "what does &lt;general term&gt; mean", "how many &lt;X&gt; in a &lt;Y&gt;" — general knowledge, NOT about this project | Answer directly. No gate. |
+| **Tier 1b — Project-specific factual / locational** | "where is X (configured/stored/saved/defined)", "which file/module/function handles Y", "how does the &lt;this project's X&gt; work", "show me the &lt;project content&gt;", "list all the &lt;project things&gt;" | **MUST run Read/Grep/Glob against the actual codebase FIRST. Your answer MUST cite the file:line(s) you read. NO "Tier 1 → answer directly" shortcut.** Grep if you don't know where to look. Enforced mechanically by `research-required-gate` at Stop hook + an upfront nudge at UserPromptSubmit. wf-1bcc67d5. |
 | **Tier 2 — Domain** (default for ambiguous) | "what should", "how should", "recommend", "which approach", "what do you think about", "is it better to" | **Surface assumptions, then WAIT.** |
 | **Tier 3 — Architecture** | "should we restructure", "what's the right architecture", "design a schema", "how to migrate", "should we split / merge / replace" | Tier 2 flow + spawn adversary on a different model after recommendation. |
+
+> **Why Tier 1b exists** (wf-1bcc67d5): a confident model treats "answer directly from code/docs" as license to answer from its *prior* — pattern-matching "where do secrets go" to "use a .env file" — and never opens a file. In the wogiflow-cli incident (2026-05-12) the model did exactly this, doubled down twice under pushback, and only grepped on the third correction — by which point it had contradicted committed work and proposed a storage location the CLI doesn't even read. The fix: locational/project-factual questions are gated like diagnostic ones. **There is no path where you assert "X lives at Y" in this project without having opened a file that proves it.**
 
 **Tier 2 flow — the user is the adversary**:
 1. Before any analysis, identify the domain-model assumptions your answer will depend on (typically 2–5).

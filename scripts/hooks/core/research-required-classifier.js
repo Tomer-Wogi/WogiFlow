@@ -56,14 +56,39 @@ const DIAGNOSTIC_PATTERNS = [
   /\bdo\s+you\s+(think|recommend|suggest)\b/i,
 ];
 
-// Factual markers — Tier 1 (no marker, AI can answer from code/docs)
+// Generic-factual markers — Tier 1a (no marker; answerable from general
+// knowledge). NARROWED from the prior FACTUAL_PATTERNS: "where is X",
+// "which file", "show me", "list all" all MOVED to LOCATIONAL_PATTERNS
+// below because in a project context they are almost always asking about
+// THIS codebase and require a Read first. See wf-1bcc67d5 (the wogiflow-cli
+// "where do API keys get saved" incident — model answered from prior,
+// doubled down twice, before finally grepping).
 const FACTUAL_PATTERNS = [
-  /^\s*what\s+is\b/i,
-  /^\s*where\s+(is|does|are)\b/i,
-  /^\s*how\s+many\b/i,
-  /^\s*show\s+me\b/i,
-  /^\s*list\s+(all|the)\b/i,
-  /^\s*which\s+file\b/i,
+  /^\s*what\s+is\s+(a|an)\b/i,            // "what is a closure" — conceptual
+  /^\s*what\s+does\s+\w+\s+mean\b/i,      // "what does idempotent mean"
+  /^\s*how\s+many\s+\w+\s+(are\s+in|in)\s+a\b/i, // "how many days in a year" — generic
+];
+
+// Locational / project-specific-factual markers — Tier 1b (WRITES the
+// evidence marker, same as diagnostic). "Where is X configured?", "which
+// file handles Y?", "how does the deferral gate work?" — these are
+// answerable ONLY by reading this codebase. The model MUST Read/Grep/Glob
+// first and cite what it read. No "Tier 1 → answer directly" shortcut.
+// wf-1bcc67d5.
+const LOCATIONAL_PATTERNS = [
+  /\bwhere\s+(is|are|do|does|did|should|would|can)\b/i,           // where is X / where are the keys / where does X get saved
+  /\bwhich\s+(file|module|function|component|class|method|hook|gate|script|test|directory|folder|package)\b/i,
+  /\bwhat\s+(file|module|function|class|hook|gate|script|component)\s+(handles?|does|is|contains?|defines?)\b/i,
+  /\bwhat\s+is\s+(responsible\s+for|the\s+\w+\s+(file|module|gate|hook)\s+for)\b/i,
+  // "how does the deferral gate work" — allow multiple words between the
+  // determiner and the action verb (lazy [\s\w-]*?). Covers 1+ noun phrases.
+  /\bhow\s+(does|do|did)\s+(the|this|our|its?|wogiflow|a|an)\b[\s\w-]*?\s+(work|works|worked|happen|behave|operate|function|run|fire|trigger|get\s+\w+)\b/i,
+  // "how is the routing flag configured" — same lazy gap
+  /\bhow\s+(is|are|was|were|does|do)\s+[\s\w-]*?\b(configured|wired|stored|set\s+up|implemented|handled|loaded|registered|defined|saved|kept|read|written|persisted|injected)\b/i,
+  /^\s*(show\s+me\s+(the|all|how|where)|list\s+(all|the))\b/i,    // show me the routes / list all the gates — project enumeration
+  /\bis\s+there\s+(a|an|any)\s+\w+\s+(in\s+(this|the)\s+(project|codebase|repo|code)|here)\b/i,
+  /\b(in\s+this\s+(project|codebase|repo|code))\b.*\b(where|how|which|what)\b/i,
+  /\b(where|how|which|what)\b.*\b(in\s+this\s+(project|codebase|repo|code))\b/i,
 ];
 
 // Command markers — task IDs, imperatives, follow-ups
@@ -96,12 +121,21 @@ function getMaxAttempts(config) {
 }
 
 /**
- * Classify a user prompt into command / factual / diagnostic.
+ * Classify a user prompt into command / factual / locational / diagnostic.
  *
- * Order matters: override > command > factual > diagnostic > default(none).
+ * Order matters: override > command > generic-factual > locational > diagnostic > default(none).
+ *
+ * `locational` and `diagnostic` BOTH write the evidence marker — the Stop
+ * hook then requires Read/Grep/Glob calls before the answer is accepted.
+ * `command` and `factual` and `none` do NOT write the marker.
+ *
+ * The generic-factual check is intentionally NARROW (only "what is a/an
+ * <concept>", "what does X mean", "how many X in a Y"). Anything that
+ * smells project-specific — "where is X", "which file/module", "how does
+ * the X work" — falls through to `locational` and is gated. See wf-1bcc67d5.
  *
  * @param {string} prompt
- * @returns {{ category: 'command'|'factual'|'diagnostic'|'none', match?: string, overridden?: boolean }}
+ * @returns {{ category: 'command'|'factual'|'locational'|'diagnostic'|'none', match?: string, overridden?: boolean }}
  */
 function classifyPrompt(prompt) {
   if (typeof prompt !== 'string') return { category: 'none' };
@@ -119,13 +153,19 @@ function classifyPrompt(prompt) {
     if (m) return { category: 'command', match: m[0] };
   }
 
-  // Factual next
+  // Generic-factual next (NARROW — only truly-conceptual questions)
   for (const rx of FACTUAL_PATTERNS) {
     const m = trimmed.match(rx);
     if (m) return { category: 'factual', match: m[0] };
   }
 
-  // Diagnostic last
+  // Locational / project-specific-factual — gated (writes marker)
+  for (const rx of LOCATIONAL_PATTERNS) {
+    const m = trimmed.match(rx);
+    if (m) return { category: 'locational', match: m[0] };
+  }
+
+  // Diagnostic — gated (writes marker)
   for (const rx of DIAGNOSTIC_PATTERNS) {
     const m = trimmed.match(rx);
     if (m) return { category: 'diagnostic', match: m[0] };
@@ -134,23 +174,32 @@ function classifyPrompt(prompt) {
   return { category: 'none' };
 }
 
+// Both 'diagnostic' AND 'locational' write the evidence marker. wf-1bcc67d5.
+const GATED_CATEGORIES = new Set(['diagnostic', 'locational']);
+
 /**
  * Apply classification — write or skip the marker. Fail-open.
+ *
+ * @returns {{ applied: boolean, category?: string, match?: string,
+ *             requiredEvidence?: number, nudge?: string, reason?: string }}
+ *   On a gated category, `nudge` is a short upfront reminder string the
+ *   UserPromptSubmit orchestrator can surface as additionalContext so the
+ *   model is told to Read BEFORE answering — not just re-prompted at Stop.
  */
 function applyClassification(prompt, config) {
   try {
     if (!isClassifierEnabled(config)) return { applied: false, reason: 'classifier-disabled' };
 
     const result = classifyPrompt(prompt);
-    if (result.category !== 'diagnostic') {
-      return { applied: false, category: result.category, reason: 'not-diagnostic' };
+    if (!GATED_CATEGORIES.has(result.category)) {
+      return { applied: false, category: result.category, reason: 'not-gated' };
     }
 
     const requiredEvidence = getRequiredEvidence(config);
     const payload = {
       version: 1,
       classifiedAt: new Date().toISOString(),
-      category: 'diagnostic',
+      category: result.category,
       match: result.match,
       requiredEvidence,
       attemptCount: 0
@@ -159,7 +208,12 @@ function applyClassification(prompt, config) {
     const tmp = `${getMarkerPath()}.tmp.${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
     fs.writeFileSync(tmp, JSON.stringify(payload, null, 2));
     fs.renameSync(tmp, getMarkerPath());
-    return { applied: true, category: 'diagnostic', match: result.match, requiredEvidence };
+
+    const nudge = result.category === 'locational'
+      ? `[research-required] This is a project-specific locational question (matched "${result.match}"). Before answering, run Read/Grep/Glob against the actual codebase — do NOT answer from prior knowledge or industry defaults. Your answer MUST cite the file:line(s) you read. (wf-1bcc67d5: a confident model answering "where does X live" from memory, doubling down, is the exact failure this gate exists to stop.)`
+      : `[research-required] This is a diagnostic question (matched "${result.match}"). Read at least ${requiredEvidence} relevant evidence files before answering; cite them.`;
+
+    return { applied: true, category: result.category, match: result.match, requiredEvidence, nudge };
   } catch (err) {
     if (process.env.DEBUG) {
       console.error(`[research-required-classifier] applyClassification error (fail-open): ${err.message}`);
@@ -205,5 +259,7 @@ module.exports = {
   OVERRIDE_PREFIX,
   DIAGNOSTIC_PATTERNS,
   FACTUAL_PATTERNS,
-  COMMAND_PATTERNS
+  LOCATIONAL_PATTERNS,
+  COMMAND_PATTERNS,
+  GATED_CATEGORIES
 };

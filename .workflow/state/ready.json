@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-12T07:48:23.387Z",
+  "lastUpdated": "2026-05-12T08:24:22.111Z",
   "inProgress": [],
   "ready": [
     {
@@ -45,6 +45,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-1bcc67d5",
+      "title": "Research-required gate misses project-specific factual/locational questions — 'where does X live in this project' classified Tier-1 'answer directly', no Read forced, model answers from prior and doubles down (wogiflow-cli incident 2026-05-12)",
+      "type": "bug",
+      "priority": "P2",
+      "severity": "critical",
+      "discoveredFrom": null,
+      "status": "completed",
+      "createdAt": "2026-05-12T08:17:04.061Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-1bcc67d5.md",
+      "startedAt": "2026-05-12T08:17:10.603Z",
+      "routedAt": "2026-05-12T08:17:10.603Z",
+      "completedAt": "2026-05-12T08:24:22.110Z"
+    },
     {
       "id": "wf-e8851cfc",
       "title": "Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1)",
@@ -170,20 +184,6 @@
       "startedAt": "2026-05-11T07:52:24.730Z",
       "routedAt": "2026-05-11T07:52:24.730Z",
       "completedAt": "2026-05-11T07:54:18.410Z"
-    },
-    {
-      "id": "wf-35742353",
-      "title": "Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "medium",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "completed",
-      "createdAt": "2026-05-11T07:21:57.644Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-35742353.md",
-      "startedAt": "2026-05-11T07:48:52.590Z",
-      "routedAt": "2026-05-11T07:48:52.590Z",
-      "completedAt": "2026-05-11T07:52:16.296Z"
     }
   ],
   "backlog": [

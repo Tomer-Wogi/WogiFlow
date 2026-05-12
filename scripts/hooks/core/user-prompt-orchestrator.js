@@ -70,13 +70,19 @@ async function orchestrateUserPromptSubmit({ input, parsedInput }) {
     }
   }
 
-  // wf-5cd71b1f: Research-required classifier
+  // wf-5cd71b1f + wf-1bcc67d5: Research-required classifier. Now catches
+  // 'locational' (project-specific "where is X / which file / how does the
+  // X work") in addition to 'diagnostic'. Both write the evidence marker
+  // (Stop-hook backstop) AND surface an upfront nudge so the model is told
+  // to Read BEFORE answering — not just re-prompted after.
+  let researchRequiredNudge = null;
   if (typeof prompt === 'string' && prompt.trim().length > 0) {
     try {
       const { applyClassification: applyResearchClassification } = require('./research-required-classifier');
       const r = applyResearchClassification(prompt, hookConfig);
-      if (r.applied && process.env.DEBUG) {
-        console.error(`[Hook] Research-required classifier: category=${r.category}, match="${r.match}"`);
+      if (r.applied) {
+        if (r.nudge) researchRequiredNudge = r.nudge;
+        if (process.env.DEBUG) console.error(`[Hook] Research-required classifier: category=${r.category}, match="${r.match}"`);
       }
     } catch (err) {
       if (process.env.DEBUG) console.error(`[Hook] Research-required classifier failed: ${err.message}`);
@@ -168,6 +174,7 @@ async function orchestrateUserPromptSubmit({ input, parsedInput }) {
   }
 
   if (phasePrompt) coreResult = { ...coreResult, phasePrompt };
+  if (researchRequiredNudge) coreResult = { ...coreResult, researchRequiredNudge };
 
   // wf-d3e67abe — overdue workspace dispatches
   try {

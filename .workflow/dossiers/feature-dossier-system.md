@@ -54,6 +54,7 @@ Per-feature canonical knowledge docs at `.workflow/dossiers/<slug>.md` paired wi
 
 | Date | Task ID | Event | Note |
 |------|---------|-------|------|
+| 2026-05-12 | wf-1bcc67d5 | bug | Research-required gate misses project-specific factual/locational questions —... |
 | 2026-05-12 | wf-e8851cfc | bug | Architectural refactor: extract business logic from oversized entry files (st... |
 | 2026-05-12 | wf-740f47e4 | bug | v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RE... |
 | 2026-05-12 | wf-6e31850e | bug | v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (... |
