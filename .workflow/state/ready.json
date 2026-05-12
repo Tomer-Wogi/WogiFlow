@@ -1,18 +1,6 @@
 {
-  "lastUpdated": "2026-05-12T07:48:07.136Z",
-  "inProgress": [
-    {
-      "id": "wf-7d92c6be",
-      "title": "Extend PreToolUse Bash gates to cover PowerShell tool on Windows",
-      "type": "story",
-      "level": "L1",
-      "status": "in_progress",
-      "priority": "P1",
-      "created": "2026-05-01T09:03:32.443Z",
-      "specPath": ".workflow/changes/wf-7d92c6be.md",
-      "startedAt": "2026-05-01T09:15:32.403Z"
-    }
-  ],
+  "lastUpdated": "2026-05-12T07:48:23.387Z",
+  "inProgress": [],
   "ready": [
     {
       "id": "wf-94cc3b72",
@@ -42,6 +30,17 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
+    },
+    {
+      "id": "wf-7d92c6be",
+      "title": "Extend PreToolUse Bash gates to cover PowerShell tool on Windows",
+      "type": "story",
+      "level": "L1",
+      "status": "in_progress",
+      "priority": "P1",
+      "created": "2026-05-01T09:03:32.443Z",
+      "specPath": ".workflow/changes/wf-7d92c6be.md",
+      "note": "Returned to ready 2026-05-12 — checkpoint was stale (pointed at v2.30.x changedFiles, no spec, 0 scenarios). Never genuinely started."
     }
   ],
   "blocked": [],
