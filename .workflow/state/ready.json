@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-12T07:47:04.255Z",
+  "lastUpdated": "2026-05-12T07:48:07.136Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -42,7 +42,10 @@
       ],
       "goal": "C+ → A (90+) via 15 stories closing audit findings",
       "sourceAudit": ".workflow/audits/2026-04-15-pre-igr-project.md"
-    },
+    }
+  ],
+  "blocked": [],
+  "recentlyCompleted": [
     {
       "id": "wf-e8851cfc",
       "title": "Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1)",
@@ -50,13 +53,13 @@
       "priority": "P1",
       "severity": "medium",
       "discoveredFrom": "wf-6e31850e",
-      "status": "ready",
+      "status": "completed",
       "createdAt": "2026-05-11T16:21:06.394Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-e8851cfc.md"
-    }
-  ],
-  "blocked": [],
-  "recentlyCompleted": [
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-e8851cfc.md",
+      "startedAt": "2026-05-12T07:47:36.708Z",
+      "routedAt": "2026-05-12T07:47:36.708Z",
+      "completedAt": "2026-05-12T07:48:07.135Z"
+    },
     {
       "id": "wf-740f47e4",
       "title": "v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
@@ -182,20 +185,6 @@
       "startedAt": "2026-05-11T07:48:52.590Z",
       "routedAt": "2026-05-11T07:48:52.590Z",
       "completedAt": "2026-05-11T07:52:16.296Z"
-    },
-    {
-      "id": "wf-88a08fd4",
-      "title": "flow-phase.js transition CLI silently no-ops",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "medium",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "completed",
-      "createdAt": "2026-05-11T07:21:55.404Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-88a08fd4.md",
-      "startedAt": "2026-05-11T07:45:52.577Z",
-      "routedAt": "2026-05-11T07:45:52.577Z",
-      "completedAt": "2026-05-11T07:48:38.467Z"
     }
   ],
   "backlog": [

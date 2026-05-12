@@ -788,7 +788,6 @@ None
     "blockers": []
   },
   "keyFacts": [
-    "Completed: flow-phase.js transition CLI silently no-ops",
     "Completed: Gate cascade: Stop hook + research-required + long-input-pending fire same turn with conflicting remediations",
     "Completed: Task-gating gate consults 5+ drifting state sources",
     "Completed: Verification fallout from gate-bug batch 2026-05-10 (phase-gate test isolation + standards-checker file-shape tolerance)",
@@ -797,9 +796,10 @@ None
     "Completed: deferral-gate checkBashGate over-triggers on commands that merely reference 'deferred' and 'last-review.json' as text content (markdown blockquotes, commit messages, release notes)",
     "Completed: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself)",
     "Completed: v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
-    "Completed: v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)"
+    "Completed: v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
+    "Completed: Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1)"
   ],
-  "lastUpdated": "2026-05-12T07:47:04.280Z",
+  "lastUpdated": "2026-05-12T07:48:07.172Z",
   "taskQueueSnapshot": {
     "readyCount": 0,
     "inProgressCount": 1,

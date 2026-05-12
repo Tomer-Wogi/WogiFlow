@@ -3,6 +3,7 @@
 ## 2026-05
 
 ### Week 3 (May 10-16)
+- [x] wf-e8851cfc: Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1) (May 12)
 - [x] wf-740f47e4: v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc) (May 12)
 - [x] wf-6e31850e: v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW) (May 12)
 - [x] wf-e399bd8d: Bake self-adversary-before-asking pattern into WogiFlow: AI must iterate Self-Refine + Reflexion up to 8 rounds reaching 95% confidence on implementation-class questions before asking user (user directive: don't compromise quality for tokens; challenge yourself) (May 11)

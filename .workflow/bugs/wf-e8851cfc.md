@@ -1,15 +1,30 @@
-# wf-e8851cfc: Architectural refactor: extract business logic from oversized entry files (stop.js 496 LOC, user-prompt-submit.js 293 LOC, session-start.js 387 LOC) into core/ per hook-three-layer.md (A-3 deferred follow-up to v2.31.1)
+# wf-e8851cfc: Architectural refactor: extract business logic from oversized entry files into core/ per hook-three-layer.md
 
 **Created**: 2026-05-11
-**Status**: Open
+**Status**: RESOLVED (superseded by wf-6e31850e / v2.31.1)
 **Severity**: Medium
 **Priority**: P1
-**Tags**: #bug
+**Tags**: #bug #resolved-by-other-work
 **Discovered From**: wf-6e31850e
 **Discovered During**: implementation
 
 ## Bug Summary
-[1-2 sentences: What is broken and what is the impact?]
+
+Entry hook files exceeded the 120-LOC budget per `.claude/rules/architecture/hook-three-layer.md`: stop.js 496, user-prompt-submit.js 293, session-start.js 387. This task was filed mid-session as a deferred follow-up when I proposed splitting A-3 out of the v2.31.1 patch.
+
+## Resolution
+
+**Superseded.** The user overruled the deferral ("Force A-3 in this patch"), so wf-6e31850e (v2.31.1) did the full extraction:
+- stop.js: 518 → 21 LOC
+- user-prompt-submit.js: 293 → 25 LOC
+- session-start.js: 387 → 54 LOC
+- 6 new core modules: stop-orchestrator, workspace-stop-notify, task-boundary-restart-coordinator, workspace-stop-gates, user-prompt-orchestrator, session-start-orchestrator
+
+All 3 entries are now within budget. This task has no remaining deliverable.
+
+- **Fixed in**: commits 7b813c4 + 8e9910a (v2.31.1)
+- **Root cause confirmed**: yes — entries grew organically; business logic should live in core/
+- **Tests added**: covered by wf-6e31850e's test runs (2773/2773 pass)
 
 ## Reproduction
 
