@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-12T07:46:59.736Z",
+  "lastUpdated": "2026-05-12T07:47:04.255Z",
   "inProgress": [
     {
       "id": "wf-7d92c6be",
@@ -11,19 +11,6 @@
       "created": "2026-05-01T09:03:32.443Z",
       "specPath": ".workflow/changes/wf-7d92c6be.md",
       "startedAt": "2026-05-01T09:15:32.403Z"
-    },
-    {
-      "id": "wf-740f47e4",
-      "title": "v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "medium",
-      "discoveredFrom": "wf-6e31850e",
-      "status": "in_progress",
-      "createdAt": "2026-05-11T20:18:48.325Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-740f47e4.md",
-      "startedAt": "2026-05-11T20:18:54.190Z",
-      "routedAt": "2026-05-11T20:18:54.190Z"
     }
   ],
   "ready": [
@@ -70,6 +57,20 @@
   ],
   "blocked": [],
   "recentlyCompleted": [
+    {
+      "id": "wf-740f47e4",
+      "title": "v2.31.2 patch: close 5 review findings from v2.31.1 post-patch review (L-1-RESIDUAL verdict-bypass, DOCS-DRIFT config defaults, NULL-CHECK, DUAL API, CRLF heredoc)",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "medium",
+      "discoveredFrom": "wf-6e31850e",
+      "status": "completed",
+      "createdAt": "2026-05-11T20:18:48.325Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-740f47e4.md",
+      "startedAt": "2026-05-11T20:18:54.190Z",
+      "routedAt": "2026-05-11T20:18:54.190Z",
+      "completedAt": "2026-05-12T07:47:04.254Z"
+    },
     {
       "id": "wf-6e31850e",
       "title": "v2.31.1 patch: close 16 review findings from 2026-05-11 post-session review (6 HIGH + 7 MED + 3 LOW)",
@@ -195,20 +196,6 @@
       "startedAt": "2026-05-11T07:45:52.577Z",
       "routedAt": "2026-05-11T07:45:52.577Z",
       "completedAt": "2026-05-11T07:48:38.467Z"
-    },
-    {
-      "id": "wf-f7d58760",
-      "title": "long-input-pending gate misfires on sub-agent task-notifications",
-      "type": "bug",
-      "priority": "P1",
-      "severity": "high",
-      "discoveredFrom": "wf-abcd1234",
-      "status": "completed",
-      "createdAt": "2026-05-11T07:21:54.647Z",
-      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-f7d58760.md",
-      "startedAt": "2026-05-11T07:42:47.700Z",
-      "routedAt": "2026-05-11T07:42:47.700Z",
-      "completedAt": "2026-05-11T07:45:47.189Z"
     }
   ],
   "backlog": [
