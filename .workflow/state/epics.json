@@ -102,8 +102,26 @@
       "progress": 0.25,
       "createdAt": "2026-04-24T15:20:26.864Z",
       "updatedAt": "2026-04-24T18:22:10.911Z"
+    },
+    "epic-quality-loop": {
+      "id": "epic-quality-loop",
+      "title": "Continuous Code-Quality Initiative",
+      "description": "Always-on quality infrastructure: scheduled audits/regression/PR-review (read-only-by-default), portable skill export, pluggable execution backends, and a data-driven gate-miss → rule-proposal loop. All net-additive, human-in-loop preserved at every decision boundary.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-b211a076",
+        "wf-0342fc33",
+        "wf-f251e94b",
+        "wf-1780240a"
+      ],
+      "features": [],
+      "status": "ready",
+      "progress": 0,
+      "createdAt": "2026-05-13T08:23:32.227Z",
+      "updatedAt": "2026-05-13T08:23:56.100Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-04-24T18:22:10.911Z"
+  "lastUpdated": "2026-05-13T08:23:56.101Z"
 }
