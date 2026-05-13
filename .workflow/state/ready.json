@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-13T09:01:15.374Z",
+  "lastUpdated": "2026-05-13T11:11:24.416Z",
   "inProgress": [],
   "ready": [
     {
@@ -41,26 +41,6 @@
       "created": "2026-05-01T09:03:32.443Z",
       "specPath": ".workflow/changes/wf-7d92c6be.md",
       "note": "Returned to ready 2026-05-12 — checkpoint was stale (pointed at v2.30.x changedFiles, no spec, 0 scenarios). Never genuinely started."
-    },
-    {
-      "id": "wf-b211a076",
-      "title": "Phase 1A — Scheduled / background mode (read-only-by-default)",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P1",
-      "created": "2026-05-13T08:23:39.196Z",
-      "specPath": ".workflow/changes/wf-b211a076.md"
-    },
-    {
-      "id": "wf-0342fc33",
-      "title": "Phase 1B — Skill export to agentskills.io v1 + Claude Code plugin format",
-      "type": "story",
-      "level": "L1",
-      "status": "ready",
-      "priority": "P2",
-      "created": "2026-05-13T08:23:39.319Z",
-      "specPath": ".workflow/changes/wf-0342fc33.md"
     }
   ],
   "blocked": [
@@ -88,6 +68,28 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-0342fc33",
+      "title": "Phase 1B — Skill export to agentskills.io v1 + Claude Code plugin format",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-05-13T08:23:39.319Z",
+      "specPath": ".workflow/changes/wf-0342fc33.md",
+      "completed": "2026-05-13T11:11:24.416Z"
+    },
+    {
+      "id": "wf-b211a076",
+      "title": "Phase 1A — Scheduled / background mode (read-only-by-default)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-13T08:23:39.196Z",
+      "specPath": ".workflow/changes/wf-b211a076.md",
+      "completed": "2026-05-13T11:11:24.416Z"
+    },
     {
       "id": "wf-cb951e91",
       "title": "Respond to Claude Code v2.1.139 changelog (compat doc + hook args exec form + PostToolUse continueOnBlock)",

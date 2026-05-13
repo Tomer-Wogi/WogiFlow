@@ -116,12 +116,12 @@
         "wf-1780240a"
       ],
       "features": [],
-      "status": "ready",
-      "progress": 0,
+      "status": "inProgress",
+      "progress": 0.5,
       "createdAt": "2026-05-13T08:23:32.227Z",
-      "updatedAt": "2026-05-13T08:23:56.100Z"
+      "updatedAt": "2026-05-13T11:11:24.571Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-05-13T08:23:56.101Z"
+  "lastUpdated": "2026-05-13T11:11:24.572Z"
 }
