@@ -392,3 +392,243 @@ describe('checkLongInputPendingGate', () => {
     assert.equal(lie.checkLongInputPendingGate('Skill', undefined).blocked, true);
   });
 });
+
+// ============================================================
+// 2026-05-13 deadlock fix — false-positive reduction
+// ============================================================
+
+describe('stripQuotedContent — strips pasted/quoted content', () => {
+  it('strips fenced code blocks', () => {
+    const text = [
+      'real instruction line one',
+      'real instruction line two',
+      '```',
+      'pasted code',
+      'more pasted code',
+      'even more pasted code',
+      '```',
+      'real instruction line three',
+    ].join('\n');
+    const stripped = lie.stripQuotedContent(text);
+    assert.ok(stripped.includes('real instruction line one'));
+    assert.ok(stripped.includes('real instruction line three'));
+    assert.ok(!stripped.includes('pasted code'));
+    assert.ok(!stripped.includes('more pasted code'));
+  });
+
+  it('strips Claude Code transcript bullet lines and continuations', () => {
+    const text = [
+      'my actual instruction',
+      '⏺ Some Claude bullet',
+      '  ⎿ tool result',
+      '  ⎿ continued',
+      'another actual instruction',
+    ].join('\n');
+    const stripped = lie.stripQuotedContent(text);
+    assert.ok(stripped.includes('my actual instruction'));
+    assert.ok(stripped.includes('another actual instruction'));
+    assert.ok(!stripped.includes('Some Claude bullet'));
+    assert.ok(!stripped.includes('tool result'));
+  });
+
+  it('strips markdown blockquotes', () => {
+    const text = 'instruction\n> quoted line\n> another quote\nmore instruction';
+    const stripped = lie.stripQuotedContent(text);
+    assert.ok(stripped.includes('instruction'));
+    assert.ok(stripped.includes('more instruction'));
+    assert.ok(!stripped.includes('quoted line'));
+  });
+
+  it('preserves indented markdown list items', () => {
+    const text = [
+      'do these things:',
+      '  - first',
+      '  - second',
+      '  - third',
+    ].join('\n');
+    const stripped = lie.stripQuotedContent(text);
+    assert.ok(stripped.includes('- first'));
+    assert.ok(stripped.includes('- second'));
+    assert.ok(stripped.includes('- third'));
+  });
+
+  it('handles non-string input gracefully', () => {
+    assert.equal(lie.stripQuotedContent(null), '');
+    assert.equal(lie.stripQuotedContent(undefined), '');
+    assert.equal(lie.stripQuotedContent(42), '');
+  });
+});
+
+describe('detectLongFormPrompt — pasted-content false positives', () => {
+  it('does NOT fire on short instruction + long pasted code block', () => {
+    const pasted = Array.from({ length: 50 }, (_, i) => `pasted line ${i}`).join('\n');
+    const text = `please address the long input problem\n\n\`\`\`\n${pasted}\n\`\`\``;
+    assert.equal(lie.detectLongFormPrompt(text), false);
+  });
+
+  it('does NOT fire on instruction + pasted Claude transcript', () => {
+    const transcript = Array.from({ length: 60 }, (_, i) =>
+      i % 3 === 0 ? `⏺ Claude bullet ${i}` : `  ⎿ tool result ${i}`
+    ).join('\n');
+    const text = `look at this transcript and fix the gate:\n${transcript}`;
+    assert.equal(lie.detectLongFormPrompt(text), false);
+  });
+
+  it('still fires on a genuine long user-typed work prompt', () => {
+    const realPrompt = Array.from({ length: 50 }, (_, i) =>
+      `${i + 1}. do real work item ${i + 1}`
+    ).join('\n');
+    assert.equal(lie.detectLongFormPrompt(realPrompt), true);
+  });
+});
+
+describe('isSkillBodyEcho — AI skill-args false positives', () => {
+  it('detects a typical wogi-start skill body echo', () => {
+    const text = `
+Start working on a task. Provide the task ID as argument.
+
+**UNIVERSAL ENTRY POINT**: Route everything through /wogi-start
+
+## Request Triage (AI-Driven Routing v5.0)
+
+When invoked with a quoted request instead of a task ID, assess intent.
+
+### Command Catalog
+| Command | When to use |
+|---|---|
+| /wogi-story | For story work |
+| /wogi-bug | For bug work |
+
+### Pre-Routing Checks (Automatic)
+Routing order: Task ID → Long input gate → Command Catalog → Plugin Registry
+
+## Mandatory Rules
+- TodoWrite: Track progress.
+- Self-verification: Don't mark done without checking.
+
+ARGUMENTS: {args}
+
+ARGUMENTS: Fix things and add things
+${' '.repeat(500)}
+`;
+    assert.equal(lie.isSkillBodyEcho(text), true);
+  });
+
+  it('does NOT match plain user prose', () => {
+    const text = 'I want to add a feature. Please implement it. ' +
+      'It should work like this. Here are the requirements. End of message. ' +
+      'Even if I write a few more sentences. Still just user prose. ' +
+      'No skill body markers should match this. Done.';
+    assert.equal(lie.isSkillBodyEcho(text), false);
+  });
+
+  it('requires at least 2 markers (not a single coincidental match)', () => {
+    const text = 'I have an idea: lets add a Command Catalog feature. ' +
+      'None of the other skill markers appear in this prompt. ' +
+      'So it should not match. ' + ' '.repeat(500);
+    assert.equal(lie.isSkillBodyEcho(text), false);
+  });
+
+  it('requires minimum length (rejects accidental short matches)', () => {
+    const text = '**UNIVERSAL ENTRY POINT** ## Mandatory Rules';
+    assert.equal(lie.isSkillBodyEcho(text), false);
+  });
+});
+
+describe('shouldForceExtractReview — skill-body-echo bypass', () => {
+  it('does NOT force extract-review on a skill-body echo', () => {
+    const text = `
+**UNIVERSAL ENTRY POINT**: Route everything through /wogi-start
+
+## Request Triage (AI-Driven Routing v5.0)
+Some triage content here.
+
+### Command Catalog
+A catalog goes here.
+
+### Pre-Routing Checks (Automatic)
+Routing order: Task ID → Long input gate → Command Catalog
+
+## Mandatory Rules
+Rules go here.
+
+ARGUMENTS: {args}
+
+ARGUMENTS: fix things and add things and create things and remove things
+${' '.repeat(600)}
+`;
+    const r = lie.shouldForceExtractReview({ text });
+    assert.equal(r.forced, false);
+    assert.equal(r.reason, 'skill-body-echo');
+  });
+
+  it('still forces on a genuine long-form work prompt', () => {
+    const text = 'Please fix all of this and add the following:\n' +
+      Array.from({ length: 60 }, (_, i) => `${i + 1}. add a new feature ${i + 1}`).join('\n');
+    const r = lie.shouldForceExtractReview({ text });
+    assert.equal(r.forced, true);
+  });
+});
+
+describe('checkLongInputPendingGate — emergency rm escape hatch', () => {
+  it('allows `rm .workflow/state/long-input-pending.json` (bare form)', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const r = lie.checkLongInputPendingGate('Bash', {
+      command: 'rm .workflow/state/long-input-pending.json'
+    });
+    assert.equal(r.blocked, false, 'manual rm of the marker must be allowed');
+  });
+
+  it('allows `rm -f .workflow/state/long-input-pending.json`', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const r = lie.checkLongInputPendingGate('Bash', {
+      command: 'rm -f .workflow/state/long-input-pending.json'
+    });
+    assert.equal(r.blocked, false, 'rm -f variant must be allowed');
+  });
+
+  it('allows `fs.unlinkSync` node-script equivalent', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const r = lie.checkLongInputPendingGate('Bash', {
+      command: 'node -e "require(\'fs\').unlinkSync(\'.workflow/state/long-input-pending.json\')"'
+    });
+    assert.equal(r.blocked, false, 'fs.unlinkSync escape must be allowed');
+  });
+
+  it('does NOT allow `rm` of OTHER paths', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const r = lie.checkLongInputPendingGate('Bash', {
+      command: 'rm -rf .workflow/state/'
+    });
+    assert.equal(r.blocked, true, 'rm of other paths must still be blocked');
+  });
+
+  it('does NOT allow compound `rm` with appended destructive commands', () => {
+    lie.markLongInputPending({ level: 'force', reason: 'test' });
+    const r = lie.checkLongInputPendingGate('Bash', {
+      command: 'rm .workflow/state/long-input-pending.json && rm -rf /'
+    });
+    assert.equal(r.blocked, true, 'compound rm command must be blocked');
+  });
+});
+
+describe('hasTaskSignals — pasted-imperative false positives', () => {
+  it('does NOT count imperatives inside pasted fenced code blocks', () => {
+    const text = `please look at this:
+\`\`\`
+fix the bug
+add a feature
+remove the dead code
+refactor the helper
+implement the thing
+\`\`\`
+that's all.`;
+    assert.equal(lie.hasTaskSignals(text), false,
+      'imperatives inside fenced code should not count as task signals');
+  });
+
+  it('still counts imperatives in the user\'s own prose', () => {
+    const text = 'please fix the bug and add a new feature, then remove the dead code.';
+    assert.equal(lie.hasTaskSignals(text), true);
+  });
+});
