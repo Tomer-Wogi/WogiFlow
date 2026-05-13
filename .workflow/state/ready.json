@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-13T11:11:24.416Z",
+  "lastUpdated": "2026-05-13T12:49:45.678Z",
   "inProgress": [],
   "ready": [
     {
@@ -41,20 +41,19 @@
       "created": "2026-05-01T09:03:32.443Z",
       "specPath": ".workflow/changes/wf-7d92c6be.md",
       "note": "Returned to ready 2026-05-12 — checkpoint was stale (pointed at v2.30.x changedFiles, no spec, 0 scenarios). Never genuinely started."
-    }
-  ],
-  "blocked": [
+    },
     {
       "id": "wf-f251e94b",
       "title": "Phase 2 — Pluggable execution backends (Local + Docker driver)",
       "type": "story",
       "level": "L1",
-      "status": "blocked",
+      "status": "ready",
       "priority": "P2",
       "created": "2026-05-13T08:23:39.442Z",
-      "specPath": ".workflow/changes/wf-f251e94b.md",
-      "blockedReason": "Depends on Phase 1A (wf-b211a076) landing — Docker backend needs the scheduled-mode workflow to consume it."
-    },
+      "specPath": ".workflow/changes/wf-f251e94b.md"
+    }
+  ],
+  "blocked": [
     {
       "id": "wf-1780240a",
       "title": "Phase 3 — Offline harness-suggest (gate-miss → rule-proposal loop)",
