@@ -153,25 +153,68 @@ function rotateBackupBranches(keep) {
 }
 
 /**
- * Auto-stash current changes.
- * @returns {boolean} True if stash was created.
+ * Auto-stash current changes with verification.
+ *
+ * Returns a discriminated result so callers can distinguish:
+ *   - `no-changes` — working tree was clean; nothing to stash. Safe to proceed.
+ *   - `stashed`    — stash created AND verified present at stash@{0}. Safe to proceed.
+ *   - `failed`     — something went wrong (git error, lock contention, or stash
+ *                    silently no-op'd). Caller MUST NOT proceed with destructive
+ *                    operations — the user's uncommitted work is still in the
+ *                    working tree and would be lost.
+ *
+ * Historically (pre wf-2d3d09b8) this returned a bare boolean, which collapsed
+ * `no-changes` and `failed` into the same `false`. Callers couldn't tell the
+ * difference, so a stash failure on a dirty working tree was indistinguishable
+ * from a no-op on a clean one — and the discard-all branch let the destructive
+ * `git checkout .` / `git restore .` through either way. This was BUG-1.
+ *
+ * @param {Object} [opts]
+ * @param {Function} [opts.exec] - execSync replacement for testing (string cmd → string stdout, throws on error).
+ * @returns {{ status: 'no-changes' | 'stashed' | 'failed', error?: string, stashRef?: string }}
  */
-function autoStash() {
-  const { execSync } = require('node:child_process');
-  try {
-    const status = execSync('git status --porcelain', {
-      encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe']
-    }).trim();
-    if (!status) return false; // Nothing to stash
+function autoStash(opts = {}) {
+  const exec = opts.exec || require('node:child_process').execSync;
+  const runOpts = { encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe'] };
 
-    const timestamp = new Date().toISOString().slice(0, 19);
-    execSync(`git stash push -m "auto-backup-${timestamp}"`, {
-      encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe']
-    });
-    return true;
-  } catch (_err) {
-    return false;
+  // 1. Anything to stash?
+  let status;
+  try {
+    status = exec('git status --porcelain', runOpts).trim();
+  } catch (err) {
+    return { status: 'failed', error: `git status failed: ${err.message || err}` };
   }
+  if (!status) return { status: 'no-changes' };
+
+  // 2. Attempt the stash.
+  const timestamp = new Date().toISOString().slice(0, 19);
+  const stashMessage = `auto-backup-${timestamp}`;
+  try {
+    exec(`git stash push -m "${stashMessage}"`, runOpts);
+  } catch (err) {
+    return { status: 'failed', error: `git stash push failed: ${err.message || err}` };
+  }
+
+  // 3. VERIFY the stash actually saved (BUG-1 / wf-2d3d09b8). A zero exit code
+  //    from `git stash push` is NOT proof: lock contention, broken hooks, or
+  //    edge cases can leave the working tree unchanged with status 0. Confirm
+  //    by reading `git stash list` and matching our timestamped message at
+  //    stash@{0}.
+  let stashList;
+  try {
+    stashList = exec('git stash list', runOpts);
+  } catch (err) {
+    return { status: 'failed', error: `stash verification (git stash list) failed: ${err.message || err}` };
+  }
+  const firstLine = (stashList || '').split('\n')[0] || '';
+  if (!firstLine.includes(stashMessage)) {
+    return {
+      status: 'failed',
+      error: `stash verification failed: expected "${stashMessage}" at stash@{0}, found: ${firstLine || '(empty)'}`
+    };
+  }
+
+  return { status: 'stashed', stashRef: 'stash@{0}' };
 }
 
 // ============================================================
@@ -230,9 +273,13 @@ function parseGitCommand(command) {
  * Check git safety for Bash commands (PreToolUse).
  * @param {string} command - Bash command
  * @param {Object} [config]
- * @returns {{ allowed: boolean, blocked: boolean, reason?: string, message?: string, autoAction?: string }}
+ * @param {Object} [_deps] - Dependency injection seam (test-only).
+ * @param {Function} [_deps.autoStash] - Override the autoStash helper (test-only).
+ * @returns {{ allowed: boolean, blocked: boolean, reason?: string, message?: string, autoAction?: string, warning?: boolean }}
  */
-function checkGitSafety(command, config) {
+function checkGitSafety(command, config, _deps) {
+  const autoStashFn = (_deps && _deps.autoStash) || autoStash;
+
   if (!isGitSafetyEnabled(config)) {
     return { allowed: true, blocked: false };
   }
@@ -253,16 +300,41 @@ function checkGitSafety(command, config) {
   // Handle: git checkout . / git restore .
   if (parsed.type === 'discard-all') {
     if (gitConfig.autoBackup) {
-      const stashed = autoStash();
+      const stashResult = autoStashFn();
+
+      // BUG-1 / wf-2d3d09b8: previously this branch returned `allowed:true`
+      // unconditionally — letting the destructive `git checkout .` /
+      // `git restore .` proceed even when the auto-backup stash silently
+      // failed, which destroyed the user's uncommitted work. Now we block on
+      // stash failure so the user can recover their work manually first.
+      if (stashResult && stashResult.status === 'failed') {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: 'git-safety-stash-failed',
+          message:
+            `GIT SAFETY NET: Auto-backup stash FAILED.\n\n` +
+            `${stashResult.error || 'Unknown stash failure.'}\n\n` +
+            `Refusing to proceed with the discard operation — your uncommitted ` +
+            `work would be lost with no recovery path.\n\n` +
+            `Recover with one of:\n` +
+            `  - Commit your work first:    git add -A && git commit -m "WIP"\n` +
+            `  - Stash manually + verify:   git stash push -u -m "manual"; git stash list\n` +
+            `  - Checkpoint to a branch:    git checkout -b backup-WIP && git add -A && git commit -m "snapshot"\n\n` +
+            `Then re-run the discard command.`
+        };
+      }
+
+      const stashed = stashResult && stashResult.status === 'stashed';
       const stashMsg = stashed
-        ? 'Auto-stashed your changes before executing. Recover with: git stash pop'
+        ? `Auto-stashed your changes (${stashResult.stashRef}). Recover with: git stash pop`
         : 'No uncommitted changes to stash.';
 
       return {
         allowed: true,
         blocked: false,
         warning: true,
-        autoAction: 'stash',
+        autoAction: stashed ? 'stash' : 'no-op',
         message: `GIT SAFETY NET: ${stashMsg}\n\nProceeding with discard operation.`
       };
     }

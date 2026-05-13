@@ -27,6 +27,7 @@ const {
   getCommitDistance,
   getCommitAgeHours,
   getAffectedFileCount,
+  autoStash,
 } = require('../scripts/hooks/core/git-safety-gate');
 
 // ============================================================
@@ -291,5 +292,153 @@ describe('checkGitSafety — discard-all with autoBackup disabled', () => {
     const r = checkGitSafety('git checkout .', config);
     assert.equal(r.allowed, true);
     assert.equal(r.blocked, false);
+  });
+});
+
+// ============================================================
+// BUG-1 / wf-2d3d09b8 — auto-backup stash data-loss hazard
+//
+// Regression coverage for: a stash failure on a dirty working tree must NOT
+// be silently treated as success. Pre-fix, autoStash() returned a bare boolean
+// and collapsed "nothing to stash" and "stash threw an error" into the same
+// `false`, so the discard-all branch returned `allowed:true` either way and
+// `git checkout .` proceeded to destroy the user's uncommitted work.
+// ============================================================
+
+describe('autoStash — BUG-1 contract', () => {
+  it('returns {status:"no-changes"} when working tree is clean', () => {
+    const calls = [];
+    const exec = (cmd) => {
+      calls.push(cmd);
+      if (cmd === 'git status --porcelain') return '';
+      throw new Error(`unexpected exec: ${cmd}`);
+    };
+    const r = autoStash({ exec });
+    assert.equal(r.status, 'no-changes');
+    assert.deepEqual(calls, ['git status --porcelain']);
+  });
+
+  it('returns {status:"stashed"} on happy path with verification', () => {
+    const calls = [];
+    let lastStashMessage = null;
+    const exec = (cmd) => {
+      calls.push(cmd);
+      if (cmd === 'git status --porcelain') return ' M foo.js\n';
+      if (cmd.startsWith('git stash push -m')) {
+        // Capture the timestamped message the production code generated, so the
+        // verification step finds it. Mirrors what real `git stash list` returns.
+        const m = cmd.match(/-m\s+"([^"]+)"/);
+        lastStashMessage = m ? m[1] : null;
+        return '';
+      }
+      if (cmd === 'git stash list') {
+        return `stash@{0}: On master: ${lastStashMessage}\nstash@{1}: On master: older\n`;
+      }
+      throw new Error(`unexpected exec: ${cmd}`);
+    };
+    const r = autoStash({ exec });
+    assert.equal(r.status, 'stashed');
+    assert.equal(r.stashRef, 'stash@{0}');
+    // status check + stash push + list verification all ran
+    assert.equal(calls.length, 3);
+    assert.equal(calls[0], 'git status --porcelain');
+    assert.ok(calls[1].startsWith('git stash push -m "auto-backup-'));
+    assert.equal(calls[2], 'git stash list');
+  });
+
+  it('returns {status:"failed"} when git stash push throws (the core BUG-1 path)', () => {
+    const exec = (cmd) => {
+      if (cmd === 'git status --porcelain') return ' M user-work.js\n';
+      if (cmd.startsWith('git stash push')) {
+        const err = new Error("error: Your local changes to the following files would be overwritten by stash");
+        throw err;
+      }
+      throw new Error(`unexpected exec: ${cmd}`);
+    };
+    const r = autoStash({ exec });
+    assert.equal(r.status, 'failed');
+    assert.match(r.error, /git stash push failed/);
+  });
+
+  it('returns {status:"failed"} when stash succeeds (exit 0) but verification cannot find it', () => {
+    // Edge case: `git stash push` returns 0 yet leaves the working tree
+    // unchanged. The verification step is the defense-in-depth that catches
+    // this — without it, the discard-all branch would still see "success"
+    // and proceed to destroy work.
+    const exec = (cmd) => {
+      if (cmd === 'git status --porcelain') return ' M user-work.js\n';
+      if (cmd.startsWith('git stash push')) return ''; // pretend success
+      if (cmd === 'git stash list') return ''; // but no stash was actually saved
+      throw new Error(`unexpected exec: ${cmd}`);
+    };
+    const r = autoStash({ exec });
+    assert.equal(r.status, 'failed');
+    assert.match(r.error, /verification failed/);
+  });
+
+  it('returns {status:"failed"} when git status itself errors (e.g., lock contention)', () => {
+    const exec = (cmd) => {
+      if (cmd === 'git status --porcelain') {
+        throw new Error("fatal: Unable to create '.git/index.lock': File exists.");
+      }
+      throw new Error(`unexpected exec: ${cmd}`);
+    };
+    const r = autoStash({ exec });
+    assert.equal(r.status, 'failed');
+    assert.match(r.error, /git status failed/);
+  });
+});
+
+describe('checkGitSafety — BUG-1 / wf-2d3d09b8: blocks discard-all on stash failure', () => {
+  it('BLOCKS git checkout . when autoBackup stash fails (was data-loss bug)', () => {
+    const mockStashFailed = () => ({
+      status: 'failed',
+      error: 'git stash push failed: simulated lock contention'
+    });
+    const r = checkGitSafety('git checkout .', {}, { autoStash: mockStashFailed });
+    // The core regression assertion: when stash fails, command must NOT be allowed.
+    assert.equal(r.allowed, false, 'discard-all MUST be blocked on stash failure');
+    assert.equal(r.blocked, true);
+    assert.equal(r.reason, 'git-safety-stash-failed');
+    assert.match(r.message, /Auto-backup stash FAILED/);
+    assert.match(r.message, /simulated lock contention/);
+    assert.match(r.message, /Refusing to proceed/);
+  });
+
+  it('BLOCKS git restore . when autoBackup stash fails', () => {
+    const mockStashFailed = () => ({ status: 'failed', error: 'stash verification failed' });
+    const r = checkGitSafety('git restore .', {}, { autoStash: mockStashFailed });
+    assert.equal(r.allowed, false);
+    assert.equal(r.blocked, true);
+    assert.equal(r.reason, 'git-safety-stash-failed');
+  });
+
+  it('ALLOWS git checkout . when stash succeeds (happy path)', () => {
+    const mockStashed = () => ({ status: 'stashed', stashRef: 'stash@{0}' });
+    const r = checkGitSafety('git checkout .', {}, { autoStash: mockStashed });
+    assert.equal(r.allowed, true);
+    assert.equal(r.blocked, false);
+    assert.equal(r.autoAction, 'stash');
+    assert.match(r.message, /Auto-stashed your changes \(stash@\{0\}\)/);
+  });
+
+  it('ALLOWS git checkout . when working tree is clean (no-op path)', () => {
+    const mockNoChanges = () => ({ status: 'no-changes' });
+    const r = checkGitSafety('git checkout .', {}, { autoStash: mockNoChanges });
+    assert.equal(r.allowed, true);
+    assert.equal(r.blocked, false);
+    assert.equal(r.autoAction, 'no-op');
+    assert.match(r.message, /No uncommitted changes/);
+  });
+
+  it('NEVER runs the destructive command if stash failed — invariant property test', () => {
+    // The fundamental property: for every "failed" stash result, no `allowed:true`
+    // can be returned from the discard-all branch. Probe both verbs.
+    const mockStashFailed = () => ({ status: 'failed', error: 'fuzz' });
+    for (const cmd of ['git checkout .', 'git checkout -- .', 'git restore .', 'git restore --staged .']) {
+      const r = checkGitSafety(cmd, {}, { autoStash: mockStashFailed });
+      assert.equal(r.allowed, false, `${cmd} must be blocked on stash failure`);
+      assert.equal(r.blocked, true, `${cmd} must be blocked on stash failure`);
+    }
   });
 });
