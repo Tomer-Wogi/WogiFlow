@@ -59,7 +59,7 @@
       "flagUnverified": false,
       "status": "fixed",
       "fixedAt": "2026-05-13T16:38:11.583Z",
-      "fixCommit": "pending",
+      "fixCommit": "94cf5b9",
       "evidenceTierOfFix": 3
     },
     {
@@ -79,7 +79,7 @@
       "flagUnverified": false,
       "status": "fixed",
       "fixedAt": "2026-05-13T16:38:11.584Z",
-      "fixCommit": "pending",
+      "fixCommit": "94cf5b9",
       "evidenceTierOfFix": 3
     },
     {
@@ -99,7 +99,7 @@
       "flagUnverified": false,
       "status": "fixed",
       "fixedAt": "2026-05-13T16:38:11.584Z",
-      "fixCommit": "pending",
+      "fixCommit": "94cf5b9",
       "evidenceTierOfFix": 3
     },
     {
@@ -119,7 +119,7 @@
       "flagUnverified": false,
       "status": "fixed",
       "fixedAt": "2026-05-13T16:38:11.584Z",
-      "fixCommit": "pending",
+      "fixCommit": "94cf5b9",
       "evidenceTierOfFix": 3
     },
     {

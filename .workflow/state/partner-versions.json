@@ -1,8 +1,9 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.32.0",
-    "repo": "wogi-flow"
+    "version": "2.33.0",
+    "repo": "wogi-flow",
+    "releasedAt": "2026-05-13T16:58:30.097Z"
   },
   "partners": {
     "wogiflow-cloud-server": {
