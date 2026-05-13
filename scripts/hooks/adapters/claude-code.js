@@ -672,9 +672,20 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
     // with zero validation benefit. This was causing unnecessary token consumption
     // in target projects where generateConfig() produces the settings.
     if (rules.validation?.enabled !== false) {
+      const postToolUseEntry = hookEntry('PostToolUse', 'post-tool-use.js', HOOK_TIMEOUTS.POST_TOOL_USE);
+      // continueOnBlock (Claude Code 2.1.139+): when the PostToolUse hook returns a
+      // blocking decision (lint/typecheck failure after an Edit/Write — see
+      // transformPostToolUse → decision: 'block'), feed the reason back to Claude and
+      // continue the turn so it fixes the error in-loop instead of dead-ending. This is
+      // what CLAUDE.md's "validate after EVERY file edit" rule needs. Unknown field on
+      // older Claude Code → silently ignored, so it is safe to emit unconditionally.
+      // Only meaningful for the local 'command' transport.
+      if (postToolUseEntry.type === 'command') {
+        postToolUseEntry.continueOnBlock = true;
+      }
       hooks.PostToolUse = [{
         matcher: 'Edit|Write|Bash',
-        hooks: [hookEntry('PostToolUse', 'post-tool-use.js', HOOK_TIMEOUTS.POST_TOOL_USE)]
+        hooks: [postToolUseEntry]
       }];
     }
 

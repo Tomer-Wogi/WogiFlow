@@ -41,7 +41,8 @@
           {
             "type": "command",
             "command": "node scripts/hooks/entry/claude-code/post-tool-use.js",
-            "timeout": 60
+            "timeout": 60,
+            "continueOnBlock": true
           }
         ]
       }
