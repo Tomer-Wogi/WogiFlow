@@ -229,6 +229,22 @@ function main() {
     return;
   }
 
+  if (command === 'schedule') {
+    // Scheduled-mode unit installer (Phase 1A — wf-b211a076).
+    // Lightweight wrapper; the actual logic lives in scripts/flow-schedule.js
+    // so it can be unit-tested without spawning the CLI.
+    try {
+      const schedule = require('../scripts/flow-schedule');
+      const result = schedule.dispatch(args.slice(1));
+      if (result.output) console.log(result.output);
+      process.exit(result.ok ? 0 : 1);
+    } catch (err) {
+      console.error(`Schedule error: ${err.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
   // For all other commands, try to find project context
   const projectRoot = findProjectRoot();
 

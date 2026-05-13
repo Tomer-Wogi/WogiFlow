@@ -1242,6 +1242,26 @@ const CONFIG_DEFAULTS = {
     }
   },
 
+  // --- Scheduled / Background Mode (Phase 1A — wf-b211a076) ---
+  // Default OFF; enable per-project via `.workflow/config.json`.
+  // Headless runner at `scripts/flow-scheduled-runner.js`; GH workflow at
+  // `.github/workflows/wogi-scheduled.yml`. CLI installer: `flow schedule install`.
+  // Hard invariants (also enforced by the runner): operates only on the default
+  // branch in a temp worktree; never `git push origin master`, never
+  // `gh pr merge`, never writes to `.workflow/state/decisions.md`.
+  scheduledMode: {
+    enabled: false,
+    dailyTokenBudget: 5000000,
+    perJobModel: {
+      'nightly-regression': 'haiku',
+      'weekly-audit': 'sonnet',
+      'weekly-digest': 'sonnet',
+      'per-pr-review': 'opus'
+    },
+    dryRun: false,
+    jobs: ['nightly-regression', 'weekly-audit', 'weekly-digest', 'per-pr-review']
+  },
+
   // --- Workflow Steps ---
   workflowSteps: WORKFLOW_STEP_DEFAULTS
 };

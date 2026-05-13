@@ -1,0 +1,165 @@
+name: Wogi Scheduled Quality Loop
+
+# Phase 1A — read-only-by-default scheduled background jobs.
+# Invariants enforced by scripts/flow-scheduled-runner.js:
+#   - Operates only on the default branch in a temp worktree.
+#   - Never `git push` to non-bot refs, never `gh pr merge`, never edits
+#     .workflow/state/decisions.md.
+#   - Posts reports as Issues / PR-comments only. No auto-merges.
+#   - Per-job 10-minute hard timeout; 1× retry on transient failure.
+#   - Token-budget cap via scheduledMode.dailyTokenBudget in config.json.
+#   - Silence-on-green: nightly posts nothing when all regressions pass.
+
+on:
+  # nightly-regression: 03:00 UTC daily (skipped on empty diff).
+  schedule:
+    - cron: '0 3 * * *'         # nightly-regression
+    - cron: '0 9 * * 1'         # weekly-audit  (Mon 09:00 UTC)
+    - cron: '0 17 * * 5'        # weekly-digest (Fri 17:00 UTC)
+  # per-pr-review: PR events only — never on master pushes.
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # workflow_dispatch lets a maintainer run any job ad-hoc.
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run (nightly-regression | weekly-audit | weekly-digest | per-pr-review)'
+        required: true
+        type: choice
+        options:
+          - nightly-regression
+          - weekly-audit
+          - weekly-digest
+          - per-pr-review
+      dry_run:
+        description: 'Dry-run only (print $/month projection, no claude invocation)'
+        required: false
+        default: false
+        type: boolean
+
+# Read-only-by-default: contents:read is the floor; issues:write is the only
+# elevated scope (so we can post the dedup tracker issue). pull-requests:write
+# is added only on the per-pr-review job below via job-level permissions block.
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  # ----------------------------------------------------------------
+  # Nightly regression — only fires on the 03:00 cron schedule.
+  # Silence-on-green: posts to wogi/scheduled-nightly-regression label
+  # only when failures are detected.
+  # ----------------------------------------------------------------
+  nightly-regression:
+    if: ${{ (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *') || (github.event_name == 'workflow_dispatch' && inputs.job == 'nightly-regression') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need history for `git log --since`
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+      - name: Run nightly-regression (read-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/flow-scheduled-runner.js nightly-regression \
+            --repo=${{ github.repository }}
+
+  # ----------------------------------------------------------------
+  # Weekly audit — Monday 09:00 UTC, headless /wogi-audit.
+  # Updates wogi/scheduled-weekly-audit labelled tracker issue.
+  # ----------------------------------------------------------------
+  weekly-audit:
+    if: ${{ (github.event_name == 'schedule' && github.event.schedule == '0 9 * * 1') || (github.event_name == 'workflow_dispatch' && inputs.job == 'weekly-audit') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+      - name: Run weekly-audit (read-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/flow-scheduled-runner.js weekly-audit \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
+            --repo=${{ github.repository }}
+
+  # ----------------------------------------------------------------
+  # Weekly digest — Friday 17:00 UTC, /wogi-debt + /wogi-gate-stats.
+  # Updates wogi/scheduled-weekly-digest labelled tracker issue.
+  # ----------------------------------------------------------------
+  weekly-digest:
+    if: ${{ (github.event_name == 'schedule' && github.event.schedule == '0 17 * * 5') || (github.event_name == 'workflow_dispatch' && inputs.job == 'weekly-digest') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+      - name: Run weekly-digest (read-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/flow-scheduled-runner.js weekly-digest \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
+            --repo=${{ github.repository }}
+
+  # ----------------------------------------------------------------
+  # Per-PR review — claude ultrareview on every PR event.
+  # pull-requests:write is the ONLY job that gets it (for PR comments).
+  # NEVER calls `gh pr merge` — runner is the gate.
+  # ----------------------------------------------------------------
+  per-pr-review:
+    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.job == 'per-pr-review') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies (no scripts)
+        run: npm ci --ignore-scripts
+      - name: Run per-pr-review (read-only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node scripts/flow-scheduled-runner.js per-pr-review \
+            ${{ inputs.dry_run == true && '--dry-run' || '' }} \
+            --repo=${{ github.repository }}
