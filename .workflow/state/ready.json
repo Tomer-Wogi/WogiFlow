@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-13T12:49:45.678Z",
+  "lastUpdated": "2026-05-13T16:38:11.648Z",
   "inProgress": [],
   "ready": [
     {
@@ -67,6 +67,18 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-3dfbadb7",
+      "title": "Fix 4 HIGH review findings from R-379 (scheduled-mode + workflow security)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P0",
+      "created": "2026-05-13T16:31:26.952Z",
+      "specPath": ".workflow/changes/wf-3dfbadb7.md",
+      "startedAt": "2026-05-13T16:31:35.656Z",
+      "completed": "2026-05-13T16:38:11.647Z"
+    },
     {
       "id": "wf-0342fc33",
       "title": "Phase 1B — Skill export to agentskills.io v1 + Claude Code plugin format",

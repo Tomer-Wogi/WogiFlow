@@ -137,7 +137,20 @@ jobs:
   # NEVER calls `gh pr merge` — runner is the gate.
   # ----------------------------------------------------------------
   per-pr-review:
-    if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.job == 'per-pr-review') }}
+    # SECURITY (F1 / R-379): only run on same-repo PRs, NEVER on fork PRs.
+    # We check out the PR's head SHA (the PR's code) AND set ANTHROPIC_API_KEY
+    # in env in the same step. If we ran on fork PRs, a fork contributor could
+    # edit scripts/flow-scheduled-runner.js in their PR and exfiltrate the key.
+    # The same-repo guard makes secret-handling safe; the alternative would be
+    # `pull_request_target` + base-branch checkout, which trades the security
+    # gain for losing the ability to actually review the PR's diff.
+    if: >-
+      ${{
+        (github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository) ||
+        (github.event_name == 'workflow_dispatch' &&
+          inputs.job == 'per-pr-review')
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

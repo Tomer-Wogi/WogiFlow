@@ -461,3 +461,85 @@ describe('usage log', () => {
     }
   });
 });
+
+// ============================================================
+// R-379 fixes — regression coverage for the 4 HIGH findings
+// ============================================================
+
+describe('R-379 / F2 — runner hard-errors on worktree creation failure', () => {
+  it('main() returns non-zero when runInWorktree throws (no silent fallback)', async () => {
+    const failingRunInWorktree = async () => {
+      throw new Error('simulated worktree creation failure');
+    };
+    // Need scheduledMode.enabled=true to reach the worktree wrap; otherwise
+    // main() short-circuits at the "feature disabled" early-return.
+    const mockConfig = {
+      scheduledMode: {
+        enabled: true,
+        dailyTokenBudget: 5_000_000,
+        perJobModel: { 'weekly-digest': 'sonnet' },
+        dryRun: false,
+        jobs: ['weekly-digest'],
+      },
+    };
+    const exitCode = await runner.main(
+      ['weekly-digest'],
+      { runInWorktree: failingRunInWorktree, config: mockConfig }
+    );
+    assert.equal(exitCode, 1, 'main() must return 1 on worktree creation failure');
+  });
+});
+
+describe('R-379 / F3 — per-pr-review uses slash-command prompt form', () => {
+  it('source contains slash-command prompt "/ultrareview ${prNumber}"', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'scripts', 'flow-scheduled-runner.js'),
+      'utf8'
+    );
+    assert.match(
+      src,
+      /const prompt = `\/ultrareview \$\{prNumber\}`/,
+      'per-pr-review prompt must be slash-command form'
+    );
+    assert.doesNotMatch(
+      src,
+      /const prompt = `ultrareview \$\{prNumber\}`/,
+      'bare-text "ultrareview ${prNumber}" form must not exist'
+    );
+  });
+});
+
+describe('R-379 / F4 — ctx.estimatedTokens populated from DEFAULT_TOKENS_PER_INVOCATION', () => {
+  it('source uses DEFAULT_TOKENS_PER_INVOCATION; no hardcoded ctx-init zero', () => {
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'scripts', 'flow-scheduled-runner.js'),
+      'utf8'
+    );
+    assert.match(
+      src,
+      /estimatedTokens:\s*DEFAULT_TOKENS_PER_INVOCATION\[/,
+      'ctx.estimatedTokens must derive from DEFAULT_TOKENS_PER_INVOCATION'
+    );
+    const ctxInitWithZero = /estimatedTokens:\s*0,\n\s*timeoutMs/;
+    assert.doesNotMatch(
+      src,
+      ctxInitWithZero,
+      'hardcoded `estimatedTokens: 0` in ctx init must be removed'
+    );
+  });
+
+  it('enforceTokenBudget rejects when daily budget would be exceeded (integration)', () => {
+    const todayIso = '2026-05-13T12:00:00Z';
+    const dayKey = todayIso.slice(0, 10);
+    const log = { [dayKey]: { 'nightly-regression': 4_900_000 } };
+    const verdict = lib.enforceTokenBudget(
+      log,
+      5_000_000,
+      todayIso,
+      'weekly-audit',
+      lib.DEFAULT_TOKENS_PER_INVOCATION['weekly-audit']
+    );
+    assert.equal(verdict.allowed, false, 'budget enforcement must reject when over cap');
+    assert.match(verdict.reason || '', /budget/i, 'reason must mention budget');
+  });
+});

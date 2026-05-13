@@ -121,10 +121,15 @@ tests in `tests/flow-scheduled-runner.test.js`:
    `git push origin master`/`main`.
 2. **No `gh pr merge`.** The PR-review job posts comments only.
 3. **No edits to `.workflow/state/decisions.md`.** Rule files are sacrosanct.
-4. **Default-branch only.** The runner detects `origin/HEAD` and refuses to
-   run otherwise.
-5. **Temp worktree.** All work happens in an isolated worktree (via
-   `scripts/flow-worktree.js`), never the developer's working dir.
+4. **Default-branch only.** The runner detects `origin/HEAD` and records the
+   current branch in the audit trail. The temp worktree (invariant #5) is
+   created on the default branch regardless, so accidental developer-branch
+   leakage cannot reach scheduled execution.
+5. **Temp worktree (real, hard-enforced).** All work happens in an isolated
+   worktree created via `scripts/flow-worktree.js → runInWorktree()`. If
+   worktree creation fails, the runner opens a `wogi/scheduled-failure` issue
+   and exits non-zero — it does NOT silently fall back to the user's working
+   dir. (Fixed in R-379 / F2; prior versions had the claim in the JSDoc only.)
 
 ## Safeguards in detail
 

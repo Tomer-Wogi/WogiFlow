@@ -19,7 +19,9 @@
  *
  * Read-only-by-default invariants (HARD GATES — also enforced by tests):
  *   - Runs only on the default branch (origin/HEAD).
- *   - Operates in a temp worktree created via scripts/flow-worktree.js.
+ *   - Operates in a temp worktree created via scripts/flow-worktree.js
+ *     (real `runInWorktree` wrap as of R-379 fix; failure to create worktree
+ *     is a hard error — no silent fallback to the user's working dir).
  *   - Never `git push origin master` and never `gh pr merge`.
  *   - Never writes to .workflow/state/decisions.md.
  *
@@ -51,7 +53,10 @@ const {
   updateDedupIssue,
   validateModelName,
   isTransientError,
+  DEFAULT_TOKENS_PER_INVOCATION,
 } = require('../lib/scheduled-mode');
+
+const { runInWorktree } = require('./flow-worktree');
 
 const { PATHS, getConfig, safeJsonParse } = require('./flow-utils');
 
@@ -322,12 +327,14 @@ async function runClaudeHeadless(jobName, prompt, ctx) {
   }
 
   const r = execSafe('claude', ['-p', '--model', model, prompt], {
+    cwd: ctx.cwd,
     env: { ...process.env },
-    timeout: ctx.timeoutMs || DEFAULT_JOB_TIMEOUT_MS,
+    timeout: ctx.timeoutMs ?? DEFAULT_JOB_TIMEOUT_MS,
   });
 
-  // Record an estimate of token usage post-invocation.
-  recordUsage(jobName, ctx.estimatedTokens || 0);
+  // F4 / R-379: record the actual pre-flight estimate (not 0). Without this,
+  // enforceTokenBudget always sees 0 spent and the daily cap is a no-op.
+  recordUsage(jobName, ctx.estimatedTokens ?? 0);
 
   return {
     passed: r.ok,
@@ -373,7 +380,11 @@ async function runWeeklyDigest(ctx) {
 
 async function runPerPrReview(ctx) {
   const prNumber = process.env.PR_NUMBER || '0';
-  const prompt = `ultrareview ${prNumber}`;
+  // F3 / R-379: must be the slash-command form (/ultrareview …) so Claude Code
+  // routes it to the ultrareview skill. The bare-string form ("ultrareview 42")
+  // sends a literal text prompt that goes nowhere useful. Mirrors how
+  // runWeeklyAudit invokes "/wogi-audit" above.
+  const prompt = `/ultrareview ${prNumber}`;
   const result = await runClaudeHeadless('per-pr-review', prompt, ctx);
   // Per-PR review posts on the PR (gh pr comment) — handled by the GH workflow
   // step using the returned stdout. Runner doesn't auto-merge.
@@ -487,18 +498,58 @@ async function main(argv = process.argv.slice(2), deps = {}) {
     console.log(`scheduled-runner: cleared ${cleared.cleared.join(', ')}`);
   }
 
-  // --- Execute the job (with timeout + retry) ---
-  const ctx = {
+  // --- Execute the job (with timeout + retry, in a temp worktree) ---
+  // F2 / R-379: the runner MUST operate in a temp worktree on the default
+  // branch — never touch the user's working dir. Failure to create the worktree
+  // is a hard error (no silent fallback); the invariant matters even if Claude
+  // never writes to disk, because regression scripts and tests do.
+  // F4 / R-379: ctx.estimatedTokens now carries the real per-job estimate so
+  // enforceTokenBudget can actually do its job.
+  const buildCtx = (worktreeCwd) => ({
     profile,
-    cwd,
+    cwd: worktreeCwd ?? cwd,
     repo: args.repo,
     defaultBranch,
     currentBranch,
-    estimatedTokens: 0,
+    estimatedTokens: DEFAULT_TOKENS_PER_INVOCATION[args.job] ?? 0,
     timeoutMs: DEFAULT_JOB_TIMEOUT_MS,
+  });
+
+  const worktreeOpts = {
+    taskId: `scheduled-${args.job}-${Date.now()}`,
+    baseBranch: defaultBranch,
+    cwd,
   };
 
-  const verdict = await runJobWithRetry(args.job, ctx);
+  let worktreeWrap;
+  try {
+    worktreeWrap = await (deps.runInWorktree || runInWorktree)(
+      worktreeOpts,
+      async (worktreePath) => runJobWithRetry(args.job, buildCtx(worktreePath)),
+    );
+  } catch (err) {
+    // Hard-error: refuse to silently fall back to the user's working directory.
+    openFailureIssue(
+      args.job,
+      `Worktree creation failed; refusing to run on the user's working tree (read-only invariant).`,
+      String(err && err.message ? err.message : err),
+      args.repo,
+    );
+    return 1;
+  }
+
+  if (!worktreeWrap.success) {
+    // Worktree was created but the wrapped job threw; report and exit.
+    openFailureIssue(
+      args.job,
+      `Job threw inside the temp worktree.`,
+      String(worktreeWrap.error || '(no error message)'),
+      args.repo,
+    );
+    return 1;
+  }
+
+  const verdict = worktreeWrap.result;
   if (!verdict.ok) {
     const stderr =
       (verdict.error && verdict.error.stderr) ||
@@ -507,7 +558,7 @@ async function main(argv = process.argv.slice(2), deps = {}) {
     if (verdict.timedOut) {
       openFailureIssue(
         args.job,
-        `Job exceeded ${ctx.timeoutMs}ms hard timeout.`,
+        `Job exceeded ${DEFAULT_JOB_TIMEOUT_MS}ms hard timeout.`,
         stderr,
         args.repo,
       );
@@ -548,6 +599,9 @@ module.exports = {
   runOnce,
   runJobWithRetry,
   assertReadOnlyEnv,
+  // Exported for R-379 fix tests:
+  runPerPrReview,
+  JOB_HANDLERS,
 };
 
 if (require.main === module) {
