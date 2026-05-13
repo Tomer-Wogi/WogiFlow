@@ -123,6 +123,7 @@ show_help() {
     echo "  skill remove <name>  Remove installed skill"
     echo "  skill update [name]  Update skill(s)"
     echo "  skill info <name>    Show skill details"
+    echo "  skill export <name>  Export portable skill (agentskills@v1 | claude-plugin)"
     echo "  correct              Capture a correction/learning"
     echo "  correct \"desc\"       Quick mode with description"
     echo "  correct list         List recent corrections"
@@ -696,6 +697,10 @@ case "${1:-}" in
                 # List skills from registry
                 node -e "require('$SCRIPT_DIR/../lib/skill-registry').skill(['list'])"
                 ;;
+            export)
+                # Phase 1B (wf-0342fc33): portable skill export to agentskills.io / claude-plugin formats
+                node "$SCRIPT_DIR/flow-skill-export.js" "${@:3}"
+                ;;
             propose|patch|promote|reject|archive|pending)
                 # Agent proposal CLI (staged, user-approved at session-end)
                 node "$SCRIPT_DIR/flow-skill-manage.js" "${@:2}"
@@ -714,6 +719,9 @@ case "${1:-}" in
                 echo "  remove <name>       Remove installed skill (or stage proposal with --name)"
                 echo "  update [name]       Update skill(s)"
                 echo "  info <name>         Show skill details"
+                echo ""
+                echo "Portable Export (Phase 1B):"
+                echo "  export <name> [--format=agentskills@v1|claude-plugin] [--out=<dir>]"
                 echo ""
                 echo "Agent Proposals (staged, user-approved at session-end):"
                 echo "  propose --name <n> --content <f>  Stage new skill"

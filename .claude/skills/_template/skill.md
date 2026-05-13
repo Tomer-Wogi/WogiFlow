@@ -9,6 +9,7 @@ agent: developer
 memory: project
 license: MIT
 compatibility: Claude Code 2.1+
+portable: true
 allowed-tools:
   - Read
   - Glob
