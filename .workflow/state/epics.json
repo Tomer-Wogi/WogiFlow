@@ -120,8 +120,28 @@
       "progress": 0.5,
       "createdAt": "2026-05-13T08:23:32.227Z",
       "updatedAt": "2026-05-13T11:11:24.571Z"
+    },
+    "epic-workspace-sustained-exec": {
+      "id": "epic-workspace-sustained-exec",
+      "title": "Workspace channel-dispatched workers: sustained autonomous execution",
+      "description": "Fix verified root cause: channel-dispatched workers stall after one turn because no Stop-gate forces continuation of an IN-PROGRESS decomposed task. Primary mechanism: Stop-hook {continue:true} keeps the same worker session alive, sidestepping flaky channel wake-up and preserving in-context decomposition. 6 dependency-ordered stories S1-S6.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-e72350bf",
+        "wf-aee4a4fa",
+        "wf-d3ae1717",
+        "wf-87611c5e",
+        "wf-ee87a24e",
+        "wf-68b5cef7"
+      ],
+      "features": [],
+      "status": "completed",
+      "progress": 1,
+      "createdAt": "2026-05-22T14:46:45.718Z",
+      "updatedAt": "2026-05-22T15:23:41.496Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-05-13T11:11:24.572Z"
+  "lastUpdated": "2026-05-22T15:23:41.496Z"
 }

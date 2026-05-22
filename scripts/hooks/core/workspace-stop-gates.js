@@ -60,6 +60,27 @@ async function checkWorkspaceStopGates({ parsedInput }) {
     if (process.env.DEBUG) console.error(`[Stop] Workspace autopickup gate error (fail-open): ${err.message}`);
   }
 
+  // In-Progress Continuation Gate (S2 / wf-aee4a4fa) — the core sustained-
+  // execution fix. Gap B (above) handles NOT-STARTED dispatches; this handles
+  // an IN-PROGRESS decomposed task with sub-tasks remaining. Keeps the SAME
+  // session grinding via {continue:true} instead of going idle after one turn.
+  try {
+    const { checkWorkerContinuation } = require('./worker-continuation-gate');
+    const { getConfig } = require('../../flow-utils');
+    const result = checkWorkerContinuation({ config: getConfig() });
+    if (result?.fired && result.stopReason) {
+      // S3: emit a worker-progress heartbeat (NOT a terminal stop) so the
+      // manager sees ongoing work and refreshes the dispatch deadline.
+      try {
+        const { notifyWorkerProgress } = require('./workspace-stop-notify');
+        await notifyWorkerProgress({ taskId: result.taskId, remaining: result.remaining, total: result.total, attempt: result.attempt });
+      } catch (_err) { /* best effort */ }
+      return { shouldReturn: true, result: { __raw: true, continue: true, stopReason: result.stopReason } };
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[Stop] Worker continuation gate error (fail-open): ${err.message}`);
+  }
+
   // Worker Tool-First Turn Gate
   try {
     const { isWorkerMode, checkWorkerToolFirstTurn, renderBlockMessage } = require('./worker-tool-first-gate');

@@ -87,8 +87,12 @@ async function orchestrateStop({ parsedInput }) {
     };
   }
 
+  // S3 (wf-d3ae1717): the worker-stopped emission used to fire HERE,
+  // unconditionally, before any gate decided to continue — so the manager saw
+  // "stopped mid-work" on every turn boundary. It now fires only at a genuine
+  // stop (end of this function) with a precise terminal type, and a
+  // worker-progress heartbeat fires from the continuation gate instead.
   const workspaceNotify = require('./workspace-stop-notify');
-  await workspaceNotify.notifyWorkerStopped();
 
   const restartCoordinator = require('./task-boundary-restart-coordinator');
   const restartResult = await restartCoordinator.handleTaskBoundaryRestart({ parsedInput });
@@ -120,7 +124,18 @@ async function orchestrateStop({ parsedInput }) {
   const wsResult = await workspaceGates.checkWorkspaceStopGates({ parsedInput });
   if (wsResult?.shouldReturn) return wsResult.result;
 
-  return await checkLoopExit();
+  // Genuine stop path: no gate forced continuation. Emit a precise terminal
+  // worker signal ONLY when we're actually allowing the turn to end (canExit).
+  // continueToNext / blocked-continue are not terminal stops.
+  const loopResult = await checkLoopExit();
+  try {
+    if (loopResult?.canExit === true) {
+      await workspaceNotify.notifyWorkerTerminal();
+    }
+  } catch (err) {
+    if (process.env.DEBUG) console.error(`[Stop] terminal notify error (fail-open): ${err.message}`);
+  }
+  return loopResult;
 }
 
 module.exports = { orchestrateStop };

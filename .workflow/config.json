@@ -30,6 +30,27 @@
   "sessionHydration": {
     "recencyWindowHours": 48
   },
+  "_comment_workspace": "epic-workspace-sustained-exec — sustained autonomous execution for channel-dispatched workers. All gates fail-open and are worker-mode-only (WOGI_WORKSPACE_ROOT + WOGI_REPO_NAME!=='manager'); solo sessions are unaffected.",
+  "workspace": {
+    "_comment_subtaskLedger": "S1 (wf-e72350bf): mirror TodoWrite decomposition to .workflow/state/subtask-state.json so a fresh-process Stop hook can read 'N of M sub-tasks remain' and a restart can resume without redoing completed sub-tasks. alsoInSolo opts solo sessions in.",
+    "subtaskLedger": {
+      "enabled": true,
+      "alsoInSolo": false
+    },
+    "_comment_continuationGate": "S2 (wf-aee4a4fa): on worker Stop, if a task is in-progress with sub-tasks remaining and the phase is active-work (coding/validating), force {continue:true} to keep the SAME session grinding instead of going idle. Escapes: per-task cap = subtasks*perSubtaskTurns+capBuffer (bounded by maxContinuations); noProgressK consecutive no-file-change+no-subtask-delta continuations escalate ## BLOCKED and stop.",
+    "continuationGate": {
+      "enabled": true,
+      "activePhases": ["coding", "validating"],
+      "perSubtaskTurns": 6,
+      "capBuffer": 4,
+      "maxContinuations": 60,
+      "noProgressK": 4
+    },
+    "_comment_statusStalenessMs": "S4 (wf-87611c5e): GET /status reports 'in-progress' only if the last worker-progress heartbeat is newer than this. Default 5 min.",
+    "statusStalenessMs": 300000,
+    "_comment_refuseUnsafeMidSessionUpdate": "S5 (wf-ee87a24e): when true, surface a hard 'restart required' notice if the on-disk wogiflow version differs from the running session's booted version. Default false (warn only).",
+    "refuseUnsafeMidSessionUpdate": false
+  },
   "enforcement": {
     "strictMode": true,
     "taskGating": {

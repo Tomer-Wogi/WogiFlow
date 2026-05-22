@@ -40,6 +40,58 @@ function handleWorkerSessionStart() {
     const { isWorker, shouldAnnounceReady, announceWorkerReady } = require(WORKER_READY_LIB);
     if (!isWorker()) return { branch: 'skip', reason: 'not-worker' };
 
+    // S5 (wf-ee87a24e): RESUME-IN-PROGRESS. If this restarted session has a task
+    // still in `inProgress` with sub-tasks remaining (durable S1 ledger), resume
+    // THAT task — do NOT fall through to "announce idle" (which would orphan it)
+    // or pick a different next task. The durable ledger means completed sub-tasks
+    // are NOT redone. Also post a worker-ready ack so the manager actively
+    // re-triggers if the resume wake-up was missed.
+    try {
+      const { PATHS, safeJsonParse } = require('../../flow-utils');
+      const ready = safeJsonParse(path.join(PATHS.state, 'ready.json'), { inProgress: [] });
+      const inProgress = (ready.inProgress || [])[0] || null;
+      if (inProgress && inProgress.id) {
+        let remaining = null, total = null;
+        try {
+          const subtaskState = require(path.join(__dirname, '..', '..', '..', 'lib', 'workspace-subtask-state.js'));
+          const summary = subtaskState.summary(inProgress.id);
+          remaining = summary.remaining; total = summary.total;
+        } catch (_err) { /* ledger optional */ }
+        // Only treat as resumable if there is remaining decomposed work, OR no
+        // ledger exists at all (single-step task interrupted mid-flight).
+        if (remaining === null || remaining > 0) {
+          // Best-effort ack so the manager knows the worker is back on this task.
+          // Bypass shouldAnnounceReady's empty-queue gating (it returns
+          // 'in-progress-not-empty' here by design) — for a resume we WANT the
+          // manager pinged. announceWorkerReady dedups via hasPendingAnnounce.
+          try {
+            const wr = require(WORKER_READY_LIB);
+            const wsRoot = process.env.WOGI_WORKSPACE_ROOT;
+            const repoName = process.env.WOGI_REPO_NAME;
+            if (wsRoot && repoName && repoName !== 'manager') {
+              wr.announceWorkerReady(wsRoot, repoName);
+            }
+          } catch (_err) { /* ack is best-effort */ }
+          const ctx = [
+            `⚡ WORKSPACE SESSION START — RESUMING IN-PROGRESS TASK`,
+            '',
+            `This worker restarted with task ${inProgress.id} still in progress${total != null ? ` (${remaining} of ${total} sub-task(s) remaining)` : ''}.`,
+            `Durable sub-task state is on disk — completed sub-tasks are recorded and must NOT be redone.`,
+            '',
+            'AUTONOMOUS MODE CONTRACT (workspace worker):',
+            '  • Resume the SAME task — do not pick a different one, do not go idle.',
+            '  • Read .workflow/state/subtask-state.json to see which sub-tasks remain.',
+            '  • Grind to completion; only stop when done (flow done) or genuinely blocked.',
+            '',
+            `ACT NOW: Invoke Skill(skill="wogi-start", args="${inProgress.id}")`
+          ].join('\n');
+          return { branch: 'resume-in-progress', context: ctx, taskId: inProgress.id, remaining, total };
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[session-start-worker] resume-in-progress check failed (fail-open): ${err.message}`);
+    }
+
     // Check for queued work first — if any, tell the model to pick it up
     // instead of announcing idle readiness.
     let pickup;

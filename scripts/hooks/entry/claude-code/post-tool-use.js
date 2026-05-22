@@ -57,6 +57,32 @@ runHook('PostToolUse', async ({ parsedInput }) => {
     }
   }
 
+  // S1 (wf-e72350bf): mirror the worker's TodoWrite decomposition to the durable
+  // sub-task ledger so the continuation gate (S2) and restart-resume (S5) have a
+  // disk-readable "work remaining" signal. Worker-mode only by default (solo
+  // sessions opt in via workspace.subtaskLedger.alsoInSolo). Fail-open.
+  if (toolName === 'TodoWrite' && !toolFailed) {
+    try {
+      const { getConfig, PATHS, safeJsonParse } = require('../../../flow-utils');
+      const cfg = (() => { try { return getConfig()?.workspace?.subtaskLedger || {}; } catch (_err) { return {}; } })();
+      const ledgerEnabled = cfg.enabled !== false;
+      const isWorker = process.env.WOGI_WORKSPACE_ROOT &&
+                       process.env.WOGI_REPO_NAME &&
+                       process.env.WOGI_REPO_NAME !== 'manager';
+      if (ledgerEnabled && (isWorker || cfg.alsoInSolo === true)) {
+        const ready = safeJsonParse(require('node:path').join(PATHS.state, 'ready.json'), { inProgress: [] });
+        const taskId = ready.inProgress?.[0]?.id || null;
+        if (taskId) {
+          const subtaskState = require('../../../../lib/workspace-subtask-state');
+          const subs = subtaskState.subtasksFromTodos(toolInput);
+          if (subs.length > 0) subtaskState.write(taskId, subs);
+        }
+      }
+    } catch (err) {
+      if (process.env.DEBUG) console.error(`[post-tool-use] subtask-ledger mirror: ${err.message}`);
+    }
+  }
+
   // Track B B3 fix (2026-04-13): mark when templates are edited, so
   // session-end and the next /wogi-start can remind to run flow bridge sync.
   // Mechanical enforcement of self-maintenance.md §1.

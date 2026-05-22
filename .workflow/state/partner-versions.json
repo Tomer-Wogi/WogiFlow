@@ -1,9 +1,9 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.33.0",
+    "version": "2.34.0",
     "repo": "wogi-flow",
-    "releasedAt": "2026-05-13T16:58:30.097Z"
+    "releasedAt": "2026-05-22T17:45:00.000Z"
   },
   "partners": {
     "wogiflow-cloud-server": {
@@ -37,6 +37,15 @@
     }
   },
   "behaviorChanges": {
+    "2.34.0": [
+      "epic-workspace-sustained-exec: sustained autonomous execution for channel-dispatched workspace workers. ADDITIVE — no removed/renamed exports, no state-file format changes, no hook-interface changes → no @wogiflow/teams peerDep bump required.",
+      "NEW exports (additive): lib/workspace-subtask-state.js (durable sub-task ledger); scripts/hooks/core/worker-continuation-gate.js; workspace-dispatch-tracking.refreshDispatchDeadline; workspace-channel-tracking.computeWorkerStatus; workspace-stop-notify.notifyWorkerProgress/notifyWorkerTerminal (notifyWorkerStopped kept as alias).",
+      "NEW message types on the bus: worker-progress (heartbeat), worker-blocked, worker-idle, worker-awaiting-approval. Manager overdue-reconcile consumes them; heartbeats refresh the dispatch deadline instead of being misread as silent-halts.",
+      "Stop-hook ordering FIX: worker-stopped is no longer emitted unconditionally at every turn boundary — only on a genuine stop, with a precise terminal type. Continuations emit a heartbeat instead.",
+      "NEW channel-server endpoint: GET /status (ack-received/work-started/in-progress/complete/blocked/idle + version-drift). GET /health unchanged (pure liveness).",
+      "NEW CLI: `flow workspace restart <worker>` — cycles a worker so it reloads upgraded code; SessionStart now resumes an in-progress decomposed task from durable state instead of going idle.",
+      "NEW config keys (all default-on, worker-mode-guarded): workspace.subtaskLedger.*, workspace.continuationGate.*, workspace.statusStalenessMs, workspace.refuseUnsafeMidSessionUpdate. Solo (non-workspace) sessions are unaffected."
+    ],
     "2.29.0": [
       "lib/utils.safeJsonParseContent: regex-reject → recursive-strip; primitives no longer pass through (return defaultValue)"
     ],
@@ -97,5 +106,5 @@
       "BEHAVIOR CHANGE for consumers: a conversational \"where/which/how-does-the-X-work\" question now triggers the research-required gate. Override: prefix the prompt with ! to skip."
     ]
   },
-  "lastUpdated": "2026-05-12T08:25:07.318Z"
+  "lastUpdated": "2026-05-22T17:45:00.000Z"
 }

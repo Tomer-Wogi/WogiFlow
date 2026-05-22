@@ -53,7 +53,7 @@ function formatLine(record, now) {
  */
 function sweepAndReconcile(workspaceRoot) {
   let reconciled = 0;
-  let readMessages, reconcileDispatch, readDispatches;
+  let readMessages, reconcileDispatch, readDispatches, refreshDispatchDeadline;
   try {
     const libMessages = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-messages.js');
     const libTracking = path.resolve(__dirname, '..', '..', '..', 'lib', 'workspace-dispatch-tracking.js');
@@ -61,6 +61,7 @@ function sweepAndReconcile(workspaceRoot) {
     const tracking = require(libTracking);
     reconcileDispatch = tracking.reconcileDispatch;
     readDispatches = tracking.readDispatches;
+    refreshDispatchDeadline = tracking.refreshDispatchDeadline;
   } catch (_err) {
     return 0; // Fail-open
   }
@@ -78,13 +79,32 @@ function sweepAndReconcile(workspaceRoot) {
     if (r.taskId && !byTaskId.has(r.taskId)) byTaskId.set(r.taskId, r);
   }
 
-  // Pull both message types. readMessages throws on missing dir internally
-  // but guards with existsSync, so it's safe.
+  // S3 (wf-d3ae1717): heartbeats refresh the deadline (work ongoing, NOT a
+  // silent halt); terminal types resolve the dispatch. worker-progress is
+  // applied FIRST so a heartbeat that arrived before a terminal doesn't keep a
+  // since-resolved dispatch alive.
+  try {
+    const heartbeats = readMessages(workspaceRoot, { type: 'worker-progress' });
+    if (refreshDispatchDeadline) {
+      for (const hb of heartbeats) {
+        const taskId = hb.taskId;
+        if (!taskId || !byTaskId.has(taskId)) continue;
+        try { refreshDispatchDeadline(workspaceRoot, taskId); } catch (_err) { /* per-record */ }
+      }
+    }
+  } catch (_err) { /* heartbeats are best-effort */ }
+
+  // Pull terminal message types. readMessages throws on missing dir internally
+  // but guards with existsSync, so it's safe. worker-blocked / worker-idle /
+  // worker-awaiting-approval are terminal stops alongside the legacy pair.
   let messages = [];
   try {
     const completes = readMessages(workspaceRoot, { type: 'task-complete' });
     const stops = readMessages(workspaceRoot, { type: 'worker-stopped' });
-    messages = completes.concat(stops);
+    const blocked = readMessages(workspaceRoot, { type: 'worker-blocked' });
+    const idle = readMessages(workspaceRoot, { type: 'worker-idle' });
+    const awaiting = readMessages(workspaceRoot, { type: 'worker-awaiting-approval' });
+    messages = completes.concat(stops, blocked, idle, awaiting);
   } catch (_err) {
     return 0;
   }
@@ -93,8 +113,10 @@ function sweepAndReconcile(workspaceRoot) {
     const taskId = msg.taskId || (msg.type === 'task-complete' ? msg.subject : null);
     if (!taskId || !byTaskId.has(taskId)) continue;
     try {
-      const status = msg.type === 'worker-stopped' ? 'graceful-stop' : 'completed';
-      const reason = msg.type === 'worker-stopped' ? (msg.reason || 'graceful') : null;
+      // task-complete → completed; everything else is a non-overdue graceful
+      // stop (the reason field distinguishes blocked / awaiting / idle / graceful).
+      const status = msg.type === 'task-complete' ? 'completed' : 'graceful-stop';
+      const reason = msg.type === 'task-complete' ? null : (msg.reason || msg.type);
       const result = reconcileDispatch(workspaceRoot, taskId, status, reason);
       if (result) {
         reconciled++;

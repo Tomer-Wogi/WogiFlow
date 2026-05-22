@@ -148,7 +148,9 @@ const KNOWN_CONFIG_KEYS = [
   // Task-boundary session restart (wf-39e9dc09) — opt-in, experimental
   'taskBoundaryReset',
   // Session hydration recency filter (wf-729ab5c0)
-  'sessionHydration'
+  'sessionHydration',
+  // Workspace (multi-repo manager/worker) — epic-workspace-sustained-exec
+  'workspace'
 ];
 
 module.exports = {
