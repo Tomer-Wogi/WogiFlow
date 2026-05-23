@@ -137,7 +137,10 @@
       "evidenceNote": "Node execution: withTimeout returns ok:true even when handler returns passed:false",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 2
     },
     {
       "id": "F6",
@@ -154,8 +157,11 @@
       "evidenceNote": "grep validation.js for blocked: zero hits",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open",
-      "adversaryNote": "reframed from HIGH dead-code to MEDIUM latent-gap"
+      "status": "fixed",
+      "adversaryNote": "reframed from HIGH dead-code to MEDIUM latent-gap",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 2
     },
     {
       "id": "F7",
@@ -172,7 +178,10 @@
       "evidenceNote": "Node test confirmed FP on path strings",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F8",
@@ -189,7 +198,10 @@
       "evidenceNote": "Read generateCrontabLines + generateSystemdServiceUnit",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F9",
@@ -206,7 +218,10 @@
       "evidenceNote": "Node execution confirmed path.join escape",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F10",
@@ -223,7 +238,10 @@
       "evidenceNote": "Lines 194-212; raw stderr passed to gh issue create",
       "confidencePct": 75,
       "flagUnverified": true,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F11",
@@ -240,7 +258,10 @@
       "evidenceNote": "grep schedule scripts/flow returns 0; bin/flow line 232",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F12",
@@ -257,7 +278,10 @@
       "evidenceNote": "grep CLAUDE_CODE_EVENTS confirms missing",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F13",
@@ -274,7 +298,10 @@
       "evidenceNote": "grep 5 hits in git-safety-gate.js",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F14",
@@ -291,7 +318,10 @@
       "evidenceNote": "Read lines 240-287",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F15-FP",
@@ -326,7 +356,10 @@
       "evidenceNote": "grep confirmed inlining",
       "confidencePct": 85,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F17",
@@ -343,7 +376,10 @@
       "evidenceNote": "grep multiple files",
       "confidencePct": 85,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F18",
@@ -360,7 +396,10 @@
       "evidenceNote": "no lock; multi-process git env required for exploit",
       "confidencePct": 75,
       "flagUnverified": true,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 2
     },
     {
       "id": "F19",
@@ -377,7 +416,10 @@
       "evidenceNote": "grep one hit; safeJsonParse already imported",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F20",
@@ -394,7 +436,10 @@
       "evidenceNote": "grep across scope returns one definition no consumers",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F21",
@@ -411,7 +456,10 @@
       "evidenceNote": "Read line 369",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     },
     {
       "id": "F22",
@@ -428,13 +476,16 @@
       "evidenceNote": "grep cron: in yml returns 3",
       "confidencePct": 95,
       "flagUnverified": false,
-      "status": "open"
+      "status": "fixed",
+      "fixedAt": "2026-05-14T00:00:00Z",
+      "fixCommit": "pending",
+      "evidenceTierOfFix": 3
     }
   ],
   "triaged": true,
   "fixRouting": {
     "highTask": "completed",
-    "mediumLowTask": "pending-/wogi-start (after HIGH lands)",
-    "standardsGateTask": "pending-/wogi-start (after MEDIUM/LOW lands)"
+    "mediumLowTask": "completed",
+    "standardsGateTask": "completed"
   }
 }

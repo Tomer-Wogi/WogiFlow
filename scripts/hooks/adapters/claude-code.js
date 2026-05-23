@@ -191,7 +191,11 @@ class ClaudeCodeAdapter extends BaseAdapter {
       case 'PostToolUse':
         return this.transformPostToolUse(coreResult);
       case 'Stop':
-      case 'SubagentStop':
+        // SubagentStop intentionally omitted: not in CLAUDE_CODE_EVENTS
+        // (commented out at line 70), so generateConfig() never emits a
+        // hook entry for it. The fall-through case is unreachable by
+        // construction (F12 / R-379). If SubagentStop support is wanted,
+        // re-add to CLAUDE_CODE_EVENTS + HOOK_TIMEOUTS + this switch.
         return this.transformStop(coreResult);
       case 'SessionEnd':
         return this.transformSessionEnd(coreResult);
@@ -537,7 +541,7 @@ Run: /wogi-start ${coreResult.nextTaskId}`;
       ...(coreResult.message && { systemMessage: coreResult.message }),
       hookSpecificOutput: {
         hookEventName: 'TaskCreated',
-        linked: coreResult.linked || false,
+        linked: coreResult.linked ?? false,
         wogiTaskId: coreResult.wogiTaskId || null
       }
     };

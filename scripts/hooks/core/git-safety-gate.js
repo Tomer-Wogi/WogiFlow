@@ -108,14 +108,19 @@ function getAffectedFileCount(targetRef) {
 
 /**
  * Create a backup branch at current HEAD.
+ *
+ * Uses `execFileSync` (no shell) per `security-patterns.md §8` — the branch
+ * name is timestamp-derived and currently safe, but going through the shell
+ * with template-string interpolation is the wrong-by-default pattern.
+ *
  * @returns {string|null} Branch name or null on failure.
  */
 function createBackupBranch() {
-  const { execSync } = require('node:child_process');
+  const { execFileSync } = require('node:child_process');
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const branchName = `backup/pre-reset-${timestamp}`;
   try {
-    execSync(`git branch "${branchName}"`, {
+    execFileSync('git', ['branch', branchName], {
       encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe']
     });
     return branchName;
@@ -126,20 +131,27 @@ function createBackupBranch() {
 
 /**
  * Clean up old backup branches, keeping only the most recent N.
+ *
+ * Uses `execFileSync` (no shell) per `security-patterns.md §8`. Branch names
+ * pulled from `git branch --list` output and passed back to `git branch -D`
+ * never touch a shell.
+ *
  * @param {number} keep
  */
 function rotateBackupBranches(keep) {
-  const { execSync } = require('node:child_process');
+  const { execFileSync } = require('node:child_process');
   try {
-    const branches = execSync('git branch --list "backup/pre-reset-*" --sort=-creatordate', {
-      encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe']
-    }).trim().split('\n').map(b => b.trim()).filter(Boolean);
+    const branches = execFileSync(
+      'git',
+      ['branch', '--list', 'backup/pre-reset-*', '--sort=-creatordate'],
+      { encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe'] }
+    ).trim().split('\n').map(b => b.trim()).filter(Boolean);
 
     if (branches.length > keep) {
       const toDelete = branches.slice(keep);
       for (const branch of toDelete) {
         try {
-          execSync(`git branch -D "${branch}"`, {
+          execFileSync('git', ['branch', '-D', branch], {
             cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe']
           });
         } catch (_err) {
@@ -170,27 +182,34 @@ function rotateBackupBranches(keep) {
  * `git checkout .` / `git restore .` through either way. This was BUG-1.
  *
  * @param {Object} [opts]
- * @param {Function} [opts.exec] - execSync replacement for testing (string cmd → string stdout, throws on error).
+ * @param {Function} [opts.exec] - execFileSync-shaped replacement for testing.
+ *   Signature: `(file, args, opts) → stdout`. Throws on non-zero exit. Default
+ *   uses `child_process.execFileSync` so no shell layer is involved — closes
+ *   the security-patterns.md §8 violation that earlier versions had.
  * @returns {{ status: 'no-changes' | 'stashed' | 'failed', error?: string, stashRef?: string }}
  */
 function autoStash(opts = {}) {
-  const exec = opts.exec || require('node:child_process').execSync;
+  const exec = opts.exec || require('node:child_process').execFileSync;
   const runOpts = { encoding: 'utf-8', cwd: PATHS.root, stdio: ['pipe', 'pipe', 'pipe'] };
 
   // 1. Anything to stash?
   let status;
   try {
-    status = exec('git status --porcelain', runOpts).trim();
+    status = exec('git', ['status', '--porcelain'], runOpts).trim();
   } catch (err) {
     return { status: 'failed', error: `git status failed: ${err.message || err}` };
   }
   if (!status) return { status: 'no-changes' };
 
-  // 2. Attempt the stash.
+  // 2. Attempt the stash. TOCTOU-resistant message (F18): include a random
+  //    UUID-style suffix so two parallel runs can't collide on the stash@{0}
+  //    verification step and so substring matches can't be forged by an
+  //    attacker-controlled stash with the same timestamp prefix.
   const timestamp = new Date().toISOString().slice(0, 19);
-  const stashMessage = `auto-backup-${timestamp}`;
+  const nonce = require('node:crypto').randomBytes(6).toString('hex');
+  const stashMessage = `auto-backup-${timestamp}-${nonce}`;
   try {
-    exec(`git stash push -m "${stashMessage}"`, runOpts);
+    exec('git', ['stash', 'push', '-m', stashMessage], runOpts);
   } catch (err) {
     return { status: 'failed', error: `git stash push failed: ${err.message || err}` };
   }
@@ -198,11 +217,11 @@ function autoStash(opts = {}) {
   // 3. VERIFY the stash actually saved (BUG-1 / wf-2d3d09b8). A zero exit code
   //    from `git stash push` is NOT proof: lock contention, broken hooks, or
   //    edge cases can leave the working tree unchanged with status 0. Confirm
-  //    by reading `git stash list` and matching our timestamped message at
+  //    by reading `git stash list` and matching our nonce-suffixed message at
   //    stash@{0}.
   let stashList;
   try {
-    stashList = exec('git stash list', runOpts);
+    stashList = exec('git', ['stash', 'list'], runOpts);
   } catch (err) {
     return { status: 'failed', error: `stash verification (git stash list) failed: ${err.message || err}` };
   }

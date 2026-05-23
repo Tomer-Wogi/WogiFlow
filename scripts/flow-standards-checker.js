@@ -451,6 +451,43 @@ function checkSecurityPatterns(file, _securityRules) {
 
   // Hard-coded security checks from security-patterns.md
 
+  // 0. execSync / execAsync with template-string commands containing
+  //    interpolated values (R-379 standards-gate hardening).
+  //    security-patterns.md §8 mandates execFile* with array args for any
+  //    subprocess that includes dynamic data. Three independent review rounds
+  //    have caught this pattern in scripts/hooks/core/git-safety-gate.js;
+  //    making the check mechanical so it can't slip past again.
+  //
+  //    Scoped to scripts/hooks/ and lib/ — these are the places the rule binds.
+  //    Test files and CLI tools that build complex pipelines often legitimately
+  //    use template-string shells (e.g. for documented one-off scripts).
+  //
+  //    Match shape: execSync(`...${...}...`) — any backtick literal containing
+  //    a ${...} expression passed to execSync (or its aliases).
+  const inScopeForExecSyncCheck =
+    /(?:^|\/)scripts\/hooks\//.test(file.path) ||
+    /(?:^|\/)lib\//.test(file.path);
+  if (inScopeForExecSyncCheck) {
+    const execSyncTemplateRe =
+      /\b(?:execSync|execAsync)\s*\(\s*`[^`]*\$\{[^`]*`/g;
+    let m;
+    while ((m = execSyncTemplateRe.exec(content)) !== null) {
+      const beforeMatch = content.substring(0, m.index);
+      const lineNumber = (beforeMatch.match(/\n/g) || []).length + 1;
+      violations.push({
+        type: 'security',
+        severity: 'must-fix',
+        file: file.path,
+        line: lineNumber,
+        message:
+          'execSync with template-string command (contains ${...} interpolation) — ' +
+          'use execFileSync("bin", ["arg1", interpolatedVar]) instead (no shell layer). ' +
+          'Three review rounds have caught this exact pattern; mechanical now.',
+        rule: 'security-patterns.md §8 (R-379 standards-gate hardening)',
+      });
+    }
+  }
+
   // 1. Raw JSON.parse — strengthened by Track B (2026-04-13).
   // Original heuristic only flagged JSON.parse OUTSIDE try blocks. This missed
   // SEC-001 (raw JSON.parse on user-config inside a try block — which loses the

@@ -121,7 +121,9 @@ describe('generateSystemdServiceUnit + Timer', () => {
       runner: '/tmp/runner.js',
       projectRoot: '/tmp/proj',
     });
-    assert.match(s, /ExecStart=\/usr\/bin\/node \/tmp\/runner\.js weekly-audit/);
+    // F8 (R-379): ExecStart args are now quoted so paths containing spaces
+    // don't break the unit. Match the quoted form.
+    assert.match(s, /ExecStart="\/usr\/bin\/node" "\/tmp\/runner\.js" "weekly-audit"/);
     assert.match(s, /Description=Wogi Flow scheduled job: weekly-audit/);
   });
   it('timer unit has correct OnCalendar for monday audit', () => {

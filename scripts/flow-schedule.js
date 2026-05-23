@@ -100,6 +100,15 @@ function nodeBinary() {
 // Unit content generators (pure — no I/O)
 // ============================================================
 
+// F8 (R-379): paths that get inlined into shell-interpreted contexts
+// (crontab lines, systemd ExecStart) MUST be single-quoted with embedded
+// single-quotes escaped. Without this, a project at `/Users/Alice Smith/...`
+// breaks the schedule because cron treats the space as an argument boundary.
+function shellQuote(s) {
+  // POSIX single-quote escape: replace each ' with '\''
+  return `'${String(s).replace(/'/g, "'\\''")}'`;
+}
+
 function generateCrontabLines(opts = {}) {
   const node = opts.node || nodeBinary();
   const runner = opts.runner || runnerScriptPath();
@@ -109,9 +118,11 @@ function generateCrontabLines(opts = {}) {
   ];
   for (const jobName of SCHEDULED_JOB_NAMES) {
     const spec = SCHEDULES[jobName];
+    const logPath = path.join(projectRoot, '.workflow', 'scratch', `scheduled-${jobName}.log`);
     lines.push(
-      `${spec.cronExpr} cd ${projectRoot} && ${node} ${runner} ${jobName} ` +
-      `>> ${path.join(projectRoot, '.workflow', 'scratch', `scheduled-${jobName}.log`)} 2>&1`
+      `${spec.cronExpr} cd ${shellQuote(projectRoot)} && ` +
+      `${shellQuote(node)} ${shellQuote(runner)} ${jobName} ` +
+      `>> ${shellQuote(logPath)} 2>&1`
     );
   }
   lines.push(`# === wogi-scheduled end ===`);
@@ -172,14 +183,18 @@ function generateSystemdServiceUnit(jobName, opts = {}) {
   const projectRoot = opts.projectRoot || repoRoot();
   if (!SCHEDULES[jobName]) throw new Error(`No schedule defined for "${jobName}"`);
 
+  // F8 (R-379): systemd ExecStart with a path containing spaces needs each
+  // arg surrounded by quotes — systemd's argument parser splits on spaces.
+  // WorkingDirectory and Standard{Output,Error} accept literal paths (no
+  // splitting), but quoting them too is harmless and consistent.
   return `[Unit]
 Description=Wogi Flow scheduled job: ${jobName}
 After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=${projectRoot}
-ExecStart=${node} ${runner} ${jobName}
+WorkingDirectory="${projectRoot}"
+ExecStart="${node}" "${runner}" "${jobName}"
 StandardOutput=append:${path.join(projectRoot, '.workflow', 'scratch', `scheduled-${jobName}.log`)}
 StandardError=append:${path.join(projectRoot, '.workflow', 'scratch', `scheduled-${jobName}.err.log`)}
 `;
@@ -361,12 +376,14 @@ function getStatus(deps = {}) {
   const cfrag = path.join(homeDir, '.config', 'wogi-flow', 'crontab-fragment');
   if (fsx.existsSync(cfrag)) status.cron.push(cfrag);
 
-  // systemd
+  // systemd — both .service and .timer files are tracked under the same key.
+  // F21 (R-379): the prior ternary `ext === 'timer' ? 'systemd' : 'systemd'`
+  // had identical branches — a meaningless conditional. Just push directly.
   const sdir = path.join(homeDir, '.config', 'systemd', 'user');
   for (const jobName of SCHEDULED_JOB_NAMES) {
     for (const ext of ['service', 'timer']) {
       const p = path.join(sdir, `wogi-scheduled-${jobName}.${ext}`);
-      if (fsx.existsSync(p)) status[ext === 'timer' ? 'systemd' : 'systemd'].push(p);
+      if (fsx.existsSync(p)) status.systemd.push(p);
     }
   }
   return status;

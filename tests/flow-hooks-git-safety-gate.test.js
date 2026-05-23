@@ -305,55 +305,57 @@ describe('checkGitSafety — discard-all with autoBackup disabled', () => {
 // `git checkout .` proceeded to destroy the user's uncommitted work.
 // ============================================================
 
-describe('autoStash — BUG-1 contract', () => {
+describe('autoStash — BUG-1 contract (execFileSync-shaped exec injection)', () => {
+  // F13 (R-379): autoStash now uses execFileSync-shaped exec — signature
+  // (file, args, opts) → stdout. Tests pass mocks in this new shape.
   it('returns {status:"no-changes"} when working tree is clean', () => {
     const calls = [];
-    const exec = (cmd) => {
-      calls.push(cmd);
-      if (cmd === 'git status --porcelain') return '';
-      throw new Error(`unexpected exec: ${cmd}`);
+    const exec = (file, args) => {
+      calls.push([file, ...args].join(' '));
+      if (file === 'git' && args[0] === 'status' && args[1] === '--porcelain') return '';
+      throw new Error(`unexpected exec: ${file} ${args.join(' ')}`);
     };
     const r = autoStash({ exec });
     assert.equal(r.status, 'no-changes');
     assert.deepEqual(calls, ['git status --porcelain']);
   });
 
-  it('returns {status:"stashed"} on happy path with verification', () => {
+  it('returns {status:"stashed"} on happy path with verification (nonce-suffixed message)', () => {
     const calls = [];
     let lastStashMessage = null;
-    const exec = (cmd) => {
-      calls.push(cmd);
-      if (cmd === 'git status --porcelain') return ' M foo.js\n';
-      if (cmd.startsWith('git stash push -m')) {
-        // Capture the timestamped message the production code generated, so the
-        // verification step finds it. Mirrors what real `git stash list` returns.
-        const m = cmd.match(/-m\s+"([^"]+)"/);
-        lastStashMessage = m ? m[1] : null;
+    const exec = (file, args) => {
+      calls.push([file, ...args].join(' '));
+      if (file === 'git' && args[0] === 'status') return ' M foo.js\n';
+      if (file === 'git' && args[0] === 'stash' && args[1] === 'push') {
+        // args = ['stash', 'push', '-m', '<message>']
+        lastStashMessage = args[3];
         return '';
       }
-      if (cmd === 'git stash list') {
+      if (file === 'git' && args[0] === 'stash' && args[1] === 'list') {
         return `stash@{0}: On master: ${lastStashMessage}\nstash@{1}: On master: older\n`;
       }
-      throw new Error(`unexpected exec: ${cmd}`);
+      throw new Error(`unexpected exec: ${file} ${args.join(' ')}`);
     };
     const r = autoStash({ exec });
     assert.equal(r.status, 'stashed');
     assert.equal(r.stashRef, 'stash@{0}');
-    // status check + stash push + list verification all ran
     assert.equal(calls.length, 3);
     assert.equal(calls[0], 'git status --porcelain');
-    assert.ok(calls[1].startsWith('git stash push -m "auto-backup-'));
+    assert.ok(calls[1].startsWith('git stash push -m auto-backup-'),
+      `expected stash push with auto-backup- prefix; got: ${calls[1]}`);
+    // F18 (R-379): message must include a hex nonce for TOCTOU resistance
+    assert.match(calls[1], /auto-backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}-[0-9a-f]{12}$/,
+      `expected timestamp + 12-hex-char nonce; got: ${calls[1]}`);
     assert.equal(calls[2], 'git stash list');
   });
 
   it('returns {status:"failed"} when git stash push throws (the core BUG-1 path)', () => {
-    const exec = (cmd) => {
-      if (cmd === 'git status --porcelain') return ' M user-work.js\n';
-      if (cmd.startsWith('git stash push')) {
-        const err = new Error("error: Your local changes to the following files would be overwritten by stash");
-        throw err;
+    const exec = (file, args) => {
+      if (file === 'git' && args[0] === 'status') return ' M user-work.js\n';
+      if (file === 'git' && args[0] === 'stash' && args[1] === 'push') {
+        throw new Error("error: Your local changes to the following files would be overwritten by stash");
       }
-      throw new Error(`unexpected exec: ${cmd}`);
+      throw new Error(`unexpected exec: ${file} ${args.join(' ')}`);
     };
     const r = autoStash({ exec });
     assert.equal(r.status, 'failed');
@@ -361,15 +363,11 @@ describe('autoStash — BUG-1 contract', () => {
   });
 
   it('returns {status:"failed"} when stash succeeds (exit 0) but verification cannot find it', () => {
-    // Edge case: `git stash push` returns 0 yet leaves the working tree
-    // unchanged. The verification step is the defense-in-depth that catches
-    // this — without it, the discard-all branch would still see "success"
-    // and proceed to destroy work.
-    const exec = (cmd) => {
-      if (cmd === 'git status --porcelain') return ' M user-work.js\n';
-      if (cmd.startsWith('git stash push')) return ''; // pretend success
-      if (cmd === 'git stash list') return ''; // but no stash was actually saved
-      throw new Error(`unexpected exec: ${cmd}`);
+    const exec = (file, args) => {
+      if (file === 'git' && args[0] === 'status') return ' M user-work.js\n';
+      if (file === 'git' && args[0] === 'stash' && args[1] === 'push') return '';
+      if (file === 'git' && args[0] === 'stash' && args[1] === 'list') return '';
+      throw new Error(`unexpected exec: ${file} ${args.join(' ')}`);
     };
     const r = autoStash({ exec });
     assert.equal(r.status, 'failed');
@@ -377,11 +375,11 @@ describe('autoStash — BUG-1 contract', () => {
   });
 
   it('returns {status:"failed"} when git status itself errors (e.g., lock contention)', () => {
-    const exec = (cmd) => {
-      if (cmd === 'git status --porcelain') {
+    const exec = (file, args) => {
+      if (file === 'git' && args[0] === 'status') {
         throw new Error("fatal: Unable to create '.git/index.lock': File exists.");
       }
-      throw new Error(`unexpected exec: ${cmd}`);
+      throw new Error(`unexpected exec: ${file} ${args.join(' ')}`);
     };
     const r = autoStash({ exec });
     assert.equal(r.status, 'failed');

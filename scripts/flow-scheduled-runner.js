@@ -58,6 +58,36 @@ const {
 
 const { runInWorktree } = require('./flow-worktree');
 
+// F16 (R-379): named constant for stderr-truncation cap so the meaning is
+// inspectable and tunable in one place (decisions.md Code Quality §1).
+const MAX_STDERR_BYTES = 4096;
+
+// F10 (R-379): redact secret-shaped strings from stderr BEFORE we post it
+// to a public GH Issue. Conservative — only strips the well-known token
+// shapes (Anthropic API keys, GitHub PATs/fine-grained). Real users may
+// have other tokens in their environment; this is best-effort, not a
+// guarantee. The right defense remains "don't echo secrets in error
+// messages in the first place"; this is the defense-in-depth pass.
+const SECRET_REDACTION_PATTERNS = [
+  // Anthropic API keys — sk-ant-…
+  { re: /sk-ant-[a-zA-Z0-9_\-]{20,}/g, replacement: '[REDACTED:anthropic-key]' },
+  // GitHub PATs — ghp_…  (classic), github_pat_… (fine-grained)
+  { re: /ghp_[a-zA-Z0-9]{36}/g, replacement: '[REDACTED:github-pat-classic]' },
+  { re: /github_pat_[a-zA-Z0-9_]{22,}/g, replacement: '[REDACTED:github-pat-fg]' },
+  // OAuth-shaped bearer tokens — only when they appear next to the literal
+  // "Authorization: Bearer" header (avoid stripping every JWT in stderr).
+  { re: /(Authorization:\s*Bearer\s+)[A-Za-z0-9_\-.]{20,}/gi, replacement: '$1[REDACTED:bearer]' },
+];
+
+function redactSecrets(text) {
+  if (typeof text !== 'string') return '';
+  let out = text;
+  for (const { re, replacement } of SECRET_REDACTION_PATTERNS) {
+    out = out.replace(re, replacement);
+  }
+  return out;
+}
+
 const { PATHS, getConfig, safeJsonParse } = require('./flow-utils');
 
 // ============================================================
@@ -148,7 +178,7 @@ function recordUsage(jobName, tokens, now = Date.now()) {
   const key = new Date(now).toISOString().slice(0, 10);
   const log = readUsageLog();
   if (!log[key]) log[key] = {};
-  log[key][jobName] = (log[key][jobName] || 0) + tokens;
+  log[key][jobName] = (log[key][jobName] ?? 0) + tokens;
   writeUsageLog(log);
   return log;
 }
@@ -180,7 +210,10 @@ function listDedupIssues(jobName, repo) {
   const r = execSafe('gh', args);
   if (!r.ok) return [];
   try {
-    const parsed = JSON.parse(r.stdout || '[]');
+    // F19 (R-379): use safeJsonParse for prototype-pollution guard, even
+    // though gh's output is trusted today — consistent with the project
+    // convention (security-patterns.md §2).
+    const parsed = safeJsonParse(r.stdout || '[]', []);
     if (!Array.isArray(parsed)) return [];
     return parsed.map((x) => x && x.number).filter((n) => Number.isFinite(n));
   } catch (_err) {
@@ -206,9 +239,9 @@ function openFailureIssue(jobName, summary, stderr, repo) {
     `### Summary`,
     summary,
     ``,
-    `### stderr (last 4 KB)`,
+    `### stderr (last ${MAX_STDERR_BYTES} bytes, secrets redacted)`,
     '```',
-    (stderr || '').slice(-4096),
+    redactSecrets((stderr || '').slice(-MAX_STDERR_BYTES)),
     '```',
   ].join('\n');
   const argv = ['issue', 'create', '--title', title, '--body', body, '--label', FAILURE_LABEL];
@@ -409,19 +442,31 @@ async function runOnce(jobName, ctx) {
   }
   return withTimeout(
     ({ signal }) => handler({ ...ctx, signal }),
-    ctx.timeoutMs || DEFAULT_JOB_TIMEOUT_MS,
+    ctx.timeoutMs ?? DEFAULT_JOB_TIMEOUT_MS,
   );
 }
 
 async function runJobWithRetry(jobName, ctx) {
   const first = await runOnce(jobName, ctx);
-  if (first.ok) return first;
 
-  // Retry once on transient failures only.
-  if (first.error && isTransientError(first.error)) {
+  // F5 (R-379): handlers catch internally (via execSafe / try-catch) and
+  // return `{passed:false, ...}` rather than throwing, so `withTimeout`
+  // wraps them as `{ok:true, result:{...}}`. Without this branch, the
+  // transient-retry path is unreachable because `first.ok` is almost
+  // always true. Look at the INNER result for transient signals too.
+  const transientInOuter = !first.ok && first.error && isTransientError(first.error);
+  const transientInInner =
+    first.ok &&
+    first.result &&
+    first.result.passed === false &&
+    typeof first.result.message === 'string' &&
+    isTransientError({ message: first.result.message });
+
+  if (transientInOuter || transientInInner) {
     await new Promise((r) => setTimeout(r, TRANSIENT_RETRY_DELAY_MS));
     return runOnce(jobName, ctx);
   }
+
   return first;
 }
 

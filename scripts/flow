@@ -381,6 +381,23 @@ case "${1:-}" in
     ready)
         node "$SCRIPT_DIR/flow-ready.js" "${@:2}"
         ;;
+    # F11 (R-379): bin/flow (npm-installed dispatcher) had `schedule` wired
+    # at line 232, but scripts/flow (dev/repo dispatcher) did not — so
+    # `flow schedule install` failed silently inside the dev repo. Wire it
+    # here so both dispatchers stay in sync. Same for `skill export`, which
+    # ships in v2.33.0 but was only reachable from the npm-installed path.
+    schedule)
+        node "$SCRIPT_DIR/flow-schedule.js" "${@:2}"
+        ;;
+    skill|skills)
+        # Sub-subcommand: `flow skill export ...` → flow-skill-export.js
+        # Other `flow skill ...` subcommands → flow-skill-manage.js (existing).
+        if [ "${2:-}" = "export" ]; then
+            node "$SCRIPT_DIR/flow-skill-export.js" "${@:3}"
+        else
+            node "$SCRIPT_DIR/flow-skill-manage.js" "${@:2}"
+        fi
+        ;;
     start)
         node "$SCRIPT_DIR/flow-start.js" "${@:2}"
         ;;

@@ -222,6 +222,14 @@ async function runValidation(options = {}) {
 
   return {
     passed: allPassed,
+    // F6 (R-379): signal `blocked` so the adapter's `decision: 'block'` path
+    // actually fires when validation fails. Without this, the `continueOnBlock`
+    // wiring in transformPostToolUse is inert (decision is always undefined).
+    // With it, lint/typecheck failure after Edit/Write feeds back to Claude
+    // and (per the continueOnBlock setting) the turn continues so Claude can
+    // fix the error in-loop — which is what CLAUDE.md's "validate after every
+    // file edit" rule needs.
+    blocked: !allPassed,
     skipped: false,
     results,
     summary: generateValidationSummary(results, filePath)
