@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-23T06:17:42.571Z",
+  "lastUpdated": "2026-05-25T08:25:43.474Z",
   "inProgress": [],
   "ready": [
     {
@@ -67,6 +67,17 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-e5e57361",
+      "title": "Workspace autonomous worker silently stalls at approval gates; phase gate evadable via worktree; long-input gate misfires on channel messages",
+      "type": "bug",
+      "priority": "P1",
+      "severity": "high",
+      "status": "completed",
+      "createdAt": "2026-05-23T08:13:20.301Z",
+      "specPath": "/Users/tomergilboa/Developer/wogi-flow/.workflow/bugs/wf-e5e57361.md",
+      "completedAt": "2026-05-23T11:33:12.324Z"
+    },
     {
       "id": "wf-68b5cef7",
       "title": "S6 Regression test: 3-sub-task unattended completion",

@@ -162,12 +162,13 @@ describe('wf-f7d58760 — system-originated content does not trip the gate', () 
   });
 });
 
-describe('shouldForceExtractReview — wogi-hub regression case', () => {
+describe('shouldForceExtractReview — channel-source skip (wf-e5e57361 / RC3)', () => {
   // regression-tier3
-  // The exact failure shape: long task-creating prompt arrives via
-  // channel-dispatch in worker mode without source-link.
-  it('STRICT level when channel-dispatched in worker mode without source-link', () => {
-    const wogiHubPrompt = `Customers > Services (call it services and not integrations)
+  // RC3: channel traffic is inter-agent transport, NOT user input. Firing the
+  // gate on it wrote a long-input-pending marker that deadlocked against the
+  // routing gate. Channel-source messages now PASS; source fidelity for
+  // dispatches is enforced at the manager AUTHORING layer instead.
+  const wogiHubPrompt = `Customers > Services (call it services and not integrations)
 Connect To Jira
 Add Service Block
 
@@ -182,25 +183,43 @@ Dropdown to select Department / Service / Team / Employee
 
 After we map this we need to add routing rules and implement the cascade.
 We need to refactor the existing structure to consolidate.`;
+
+  it('PASSES (channel-source) a long channel-dispatch in worker mode — no deadlock', () => {
     const r = lie.shouldForceExtractReview({
       text: wogiHubPrompt,
       source: 'channel-dispatch',
       env: { WOGI_WORKSPACE_ROOT: '/tmp/ws', WOGI_REPO_NAME: 'frontend' }
     });
-    assert.equal(r.forced, true);
-    assert.equal(r.level, 'strict');
-    assert.equal(r.reason, 'channel-dispatch-without-source-link');
+    assert.equal(r.forced, false);
+    assert.equal(r.reason, 'channel-source');
   });
 
-  it('FORCE level when same prompt arrives in solo manager session', () => {
-    const wogiHubPrompt = `Customers > Services (call it services and not integrations)
-- Customer Rate
-- Customer department rate
-- Department rate
-- Service rate
-- Employee rate
+  it('PASSES (channel-source) a long worker→manager `## Results` status reply on the manager', () => {
+    const statusReply = `## Results
 
-We need to add routing and implement the cascade. Refactor the existing structure.`;
+1. Fixed the continuation gate stall
+2. Added canonical state resolution
+3. Updated the worker rules template
+4. Skipped the long-input gate for channel traffic
+5. Added regression tests for all four ACs
+6. Ran the full suite — green`;
+    const r = lie.shouldForceExtractReview({
+      text: statusReply,
+      source: 'channel',
+      env: { WOGI_WORKSPACE_ROOT: '/tmp/ws', WOGI_REPO_NAME: 'manager' }
+    });
+    assert.equal(r.forced, false);
+    assert.equal(r.reason, 'channel-source');
+  });
+
+  it('PASSES (channel-source) a <channel>-tagged message even without a source field', () => {
+    const tagged = `<channel from="manager">\n${wogiHubPrompt}\n</channel>`;
+    const r = lie.shouldForceExtractReview({ text: tagged });
+    assert.equal(r.forced, false);
+    assert.equal(r.reason, 'channel-source');
+  });
+
+  it('STILL FORCES the same prompt as direct USER input (protection preserved off the transport layer)', () => {
     const r = lie.shouldForceExtractReview({
       text: wogiHubPrompt,
       source: 'user',
@@ -210,38 +229,10 @@ We need to add routing and implement the cascade. Refactor the existing structur
     assert.equal(r.level, 'force');
     assert.equal(r.reason, 'long-form-task-without-source-link');
   });
-
-  it('PASSES same prompt when source-link is added (manager did the right thing)', () => {
-    const wellFormed = `Per .workflow/changes/wf-89aaab85.md, implement these:
-
-## Original Request (verbatim)
-
-- Customer Rate
-- Customer department rate
-- Department rate
-- Service rate
-- Employee rate
-
-We need to add routing and refactor.`;
-    const r = lie.shouldForceExtractReview({
-      text: wellFormed,
-      source: 'channel-dispatch',
-      env: { WOGI_WORKSPACE_ROOT: '/tmp/ws', WOGI_REPO_NAME: 'frontend' }
-    });
-    assert.equal(r.forced, false);
-    assert.equal(r.reason, 'source-link-present');
-  });
 });
 
 describe('buildEnforcementMessage', () => {
-  it('strict message includes wogi-hub citation', () => {
-    const msg = lie.buildEnforcementMessage('channel-dispatch-without-source-link', 'strict');
-    assert.match(msg, /STRICT P11.5/);
-    assert.match(msg, /wogi-hub/);
-    assert.match(msg, /wogi-extract-review/);
-  });
-
-  it('force message has the same actions but different framing', () => {
+  it('force message has the expected actions and framing', () => {
     const msg = lie.buildEnforcementMessage('long-form-task-without-source-link', 'force');
     assert.match(msg, /P11.5 ENFORCEMENT/);
     assert.match(msg, /wogi-extract-review/);
@@ -270,30 +261,19 @@ describe('marker file lifecycle', () => {
   });
 });
 
-describe('isChannelDispatchInWorker', () => {
-  it('detects worker + channel source', () => {
-    assert.equal(
-      lie.isChannelDispatchInWorker('channel-dispatch', { WOGI_WORKSPACE_ROOT: '/tmp', WOGI_REPO_NAME: 'frontend' }),
-      true
-    );
+describe('isChannelSourceMessage', () => {
+  it('detects a channel/notifications source field', () => {
+    assert.equal(lie.isChannelSourceMessage('anything', 'channel-dispatch'), true);
+    assert.equal(lie.isChannelSourceMessage('anything', 'notifications/claude/channel'), true);
   });
 
-  it('rejects manager mode', () => {
-    assert.equal(
-      lie.isChannelDispatchInWorker('channel-dispatch', { WOGI_WORKSPACE_ROOT: '/tmp', WOGI_REPO_NAME: 'manager' }),
-      false
-    );
+  it('detects a leading <channel> tag without a source field', () => {
+    assert.equal(lie.isChannelSourceMessage('<channel from="manager">hi</channel>', undefined), true);
   });
 
-  it('rejects non-channel sources', () => {
-    assert.equal(
-      lie.isChannelDispatchInWorker('user', { WOGI_WORKSPACE_ROOT: '/tmp', WOGI_REPO_NAME: 'frontend' }),
-      false
-    );
-  });
-
-  it('rejects when not in workspace mode', () => {
-    assert.equal(lie.isChannelDispatchInWorker('channel-dispatch', {}), false);
+  it('rejects ordinary user input', () => {
+    assert.equal(lie.isChannelSourceMessage('Fix the login bug', 'user'), false);
+    assert.equal(lie.isChannelSourceMessage('Fix the login bug'), false);
   });
 });
 

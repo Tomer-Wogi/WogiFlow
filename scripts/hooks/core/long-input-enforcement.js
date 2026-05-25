@@ -252,18 +252,23 @@ function hasTaskSignals(text) {
 }
 
 /**
- * Detect whether the current prompt is a channel-dispatched message in
- * worker mode. UserPromptSubmit gets `parsedInput.source` from Claude
- * Code's hook payload — channel-dispatched prompts arrive with a
- * channel-specific source identifier. We also check env vars to confirm
- * worker context. Defensive: returns false in any edge case.
+ * Detect ANY channel-source message — manager↔worker dispatches and worker→
+ * manager `## Results` status replies, in either direction (wf-e5e57361 / RC3).
+ * Channel traffic is inter-agent transport, NOT user input. Dual detection:
+ *   1. `source` carries the channel/notification marker (channel server delivers
+ *      via `notifications/claude/channel`), OR
+ *   2. the content arrives wrapped in a leading `<channel ...>` tag
+ *      (workspace-channel-server buildInstructions).
+ * Independent of worker/manager mode — a status reply trips the gate on the
+ * MANAGER too, which is the deadlock this skip removes.
  */
-function isChannelDispatchInWorker(source, env = process.env) {
-  if (!env.WOGI_WORKSPACE_ROOT) return false;
-  if (!env.WOGI_REPO_NAME || env.WOGI_REPO_NAME === 'manager') return false;
-  // Channel-dispatched prompts have specific source markers.
-  if (typeof source !== 'string') return false;
-  return /channel|notifications/i.test(source);
+function isChannelSourceMessage(text, source) {
+  if (typeof source === 'string' && /channel|notifications/i.test(source)) return true;
+  if (typeof text === 'string') {
+    const lead = text.trimStart().slice(0, 16).toLowerCase();
+    if (lead.startsWith('<channel')) return true;
+  }
+  return false;
 }
 
 /**
@@ -275,7 +280,7 @@ function isChannelDispatchInWorker(source, env = process.env) {
  * @param {object} [input.env] - environment (for testing)
  * @returns {{forced: boolean, level: 'strict'|'force'|'suggest'|'pass', reason: string}}
  */
-function shouldForceExtractReview({ text, source, env = process.env } = {}) {
+function shouldForceExtractReview({ text, source } = {}) {
   // wf-f7d58760: system-originated content (sub-agent task-notifications,
   // tool-result echoes, slash-command framings) flows through the same
   // UserPromptSubmit pipe but is NOT a user prompt. Skip the gate entirely.
@@ -288,6 +293,17 @@ function shouldForceExtractReview({ text, source, env = process.env } = {}) {
   // item-reconciliation has no source to reconcile against.
   if (isSkillBodyEcho(text)) {
     return { forced: false, level: 'pass', reason: 'skill-body-echo' };
+  }
+  // wf-e5e57361 (RC3): channel-source messages are INTER-AGENT transport
+  // (manager↔worker dispatches and `## Results` replies), not user prompts.
+  // Firing the gate on them wrote a long-input-pending marker that deadlocked
+  // against the routing gate (worker/manager could reach neither /wogi-start nor
+  // the dismiss path). Source fidelity for dispatched specs is enforced at the
+  // manager AUTHORING layer (Logic Constitution 11.6 + flow-source-fidelity.js),
+  // where the USER's verbatim prompt still trips this gate normally — not here on
+  // the transport layer. Skip channel traffic entirely.
+  if (isChannelSourceMessage(text, source)) {
+    return { forced: false, level: 'pass', reason: 'channel-source' };
   }
   if (!detectLongFormPrompt(text)) {
     return { forced: false, level: 'pass', reason: 'below-long-input-threshold' };
@@ -302,38 +318,27 @@ function shouldForceExtractReview({ text, source, env = process.env } = {}) {
   if (!hasTaskSignals(text)) {
     return { forced: false, level: 'suggest', reason: 'long-but-no-task-signals' };
   }
-  // Worker receiving channel-dispatched long-form without source-link:
-  // STRICT — this is the wogi-hub 2026-04-27 failure mode.
-  if (isChannelDispatchInWorker(source, env)) {
-    return { forced: true, level: 'strict', reason: 'channel-dispatch-without-source-link' };
-  }
-  // Any other session: long-form + task-like + no source-link → force.
+  // (RC3) The former STRICT branch for channel-dispatch-in-worker is superseded
+  // by the channel-source skip above: channel traffic never reaches here. The
+  // wogi-hub 2026-04-27 manager-compression failure is now prevented at the
+  // manager AUTHORING layer, not by force-blocking the worker on receipt.
+  // Any non-channel session: long-form + task-like + no source-link → force.
   return { forced: true, level: 'force', reason: 'long-form-task-without-source-link' };
 }
 
-function buildEnforcementMessage(reason, level) {
-  const header = level === 'strict'
-    ? '🚨 STRICT P11.5 ENFORCEMENT — manager compression detected'
-    : '🚨 P11.5 ENFORCEMENT — long-form prompt without source-link';
+function buildEnforcementMessage(reason, _level) {
+  // Only the 'force' level reaches here now — channel-source (the former
+  // 'strict' path) is skipped upstream in shouldForceExtractReview (RC3,
+  // wf-e5e57361). `_level` is retained for signature/back-compat.
   const body = [];
-  body.push(header);
+  body.push('🚨 P11.5 ENFORCEMENT — long-form prompt without source-link');
   body.push('');
-  if (level === 'strict') {
-    body.push('This prompt arrived via channel-dispatch in worker mode and qualifies as');
-    body.push('long-form (>40 lines OR ≥5 discrete items) without a source-link. The');
-    body.push('manager that dispatched this message SHOULD have included a path to a spec');
-    body.push('with `## Original Request (verbatim)`. It did not. This is the exact failure');
-    body.push('shape that caused the wogi-hub 2026-04-27 Customers > Services regression.');
-    body.push('');
-    body.push('You MUST reverse the compression at this layer:');
-  } else {
-    body.push('This prompt qualifies as long-form (>40 lines OR ≥5 discrete items) AND');
-    body.push('contains task-creating signals (imperatives + structured items). Per P11.5,');
-    body.push('long-form work-creating prompts MUST go through /wogi-extract-review so');
-    body.push('every item is captured and reconciled.');
-    body.push('');
-    body.push('You MUST:');
-  }
+  body.push('This prompt qualifies as long-form (>40 lines OR ≥5 discrete items) AND');
+  body.push('contains task-creating signals (imperatives + structured items). Per P11.5,');
+  body.push('long-form work-creating prompts MUST go through /wogi-extract-review so');
+  body.push('every item is captured and reconciled.');
+  body.push('');
+  body.push('You MUST:');
   body.push('  1. Invoke `Skill(skill="wogi-extract-review")` BEFORE any other work.');
   body.push('  2. Let extract-review run its 6-phase pipeline (extract → review → topics →');
   body.push('     map → clarify → stories) on this prompt.');
@@ -483,7 +488,7 @@ module.exports = {
   hasTaskSignals,
   isSystemOriginatedContent,
   isSkillBodyEcho,
-  isChannelDispatchInWorker,
+  isChannelSourceMessage,
   shouldForceExtractReview,
   buildEnforcementMessage,
   markLongInputPending,

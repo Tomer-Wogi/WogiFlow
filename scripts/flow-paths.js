@@ -65,6 +65,85 @@ function getProjectRoot() {
 }
 
 // ============================================================
+// Worktree-stable canonical resolution (wf-e5e57361 / RC2)
+// ============================================================
+//
+// `git rev-parse --show-toplevel` is NOT worktree-stable: from inside a linked
+// git worktree it returns the WORKTREE root, not the main repository root. State
+// files under `.workflow/state/` are gitignored, so a worktree never carries them
+// (e.g. `workflow-phase.json`). That made the phase gates fail-open to an
+// unrestricted "idle" phase when a process ran from a worktree — an "ungated
+// context" a worker could reach by `git worktree add`. The fix: resolve gate
+// state from the CANONICAL (main-repo) location via `--git-common-dir`, which IS
+// worktree-stable (it always points at the main repo's `.git`).
+//
+// Both values come from a single `git rev-parse` call, memoized per-process.
+
+let _gitInfo; // { topLevel, mainRoot } | null
+function resolveGitInfo() {
+  if (_gitInfo !== undefined) return _gitInfo;
+  try {
+    // One call returns two lines: show-toplevel, then git-common-dir (absolute).
+    const out = execSync('git rev-parse --path-format=absolute --show-toplevel --git-common-dir', {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe']
+    }).trim();
+    const [topLevel, commonDir] = out.split('\n').map(s => s.trim());
+    if (topLevel && commonDir) {
+      // commonDir is `<mainRoot>/.git` in both the main tree and any worktree.
+      _gitInfo = { topLevel: path.resolve(topLevel), mainRoot: path.dirname(path.resolve(commonDir)) };
+      return _gitInfo;
+    }
+  } catch (_err) { /* not a git repo / git unavailable */ }
+  _gitInfo = null;
+  return _gitInfo;
+}
+
+/**
+ * Resolve the canonical (main-repo) `.workflow/state` directory, stable across
+ * git worktrees. Falls back to the cwd-relative STATE_DIR when git is
+ * unavailable or the canonical state dir doesn't exist (no regression vs prior
+ * behavior). An explicit `WOGI_CANONICAL_STATE_DIR` env var overrides everything
+ * (used by tests and by callers that already resolved it).
+ *
+ * @returns {string} Absolute path to the canonical `.workflow/state` directory
+ */
+let _canonicalStateDir; // memo
+function getCanonicalStateDir() {
+  if (_canonicalStateDir !== undefined) return _canonicalStateDir;
+  if (process.env.WOGI_CANONICAL_STATE_DIR && fs.existsSync(process.env.WOGI_CANONICAL_STATE_DIR)) {
+    _canonicalStateDir = process.env.WOGI_CANONICAL_STATE_DIR;
+    return _canonicalStateDir;
+  }
+  const info = resolveGitInfo();
+  if (info && info.mainRoot) {
+    const candidate = path.join(info.mainRoot, '.workflow', 'state');
+    if (fs.existsSync(candidate)) {
+      _canonicalStateDir = candidate;
+      return _canonicalStateDir;
+    }
+  }
+  _canonicalStateDir = STATE_DIR; // fallback: cwd-relative (current behavior)
+  return _canonicalStateDir;
+}
+
+/**
+ * True when the current working directory is inside a LINKED git worktree
+ * (i.e. the working-tree top-level differs from the main repository root). Used
+ * to fail gates CLOSED for in-progress tasks rather than fail-open to "idle"
+ * when phase state cannot be resolved. Returns false outside git or on the main
+ * working tree.
+ *
+ * @returns {boolean}
+ */
+function isLinkedWorktree() {
+  if (process.env.WOGI_FORCE_WORKTREE === '1') return true; // test seam
+  const info = resolveGitInfo();
+  if (!info) return false;
+  return info.topLevel !== info.mainRoot;
+}
+
+// ============================================================
 // Package Root (where wogiflow npm package lives)
 // ============================================================
 
@@ -283,6 +362,8 @@ function checkSpecMigration() {
 
 module.exports = {
   getProjectRoot,
+  getCanonicalStateDir,
+  isLinkedWorktree,
   PROJECT_ROOT,
   PACKAGE_ROOT,
   PACKAGE_PATHS,

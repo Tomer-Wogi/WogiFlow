@@ -781,6 +781,8 @@ const {
 module.exports = {
   // Explicit re-exports from flow-paths.js
   getProjectRoot: flowPaths.getProjectRoot,
+  getCanonicalStateDir: flowPaths.getCanonicalStateDir,
+  isLinkedWorktree: flowPaths.isLinkedWorktree,
   PROJECT_ROOT: flowPaths.PROJECT_ROOT,
   PACKAGE_ROOT: flowPaths.PACKAGE_ROOT,
   PACKAGE_PATHS: flowPaths.PACKAGE_PATHS,

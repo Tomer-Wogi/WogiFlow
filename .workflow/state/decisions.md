@@ -83,6 +83,30 @@ Project-specific rules for the **wogi-flow** repository. These are conventions a
 
 ---
 
+### Gate State Resolves From git-common-dir, Fails Closed For In-Progress Tasks (2026-05-23)
+<!-- PIN: gate-state-canonical-resolution -->
+**Source**: wf-e5e57361 (RC2). A workspace worker reasoned it could spin up a `git worktree` to reach an "ungated context": phase gates read the gitignored `workflow-phase.json` relative to cwd, and `git rev-parse --show-toplevel` returns the WORKTREE root (verified empirically), so a worktree's blank state made the gates fail-open to an unrestricted "idle" phase.
+
+**Rule**: Any gate that reads gate-relevant state from `.workflow/state/` MUST resolve that state from the CANONICAL (main-repo) location, never relative to `process.cwd()`. Use `getCanonicalStateDir()` (`scripts/flow-paths.js`), which resolves via `git rev-parse --path-format=absolute --git-common-dir` — worktree-stable (always the main repo's `.git`). When the state is unresolvable AND a task is in-progress per canonical `ready.json` AND the process is inside a linked worktree (`isLinkedWorktree()`), the gate MUST fail **closed** (block), not open. Missing state for an active task means "unknown", not "permitted".
+
+**Why**: cwd-relative resolution is forgeable by changing directory. `--show-toplevel` is NOT worktree-stable; `--git-common-dir` is. Fail-open on missing state turns "the file isn't here" into "no gating applies" — exactly the evasion vector.
+
+**How to apply**: import `getCanonicalStateDir` / `isLinkedWorktree` from `flow-utils`; build state paths from `getCanonicalStateDir()`; for new gates, add the worktree + in-progress fail-closed branch. Verified in `tests/flow-worktree-gate-evasion.test.js`.
+
+---
+
+### Gates Built For User Input Must Skip `<channel>` Inter-Agent Traffic (2026-05-23)
+<!-- PIN: gates-skip-channel-traffic -->
+**Source**: wf-e5e57361 (RC3). The long-input / source-fidelity gate (`long-input-enforcement.js`) fired on workspace channel messages — manager→worker dispatches AND worker→manager `## Results` replies — writing a `long-input-pending` marker that deadlocked against the routing gate (7+ times across sessions).
+
+**Rule**: A gate designed for USER input (long-input, source-fidelity, and similar prompt-shape gates) MUST skip channel-source messages — they are inter-agent transport, not user requests. Detect channel source by EITHER a `source` matching `/channel|notifications/i` OR a leading `<channel` content tag (`isChannelSourceMessage()`). Enforce the gate's actual invariant (e.g. source fidelity) at the manager's spec-AUTHORING layer (Logic Constitution 11.6 + `flow-source-fidelity.js`), where the user's verbatim prompt still trips the gate — NOT on the worker's channel-receive layer, where forcing it deadlocks against routing.
+
+**Why**: a manager→worker dispatch has already passed through the user→manager gate; re-gating it on receipt is both redundant and deadlock-prone (the worker cannot route through `/wogi-start` while the routing gate is armed and the long-input marker blocks every tool).
+
+**How to apply**: add an early channel-source skip near the top of any user-input gate. Verified in `tests/flow-hooks-long-input-enforcement.test.js` (channel-source skip block).
+
+---
+
 ## Operational Procedures
 <!-- PIN: operational-procedures -->
 

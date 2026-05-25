@@ -23,10 +23,31 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
-const { PATHS, safeJsonParse } = require('../../flow-utils');
+const { PATHS, safeJsonParse, getCanonicalStateDir, isLinkedWorktree } = require('../../flow-utils');
 
+// Exported for tests (main-tree path). The gate resolves these paths CANONICALLY
+// at call time (see workflowPhasePath / phaseReadsPath) so it cannot be evaded
+// from a git worktree, where the gitignored phase file is absent (wf-e5e57361 /
+// RC2). In the main working tree the canonical path equals this constant.
 const PHASE_READS_FILE = path.join(PATHS.state, 'phase-reads.json');
-const WORKFLOW_PHASE_FILE = path.join(PATHS.state, 'workflow-phase.json');
+
+// Lazy canonical resolvers — `stateDir` override is injectable for tests.
+function workflowPhasePath(stateDir) { return path.join(stateDir || getCanonicalStateDir(), 'workflow-phase.json'); }
+function phaseReadsPath(stateDir) { return path.join(stateDir || getCanonicalStateDir(), 'phase-reads.json'); }
+
+/**
+ * True if the canonical ready.json shows a task in-progress. Used to fail the
+ * gate CLOSED (rather than open) when phase state is unresolvable inside a
+ * worktree of an in-progress task — the gate-evasion shape from RC2.
+ */
+function hasCanonicalInProgressTask(stateDir) {
+  try {
+    const ready = safeJsonParse(path.join(stateDir || getCanonicalStateDir(), 'ready.json'), { inProgress: [] });
+    return Array.isArray(ready.inProgress) && ready.inProgress.length > 0;
+  } catch (_err) {
+    return false;
+  }
+}
 
 // Maps workflow phases to required instruction files
 const PHASE_FILE_REGISTRY = {
@@ -80,7 +101,8 @@ function recordPhaseRead(filePath) {
   // fail-open semantics mean a lost write just means the gate asks for a
   // re-read — safe degradation, not a correctness bug.
   try {
-    const existing = safeJsonParse(PHASE_READS_FILE, {});
+    const readsFile = phaseReadsPath();
+    const existing = safeJsonParse(readsFile, {});
     if (!existing.reads) existing.reads = {};
 
     existing.reads[matchedPhase] = {
@@ -88,7 +110,8 @@ function recordPhaseRead(filePath) {
       at: new Date().toISOString()
     };
 
-    fs.writeFileSync(PHASE_READS_FILE, JSON.stringify(existing, null, 2));
+    fs.mkdirSync(path.dirname(readsFile), { recursive: true });
+    fs.writeFileSync(readsFile, JSON.stringify(existing, null, 2));
 
     if (process.env.DEBUG) {
       console.error(`[PhaseReadGate] Recorded read of ${PHASE_FILE_REGISTRY[matchedPhase]} for phase ${matchedPhase}`);
@@ -113,8 +136,10 @@ function recordPhaseRead(filePath) {
  *
  * @param {string} toolName
  * @param {Object} [config] - Optional config object
+ * @param {Object} [deps] - Injectable seams for tests:
+ *   { stateDir, isLinkedWorktree, hasInProgressTask }
  */
-function checkPhaseReadGate(toolName, config) {
+function checkPhaseReadGate(toolName, config, deps = {}) {
   try {
     // Respect phaseReadGate config with fallback to phaseGate (backwards compat).
     // If phaseReadGate.enabled is explicitly false, skip. If it's undefined,
@@ -129,10 +154,32 @@ function checkPhaseReadGate(toolName, config) {
       return { blocked: false };
     }
 
-    // Read current phase
-    const phaseData = safeJsonParse(WORKFLOW_PHASE_FILE, null);
+    // RC2 (wf-e5e57361): resolve phase from the CANONICAL state dir, not cwd —
+    // a git worktree lacks the gitignored phase file, so a cwd-relative read
+    // would fail-open to an unrestricted "idle" phase ("ungated context").
+    const stateDir = deps.stateDir || getCanonicalStateDir();
+    const inWorktree = (deps.isLinkedWorktree || isLinkedWorktree);
+    const hasInProgress = (deps.hasInProgressTask || hasCanonicalInProgressTask);
+
+    // Read current phase (canonically)
+    const phaseData = safeJsonParse(workflowPhasePath(stateDir), null);
     if (!phaseData || !phaseData.phase) {
-      return { blocked: false }; // No phase data = fail-open
+      // RC2 fail-CLOSED: a missing phase file inside a linked worktree while a
+      // task is in-progress (per canonical ready.json) is the gate-evasion
+      // shape — block mutation tools instead of failing open.
+      if ((toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash') &&
+          inWorktree(stateDir) && hasInProgress(stateDir)) {
+        return {
+          blocked: true,
+          message: 'Phase gate (RC2): a task is in progress but the workflow phase ' +
+            'could not be resolved, and you appear to be operating from a git worktree. ' +
+            'Gates are NOT evadable by working from a worktree — phase is resolved from ' +
+            'the canonical (main-repo) state. Return to the main working tree and satisfy ' +
+            'the gate legitimately, or channel-escalate to the manager. Do NOT create ' +
+            'worktrees or write gate-satisfying markers to bypass this.'
+        };
+      }
+      return { blocked: false }; // No phase data = fail-open (normal main-tree)
     }
 
     const currentPhase = phaseData.phase;
@@ -149,7 +196,7 @@ function checkPhaseReadGate(toolName, config) {
     }
 
     // Check if that file has been read
-    const readData = safeJsonParse(PHASE_READS_FILE, {});
+    const readData = safeJsonParse(phaseReadsPath(stateDir), {});
     const reads = readData.reads || {};
 
     if (reads[currentPhase]) {
@@ -182,7 +229,9 @@ function checkPhaseReadGate(toolName, config) {
  */
 function clearPhaseReads() {
   try {
-    fs.writeFileSync(PHASE_READS_FILE, JSON.stringify({ reads: {} }, null, 2));
+    const readsFile = phaseReadsPath();
+    fs.mkdirSync(path.dirname(readsFile), { recursive: true });
+    fs.writeFileSync(readsFile, JSON.stringify({ reads: {} }, null, 2));
   } catch (_err) {
     if (process.env.DEBUG) {
       console.error(`[PhaseReadGate] Failed to clear phase reads: ${_err.message}`);
@@ -194,6 +243,9 @@ module.exports = {
   recordPhaseRead,
   checkPhaseReadGate,
   clearPhaseReads,
+  hasCanonicalInProgressTask,
+  workflowPhasePath,
+  phaseReadsPath,
   PHASE_FILE_REGISTRY,
   PHASE_READS_FILE
 };

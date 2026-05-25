@@ -14,9 +14,13 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
-const { getConfig, PATHS, safeJsonParse } = require('../../flow-utils');
+const { getConfig, safeJsonParse, getCanonicalStateDir, isLinkedWorktree } = require('../../flow-utils');
 
-const PHASE_FILE = path.join(PATHS.state, 'workflow-phase.json');
+// RC2 (wf-e5e57361): resolve the phase file from the CANONICAL (main-repo) state
+// dir, worktree-stable, so the gate cannot be evaded by operating from a git
+// worktree where the gitignored phase file is absent. In the main working tree
+// the canonical path equals `PATHS.state/workflow-phase.json`.
+function phaseFilePath() { return path.join(getCanonicalStateDir(), 'workflow-phase.json'); }
 
 // 2 hours in milliseconds
 const STALE_PHASE_TTL_MS = 2 * 60 * 60 * 1000;
@@ -94,7 +98,7 @@ function isPhaseGateEnabled(config) {
 function getCurrentPhase() {
   const defaults = { phase: 'idle', taskId: null, updatedAt: null, previousPhase: null };
   try {
-    const data = safeJsonParse(PHASE_FILE, null);
+    const data = safeJsonParse(phaseFilePath(), null);
     if (!data || !data.phase || !PHASES.includes(data.phase)) {
       return defaults;
     }
@@ -114,11 +118,12 @@ function getCurrentPhase() {
  */
 function writePhaseState(state) {
   try {
-    const dir = path.dirname(PHASE_FILE);
+    const phaseFile = phaseFilePath();
+    const dir = path.dirname(phaseFile);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(PHASE_FILE, JSON.stringify(state, null, 2) + '\n', 'utf-8');
+    fs.writeFileSync(phaseFile, JSON.stringify(state, null, 2) + '\n', 'utf-8');
     // Update aggregated hook status
     try {
       const { setPhase } = require('../../flow-hook-status');
@@ -296,6 +301,30 @@ function checkPhaseGate(toolName, toolInput, config) {
       resetPhase();
       return { allowed: true, blocked: false, reason: 'phase_expired_reset', message: null };
     }
+  }
+
+  // RC2 (wf-e5e57361) fail-CLOSED: if the phase resolves to the idle default
+  // (no phase file found) while running inside a linked git worktree AND a task
+  // is in-progress per canonical state, this is the gate-evasion shape. Block
+  // mutation tools rather than letting "idle" wave them through.
+  if (current.phase === 'idle' && !current.taskId &&
+      (toolName === 'Edit' || toolName === 'Write' || toolName === 'Bash')) {
+    try {
+      if (isLinkedWorktree()) {
+        const ready = safeJsonParse(path.join(getCanonicalStateDir(), 'ready.json'), { inProgress: [] });
+        if (Array.isArray(ready.inProgress) && ready.inProgress.length > 0) {
+          return {
+            allowed: false,
+            blocked: true,
+            reason: 'phase_worktree_failclosed',
+            message: 'Phase gate (RC2): operating from a git worktree while a task is ' +
+              'in progress, but no phase state is resolvable. Gates are NOT evadable from a ' +
+              'worktree — return to the main working tree and satisfy the gate legitimately, ' +
+              'or channel-escalate. Do NOT create worktrees or write markers to bypass gating.'
+          };
+        }
+      }
+    } catch (_err) { /* fail-open on detection error */ }
   }
 
   const bashCommand = toolInput?.command || '';

@@ -186,6 +186,138 @@ function escalateBlocked({ workspaceRoot, repoName, taskId, reason, managerPort 
 }
 
 /**
+ * Is autonomous walk-away mode active for this worker? Read from the canonical
+ * session-state.json. Tailors the stall directive (pre-approved → proceed) but
+ * does NOT change the never-idle guarantee — that holds in all worker mode.
+ */
+function isAutonomousActive(stateDir) {
+  try {
+    const { safeJsonParse } = require('../../flow-utils');
+    const ss = safeJsonParse(path.join(stateDir, 'session-state.json'), null);
+    return Boolean(ss && ss.autonomousMode && ss.autonomousMode.active);
+  } catch (_err) {
+    return false;
+  }
+}
+
+/**
+ * Directive injected when an in-progress worker is parked at a gate. Tells it to
+ * make real progress by SATISFYING the gate legitimately (read the phase doc,
+ * decompose, provide evidence) — or to channel-escalate — and EXPLICITLY forbids
+ * gate circumvention. This is the integrity half of RC2: never give the worker a
+ * reason to reach for a worktree / marker-write.
+ */
+function buildStallDirective({ taskId, phase, remaining, total, attempt, k, autonomous, env }) {
+  const port = (env && env.WOGI_MANAGER_PORT) || '8800';
+  const repo = (env && env.WOGI_REPO_NAME) || 'worker';
+  const isParked = phase === 'exploring' || phase === 'spec_review';
+  const lines = [
+    `SUSTAINED EXECUTION — task ${taskId} is in progress but appears PARKED (phase=${phase}, ${remaining}/${total || 0} sub-tasks).`,
+    `You are a workspace worker. A dispatched task runs to COMPLETION across turns. Idling silently while a task is in-progress is NOT a valid end-of-turn state.`,
+    '',
+    'Make REAL progress THIS turn by SATISFYING the gate legitimately:'
+  ];
+  if (isParked) {
+    lines.push(
+      `  • You are in the ${phase} phase. Read the required phase instruction file (.claude/docs/phases/), finish the ${phase === 'spec_review' ? 'spec' : 'exploration'}, and advance the pipeline.`,
+      autonomous
+        ? `  • Autonomous mode is ACTIVE → you are PRE-APPROVED. Do NOT wait for spec/architect approval — proceed.`
+        : `  • If this needs manager/user approval, channel-escalate (below) instead of waiting silently.`
+    );
+  } else {
+    lines.push(
+      `  • The task is in an active phase but has no decomposed sub-task ledger yet. Decompose it (TodoWrite) and START the first sub-task, OR if a gate is blocking you, satisfy it (read the required phase doc / provide the required evidence).`
+    );
+  }
+  lines.push(
+    '',
+    'PROHIBITED — gate circumvention is forbidden and pointless (gates resolve phase from the canonical main-repo state, not your cwd):',
+    '  ✗ Do NOT create a git worktree to reach an "ungated" context.',
+    '  ✗ Do NOT hand-write gate-satisfying markers or edit .workflow/state files to fake gate satisfaction.',
+    '  ✗ Do NOT change working directory to dodge a gate.',
+    '',
+    'If you genuinely cannot proceed (blocked on the manager/user, or the next step is destructive / needs credentials), ESCALATE then end the turn:',
+    `  curl -s -X POST http://127.0.0.1:${port} \\`,
+    `    -H "X-Wogi-From: ${repo}" \\`,
+    `    --data-binary "## QUESTION: <your blocker>"`,
+    '',
+    `(stall continuation ${attempt}/${k} — make real progress or escalate; ${k} idle turns in a row will auto-escalate to the manager and stop.)`
+  );
+  return lines.join('\n');
+}
+
+/**
+ * Stall handler (RC1). Drives a proceed-or-escalate continuation for an
+ * in-progress worker task the happy path won't cover, then escalates to the
+ * manager after `noProgressK` consecutive no-progress turns. Shares the per-task
+ * counter file but tracks stall progress in dedicated fields so it never
+ * conflates with the happy-path continuation count. Never returns a silent stop
+ * without having escalated.
+ */
+function handleStall({ stateDir, root, env, taskId, phase, remaining, total, fingerprintFn, cfg }) {
+  let counter = readCounter(stateDir);
+  if (!counter || counter.taskId !== taskId) {
+    counter = { taskId, count: 0, noProgressStreak: 0, fingerprint: null, escalated: false };
+  }
+
+  const fp = fingerprintFn(root, remaining);
+
+  // Use the SAME progress fields as the happy path (fingerprint /
+  // noProgressStreak / escalated). The stall and happy paths are mutually
+  // exclusive per turn but share one task counter; keeping separate fingerprint
+  // fields would break the escalated-resume check when a task transitions
+  // between modes after an escalation (the other mode's fingerprint is null →
+  // resume never fires → worker stuck "already-escalated"). Only `stallCount`
+  // is stall-specific (the attempt display).
+
+  // Respect an existing escalation — only resume if work moved since.
+  if (counter.escalated) {
+    if (counter.fingerprint && fp !== counter.fingerprint) {
+      counter.escalated = false;
+      counter.noProgressStreak = 0;
+    } else {
+      counter.fingerprint = fp;
+      writeCounter(stateDir, counter);
+      return { fired: false, decision: 'allow', reason: 'stall-already-escalated', escalated: true };
+    }
+  }
+
+  // No-progress streak (shared with happy path — no-progress is no-progress
+  // regardless of which mode produced the turn).
+  if (counter.fingerprint != null && fp === counter.fingerprint) {
+    counter.noProgressStreak = (counter.noProgressStreak || 0) + 1;
+  } else {
+    counter.noProgressStreak = 0;
+  }
+  counter.fingerprint = fp;
+
+  // Escalate after K consecutive no-progress turns, then stop.
+  if (counter.noProgressStreak >= cfg.noProgressK) {
+    counter.escalated = true;
+    writeCounter(stateDir, counter);
+    escalateBlocked({
+      workspaceRoot: env.WOGI_WORKSPACE_ROOT, repoName: env.WOGI_REPO_NAME,
+      taskId, reason: `parked at "${phase}" gate with no progress across ${counter.noProgressStreak} turns`,
+      managerPort: env.WOGI_MANAGER_PORT
+    });
+    return { fired: false, decision: 'allow', reason: 'stall-escalated', escalated: true, phase };
+  }
+
+  // Fire a proceed-or-escalate continuation.
+  counter.stallCount = (counter.stallCount || 0) + 1;
+  writeCounter(stateDir, counter);
+  const directive = buildStallDirective({
+    taskId, phase, remaining, total,
+    attempt: counter.noProgressStreak + 1, k: cfg.noProgressK,
+    autonomous: isAutonomousActive(stateDir), env
+  });
+  return {
+    fired: true, decision: 'continue', reason: 'in-progress-stall',
+    taskId, phase, remaining, total, attempt: counter.stallCount, stopReason: directive
+  };
+}
+
+/**
  * Main gate. Returns one of:
  *   { continue: true, stopReason }              — force continuation
  *   null                                        — allow normal stop (no fire)
@@ -220,20 +352,47 @@ function checkWorkerContinuation(opts = {}) {
       return { fired: false, decision: 'allow', reason: 'no-in-progress' };
     }
 
-    // Active-work phase only (respect spec-approval / exploration waits).
     const phase = readPhase(stateDir);
-    if (!cfg.activePhases.includes(phase)) {
-      return { fired: false, decision: 'allow', reason: `phase-not-active:${phase || 'none'}` };
-    }
+    const fingerprintFn = opts.fingerprintFn || defaultProgressFingerprint;
 
-    // Remaining decomposed work?
+    // Remaining decomposed work (needed by both happy-path and stall fallback).
     const subtaskState = opts.subtaskState || require('../../../lib/workspace-subtask-state');
     const summary = subtaskState.summary(taskId);
     const remaining = summary.remaining;
-    if (remaining <= 0) {
-      return { fired: false, decision: 'allow', reason: 'no-remaining-subtasks' };
+    const total = summary.total;
+
+    const PARKED_PHASES = ['exploring', 'spec_review'];
+    const inActivePhase = cfg.activePhases.includes(phase);
+
+    // Decomposed ledger exists and ALL sub-tasks are complete (total>0,
+    // remaining<=0): the task is wrapping up. Allow a clean stop so the worker
+    // can run `flow done` and task-complete can fire (preserves S2/S6
+    // termination — this is the completion boundary, not a parked stall).
+    if (inActivePhase && remaining <= 0 && total > 0) {
+      return { fired: false, decision: 'allow', reason: 'subtasks-complete' };
     }
 
+    // Stall fallback (RC1, wf-e5e57361): an in-progress worker task that the
+    // happy path won't cover MUST NOT idle silently. Two shapes:
+    //   (a) active phase but NO decomposed ledger ever (total<=0) — e.g. parked
+    //       at an architect / phase-read gate before TodoWrite decomposition.
+    //   (b) parked in an approval / explore phase (exploring / spec_review).
+    // Drive a proceed-or-escalate continuation; escalate to the manager after
+    // noProgressK no-progress turns. Never a silent allow-stop.
+    if ((inActivePhase && total <= 0) || PARKED_PHASES.includes(phase)) {
+      return handleStall({
+        stateDir, root, env, taskId, phase,
+        remaining, total, fingerprintFn, cfg
+      });
+    }
+
+    // Not actionable (idle / routing / completing / unknown) — genuinely allow a
+    // normal stop; there is no in-progress work to sustain here.
+    if (!inActivePhase) {
+      return { fired: false, decision: 'allow', reason: `phase-not-actionable:${phase || 'none'}` };
+    }
+
+    // ── Happy path: active phase + remaining > 0 (unchanged S2 logic) ──
     // Per-task counter (reset when the task changes).
     let counter = readCounter(stateDir);
     if (!counter || counter.taskId !== taskId) {
@@ -243,7 +402,6 @@ function checkWorkerContinuation(opts = {}) {
     // Already escalated for this task ⇒ allow stop (don't re-fire). Manager
     // re-dispatch / restart resets the counter (taskId match but escalated flag);
     // we clear the escalation only when progress resumes (fingerprint changes).
-    const fingerprintFn = opts.fingerprintFn || defaultProgressFingerprint;
     const fingerprint = fingerprintFn(root, remaining);
 
     if (counter.escalated) {
@@ -313,6 +471,9 @@ function checkWorkerContinuation(opts = {}) {
 
 module.exports = {
   checkWorkerContinuation,
+  handleStall,
+  buildStallDirective,
+  isAutonomousActive,
   isWorkerMode,
   getCfg,
   derivedCap,

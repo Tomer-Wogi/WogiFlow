@@ -2,6 +2,20 @@
 
 Automatic log of all requests that changed files. Searchable by tags.
 
+### R-385 | 2026-05-25 00:00
+**Type**: fix
+**Tags**: #review #bug:wf-e5e57361 #continuation #self-review
+**Request**: "/wogi-review" (review the wf-e5e57361 session work)
+**Result**: Review found 4 findings (1 high, 2 low, 1 info). Fixed 2: **F1 (high)** — `handleStall` and the happy path shared the `escalated` flag but tracked separate fingerprint fields (`stallFingerprint` vs `fingerprint`), so a stall↔happy mode transition after an escalation got stuck in `already-escalated` (silent stop) — unified on shared `fingerprint`/`noProgressStreak`; added regression test. **F3 (low)** — `getCanonicalStateDir()` env override lacked an `existsSync` guard; added it. **F2 (low, open)** — `isChannelDispatchInWorker` + `buildEnforcementMessage('strict')` now dead code after RC3; surfaced to user for keep-vs-remove decision (NOT auto-deferred). **F4 (info)** — `<channel` prefix false-positive risk accepted as negligible. Full suite 2963 pass / 0 fail.
+**Files**: scripts/hooks/core/worker-continuation-gate.js, scripts/flow-paths.js, tests/flow-worker-continuation-gate.test.js, .workflow/state/last-review.json
+
+### R-384 | 2026-05-23 08:30
+**Type**: fix
+**Tags**: #bug:wf-e5e57361 #workspace #autonomous #gate #integrity #continuation #long-input
+**Request**: "Workspace autonomous runs silently stall at approval gates — and a worker tried to bypass the phase gate via a git worktree" (challenge the solution 10× to 99% confidence)
+**Result**: Fixed 3 root causes. RC1: added in-progress stall fallback to `worker-continuation-gate.js` (proceed-or-escalate continuation; auto-escalate after noProgressK; never silent idle; completion boundary preserved). RC2: added worktree-stable `getCanonicalStateDir()`/`isLinkedWorktree()` to `flow-paths.js`; `phase-gate.js`+`phase-read-gate.js` resolve phase canonically and fail-closed for in-progress tasks in a worktree; circumvention prohibition shipped in worker guidance. RC3: long-input gate skips `<channel>`-source messages (`isChannelSourceMessage`), removing the routing-gate deadlock; source-fidelity stays at the manager authoring layer. Two design rules added to decisions.md. Tests: +12 (worktree/guidance), updated continuation + long-input suites. Full suite 2962 pass / 0 fail (one unrelated pre-existing flaky lock race).
+**Files**: scripts/flow-paths.js, scripts/flow-utils.js, scripts/hooks/core/worker-continuation-gate.js, scripts/hooks/core/phase-gate.js, scripts/hooks/core/phase-read-gate.js, scripts/hooks/core/long-input-enforcement.js, lib/workspace-channel-server.js, .workflow/templates/partials/methodology-rules.hbs, .claude/rules/_internal/worker-tool-first-turn.md, CLAUDE.md (regenerated), .workflow/state/decisions.md, tests/flow-worktree-gate-evasion.test.js, tests/flow-worker-continuation-gate.test.js, tests/flow-hooks-long-input-enforcement.test.js, .workflow/bugs/wf-e5e57361.md
+
 ### R-329 | 2026-04-23 20:50
 **Type**: feat
 **Tags**: #task:wf-f64f58b0 #epic:wf-34290000 #workstream:A #prompt #investigation
