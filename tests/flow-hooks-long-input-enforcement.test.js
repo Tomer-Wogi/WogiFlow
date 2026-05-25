@@ -212,11 +212,18 @@ We need to refactor the existing structure to consolidate.`;
     assert.equal(r.reason, 'channel-source');
   });
 
-  it('PASSES (channel-source) a <channel>-tagged message even without a source field', () => {
+  it('PASSES (channel-source) a <channel>-tagged message (no source field) in workspace mode', () => {
     const tagged = `<channel from="manager">\n${wogiHubPrompt}\n</channel>`;
-    const r = lie.shouldForceExtractReview({ text: tagged });
+    const r = lie.shouldForceExtractReview({ text: tagged, env: { WOGI_WORKSPACE_ROOT: '/tmp/ws', WOGI_REPO_NAME: 'frontend' } });
     assert.equal(r.forced, false);
     assert.equal(r.reason, 'channel-source');
+  });
+
+  it('F4: a <channel>-prefixed prose message in a SOLO session is NOT skipped (still gated as user input)', () => {
+    const tagged = `<channel> ${wogiHubPrompt}`;
+    const r = lie.shouldForceExtractReview({ text: tagged, env: {} });
+    assert.equal(r.forced, true);
+    assert.equal(r.reason, 'long-form-task-without-source-link');
   });
 
   it('STILL FORCES the same prompt as direct USER input (protection preserved off the transport layer)', () => {
@@ -267,13 +274,22 @@ describe('isChannelSourceMessage', () => {
     assert.equal(lie.isChannelSourceMessage('anything', 'notifications/claude/channel'), true);
   });
 
-  it('detects a leading <channel> tag without a source field', () => {
-    assert.equal(lie.isChannelSourceMessage('<channel from="manager">hi</channel>', undefined), true);
+  it('detects a leading <channel> tag in workspace mode (no source field)', () => {
+    assert.equal(
+      lie.isChannelSourceMessage('<channel from="manager">hi</channel>', undefined, { WOGI_WORKSPACE_ROOT: '/tmp/ws' }),
+      true
+    );
+  });
+
+  it('F4: does NOT skip a <channel>-prefixed prose message in a solo (non-workspace) session', () => {
+    // A solo user literally typing prose that starts with "<channel" must not be
+    // mis-detected as channel transport.
+    assert.equal(lie.isChannelSourceMessage('<channel> how does this tag work in wogi?', undefined, {}), false);
   });
 
   it('rejects ordinary user input', () => {
-    assert.equal(lie.isChannelSourceMessage('Fix the login bug', 'user'), false);
-    assert.equal(lie.isChannelSourceMessage('Fix the login bug'), false);
+    assert.equal(lie.isChannelSourceMessage('Fix the login bug', 'user', {}), false);
+    assert.equal(lie.isChannelSourceMessage('Fix the login bug', undefined, {}), false);
   });
 });
 

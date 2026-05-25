@@ -1,8 +1,8 @@
 {
   "skillName": "wogi-start",
-  "markedAt": "2026-05-23T08:24:33.276Z",
+  "markedAt": "2026-05-25T08:30:42.396Z",
   "context": {
-    "args": "wf-e5e57361"
+    "args": "Fix all remaining items from the wf-e5e57361 review: (1) F4 — tighten isChannelSourceMessage in scripts/hooks/core/long-input-enforcement.js so the leading \"<channel\" prefix only triggers the channel-source skip when in workspace mode (WOGI_WORKSPACE_ROOT set), preventing a false-positive skip when a solo user types prose literally starting with \"<channel\"; the source-field regex detection stays unconditional. Add/adjust tests. (2) Fix the pre-existing flaky parallel-execution lock race in tests/flow-correction-detector-hybrid.test.js — it intermittently fails with \"Failed to acquire lock for .../correction-patterns.json .lock/info.json\" because it writes to the real shared .workflow/state/correction-patterns.json while other test files run concurrently; isolate it to a temp state dir (or otherwise make it deterministic) so the full suite is stable across runs."
   },
   "status": "pending"
 }

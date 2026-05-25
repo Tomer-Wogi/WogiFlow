@@ -607,6 +607,23 @@ async function acquireLock(filePath, options = {}) {
           await require('node:timers/promises').setTimeout(delay);
           continue;
         }
+      } else if (err.code === 'ENOENT' && attempt < retries) {
+        // Race: a concurrent cleanup (another process's release() or
+        // cleanupStaleLocks) removed the lock dir between our mkdirSync and the
+        // info.json write, so writeFileSync(lockInfoFile) failed ENOENT. This is
+        // transient — retry rather than failing hard. (Pre-existing flaky-lock
+        // root cause surfaced by parallel test runs; wf-0381b27b.)
+        //
+        // Remove only our EMPTY orphan dir if one lingers: rmdirSync succeeds
+        // only when the dir is empty, so we never clobber another holder's lock
+        // (its info.json would make this ENOTEMPTY → we leave it for the normal
+        // EEXIST/stale path on the next attempt).
+        try { fs.rmdirSync(lockDir); } catch (_e) { /* gone, or now held by another */ }
+        const delay = exponentialBackoff
+          ? retryDelay * Math.pow(2, attempt)
+          : retryDelay * (attempt + 1);
+        await require('node:timers/promises').setTimeout(delay);
+        continue;
       }
 
       throw new Error(`Failed to acquire lock for ${filePath}: ${err.message}`, { cause: err });

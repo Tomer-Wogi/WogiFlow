@@ -262,9 +262,14 @@ function hasTaskSignals(text) {
  * Independent of worker/manager mode — a status reply trips the gate on the
  * MANAGER too, which is the deadlock this skip removes.
  */
-function isChannelSourceMessage(text, source) {
+function isChannelSourceMessage(text, source, env = process.env) {
+  // Source field is set by the channel notification path — unconditional signal.
   if (typeof source === 'string' && /channel|notifications/i.test(source)) return true;
-  if (typeof text === 'string') {
+  // Leading <channel> tag: trust it ONLY in workspace mode (F4, wf-0381b27b).
+  // Otherwise a solo user whose prose literally starts with "<channel" (e.g.
+  // asking about the channel tag) would be mis-skipped. Channel-wrapped
+  // messages only ever arrive when WOGI_WORKSPACE_ROOT is set.
+  if (env && env.WOGI_WORKSPACE_ROOT && typeof text === 'string') {
     const lead = text.trimStart().slice(0, 16).toLowerCase();
     if (lead.startsWith('<channel')) return true;
   }
@@ -280,7 +285,7 @@ function isChannelSourceMessage(text, source) {
  * @param {object} [input.env] - environment (for testing)
  * @returns {{forced: boolean, level: 'strict'|'force'|'suggest'|'pass', reason: string}}
  */
-function shouldForceExtractReview({ text, source } = {}) {
+function shouldForceExtractReview({ text, source, env = process.env } = {}) {
   // wf-f7d58760: system-originated content (sub-agent task-notifications,
   // tool-result echoes, slash-command framings) flows through the same
   // UserPromptSubmit pipe but is NOT a user prompt. Skip the gate entirely.
@@ -302,7 +307,7 @@ function shouldForceExtractReview({ text, source } = {}) {
   // manager AUTHORING layer (Logic Constitution 11.6 + flow-source-fidelity.js),
   // where the USER's verbatim prompt still trips this gate normally — not here on
   // the transport layer. Skip channel traffic entirely.
-  if (isChannelSourceMessage(text, source)) {
+  if (isChannelSourceMessage(text, source, env)) {
     return { forced: false, level: 'pass', reason: 'channel-source' };
   }
   if (!detectLongFormPrompt(text)) {

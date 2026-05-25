@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-25T08:25:43.474Z",
+  "lastUpdated": "2026-05-25T08:41:01.219Z",
   "inProgress": [],
   "ready": [
     {
@@ -67,6 +67,15 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-0381b27b",
+      "title": "Fix wf-e5e57361 review findings: F4 channel-prefix scope + flaky correction-detector lock race",
+      "type": "bug",
+      "priority": "P2",
+      "status": "completed",
+      "createdAt": "2026-05-25T08:34:52.320Z",
+      "completedAt": "2026-05-25T08:41:01.218Z"
+    },
     {
       "id": "wf-e5e57361",
       "title": "Workspace autonomous worker silently stalls at approval gates; phase gate evadable via worktree; long-input gate misfires on channel messages",

@@ -2,6 +2,13 @@
 
 Automatic log of all requests that changed files. Searchable by tags.
 
+### R-386 | 2026-05-25 00:30
+**Type**: fix
+**Tags**: #bug:wf-0381b27b #review-followup #long-input #locking #flaky-test
+**Request**: "fix all" — close the two remaining items from the wf-e5e57361 review (F4 + the flaky lock-race test)
+**Result**: **F4** — scoped the `<channel` content-prefix detection in `isChannelSourceMessage` to workspace mode (`WOGI_WORKSPACE_ROOT` set), so a solo user typing prose that starts with `<channel` is no longer mis-skipped; the source-field regex stays unconditional. Re-added an injectable `env` param to `shouldForceExtractReview` for testability. **Flaky lock race** — root-caused to `acquireLock` (flow-io.js): a concurrent cleanup removed the freshly-mkdir'd lock dir before the `info.json` write, so `writeFileSync` threw ENOENT which fell through to a hard throw instead of retrying. Fixed: ENOENT-during-write now retries (and removes only an EMPTY orphan dir via `rmdirSync`, never clobbering another holder's lock). Added a deterministic ENOENT-race regression test. Full suite stable: 8/8 runs at 2964 pass / 0 fail (was flaky ~1-in-3 before).
+**Files**: scripts/hooks/core/long-input-enforcement.js, scripts/flow-io.js, tests/flow-hooks-long-input-enforcement.test.js, tests/flow-io.test.js
+
 ### R-385 | 2026-05-25 00:00
 **Type**: fix
 **Tags**: #review #bug:wf-e5e57361 #continuation #self-review

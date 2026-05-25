@@ -571,6 +571,36 @@ describe('acquireLock', () => {
     assert.equal(typeof release, 'function');
     release();
   });
+
+  it('retries when a concurrent cleanup removes the lock dir mid-create (ENOENT race, wf-0381b27b)', async () => {
+    const lockTarget = tmpFile('enoent-race-target.json');
+    fs.writeFileSync(lockTarget, '{}');
+
+    // Simulate the race: the FIRST write of info.json fails ENOENT (a concurrent
+    // process's cleanup removed the freshly-created lock dir between our mkdir
+    // and writeFileSync). Before the fix this threw "Failed to acquire lock ...
+    // ENOENT"; now it must retry and succeed.
+    const realWriteFileSync = fs.writeFileSync;
+    let thrownOnce = false;
+    fs.writeFileSync = function (p, ...rest) {
+      if (!thrownOnce && typeof p === 'string' && p.endsWith(path.join('.lock', 'info.json'))) {
+        thrownOnce = true;
+        const err = new Error(`ENOENT: no such file or directory, open '${p}'`);
+        err.code = 'ENOENT';
+        throw err;
+      }
+      return realWriteFileSync.call(fs, p, ...rest);
+    };
+    try {
+      const release = await acquireLock(lockTarget, { retries: 5, retryDelay: 20 });
+      assert.equal(typeof release, 'function');
+      assert.equal(thrownOnce, true, 'the simulated ENOENT race must have fired once');
+      release();
+      assert.equal(fs.existsSync(lockTarget + '.lock'), false);
+    } finally {
+      fs.writeFileSync = realWriteFileSync;
+    }
+  });
 });
 
 // ============================================================
