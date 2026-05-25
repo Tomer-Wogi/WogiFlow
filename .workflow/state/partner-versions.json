@@ -1,9 +1,9 @@
 {
   "self": {
     "package": "wogiflow",
-    "version": "2.34.0",
+    "version": "2.34.2",
     "repo": "wogi-flow",
-    "releasedAt": "2026-05-22T17:45:00.000Z"
+    "releasedAt": "2026-05-25T00:00:00.000Z"
   },
   "partners": {
     "wogiflow-cloud-server": {
@@ -37,6 +37,14 @@
     }
   },
   "behaviorChanges": {
+    "2.34.2": [
+      "wf-e5e57361 + wf-0381b27b. ADDITIVE / fix-only — no removed/renamed exports, no state-file format changes, no hook-interface changes → no @wogiflow/teams peerDep bump required.",
+      "RC1: worker-continuation-gate.js gains an in-progress STALL FALLBACK — a workspace worker parked at an approval/phase-read gate (no decomposed ledger, or in exploring/spec_review) now drives a proceed-or-escalate continuation and auto-escalates to the manager after noProgressK no-progress turns, instead of silently idling. Completion boundary (ledger done) still allows a clean stop.",
+      "RC2: NEW additive exports flow-paths.getCanonicalStateDir + isLinkedWorktree (re-exported via flow-utils). phase-gate.js + phase-read-gate.js now resolve workflow-phase.json from the canonical (git-common-dir) state dir, worktree-stable, and fail CLOSED for in-progress tasks inside a worktree — closes a gate-evasion vector. Gate-circumvention prohibition shipped in worker guidance.",
+      "RC3: long-input gate now SKIPS <channel>-source inter-agent messages (manager↔worker dispatches + worker→manager replies), removing a routing-gate deadlock. The <channel> content-prefix signal is workspace-mode-scoped; source-fidelity stays enforced at the manager authoring layer. Removed the dead worker-side STRICT branch + isChannelDispatchInWorker.",
+      "flow-io.acquireLock hardened: a concurrent-cleanup ENOENT race during the lock-info write now retries (removing only an empty orphan dir) instead of failing hard. Resilience-only — no signature/behavior change for callers; benefits every withLock consumer.",
+      "NEW config: workspace.continuationGate.* already shipped in 2.34.0; this release adds the stall-fallback behavior under the same gate (worker-mode-guarded, default-on). Solo sessions unaffected."
+    ],
     "2.34.0": [
       "epic-workspace-sustained-exec: sustained autonomous execution for channel-dispatched workspace workers. ADDITIVE — no removed/renamed exports, no state-file format changes, no hook-interface changes → no @wogiflow/teams peerDep bump required.",
       "NEW exports (additive): lib/workspace-subtask-state.js (durable sub-task ledger); scripts/hooks/core/worker-continuation-gate.js; workspace-dispatch-tracking.refreshDispatchDeadline; workspace-channel-tracking.computeWorkerStatus; workspace-stop-notify.notifyWorkerProgress/notifyWorkerTerminal (notifyWorkerStopped kept as alias).",
@@ -106,5 +114,5 @@
       "BEHAVIOR CHANGE for consumers: a conversational \"where/which/how-does-the-X-work\" question now triggers the research-required gate. Override: prefix the prompt with ! to skip."
     ]
   },
-  "lastUpdated": "2026-05-22T17:45:00.000Z"
+  "lastUpdated": "2026-05-25T00:00:00.000Z"
 }
