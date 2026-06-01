@@ -64,6 +64,7 @@ const MODEL_CAPABILITIES = {
   'gemma2': { codeQuality: 'high', instructionFollowing: 'high', contextWindow: 8192 },
 
   // Cloud models - Full capability
+  'claude-opus-4-8': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 1000000, costTier: 'premium' },
   'claude-opus-4-7': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 1000000, costTier: 'premium' },
   'claude-opus-4-6': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
   'claude-opus-4-5': { codeQuality: 'excellent', instructionFollowing: 'excellent', contextWindow: 200000, costTier: 'premium' },
@@ -936,7 +937,8 @@ async function detectProviders() {
       local: false,
       cost: 'paid',
       models: [
-        { id: 'claude-opus-4-7', name: 'Claude Opus 4.7 (latest)', recommended: true },
+        { id: 'claude-opus-4-8', name: 'Claude Opus 4.8 (latest)', recommended: true },
+        { id: 'claude-opus-4-7', name: 'Claude Opus 4.7' },
         { id: 'claude-opus-4-6', name: 'Claude Opus 4.6' },
         { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5 (Best for executor)' },
         { id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
