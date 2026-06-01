@@ -369,3 +369,24 @@ Automatic log of all requests that changed files. Searchable by tags.
 - S6 (wf-68b5cef7): tests/flow-workspace-sustained-execution.test.js — drives real Stop-gate sequence: 3-sub-task job completes unattended across Stop boundaries → task-complete; + runaway-cap, no-progress, solo-isolation guards.
 Full suite: 2956 pass / 0 fail. Lint clean. Config keys under workspace.* added to config.json + flow-constants. NOT committed (large feature — awaiting user). Real-world live-workspace validation pending (user's next step).
 **Files**: lib/workspace-subtask-state.js, scripts/hooks/core/worker-continuation-gate.js, scripts/hooks/core/{workspace-stop-notify,stop-orchestrator,workspace-stop-gates,overdue-dispatches,session-start-worker}.js, scripts/hooks/entry/claude-code/post-tool-use.js, lib/{workspace,workspace-channel-server,workspace-channel-tracking,workspace-messages,workspace-dispatch-tracking}.js, scripts/flow-constants.js, .workflow/config.json, 6 new tests, package.json, .workflow/changes/wf-*.md, .workflow/epics/epic-workspace-sustained-exec.md
+
+### R-387 | 2026-05-29
+**Type**: fix
+**Tags**: #task:wf-b263c107 #epic:audit-remediation #deps #security
+**Request**: "Fix everything from the audit — Dependencies story"
+**Result**: D-F2 protobufjs override >=7.5.5→>=8.2.0 (8.0.3→8.4.2, DoS CVE cleared); D-F6 eslint 10.4.0 + @babel 7.29.7; #27 brace-expansion→5.0.6; D-F4 @huggingface/transformers ^3→^4 (4.2.0) UPGRADED + verified (byte-identical 384-dim embeddings vs baseline) + new regression test. npm audit 0 vulns; lint clean; 2964/2964 tests pass.
+**Files**: package.json, package-lock.json, tests/flow-memory-db-embedding.test.js
+
+### R-388 | 2026-05-29
+**Type**: refactor
+**Tags**: #task:wf-51f8f6f9 #epic:audit-remediation #performance #hooks
+**Request**: "Fix everything from the audit — Performance (hot path) story"
+**Result**: P-F1 WOGI_PROJECT_ROOT in settings.local.json (skips module-load git execSync; dropped WOGI_CANONICAL_STATE_DIR worktree-footgun) + made test suite hermetic against ambient WOGI_* via tests/scrub-ambient-env.js preload + pinned phase-gate test env + added embedding test to suite. P-F2 loadGateDeps lazy per-module loaders (1 module at load vs ~16 eager; 30/30 deps shape preserved). P-F3 hoisted Set/regex/array literals to module consts (pre-tool-orchestrator, routing-gate). P-F6 autoCleanupStaleLocks moved from per-hook module-load IIFE to session-boundary cleanStaleFiles(). 2967/2967 tests pass (env set + unset); lint clean.
+**Files**: .claude/settings.local.json, scripts/flow-utils.js, scripts/hooks/core/session-context.js, scripts/hooks/core/pre-tool-orchestrator.js, scripts/hooks/core/routing-gate.js, scripts/hooks/core/pre-tool-deps.js, tests/scrub-ambient-env.js, tests/flow-hooks-phase-gate.test.js, tests/flow-memory-db-embedding.test.js, package.json
+
+### R-389 | 2026-05-29
+**Type**: change
+**Tags**: #task:wf-27026d0b #claude-code-compat #models
+**Request**: "Respond to Claude Code v2.1.157/2.1.158 changelog — see what WogiFlow needs to update"
+**Result**: Assessed all changelog items. CODE: added Opus 4.8 to model registry (flow-providers.js capability map + picker as recommended latest; flow-model-adapter.js opus alias list → normalizeModelName resolves claude-opus-4-8[1m] to claude-opus family). DOCS: added compat-doc 2.1.140→2.1.158 section (skills auto-load, workflow-keyword-trigger advisory, worktree unlock/30-day-sweep no-collision, auto-mode on Bedrock/Vertex/Foundry orthogonal to WogiFlow autonomous mode, agent-field/OTel/EnterWorktree no-impact) + bumped last-updated. NO-IMPACT (recorded): ~20 CC-internal TUI/terminal/IDE/background-session items. lint clean.
+**Files**: scripts/flow-providers.js, scripts/flow-model-adapter.js, .claude/docs/claude-code-compatibility.md

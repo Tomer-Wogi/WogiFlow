@@ -140,8 +140,28 @@
       "progress": 1,
       "createdAt": "2026-05-22T14:46:45.718Z",
       "updatedAt": "2026-05-22T15:23:41.496Z"
+    },
+    "epic-audit-remediation-2026-05-29": {
+      "id": "epic-audit-remediation-2026-05-29",
+      "title": "Audit Remediation 2026-05-29 — fix all confirmed findings",
+      "description": "Fix all 28 adversary-validated findings from the 2026-05-29 /wogi-audit (score B/80). No-deferral directive. 6 dimension-stories. 3 owner-decision points: D-F4 huggingface upgrade, C-F6 decisions.md write, #28 branch deletion.",
+      "level": "L0",
+      "type": "epic",
+      "stories": [
+        "wf-d240ff8e",
+        "wf-b263c107",
+        "wf-bbdb0e21",
+        "wf-51f8f6f9",
+        "wf-850f69a1",
+        "wf-b99e6e5c"
+      ],
+      "features": [],
+      "status": "inProgress",
+      "progress": 0.3333333333333333,
+      "createdAt": "2026-05-29T06:13:05.403Z",
+      "updatedAt": "2026-05-31T07:24:51.594Z"
     }
   },
   "version": "1.0.0",
-  "lastUpdated": "2026-05-22T15:23:41.496Z"
+  "lastUpdated": "2026-05-31T07:24:51.594Z"
 }

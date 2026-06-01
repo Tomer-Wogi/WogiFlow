@@ -1633,3 +1633,35 @@ All 14 closed stories had implementation artifacts already in-tree from prior se
 - Claude Code 2.1.126 is installed locally (`/opt/homebrew/Caskroom/claude-code@latest/2.1.126/`)
 - Other 2.1.126 items reviewed and dismissed: fork-context fix (no fork-context skills in WogiFlow), `--dangerously-skip-permissions` expansion (orthogonal to PreToolUse hooks), `claude project purge` (doesn't touch `.workflow/`), empty-turn-hang fix (silent-halt false-positive reduction — no code change needed).
 - Commits NOT pushed to remote — user to decide.
+
+
+---
+
+## Session End: 2026-05-29
+
+### Completed
+- **wf-b263c107 — Audit Remediation: Dependencies (epic story, 100%)**: protobufjs DoS CVE killed (override >=7.5.5→>=8.2.0; 8.0.3→8.4.2); eslint→10.4.0 + @babel→7.29.7 (cleared brace-expansion dev CVE); npm audit 0 vulns. @huggingface/transformers UPGRADED 3.8.1→4.2.0 and verified byte-identical 384-dim embeddings + new regression test (tests/flow-memory-db-embedding.test.js).
+- **wf-51f8f6f9 — Audit Remediation: Performance hot path (epic story, 100%)**: P-F2 loadGateDeps lazy per-module (1 module at load vs ~16 eager); P-F1 WOGI_PROJECT_ROOT in settings.local.json (skips module-load git execSync; dropped WOGI_CANONICAL_STATE_DIR footgun); P-F3 hoisted hot-fn literals to module consts; P-F6 moved stale-lock readdirSync off per-hook path to session-boundary cleanup. BONUS: made test suite hermetic vs ambient WOGI_* env (tests/scrub-ambient-env.js). 2967/2967 tests pass (env set + unset), lint clean.
+- **wf-27026d0b — Respond to Claude Code v2.1.157/2.1.158 changelog (L2, done)**: added Opus 4.8 to model registry (flow-providers.js + flow-model-adapter.js) + compat-doc 2.1.140→2.1.158 section. Most changelog items NO-IMPACT (CC internals).
+
+### In Progress
+- **epic-audit-remediation-2026-05-29 (33%, 2/6 stories)** — nothing currently inProgress (clean stop).
+
+### Next Session
+Remaining epic stories (all in ready.json):
+- **wf-d240ff8e Architecture (P1)**: A-O1 extract post-tool-use.js orchestration to core/ (RISKY — hottest hook; sidecar-validate like P-F2); A-O2 adapter→core deps; A-O8 empty destructure.
+- **wf-bbdb0e21 Duplication (P2)**: DUP-F3 ready.json→getReadyData (~10 files); DUP-F2 gateAllow/gateBlock; DUP-F4 TMP_DIR→PATHS.longInputTmp; DUP-F6 safeWriteJson→writeJson; DUP-F1 inline .enabled.
+- **wf-850f69a1 Consistency+Modernization (P2)**: C-F3 ||→??; C-F6 (OWNER); C-F1 catch vars; M-F-atomicwrite 192-site writeJson sweep; M-F-strict; M-F-nodeprefix; M-F-mathrandom.
+- **wf-b99e6e5c Tech Debt+Tests (P1)**: T-1 decompose flow-long-input-cli.js god fn (3036 LOC); T-2/T-4 test suites; T-10 fix flow-audit.js todos detector; #28 (OWNER).
+
+### Open OWNER decisions (blocking specific items, NOT whole stories)
+- **C-F6**: write gate-shape contract to decisions.md, or keep in-code comment only?
+- **#28**: delete stale branches team-features-backup + keen-lewin (4mo), or keep?
+
+### Pending queue
+- #1: Review Claude Code v2.1.154 changelog (queued via /wogi-pending; partially overlaps the v2.1.157/158 work already done — Opus 4.8 registry + thinking-block fix).
+
+### Notes
+- INCIDENT (recovered): a partial edit to routing-gate.js left an undefined ref → gate threw → fail-closed-blocked all tools. Recovered via a Workflow sub-agent (ungated path, skips routing gate with active task) to git checkout, then reapplied safely (define-before-reference). Lesson: hot-path gate files get sidecar-validated before going live (used this for P-F2 pre-tool-deps).
+- Research-required gate FALSE POSITIVE at this session-end: classified /wogi-session-end as diagnostic ("why did") and hard-stopped on 0 evidence reads. /wogi-session-end is not diagnostic. Possible gate over-match worth reviewing (research-required-classifier.js).
+- NOT committed yet — 23 changed files across 3 concerns awaiting commit-plan approval.

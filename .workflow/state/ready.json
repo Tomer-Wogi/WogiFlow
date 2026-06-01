@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-05-25T08:48:07.403Z",
+  "lastUpdated": "2026-05-31T11:46:51.823Z",
   "inProgress": [],
   "ready": [
     {
@@ -51,6 +51,86 @@
       "priority": "P2",
       "created": "2026-05-13T08:23:39.442Z",
       "specPath": ".workflow/changes/wf-f251e94b.md"
+    },
+    {
+      "id": "wf-d240ff8e",
+      "title": "Audit remediation — Architecture (post-tool-use extraction, adapter deps, dead require)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-d240ff8e.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "A-O1 [HIGH] Extract orchestration logic from scripts/hooks/entry/claude-code/post-tool-use.js (279 LOC, 7 core imports) into core/ to satisfy the 120-LOC / 2-import three-layer rule; then clear the wf-c1e892fa exemptions for post-tool-use.js (and stop.js/session-start.js/user-prompt-submit.js if also brought under limit) in config.standardsCheck.hookThreeLayer.exemptions.",
+        "A-O2 [MED] Resolve adapters/claude-code.js:234,440 importing from core/ (session-context, gate-orchestrator) — invert the dependency or add a documented exemption.",
+        "A-O8 [LOW] Remove the empty destructure `const {} = require(\"../../flow-utils\")` at scripts/hooks/core/config-change.js:68."
+      ],
+      "goal": "Audit remediation — Architecture (post-tool-use extraction, adapter deps, dead require)"
+    },
+    {
+      "id": "wf-bbdb0e21",
+      "title": "Audit remediation — Duplication/Consolidation (getReadyData, gate helpers, TMP_DIR, writeJson)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-bbdb0e21.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "DUP-F3 [HIGH] Switch ~10 non-canonical hook files from raw safeJsonParse(ready.json) to cached getReadyData() (skip phase-gate.js/phase-read-gate.js canonical-dir exceptions).",
+        "DUP-F2 [MED] Add gateAllow()/gateBlock(reason,message) to pre-tool-helpers.js; adopt across the ~37 inline {allowed,blocked} return sites.",
+        "DUP-F4 [MED] Replace 4 hardcoded long-input TMP_DIR defs with PATHS.longInputTmp (flow-long-input.js:133, flow-long-input-chunking.js:43, flow-long-input-stories.js:54, flow-extraction-review.js:21).",
+        "DUP-F6 [MED] Replace flow-state-cleanup.js:41 own non-atomic safeWriteJson with writeJson from flow-utils.",
+        "DUP-F1 [MED] Consolidate the genuine duplicated inline config .enabled checks."
+      ],
+      "goal": "Audit remediation — Duplication/Consolidation (getReadyData, gate helpers, TMP_DIR, writeJson)"
+    },
+    {
+      "id": "wf-850f69a1",
+      "title": "Audit remediation — Consistency + Modernization (??, gate-shape doc, catch vars, atomic writes, strict, node:, crypto)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P2",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-850f69a1.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "C-F3 [MED] Fix genuine ||→?? config-default misuses (flow-memory-sync.js:181/299/363/367, flow-memory-compactor.js:62-70, flow-parallel.js:358); NOT |[]/|{}/arithmetic no-ops.",
+        "C-F6 [MED] OWNER-DECISION: document the intentional gate-response-shape split — ask before writing to decisions.md.",
+        "C-F1 [LOW] Rename 5 catch-var outliers (_e→_err) in flow-io.js:621, flow-architect-runs.js:93, worker-boundary-gate.js:153, flow-defer-auth.js:61.",
+        "M-F-atomicwrite [MED, highest-value correctness] Route the 192 raw writeFileSync(JSON.stringify) calls through atomic writeJson(); sweep scripts/ + lib/.",
+        "M-F-strict [MED] Enforce \"use strict\" uniformly (363/450 files lack it) via eslint config.",
+        "M-F-nodeprefix [LOW] Convert the 14 bare require(\"fs\"/\"path\"/\"os\") to node:-prefixed.",
+        "M-F-mathrandom [LOW] Swap Math.random ephemeral-ID sites to crypto.randomBytes."
+      ],
+      "goal": "Audit remediation — Consistency + Modernization (??, gate-shape doc, catch vars, atomic writes, strict, node:, crypto)"
+    },
+    {
+      "id": "wf-b99e6e5c",
+      "title": "Audit remediation — Tech Debt + Tests (god-fn decompose, test suites, audit-tool fix, branch cleanup)",
+      "type": "story",
+      "level": "L1",
+      "status": "ready",
+      "priority": "P1",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-b99e6e5c.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "T-1 [HIGH] Decompose flow-long-input-cli.js main() (3036 LOC, depth 16) into command-handler modules.",
+        "T-2 [HIGH] Write a test suite for flow-pattern-extractor.js (2477 LOC, currently zero tests).",
+        "T-4 [MED] Write a test suite for flow-project-analyzer.js (1265 LOC); implement-or-remove the :488 monorepo-exclusion TODO stub.",
+        "T-10 [MED] Fix flow-audit.js `todos` detector to anchor on real // TODO:/FIXME:/HACK: annotations (101 reported, ~1 genuine).",
+        "#28 OWNER-DECISION (destructive): delete stale branches team-features-backup + keen-lewin (4mo old) — confirm with owner before any deletion."
+      ],
+      "goal": "Audit remediation — Tech Debt + Tests (god-fn decompose, test suites, audit-tool fix, branch cleanup)"
     }
   ],
   "blocked": [
@@ -67,6 +147,64 @@
     }
   ],
   "recentlyCompleted": [
+    {
+      "id": "wf-27026d0b",
+      "title": "Respond to Claude Code v2.1.157/2.1.158 changelog",
+      "type": "change",
+      "level": "L2",
+      "status": "completed",
+      "priority": "P2",
+      "created": "2026-05-29",
+      "startedAt": "2026-05-31T11:44:15.301Z",
+      "acceptanceCriteria": [
+        "Add Opus 4.8 (claude-opus-4-8) to the model registry in scripts/flow-providers.js (currently only 4.7/4.6)",
+        "Update .claude/docs/claude-code-compatibility.md: Features in 2.1.157/2.1.158+ section (skills auto-load, worktree unlocked/30-day-sweep clarification, auto-mode on Bedrock/Vertex/Foundry, workflow-keyword-trigger advisory) + matrix row + bump last-updated",
+        "Record NO-IMPACT dispositions for the CC-internal items so nothing is silently dropped"
+      ],
+      "completedAt": "2026-05-31T11:46:51.822Z"
+    },
+    {
+      "id": "wf-51f8f6f9",
+      "title": "Audit remediation — Performance hot path (loadGateDeps, git env, hoist literals, lock IIFE)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-51f8f6f9.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "P-F2 [HIGH] Reduce loadGateDeps() (pre-tool-deps.js) 17-module-per-PreToolUse fan-out (~25ms) — lazy-load gates only when their tool/condition matches.",
+        "P-F1 [MED] Set WOGI_PROJECT_ROOT + WOGI_CANONICAL_STATE_DIR in .claude/settings.json env to skip the module-load execSync(\"git rev-parse\").",
+        "P-F3 [MED] Hoist new Set()/regex/array literals to module constants (pre-tool-orchestrator.js:268-287, routing-gate.js:295-300).",
+        "P-F6 [MED] Move autoCleanupStaleLocks() IIFE out of flow-utils.js:950-963; call only from session-start."
+      ],
+      "goal": "Audit remediation — Performance hot path (loadGateDeps, git env, hoist literals, lock IIFE)",
+      "startedAt": "2026-05-29T09:07:20.285Z",
+      "completedAt": "2026-05-31T07:24:51.545Z"
+    },
+    {
+      "id": "wf-b263c107",
+      "title": "Audit remediation — Dependencies (protobufjs CVE, huggingface eval, stragglers)",
+      "type": "story",
+      "level": "L1",
+      "status": "completed",
+      "priority": "P1",
+      "created": "2026-05-29",
+      "specPath": ".workflow/changes/audit-remediation-2026-05-29/wf-b263c107.md",
+      "epicId": "epic-audit-remediation-2026-05-29",
+      "sourceAudit": "2026-05-29",
+      "acceptanceCriteria": [
+        "D-F2 [MED] Change package.json override protobufjs \">=7.5.5\" → \">=8.2.0\", npm install, verify `npm audit` clears the moderate DoS CVE (GHSA-jggg-4jg4-v7c6).",
+        "D-F4 [MED] OWNER-DECISION: evaluate @huggingface/transformers 3.8.1→4.2.0 (436MB, 1 major behind); if it breaks flow-memory-db.js embedding, document the hold + pin-bump plan. Surface to owner before acting.",
+        "D-F6 [MED] npm update eslint (→10.4.0), @babel/parser, @babel/traverse (→7.29.7).",
+        "#27 Verify the brace-expansion dev CVE is cleared by the eslint update (npm audit)."
+      ],
+      "goal": "Audit remediation — Dependencies (protobufjs CVE, huggingface eval, stragglers)",
+      "startedAt": "2026-05-29T06:14:00.835Z",
+      "completedAt": "2026-05-29T09:06:22.370Z"
+    },
     {
       "id": "wf-0381b27b",
       "title": "Fix wf-e5e57361 review findings: F4 channel-prefix scope + flaky correction-detector lock race",
