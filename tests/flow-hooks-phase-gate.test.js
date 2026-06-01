@@ -365,7 +365,14 @@ describe('wf-88a08fd4: flow-phase.js transition CLI writes state regardless of g
           // flow-paths.js consults WOGI_PROJECT_ROOT (not WOGIFLOW_PROJECT_ROOT).
           // Set both for belt-and-suspenders.
           WOGI_PROJECT_ROOT: tmpRoot,
-          WOGIFLOW_PROJECT_ROOT: tmpRoot
+          WOGIFLOW_PROJECT_ROOT: tmpRoot,
+          // Pin the canonical state dir to the tmp dir too. flow-paths.js
+          // getCanonicalStateDir() honors WOGI_CANONICAL_STATE_DIR above all
+          // else (flow-paths.js:114); if the ambient env has it set (e.g. a dev
+          // who added it to .claude/settings.local.json for the P-F1 hook-perf
+          // win), inheriting it would make the CLI write to the real state dir
+          // while this test reads tmpRoot — a false failure. Pin it explicitly.
+          WOGI_CANONICAL_STATE_DIR: stateDir
         }
       });
       // Read state file BEFORE cleanup.

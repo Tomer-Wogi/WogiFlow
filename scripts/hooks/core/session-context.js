@@ -13,7 +13,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 
 // Import from parent scripts directory
-const { getConfig, PATHS, getReadyData, safeJsonParse, isPathWithinProject } = require('../../flow-utils');
+const { getConfig, PATHS, getReadyData, safeJsonParse, isPathWithinProject, runStaleLockCleanup } = require('../../flow-utils');
 const setupCheck = require('./setup-check');
 const { findParallelizable, getParallelConfig } = require('../../flow-parallel');
 const { getBypassTracking } = require('../../flow-session-state');
@@ -191,6 +191,12 @@ function cleanStaleFiles() {
   if (config.hooks?.rules?.sessionCleanup?.enabled === false) {
     return { cleaned: 0, files: [], warnings: [] };
   }
+
+  // Stale-lock cleanup (P-F6, audit 2026-05-29): moved off the per-hook
+  // module-load path in flow-utils into this session-boundary hygiene routine
+  // (runs at session-start and session-end, not on every tool call). Lock
+  // acquisition self-heals stale locks independently, so this is belt-and-braces.
+  try { runStaleLockCleanup(); } catch (_err) { /* fail-open */ }
 
   const stateDir = PATHS.state;
   const cleaned = [];

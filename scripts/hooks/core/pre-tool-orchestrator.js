@@ -29,6 +29,21 @@
 const path = require('node:path');
 const { parseSubagentContext, isAllGatesDisabled } = require('./pre-tool-helpers');
 
+// Hot-path constants (P-F3, audit 2026-05-29): hoisted from inside runPreToolGates()
+// so they are allocated/compiled once at module load instead of on every PreToolUse
+// invocation (this gate runs on every Claude tool call).
+const READ_ONLY_GIT_PREFIXES = [
+  'git status', 'git log', 'git diff', 'git branch',
+  'git show', 'git rev-parse', 'git remote -v', 'git tag -l',
+  'git ls-files', 'git describe',
+];
+const SHELL_CHAIN_OPERATORS = /[;&|`$()\n\r\\]/;
+const DESTRUCTIVE_GIT_FLAGS = /\s-[dD]\b|\s--delete\b|\s--force\b|\s--hard\b|\s--prune\b/;
+const GATED_TOOLS = new Set([
+  'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
+  'Edit', 'Write', 'NotebookEdit', 'Agent', 'WebSearch', 'WebFetch',
+]);
+
 /**
  * Run the PreToolUse gate cascade.
  *
@@ -265,13 +280,6 @@ function runPreToolGates(ctx, deps) {
   let skipRoutingGateForReadOnlyGit = false;
   if (toolName === 'Bash' && typeof toolInput.command === 'string') {
     const cmd = toolInput.command.trim();
-    const READ_ONLY_GIT_PREFIXES = [
-      'git status', 'git log', 'git diff', 'git branch',
-      'git show', 'git rev-parse', 'git remote -v', 'git tag -l',
-      'git ls-files', 'git describe',
-    ];
-    const SHELL_CHAIN_OPERATORS = /[;&|`$()\n\r\\]/;
-    const DESTRUCTIVE_GIT_FLAGS = /\s-[dD]\b|\s--delete\b|\s--force\b|\s--hard\b|\s--prune\b/;
     if (
       READ_ONLY_GIT_PREFIXES.some(prefix => cmd.startsWith(prefix)) &&
       !SHELL_CHAIN_OPERATORS.test(cmd) &&
@@ -281,10 +289,6 @@ function runPreToolGates(ctx, deps) {
     }
   }
 
-  const GATED_TOOLS = new Set([
-    'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
-    'Edit', 'Write', 'NotebookEdit', 'Agent', 'WebSearch', 'WebFetch',
-  ]);
   if (!skipRoutingGateForSubagent && !skipRoutingGateForReadOnlyGit && GATED_TOOLS.has(toolName)) {
     try {
       const routingResult = deps.checkRoutingGate(toolName, config);

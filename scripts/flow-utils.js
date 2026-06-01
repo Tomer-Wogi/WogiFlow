@@ -779,6 +779,8 @@ const {
 // ============================================================
 
 module.exports = {
+  // Stale-lock cleanup — call from session-start only (P-F6, audit 2026-05-29)
+  runStaleLockCleanup,
   // Explicit re-exports from flow-paths.js
   getProjectRoot: flowPaths.getProjectRoot,
   getCanonicalStateDir: flowPaths.getCanonicalStateDir,
@@ -942,12 +944,20 @@ module.exports = {
 };
 
 // ============================================================
-// Automatic Stale Lock Cleanup on Module Load
+// Stale Lock Cleanup (invoked from session-start, not on every module load)
 // ============================================================
 
-// Clean up any stale locks from previous sessions/crashes
-// This runs once when the module is first required
-(function autoCleanupStaleLocks() {
+// Clean up any stale locks from previous sessions/crashes.
+//
+// P-F6 (audit 2026-05-29): this was previously a self-invoking IIFE that ran a
+// readdirSync(STATE_DIR) on EVERY require of flow-utils — i.e. on every hook
+// process startup (PreToolUse fires on every Claude tool call). That per-load
+// scan is redundant for correctness: acquireLock() in flow-io.js self-heals
+// stale locks during acquisition (removes locks older than staleMs, see
+// flow-io.js:561-585), so a crashed-process lock is cleaned by the next writer
+// regardless. The scan is now an exported function invoked only from the
+// session-start hook.
+function runStaleLockCleanup() {
   try {
     // Only clean up if STATE_DIR exists (workflow initialized)
     if (dirExists(STATE_DIR)) {
@@ -956,8 +966,10 @@ module.exports = {
       if (cleaned > 0 && process.env.DEBUG) {
         console.log(`[DEBUG] Auto-cleaned ${cleaned} stale lock(s) from ${STATE_DIR}`);
       }
+      return cleaned;
     }
   } catch (_err) {
-    // Silent failure - don't break module loading
+    // Silent failure - don't break the caller
   }
-})();
+  return 0;
+}

@@ -18,6 +18,19 @@ const path = require('node:path');
 
 const { getConfig, getReadyData, PATHS, safeJsonParseString } = require('../../flow-utils');
 
+// Gate ALL tools that allow the AI to act without routing through /wogi-start.
+// Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
+// from task gate) to create a fake active task, then edit anything freely.
+// This set must include EVERY tool that reads, writes, or executes.
+// P-F3 (audit 2026-05-29): hoisted to module scope so the Set is built once at
+// load instead of on every checkRoutingGate() call (runs on every tool call).
+const ROUTING_GATED_TOOLS = new Set([
+  'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
+  'Edit', 'Write', 'NotebookEdit',
+  'WebSearch', 'WebFetch',
+  'Agent',
+]);
+
 // Include session ID in flag path to prevent concurrent sessions from
 // interfering with each other.
 // CRITICAL FIX (Gap 3): When CLAUDE_CODE_SESSION_ID is not set, use a single
@@ -288,17 +301,7 @@ function isRoutingPending() {
  * @returns {{ allowed: boolean, blocked: boolean, reason: string, message: string|null }}
  */
 function checkRoutingGate(toolName, config) {
-  // Gate ALL tools that allow the AI to act without routing through /wogi-start.
-  // Edit/Write/NotebookEdit were the critical gap: AI could edit ready.json (exempt
-  // from task gate) to create a fake active task, then edit anything freely.
-  // This set must include EVERY tool that reads, writes, or executes.
-  const GATED_TOOLS = new Set([
-    'Bash', 'EnterPlanMode', 'Read', 'Glob', 'Grep',
-    'Edit', 'Write', 'NotebookEdit',
-    'WebSearch', 'WebFetch',
-    'Agent'
-  ]);
-  if (!GATED_TOOLS.has(toolName)) {
+  if (!ROUTING_GATED_TOOLS.has(toolName)) {
     return { allowed: true, blocked: false, reason: 'not_gated_tool', message: null };
   }
 
